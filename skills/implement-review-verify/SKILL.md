@@ -57,7 +57,7 @@ Two sharp, non-overlapping reviewers beat five that all re-scan the whole codeba
 same things. Add a third lens (security, performance) only when the change actually has that
 surface. Each reviewer returns concrete `file:line` findings, each rated **must-fix / should-fix / nit**.
 
-### Phase 3 — Verify + fix (1 agent)
+### Phase 3 — Fix (1 agent)
 
 ONE agent that receives both reviews, **triages every finding** (applies the ones it agrees with;
 for any it rejects, says *why* — a finding can be wrong), then **proves the result**: runs the FULL
@@ -66,7 +66,7 @@ fails, it says so with the output, it does not paper over it.
 
 This phase is where the review earns its keep: a good correctness reviewer often finds a bug whose
 *correct* fix is broader than the original spec (e.g. "re-run on any terminal state", not just
-"on completed"). The verifier is trusted to make that call and document it.
+"on completed"). The fixer is trusted to make that call and document it.
 
 ## Why this shape (the rationale that makes it work)
 
@@ -77,8 +77,8 @@ This phase is where the review earns its keep: a good correctness reviewer often
 - **Adversarial correctness review is the point.** Brief the correctness reviewer to *try to break*
   the change — name the hazards and ask "is this actually wrong?". That's what catches the
   plausible-but-broken implementation that tests written by the implementer won't.
-- **Verify triages, doesn't rubber-stamp.** A finding is a hypothesis, not a verdict. The verifier
-  decides, fixes, and re-proves — closing the loop with real suite output, not a claim.
+- **The fix phase triages, doesn't rubber-stamp.** A finding is a hypothesis, not a verdict. The
+  fixer decides, applies the fix, and re-proves — closing the loop with real suite output, not a claim.
 
 ## Model assignment
 
@@ -89,8 +89,8 @@ tier is fine; never the cheapest tier.** Match the project's own stated model po
 
 ## Don't over-fan
 
-Scale to the change. A tightly-scoped fix: 1 implement + 1 correctness review + 1 verify. A broad,
-risky change: 1 implement + 2 reviewers + 1 verify (the default above). Reserve wider fan-out for
+Scale to the change. A tightly-scoped fix: 1 implement + 1 correctness review + 1 fix. A broad,
+risky change: 1 implement + 2 reviewers + 1 fix (the default above). Reserve wider fan-out for
 genuine breadth (many independent sites). More agents re-reading the same code is cost, not rigor.
 
 ## Authoring notes
