@@ -1,0 +1,15 @@
+{
+  "name": "workflow-skills",
+  "owner": {
+    "name": "xdevs23",
+    "url": "https://github.com/xdevs23"
+  },
+  "plugins": [
+    {
+      "name": "workflow-skills",
+      "source": "./",
+      "description": "Multi-agent workflow skills: research-loop, verify-loop, find-gaps, implement-review-verify, immaculate-spec-writing, and a continuously-running audit-loop — plus a library of pinned audit-lens subagents.",
+      "keywords": ["workflow", "multi-agent", "review", "audit", "verification", "research"]
+    }
+  ]
+}
