@@ -29,6 +29,11 @@ const PORT = Number(process.env.GROUP_CHAT_PORT ?? 8787);
 const HOST = process.env.GROUP_CHAT_HOST ?? "127.0.0.1";
 const DATA_DIR = process.env.GROUP_CHAT_DATA ?? ".group-chat-data";
 const WINDOW = Number(process.env.GROUP_CHAT_WINDOW ?? 500);
+// How long a `send` awaits read-receipts from currently-connected members
+// before replying. Members who confirm within this window are "read"; everyone
+// else in the group is "sent" (offline, or a slower-than-window RTT). 100ms
+// comfortably covers localhost/LAN/tunnel; bump it for high-latency links.
+const READ_RECEIPT_MS = Number(process.env.GROUP_CHAT_READ_RECEIPT_MS ?? 100);
 
 if (!TOKEN && !ALLOW_NO_AUTH) {
   console.error(
@@ -77,6 +82,17 @@ interface Group {
 }
 
 const groups = new Map<string, Group>();
+
+// Pending read-receipt collectors, keyed `${group}#${seq}`. A `send` registers
+// one with the set of recipients it's awaiting; each inbound `read {group,seq}`
+// marks that member read; the collector resolves early once all recipients have
+// confirmed, or on the READ_RECEIPT_MS deadline (whichever comes first).
+interface ReadCollector {
+  awaiting: Set<string>; // recipient names not yet confirmed
+  read: Set<string>; // recipient names that confirmed within the window
+  done: () => void; // resolve early when awaiting drains
+}
+const pendingReads = new Map<string, ReadCollector>();
 
 mkdirSync(DATA_DIR, { recursive: true });
 
@@ -140,8 +156,14 @@ function memberInfo(m: Member): MemberInfo {
 
 // Append-then-fan-out. The log append commits the message and its seq before
 // any delivery, so a crash mid-fan-out never loses the record, and every live
-// connection's gap re-send can rely on the window/log.
-function broadcast(group: Group, from: string, text: string): ChatMessage {
+// connection's gap re-send can rely on the window/log. Returns the message plus
+// the set of member names it was actively pushed to (connected, not the sender)
+// — the `send` handler awaits read-receipts from exactly those.
+function broadcast(
+  group: Group,
+  from: string,
+  text: string,
+): { msg: ChatMessage; recipients: string[] } {
   const seq = ++group.seq;
   const msg: ChatMessage = {
     group: group.name,
@@ -160,6 +182,7 @@ function broadcast(group: Group, from: string, text: string): ChatMessage {
   //    shouldn't get its own message tickled back (that just wastes a turn).
   //    The message is still logged above, so it's in history/scrollback and
   //    counts toward seq; we only suppress the live push to its author.
+  const recipients: string[] = [];
   for (const m of group.members.values()) {
     if (m.name === from) {
       // advance the sender's marker so a later reconnect won't re-send its own
@@ -169,12 +192,13 @@ function broadcast(group: Group, from: string, text: string): ChatMessage {
     }
     if (m.conn && m.status === "online") {
       m.conn.send({ t: "message", msg });
+      recipients.push(m.name);
       // optimistically advance; an explicit `ack` is what keeps gap re-send
       // precise across a reconnect (the member may go down before acking)
       if (seq > m.delivered) m.delivered = seq;
     }
   }
-  return msg;
+  return { msg, recipients };
 }
 
 // When a member reconnects and re-joins, re-send any windowed message newer
@@ -229,6 +253,20 @@ function handleFrame(conn: Connection, frame: ClientEnvelope): void {
       const as = conn.joinedAs.get(frame.group);
       const m = g && as ? g.members.get(as) : undefined;
       if (m && m.conn === conn && frame.seq > m.delivered) m.delivered = frame.seq;
+      return;
+    }
+
+    case "read": {
+      // READ RECEIPT: this member surfaced message `seq`. Mark it in the pending
+      // collector for that (group, seq), if one is still awaiting. Resolve the
+      // sender's `send` early once every awaited recipient has confirmed.
+      const as = conn.joinedAs.get(frame.group);
+      const col = pendingReads.get(`${frame.group}#${frame.seq}`);
+      if (col && as && col.awaiting.has(as)) {
+        col.awaiting.delete(as);
+        col.read.add(as);
+        if (col.awaiting.size === 0) col.done();
+      }
       return;
     }
 
@@ -317,8 +355,40 @@ function handleFrame(conn: Connection, frame: ClientEnvelope): void {
       }
       const m = g.members.get(as);
       if (m) m.last_seen_ts = nowIso();
-      broadcast(g, as, frame.message);
-      conn.send({ t: "ok", rid });
+      const { msg, recipients } = broadcast(g, as, frame.message);
+
+      // Reply with read-receipts: await `read` confirmations from the members we
+      // just pushed to, up to READ_RECEIPT_MS. Whoever confirms in the window is
+      // "read"; the rest of the group is "sent" (offline, or slower than the
+      // window). If there were no recipients, reply immediately.
+      const key = `${g.name}#${msg.seq}`;
+      const groupNames = () =>
+        [...g.members.values()].map((x) => x.name).filter((n) => n !== as);
+
+      if (recipients.length === 0) {
+        conn.send({ t: "sent", rid, group: g.name, seq: msg.seq, read: [], sent: groupNames() });
+        return;
+      }
+
+      const col: ReadCollector = {
+        awaiting: new Set(recipients),
+        read: new Set(),
+        done: () => {}, // replaced below
+      };
+      pendingReads.set(key, col);
+
+      let settled = false;
+      const finish = () => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timer);
+        pendingReads.delete(key);
+        const read = [...col.read];
+        const sent = groupNames().filter((n) => !col.read.has(n));
+        conn.send({ t: "sent", rid, group: g.name, seq: msg.seq, read, sent });
+      };
+      col.done = finish; // resolve early when all recipients confirm
+      const timer = setTimeout(finish, READ_RECEIPT_MS);
       return;
     }
 

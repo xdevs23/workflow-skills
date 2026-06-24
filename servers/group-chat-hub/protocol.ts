@@ -12,7 +12,7 @@
 // fans out only after the log append, and on reconnect re-sends the gap of
 // messages whose seq is newer than what the connection last acked.
 
-export const PROTOCOL_VERSION = 1;
+export const PROTOCOL_VERSION = 2;
 
 // ---- adapter -> hub -------------------------------------------------------
 
@@ -26,7 +26,8 @@ export type ClientFrame =
   | { t: "list_members"; group: string }
   | { t: "show_member"; group: string; member: string }
   | { t: "history"; group: string; last_n: number; index_from_end: number } // pull scrollback
-  | { t: "ack"; group: string; seq: number } // connection confirms it received up to `seq` in `group`
+  | { t: "ack"; group: string; seq: number } // gap-resend bookkeeping: confirms received up to `seq`
+  | { t: "read"; group: string; seq: number } // READ RECEIPT: this member surfaced message `seq` to its session
   | { t: "ping" };
 
 // ---- hub -> adapter -------------------------------------------------------
@@ -60,6 +61,10 @@ export type ServerFrame =
   | { t: "members"; rid?: string; group: string; members: MemberInfo[] }
   | { t: "member"; rid?: string; group: string; member: MemberInfo | null }
   | { t: "history"; rid?: string; group: string; messages: ChatMessage[] }
+  // reply to a `send`: read = members who confirmed surfacing the message within
+  // the read-receipt window; sent = the rest of the group (offline or slower
+  // than the window — no positive confirmation, message still logged + fanned out)
+  | { t: "sent"; rid?: string; group: string; seq: number; read: string[]; sent: string[] }
   | { t: "ok"; rid?: string }
   | { t: "pong" };
 
