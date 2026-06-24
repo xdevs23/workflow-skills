@@ -156,8 +156,17 @@ function broadcast(group: Group, from: string, text: string): ChatMessage {
   // 2) keep it in the in-memory window for gap re-send
   group.window.push(msg);
   if (group.window.length > WINDOW) group.window.shift();
-  // 3) fan out to every online member's connection
+  // 3) fan out to every online member's connection EXCEPT the sender — a sender
+  //    shouldn't get its own message tickled back (that just wastes a turn).
+  //    The message is still logged above, so it's in history/scrollback and
+  //    counts toward seq; we only suppress the live push to its author.
   for (const m of group.members.values()) {
+    if (m.name === from) {
+      // advance the sender's marker so a later reconnect won't re-send its own
+      // message during gap re-send either
+      if (seq > m.delivered) m.delivered = seq;
+      continue;
+    }
     if (m.conn && m.status === "online") {
       m.conn.send({ t: "message", msg });
       // optimistically advance; an explicit `ack` is what keeps gap re-send
