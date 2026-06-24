@@ -1,0 +1,14 @@
+{
+  "hooks": {
+    "MessageDisplay": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bun ${CLAUDE_PLUGIN_ROOT}/group-chat/display-hook.ts"
+          }
+        ]
+      }
+    ]
+  }
+}
