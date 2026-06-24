@@ -129,9 +129,16 @@ function onFrame(frame: ServerFrame): void {
   }
 
   if (frame.t === "message") {
-    pushChannel(frame.msg);
-    // ack so the hub's gap-resend stays precise
-    sendRaw({ t: "ack", group: frame.msg.group, seq: frame.msg.seq });
+    const { group, seq } = frame.msg;
+    // ack immediately for gap-resend bookkeeping (the message reached us)
+    sendRaw({ t: "ack", group, seq });
+    // send the READ receipt only AFTER the message is actually surfaced into
+    // the session — that's the honest "read" moment the sender awaits.
+    pushChannel(frame.msg)
+      .then(() => sendRaw({ t: "read", group, seq }))
+      .catch(() => {
+        /* if surfacing failed, don't claim it was read */
+      });
     return;
   }
 
@@ -323,8 +330,21 @@ mcp.setRequestHandler(CallToolRequestSchema, async (req) => {
       case "submit_message": {
         const group = String(a.group);
         const message = String(a.message);
-        await request({ t: "send", group, message });
-        return text(`Sent to '${group}'.`);
+        // The hub replies with read-receipts: who confirmed surfacing the
+        // message within the read window (read) vs the rest of the group (sent —
+        // offline or slower than the window).
+        const r = expect(await request({ t: "send", group, message }), "sent");
+        const readPart =
+          r.read.length > 0
+            ? `Read by ${r.read.length}: ${r.read.join(", ")}.`
+            : `Read by 0.`;
+        const sentPart =
+          r.sent.length > 0 ? ` Sent (unconfirmed): ${r.sent.join(", ")}.` : "";
+        const noOthers =
+          r.read.length === 0 && r.sent.length === 0
+            ? " No other members in the group."
+            : "";
+        return text(`Sent to '${group}' (seq ${r.seq}). ${readPart}${sentPart}${noOthers}`);
       }
       case "list_members": {
         const group = String(a.group);
