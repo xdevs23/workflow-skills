@@ -15,6 +15,11 @@ gitignore it is the user's choice — do not assume either. The point is to deco
 *fixing*: the audit
 accumulates continuously, and you fix everything in one deliberate sweep when you choose to.
 
+All consolidation into `AUDIT.md` — reading it, deduplicating, appending — is handled by a **dedicated
+record agent inside the round's own Record phase**, so the **root agent never has to touch the file**.
+It only receives a one-line summary back and stays focused on steering implementation. `AUDIT.md` is a
+side effect that accumulates in the background, tackled later.
+
 It is **read-only and append-only**: each round may only *add* new, verified, non-duplicate findings to
 `AUDIT.md`. It never edits source, and never rewrites or deletes existing AUDIT entries (except to mark
 them, see Reconciliation). It does not fix anything — fixing is a separate, explicit step.
@@ -53,10 +58,13 @@ task.
    The file only grows with genuinely new findings; it is never overwritten.
 5. **Evidence mandatory.** Every recorded finding carries a real `file:line` and quoted code. No bare
    assertions.
-6. **Explicit models on every agent.** Lens auditors and verifiers are **sonnet** (review/research
-   floor). Never haiku. Never rely on an inherited/default model. (There is no fix stage; if you later
-   add one, that stage is opus.)
-7. **Read-only.** No agent edits source. The only write is the append to `AUDIT.md`.
+6. **Explicit models on every agent.** Lens auditors, verifiers, and the record agent are all
+   **sonnet** (review/research floor; the record agent does mechanical dedup/append, not coding, so
+   sonnet is right). Never haiku. Never rely on an inherited/default model. (There is no fix stage; if
+   you later add one, that stage is opus.)
+7. **Read-only on source; one writer for the log.** No agent edits source code. The only write is the
+   append to `AUDIT.md`, performed by exactly one record agent in the Record phase — never by the root
+   agent and never by a lens/verifier agent.
 
 ## The eight lenses (bundled subagents)
 
@@ -67,14 +75,17 @@ Use these `agentType`s — they ship with this plugin, each model-pinned to sonn
 
 ## One round (the Workflow)
 
-Each round is a single Workflow: fan out the 8 lenses over the full tree, verify each finding as soon as
-its lens returns (pipeline, not barrier), then hand the confirmed, deduplicated set back for appending.
+Each round is a single Workflow with **three phases**: fan out the 8 lenses over the full tree (Audit),
+verify each finding as soon as its lens returns (Verify, pipeline not barrier), then hand the confirmed
+set to a **single record agent** that owns all `AUDIT.md` consolidation (Record). The dedup-and-append
+work runs **inside the Workflow, in its own phase — not in the root agent's context**. This is the whole
+point: the root agent stays free to steer implementation and only ever receives a one-line summary back.
 
 ```js
 export const meta = {
   name: 'audit-loop-round',
-  description: 'One round: 8 lenses over the full tree, adversarially verify, return confirmed findings',
-  phases: [{ title: 'Audit' }, { title: 'Verify' }],
+  description: 'One round: 8 lenses over the full tree, adversarially verify, record into AUDIT.md',
+  phases: [{ title: 'Audit' }, { title: 'Verify' }, { title: 'Record' }],
 }
 
 const LENSES = [
@@ -82,15 +93,21 @@ const LENSES = [
   'code-cleanliness', 'missing-gaps', 'domain-leakage', 'type-smearing',
 ];
 
+// Resolve before the run; agents can't compute the current date (see Record below).
+const AUDIT_PATH = './.claude/workflow-skills/AUDIT.md'; // project-local default
+const ROUND_DATE = args?.date ?? 'undated'; // pass today's date in via Workflow args
+
 const FINDINGS_SCHEMA = { /* { findings: [{ lens, file, line, claim, evidence, severity }] } */ };
 const VERDICT_SCHEMA  = { /* { real: boolean, reason, evidence } */ };
+const SUMMARY_SCHEMA  = { /* { new_count, dup_count, total, by_lens: {lens: n} } */ };
 
 const auditPrompt = lens =>
   `Audit the ENTIRE codebase as-is through your single lens only. Do NOT skip files as "work in ` +
   `progress" — audit reality. Every finding needs a real file:line and quoted code. Return structured ` +
   `findings; return an empty list if the tree is clean on your lens. Read-only.`;
 
-const results = await pipeline(
+// Phases 1+2: audit then verify, per-lens pipeline (no barrier).
+const verified = (await pipeline(
   LENSES,
   lens => agent(auditPrompt(lens), { agentType: lens, model: 'sonnet', label: `audit:${lens}`, phase: 'Audit', schema: FINDINGS_SCHEMA }),
   (review, lens) => parallel((review?.findings ?? []).map(f => () =>
@@ -100,25 +117,49 @@ const results = await pipeline(
       { agentType: lens, model: 'sonnet', label: `verify:${f.file}:${f.line}`, phase: 'Verify', schema: VERDICT_SCHEMA }
     ).then(v => ({ ...f, verdict: v }))
   ))
+)).flat().filter(Boolean).filter(f => f.verdict?.real);
+
+// Phase 3: ONE record agent owns AUDIT.md. It reads the file, dedups against
+// what's already there, appends only the genuinely-new findings, and returns
+// just a summary. The root agent never touches AUDIT.md, never sees findings.
+const summary = await agent(
+  `You are the AUDIT recorder — the SOLE writer of the audit log. Consolidate this round's confirmed ` +
+  `findings into \`${AUDIT_PATH}\` (relative to the project root — NEVER ~/.claude). Steps, exactly:\n` +
+  `1. Read ${AUDIT_PATH} (create it with an "# Audit Log" header, making parent dirs, if absent).\n` +
+  `2. Build the set of already-recorded findings keyed on lens + file + normalized-claim ` +
+  `(normalize: lowercase, collapse whitespace, ignore line-number drift within the same symbol).\n` +
+  `3. Drop this round's findings already present. If a previously recorded finding's file:line no ` +
+  `longer exists, mark it \`~~resolved?~~\` in place — never delete or rewrite history.\n` +
+  `4. APPEND only the genuinely-new findings under a dated heading "## Round — ${ROUND_DATE}", grouped ` +
+  `by lens, each as: - [SEVERITY] \`file:line\` — claim. Evidence: \`quoted code\`.\n` +
+  `5. Return ONLY the structured summary (counts), no prose.\n\n` +
+  `Confirmed findings this round (JSON): ${JSON.stringify(verified)}`,
+  { model: 'sonnet', label: 'record:AUDIT.md', phase: 'Record', schema: SUMMARY_SCHEMA }
 );
 
-return results.flat().filter(Boolean).filter(f => f.verdict?.real);
+return summary; // one-line-summary material; root surfaces it and moves on
 ```
 
-## After the Workflow — dedup & append (you, not an agent)
+## After the Workflow — just report (root agent)
 
-1. **Read the existing `AUDIT.md`** (default `./.claude/workflow-skills/AUDIT.md`, relative to the
-   audited project root — never `~/.claude`; create it with a header if absent, making the directory if
-   needed). Build the set of already-recorded
-   findings keyed on `lens + file + normalized-claim` (normalize: lowercase, collapse whitespace, ignore
-   line-number drift within the same symbol).
-2. **Drop duplicates** from this round's confirmed set against that key. Optionally, if a previously
-   recorded finding's location no longer exists (code changed), mark it `~~resolved?~~` in place rather
-   than deleting — never silently rewrite history.
-3. **Append** the genuinely-new confirmed findings under a dated round heading, grouped by lens, each as:
-   `` - [SEVERITY] `file:line` — claim. Evidence: `quoted code`. ``
-4. **Report** to the user a one-line round summary: N new findings appended (by lens), M duplicates
-   skipped, AUDIT.md total. Keep it short — the file is the artifact.
+The record agent has already done all consolidation **inside** the Workflow. The root agent's only job
+is to surface the returned summary as **one line** and get straight back to whatever it was steering:
+
+```
+→ audit round: <new_count> new (<by_lens>), <dup_count> dup skipped, <total> total in AUDIT.md
+```
+
+Do **not** read, dedup, or append to `AUDIT.md` from the root agent — that is the record agent's
+exclusive responsibility, and keeping it out of root context is the entire reason this phase exists. The
+file is the artifact; the root stays focused on implementation.
+
+> **Date note:** agents can't compute the current date. Pass it into the Workflow via `args` (e.g.
+> `Workflow({ name, args: { date: '<today>' } })`) so the Record heading is correctly dated. Without it
+> the heading falls back to `undated`.
+
+> **Single-writer invariant:** exactly one record agent writes `AUDIT.md` per round, and rounds run
+> sequentially (the loop fires the next round only after this one returns), so appends never race. If
+> you ever parallelize rounds, serialize the Record phase or the append will corrupt the file.
 
 ## AUDIT.md shape
 
