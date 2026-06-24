@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "group-chat": {
+      "command": "bun",
+      "args": ["${CLAUDE_PLUGIN_ROOT}/group-chat/adapter.ts"]
+    }
+  }
+}
