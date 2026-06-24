@@ -1,2 +1,5 @@
 .cache/
 .DS_Store
+
+# group-chat hub runtime data (per-group JSONL logs)
+.group-chat-data/
