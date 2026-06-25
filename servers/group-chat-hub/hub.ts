@@ -54,9 +54,12 @@ const MEMBER_NAME_RE = /^[A-Za-z0-9_-]{1,64}$/;
 interface Connection {
   id: string;
   authed: boolean;
-  // groups this connection is joined to, keyed by group name -> the member
-  // name it joined as (a connection can use different names in different groups)
-  joinedAs: Map<string, string>;
+  // groups this connection is joined to, keyed by group name -> the SET of member
+  // names it joined as. A connection can use different names in different groups,
+  // and — because one adapter socket can serve several Claude sessions (instance-
+  // scoped) — several names in the SAME group. The per-message `as` on `send`
+  // selects which of these to speak as.
+  joinedAs: Map<string, Set<string>>;
   send(frame: ServerFrame): void;
 }
 
@@ -317,23 +320,34 @@ function handleFrame(conn: Connection, frame: ClientEnvelope): void {
       return;
 
     case "ack": {
-      // connection confirms receipt; advance its member's delivered marker
+      // connection confirms receipt; advance the delivered marker of every member
+      // this connection holds in the group (the push went down this one socket, so
+      // it reached all of them). One socket may hold several handles per group.
       const g = groups.get(frame.group);
-      const as = conn.joinedAs.get(frame.group);
-      const m = g && as ? g.members.get(as) : undefined;
-      if (m && m.conn === conn && frame.seq > m.delivered) m.delivered = frame.seq;
+      const handles = conn.joinedAs.get(frame.group);
+      if (g && handles) {
+        for (const as of handles) {
+          const m = g.members.get(as);
+          if (m && m.conn === conn && frame.seq > m.delivered) m.delivered = frame.seq;
+        }
+      }
       return;
     }
 
     case "read": {
-      // READ RECEIPT: this member surfaced message `seq`. Mark it in the pending
-      // collector for that (group, seq), if one is still awaiting. Resolve the
-      // sender's `send` early once every awaited recipient has confirmed.
-      const as = conn.joinedAs.get(frame.group);
+      // READ RECEIPT: a member on this connection surfaced message `seq`. Satisfy
+      // any awaited recipient name this connection holds in the group (the surface
+      // happened on this one socket). Resolve the sender's `send` early once every
+      // awaited recipient has confirmed.
+      const handles = conn.joinedAs.get(frame.group);
       const col = pendingReads.get(`${frame.group}#${frame.seq}`);
-      if (col && as && col.awaiting.has(as)) {
-        col.awaiting.delete(as);
-        col.read.add(as);
+      if (col && handles) {
+        for (const as of handles) {
+          if (col.awaiting.has(as)) {
+            col.awaiting.delete(as);
+            col.read.add(as);
+          }
+        }
         if (col.awaiting.size === 0) col.done();
       }
       return;
@@ -391,7 +405,9 @@ function handleFrame(conn: Connection, frame: ClientEnvelope): void {
       member.conn = conn; // (re)bind the live connection
       member.last_seen_ts = nowIso();
       g.members.set(frame.as, member);
-      conn.joinedAs.set(frame.group, frame.as);
+      let handles = conn.joinedAs.get(frame.group);
+      if (!handles) conn.joinedAs.set(frame.group, (handles = new Set()));
+      handles.add(frame.as); // this conn now speaks for `frame.as` in this group
       if (!isReturning) persistRoster(g); // durable: a new member joined
 
       // Member is now attached, so any NEW broadcast fans out to it (closes the
@@ -404,14 +420,26 @@ function handleFrame(conn: Connection, frame: ClientEnvelope): void {
 
     case "leave": {
       const g = groups.get(frame.group);
-      const as = conn.joinedAs.get(frame.group);
+      const handles = conn.joinedAs.get(frame.group);
+      // Pick which handle to leave: the explicit `as` if given, else the sole
+      // handle this connection holds in the group (unambiguous). If `as` names a
+      // handle this connection doesn't hold, leave nothing (no cross-member leave).
+      const as =
+        frame.as !== undefined
+          ? handles?.has(frame.as)
+            ? frame.as
+            : undefined
+          : handles && handles.size === 1
+            ? [...handles][0]
+            : undefined;
       if (g && as) {
         // `leave` is the ONLY thing that removes a durable member. It deletes the
         // membership and persists the removal, so the member is truly gone (a
         // later join is fresh, no gap re-send). Detaching (a dropped socket) does
         // NOT do this — that just clears the live binding, see onDisconnect.
         g.members.delete(as);
-        conn.joinedAs.delete(frame.group);
+        handles!.delete(as);
+        if (handles!.size === 0) conn.joinedAs.delete(frame.group);
         persistRoster(g);
       }
       conn.send({ t: "left", rid, group: frame.group });
@@ -420,9 +448,21 @@ function handleFrame(conn: Connection, frame: ClientEnvelope): void {
 
     case "send": {
       const g = groups.get(frame.group);
-      const as = conn.joinedAs.get(frame.group);
+      const handles = conn.joinedAs.get(frame.group);
+      // Sender identity: the explicit `as` (validated to be a handle THIS
+      // connection joined under — so a connection can never speak as a member it
+      // didn't join as), or the sole handle if unambiguous. One adapter socket can
+      // hold several handles in a group (multiple sessions); `as` disambiguates.
+      const as =
+        frame.as !== undefined
+          ? handles?.has(frame.as)
+            ? frame.as
+            : undefined
+          : handles && handles.size === 1
+            ? [...handles][0]
+            : undefined;
       if (!g || !as) {
-        err(conn, "not_in_group", `join '${frame.group}' before sending`, rid);
+        err(conn, "not_in_group", `join '${frame.group}' as the right handle before sending`, rid);
         return;
       }
       const m = g.members.get(as);
@@ -526,12 +566,14 @@ function onDisconnect(conn: Connection): void {
   // durable; clearing the live binding is all that happens. The member stays in
   // the group (and on disk) and re-attaches on the next join. Only an explicit
   // `leave` removes a member.
-  for (const [group, as] of conn.joinedAs) {
+  for (const [group, handles] of conn.joinedAs) {
     const g = groups.get(group);
-    const m = g?.members.get(as);
-    if (m && m.conn === conn) {
-      m.conn = null; // detached, still a member
-      m.last_seen_ts = nowIso();
+    for (const as of handles) {
+      const m = g?.members.get(as);
+      if (m && m.conn === conn) {
+        m.conn = null; // detached, still a member
+        m.last_seen_ts = nowIso();
+      }
     }
   }
 }
@@ -555,7 +597,7 @@ const server = Bun.serve<{ conn: Connection }>({
       const conn: Connection = {
         id: randomUUID(),
         authed: false,
-        joinedAs: new Map(),
+        joinedAs: new Map<string, Set<string>>(),
         delivered: new Map(),
         send: (frame) => ws.send(JSON.stringify(frame)),
       };
