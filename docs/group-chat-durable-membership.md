@@ -83,6 +83,28 @@ Both channels are documented: `CLAUDE_PLUGIN_DATA` is the plugin's persistent da
 dir (exported to hooks); `transcript_path` + `session_id` arrive in the
 SessionStart hook's stdin JSON.
 
+#### CLAUDE_PLUGIN_DATA must be passed to the adapter explicitly
+
+The hook (run by Claude Code) receives `CLAUDE_PLUGIN_DATA` and writes the
+identity file to `~/.claude/plugins/data/<plugin>-<marketplace>/`. But a
+plugin's MCP server spawned from `.mcp.json` does **NOT** automatically inherit
+`CLAUDE_PLUGIN_DATA` — verified the hard way in a real restart: the hook wrote to
+the real data dir while the adapter, lacking the var, fell back to `/tmp` and
+found nothing, so it never re-attached (showed `[detached]`). `.mcp.json`
+supports a `env` block with `${CLAUDE_PLUGIN_DATA}` / `${ENV_VAR}` interpolation,
+so we pass it through explicitly:
+
+```json
+"env": {
+  "CLAUDE_PLUGIN_DATA": "${CLAUDE_PLUGIN_DATA}",
+  "GROUP_CHAT_SESSION_ID": "${CLAUDE_CODE_SESSION_ID}"
+}
+```
+
+This puts hook and adapter in the same directory, and gives the adapter the exact
+session id so it reads `identity-<session>.json` directly (not the newest-file
+fallback).
+
 #### Wiring the session id to the adapter
 
 The hook keys its file by `session_id` (from stdin). The adapter must read the
