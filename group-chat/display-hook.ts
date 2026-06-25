@@ -13,9 +13,9 @@
 // Wired on-by-default via hooks/hooks.json. No-ops cleanly when there are no
 // group-chat events.
 
-import { readFileSync, writeFileSync, mkdirSync, existsSync } from "node:fs";
+import { readFileSync, writeFileSync, appendFileSync, mkdirSync, existsSync } from "node:fs";
 import { join } from "node:path";
-import { tmpdir } from "node:os";
+import { tmpdir, homedir } from "node:os";
 
 const SOURCE = "plugin:workflow-skills:group-chat";
 
@@ -26,9 +26,17 @@ interface HookInput {
   hook_event_name?: string;
 }
 
+// A surfaced channel event — either a GROUP message or a DIRECT message. For a
+// group message `group`/`from` are set; for a DM `dm` is true and the DM fields
+// (`fromSession`/`fromAlias`/`toAlias`) carry the addressing. `seq` is per-group
+// for group messages and per session-pair for DMs.
 interface ChannelEvent {
-  group: string;
-  from: string;
+  dm: boolean;
+  group: string; // group name (group msgs) — for DMs we synthesize `dm:<from_session>`
+  from: string; // sender handle (group msgs)
+  fromSession: string; // DM sender session id
+  fromAlias: string; // DM sender alias
+  toAlias: string; // DM recipient alias (the identity it was addressed to)
   seq: number;
   text: string;
 }
@@ -60,19 +68,44 @@ function emit(displayContent: string): never {
 }
 
 // Parse one <channel ...>body</channel> string from this plugin. Returns null
-// if it isn't one of ours.
+// if it isn't one of ours. Handles both group messages and direct messages
+// (the latter carry dm="1" plus from_session/from_alias/to_alias).
 function parseChannel(content: string): ChannelEvent | null {
   if (!content.startsWith("<channel ")) return null;
   if (!content.includes(`source="${SOURCE}"`)) return null;
   const attr = (name: string): string => {
     const m = content.match(new RegExp(`${name}="([^"]*)"`));
-    return m ? m[1] : "";
+    return m?.[1] ?? "";
   };
   const bodyMatch = content.match(/>\n?([\s\S]*?)\n?<\/channel>/);
-  const text = bodyMatch ? bodyMatch[1].trim() : "";
+  const text = bodyMatch?.[1]?.trim() ?? "";
   const seq = Number(attr("seq"));
   if (!Number.isFinite(seq)) return null;
-  return { group: attr("group"), from: attr("from"), seq, text };
+  const isDm = attr("dm") === "1";
+  if (isDm) {
+    const fromSession = attr("from_session");
+    if (!fromSession) return null;
+    return {
+      dm: true,
+      group: `dm:${fromSession}`, // synthetic per-peer key for seen-state tracking
+      from: attr("from_alias"),
+      fromSession,
+      fromAlias: attr("from_alias"),
+      toAlias: attr("to_alias"),
+      seq,
+      text,
+    };
+  }
+  return {
+    dm: false,
+    group: attr("group"),
+    from: attr("from"),
+    fromSession: "",
+    fromAlias: "",
+    toAlias: "",
+    seq,
+    text,
+  };
 }
 
 // State: the highest channel seq we've already bannered, PER GROUP, per
@@ -108,9 +141,44 @@ function saveSeen(sessionId: string, seen: Map<string, number>): void {
   }
 }
 
+// The plugin-data dir holds the adapter's identity files and our DM read-signal
+// file. Mirror the adapter's resolution: CLAUDE_PLUGIN_DATA env → inferred
+// well-known location → tmpdir fallback (so the adapter and hook agree).
+function pluginDataDir(): string {
+  const fromEnv = process.env.CLAUDE_PLUGIN_DATA;
+  if (fromEnv && !fromEnv.startsWith("${")) return fromEnv;
+  const home = process.env.HOME || homedir();
+  if (home) {
+    const inferred = join(home, ".claude", "plugins", "data", "workflow-skills-workflow-skills");
+    if (existsSync(inferred)) return inferred;
+  }
+  return join(tmpdir(), "group-chat-plugin-data");
+}
+
+// READ SIGNAL: when this hook surfaces a DM to the assistant, append a line to
+// dm-reads.jsonl so the adapter (which tails it) emits a `dm_read` to the hub —
+// advancing the DM to the `read` state. This is the honest "read" moment: the
+// assistant has actually seen the message.
+function signalDmRead(fromSession: string, seq: number, recipientSession: string): void {
+  try {
+    const dir = pluginDataDir();
+    if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
+    appendFileSync(
+      join(dir, "dm-reads.jsonl"),
+      JSON.stringify({ from_session: fromSession, seq, to_session: recipientSession }) + "\n",
+    );
+  } catch {
+    // best-effort: if we can't signal, the DM simply stays in `received` state
+  }
+}
+
 // Build the boxed quote for one event. Wraps the body to keep the box tidy.
+// Direct messages render distinctly from group messages (a different glyph and a
+// "direct message" header showing both the from-alias and the to-alias).
 function box(ev: ChannelEvent): string {
-  const header = `╭─ 📨 ${ev.from} in #${ev.group} (seq ${ev.seq})`;
+  const header = ev.dm
+    ? `╭─ 🔒 direct message from ${ev.fromAlias} → ${ev.toAlias} (seq ${ev.seq})`
+    : `╭─ 📨 ${ev.from} in #${ev.group} (seq ${ev.seq})`;
   const lines: string[] = [];
   const WIDTH = 72;
   for (const raw of ev.text.split("\n")) {
@@ -190,6 +258,13 @@ function main(): void {
   }
 
   if (fresh.length === 0) passthrough();
+
+  // Emit the DM read signal for every fresh DM we're about to surface: this is
+  // the genuine "read" moment (the assistant is seeing it now). The adapter tails
+  // the signal file and reports `dm_read` to the hub.
+  for (const ev of fresh) {
+    if (ev.dm) signalDmRead(ev.fromSession, ev.seq, sessionId);
+  }
 
   fresh.sort((a, b) => a.group.localeCompare(b.group) || a.seq - b.seq);
 
