@@ -1,9 +1,9 @@
 ---
 name: implement-review-verify
-description: Implement a CODE change (not a doc) through a structured workflow — one sequential implementer, then independent adversarial reviewers split by concern, then a verify+fix pass that triages findings and proves the suite green. Use when a code change is coupled/risky enough to warrant review before committing (touches shared infra, has subtle invariants/ordering/concurrency, or the user asks to "use a workflow" / "with reviewers"). Pairs with verify-loop (this implements + reviews code; verify-loop proves a document's claims). NOT for one-off mechanical edits or pure research.
+description: Implement a CODE change (not a doc) through a structured workflow — one sequential implementer, then independent adversarial reviewers split by concern, then a fix pass that triages findings and proves the suite green (verifying is how it knows what to fix; fixing is the outcome). Use when a code change is coupled/risky enough to warrant review before committing (touches shared infra, has subtle invariants/ordering/concurrency, or the user asks to "use a workflow" / "with reviewers"). Pairs with verify-loop (this implements + reviews code; verify-loop proves a document's claims). NOT for one-off mechanical edits or pure research.
 ---
 
-# Implement → Review → Verify — a workflow for code changes
+# Implement → Review → Fix — a workflow for code changes
 
 A reusable, project-agnostic shape for landing a non-trivial CODE change with confidence. It is
 the code-implementation counterpart to the document-oriented loops (`verify-loop`, `find-gaps`,
@@ -98,7 +98,7 @@ genuine breadth (many independent sites). More agents re-reading the same code i
 - The implementer must NOT commit or push — the workflow leaves the tree dirty for the human to
   review and commit. Tell every agent this explicitly.
 - Tell agents where scratch files go (a gitignored cache dir), never a global temp the user must approve.
-- Relay the implement summary + each review + the verify result back to the user; the agents' output
+- Relay the implement summary + each review + the fix result back to the user; the agents' output
   is for you, not them — surface what matters.
 - A project may carry its OWN scoped copy of this skill with environment specifics (test command,
   isolation quirks, the local model floor, the must-read architecture doc). When present, that scoped
