@@ -25,7 +25,6 @@ import { readFileSync, existsSync } from "node:fs";
 import { join as pathJoin } from "node:path";
 import { tmpdir, homedir } from "node:os";
 import { randomUUID } from "node:crypto";
-import { execFileSync } from "node:child_process";
 import type {
   ServerFrame,
   ClientEnvelope,
@@ -131,15 +130,12 @@ function sendRaw(frame: ClientEnvelope): void {
 // so it can resume fan-out and re-send any gap. Track desired memberships.
 const joinedGroups = new Map<string, string>(); // group -> our handle
 
-// IDENTITY RECOVERY (lazy, deterministic). A fresh adapter process (after
-// /reload-plugins or resuming next day) has an empty joinedGroups. We recover
-// LAZILY — on the first tool call that targets a group we're not joined to —
-// because the adapter cannot learn its own Claude Code session id at startup
-// (verified: not in env reliably, not a .mcp.json variable, and extra.sessionId
-// is undefined for stdio). The ONE deterministic signal is the per-call
-// `_meta["claudecode/toolUseId"]`: that id is globally unique and is written
-// into exactly the CALLING session's transcript. So we find which transcript
-// contains it → that file's name IS our session id → read its identity file.
+// IDENTITY RECOVERY (startup, via our own session id). A fresh adapter (after
+// /reload-plugins or resume) has an empty joinedGroups. Every Claude session —
+// including transient resume sessions — spawns its OWN adapter with its OWN
+// correct CLAUDE_CODE_SESSION_ID in env, so reading our own env var reliably
+// names our identity file (identity-<session>.json, written by the SessionStart
+// hook from our transcript). We load it at startup and auto-rejoin on connect.
 //
 // Read a --flag value from argv (guard against un-interpolated placeholders).
 function argValue(flag: string): string | undefined {
@@ -165,42 +161,21 @@ function pluginDataDir(): string {
   return pathJoin(tmpdir(), "group-chat-plugin-data");
 }
 
-// The project's transcript directory: ~/.claude/projects/<mangled-project-dir>/,
-// where the mangling replaces every char outside [A-Za-z0-9] with '-'.
-function transcriptDir(): string | null {
-  const home = process.env.HOME || homedir();
-  const proj = process.env.CLAUDE_PROJECT_DIR;
-  if (!home || !proj) return null;
-  const mangled = proj.replace(/[^A-Za-z0-9]/g, "-");
-  return pathJoin(home, ".claude", "projects", mangled);
+// This adapter's own Claude Code session id. Every session — including transient
+// resume sessions — spawns its OWN adapter with its OWN correct session id in the
+// env, so reading our own env var is reliable and correct FOR US. It names both
+// our transcript (<id>.jsonl) and our identity data file (identity-<id>.json).
+function ownSessionId(): string | undefined {
+  // arg override (for tests) → env. Reject un-interpolated placeholders.
+  const v = argValue("--session-id") || process.env.CLAUDE_CODE_SESSION_ID;
+  return v && !v.startsWith("${") && /^[A-Za-z0-9_-]+$/.test(v) ? v : undefined;
 }
 
-// Find the session id whose transcript contains this toolUseId. Deterministic:
-// the id is unique and lives in exactly one transcript (the caller's). Returns
-// the session id (= transcript filename without .jsonl), or null if not found.
-function sessionIdForToolUse(toolUseId: string): string | null {
-  const dir = transcriptDir();
-  if (!dir || !existsSync(dir) || !/^[A-Za-z0-9_-]+$/.test(toolUseId)) return null;
-  try {
-    // rg is fast even across many transcripts; -l lists matching files.
-    const out = execFileSync("rg", ["-l", "--fixed-strings", toolUseId, dir], {
-      encoding: "utf8",
-      timeout: 5000,
-    });
-    const file = out.split("\n").find((l) => l.endsWith(".jsonl"));
-    if (!file) return null;
-    const base = file.slice(file.lastIndexOf("/") + 1);
-    return base.slice(0, -".jsonl".length) || null;
-  } catch {
-    return null;
-  }
-}
-
-// Given a toolUseId, recover this session's {group: handle} identity map by
-// correlating the id → session → identity file. Returns {} if not recoverable.
-function recoverIdentity(toolUseId: string | undefined): Record<string, string> {
-  if (!toolUseId) return {};
-  const sid = sessionIdForToolUse(toolUseId);
+// Recover this session's {group: handle} identity map: read identity-<our
+// session id>.json, written by the SessionStart hook from our transcript.
+// Returns {} if unknown/unwritten.
+function recoverIdentity(): Record<string, string> {
+  const sid = ownSessionId();
   if (!sid) return {};
   const file = pathJoin(pluginDataDir(), `identity-${sid}.json`);
   try {
@@ -209,6 +184,13 @@ function recoverIdentity(toolUseId: string | undefined): Record<string, string> 
     /* fall through */
   }
   return {};
+}
+
+// Seed joinedGroups from recovered identity at startup. These are re-asserted to
+// the hub on the first `welcome` (idempotent re-attach), so a fresh adapter
+// after /reload-plugins or resume auto-rejoins every group before any tool call.
+for (const [group, handle] of Object.entries(recoverIdentity())) {
+  joinedGroups.set(group, handle);
 }
 
 function onFrame(frame: ServerFrame): void {
@@ -404,8 +386,9 @@ function text(s: string) {
   return { content: [{ type: "text" as const, text: s }] };
 }
 
-// Tools that operate on a specific group. If we're not joined to that group yet
-// (fresh adapter after reload/resume), we lazily recover identity and join first.
+// Group-scoped tools. Startup recovery normally joins us before any call runs,
+// but the SessionStart hook may write the identity file slightly after we start,
+// so as a safety net we re-check identity on the first call to an unjoined group.
 const GROUP_TOOLS = new Set([
   "submit_message",
   "list_members",
@@ -414,16 +397,12 @@ const GROUP_TOOLS = new Set([
   "leave",
 ]);
 
-// Lazily ensure we're joined to `group` before serving a tool that needs it.
-// Uses the per-call toolUseId to deterministically identify this session and
-// read its recovered handle. Returns null on success, or an error message.
-async function ensureJoined(
-  group: string,
-  toolUseId: string | undefined,
-): Promise<string | null> {
+// Ensure we're joined to `group` before serving a tool that needs it. Uses our
+// own session id → identity file (no per-call magic). Returns null on success,
+// or an error message if we have no recovered handle for the group.
+async function ensureJoined(group: string): Promise<string | null> {
   if (joinedGroups.has(group)) return null; // already joined this session
-  const identity = recoverIdentity(toolUseId);
-  const handle = identity[group];
+  const handle = recoverIdentity()[group]; // re-read in case the hook just wrote it
   if (!handle) {
     return (
       `Not joined to '${group}' and could not recover your identity for it ` +
@@ -438,15 +417,14 @@ async function ensureJoined(
   return null;
 }
 
-mcp.setRequestHandler(CallToolRequestSchema, async (req, extra) => {
+mcp.setRequestHandler(CallToolRequestSchema, async (req) => {
   const name = req.params.name;
   const a = (req.params.arguments ?? {}) as Record<string, unknown>;
-  const toolUseId = (extra as any)?._meta?.["claudecode/toolUseId"] as string | undefined;
 
-  // Lazy identity recovery: if this is a group-scoped tool and we aren't joined
-  // to that group yet, recover + join before serving (once per group/session).
+  // Safety net: if a group-scoped tool targets a group we're not joined to,
+  // recover identity and join first (startup recovery usually did this already).
   if (GROUP_TOOLS.has(name) && typeof a.group === "string") {
-    const errMsg = await ensureJoined(a.group, toolUseId).catch((e) => String(e));
+    const errMsg = await ensureJoined(a.group).catch((e) => String(e));
     if (errMsg) return text(errMsg);
   }
   try {

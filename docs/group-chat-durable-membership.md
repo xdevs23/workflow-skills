@@ -60,79 +60,60 @@ preserves "who is in each group."
 
 ### Half 2 — Adapter identity recovery (fixes the reload / next-day bug)
 
-A fresh adapter process has no memory of its handle, and — critically — **cannot
-learn its own Claude Code session id** (see the constraint analysis below). So
-recovery is **lazy** (on the first tool call, not at startup) and keyed off the
-**per-call `toolUseId`**, which is the only deterministic per-session signal the
-adapter actually receives.
+A fresh adapter has no memory of its handle. It recovers from its **own
+`CLAUDE_CODE_SESSION_ID`** at startup. The key fact (after a long investigation):
+**every Claude session — including transient resume sessions — spawns its OWN
+adapter with its OWN correct session id in the env.** So an adapter reading its
+own env var gets the right answer *for itself*; there is no contamination or
+staleness from the adapter's own perspective.
 
 Two components:
 
-1. **SessionStart hook** (`group-chat/session-identity-hook.ts`) — UNCHANGED in
-   role. Fires on `source: startup | resume | compact`, reads its
-   `transcript_path` (which it reliably gets on stdin), computes the current
-   `{group: handle}` map from the session's `join`/`leave` tool calls (multi-group;
-   a later `leave` cancels its `join`), and writes it to
-   **`$CLAUDE_PLUGIN_DATA/identity-<session_id>.json`**. The hook authoritatively
-   knows `session_id`, so the file is correctly keyed.
+1. **SessionStart hook** (`group-chat/session-identity-hook.ts`). Fires on
+   `source: startup | resume | compact`, reads its `transcript_path` (on stdin),
+   computes the `{group: handle}` map from the session's `join`/`leave` tool calls
+   (multi-group; a later `leave` cancels its `join`), and writes it to
+   **`$CLAUDE_PLUGIN_DATA/identity-<session_id>.json`**, keyed by the session id it
+   authoritatively knows.
 
-2. **Adapter — lazy recovery on tool call.** When a group-scoped tool
-   (`submit_message`, `list_members`, …) is called for a group the adapter is not
-   joined to yet, it:
-   a. reads `extra._meta["claudecode/toolUseId"]` from the call (Claude Code
-      injects this on every tool call — verified);
-   b. finds which transcript in the project's transcript dir contains that exact
-      id (`rg -l --fixed-strings`); that file's name **is** the calling session's
-      id. The toolUseId is globally unique and written into exactly the caller's
-      transcript, so this is **deterministic, not a heuristic**;
-   c. reads `identity-<that-session>.json`, takes the handle for the group, and
-      `join`s (idempotent re-attach on the hub) before serving the call.
-   If the toolUseId can't be correlated, it returns an honest error
-   (`call join(group, as) explicitly`) — **no fallback guessing** (decided).
+2. **Adapter — startup recovery.** On startup it reads
+   `CLAUDE_CODE_SESSION_ID` from its env → `identity-<that-id>.json` → seeds
+   `joinedGroups` → auto-re-attaches to every group on the first `welcome`
+   (idempotent re-attach on the hub), before any tool call. A lightweight safety
+   net re-reads the identity file on the first call to an unjoined group (in case
+   the hook wrote the file just after the adapter started); if there's still no
+   handle for the group, it returns an honest error — no guessing.
 
-This needs only `${CLAUDE_PLUGIN_DATA}` and `${CLAUDE_PROJECT_DIR}` (both
-substitutable in `.mcp.json` args) — never a session id passed to the adapter,
-which isn't possible.
+#### Investigation note: why this took so long
 
-#### Constraint analysis: why the adapter can't know its session id (all verified)
-
-Every channel was probed against real Claude Code, not assumed:
-
-- **Env:** `CLAUDE_CODE_SESSION_ID` IS in the adapter's env, but in multi-session
-  setups it's a *different* (parent/wrapper) session than the one the adapter
-  serves — observed `b3d85d0c…` when the serving session was `ea322652…`. Unusable.
-- **`.mcp.json` substitution:** only THREE variables substitute in MCP configs —
-  `${CLAUDE_PLUGIN_ROOT}`, `${CLAUDE_PLUGIN_DATA}`, `${CLAUDE_PROJECT_DIR}` (docs +
-  observed). There is no session-id variable. `${CLAUDE_CODE_SESSION_ID}` passed
-  through **literally un-interpolated**. And interpolation does NOT happen inside
-  the `env` block at all — only in `args`/`command`.
-- **Tool call:** `extra.sessionId` is a plain data property holding `undefined`
-  for stdio (verified: not a getter, not a promise — descriptor `hasValue:true`,
-  typeof `undefined`). The only Claude-Code-injected datum is
-  `_meta["claudecode/toolUseId"]` — which is exactly the unique key we use.
-
-So the toolUseId→transcript correlation is the *only* deterministic path, and it
-works because the act of calling the tool writes that id into the caller's
-transcript.
+The session id appears unreliable at first glance and several dead ends were
+chased and rejected (recorded so they aren't re-tried):
+- A `.mcp.json` `env` block does NOT interpolate `${...}` — only `args`/`command`
+  do (and only `${CLAUDE_PLUGIN_ROOT|PLUGIN_DATA|PROJECT_DIR}`, no session var).
+  So passing the session id via `.mcp.json` is impossible; we don't need to —
+  the adapter inherits `CLAUDE_CODE_SESSION_ID` in its env directly.
+- `extra.sessionId` on a tool call is `undefined` for stdio (verified); only
+  `_meta["claudecode/toolUseId"]` is injected. A toolUseId→transcript correlation
+  was built and then abandoned: it's unnecessary once you realize the env session
+  id is correct per-adapter.
+- The apparent "wrong" env session id (`b3d85d0c` vs `ea322652`) was an artifact
+  of reading a DIFFERENT, leftover adapter process's env, plus our own debugging
+  text contaminating the transcript grep. Each adapter's own env is correct.
 
 #### Locating the plugin data dir from the adapter
 
-The hook writes the identity file to `${CLAUDE_PLUGIN_DATA}` =
-`~/.claude/plugins/data/<plugin>-<marketplace>/`. The adapter must read the SAME
-dir. Trap (verified): a plugin MCP server does NOT inherit `CLAUDE_PLUGIN_DATA`,
-and `.mcp.json` substitutes `${...}` in `args` but NOT inside the `env` block. So
-we pass it as a CLI **arg** (where substitution works):
+The hook writes to `${CLAUDE_PLUGIN_DATA}` =
+`~/.claude/plugins/data/<plugin>-<marketplace>/`; the adapter reads the same dir.
+A plugin MCP server does NOT inherit `CLAUDE_PLUGIN_DATA` via the `env` block
+(no interpolation there), so we pass it as a CLI **arg** (where `${...}` works):
 
 ```json
 "args": ["${CLAUDE_PLUGIN_ROOT}/group-chat/adapter.ts", "--plugin-data", "${CLAUDE_PLUGIN_DATA}"]
 ```
 
-The adapter resolves the data dir most-trusted-first, rejecting any
-un-interpolated `${...}` literal: `--plugin-data` arg → `CLAUDE_PLUGIN_DATA` env →
-**inferred** `~/.claude/plugins/data/workflow-skills-workflow-skills` (from
-`$HOME`; the documented resolution, so recovery survives even if the arg fails to
-interpolate) → temp dir. The transcript dir is derived the same way from
-`${CLAUDE_PROJECT_DIR}` (the project path mangled: non-alphanumerics → `-`).
+The adapter resolves the dir most-trusted-first, rejecting un-interpolated
+`${...}` literals: `--plugin-data` arg → `CLAUDE_PLUGIN_DATA` env → **inferred**
+`~/.claude/plugins/data/workflow-skills-workflow-skills` (from `$HOME`) → temp.
 
 ## Idempotent re-attach: the key invariant
 
