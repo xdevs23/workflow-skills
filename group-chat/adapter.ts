@@ -23,7 +23,7 @@ import {
 } from "@modelcontextprotocol/sdk/types.js";
 import { readFileSync, readdirSync, statSync, existsSync } from "node:fs";
 import { join as pathJoin } from "node:path";
-import { tmpdir } from "node:os";
+import { tmpdir, homedir } from "node:os";
 import { randomUUID } from "node:crypto";
 import type {
   ServerFrame,
@@ -136,16 +136,54 @@ const joinedGroups = new Map<string, string>(); // group -> our handle
 // {group: handle} identity (from the transcript) into a file in the plugin data
 // dir; we read it here on startup and seed joinedGroups, so the existing welcome
 // re-attach logic auto-rejoins every group before any tool call runs.
+// Read a --flag value from argv. The plugin data dir and session id come in as
+// CLI args (not env), because .mcp.json interpolates ${...} in args/command but
+// NOT inside the env block — passing them via env yielded the literal strings.
+function argValue(flag: string): string | undefined {
+  const i = process.argv.indexOf(flag);
+  if (i >= 0 && i + 1 < process.argv.length) {
+    const v = process.argv[i + 1];
+    // guard against an un-interpolated placeholder reaching us
+    if (v && !v.startsWith("${")) return v;
+  }
+  return undefined;
+}
+
 function pluginDataDir(): string {
-  return process.env.CLAUDE_PLUGIN_DATA || pathJoin(tmpdir(), "group-chat-plugin-data");
+  // Resolution order, most-trusted first:
+  //  1. --plugin-data arg (interpolated by .mcp.json — the intended path)
+  //  2. CLAUDE_PLUGIN_DATA env (if real, not an un-interpolated literal)
+  //  3. the WELL-KNOWN real location, inferred: Claude Code resolves
+  //     ${CLAUDE_PLUGIN_DATA} to ~/.claude/plugins/data/<plugin>-<marketplace>/.
+  //     For this plugin that's workflow-skills-workflow-skills. This is the 99%
+  //     case and a far better fallback than a guaranteed-empty temp dir.
+  //  4. temp dir — last resort only.
+  const fromArg = argValue("--plugin-data");
+  if (fromArg) return fromArg;
+  const fromEnv = process.env.CLAUDE_PLUGIN_DATA;
+  if (fromEnv && !fromEnv.startsWith("${")) return fromEnv;
+  const home = process.env.HOME || homedir();
+  if (home) {
+    const inferred = pathJoin(home, ".claude", "plugins", "data", "workflow-skills-workflow-skills");
+    if (existsSync(inferred)) return inferred;
+  }
+  return pathJoin(tmpdir(), "group-chat-plugin-data");
+}
+
+function sessionId(): string | undefined {
+  const v =
+    argValue("--session-id") ||
+    process.env.GROUP_CHAT_SESSION_ID ||
+    process.env.CLAUDE_CODE_SESSION_ID;
+  return v && !v.startsWith("${") ? v : undefined;
 }
 
 function loadRecoveredIdentity(): Record<string, string> {
   const dir = pluginDataDir();
   if (!existsSync(dir)) return {};
-  // Prefer the file for THIS session id if the harness passed it; else fall back
-  // to the most-recently-written identity-*.json (one session = one adapter).
-  const sid = process.env.GROUP_CHAT_SESSION_ID || process.env.CLAUDE_CODE_SESSION_ID;
+  // Prefer the file for THIS session id if known; else fall back to the
+  // most-recently-written identity-*.json (one session = one adapter).
+  const sid = sessionId();
   try {
     if (sid && existsSync(pathJoin(dir, `identity-${sid}.json`))) {
       return JSON.parse(readFileSync(pathJoin(dir, `identity-${sid}.json`), "utf8"));

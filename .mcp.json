@@ -2,11 +2,13 @@
   "mcpServers": {
     "group-chat": {
       "command": "bun",
-      "args": ["${CLAUDE_PLUGIN_ROOT}/group-chat/adapter.ts"],
-      "env": {
-        "CLAUDE_PLUGIN_DATA": "${CLAUDE_PLUGIN_DATA}",
-        "GROUP_CHAT_SESSION_ID": "${CLAUDE_CODE_SESSION_ID}"
-      }
+      "args": [
+        "${CLAUDE_PLUGIN_ROOT}/group-chat/adapter.ts",
+        "--plugin-data",
+        "${CLAUDE_PLUGIN_DATA}",
+        "--session-id",
+        "${CLAUDE_CODE_SESSION_ID}"
+      ]
     }
   }
 }
