@@ -44,6 +44,18 @@ const WINDOW = Number(process.env.GROUP_CHAT_WINDOW ?? 500);
 // before replying. Whoever confirms within this window is "read"; everyone else
 // is "sent". 100ms comfortably covers localhost/LAN/tunnel.
 const READ_RECEIPT_MS = Number(process.env.GROUP_CHAT_READ_RECEIPT_MS ?? 100);
+// How long an account-bound frame waits for its `tool_use_id -> session_id`
+// registration (the PreToolUse hook's `map_session`) to arrive when it hasn't
+// already. The hook and the adapter frame travel on SEPARATE connections, so the
+// frame can race ahead of the registration; we await it up to this bound, then
+// honest-error (identity/DM tools) or proceed without a session (group tools).
+const SESSION_MAP_WAIT_MS = Number(process.env.GROUP_CHAT_SESSION_MAP_WAIT_MS ?? 2000);
+// TTL for a resolved `tool_use_id -> session_id` entry. A tool_use_id is used by
+// at most the handful of frames of a single call, so a short TTL bounds the map
+// without affecting correctness (a late frame for an expired id honest-errors and
+// the next call re-registers). Also caps total entries as a hard backstop.
+const SESSION_MAP_TTL_MS = Number(process.env.GROUP_CHAT_SESSION_MAP_TTL_MS ?? 60_000);
+const SESSION_MAP_MAX = Number(process.env.GROUP_CHAT_SESSION_MAP_MAX ?? 10_000);
 
 if (!TOKEN && !ALLOW_NO_AUTH) {
   console.error(
@@ -263,6 +275,80 @@ const groups = new Map<string, Group>();
 const sessionConns = new Map<string, Set<Connection>>();
 // session id -> the host last reported for it (its default-alias host).
 const sessionHost = new Map<string, string>();
+
+// ---- PreToolUse session correlation ---------------------------------------
+// `tool_use_id -> session_id`, populated by the PreToolUse hook's `map_session`
+// frame (its own transient connection). An account-bound adapter frame carries
+// the bare `tool_use_id`; the hub resolves the real session from this map and
+// binds the account exactly as a directly-asserted `session` would. Entries are
+// pruned by TTL (a tool_use_id is short-lived — a single call's frames).
+interface MapEntry {
+  session_id: string;
+  ts: number;
+}
+const toolSessionMap = new Map<string, MapEntry>();
+// `tool_use_id -> waiters` for frames that arrived BEFORE the registration. The
+// `map_session` handler resolves every waiter; a per-waiter timer honest-errors
+// (or proceeds without a session) on timeout. Several frames of one call may wait.
+const pendingSessionWaiters = new Map<string, Array<(sid: string | null) => void>>();
+
+// Drop expired entries (and a hard size backstop). Called opportunistically on
+// each registration — no background timer needed.
+function pruneToolSessionMap(): void {
+  const cutoff = Date.now() - SESSION_MAP_TTL_MS;
+  for (const [id, e] of toolSessionMap) {
+    if (e.ts < cutoff) toolSessionMap.delete(id);
+  }
+  if (toolSessionMap.size > SESSION_MAP_MAX) {
+    // oldest-first eviction (Map preserves insertion order; re-set on refresh).
+    const over = toolSessionMap.size - SESSION_MAP_MAX;
+    let i = 0;
+    for (const id of toolSessionMap.keys()) {
+      if (i++ >= over) break;
+      toolSessionMap.delete(id);
+    }
+  }
+}
+
+// Register a resolved mapping and wake any waiting frames for that tool_use_id.
+function registerSessionMapping(toolUseId: string, sessionId: string): void {
+  toolSessionMap.set(toolUseId, { session_id: sessionId, ts: Date.now() });
+  pruneToolSessionMap();
+  const waiters = pendingSessionWaiters.get(toolUseId);
+  if (waiters) {
+    pendingSessionWaiters.delete(toolUseId);
+    for (const w of waiters) w(sessionId);
+  }
+}
+
+// Resolve a tool_use_id to its session id. Returns immediately if already mapped;
+// otherwise awaits the `map_session` registration up to SESSION_MAP_WAIT_MS,
+// resolving null on timeout (callers decide: identity/DM error, group proceed).
+function resolveToolSession(toolUseId: string): Promise<string | null> {
+  const e = toolSessionMap.get(toolUseId);
+  if (e) return Promise.resolve(e.session_id);
+  return new Promise<string | null>((resolve) => {
+    let settled = false;
+    const settle = (sid: string | null) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      resolve(sid);
+    };
+    let arr = pendingSessionWaiters.get(toolUseId);
+    if (!arr) pendingSessionWaiters.set(toolUseId, (arr = []));
+    arr.push(settle);
+    const timer = setTimeout(() => {
+      const list = pendingSessionWaiters.get(toolUseId);
+      if (list) {
+        const i = list.indexOf(settle);
+        if (i >= 0) list.splice(i, 1);
+        if (list.length === 0) pendingSessionWaiters.delete(toolUseId);
+      }
+      settle(null);
+    }, SESSION_MAP_WAIT_MS);
+  });
+}
 
 // Pending GROUP read-receipt collectors, keyed `${group}#${seq}`.
 interface ReadCollector {
@@ -614,14 +700,28 @@ function handleFrame(conn: Connection, frame: ClientEnvelope): void {
     return;
   }
 
-  // Account binding happens in bindSession (called before dispatch): the adapter
-  // attaches its resolved `session` id to outgoing frames, the hub binds the
-  // connection to that account and flushes its queued DMs on the first binding.
+  // Account binding happens in dispatchFrame (before this is called): it resolves
+  // the frame's `tool_use_id` to the real session via the PreToolUse correlation
+  // map (or honors a direct `session`), binds the connection to that account, and
+  // flushes its queued DMs on the first binding.
 
   switch (frame.t) {
     case "ping":
       conn.send({ t: "pong" });
       return;
+
+    case "map_session": {
+      // The PreToolUse hook authoritatively reports a call's real session id.
+      // Record it and wake any adapter frame already awaiting this tool_use_id.
+      // Fire-and-forget: the hook closes right after; no reply is sent.
+      if (
+        typeof frame.tool_use_id === "string" && frame.tool_use_id &&
+        typeof frame.session_id === "string" && frame.session_id
+      ) {
+        registerSessionMapping(frame.tool_use_id, frame.session_id);
+      }
+      return;
+    }
 
     case "ack": {
       const g = groups.get(frame.group);
@@ -1021,15 +1121,16 @@ function handleFrame(conn: Connection, frame: ClientEnvelope): void {
 }
 
 // Session-scoped frames (identity / DM ops) require a bound account. The account
-// is bound in bindSession from the `session` id the adapter attaches per-call. If
-// the adapter hasn't asserted a session id yet (e.g. its per-call resolution
-// hasn't found the transcript line), these ops can't proceed.
+// is bound in dispatchFrame from the session correlated to the frame's
+// tool_use_id (via the PreToolUse hook's map_session). If that correlation hasn't
+// arrived within SESSION_MAP_WAIT_MS (or the call carried no tool_use_id), the
+// account is unbound and these ops honest-error rather than act as the wrong one.
 function requireSession(conn: Connection, rid?: string): string | null {
   if (!conn.sessionId) {
     err(
       conn,
       "no_session",
-      "no account bound to this connection yet (the adapter must report its session id)",
+      "could not resolve your session (no account bound to this call)",
       rid,
     );
     return null;
@@ -1100,17 +1201,17 @@ function buildDirectory(): DirectoryEntry[] {
 }
 
 // ---------------------------------------------------------------------------
-// Account binding. The adapter resolves the caller's real session id per-call
-// (toolUseId -> transcript) and attaches it as a reserved `session` field on its
-// frames. The hub binds the connection to that account and keys all identity/DM
-// ops off it. A socket binds one account; if the adapter asserts a different id
-// later (e.g. a /resume into another session) we trust the latest, since the
-// per-call resolution is authoritative and the adapter serves one instance.
+// Account binding. The real session id is correlated per-call by the hub: the
+// PreToolUse hook reports `(tool_use_id, session_id)`, the adapter's frame carries
+// the bare `tool_use_id`, and dispatchFrame resolves it to `sid` before calling
+// this. (A directly-asserted `session` field also binds here, for the in-process/
+// test path.) The hub keys all identity/DM ops off the bound account. A socket
+// binds one account; if a different id is asserted later (e.g. a /resume into
+// another session) we trust the latest, since the per-call correlation is
+// authoritative and the adapter serves one instance.
 
-function bindSession(conn: Connection, frame: ClientEnvelope): void {
-  const sid = (frame as { session?: unknown }).session;
-  if (typeof sid !== "string" || !sid) return;
-  // The session asserted on THIS frame is the account we serve for it.
+function bindSession(conn: Connection, sid: string): void {
+  // The session resolved for THIS frame is the account we serve for it.
   conn.sessionId = sid;
   if (conn.sessions.has(sid)) {
     // already routing for this session over this socket; keep host fresh.
@@ -1126,6 +1227,51 @@ function bindSession(conn: Connection, frame: ClientEnvelope): void {
   set.add(conn);
   sessionHost.set(sid, conn.host);
   if (wasOffline) flushDmQueue(conn);
+}
+
+// Bind the per-call account (if any) and dispatch one frame. Account binding has
+// two sources, tried in order: a directly-asserted `session` (legacy/trusted
+// in-process path), then a `tool_use_id` resolved via the PreToolUse correlation
+// map. The tool_use_id path may AWAIT the hook's registration (bounded), so this
+// is async; the WS message handler fires it without blocking the event loop.
+async function dispatchFrame(conn: Connection, frame: ClientEnvelope): Promise<void> {
+  try {
+    // `hello` is pre-auth; `map_session` is fire-and-forget bookkeeping (it
+    // requires auth but carries no per-call account binding). Neither stamps an
+    // account, so skip resolution and dispatch directly.
+    //
+    // Lifetime contract for `conn.sessionId`: it is the CURRENT-FRAME account,
+    // stamped here (resolve/bind or clear) immediately before `handleFrame` reads
+    // it, and valid only for that synchronous `handleFrame` call. Because this is
+    // an `await`ing async function fired with `void`, two frames on one socket can
+    // be in-flight at once; each stamps then synchronously hands off to
+    // `handleFrame` with no interleaving await, so in single-threaded JS each frame
+    // reads its own value. Handlers MUST read `conn.sessionId` synchronously and
+    // never cache it across an async boundary.
+    if (conn.authed && frame.t !== "hello" && frame.t !== "map_session") {
+      // 1) direct `session` assertion binds verbatim (no resolution needed).
+      const direct = (frame as { session?: unknown }).session;
+      if (typeof direct === "string" && direct) {
+        bindSession(conn, direct);
+      } else if (typeof frame.tool_use_id === "string" && frame.tool_use_id) {
+        // 2) resolve the real session from the PreToolUse correlation map. May
+        //    await the hook's registration up to SESSION_MAP_WAIT_MS. On null
+        //    (timeout): leave conn.sessionId unbound — identity/DM tools then
+        //    honest-error via requireSession; group tools proceed without one.
+        const sid = await resolveToolSession(frame.tool_use_id);
+        if (sid) bindSession(conn, sid);
+        else conn.sessionId = null;
+      } else {
+        // No per-call identity asserted at all: clear any stale current-frame
+        // binding so an unbound frame can't ride a prior frame's account.
+        conn.sessionId = null;
+      }
+    }
+    handleFrame(conn, frame);
+  } catch (e) {
+    console.error("group-chat-hub: handler error:", e);
+    err(conn, "internal", String(e), frame.rid);
+  }
 }
 
 function onDisconnect(conn: Connection): void {
@@ -1182,15 +1328,7 @@ const server = Bun.serve<{ conn: Connection }>({
         err(conn, "bad_json", "could not parse frame");
         return;
       }
-      try {
-        // Bind/refresh the account from the adapter's per-call session assertion
-        // (after auth so an unauthed socket can't seed identity).
-        if (conn.authed) bindSession(conn, frame);
-        handleFrame(conn, frame);
-      } catch (e) {
-        console.error("group-chat-hub: handler error:", e);
-        err(conn, "internal", String(e), frame.rid);
-      }
+      void dispatchFrame(conn, frame);
     },
     close(ws) {
       onDisconnect(ws.data.conn);

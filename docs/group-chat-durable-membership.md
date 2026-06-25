@@ -58,28 +58,31 @@ preserves "who is in each group."
 - Persistence file: `<DATA_DIR>/<group>.members.json` — `[{name, joined_ts}]`.
   Written on join/leave. The message log stays `<group>.jsonl` as today.
 
-### Half 2 — Adapter identity recovery (fixes the reload / next-day / resume bug)
+### Half 2 — Identity recovery (fixes the reload / next-day / resume bug)
 
-A fresh adapter has no memory of its handle. Recovering it correctly turned out
-to hinge on a single hard fact about how Claude Code launches the adapter:
+A fresh adapter has no memory of its handle. There are two distinct concerns:
+**which groups+handles to re-attach** (membership recovery) and **which real
+session a given call belongs to** (account resolution).
 
-> **The adapter is per-INSTANCE, not per-session, and the session id it is born
-> with is the boot/empty session — NOT the real session whose tool calls it
-> serves.**
+> **SUPERSEDED — account resolution moved off the adapter.** The original Half-2
+> had the adapter resolve the caller's real session itself by scanning the
+> project transcript for the call's `toolUseId` (basename of the containing
+> `.jsonl` = the session id). That scan is **gone**: it had a self-referential
+> flush race (a fresh call's `tool_use` line is written only *after* the call
+> returns) and a cursor bug, and the whole machinery —
+> `resolveSessionId`/`scanFileForward`/the per-file cursor/the SESSIONLESS
+> bucket — is deleted. Account resolution is now **hub-correlated** via a
+> PreToolUse hook. See **`group-chat-session-resolution.md`** for the
+> authoritative design. In one paragraph: the PreToolUse hook fires before each
+> tool call, authoritatively receives the real `session_id` + `tool_use_id`, and
+> ships that pair straight to the hub (`map_session` over a transient
+> authenticated connection); the adapter attaches only the bare `tool_use_id` to
+> its frames; the hub keeps `Map<tool_use_id, session_id>`, resolves the account
+> from it (awaiting the registration with a bounded timeout for the cross-
+> connection race), and binds identity exactly as before. On timeout, identity/DM
+> tools honest-error and group tools proceed without a session.
 
-Concretely: the CLI starts the adapter once for the instance, handing it whatever
-`CLAUDE_CODE_SESSION_ID` it booted under. Unless the instance was launched with
-`--resume <id>`, that boot session is a *phantom* — it has its own id (e.g.
-`c9c178e5…`) but no transcript and an empty `identity-<id>.json` (`{}`). The
-**real** session you `/resume` into routes its tool calls through this same
-adapter, but the adapter's env still names the phantom. So **init-time identity is
-structurally unreliable** and must not be the key.
-
-What every real tool call DOES carry, reliably, is
-`_meta["claudecode/toolUseId"]` — and a toolUseId appears in exactly one
-session's transcript. That is the thread we pull to find the real session.
-
-Three components:
+What remains on the adapter is only **membership recovery**:
 
 1. **SessionStart hook** (`group-chat/session-identity-hook.ts`). Fires on
    `source: startup | resume | compact`, reads its `transcript_path` (on stdin),
@@ -88,37 +91,14 @@ Three components:
    **`$CLAUDE_PLUGIN_DATA/identity-<session_id>.json`**, keyed by the session id it
    authoritatively knows (the hook DOES get the real id on stdin). Unchanged.
 
-2. **Adapter — per-call identity resolution (the fix).** State is **keyed per
-   real session id**, never global:
-   - On each tool call, read `toolUseId` from `_meta`.
-   - Resolve it to the real session id by scanning the project's transcript dir,
-     `~/.claude/projects/<slug>/*.jsonl`, for the toolUseId; the basename of the
-     file that contains it IS the real session id. `<slug>` is derived from
-     `CLAUDE_PROJECT_DIR` (the launch dir, stable per project) with `/`→`-`.
-   - Look up / lazy-init that session's state: `identity-<realSessionId>.json` →
-     its `{group: handle}` → that session's `joinedGroups`.
-   - Cache `toolUseId → sessionId` (immutable) and reuse the per-session state
-     map across calls, so the scan happens once per session.
-
-   The scan is a **forward, cursored, streaming** scan — not a whole-file read:
-   - Per file we keep a byte cursor (`scanned: Map<path, offset>`) of how far
-     we've looked. A lookup resumes each file from its cursor and reads only the
-     newly-appended bytes (transcripts are append-only, and a new toolUseId is
-     always appended *after* the last one we resolved).
-   - We read in 64 KiB chunks and test line by line, discarding each line as we
-     go (flat memory — a transcript can be many MB). A trailing partial line (an
-     in-progress append) is never tested and never consumed; it's re-read whole
-     next time.
-   - On a hit we **stop at the matching line** and advance *that file's* cursor to
-     just past it (match + 1) — never to EOF. A non-matching file's cursor is left
-     **untouched** (advancing it would skip that file's own not-yet-resolved ids
-     and we'd never rescan that region — corrupting another session's resolution).
-
-3. **Per-session state map.** `Map<sessionId, Map<group, handle>>` replaces the
-   single global `joinedGroups`. One adapter can serve more than one session over
-   its life (resume into a different session ⇒ a *different member*), so each
-   session's membership is isolated. On every (re)connect the adapter re-attaches
-   the union of all known sessions' groups (hub re-attach is idempotent).
+2. **Adapter — membership map.** At startup the adapter merges **every**
+   `identity-*.json` in the plugin-data dir into a single `joinedGroups`
+   (`group -> handle`) map, and extends it on each explicit `join`. It no longer
+   keys membership per session, because it no longer resolves which session a call
+   belongs to — the hub binds the real account per-call from the `tool_use_id`.
+   The handle is used only to re-attach (welcome-replay) and to send `as`; the hub
+   validates each asserted `as` against what this connection actually joined as, so
+   a wrong handle can never speak as another member.
 
 **Inbound routing is single-target by construction.** One adapter = one stdio
 pipe back to the CLI = the currently-active session. A `<channel>` push therefore
@@ -139,12 +119,14 @@ group (the one socket's delivery covers them all). This keeps a single socket pe
 instance while letting it multiplex many members — the additive `as` field is
 backward-compatible (omitted ⇒ the old single-handle behavior).
 
-**Miss handling — no guessing.** If the toolUseId isn't found in any transcript
-yet (the line not flushed, or a brand-new session), a group-scoped tool returns
-the existing honest error ("not joined … call join() first"). We do **not** fall
-back to the env/boot session id: that risks assuming a *different* member's
-identity (impersonation), the worst possible failure. Re-issuing `join` already
-works and is the clean recovery.
+**Miss handling — no guessing.** If we have no handle for the group (no identity
+file recorded one and no explicit `join` this session), a group-scoped tool
+returns the honest error ("not joined … call join() first") rather than guessing
+a handle (impersonation, the worst failure). For ACCOUNT resolution the same
+no-guessing rule lives hub-side now: if the `tool_use_id → session_id` mapping
+hasn't arrived in time, identity/DM tools honest-error — no fallback to a boot/env
+session id. Re-issuing `join` (or letting the next call's hook registration land)
+is the clean recovery.
 
 #### Investigation note: why this took so long
 
@@ -154,14 +136,16 @@ Several dead ends were chased and rejected (recorded so they aren't re-tried):
   So the session id cannot be passed via `.mcp.json` at all.
 - `extra.sessionId` on a tool call is `undefined` for stdio (verified by probe —
   the key is absent from the serialized `extra`). Only
-  `_meta["claudecode/toolUseId"]` is injected. The toolUseId→transcript
-  correlation is therefore the ONLY per-call path to the real session id — it is
-  load-bearing, not optional.
+  `_meta["claudecode/toolUseId"]` is injected — the only per-call thread to the
+  real session. The adapter no longer pulls that thread itself (the transcript
+  scan had a self-referential flush race); instead the PreToolUse hook reports the
+  `(tool_use_id, session_id)` pair to the hub, which correlates it. See
+  `group-chat-session-resolution.md`.
 - The earlier belief that "each adapter's own env session id is correct for
-  itself" was **wrong** and is the bug this revision fixes. Probe evidence:
-  `env_session = c9c178e5…` (a phantom with no transcript and an empty identity
-  file) while the real session serving the calls was `ea322652…` (55-byte
-  identity with real groups), discoverable only via the call's toolUseId.
+  itself" was **wrong**. Probe evidence: `env_session = c9c178e5…` (a phantom with
+  no transcript and an empty identity file) while the real session serving the
+  calls was `ea322652…`, knowable only via the call's toolUseId — now correlated
+  hub-side, not scanned adapter-side.
 
 #### Locating the plugin data dir from the adapter
 
@@ -219,6 +203,12 @@ NOT driven per-tool-call:
 - The message log format and history pull.
 
 ## Rejected alternatives
+
+> The entries below about the **adapter-side transcript scan** (cursored stream,
+> EOF-warming, per-file cursor advance, whole-file read) are retained as the
+> historical record of how account resolution was first attempted. That whole
+> approach has since been **superseded by hub-correlated resolution** — see
+> `group-chat-session-resolution.md`. They no longer describe live code.
 
 - **Adapter keys identity off its own `CLAUDE_CODE_SESSION_ID` (env/init id).**
   The original design. Wrong: the env id is the boot/phantom session, not the real
