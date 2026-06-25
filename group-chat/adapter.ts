@@ -259,8 +259,11 @@ function scanFileForward(
       let nl = text.indexOf("\n");
       while (nl !== -1) {
         const line = text.slice(from, nl);
-        // byte offset just past this line's newline = where the NEXT line starts
-        const lineEnd = lineStart + Buffer.byteLength(text.slice(0, nl + 1), "utf8");
+        // byte offset just past this line's newline = where the NEXT line starts.
+        // Count ONLY this line's bytes (from..nl+1) — using slice(0,…) would re-count
+        // every prior line in the chunk on top of lineStart, inflating the cursor
+        // far past EOF so later scans short-circuit at `size <= startOffset`.
+        const lineEnd = lineStart + Buffer.byteLength(text.slice(from, nl + 1), "utf8");
         if (line.includes(needle)) {
           return { found: true, newOffset: lineEnd }; // stop here: match + 1
         }
