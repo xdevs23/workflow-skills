@@ -319,7 +319,9 @@ const TOOLS = [
   },
   {
     name: "list_members",
-    description: "List members of a group and their online/offline status.",
+    description:
+      "List members of a group. Membership is durable; 'attached' shows whether " +
+      "each member's session is currently connected (not a durable online state).",
     inputSchema: {
       type: "object",
       properties: { group: { type: "string" } },
@@ -328,7 +330,7 @@ const TOOLS = [
   },
   {
     name: "show_member",
-    description: "Show one member's status and last-seen time in a group.",
+    description: "Show one member: whether currently attached, joined time, and last-seen.",
     inputSchema: {
       type: "object",
       properties: {
@@ -413,7 +415,10 @@ mcp.setRequestHandler(CallToolRequestSchema, async (req) => {
         return text(
           `Members of '${group}':\n` +
             r.members
-              .map((m) => `  ${m.name} [${m.status}] last seen ${m.last_seen_ts}`)
+              .map(
+                (m) =>
+                  `  ${m.name} [${m.attached ? "attached" : "detached"}] last seen ${m.last_seen_ts}`,
+              )
               .join("\n"),
         );
       }
@@ -424,7 +429,8 @@ mcp.setRequestHandler(CallToolRequestSchema, async (req) => {
         if (!r.member) return text(`No member '${member}' in '${group}'.`);
         const m = r.member;
         return text(
-          `${m.name} in '${group}': ${m.status}, joined ${m.joined_ts}, last seen ${m.last_seen_ts}`,
+          `${m.name} in '${group}': ${m.attached ? "attached" : "detached"}, ` +
+            `joined ${m.joined_ts}, last seen ${m.last_seen_ts}`,
         );
       }
       case "list_group_messages": {
