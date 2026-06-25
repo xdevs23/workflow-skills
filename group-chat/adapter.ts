@@ -21,10 +21,11 @@ import {
   ListToolsRequestSchema,
   CallToolRequestSchema,
 } from "@modelcontextprotocol/sdk/types.js";
-import { readFileSync, readdirSync, statSync, existsSync } from "node:fs";
+import { readFileSync, existsSync } from "node:fs";
 import { join as pathJoin } from "node:path";
 import { tmpdir, homedir } from "node:os";
 import { randomUUID } from "node:crypto";
+import { execFileSync } from "node:child_process";
 import type {
   ServerFrame,
   ClientEnvelope,
@@ -130,34 +131,28 @@ function sendRaw(frame: ClientEnvelope): void {
 // so it can resume fan-out and re-send any gap. Track desired memberships.
 const joinedGroups = new Map<string, string>(); // group -> our handle
 
-// IDENTITY RECOVERY: a fresh adapter process (after /reload-plugins or resuming
-// next day) has an empty joinedGroups, so it would re-join nothing and the first
-// submit_message would fail. The SessionStart hook records this session's
-// {group: handle} identity (from the transcript) into a file in the plugin data
-// dir; we read it here on startup and seed joinedGroups, so the existing welcome
-// re-attach logic auto-rejoins every group before any tool call runs.
-// Read a --flag value from argv. The plugin data dir and session id come in as
-// CLI args (not env), because .mcp.json interpolates ${...} in args/command but
-// NOT inside the env block — passing them via env yielded the literal strings.
+// IDENTITY RECOVERY (lazy, deterministic). A fresh adapter process (after
+// /reload-plugins or resuming next day) has an empty joinedGroups. We recover
+// LAZILY — on the first tool call that targets a group we're not joined to —
+// because the adapter cannot learn its own Claude Code session id at startup
+// (verified: not in env reliably, not a .mcp.json variable, and extra.sessionId
+// is undefined for stdio). The ONE deterministic signal is the per-call
+// `_meta["claudecode/toolUseId"]`: that id is globally unique and is written
+// into exactly the CALLING session's transcript. So we find which transcript
+// contains it → that file's name IS our session id → read its identity file.
+//
+// Read a --flag value from argv (guard against un-interpolated placeholders).
 function argValue(flag: string): string | undefined {
   const i = process.argv.indexOf(flag);
   if (i >= 0 && i + 1 < process.argv.length) {
     const v = process.argv[i + 1];
-    // guard against an un-interpolated placeholder reaching us
     if (v && !v.startsWith("${")) return v;
   }
   return undefined;
 }
 
 function pluginDataDir(): string {
-  // Resolution order, most-trusted first:
-  //  1. --plugin-data arg (interpolated by .mcp.json — the intended path)
-  //  2. CLAUDE_PLUGIN_DATA env (if real, not an un-interpolated literal)
-  //  3. the WELL-KNOWN real location, inferred: Claude Code resolves
-  //     ${CLAUDE_PLUGIN_DATA} to ~/.claude/plugins/data/<plugin>-<marketplace>/.
-  //     For this plugin that's workflow-skills-workflow-skills. This is the 99%
-  //     case and a far better fallback than a guaranteed-empty temp dir.
-  //  4. temp dir — last resort only.
+  // --plugin-data arg → CLAUDE_PLUGIN_DATA env → inferred well-known location.
   const fromArg = argValue("--plugin-data");
   if (fromArg) return fromArg;
   const fromEnv = process.env.CLAUDE_PLUGIN_DATA;
@@ -170,42 +165,50 @@ function pluginDataDir(): string {
   return pathJoin(tmpdir(), "group-chat-plugin-data");
 }
 
-function sessionId(): string | undefined {
-  const v =
-    argValue("--session-id") ||
-    process.env.GROUP_CHAT_SESSION_ID ||
-    process.env.CLAUDE_CODE_SESSION_ID;
-  return v && !v.startsWith("${") ? v : undefined;
+// The project's transcript directory: ~/.claude/projects/<mangled-project-dir>/,
+// where the mangling replaces every char outside [A-Za-z0-9] with '-'.
+function transcriptDir(): string | null {
+  const home = process.env.HOME || homedir();
+  const proj = process.env.CLAUDE_PROJECT_DIR;
+  if (!home || !proj) return null;
+  const mangled = proj.replace(/[^A-Za-z0-9]/g, "-");
+  return pathJoin(home, ".claude", "projects", mangled);
 }
 
-function loadRecoveredIdentity(): Record<string, string> {
-  const dir = pluginDataDir();
-  if (!existsSync(dir)) return {};
-  // Prefer the file for THIS session id if known; else fall back to the
-  // most-recently-written identity-*.json (one session = one adapter).
-  const sid = sessionId();
+// Find the session id whose transcript contains this toolUseId. Deterministic:
+// the id is unique and lives in exactly one transcript (the caller's). Returns
+// the session id (= transcript filename without .jsonl), or null if not found.
+function sessionIdForToolUse(toolUseId: string): string | null {
+  const dir = transcriptDir();
+  if (!dir || !existsSync(dir) || !/^[A-Za-z0-9_-]+$/.test(toolUseId)) return null;
   try {
-    if (sid && existsSync(pathJoin(dir, `identity-${sid}.json`))) {
-      return JSON.parse(readFileSync(pathJoin(dir, `identity-${sid}.json`), "utf8"));
-    }
-    const files = readdirSync(dir).filter((f) => f.startsWith("identity-") && f.endsWith(".json"));
-    if (files.length === 0) return {};
-    let newest = files[0];
-    let newestMtime = 0;
-    for (const f of files) {
-      const m = statSync(pathJoin(dir, f)).mtimeMs;
-      if (m > newestMtime) { newestMtime = m; newest = f; }
-    }
-    return JSON.parse(readFileSync(pathJoin(dir, newest), "utf8"));
+    // rg is fast even across many transcripts; -l lists matching files.
+    const out = execFileSync("rg", ["-l", "--fixed-strings", toolUseId, dir], {
+      encoding: "utf8",
+      timeout: 5000,
+    });
+    const file = out.split("\n").find((l) => l.endsWith(".jsonl"));
+    if (!file) return null;
+    const base = file.slice(file.lastIndexOf("/") + 1);
+    return base.slice(0, -".jsonl".length) || null;
   } catch {
-    return {};
+    return null;
   }
 }
 
-// Seed joinedGroups from the recovered identity. These are re-asserted to the
-// hub on the first welcome; the hub treats them as idempotent re-attach.
-for (const [group, handle] of Object.entries(loadRecoveredIdentity())) {
-  joinedGroups.set(group, handle);
+// Given a toolUseId, recover this session's {group: handle} identity map by
+// correlating the id → session → identity file. Returns {} if not recoverable.
+function recoverIdentity(toolUseId: string | undefined): Record<string, string> {
+  if (!toolUseId) return {};
+  const sid = sessionIdForToolUse(toolUseId);
+  if (!sid) return {};
+  const file = pathJoin(pluginDataDir(), `identity-${sid}.json`);
+  try {
+    if (existsSync(file)) return JSON.parse(readFileSync(file, "utf8"));
+  } catch {
+    /* fall through */
+  }
+  return {};
 }
 
 function onFrame(frame: ServerFrame): void {
@@ -401,9 +404,51 @@ function text(s: string) {
   return { content: [{ type: "text" as const, text: s }] };
 }
 
-mcp.setRequestHandler(CallToolRequestSchema, async (req) => {
+// Tools that operate on a specific group. If we're not joined to that group yet
+// (fresh adapter after reload/resume), we lazily recover identity and join first.
+const GROUP_TOOLS = new Set([
+  "submit_message",
+  "list_members",
+  "show_member",
+  "list_group_messages",
+  "leave",
+]);
+
+// Lazily ensure we're joined to `group` before serving a tool that needs it.
+// Uses the per-call toolUseId to deterministically identify this session and
+// read its recovered handle. Returns null on success, or an error message.
+async function ensureJoined(
+  group: string,
+  toolUseId: string | undefined,
+): Promise<string | null> {
+  if (joinedGroups.has(group)) return null; // already joined this session
+  const identity = recoverIdentity(toolUseId);
+  const handle = identity[group];
+  if (!handle) {
+    return (
+      `Not joined to '${group}' and could not recover your identity for it ` +
+      `(no prior join found for this session). Call join('${group}', <your handle>) first.`
+    );
+  }
+  const r = await request({ t: "join", group, as: handle });
+  if (r.t === "error") {
+    return `Failed to re-join '${group}' as '${handle}': ${(r as any).message}`;
+  }
+  joinedGroups.set(group, handle);
+  return null;
+}
+
+mcp.setRequestHandler(CallToolRequestSchema, async (req, extra) => {
   const name = req.params.name;
   const a = (req.params.arguments ?? {}) as Record<string, unknown>;
+  const toolUseId = (extra as any)?._meta?.["claudecode/toolUseId"] as string | undefined;
+
+  // Lazy identity recovery: if this is a group-scoped tool and we aren't joined
+  // to that group yet, recover + join before serving (once per group/session).
+  if (GROUP_TOOLS.has(name) && typeof a.group === "string") {
+    const errMsg = await ensureJoined(a.group, toolUseId).catch((e) => String(e));
+    if (errMsg) return text(errMsg);
+  }
   try {
     switch (name) {
       case "list_groups": {
