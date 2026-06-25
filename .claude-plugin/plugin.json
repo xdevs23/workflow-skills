@@ -1,6 +1,6 @@
 {
   "name": "workflow-skills",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Multi-agent workflow skills (research/verify/audit loops) plus a library of pinned audit-lens subagents.",
   "author": {
     "name": "xdevs23",

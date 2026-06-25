@@ -51,6 +51,13 @@ export type ClientFrame =
   | { t: "dm_history"; peer: string; last_n: number; index_from_end: number } // DM scrollback for a thread
   | { t: "dm_ack"; from_session: string; seq: number } // DM received (arrival ack)
   | { t: "dm_read"; from_session: string; seq: number } // DM read (surfaced by display hook)
+  // ---- hook -> hub session correlation ----
+  // Sent by the PreToolUse hook (after hello/welcome, on a transient connection)
+  // to register the REAL session id of an in-flight tool call. The hub keeps a
+  // Map<tool_use_id, session_id>; the adapter's frame for that same call carries
+  // the bare `tool_use_id` and the hub resolves the account from this map. See
+  // group-chat-session-resolution.md.
+  | { t: "map_session"; tool_use_id: string; session_id: string }
   | { t: "ping" };
 
 // ---- hub -> adapter -------------------------------------------------------
@@ -131,9 +138,19 @@ export type ServerFrame =
   | { t: "ok"; rid?: string }
   | { t: "pong" };
 
-// The adapter tags its requests with a rid by wrapping the ClientFrame. It also
-// carries the caller's resolved Claude Code `session` id (when known) so the hub
-// can bind the connection to an account — the hub never invents identity; it
-// learns the session id from this per-call assertion. The adapter resolves the
-// id from the toolUseId→transcript mechanism and attaches it to outgoing frames.
-export type ClientEnvelope = ClientFrame & { rid?: string; session?: string };
+// The adapter tags its requests with a rid by wrapping the ClientFrame. For
+// account-bound ops it attaches the bare `tool_use_id` (the `_meta` toolUseId of
+// the in-flight call); the hub correlates that id to the REAL session id via the
+// Map populated by the PreToolUse hook's `map_session` frame, then binds the
+// connection's account exactly as it would from a directly-asserted session. The
+// hub never invents identity. See group-chat-session-resolution.md.
+//
+// `session` is retained as an OPTIONAL direct-assertion path (the hub binds it
+// verbatim when present): it is what the hub binds AFTER resolving a tool_use_id,
+// and lets a trusted in-process driver/test assert identity without the hook. The
+// real adapter no longer sends it — it sends `tool_use_id` instead.
+export type ClientEnvelope = ClientFrame & {
+  rid?: string;
+  session?: string;
+  tool_use_id?: string;
+};
