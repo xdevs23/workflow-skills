@@ -590,8 +590,13 @@ mcp.setRequestHandler(CallToolRequestSchema, async (req, extra) => {
         );
       }
       case "join": {
-        const group = String(a.group);
-        const as = String(a.as);
+        // Validate before coercing: String(undefined) === "undefined" would
+        // otherwise silently join under the literal handle "undefined" (e.g. when
+        // called with the wrong arg name). Require non-empty strings.
+        const group = typeof a.group === "string" ? a.group.trim() : "";
+        const as = typeof a.as === "string" ? a.as.trim() : "";
+        if (!group) return text("join requires a non-empty `group`.");
+        if (!as) return text("join requires a non-empty handle in `as` (e.g. join(group, as)).");
         const r = expect(await request({ t: "join", group, as }), "joined");
         // Record under the active bucket (the resolved session, or SESSIONLESS if
         // unresolved) so same-process follow-up calls find this handle and we
