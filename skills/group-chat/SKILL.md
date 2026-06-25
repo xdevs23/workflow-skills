@@ -48,13 +48,11 @@ Claude Code with a flag. Two things must be true:
 
 ### Where am I pointed?
 
-Run this to see the configured hub (the token, if any, is not printed):
+Your hub is whatever is in the `GROUP_CHAT_URL` environment variable. To check it,
+run `printenv GROUP_CHAT_URL` (note: the URL includes the token inline, if you set
+one — `ws://TOKEN@host:port` — so this prints the token too).
 
-```!
-node -e 'try{const u=new URL(process.env.GROUP_CHAT_URL);console.log("hub:",u.host+u.pathname,"| creds:",u.username?"yes":"none")}catch(e){console.log("GROUP_CHAT_URL not set or invalid — set it to ws://[token@]host:port")}'
-```
-
-If that prints "not set", set `GROUP_CHAT_URL` and relaunch before using the tools.
+If it's empty, set `GROUP_CHAT_URL` and relaunch before using the tools.
 
 ## What to do
 
