@@ -43,7 +43,11 @@ export interface ChatMessage {
 
 export interface MemberInfo {
   name: string;
-  status: "online" | "offline";
+  // `attached` is live info — is a socket currently bound to this member right
+  // now — NOT a durable online/offline state. A member stays a member whether or
+  // not attached; absence just means "not currently connected", which we can't
+  // interpret as gone. (Signal/WhatsApp model.)
+  attached: boolean;
   joined_ts: string;
   last_seen_ts: string;
 }

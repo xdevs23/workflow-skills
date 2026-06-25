@@ -12,7 +12,7 @@
 //   GROUP_CHAT_ALLOW_NO_AUTH=1  run open (localhost/tunnel only)
 //   GROUP_CHAT_WINDOW  in-memory message window per group for gap re-send (default 500)
 
-import { mkdirSync, appendFileSync, existsSync, readFileSync, readdirSync } from "node:fs";
+import { mkdirSync, appendFileSync, existsSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { join as pathJoin } from "node:path";
 import { randomUUID } from "node:crypto";
 import type {
@@ -62,14 +62,18 @@ interface Connection {
 
 interface Member {
   name: string;
-  conn: Connection | null; // null => offline (was here, disconnected)
-  status: "online" | "offline";
+  // Membership is DURABLE and identity-based: a member stays in the group until
+  // an explicit `leave`, regardless of connection. `conn` is only the transient
+  // live binding ("currently attached"), never persisted. There is no durable
+  // offline state — absence of a connection is not a stored fact, since we can't
+  // know whether an absent member is gone or just temporarily detached.
+  conn: Connection | null; // null => not currently attached (still a member)
   joined_ts: string;
   last_seen_ts: string;
   // last seq this member has confirmed receiving. Lives on the Member (not the
-  // Connection) so it SURVIVES a reconnect: a new socket re-joining under the
-  // same name resumes from here, and the gap is re-sent. This is the live
-  // per-connection delivery tracking that decision B does NOT remove.
+  // Connection) so it survives a reconnect within a hub lifetime. Reset to the
+  // group head on hub restart (no-backfill: a member detached across a restart
+  // gets only new messages; history via list_group_messages).
   delivered: number;
 }
 
@@ -79,6 +83,7 @@ interface Group {
   members: Map<string, Member>; // by member name
   window: ChatMessage[]; // recent messages kept in memory for gap re-send
   logPath: string;
+  membersPath: string; // durable roster (group + handle + joined_ts), no conn state
 }
 
 const groups = new Map<string, Group>();
@@ -100,42 +105,102 @@ function logPathFor(group: string): string {
   return pathJoin(DATA_DIR, `${group}.jsonl`);
 }
 
-// On startup, recover each group's last seq from its log so seq stays monotonic
-// across hub restarts (the log is the source of truth for ordering).
+function membersPathFor(group: string): string {
+  return pathJoin(DATA_DIR, `${group}.members.json`);
+}
+
+// Persist a group's durable roster: just identity (name + joined_ts), never the
+// connection or any online/offline state. Written on every join/leave.
+function persistRoster(group: Group): void {
+  const roster = [...group.members.values()].map((m) => ({
+    name: m.name,
+    joined_ts: m.joined_ts,
+  }));
+  try {
+    writeFileSync(group.membersPath, JSON.stringify(roster));
+  } catch (e) {
+    console.error(`group-chat-hub: failed to persist roster for ${group.name}:`, e);
+  }
+}
+
+// On startup, recover each group from disk: its message log (for seq + window)
+// AND its durable member roster (so a hub restart preserves who is in each
+// group — members come back detached, never removed).
+//
+// A group can exist with members but NO messages yet (everyone joined, nobody
+// sent), so we must discover group names from BOTH the .jsonl logs AND the
+// .members.json rosters — recovering from only one would drop members-only or
+// messages-only groups.
 function recoverGroups(): void {
   if (!existsSync(DATA_DIR)) return;
+  const names = new Set<string>();
   for (const file of readdirSync(DATA_DIR)) {
-    if (!file.endsWith(".jsonl")) continue;
-    const name = file.slice(0, -".jsonl".length);
+    if (file.endsWith(".members.json")) names.add(file.slice(0, -".members.json".length));
+    else if (file.endsWith(".jsonl")) names.add(file.slice(0, -".jsonl".length));
+  }
+  for (const name of names) {
     if (!GROUP_NAME_RE.test(name)) continue;
-    const path = pathJoin(DATA_DIR, file);
+    const path = logPathFor(name);
     let maxSeq = 0;
     const window: ChatMessage[] = [];
-    try {
-      const lines = readFileSync(path, "utf8").split("\n");
-      for (const line of lines) {
-        if (!line.trim()) continue;
-        const msg = JSON.parse(line) as ChatMessage;
-        if (msg.seq > maxSeq) maxSeq = msg.seq;
-        window.push(msg);
+    if (existsSync(path)) {
+      try {
+        const lines = readFileSync(path, "utf8").split("\n");
+        for (const line of lines) {
+          if (!line.trim()) continue;
+          const msg = JSON.parse(line) as ChatMessage;
+          if (msg.seq > maxSeq) maxSeq = msg.seq;
+          window.push(msg);
+        }
+      } catch (e) {
+        console.error(`group-chat-hub: failed to recover ${path}:`, e);
       }
-    } catch (e) {
-      console.error(`group-chat-hub: failed to recover ${path}:`, e);
     }
-    groups.set(name, {
+    const group: Group = {
       name,
       seq: maxSeq,
       members: new Map(),
       window: window.slice(-WINDOW),
       logPath: path,
-    });
+      membersPath: membersPathFor(name),
+    };
+    // reload the durable roster: members return DETACHED (conn=null), delivered
+    // reset to head (no-backfill across a hub restart).
+    try {
+      if (existsSync(group.membersPath)) {
+        const roster = JSON.parse(readFileSync(group.membersPath, "utf8")) as {
+          name: string;
+          joined_ts: string;
+        }[];
+        for (const r of roster) {
+          if (!MEMBER_NAME_RE.test(r.name)) continue;
+          group.members.set(r.name, {
+            name: r.name,
+            conn: null,
+            joined_ts: r.joined_ts,
+            last_seen_ts: r.joined_ts,
+            delivered: maxSeq, // head: detached-across-restart gets only new msgs
+          });
+        }
+      }
+    } catch (e) {
+      console.error(`group-chat-hub: failed to recover roster for ${name}:`, e);
+    }
+    groups.set(name, group);
   }
 }
 
 function getOrCreateGroup(name: string): Group {
   let g = groups.get(name);
   if (!g) {
-    g = { name, seq: 0, members: new Map(), window: [], logPath: logPathFor(name) };
+    g = {
+      name,
+      seq: 0,
+      members: new Map(),
+      window: [],
+      logPath: logPathFor(name),
+      membersPath: membersPathFor(name),
+    };
     groups.set(name, g);
   }
   return g;
@@ -148,7 +213,7 @@ function nowIso(): string {
 function memberInfo(m: Member): MemberInfo {
   return {
     name: m.name,
-    status: m.status,
+    attached: m.conn !== null, // live binding, not a durable state
     joined_ts: m.joined_ts,
     last_seen_ts: m.last_seen_ts,
   };
@@ -190,13 +255,17 @@ function broadcast(
       if (seq > m.delivered) m.delivered = seq;
       continue;
     }
-    if (m.conn && m.status === "online") {
+    if (m.conn) {
+      // attached: push live
       m.conn.send({ t: "message", msg });
       recipients.push(m.name);
       // optimistically advance; an explicit `ack` is what keeps gap re-send
       // precise across a reconnect (the member may go down before acking)
       if (seq > m.delivered) m.delivered = seq;
     }
+    // detached members are still members; they just don't get a live push (and,
+    // per no-backfill, won't get this message on re-attach either — pull via
+    // list_group_messages). Their delivered marker stays put.
   }
   return { msg, recipients };
 }
@@ -273,7 +342,7 @@ function handleFrame(conn: Connection, frame: ClientEnvelope): void {
     case "list_groups": {
       const list = [...groups.values()].map((g) => ({
         name: g.name,
-        members: [...g.members.values()].filter((m) => m.status === "online").length,
+        members: g.members.size, // total durable members (attached or not)
       }));
       conn.send({ t: "groups", rid, groups: list });
       return;
@@ -300,33 +369,34 @@ function handleFrame(conn: Connection, frame: ClientEnvelope): void {
       }
       const g = getOrCreateGroup(frame.group);
       const existing = g.members.get(frame.as);
-      if (existing && existing.status === "online" && existing.conn !== conn) {
-        err(conn, "name_taken", `'${frame.as}' is already online in '${frame.group}'`, rid);
+      // `name_taken` only fires for a GENUINE concurrent claim: the handle is
+      // already a member AND a DIFFERENT live connection is currently attached as
+      // it. Membership being durable, a returning member (detached) re-attaching,
+      // or this same connection re-joining, are both fine (idempotent re-attach).
+      if (existing && existing.conn !== null && existing.conn !== conn) {
+        err(conn, "name_taken", `'${frame.as}' is already attached in '${frame.group}'`, rid);
         return;
       }
       const isReturning = existing !== undefined;
-      // (re)register this member as online on this connection. For a brand-new
-      // member, delivered starts at the current head: no message that predates
-      // the join is ever replayed (decision B — no history backfill). For a
-      // RETURNING member (was here, went offline), delivered is whatever it had
-      // confirmed, so the gap of messages it missed gets re-sent below.
+      // Brand-new member: delivered starts at head (no backfill — decision B), and
+      // the durable roster is updated. Returning member: keep its delivered so the
+      // gap it missed within this hub lifetime is re-sent on re-attach.
       const member: Member = existing ?? {
         name: frame.as,
         conn,
-        status: "online",
         joined_ts: nowIso(),
         last_seen_ts: nowIso(),
         delivered: g.seq,
       };
-      member.conn = conn;
-      member.status = "online";
+      member.conn = conn; // (re)bind the live connection
       member.last_seen_ts = nowIso();
       g.members.set(frame.as, member);
       conn.joinedAs.set(frame.group, frame.as);
+      if (!isReturning) persistRoster(g); // durable: a new member joined
 
-      // Member is now in g.members, so any NEW broadcast from this point fans
-      // out to it — closing the join<->first-message race. Then, for a
-      // returning member, re-send what it missed while disconnected.
+      // Member is now attached, so any NEW broadcast fans out to it (closes the
+      // join<->first-message race). For a returning member, re-send what it
+      // missed while detached (within this hub lifetime).
       conn.send({ t: "joined", rid, group: frame.group, as: frame.as });
       if (isReturning) resendGap(member, g);
       return;
@@ -336,11 +406,13 @@ function handleFrame(conn: Connection, frame: ClientEnvelope): void {
       const g = groups.get(frame.group);
       const as = conn.joinedAs.get(frame.group);
       if (g && as) {
-        // a clean leave removes the member entirely (and its delivered cursor),
-        // so a later re-join is a fresh member with no gap re-send — you get
-        // nothing you weren't present for. That's decision B.
+        // `leave` is the ONLY thing that removes a durable member. It deletes the
+        // membership and persists the removal, so the member is truly gone (a
+        // later join is fresh, no gap re-send). Detaching (a dropped socket) does
+        // NOT do this — that just clears the live binding, see onDisconnect.
         g.members.delete(as);
         conn.joinedAs.delete(frame.group);
+        persistRoster(g);
       }
       conn.send({ t: "left", rid, group: frame.group });
       return;
@@ -450,14 +522,15 @@ function handleFrame(conn: Connection, frame: ClientEnvelope): void {
 }
 
 function onDisconnect(conn: Connection): void {
-  // Mark this connection's members offline (but keep them in the group so a
-  // reconnect can resume; a clean `leave` is what removes them).
+  // A dropped socket DETACHES the member — it does NOT remove it. Membership is
+  // durable; clearing the live binding is all that happens. The member stays in
+  // the group (and on disk) and re-attaches on the next join. Only an explicit
+  // `leave` removes a member.
   for (const [group, as] of conn.joinedAs) {
     const g = groups.get(group);
     const m = g?.members.get(as);
     if (m && m.conn === conn) {
-      m.status = "offline";
-      m.conn = null;
+      m.conn = null; // detached, still a member
       m.last_seen_ts = nowIso();
     }
   }
