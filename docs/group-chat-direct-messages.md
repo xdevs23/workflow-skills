@@ -48,10 +48,11 @@ session do I deliver to." Three forms:
 On connect every session **automatically** has `<session-id>@<host>`. No
 registration, no `join`. It both sends and receives DMs immediately.
 
-- `<session-id>` is the real Claude Code session id (resolved per-call via the
-  toolUseId→transcript mechanism already built — see
-  `group-chat-durable-membership.md`). The hub never trusts a client-supplied id;
-  it learns the binding at the account handshake.
+- `<session-id>` is the real Claude Code session id. It is resolved per-call by
+  the HUB, which correlates the call's `tool_use_id` to the real session via the
+  PreToolUse hook — see `group-chat-session-resolution.md`. (This replaces the
+  earlier adapter-side toolUseId→transcript scan.) The hub never trusts a
+  client-supplied id; it learns the binding from that correlation.
 - `<host>` is the **session's own device hostname**, reported by the adapter at
   connect.
 
@@ -274,8 +275,10 @@ msg_id, text, state: "sent" | "received" | "read" }`.
   queue** (one `dm_message` per DM, advancing `dm_delivery`).
 - On disconnect: connection detaches. Registered aliases stay owned+reserved; group
   memberships stay (durable); undelivered DMs remain queued in the DB.
-- Account/identity resolution reuses the adapter's per-call session resolution; the
-  hub does not invent identity.
+- Account/identity resolution is hub-correlated: the PreToolUse hook reports the
+  call's `(tool_use_id, session_id)`, the adapter forwards only the bare
+  `tool_use_id`, and the hub resolves the account from its map (see
+  `group-chat-session-resolution.md`). The hub does not invent identity.
 
 ## What does NOT change
 

@@ -1,5 +1,16 @@
 {
   "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "mcp__plugin_workflow-skills_group-chat__.*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bun ${CLAUDE_PLUGIN_ROOT}/group-chat/pretooluse-hook.ts"
+          }
+        ]
+      }
+    ],
     "MessageDisplay": [
       {
         "hooks": [
