@@ -21,6 +21,9 @@ import {
   ListToolsRequestSchema,
   CallToolRequestSchema,
 } from "@modelcontextprotocol/sdk/types.js";
+import { readFileSync, readdirSync, statSync, existsSync } from "node:fs";
+import { join as pathJoin } from "node:path";
+import { tmpdir } from "node:os";
 import { randomUUID } from "node:crypto";
 import type {
   ServerFrame,
@@ -73,10 +76,19 @@ const pending = new Map<string, Pending>();
 let ws: WebSocket | null = null;
 let helloDone = false;
 let reconnectDelay = 250;
+let connectAttempts = 0;
 
 const { url: HUB_URL, token: HUB_TOKEN } = parseHub(RAW_URL);
+const HUB_HOST = (() => {
+  try {
+    return new URL(HUB_URL).host;
+  } catch {
+    return "hub";
+  }
+})();
 
 function connect(): void {
+  connectAttempts++;
   ws = new WebSocket(HUB_URL);
 
   ws.addEventListener("open", () => {
@@ -117,6 +129,46 @@ function sendRaw(frame: ClientEnvelope): void {
 // On (re)connect the hub may need us to re-join groups we thought we were in,
 // so it can resume fan-out and re-send any gap. Track desired memberships.
 const joinedGroups = new Map<string, string>(); // group -> our handle
+
+// IDENTITY RECOVERY: a fresh adapter process (after /reload-plugins or resuming
+// next day) has an empty joinedGroups, so it would re-join nothing and the first
+// submit_message would fail. The SessionStart hook records this session's
+// {group: handle} identity (from the transcript) into a file in the plugin data
+// dir; we read it here on startup and seed joinedGroups, so the existing welcome
+// re-attach logic auto-rejoins every group before any tool call runs.
+function pluginDataDir(): string {
+  return process.env.CLAUDE_PLUGIN_DATA || pathJoin(tmpdir(), "group-chat-plugin-data");
+}
+
+function loadRecoveredIdentity(): Record<string, string> {
+  const dir = pluginDataDir();
+  if (!existsSync(dir)) return {};
+  // Prefer the file for THIS session id if the harness passed it; else fall back
+  // to the most-recently-written identity-*.json (one session = one adapter).
+  const sid = process.env.GROUP_CHAT_SESSION_ID || process.env.CLAUDE_CODE_SESSION_ID;
+  try {
+    if (sid && existsSync(pathJoin(dir, `identity-${sid}.json`))) {
+      return JSON.parse(readFileSync(pathJoin(dir, `identity-${sid}.json`), "utf8"));
+    }
+    const files = readdirSync(dir).filter((f) => f.startsWith("identity-") && f.endsWith(".json"));
+    if (files.length === 0) return {};
+    let newest = files[0];
+    let newestMtime = 0;
+    for (const f of files) {
+      const m = statSync(pathJoin(dir, f)).mtimeMs;
+      if (m > newestMtime) { newestMtime = m; newest = f; }
+    }
+    return JSON.parse(readFileSync(pathJoin(dir, newest), "utf8"));
+  } catch {
+    return {};
+  }
+}
+
+// Seed joinedGroups from the recovered identity. These are re-asserted to the
+// hub on the first welcome; the hub treats them as idempotent re-attach.
+for (const [group, handle] of Object.entries(loadRecoveredIdentity())) {
+  joinedGroups.set(group, handle);
+}
 
 function onFrame(frame: ServerFrame): void {
   if (frame.t === "welcome") {
@@ -178,7 +230,15 @@ function ready(): boolean {
 async function waitReady(deadlineMs = 5_000): Promise<void> {
   const start = Date.now();
   while (!ready()) {
-    if (Date.now() - start > deadlineMs) throw new Error("hub connection not ready");
+    if (Date.now() - start > deadlineMs) {
+      // Fail fast, but make clear it's transient and self-healing: the adapter
+      // keeps reconnecting on its own and auto-re-joins every group on connect,
+      // so the NEXT call once the hub is up will work — no manual re-join needed.
+      throw new Error(
+        `not connected to hub at ${HUB_HOST}; reconnecting automatically ` +
+          `(attempt ${connectAttempts}). Your groups re-join on connect — retry in a moment.`,
+      );
+    }
     await new Promise((r) => setTimeout(r, 50));
   }
 }
