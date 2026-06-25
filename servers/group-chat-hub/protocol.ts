@@ -21,8 +21,8 @@ export type ClientFrame =
   | { t: "list_groups" } // discover groups on the hub
   | { t: "create_group"; group: string } // explicit create (join also auto-creates)
   | { t: "join"; group: string; as: string } // join (or create+join) a group under name `as`
-  | { t: "leave"; group: string }
-  | { t: "send"; group: string; message: string } // broadcast to everyone in `group`
+  | { t: "leave"; group: string; as?: string } // `as` disambiguates when one conn holds several handles in the group
+  | { t: "send"; group: string; message: string; as?: string } // `as` = which of this conn's handles to send as (multi-session on one socket)
   | { t: "list_members"; group: string }
   | { t: "show_member"; group: string; member: string }
   | { t: "history"; group: string; last_n: number; index_from_end: number } // pull scrollback
