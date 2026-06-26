@@ -39,6 +39,9 @@ proposition: spend tokens now to not lose sessions later.
 
 ## Non-negotiable principles
 
+0. **Verbatim agent template, append-only.** The gap-finder's rules live in `agents/gap-finder.md` and
+   are used VERBATIM via `agentType:'gap-finder'`. The string passed to `agent()` is ONLY the task
+   context (artifact, scope fence, category sweep) APPENDED after that base. Never modify the base inline.
 1. **Scope-bounded.** A gap is something missing **within the artifact's own stated scope**. Flagging
    out-of-scope additions ("could also mention X" where X is a different feature) is noise and
    actively harmful — it buries the real gaps. Fence every finder to the stated scope explicitly.
@@ -96,20 +99,20 @@ high-stakes spec, fan out — either identical (redundant breadth) or split by c
 owns 1–2 categories deeply). Force structured output. Suggested shape:
 
 ```js
+The gap-finder's RULES live VERBATIM in `agents/gap-finder.md` (applied via
+`agentType:'gap-finder'`). The string passed to `agent()` is ONLY the APPENDED task
+context — the artifact, the scope fence, the per-run category sweep.
+
+```js
 const SCOPE = `<<the artifact's own stated scope, verbatim — the fence>>`;
-const PROMPT = `COMPLETENESS audit (sins of omission), read-only. You are NOT verifying that present
-claims are correct — a separate process does that. Your ONLY job: find what SHOULD be in <ARTIFACT>
-for it to be a complete, implementable, truthful spec but is MISSING, under-specified, or silently
-assumed. STAY INSIDE THIS SCOPE (flagging out-of-scope additions is noise): ${SCOPE}. For EACH gap
-give: (a) what is missing/under-specified, (b) why it matters for completeness/implementability,
-(c) GROUND-TRUTH EVIDENCE it is a real gap (file:line + quoted code where the overlooked thing lives,
-or the concrete promise in the artifact left unspecified), (d) severity MUST-FIX / SHOULD-ADD / NICE.
-Sweep these categories: enumeration completeness, promised-but-unspecified data, end-to-end
-connectivity, edge cases, lifecycle/atomicity, divergent/dropped behavior. If a category has NO gaps,
-say so explicitly. A vague "could mention X" with no source is NOT a finding — discard it.`;
+// APPEND-ONLY: task context after the gap-finder's verbatim base prompt.
+const APPEND = `Artifact: <ARTIFACT>. SCOPE FENCE (stay inside it): ${SCOPE}.
+Ground truth to cite: <GROUND_TRUTH>. Sweep these categories and say which have NO
+gaps: enumeration completeness, promised-but-unspecified data, end-to-end
+connectivity, edge cases, lifecycle/atomicity, divergent/dropped behavior.`;
 const finders = [ {l:'gap-all', m:'sonnet'} ];                 // or split by category / add an opus
 const raw = await parallel(finders.map(f => () =>
-  agent(PROMPT, { label:f.l, model:f.m, agentType:'Explore', schema:GAP_SCHEMA, phase:'FindGaps' })));
+  agent(APPEND, { label:f.l, model:f.m, agentType:'gap-finder', schema:GAP_SCHEMA, phase:'FindGaps' })));
 ```
 
 `GAP_SCHEMA` per gap: `{category, what, why, evidence (file:line + quote), severity}` plus a

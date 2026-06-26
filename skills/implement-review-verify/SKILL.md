@@ -31,9 +31,9 @@ Three phases. **Settle the design BEFORE phase 1** — the implementer builds ag
 design, it does not invent scope. If the design isn't settled, stop and settle it with the user
 (or run a design/research loop) first.
 
-### Phase 1 — Implement (1 agent, sequential)
+### Phase 1 — Implement (1 agent, sequential — `agentType:'implementer'`)
 
-ONE implementer, working sequentially on the real tree. One agent — not a fan-out — because a
+ONE implementer (`agents/implementer.md`), working sequentially on the real tree. One agent — not a fan-out — because a
 coupled change mutates shared files and parallel writers collide. Brief it with:
 - **what is already on disk** (if part of the work exists), file by file, told to REUSE not rebuild;
 - the **settled design** and its decisions, stated as authoritative;
@@ -44,7 +44,8 @@ It reports what changed, file by file, plus the test result.
 
 ### Phase 2 — Review (N agents, parallel, split BY CONCERN)
 
-Independent reviewers, run in parallel, each owning a DISTINCT lens so they don't overlap. The
+Independent reviewers, run in parallel, each owning a DISTINCT lens so they don't overlap, each via
+its own `agentType` (`agents/reviewer-correctness.md`, `agents/reviewer-cleanliness.md`). The
 default split that pays off:
 - **Correctness** — bugs, races, broken invariants, the failure modes the change introduces.
   Prompt it to hunt the specific hazards (the dedup race, the ordering guarantee, the retry path)
@@ -57,9 +58,9 @@ Two sharp, non-overlapping reviewers beat five that all re-scan the whole codeba
 same things. Add a third lens (security, performance) only when the change actually has that
 surface. Each reviewer returns concrete `file:line` findings, each rated **must-fix / should-fix / nit**.
 
-### Phase 3 — Fix (1 agent)
+### Phase 3 — Fix (1 agent — `agentType:'fixer'`)
 
-ONE agent that receives both reviews, **triages every finding** (applies the ones it agrees with;
+ONE agent (`agents/fixer.md`) that receives both reviews, **triages every finding** (applies the ones it agrees with;
 for any it rejects, says *why* — a finding can be wrong), then **proves the result**: runs the FULL
 test suite and any build, and reports the real numbers. It must be honest — if something still
 fails, it says so with the output, it does not paper over it.
@@ -79,6 +80,15 @@ This phase is where the review earns its keep: a good correctness reviewer often
   plausible-but-broken implementation that tests written by the implementer won't.
 - **The fix phase triages, doesn't rubber-stamp.** A finding is a hypothesis, not a verdict. The
   fixer decides, applies the fix, and re-proves — closing the loop with real suite output, not a claim.
+
+## Agent prompt templates (verbatim base, append-only)
+
+Every agent this skill spawns has a fixed prompt template in `agents/` (e.g.
+`agents/implementer.md`, `agents/reviewer-correctness.md`, `agents/reviewer-cleanliness.md`,
+`agents/fixer.md`). That file's body is the agent's **authoritative rules** and is used
+**VERBATIM** as the start of its prompt — invoke the agent via `agentType:'<role>'`. The string you
+pass to `agent()` is **ONLY the task-specific context APPENDED** after that base (the design, the diff,
+the test command). **Do NOT modify, reorder, or paraphrase the base rules inline — append only.**
 
 ## Model assignment
 

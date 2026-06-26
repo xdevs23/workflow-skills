@@ -27,6 +27,9 @@ ONLY — it never implements; implementation requires a separate explicit go fro
 
 ## Non-negotiable principles (bake these into every run)
 
+0. **Verbatim agent template, append-only.** The verifier's rules live in `agents/verifier.md` and are
+   used VERBATIM via `agentType:'verifier'`. The string passed to `agent()` is ONLY the task context
+   (artifact path, ground truth) APPENDED after that base. Never modify/paraphrase the base inline.
 1. **Identical, unbiased verifiers.** Every agent gets the same prompt and verifies the *whole*
    artifact independently. Do NOT split claims across agents (splitting biases coverage and lets a
    wrong claim through if its one assigned checker misses it). Redundant full coverage is the point.
@@ -70,18 +73,18 @@ claim is IMMACULATE.
 Use a JSON `schema` on each `agent()` call so results are structured. Pin `model` explicitly per
 agent. Suggested workflow shape (adapt counts/paths):
 
+The verifier's RULES live VERBATIM in `agents/verifier.md` (its base prompt) and are
+applied by `agentType:'verifier'`. The string you pass to `agent()` is ONLY the
+APPENDED task context — the artifact path and ground truth — never a rewrite of the
+rules.
+
 ```js
-const PROMPT = `Verify EVERY claim in <ARTIFACT_PATH> against <GROUND_TRUTH>. ZERO-TOLERANCE,
-truth-only: a single wrong claim is a failure. For every factual assertion — every file:line, every
-signature/type/annotation, every prose fact — independently locate the real source and confirm or
-refute WITH EVIDENCE (real file:line + quoted code). Wrong line number or off signature = IMPRECISE.
-Hedging words (acceptable/in practice/typically/should be/doesn't occur) = defects. Read-only; do not
-edit or implement. Return per-claim verdicts with evidence for EVERY claim including passes; missing
-a claim is a failure.`;
+// APPEND-ONLY: this is task context added after the verifier's verbatim base prompt.
+const APPEND = `Artifact to verify: <ARTIFACT_PATH>. Ground truth: <GROUND_TRUTH>.`;
 const verifiers = [ {l:'v1',m:'sonnet'},{l:'v2',m:'sonnet'},{l:'v3',m:'sonnet'},
                     {l:'v4',m:'sonnet'},{l:'v5',m:'sonnet'},{l:'v6',m:'opus'} ];
 const results = await parallel(verifiers.map(v => () =>
-  agent(PROMPT, { label:v.l, model:v.m, schema:CLAIM_SCHEMA, agentType:'Explore', phase:'Verify' })));
+  agent(APPEND, { label:v.l, model:v.m, schema:CLAIM_SCHEMA, agentType:'verifier', phase:'Verify' })));
 ```
 
 ### 2. Reconcile (you, not an agent)

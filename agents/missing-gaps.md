@@ -1,6 +1,6 @@
 ---
 name: missing-gaps
-description: Audit lens — sins of omission in CODE: unhandled error paths, missing edge-case handling, absent validation, no tests for risky logic, missing cleanup/teardown, and silent failure modes that should be explicit.
+description: "Audit lens — sins of omission in CODE: unhandled error paths, missing edge-case handling, absent validation, no tests for risky logic, missing cleanup/teardown, and silent failure modes that should be explicit."
 model: sonnet
 tools: Read, Grep, Glob, Bash
 ---
