@@ -2,8 +2,12 @@
 // group-chat hub — the one networked process. Many Claude instances connect
 // over WebSocket; many named groups live here so multiple projects share one
 // hub. v3 adds an identity layer (accounts, aliases, direct messages) and moves
-// durable storage to SQLite. See protocol.ts for the wire contract and
-// group-chat-direct-messages.md for the identity/DM design.
+// durable storage to SQLite; v4 unifies handles (group membership is derived, no
+// separate member table); v5 adds durable adapter_id reconnect (a per-process id
+// + an adapter_sessions lease that re-binds a reconnecting adapter's sessions,
+// surviving a hub restart). See protocol.ts for the wire contract,
+// group-chat-direct-messages.md for the identity/DM design, and
+// group-chat-adapter-reconnect.md for the reconnect design.
 //
 // Run:  GROUP_CHAT_TOKEN=secret bun servers/group-chat-hub/hub.ts
 // Env:
@@ -14,9 +18,11 @@
 //   GROUP_CHAT_ALLOW_NO_AUTH=1  run open (localhost/tunnel only)
 //   GROUP_CHAT_WINDOW  in-memory message window per group for gap re-send (default 500)
 //
-// STORAGE: a single SQLite DB (bun:sqlite, WAL). Groups, members, group
-// messages, aliases, DMs and per-recipient DM delivery cursors are all durable
-// rows. The hub loads its world from the DB on startup. Group delivery is NOT
+// STORAGE: a single SQLite DB (bun:sqlite, WAL). Groups, handles (the one
+// registry — group membership AND registered aliases are both handle rows), group
+// messages, DMs and per-recipient DM delivery cursors are all durable rows. Group
+// membership is DERIVED (handles ending `@<group>._group`), not a separate table.
+// The hub loads its world from the DB on startup. Group delivery is NOT
 // cursored in the DB — group push is online-only with an in-memory brief-
 // reconnect gap-resend window; only DMs carry a durable per-recipient cursor.
 
@@ -49,7 +55,16 @@ const READ_RECEIPT_MS = Number(process.env.GROUP_CHAT_READ_RECEIPT_MS ?? 100);
 // already. The hook and the adapter frame travel on SEPARATE connections, so the
 // frame can race ahead of the registration; we await it up to this bound, then
 // honest-error (identity/DM tools) or proceed without a session (group tools).
-const SESSION_MAP_WAIT_MS = Number(process.env.GROUP_CHAT_SESSION_MAP_WAIT_MS ?? 2000);
+//
+// This is purely a LIVENESS backstop for a signal that may never arrive (hook
+// didn't fire, hub was down when it tried, bad token): on the happy path the
+// deferred is completed the INSTANT `map_session` lands, so this value is
+// irrelevant to throughput and only ever bounds the failure path. Hence a
+// generous default — large enough that a congested cold-start hook (a fresh `bun`
+// spawn + new socket, several racing in a batch) comfortably beats it, while
+// still finite so a genuinely dead hook fails the call in human-patience time
+// rather than hanging it forever. Env-overridable for tuning.
+const SESSION_MAP_WAIT_MS = Number(process.env.GROUP_CHAT_SESSION_MAP_WAIT_MS ?? 60_000);
 // TTL for a resolved `tool_use_id -> session_id` entry. A tool_use_id is used by
 // at most the handful of frames of a single call, so a short TTL bounds the map
 // without affecting correctness (a late frame for an expired id honest-errors and
@@ -85,23 +100,38 @@ mkdirSync(DATA_DIR, { recursive: true });
 const db = new Database(pathJoin(DATA_DIR, "hub.db"), { create: true });
 db.exec("PRAGMA journal_mode = WAL;");
 db.exec("PRAGMA foreign_keys = ON;");
-db.exec(`
+
+// Versioned schema migrations (the superagent `user_version` pattern). Each entry
+// is one version; we apply every entry whose version is newer than the DB's
+// current `user_version`, in order, each inside its own transaction, bumping the
+// version after each. Adding a future change = append a new entry (an idempotent
+// CREATE or an ALTER) — never edit an applied one.
+//
+// v1 is the UNIFIED schema: ONE `handles` table replaces the old `aliases` AND
+// `members` tables. A handle is a name owned by an identity; a group handle is a
+// handle whose string ends `@<group>._group`; a registered alias is `<name>@<host>`.
+// Group membership is derived (query handles ending in the suffix), not stored
+// separately. Clean-slate per design O1: prior aliases/members data is not carried.
+const MIGRATIONS: string[] = [
+  // v1 — unified handle table + groups/messages/dms/dm_delivery. Clean-slate per
+  // design O1: an upgrade from the pre-v1 schema (which booted at user_version 0)
+  // drops the old parallel registries so they can't linger as dead tables. A fresh
+  // DB no-ops these drops. The handle table is the SINGLE registry going forward.
+  `
+  DROP TABLE IF EXISTS members;
+  DROP TABLE IF EXISTS aliases;
   CREATE TABLE IF NOT EXISTS groups (
     name TEXT PRIMARY KEY,
     created_ts TEXT
   );
-  CREATE TABLE IF NOT EXISTS members (
-    group_name TEXT, handle TEXT, joined_ts TEXT, last_seen_ts TEXT,
-    PRIMARY KEY (group_name, handle),
-    FOREIGN KEY (group_name) REFERENCES groups(name)
+  CREATE TABLE IF NOT EXISTS handles (
+    handle TEXT PRIMARY KEY,        -- full string, globally unique (e.g. alice@host or al@proj._group)
+    owner_session TEXT NOT NULL,    -- the identity that holds it (today == a session id)
+    created_ts TEXT
   );
   CREATE TABLE IF NOT EXISTS messages (
     group_name TEXT, seq INTEGER, from_handle TEXT, ts TEXT, msg_id TEXT, text TEXT,
     PRIMARY KEY (group_name, seq)
-  );
-  CREATE TABLE IF NOT EXISTS aliases (
-    name TEXT, host TEXT, owner_session_id TEXT, created_ts TEXT,
-    PRIMARY KEY (name, host)
   );
   CREATE TABLE IF NOT EXISTS dms (
     lo_session TEXT, hi_session TEXT, seq INTEGER,
@@ -115,21 +145,102 @@ db.exec(`
     PRIMARY KEY (lo_session, hi_session, recipient_session)
   );
   CREATE INDEX IF NOT EXISTS dms_by_pair ON dms (lo_session, hi_session, seq);
-`);
+  CREATE INDEX IF NOT EXISTS handles_by_owner ON handles (owner_session);
+  `,
+  // v2 — the durable adapter→session lease. One row per (adapter_id, session)
+  // an adapter is currently serving, written by bindSession. On reconnect the
+  // hello handler reads this table for the presented adapter_id and re-binds
+  // each leased session immediately (no tool call), surviving a hub restart
+  // because the lease is on disk. Superseded only by a /resume (bindSession
+  // drops the prior session's row); never deleted on disconnect. GC of orphaned
+  // rows is out of scope (see docs/group-chat-adapter-reconnect.md).
+  `
+  CREATE TABLE IF NOT EXISTS adapter_sessions (
+    adapter_id TEXT,
+    session_id TEXT,
+    PRIMARY KEY (adapter_id, session_id)
+  );
+  `,
+];
+
+function runMigrations(): void {
+  const cur =
+    (db.query("PRAGMA user_version").get() as { user_version: number } | null)?.user_version ?? 0;
+  for (let i = 0; i < MIGRATIONS.length; i++) {
+    const version = i + 1;
+    if (version <= cur) continue;
+    const sql = MIGRATIONS[i]!;
+    const apply = db.transaction(() => {
+      db.exec(sql);
+      // PRAGMA user_version can't be parameterized; version is a controlled int.
+      db.exec(`PRAGMA user_version = ${version}`);
+    });
+    apply();
+  }
+}
+runMigrations();
+
+// The reserved suffix that turns a handle into a group handle: <name>@<group>._group.
+function groupHandleSuffix(group: string): string {
+  return `@${group}${GROUP_SUFFIX}`;
+}
+
+// Escape SQL LIKE wildcards (`%`, `_`) and the escape char itself for a literal
+// match. Used to build patterns from group/member names (which allow `_`). Paired
+// with `ESCAPE '\\'` on the prepared statements.
+function likeEscape(s: string): string {
+  return s.replace(/[\\%_]/g, (c) => `\\${c}`);
+}
+
+// LIKE pattern that matches every handle in a group: `%@<group>._group`, with the
+// fixed suffix escaped so `_` in names/`_group` is literal, not a wildcard.
+function groupHandlePattern(group: string): string {
+  return `%${likeEscape(groupHandleSuffix(group))}`;
+}
+
+// Strip the `@<group>._group` suffix off a group handle to get the member name.
+function handleToMemberName(handle: string, group: string): string {
+  const suffix = groupHandleSuffix(group);
+  return handle.endsWith(suffix) ? handle.slice(0, -suffix.length) : handle;
+}
 
 // Prepared statements (reused; bun:sqlite caches the compiled plan).
 const stmt = {
   insertGroup: db.query("INSERT OR IGNORE INTO groups (name, created_ts) VALUES (?, ?)"),
-  insertMember: db.query(
-    "INSERT OR REPLACE INTO members (group_name, handle, joined_ts, last_seen_ts) VALUES (?, ?, ?, ?)",
+  // handles — the single registry for "a name owned by an identity". A group
+  // handle is `<name>@<group>._group`; a registered alias is `<name>@<host>`.
+  insertHandle: db.query(
+    "INSERT INTO handles (handle, owner_session, created_ts) VALUES (?, ?, ?)",
   ),
-  deleteMember: db.query("DELETE FROM members WHERE group_name = ? AND handle = ?"),
-  touchMember: db.query("UPDATE members SET last_seen_ts = ? WHERE group_name = ? AND handle = ?"),
+  deleteHandle: db.query("DELETE FROM handles WHERE handle = ? AND owner_session = ?"),
+  selectHandleOwner: db.query("SELECT owner_session, created_ts FROM handles WHERE handle = ?"),
+  // every handle in a group, ordered by name; membership is DERIVED from this.
+  selectHandlesInGroup: db.query(
+    "SELECT handle, owner_session, created_ts FROM handles WHERE handle LIKE ? ESCAPE '\\' ORDER BY handle ASC",
+  ),
+  // the caller identity's handle in a group (it owns at most one).
+  selectMyHandleInGroup: db.query(
+    "SELECT handle, owner_session, created_ts FROM handles WHERE owner_session = ? AND handle LIKE ? ESCAPE '\\' LIMIT 1",
+  ),
+  // registered aliases (handles NOT ending in the group suffix) owned by a session.
+  // The `_` in `._group` is a LIKE wildcard, so the suffix is escaped and matched
+  // with `ESCAPE '\\'` — otherwise `'%._group'` would mean "ends `.<any-char>group`"
+  // and could mis-classify a host whose name happens to end that way.
+  selectAliasesForOwner: db.query(
+    "SELECT handle FROM handles WHERE owner_session = ? AND handle NOT LIKE '%.\\_group' ESCAPE '\\'",
+  ),
+  // whoami shows the owner ALL their handles — including group handles
+  // (`<name>@<group>._group`), which are identities/addresses too. (The
+  // `aliasesForSession` path above stays `@host`-only for the directory/register
+  // replies.)
+  selectAllHandlesForOwner: db.query("SELECT handle FROM handles WHERE owner_session = ?"),
+  selectAllAliases: db.query(
+    "SELECT handle, owner_session FROM handles WHERE handle NOT LIKE '%.\\_group' ESCAPE '\\'",
+  ),
   insertMessage: db.query(
     "INSERT INTO messages (group_name, seq, from_handle, ts, msg_id, text) VALUES (?, ?, ?, ?, ?, ?)",
   ),
   selectGroups: db.query("SELECT name FROM groups"),
-  selectMembers: db.query("SELECT group_name, handle, joined_ts, last_seen_ts FROM members"),
   selectMaxSeq: db.query("SELECT MAX(seq) AS m FROM messages WHERE group_name = ?"),
   selectWindow: db.query(
     "SELECT group_name, seq, from_handle, ts, msg_id, text FROM messages WHERE group_name = ? ORDER BY seq DESC LIMIT ?",
@@ -137,13 +248,6 @@ const stmt = {
   selectHistory: db.query(
     "SELECT group_name, seq, from_handle, ts, msg_id, text FROM messages WHERE group_name = ? ORDER BY seq ASC",
   ),
-  insertAlias: db.query(
-    "INSERT INTO aliases (name, host, owner_session_id, created_ts) VALUES (?, ?, ?, ?)",
-  ),
-  selectAlias: db.query("SELECT owner_session_id FROM aliases WHERE name = ? AND host = ?"),
-  deleteAlias: db.query("DELETE FROM aliases WHERE name = ? AND host = ? AND owner_session_id = ?"),
-  selectAliasesForOwner: db.query("SELECT name, host FROM aliases WHERE owner_session_id = ?"),
-  selectAllAliases: db.query("SELECT name, host, owner_session_id FROM aliases"),
   insertDm: db.query(
     "INSERT INTO dms (lo_session, hi_session, seq, from_session, from_alias, to_session, to_alias, ts, msg_id, text, state) " +
       "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
@@ -175,6 +279,22 @@ const stmt = {
   // directory's session universe is alias owners + dm participants + live conns.
   selectDmSessions: db.query(
     "SELECT from_session AS s FROM dms UNION SELECT to_session AS s FROM dms",
+  ),
+  // adapter→session lease (migration v2 / protocol v5 reconnect). UPSERT on bind,
+  // SELECT on hello to re-bind a reconnecting adapter's sessions, DELETE on
+  // resume-supersede.
+  upsertAdapterSession: db.query(
+    "INSERT OR IGNORE INTO adapter_sessions (adapter_id, session_id) VALUES (?, ?)",
+  ),
+  selectAdapterSessions: db.query(
+    // ORDER BY for a deterministic re-bind order. Under normal operation there is
+    // at most ONE row per adapter_id (resume-supersede deletes the prior session's
+    // row on every /resume), so this is a singleton in practice; the ordering only
+    // matters as defensive determinism should that invariant ever break.
+    "SELECT session_id FROM adapter_sessions WHERE adapter_id = ? ORDER BY session_id ASC",
+  ),
+  deleteAdapterSession: db.query(
+    "DELETE FROM adapter_sessions WHERE adapter_id = ? AND session_id = ?",
   ),
 };
 
@@ -237,34 +357,44 @@ const assignAndInsertDm = db.transaction(
 interface Connection {
   id: string;
   authed: boolean;
+  // The per-process relay id this socket presented (or was minted) at `hello`.
+  // The durable `adapter_sessions` lease is keyed by it: bindSession writes the
+  // (adapterId, session) row, and the hello handler re-binds the leased sessions
+  // for a reconnecting adapter. Set at hello; "" until then.
+  adapterId: string;
   // One adapter socket can serve several Claude SESSIONS (e.g. /resume into a
   // different session over the same adapter). `sessions` is every session id the
   // adapter has asserted on this socket; `sessionId` is the one asserted on the
   // current frame (the account whose identity/DM op we're serving right now).
   sessions: Set<string>;
   sessionId: string | null;
+  // The ACTIVE session last established by `bindSession` (the instance's current
+  // identity — what a /resume changes). Distinct from `sessionId`, which is the
+  // per-FRAME account (and which attribution-only frames like dm_ack/dm_read may
+  // transiently set to a DIFFERENT session). The resume-supersede compares a new
+  // active bind against THIS, so a DM receipt can't masquerade as a resume and
+  // tear down the live session. Null until the first bind. See
+  // docs/group-chat-adapter-reconnect.md.
+  boundSession: string | null;
   host: string; // the device hostname the adapter reported at hello
-  // groups this connection is joined to, keyed by group name -> the SET of member
-  // names it joined as. One adapter socket can serve several Claude sessions, so
-  // it can hold several handles in the SAME group; the per-message `as` selects.
+  // groups this connection is joined to, keyed by group name -> the member names
+  // it joined as on THIS socket. Kept ONLY to attribute spontaneous `ack`/`read`
+  // frames (which carry no identity) back to the right member — NOT for `as`
+  // selection (that's gone in v4: an identity owns at most one handle per group,
+  // and the hub resolves it). It's a Set because one socket can serve several
+  // sessions over its lifetime, each contributing its own member name per group.
   joinedAs: Map<string, Set<string>>;
   send(frame: ServerFrame): void;
 }
 
-interface Member {
-  name: string;
-  conn: Connection | null; // null => not currently attached (still a member)
-  joined_ts: string;
-  last_seen_ts: string;
-  // last seq this member confirmed receiving. In-memory only (resets to head on
-  // restart): group delivery is online-only, no durable group cursor.
-  delivered: number;
-}
-
 interface Group {
   name: string;
-  members: Map<string, Member>; // by member name
   window: ChatMessage[]; // recent messages kept in memory for gap re-send
+  // last group seq each MEMBER NAME has confirmed receiving, for the brief-
+  // reconnect gap-resend. In-memory only (reset to head on restart): group
+  // delivery is online-only, no durable group cursor. Keyed by member name (the
+  // handle's local part), which a session maps to via its one handle in the group.
+  delivered: Map<string, number>;
 }
 
 const groups = new Map<string, Group>();
@@ -277,77 +407,93 @@ const sessionConns = new Map<string, Set<Connection>>();
 const sessionHost = new Map<string, string>();
 
 // ---- PreToolUse session correlation ---------------------------------------
-// `tool_use_id -> session_id`, populated by the PreToolUse hook's `map_session`
-// frame (its own transient connection). An account-bound adapter frame carries
-// the bare `tool_use_id`; the hub resolves the real session from this map and
-// binds the account exactly as a directly-asserted `session` would. Entries are
-// pruned by TTL (a tool_use_id is short-lived — a single call's frames).
-interface MapEntry {
-  session_id: string;
-  ts: number;
+// `tool_use_id -> SessionSlot`, the rendezvous between the PreToolUse hook (which
+// authoritatively reports `(tool_use_id, session_id)` on its own transient
+// connection) and the adapter's account-bound frame (which carries the bare
+// `tool_use_id`). Either party may arrive first, so a slot is a single
+// CompletableDeferred per tool_use_id: whoever arrives first creates it, the other
+// awaits/reads it. `value` is the session id once known (used for synchronous
+// reads + TTL pruning); `promise` is what a frame awaits when it raced ahead of
+// the registration. `complete(sid)` is idempotent and fired by the hook (real sid)
+// or by the slot's own timeout (null = give up). One object replaces the former
+// resolved-map + waiter-array pair.
+interface SessionSlot {
+  value: string | null; // resolved session id; null while pending or after timeout
+  ts: number; // creation/refresh time, for TTL pruning
+  promise: Promise<string | null>;
+  complete(sid: string | null): void; // idempotent; resolves promise + sets value
 }
-const toolSessionMap = new Map<string, MapEntry>();
-// `tool_use_id -> waiters` for frames that arrived BEFORE the registration. The
-// `map_session` handler resolves every waiter; a per-waiter timer honest-errors
-// (or proceeds without a session) on timeout. Several frames of one call may wait.
-const pendingSessionWaiters = new Map<string, Array<(sid: string | null) => void>>();
+const sessionSlots = new Map<string, SessionSlot>();
 
-// Drop expired entries (and a hard size backstop). Called opportunistically on
-// each registration — no background timer needed.
-function pruneToolSessionMap(): void {
+// Drop expired slots (and a hard size backstop). Called opportunistically on each
+// registration — no background timer needed.
+function pruneSessionSlots(): void {
   const cutoff = Date.now() - SESSION_MAP_TTL_MS;
-  for (const [id, e] of toolSessionMap) {
-    if (e.ts < cutoff) toolSessionMap.delete(id);
+  for (const [id, s] of sessionSlots) {
+    if (s.ts < cutoff) sessionSlots.delete(id);
   }
-  if (toolSessionMap.size > SESSION_MAP_MAX) {
+  if (sessionSlots.size > SESSION_MAP_MAX) {
     // oldest-first eviction (Map preserves insertion order; re-set on refresh).
-    const over = toolSessionMap.size - SESSION_MAP_MAX;
+    const over = sessionSlots.size - SESSION_MAP_MAX;
     let i = 0;
-    for (const id of toolSessionMap.keys()) {
+    for (const id of sessionSlots.keys()) {
       if (i++ >= over) break;
-      toolSessionMap.delete(id);
+      sessionSlots.delete(id);
     }
   }
 }
 
-// Register a resolved mapping and wake any waiting frames for that tool_use_id.
-function registerSessionMapping(toolUseId: string, sessionId: string): void {
-  toolSessionMap.set(toolUseId, { session_id: sessionId, ts: Date.now() });
-  pruneToolSessionMap();
-  const waiters = pendingSessionWaiters.get(toolUseId);
-  if (waiters) {
-    pendingSessionWaiters.delete(toolUseId);
-    for (const w of waiters) w(sessionId);
-  }
+// Create a pending slot: a CompletableDeferred with a built-in liveness timeout.
+// `complete` is idempotent and clears the timer; if nothing completes it within
+// SESSION_MAP_WAIT_MS it self-completes with null (the hook never arrived). The
+// timeout lives INSIDE the slot — callers just await `slot.promise`.
+function newPendingSlot(): SessionSlot {
+  let resolveFn: (sid: string | null) => void;
+  const slot: SessionSlot = {
+    value: null,
+    ts: Date.now(),
+    promise: new Promise<string | null>((res) => {
+      resolveFn = res;
+    }),
+    complete(sid) {
+      if (this.value !== null) return; // already completed (idempotent)
+      this.value = sid;
+      clearTimeout(timer);
+      resolveFn(sid);
+    },
+  };
+  const timer = setTimeout(() => slot.complete(null), SESSION_MAP_WAIT_MS);
+  return slot;
 }
 
-// Resolve a tool_use_id to its session id. Returns immediately if already mapped;
-// otherwise awaits the `map_session` registration up to SESSION_MAP_WAIT_MS,
-// resolving null on timeout (callers decide: identity/DM error, group proceed).
+// The hook reports a real session for a tool_use_id. If a frame already raced
+// ahead and parked a pending slot, complete it (waking the awaiting frame);
+// otherwise pre-create a resolved slot so a frame arriving LATER reads it
+// synchronously. Refresh `ts` so the TTL window starts at registration.
+function registerSessionMapping(toolUseId: string, sessionId: string): void {
+  const existing = sessionSlots.get(toolUseId);
+  if (existing) {
+    existing.ts = Date.now();
+    existing.complete(sessionId);
+  } else {
+    sessionSlots.set(toolUseId, {
+      value: sessionId,
+      ts: Date.now(),
+      promise: Promise.resolve(sessionId),
+      complete() {}, // already resolved; nothing to wake
+    });
+  }
+  pruneSessionSlots();
+}
+
+// Resolve a tool_use_id to its session id. Returns the resolved value immediately
+// if the hook already registered it; otherwise parks a pending slot and awaits it
+// up to SESSION_MAP_WAIT_MS, resolving null on timeout (callers decide: identity/
+// DM error, group proceed).
 function resolveToolSession(toolUseId: string): Promise<string | null> {
-  const e = toolSessionMap.get(toolUseId);
-  if (e) return Promise.resolve(e.session_id);
-  return new Promise<string | null>((resolve) => {
-    let settled = false;
-    const settle = (sid: string | null) => {
-      if (settled) return;
-      settled = true;
-      clearTimeout(timer);
-      resolve(sid);
-    };
-    let arr = pendingSessionWaiters.get(toolUseId);
-    if (!arr) pendingSessionWaiters.set(toolUseId, (arr = []));
-    arr.push(settle);
-    const timer = setTimeout(() => {
-      const list = pendingSessionWaiters.get(toolUseId);
-      if (list) {
-        const i = list.indexOf(settle);
-        if (i >= 0) list.splice(i, 1);
-        if (list.length === 0) pendingSessionWaiters.delete(toolUseId);
-      }
-      settle(null);
-    }, SESSION_MAP_WAIT_MS);
-  });
+  let slot = sessionSlots.get(toolUseId);
+  if (!slot) sessionSlots.set(toolUseId, (slot = newPendingSlot()));
+  return slot.promise;
 }
 
 // Pending GROUP read-receipt collectors, keyed `${group}#${seq}`.
@@ -372,7 +518,8 @@ function nowIso(): string {
 }
 
 // ---------------------------------------------------------------------------
-// Startup recovery: rebuild groups + members + per-group seq/window from SQLite.
+// Startup recovery: rebuild groups + per-group seq/window from SQLite. Membership
+// is NOT rebuilt — it's derived on demand from the durable `handles` table.
 
 function recoverGroups(): void {
   for (const row of stmt.selectGroups.all() as { name: string }[]) {
@@ -384,28 +531,13 @@ function recoverGroups(): void {
       .reverse();
     groups.set(name, {
       name,
-      members: new Map(),
       window: recent,
+      delivered: new Map(),
     });
   }
-  // reload durable rosters: members return DETACHED (conn=null), delivered reset
-  // to head (no-backfill across restart).
-  for (const r of stmt.selectMembers.all() as {
-    group_name: string;
-    handle: string;
-    joined_ts: string;
-    last_seen_ts: string;
-  }[]) {
-    const g = groups.get(r.group_name);
-    if (!g || !MEMBER_NAME_RE.test(r.handle)) continue;
-    g.members.set(r.handle, {
-      name: r.handle,
-      conn: null,
-      joined_ts: r.joined_ts,
-      last_seen_ts: r.last_seen_ts,
-      delivered: groupHead(r.group_name),
-    });
-  }
+  // Membership is DERIVED from the durable `handles` table — nothing to reload
+  // into memory. `delivered` cursors are intentionally empty after restart (group
+  // push is online-only; the gap window is in-memory).
 }
 
 interface MsgRow {
@@ -457,26 +589,77 @@ function rowToDm(r: DmRow): DirectMessage {
 function getOrCreateGroup(name: string): Group {
   let g = groups.get(name);
   if (!g) {
-    g = { name, members: new Map(), window: [] };
+    g = { name, window: [], delivered: new Map() };
     groups.set(name, g);
     stmt.insertGroup.run(name, nowIso());
   }
   return g;
 }
 
-function memberInfo(m: Member): MemberInfo {
+// A derived group member: a `<name>@<group>._group` handle row. `owner` is the
+// identity that holds it; `online` is whether that identity has a live connection.
+interface GroupMember {
+  name: string;
+  handle: string;
+  owner: string;
+  created_ts: string;
+}
+
+interface HandleRow {
+  handle: string;
+  owner_session: string;
+  created_ts: string;
+}
+
+// Membership derived from the handle table: every `<name>@<group>._group` handle.
+function membersOf(group: string): GroupMember[] {
+  const rows = stmt.selectHandlesInGroup.all(groupHandlePattern(group)) as HandleRow[];
+  return rows.map((r) => ({
+    name: handleToMemberName(r.handle, group),
+    handle: r.handle,
+    owner: r.owner_session,
+    created_ts: r.created_ts,
+  }));
+}
+
+// The caller identity's handle in a group (at most one — one identity per group).
+// Returns the member-name part, or null if the identity is not a member.
+function myMemberName(sessionId: string, group: string): string | null {
+  const row = stmt.selectMyHandleInGroup.get(sessionId, groupHandlePattern(group)) as
+    | HandleRow
+    | null;
+  return row ? handleToMemberName(row.handle, group) : null;
+}
+
+// The member names this connection currently participates as in a group — used to
+// attribute spontaneous `ack`/`read` frames (which carry no identity) back to the
+// right member. Populated by `join` on this conn; falls back to deriving from the
+// conn's bound sessions if the live record is empty (e.g. after a reconnect that
+// re-bound the session before an explicit re-join).
+function connMemberNames(conn: Connection, group: string): Set<string> {
+  const live = conn.joinedAs.get(group);
+  if (live && live.size > 0) return live;
+  const out = new Set<string>();
+  for (const sid of conn.sessions) {
+    const name = myMemberName(sid, group);
+    if (name !== null) out.add(name);
+  }
+  return out;
+}
+
+function memberInfo(m: GroupMember): MemberInfo {
   return {
     name: m.name,
-    attached: m.conn !== null,
-    joined_ts: m.joined_ts,
-    last_seen_ts: m.last_seen_ts,
+    attached: isOnline(m.owner),
+    joined_ts: m.created_ts,
+    last_seen_ts: m.created_ts,
   };
 }
 
 // ---------------------------------------------------------------------------
 // Group broadcast (online-only push + durable log). `to` restricts the live
-// PUSH (not the log) to the named group handles; everyone else still gets the
-// message in history.
+// PUSH (not the log) to the named group member handles; everyone else still gets
+// the message in history.
 
 function broadcast(
   group: Group,
@@ -501,30 +684,39 @@ function broadcast(
   group.window.push(msg);
   if (group.window.length > WINDOW) group.window.shift();
   // 3) fan out to every online member EXCEPT the sender, and — when `to` is set
-  //    — only to handles named in `to`.
+  //    — only to member names listed in `to`. "Online" = the member's OWNING
+  //    identity has a live connection (sessionConns); we push to each such conn.
   const filter = to ? new Set(to) : null;
   const recipients: string[] = [];
-  for (const m of group.members.values()) {
+  for (const m of membersOf(group.name)) {
     if (m.name === from) {
-      if (seq > m.delivered) m.delivered = seq;
+      if (seq > (group.delivered.get(m.name) ?? 0)) group.delivered.set(m.name, seq);
       continue;
     }
     if (filter && !filter.has(m.name)) continue; // push-filtered out (still logged)
-    if (m.conn) {
-      m.conn.send({ t: "message", msg });
-      recipients.push(m.name);
-      if (seq > m.delivered) m.delivered = seq;
-    }
+    const conns = liveConnsFor(m.owner);
+    if (conns.length === 0) continue; // offline member: logged, not pushed
+    for (const c of conns) c.send({ t: "message", msg });
+    recipients.push(m.name);
+    if (seq > (group.delivered.get(m.name) ?? 0)) group.delivered.set(m.name, seq);
   }
   return { msg, recipients };
 }
 
-function resendGap(member: Member, group: Group): void {
+// Re-send the brief-reconnect gap to a returning member: every windowed message
+// past the member's in-memory delivered cursor, to that identity's live conns.
+function resendGap(memberName: string, owner: string, group: Group): void {
+  const delivered = group.delivered.get(memberName) ?? 0;
+  const conns = liveConnsFor(owner);
+  if (conns.length === 0) return;
+  let last = delivered;
   for (const msg of group.window) {
-    if (msg.seq > member.delivered && member.conn) {
-      member.conn.send({ t: "message", msg });
+    if (msg.seq > delivered) {
+      for (const c of conns) c.send({ t: "message", msg });
+      if (msg.seq > last) last = msg.seq;
     }
   }
+  if (last > delivered) group.delivered.set(memberName, last);
 }
 
 function err(conn: Connection, code: string, message: string, rid?: string): void {
@@ -551,20 +743,22 @@ function liveConnsFor(sessionId: string): Connection[] {
 }
 
 // Every alias (host-qualified form) owned by a session, including its implicit
-// default alias <session-id>@<host>.
+// default alias <session-id>@<host>. Registered aliases are handles NOT ending in
+// the group suffix (the @host ones); they are already full strings.
 function aliasesForSession(sessionId: string, host: string | undefined): string[] {
   const out: string[] = [];
   if (host) out.push(`${sessionId}@${host}`);
-  for (const r of stmt.selectAliasesForOwner.all(sessionId) as { name: string; host: string }[]) {
-    out.push(`${r.name}@${r.host}`);
+  for (const r of stmt.selectAliasesForOwner.all(sessionId) as { handle: string }[]) {
+    out.push(r.handle);
   }
   return out;
 }
 
-// Resolve an address to a session id. Three forms:
-//   <session-id>@<host>          default alias (the session itself)
-//   <name>@<host>                registered alias (looked up by owner)
-//   <handle>@<group>._group      group-derived (live roster lookup)
+// Resolve an address to a session id. Three forms, all now a single handle table:
+//   <session-id>@<host>          default alias (the session itself, implicit)
+//   <name>@<host>                registered alias (handle row)
+//   <handle>@<group>._group      group handle (handle row) — DURABLE, independent
+//                                of connection/attachment.
 // Returns null if it doesn't resolve to a known session.
 function resolveAddress(address: string): string | null {
   const at = address.lastIndexOf("@");
@@ -573,14 +767,11 @@ function resolveAddress(address: string): string | null {
   const domain = address.slice(at + 1);
   if (!local || !domain) return null;
 
-  // group-derived: <handle>@<group>._group
+  // group handle: <handle>@<group>._group — a pure durable handle-row lookup. The
+  // owning identity resolves whether or not it is currently attached.
   if (domain.endsWith(GROUP_SUFFIX)) {
-    const groupName = domain.slice(0, -GROUP_SUFFIX.length);
-    const g = groups.get(groupName);
-    if (!g) return null;
-    const m = g.members.get(local);
-    if (!m || !m.conn) return null; // must be a CURRENT, attached member to resolve to a session
-    return m.conn.sessionId;
+    const row = stmt.selectHandleOwner.get(address) as HandleRow | null;
+    return row ? row.owner_session : null;
   }
 
   // default alias: local part contains a dash => it's a session id shape. We
@@ -591,14 +782,17 @@ function resolveAddress(address: string): string | null {
     return null;
   }
 
-  // registered alias: <name>@<host>
-  const row = stmt.selectAlias.get(local, domain) as { owner_session_id: string } | null;
-  return row ? row.owner_session_id : null;
+  // registered alias: <name>@<host> — the same handle table.
+  const row = stmt.selectHandleOwner.get(address) as HandleRow | null;
+  return row ? row.owner_session : null;
 }
 
 // Has this session id left any durable trace (owns an alias, or participated in
 // a DM)? Lets a default-alias address resolve for a session that's offline but
-// known.
+// known. NOTE: a group handle is deliberately NOT a trace here — a group member
+// is addressed via its durable `<name>@<group>._group` handle (resolved directly
+// in resolveAddress), not via its session-id default alias, so a session whose
+// only durable artifact is a group handle need not be reachable by default alias.
 function hasAnyTrace(sessionId: string): boolean {
   const a = stmt.selectAliasesForOwner.all(sessionId) as unknown[];
   if (a.length > 0) return true;
@@ -691,7 +885,26 @@ function handleFrame(conn: Connection, frame: ClientEnvelope): void {
     }
     conn.authed = true;
     conn.host = typeof frame.host === "string" && frame.host ? frame.host : "unknown";
-    conn.send({ t: "welcome", protocol: PROTOCOL_VERSION });
+    // Mint-or-reuse the per-process relay id. A reconnecting adapter echoes the
+    // id the hub gave it; a brand-new one sends none and gets a fresh UUID. We
+    // trust the presented id verbatim (the token already authed the socket) —
+    // an unknown id simply has no lease rows, so it re-binds nothing.
+    conn.adapterId =
+      typeof frame.adapter_id === "string" && frame.adapter_id ? frame.adapter_id : randomUUID();
+    conn.send({ t: "welcome", protocol: PROTOCOL_VERSION, adapter_id: conn.adapterId });
+    // Re-bind every session this adapter was serving (the durable lease). This is
+    // what restores `sessionConns` after a reconnect or hub restart with NO tool
+    // call: each bindSession re-registers the live route and flushes the session's
+    // queued DMs. A first-connect adapter has no lease rows, so this is a no-op.
+    //
+    // INVARIANT: at most ONE lease row per adapter_id (resume-supersede deletes the
+    // prior session on every /resume). So this loop binds exactly one session and
+    // never triggers the supersede inside bindSession (conn.boundSession is null on
+    // entry). Were two rows ever to coexist (the invariant broken), the second bind
+    // would supersede the first — destroying its lease — so the singleton invariant
+    // is load-bearing, not incidental.
+    const leased = stmt.selectAdapterSessions.all(conn.adapterId) as { session_id: string }[];
+    for (const { session_id } of leased) bindSession(conn, session_id);
     return;
   }
 
@@ -725,21 +938,18 @@ function handleFrame(conn: Connection, frame: ClientEnvelope): void {
 
     case "ack": {
       const g = groups.get(frame.group);
-      const handles = conn.joinedAs.get(frame.group);
-      if (g && handles) {
-        for (const as of handles) {
-          const m = g.members.get(as);
-          if (m && m.conn === conn && frame.seq > m.delivered) m.delivered = frame.seq;
+      if (g) {
+        for (const as of connMemberNames(conn, frame.group)) {
+          if (frame.seq > (g.delivered.get(as) ?? 0)) g.delivered.set(as, frame.seq);
         }
       }
       return;
     }
 
     case "read": {
-      const handles = conn.joinedAs.get(frame.group);
       const col = pendingReads.get(`${frame.group}#${frame.seq}`);
-      if (col && handles) {
-        for (const as of handles) {
+      if (col) {
+        for (const as of connMemberNames(conn, frame.group)) {
           if (col.awaiting.has(as)) {
             col.awaiting.delete(as);
             col.read.add(as);
@@ -753,7 +963,7 @@ function handleFrame(conn: Connection, frame: ClientEnvelope): void {
     case "list_groups": {
       const list = [...groups.values()].map((g) => ({
         name: g.name,
-        members: g.members.size,
+        members: membersOf(g.name).length,
       }));
       conn.send({ t: "groups", rid, groups: list });
       return;
@@ -778,70 +988,69 @@ function handleFrame(conn: Connection, frame: ClientEnvelope): void {
         err(conn, "bad_member_name", "name must match [A-Za-z0-9_-]{1,64}", rid);
         return;
       }
+      // Group membership is an identity-owned handle; joining REQUIRES a resolved
+      // identity. The handle `<as>@<group>._group` is owned by the caller.
+      const sid = requireSession(conn, rid);
+      if (!sid) return;
       const g = getOrCreateGroup(frame.group);
-      const existing = g.members.get(frame.as);
-      if (existing && existing.conn !== null && existing.conn !== conn) {
-        err(conn, "name_taken", `'${frame.as}' is already attached in '${frame.group}'`, rid);
+      const handle = `${frame.as}${groupHandleSuffix(frame.group)}`;
+      const existing = stmt.selectHandleOwner.get(handle) as HandleRow | null;
+      if (existing && existing.owner_session !== sid) {
+        // A DIFFERENT identity holds this handle — genuine collision.
+        err(conn, "handle_taken", `'${frame.as}' is already taken in '${frame.group}'`, rid);
         return;
       }
-      const isReturning = existing !== undefined;
-      const member: Member = existing ?? {
-        name: frame.as,
-        conn,
-        joined_ts: nowIso(),
-        last_seen_ts: nowIso(),
-        delivered: groupHead(frame.group),
-      };
-      member.conn = conn;
-      member.last_seen_ts = nowIso();
-      g.members.set(frame.as, member);
-      let handles = conn.joinedAs.get(frame.group);
-      if (!handles) conn.joinedAs.set(frame.group, (handles = new Set()));
-      handles.add(frame.as);
+      const isReturning = existing !== null; // same owner re-registering -> idempotent
       if (!isReturning) {
-        stmt.insertMember.run(frame.group, frame.as, member.joined_ts, member.last_seen_ts);
-      } else {
-        stmt.touchMember.run(member.last_seen_ts, frame.group, frame.as);
+        stmt.insertHandle.run(handle, sid, nowIso());
+        // Seed the gap cursor at head: a brand-new member gets NO backfill.
+        if (!g.delivered.has(frame.as)) g.delivered.set(frame.as, groupHead(frame.group));
       }
+      // Record the live routing handle for ack/read attribution on this conn.
+      let names = conn.joinedAs.get(frame.group);
+      if (!names) conn.joinedAs.set(frame.group, (names = new Set()));
+      names.add(frame.as);
       conn.send({ t: "joined", rid, group: frame.group, as: frame.as });
-      if (isReturning) resendGap(member, g);
+      // Returning identity: re-send the brief-reconnect gap to its live conns. If
+      // the hub has no in-memory cursor for this member (a member durable from
+      // before a hub RESTART), seed at head first so the restart causes NO
+      // backfill (group push is online-only; only the live in-memory gap replays).
+      if (isReturning) {
+        if (!g.delivered.has(frame.as)) g.delivered.set(frame.as, groupHead(frame.group));
+        resendGap(frame.as, sid, g);
+      }
       return;
     }
 
     case "leave": {
+      // Drop the caller identity's handle in the group (at most one — unambiguous,
+      // no `as` needed). Requires a resolved identity.
+      const sid = requireSession(conn, rid);
+      if (!sid) return;
       const g = groups.get(frame.group);
-      const handles = conn.joinedAs.get(frame.group);
-      const as =
-        frame.as !== undefined
-          ? handles?.has(frame.as)
-            ? frame.as
-            : undefined
-          : handles && handles.size === 1
-            ? [...handles][0]
-            : undefined;
-      if (g && as) {
-        g.members.delete(as);
-        handles!.delete(as);
-        if (handles!.size === 0) conn.joinedAs.delete(frame.group);
-        stmt.deleteMember.run(frame.group, as);
+      const name = myMemberName(sid, frame.group);
+      if (name !== null) {
+        stmt.deleteHandle.run(`${name}${groupHandleSuffix(frame.group)}`, sid);
+        const names = conn.joinedAs.get(frame.group);
+        if (names) {
+          names.delete(name);
+          if (names.size === 0) conn.joinedAs.delete(frame.group);
+        }
+        if (g) g.delivered.delete(name);
       }
       conn.send({ t: "left", rid, group: frame.group });
       return;
     }
 
     case "send": {
+      // The hub resolves the sender's handle from the caller's identity — no `as`
+      // on the wire. Sending REQUIRES being a member (owning a group handle).
+      const sid = requireSession(conn, rid);
+      if (!sid) return;
       const g = groups.get(frame.group);
-      const handles = conn.joinedAs.get(frame.group);
-      const as =
-        frame.as !== undefined
-          ? handles?.has(frame.as)
-            ? frame.as
-            : undefined
-          : handles && handles.size === 1
-            ? [...handles][0]
-            : undefined;
-      if (!g || !as) {
-        err(conn, "not_in_group", `join '${frame.group}' as the right handle before sending`, rid);
+      const as = g ? myMemberName(sid, frame.group) : null;
+      if (!g || as === null) {
+        err(conn, "not_in_group", `join '${frame.group}' first before sending`, rid);
         return;
       }
       // `to` push-filter: entries must be CURRENT members of this group. If ANY
@@ -849,21 +1058,20 @@ function handleFrame(conn: Connection, frame: ClientEnvelope): void {
       // send. The message is otherwise logged for everyone; `to` filters the
       // push only.
       let toFilter: string[] | undefined;
+      const memberNames = new Set(membersOf(g.name).map((x) => x.name));
       if (frame.to !== undefined) {
         if (!Array.isArray(frame.to)) {
-          err(conn, "to_non_member", "`to` must be an array of group handles", rid);
+          err(conn, "to_non_member", "`to` must be an array of member names", rid);
           return;
         }
         for (const name of frame.to) {
-          if (!g.members.has(name)) {
+          if (!memberNames.has(name)) {
             err(conn, "to_non_member", `'${name}' is not a member of '${frame.group}'`, rid);
             return;
           }
         }
         toFilter = frame.to;
       }
-      const m = g.members.get(as);
-      if (m) m.last_seen_ts = nowIso();
       const { msg, recipients } = broadcast(g, as, frame.message, toFilter);
 
       const key = `${g.name}#${msg.seq}`;
@@ -874,7 +1082,7 @@ function handleFrame(conn: Connection, frame: ClientEnvelope): void {
       const others = () => {
         const base = toFilter
           ? toFilter.filter((n) => n !== as)
-          : [...g.members.values()].map((x) => x.name).filter((n) => n !== as);
+          : [...memberNames].filter((n) => n !== as);
         return base;
       };
 
@@ -915,7 +1123,7 @@ function handleFrame(conn: Connection, frame: ClientEnvelope): void {
         t: "members",
         rid,
         group: frame.group,
-        members: [...g.members.values()].map(memberInfo),
+        members: membersOf(frame.group).map(memberInfo),
       });
       return;
     }
@@ -926,7 +1134,7 @@ function handleFrame(conn: Connection, frame: ClientEnvelope): void {
         err(conn, "no_such_group", `no group '${frame.group}'`, rid);
         return;
       }
-      const m = g.members.get(frame.member);
+      const m = membersOf(frame.group).find((x) => x.name === frame.member);
       conn.send({
         t: "member",
         rid,
@@ -960,19 +1168,19 @@ function handleFrame(conn: Connection, frame: ClientEnvelope): void {
         err(conn, "bad_alias_name", "alias must match [A-Za-z0-9_]{1,64} (no dashes)", rid);
         return;
       }
-      const existing = stmt.selectAlias.get(frame.name, conn.host) as
-        | { owner_session_id: string }
-        | null;
+      // An alias is a handle `<name>@<host>`. First-holder-wins on the handle table.
+      const aliasHandle = `${frame.name}@${conn.host}`;
+      const existing = stmt.selectHandleOwner.get(aliasHandle) as HandleRow | null;
       if (existing) {
-        if (existing.owner_session_id === sid) {
+        if (existing.owner_session === sid) {
           // idempotent: re-registering your own alias succeeds.
           conn.send({ t: "aliases", rid, aliases: aliasesForSession(sid, conn.host) });
           return;
         }
-        err(conn, "alias_taken", `'${frame.name}@${conn.host}' is owned by another session`, rid);
+        err(conn, "alias_taken", `'${aliasHandle}' is owned by another session`, rid);
         return;
       }
-      stmt.insertAlias.run(frame.name, conn.host, sid, nowIso());
+      stmt.insertHandle.run(aliasHandle, sid, nowIso());
       conn.send({ t: "aliases", rid, aliases: aliasesForSession(sid, conn.host) });
       return;
     }
@@ -980,18 +1188,17 @@ function handleFrame(conn: Connection, frame: ClientEnvelope): void {
     case "release_alias": {
       const sid = requireSession(conn, rid);
       if (!sid) return;
-      const existing = stmt.selectAlias.get(frame.name, conn.host) as
-        | { owner_session_id: string }
-        | null;
+      const aliasHandle = `${frame.name}@${conn.host}`;
+      const existing = stmt.selectHandleOwner.get(aliasHandle) as HandleRow | null;
       if (!existing) {
-        err(conn, "no_such_address", `no alias '${frame.name}@${conn.host}'`, rid);
+        err(conn, "no_such_address", `no alias '${aliasHandle}'`, rid);
         return;
       }
-      if (existing.owner_session_id !== sid) {
-        err(conn, "not_alias_owner", `you do not own '${frame.name}@${conn.host}'`, rid);
+      if (existing.owner_session !== sid) {
+        err(conn, "not_alias_owner", `you do not own '${aliasHandle}'`, rid);
         return;
       }
-      stmt.deleteAlias.run(frame.name, conn.host, sid);
+      stmt.deleteHandle.run(aliasHandle, sid);
       conn.send({ t: "aliases", rid, aliases: aliasesForSession(sid, conn.host) });
       return;
     }
@@ -1006,13 +1213,15 @@ function handleFrame(conn: Connection, frame: ClientEnvelope): void {
     case "whoami": {
       const sid = requireSession(conn, rid);
       if (!sid) return;
-      conn.send({
-        t: "whoami",
-        rid,
-        session_id: sid,
-        host: conn.host,
-        aliases: aliasesForSession(sid, conn.host),
-      });
+      // ALL of this session's addresses, merged: the implicit default alias plus
+      // every owned handle — registered `<name>@<host>` AND group
+      // `<name>@<group>._group` (group handles are addresses too).
+      const aliases: string[] = [];
+      if (conn.host) aliases.push(`${sid}@${conn.host}`);
+      for (const r of stmt.selectAllHandlesForOwner.all(sid) as { handle: string }[]) {
+        aliases.push(r.handle);
+      }
+      conn.send({ t: "whoami", rid, session_id: sid, host: conn.host, aliases });
       return;
     }
 
@@ -1138,27 +1347,33 @@ function requireSession(conn: Connection, rid?: string): string | null {
   return conn.sessionId;
 }
 
+// The host part of a registered-alias handle `<name>@<host>` (last @ segment).
+function aliasHost(handle: string): string {
+  const at = handle.lastIndexOf("@");
+  return at >= 0 ? handle.slice(at + 1) : "";
+}
+
 // The alias the sender presents on an outgoing DM: its first registered alias on
 // this host if any, else its default alias.
 function senderAlias(sessionId: string, host: string): string {
-  const regs = stmt.selectAliasesForOwner.all(sessionId) as { name: string; host: string }[];
-  const onHost = regs.find((r) => r.host === host);
-  if (onHost) return `${onHost.name}@${onHost.host}`;
+  const regs = stmt.selectAliasesForOwner.all(sessionId) as { handle: string }[];
+  const onHost = regs.find((r) => aliasHost(r.handle) === host);
+  if (onHost) return onHost.handle;
   return `${sessionId}@${host}`;
 }
 
 // Build the directory: every known session (alias owners + DM participants +
 // live connections), with its aliases, group memberships, and online flag.
+// Group membership is DERIVED from the durable handle table — a session is in a
+// group iff it owns a `@<group>._group` handle (independent of attachment).
 function buildDirectory(): DirectoryEntry[] {
   const sessions = new Map<string, { host: string }>();
-  // alias owners
-  for (const r of stmt.selectAllAliases.all() as {
-    name: string;
-    host: string;
-    owner_session_id: string;
-  }[]) {
-    if (!sessions.has(r.owner_session_id)) {
-      sessions.set(r.owner_session_id, { host: sessionHost.get(r.owner_session_id) ?? r.host });
+  // alias owners (registered aliases on the handle table)
+  for (const r of stmt.selectAllAliases.all() as { handle: string; owner_session: string }[]) {
+    if (!sessions.has(r.owner_session)) {
+      sessions.set(r.owner_session, {
+        host: sessionHost.get(r.owner_session) ?? aliasHost(r.handle),
+      });
     }
   }
   // DM participants
@@ -1170,24 +1385,24 @@ function buildDirectory(): DirectoryEntry[] {
     if (!sessions.has(sid)) sessions.set(sid, { host: sessionHost.get(sid) ?? "unknown" });
   }
 
-  // group memberships per session: only ATTACHED handles map to a session id
-  // (membership stores handles, not session ids — a session is mapped to a group
-  // only while a live conn binds the handle).
+  // group memberships per session, derived from group handles (durable). Also
+  // ensures any session owning ONLY a group handle appears in the directory.
   const groupsForSession = new Map<string, Set<string>>();
   for (const g of groups.values()) {
-    for (const m of g.members.values()) {
-      const sid = m.conn?.sessionId;
-      if (!sid) continue;
-      let set = groupsForSession.get(sid);
-      if (!set) groupsForSession.set(sid, (set = new Set()));
+    for (const m of membersOf(g.name)) {
+      if (!sessions.has(m.owner)) {
+        sessions.set(m.owner, { host: sessionHost.get(m.owner) ?? "unknown" });
+      }
+      let set = groupsForSession.get(m.owner);
+      if (!set) groupsForSession.set(m.owner, (set = new Set()));
       set.add(g.name);
     }
   }
 
   const out: DirectoryEntry[] = [];
   for (const [sid, info] of sessions) {
-    const aliases = (stmt.selectAliasesForOwner.all(sid) as { name: string; host: string }[]).map(
-      (r) => `${r.name}@${r.host}`,
+    const aliases = (stmt.selectAliasesForOwner.all(sid) as { handle: string }[]).map(
+      (r) => r.handle,
     );
     out.push({
       session_id: sid,
@@ -1211,8 +1426,37 @@ function buildDirectory(): DirectoryEntry[] {
 // authoritative and the adapter serves one instance.
 
 function bindSession(conn: Connection, sid: string): void {
-  // The session resolved for THIS frame is the account we serve for it.
+  // RESUME-SUPERSEDE (constraint 2): only the ACTIVE identity receives pushes.
+  // `sessionConns` is the historical set (cleared only by onDisconnect), so a
+  // socket that bound A then /resumes into B would keep delivering to A. Compare
+  // against `boundSession` — the PRIOR ACTIVE session (NOT `sessionId`, which an
+  // attribution-only dm_ack/dm_read frame may have transiently set to a different
+  // account). If the active session is changing to a DIFFERENT non-null one,
+  // detach the prior for THIS adapter — drop the conn from sessionConns[A], drop A
+  // from conn.sessions, and delete its lease row — so a resumed-away identity
+  // stops receiving pushes and is never re-bound on reconnect.
+  const prev = conn.boundSession;
+  if (prev && prev !== sid) {
+    const prevSet = sessionConns.get(prev);
+    if (prevSet) {
+      prevSet.delete(conn);
+      if (prevSet.size === 0) sessionConns.delete(prev);
+    }
+    conn.sessions.delete(prev);
+    if (conn.adapterId) stmt.deleteAdapterSession.run(conn.adapterId, prev);
+  }
+
+  // The session resolved for THIS frame is the account we serve for it, and it is
+  // now this conn's ACTIVE (bound) identity for the supersede comparison above.
   conn.sessionId = sid;
+  conn.boundSession = sid;
+  // Durable lease: record that this adapter serves this session, so a reconnect
+  // (even after a hub restart) re-binds it. UPSERT is idempotent. Guard on a set
+  // adapterId: it's "" only on a pre-hello conn, and every path that reaches
+  // bindSession (the hello re-bind loop sets it first; dispatchFrame requires
+  // auth, i.e. a completed hello) has it set — so the guard is a belt-and-braces
+  // backstop, never false in practice.
+  if (conn.adapterId) stmt.upsertAdapterSession.run(conn.adapterId, sid);
   if (conn.sessions.has(sid)) {
     // already routing for this session over this socket; keep host fresh.
     sessionHost.set(sid, conn.host);
@@ -1251,7 +1495,16 @@ async function dispatchFrame(conn: Connection, frame: ClientEnvelope): Promise<v
     if (conn.authed && frame.t !== "hello" && frame.t !== "map_session") {
       // 1) direct `session` assertion binds verbatim (no resolution needed).
       const direct = (frame as { session?: unknown }).session;
-      if (typeof direct === "string" && direct) {
+      // `dm_ack`/`dm_read` are ATTRIBUTION-ONLY: they assert a `session` purely so
+      // the handler attributes a DM receipt to the right account on a multi-session
+      // socket. They are NOT a change of the instance's ACTIVE session (a /resume),
+      // so they must NOT run bindSession — which would register a push route and,
+      // worse, SUPERSEDE the live active session (dropping it from sessionConns and
+      // its lease). Stamp `conn.sessionId` for the handler to read, and skip the
+      // active-session binding machinery entirely. See group-chat-adapter-reconnect.md.
+      if (frame.t === "dm_ack" || frame.t === "dm_read") {
+        conn.sessionId = typeof direct === "string" && direct ? direct : null;
+      } else if (typeof direct === "string" && direct) {
         bindSession(conn, direct);
       } else if (typeof frame.tool_use_id === "string" && frame.tool_use_id) {
         // 2) resolve the real session from the PreToolUse correlation map. May
@@ -1275,17 +1528,8 @@ async function dispatchFrame(conn: Connection, frame: ClientEnvelope): Promise<v
 }
 
 function onDisconnect(conn: Connection): void {
-  for (const [group, handles] of conn.joinedAs) {
-    const g = groups.get(group);
-    for (const as of handles) {
-      const m = g?.members.get(as);
-      if (m && m.conn === conn) {
-        m.conn = null;
-        m.last_seen_ts = nowIso();
-        if (g) stmt.touchMember.run(m.last_seen_ts, group, as);
-      }
-    }
-  }
+  // Membership is durable (handle rows) — nothing to null out on disconnect. The
+  // member simply becomes "offline" (its owning identity loses its live conn).
   for (const sid of conn.sessions) {
     const set = sessionConns.get(sid);
     set?.delete(conn);
@@ -1311,8 +1555,10 @@ const server = Bun.serve<{ conn: Connection }>({
       const conn: Connection = {
         id: randomUUID(),
         authed: false,
+        adapterId: "", // assigned in the hello handler (mint-or-reuse)
         sessions: new Set<string>(),
         sessionId: null,
+        boundSession: null,
         host: "unknown",
         joinedAs: new Map<string, Set<string>>(),
         send: (frame) => ws.send(JSON.stringify(frame)),

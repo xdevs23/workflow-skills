@@ -18,22 +18,46 @@
 // Unlike group messages, DMs are a DURABLE QUEUE — stored and delivered (one
 // `<channel>` per DM) when the recipient reconnects, with sent→received→read
 // receipt states. See group-chat-direct-messages.md for the full design.
+//
+// v4 UNIFIES handles: there is no separate "member" entity. An identity owns
+// HANDLES; a group handle is just a handle whose string ends `@<group>._group`.
+// Group membership is DERIVED (the identities owning a `@<group>._group` handle),
+// not a separate registry. Consequences on the wire: `join` still carries the
+// chosen `as`, but `leave`/`send`/`list_members` carry only `group` — the hub
+// resolves the calling identity (from `tool_use_id`) to its one handle in the
+// group. A session has one identity, so it has at most one handle per group; the
+// per-message `as` and the "which handle?" disambiguation are gone. Group ops now
+// REQUIRE a resolved identity (they own/derive handles), and a collision on a
+// handle owned by a different identity is `handle_taken`. See
+// docs/group-chat-unified-handles.md.
+//
+// v5 adds RECONNECT IDENTITY: a per-process `adapter_id`. The hub mints a UUID
+// on first connect and returns it in `welcome`; the adapter holds it in memory
+// and echoes it on every subsequent `hello`. The hub keeps a DURABLE lease
+// (`adapter_sessions`, one row per (adapter_id, session) the adapter serves),
+// so on reconnect — including a HUB RESTART — the hub re-binds all the sessions
+// that adapter was serving with no tool call, restoring `sessionConns` and push
+// delivery. See docs/group-chat-adapter-reconnect.md.
 
-export const PROTOCOL_VERSION = 3;
+export const PROTOCOL_VERSION = 5;
 
 // ---- adapter -> hub -------------------------------------------------------
 
 export type ClientFrame =
   // first frame; authenticates the socket and binds the account. `host` is the
   // adapter's own device hostname (used to namespace registered aliases).
-  | { t: "hello"; token: string; protocol: number; host: string }
+  // `adapter_id` is OPTIONAL: omitted on first connect (the hub mints one and
+  // returns it in `welcome`); present on every reconnect (the held id), so the
+  // hub recognizes the same per-process relay endpoint and re-binds its leased
+  // sessions. See docs/group-chat-adapter-reconnect.md.
+  | { t: "hello"; token: string; protocol: number; host: string; adapter_id?: string }
   | { t: "list_groups" } // discover groups on the hub
   | { t: "create_group"; group: string } // explicit create (join also auto-creates)
-  | { t: "join"; group: string; as: string } // join (or create+join) a group under name `as`
-  | { t: "leave"; group: string; as?: string } // `as` disambiguates when one conn holds several handles in the group
-  // `as` = which of this conn's handles to send as (multi-session on one socket).
-  // `to` = optional group HANDLES to restrict the live push to (still logged for all).
-  | { t: "send"; group: string; message: string; as?: string; to?: string[] }
+  | { t: "join"; group: string; as: string } // join (or create+join) a group under name `as` (registers the handle <as>@<group>._group owned by the caller's identity)
+  | { t: "leave"; group: string } // leave the group: drops the caller identity's <*>@<group>._group handle (unambiguous — one handle per identity per group)
+  // The hub resolves the sender's handle from the caller's identity (no `as`).
+  // `to` = optional MEMBER NAMES to restrict the live push to (still logged for all).
+  | { t: "send"; group: string; message: string; to?: string[] }
   | { t: "list_members"; group: string }
   | { t: "show_member"; group: string; member: string }
   | { t: "history"; group: string; last_n: number; index_from_end: number } // pull scrollback
@@ -71,12 +95,15 @@ export interface ChatMessage {
   text: string;
 }
 
+// A group member is DERIVED from a handle `<name>@<group>._group`; there is no
+// separate member entity. `name` is the handle's local part. `attached` is live
+// info — does the OWNING identity have a connection bound right now — NOT a
+// durable online/offline state. Membership is durable (the handle row); absence
+// of a live connection just means "not currently connected". (Signal/WhatsApp
+// model.) `joined_ts`/`last_seen_ts` both reflect the handle's created_ts (we no
+// longer track a separate per-member last-seen).
 export interface MemberInfo {
   name: string;
-  // `attached` is live info — is a socket currently bound to this member right
-  // now — NOT a durable online/offline state. A member stays a member whether or
-  // not attached; absence just means "not currently connected", which we can't
-  // interpret as gone. (Signal/WhatsApp model.)
   attached: boolean;
   joined_ts: string;
   last_seen_ts: string;
@@ -110,7 +137,10 @@ export interface DirectoryEntry {
 // Frames carry a `rid` (request id) when they answer a specific client request,
 // so the adapter can match a reply to the tool call that is awaiting it.
 export type ServerFrame =
-  | { t: "welcome"; protocol: number } // hello accepted
+  // hello accepted. `adapter_id` is the per-process relay id: the one the adapter
+  // sent (reconnect) or a freshly minted UUID (first connect). The adapter holds
+  // it and echoes it on every later `hello`.
+  | { t: "welcome"; protocol: number; adapter_id: string }
   | { t: "error"; rid?: string; code: string; message: string }
   | { t: "message"; msg: ChatMessage } // a live (or gap-resent) chat message to push as <channel>
   | { t: "groups"; rid?: string; groups: { name: string; members: number }[] }
