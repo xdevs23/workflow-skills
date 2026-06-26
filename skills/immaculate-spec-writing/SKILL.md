@@ -1,6 +1,6 @@
 ---
 name: immaculate-spec-writing
-description: Produce a design doc / spec / research artifact that is BOTH 100% factual AND 100% complete by orchestrating three sub-skills in a convergence loop — research-loop (discover + draft) → find-gaps (sins-of-omission audit) → verify-loop (prove every present claim) — feeding every gap back as new content and every defect back as a fix, re-running until ONE full pass finds zero new gaps AND zero defects. Token-heavy on purpose: a complete, proven spec up front saves multiple sessions of bugfixing. Use when the user wants the highest possible certainty AND completeness on a spec before relying on or implementing it.
+description: "Produce a design doc / spec / research artifact that is BOTH 100% factual AND 100% complete by orchestrating three sub-skills in a convergence loop — research-loop (discover + draft) → find-gaps (sins-of-omission audit) → verify-loop (prove every present claim) — feeding every gap back as new content and every defect back as a fix, re-running until ONE full pass finds zero new gaps AND zero defects. Token-heavy on purpose: a complete, proven spec up front saves multiple sessions of bugfixing. Use when the user wants the highest possible certainty AND completeness on a spec before relying on or implementing it."
 ---
 
 # Immaculate Spec Writing — research, complete it, prove it, until it converges
