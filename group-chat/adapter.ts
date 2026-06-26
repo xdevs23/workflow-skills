@@ -22,9 +22,7 @@ import {
   CallToolRequestSchema,
 } from "@modelcontextprotocol/sdk/types.js";
 import {
-  readFileSync,
   existsSync,
-  readdirSync,
   openSync,
   readSync,
   fstatSync,
@@ -91,6 +89,14 @@ let ws: WebSocket | null = null;
 let helloDone = false;
 let reconnectDelay = 250;
 let connectAttempts = 0;
+// The per-process relay id the hub assigns on first connect (in `welcome`). Held
+// in MEMORY for this process's lifetime and echoed on every later `hello`, so the
+// hub recognizes a reconnecting endpoint and re-binds the sessions it was serving
+// (surviving a hub restart). NOT persisted: a restarted adapter process is a new
+// Claude session about which we assume no prior state. Never cleared on a socket
+// drop/reconnect — that's exactly the case it must survive. See
+// docs/group-chat-adapter-reconnect.md.
+let adapterId: string | null = null;
 
 const { url: HUB_URL, token: HUB_TOKEN } = parseHub(RAW_URL);
 // This adapter's own device hostname — reported to the hub at `hello` and used to
@@ -118,7 +124,15 @@ function connect(): void {
   ws.addEventListener("open", () => {
     reconnectDelay = 250;
     helloDone = false;
-    sendRaw({ t: "hello", token: HUB_TOKEN, protocol: PROTOCOL_VERSION, host: SELF_HOST });
+    // Echo the held adapter_id only if we have one (reconnect); omit it on first
+    // connect so the hub mints a fresh one and hands it back in `welcome`.
+    sendRaw({
+      t: "hello",
+      token: HUB_TOKEN,
+      protocol: PROTOCOL_VERSION,
+      host: SELF_HOST,
+      ...(adapterId ? { adapter_id: adapterId } : {}),
+    });
   });
 
   ws.addEventListener("message", (ev) => {
@@ -150,21 +164,11 @@ function sendRaw(frame: ClientEnvelope): void {
   if (ws && ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify(frame));
 }
 
-// MEMBERSHIP STATE — `group -> handle`, single map for this instance's one WS.
-// The adapter no longer resolves which Claude session a call belongs to (the hub
-// does, from the call's tool_use_id), so it no longer keys membership per session.
-// What it still needs is, per group, the handle to re-attach under and to send
-// `as`. That is recovered from the SessionStart hook's identity files (every
-// `identity-*.json` in the plugin-data dir, merged) and extended by explicit
-// `join`s. The hub validates each `as` against what THIS connection joined as, so
-// a wrong handle can never speak as another member.
-const joinedGroups = new Map<string, string>(); // group -> handle
-
-// Every group we currently want to be attached to — replayed to the hub on each
-// (re)connect (idempotent re-attach).
-function desiredAttachments(): Array<{ group: string; as: string }> {
-  return [...joinedGroups].map(([group, as]) => ({ group, as }));
-}
+// The adapter tracks NO membership state of its own. The hub is the source of
+// truth for group membership (durable identity-owned handles): it does not pick a
+// handle for leave/submit_message (those carry no handle — the hub resolves the
+// caller's identity to its one handle in the group), and it does not replay joins
+// on reconnect. Reconnect re-attach is the hub's job, keyed by `adapterId` (above).
 
 // Read a --flag value from argv (guard against un-interpolated placeholders).
 function argValue(flag: string): string | undefined {
@@ -176,8 +180,10 @@ function argValue(flag: string): string | undefined {
   return undefined;
 }
 
+// The plugin's persistent data dir — used only to locate the DM read-signal file
+// the display hook writes (group membership no longer comes from here; the hub
+// owns it). --plugin-data arg → CLAUDE_PLUGIN_DATA env → inferred well-known dir.
 function pluginDataDir(): string {
-  // --plugin-data arg → CLAUDE_PLUGIN_DATA env → inferred well-known location.
   const fromArg = argValue("--plugin-data");
   if (fromArg) return fromArg;
   const fromEnv = process.env.CLAUDE_PLUGIN_DATA;
@@ -190,51 +196,14 @@ function pluginDataDir(): string {
   return pathJoin(tmpdir(), "group-chat-plugin-data");
 }
 
-// Recover membership from the SessionStart hook's identity files. The hook writes
-// `identity-<sessionId>.json` = {group: handle} for each session it sees. The
-// adapter is one socket serving the instance, so it merges EVERY identity file in
-// the plugin-data dir into the single `joinedGroups` map — it no longer needs to
-// know which session a call belongs to (the hub binds the real account per-call
-// from the call's tool_use_id). If two sessions recorded the same group under
-// different handles, the later-read file wins; the hub still validates each `as`
-// we assert, so this only affects which handle WE re-attach under for that group.
-// Called once at startup; explicit `join`s extend the map thereafter.
-function loadIdentity(): void {
-  const dir = pluginDataDir();
-  let files: string[];
-  try {
-    files = readdirSync(dir).filter((f) => f.startsWith("identity-") && f.endsWith(".json"));
-  } catch {
-    return;
-  }
-  for (const f of files) {
-    let map: Record<string, unknown>;
-    try {
-      map = JSON.parse(readFileSync(pathJoin(dir, f), "utf8"));
-    } catch {
-      continue;
-    }
-    for (const [group, handle] of Object.entries(map)) {
-      if (typeof group === "string" && typeof handle === "string" && group && handle) {
-        joinedGroups.set(group, handle);
-      }
-    }
-  }
-}
-
 function onFrame(frame: ServerFrame): void {
   if (frame.t === "welcome") {
     helloDone = true;
-    // Re-read identity files first: a session that STARTED after this adapter
-    // booted (its SessionStart hook wrote identity-*.json post-boot) wouldn't be in
-    // joinedGroups yet. Re-loading here means a hub reconnect (incl. after a hub
-    // restart) re-attaches those groups too. Idempotent: it only adds entries.
-    loadIdentity();
-    // re-join everything any known session was in, to resume delivery after a
-    // reconnect (hub re-attach is idempotent).
-    for (const { group, as } of desiredAttachments()) {
-      sendRaw({ t: "join", group, as });
-    }
+    // Store the hub-minted relay id on the FIRST welcome that carries one. The
+    // `!adapterId` guard enforces the contract "never overwrite the held id": on a
+    // reconnect we already hold it and the hub echoes the same one back, so the
+    // store is skipped — the held id is the stable identity for this process.
+    if (frame.adapter_id && !adapterId) adapterId = frame.adapter_id;
     return;
   }
 
@@ -481,7 +450,7 @@ const TOOLS = [
     name: "submit_message",
     description:
       "Broadcast a message to everyone currently in the group. Optional `to` is " +
-      "a list of group handles to restrict the live PUSH to those members (the " +
+      "a list of member names to restrict the live PUSH to those members (the " +
       "message is still logged to history for everyone — push-targeting, not " +
       "privacy). Naming a non-member errors the whole send. For a private message " +
       "use direct_message instead.",
@@ -493,7 +462,7 @@ const TOOLS = [
         to: {
           type: "array",
           items: { type: "string" },
-          description: "Group handles to push to (others still get it in history). Omit = whole group.",
+          description: "Member names to push to (others still get it in history). Omit = whole group.",
         },
       },
       required: ["group", "message"],
@@ -639,80 +608,20 @@ function text(s: string) {
 // too (defence-in-depth) so the invariant doesn't rest on the hub alone.
 const ALIAS_NAME_RE = /^[A-Za-z0-9_]{1,64}$/;
 
-// Group-scoped tools need to know which member we are (the handle) before they
-// can run. The handle comes from `joinedGroups` (recovered from the identity
-// files + explicit joins); the hub binds the real ACCOUNT separately from the
-// call's tool_use_id.
-const GROUP_TOOLS = new Set([
-  "submit_message",
-  "list_members",
-  "show_member",
-  "list_group_messages",
-  "leave",
-]);
-
-// Tools that act on the caller's ACCOUNT. Their identity is bound HUB-SIDE from
-// the call's tool_use_id (the PreToolUse hook correlates it to the real session).
-// The adapter just forwards the bare tool_use_id; if the hub can't resolve it in
-// time it returns an honest 'no_session' error, surfaced through `expect`.
-const SESSION_TOOLS = new Set([
-  "register_alias",
-  "release_alias",
-  "list_aliases",
-  "whoami",
-  "direct_message",
-  "list_direct_messages",
-]);
-
-// Ensure `group` is attached before serving a tool that needs it. Returns null on
-// success, or an error message if we have no handle for the group — we never guess
-// a handle (that risks impersonating another member). `toolUseId` is forwarded so
-// the hub can bind the right account for the re-join.
-async function ensureJoined(
-  group: string,
-  toolUseId?: string,
-): Promise<string | null> {
-  // We act only on a handle explicitly joined under (or recovered from an identity
-  // file) — never a guessed one, which would risk impersonating another member.
-  const handle = joinedGroups.get(group);
-  if (!handle) {
-    return (
-      `Not joined to '${group}' and could not recover your identity for it ` +
-      `(no prior join found). Call join('${group}', <your handle>) first.`
-    );
-  }
-  // Re-assert the join on the hub before serving the tool. This is idempotent on
-  // the hub (a returning handle just re-attaches) and is what makes the tool work
-  // after a hub restart wiped the live attach, or when loadIdentity recovered the
-  // handle while the socket was momentarily down (so its welcome-replay join
-  // hadn't gone out). Cheap: a single round-trip the hub answers immediately.
-  const r = await request({ t: "join", group, as: handle }, toolUseId);
-  if (r.t === "error") {
-    return `Failed to re-join '${group}' as '${handle}': ${(r as any).message}`;
-  }
-  return null;
-}
-
 mcp.setRequestHandler(CallToolRequestSchema, async (req, extra) => {
   const name = req.params.name;
   const a = (req.params.arguments ?? {}) as Record<string, unknown>;
 
   // Read the call's bare tool_use_id from _meta. We do NOT resolve a session from
   // it — that's the HUB's job (it correlates the id to the real session via the
-  // PreToolUse hook). We just forward it on account-bound frames so the hub binds
-  // the right account. SESSION_TOOLS need no adapter-side guard: if the hub can't
-  // resolve the id in time it returns an honest no_session error.
+  // PreToolUse hook). We forward it on EVERY hub frame that needs an identity: ALL
+  // group tools (the hub resolves the caller's handle in the group) AND the
+  // account tools. If the hub can't resolve the id in time it returns an honest
+  // no_session error, surfaced through `expect`.
   const toolUseId =
     ((extra as any)?._meta?.["claudecode/toolUseId"] ??
       (req.params as any)?._meta?.["claudecode/toolUseId"]) as string | undefined;
 
-  // Group-scoped tools need a known handle for the group. If we have none — no
-  // recovered identity AND no explicit join — return the honest error rather than
-  // guessing (guessing risks impersonating a member).
-  if (GROUP_TOOLS.has(name) && typeof a.group === "string") {
-    const errMsg = await ensureJoined(a.group, toolUseId).catch((e) => String(e));
-    if (errMsg) return text(errMsg);
-  }
   try {
     switch (name) {
       case "list_groups": {
@@ -732,18 +641,17 @@ mcp.setRequestHandler(CallToolRequestSchema, async (req, extra) => {
         if (!group) return text("join requires a non-empty `group`.");
         if (!as) return text("join requires a non-empty handle in `as` (e.g. join(group, as)).");
         const r = expect(await request({ t: "join", group, as }, toolUseId), "joined");
-        // Record the handle so follow-up calls find it and we auto-re-attach on
-        // reconnect (welcome-replay of desiredAttachments).
-        joinedGroups.set(r.group, r.as);
-        return text(`Joined '${r.group}' as '${r.as}'. Messages will arrive as <channel> events.`);
+        return text(
+          `Joined '${r.group}' as '${r.as}'.\n` +
+            `Your unique, globally identifiable group address: ${r.as}@${r.group}._group\n` +
+            `Messages will arrive as <channel> events.`,
+        );
       }
       case "leave": {
         const group = String(a.group);
-        // Disambiguate which handle to leave when one socket holds several in the
-        // group: our recovered handle for it.
-        const as = joinedGroups.get(group);
-        await request({ t: "leave", group, ...(as ? { as } : {}) }, toolUseId);
-        joinedGroups.delete(group);
+        // No handle on the wire: the hub resolves the caller's identity to its one
+        // handle in the group and drops it. Just forward group + tool_use_id.
+        await request({ t: "leave", group }, toolUseId);
         return text(`Left '${group}'.`);
       }
       case "submit_message": {
@@ -756,16 +664,15 @@ mcp.setRequestHandler(CallToolRequestSchema, async (req, extra) => {
           Array.isArray(a.to) && a.to.length > 0
             ? a.to.map((x) => String(x))
             : undefined;
-        // Send AS our handle for the group — the hub needs `as` to attribute the
-        // message to the right member (it validates we joined under it).
-        // ensureJoined guaranteed it.
-        const as = joinedGroups.get(group);
-        // The hub replies with read-receipts: who confirmed surfacing the
-        // message within the read window (read) vs the rest of the group (sent —
-        // offline or slower than the window).
+        // No handle on the wire: the hub resolves the caller's identity (from the
+        // tool_use_id) to its handle in the group and sends AS it. If the identity
+        // owns no handle in the group, the hub returns a "join first" error.
+        // The hub replies with read-receipts: who confirmed surfacing the message
+        // within the read window (read) vs the rest of the group (sent — offline or
+        // slower than the window).
         const r = expect(
           await request(
-            { t: "send", group, message, ...(as ? { as } : {}), ...(to ? { to } : {}) },
+            { t: "send", group, message, ...(to ? { to } : {}) },
             toolUseId,
           ),
           "sent",
@@ -784,7 +691,7 @@ mcp.setRequestHandler(CallToolRequestSchema, async (req, extra) => {
       }
       case "list_members": {
         const group = String(a.group);
-        const r = expect(await request({ t: "list_members", group }), "members");
+        const r = expect(await request({ t: "list_members", group }, toolUseId), "members");
         if (r.members.length === 0) return text(`No members in '${group}'.`);
         return text(
           `Members of '${group}':\n` +
@@ -799,12 +706,14 @@ mcp.setRequestHandler(CallToolRequestSchema, async (req, extra) => {
       case "show_member": {
         const group = String(a.group);
         const member = String(a.member_id);
-        const r = expect(await request({ t: "show_member", group, member }), "member");
+        const r = expect(await request({ t: "show_member", group, member }, toolUseId), "member");
         if (!r.member) return text(`No member '${member}' in '${group}'.`);
         const m = r.member;
+        // No separate last-seen is tracked under the unified-handles model (it
+        // would equal joined_ts), so we don't render a misleading "last seen".
         return text(
           `${m.name} in '${group}': ${m.attached ? "attached" : "detached"}, ` +
-            `joined ${m.joined_ts}, last seen ${m.last_seen_ts}`,
+            `joined ${m.joined_ts}`,
         );
       }
       case "list_group_messages": {
@@ -812,7 +721,7 @@ mcp.setRequestHandler(CallToolRequestSchema, async (req, extra) => {
         const last_n = a.last_n === undefined ? 20 : Number(a.last_n);
         const index_from_end = a.index_from_end === undefined ? 0 : Number(a.index_from_end);
         const r = expect(
-          await request({ t: "history", group, last_n, index_from_end }),
+          await request({ t: "history", group, last_n, index_from_end }, toolUseId),
           "history",
         );
         if (r.messages.length === 0) return text(`No messages in '${group}' for that range.`);
@@ -923,7 +832,6 @@ mcp.setRequestHandler(CallToolRequestSchema, async (req, extra) => {
 
 // ---- boot -----------------------------------------------------------------
 
-loadIdentity(); // recover group->handle membership from the hook's identity files
 connect();
 watchDmReads(); // tail the display hook's DM read-signal file and emit dm_read
 await mcp.connect(new StdioServerTransport());
