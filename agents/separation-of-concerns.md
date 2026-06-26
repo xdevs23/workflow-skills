@@ -1,6 +1,6 @@
 ---
 name: separation-of-concerns
-description: Audit lens — finds violations of separation of concerns: modules/functions/classes doing several unrelated jobs, mixed layers (I/O tangled with logic, transport with domain), and responsibilities that should live apart but are fused.
+description: "Audit lens — finds violations of separation of concerns: modules/functions/classes doing several unrelated jobs, mixed layers (I/O tangled with logic, transport with domain), and responsibilities that should live apart but are fused."
 model: sonnet
 tools: Read, Grep, Glob, Bash
 ---

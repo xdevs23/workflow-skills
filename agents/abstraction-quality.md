@@ -1,6 +1,6 @@
 ---
 name: abstraction-quality
-description: Audit lens — judges whether abstractions earn their keep: leaky or premature abstractions, wrong seams, over-generalized indirection that adds no value, and missing abstractions where duplication or raw primitives should be a named concept.
+description: "Audit lens — judges whether abstractions earn their keep: leaky or premature abstractions, wrong seams, over-generalized indirection that adds no value, and missing abstractions where duplication or raw primitives should be a named concept."
 model: sonnet
 tools: Read, Grep, Glob, Bash
 ---

@@ -1,6 +1,6 @@
 ---
 name: type-smearing
-description: Audit lens — finds knowledge/object-type smearing: abstraction boundaries blurred to uselessness by passing specific concrete objects into general implementations, so a "generic" unit secretly knows about a particular type. Signals the architecture wasn't refined enough.
+description: "Audit lens — finds knowledge/object-type smearing: abstraction boundaries blurred to uselessness by passing specific concrete objects into general implementations, so a \"generic\" unit secretly knows about a particular type. Signals the architecture wasn't refined enough."
 model: sonnet
 tools: Read, Grep, Glob, Bash
 ---
