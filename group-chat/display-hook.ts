@@ -141,6 +141,16 @@ function saveSeen(sessionId: string, seen: Map<string, number>): void {
   }
 }
 
+// Merge the freshly-observed per-chat head into the prior markers: chats present
+// in `head` take its value (advancing forward, or re-basing DOWN on a seq reset);
+// chats absent from `head` (no events this pass) keep their prior marker so they
+// aren't dropped and re-treated as first-activation next turn.
+function mergeSeen(prev: Map<string, number>, head: Map<string, number>): Map<string, number> {
+  const out = new Map(prev);
+  for (const [chat, seq] of head) out.set(chat, seq);
+  return out;
+}
+
 // The plugin-data dir holds the adapter's identity files and our DM read-signal
 // file. Mirror the adapter's resolution: CLAUDE_PLUGIN_DATA env → inferred
 // well-known location → tmpdir fallback (so the adapter and hook agree).
@@ -173,12 +183,25 @@ function signalDmRead(fromSession: string, seq: number, recipientSession: string
 }
 
 // Build the boxed quote for one event. Wraps the body to keep the box tidy.
-// Direct messages render distinctly from group messages (a different glyph and a
-// "direct message" header showing both the from-alias and the to-alias).
+// ANSI styling so the channel type is obvious at a glance. DMs and groups get
+// DIFFERENT colors; the group name (or the DM peer) is bolded. Body text stays
+// default for readability. Kept minimal/standard so it's terminal-safe.
+const C = {
+  reset: "\x1b[0m",
+  bold: "\x1b[1m",
+  group: "\x1b[36m", // cyan — group messages
+  dm: "\x1b[35m", // magenta — direct messages
+  dim: "\x1b[2m",
+};
+
+// Direct messages render distinctly from group messages: a different glyph, a
+// different COLOR, and a header that names the channel (the group, or the DM peer).
 function box(ev: ChannelEvent): string {
-  const header = ev.dm
-    ? `╭─ 🔒 direct message from ${ev.fromAlias} → ${ev.toAlias} (seq ${ev.seq})`
-    : `╭─ 📨 ${ev.from} in #${ev.group} (seq ${ev.seq})`;
+  const color = ev.dm ? C.dm : C.group;
+  // The chat identity is the prominent part: bold the group name / the DM pair.
+  const headerText = ev.dm
+    ? `🔒 direct message  ${C.bold}${ev.fromAlias} → ${ev.toAlias}${C.reset}${color}  (seq ${ev.seq})`
+    : `📨 #${C.bold}${ev.group}${C.reset}${color}  from ${ev.from}  (seq ${ev.seq})`;
   const lines: string[] = [];
   const WIDTH = 72;
   for (const raw of ev.text.split("\n")) {
@@ -198,8 +221,11 @@ function box(ev: ChannelEvent): string {
     }
     if (cur) lines.push(cur);
   }
-  const body = lines.map((l) => `│ ${l}`).join("\n");
-  return `${header}\n${body}\n╰─`;
+  // Border + header carry the chat color; the body bar is colored, text is plain.
+  const top = `${color}╭─ ${headerText}${C.reset}`;
+  const body = lines.map((l) => `${color}│${C.reset} ${l}`).join("\n");
+  const bottom = `${color}╰─${C.reset}`;
+  return `${top}\n${body}\n${bottom}`;
 }
 
 function main(): void {
@@ -218,9 +244,11 @@ function main(): void {
     passthrough();
   }
 
-  // Collect every group-chat channel event in the transcript, de-duped by
-  // (group, seq). seq is per-GROUP, so we track the high-water mark per group.
-  const events = new Map<string, ChannelEvent>(); // key: `${group}#${seq}`
+  // Collect channel events PER CHAT in transcript (append) order. We keep order
+  // because seq is monotonic only within ONE hub epoch — a hub DB wipe restarts
+  // seq at 1, and the transcript accumulates BOTH epochs' events. So max-seq is
+  // not the current head; we must find the latest epoch by reading forward.
+  const ordered = new Map<string, ChannelEvent[]>(); // chat -> events in transcript order
   for (const line of lines) {
     if (!line.includes(SOURCE)) continue; // cheap pre-filter
     let obj: any;
@@ -232,7 +260,24 @@ function main(): void {
     if (obj.type !== "queue-operation" || typeof obj.content !== "string") continue;
     const ev = parseChannel(obj.content);
     if (!ev) continue;
-    events.set(`${ev.group}#${ev.seq}`, ev);
+    (ordered.get(ev.group) ?? ordered.set(ev.group, []).get(ev.group)!).push(ev);
+  }
+
+  // For each chat, keep only the CURRENT EPOCH's events: scan its events in
+  // transcript order and cut to the segment after the last seq DROP (seq going
+  // down means a new epoch began — the hub was wiped and seq restarted). Within a
+  // single epoch seq only rises, so the tail from the last drop is the live epoch.
+  // De-dup that segment by seq (a reconnect gap-resend can repeat a seq).
+  const events = new Map<string, ChannelEvent>(); // key: `${group}#${seq}`, current epoch only
+  for (const [chat, list] of ordered) {
+    let epochStart = 0;
+    for (let i = 1; i < list.length; i++) {
+      if (list[i]!.seq < list[i - 1]!.seq) epochStart = i; // a drop => new epoch begins here
+    }
+    for (let i = epochStart; i < list.length; i++) {
+      const ev = list[i]!;
+      events.set(`${chat}#${ev.seq}`, ev);
+    }
   }
 
   // current per-group head seq across the whole transcript
@@ -251,10 +296,22 @@ function main(): void {
     passthrough();
   }
 
-  // banner every event newer than what we've shown for its group
+  // SEQ-RESET DETECTION (per chat). seq is monotonic only within one hub epoch; a
+  // hub DB wipe restarts it at 1. So if a chat's current head dropped BELOW our
+  // saved high-water, the sequence was interrupted — a new epoch began and the old
+  // (higher) seqs no longer exist. Treat the saved marker as stale for that chat
+  // (baseline 0) so the new low-seq messages banner as the genuinely-new messages
+  // they are. Each chat (group or `dm:<peer>`) is judged independently.
+  const baseline = (group: string): number => {
+    const prev = seen.get(group) ?? 0;
+    const h = head.get(group) ?? 0;
+    return h < prev ? 0 : prev; // head below saved => reset epoch => baseline 0
+  };
+
+  // banner every event newer than the (reset-aware) baseline for its chat
   const fresh: ChannelEvent[] = [];
   for (const ev of events.values()) {
-    if (ev.seq > (seen.get(ev.group) ?? 0)) fresh.push(ev);
+    if (ev.seq > baseline(ev.group)) fresh.push(ev);
   }
 
   if (fresh.length === 0) passthrough();
@@ -268,8 +325,11 @@ function main(): void {
 
   fresh.sort((a, b) => a.group.localeCompare(b.group) || a.seq - b.seq);
 
-  // advance the per-group marker to the head we observed
-  saveSeen(sessionId, head);
+  // Advance each chat's marker to the head we observed, MERGED with the prior
+  // markers — chats with no events this pass keep their saved marker (writing
+  // `head` alone would drop them and re-trigger first-activation next turn). A
+  // reset chat (head below saved) re-bases DOWN to the new epoch's head.
+  saveSeen(sessionId, mergeSeen(seen, head));
 
   const banners = fresh.map(box).join("\n");
   emit(`${banners}\n\n${assistantText}`);
