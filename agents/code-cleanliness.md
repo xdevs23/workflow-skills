@@ -1,6 +1,6 @@
 ---
 name: code-cleanliness
-description: Audit lens — surface-level hygiene: unclear names, stale/misleading comments, inconsistent style, commented-out code, magic numbers, noisy logging, TODO debt, and formatting that obscures intent.
+description: "Audit lens — surface-level hygiene: unclear names, stale/misleading comments, inconsistent style, commented-out code, magic numbers, noisy logging, TODO debt, and formatting that obscures intent."
 model: sonnet
 tools: Read, Grep, Glob, Bash
 ---

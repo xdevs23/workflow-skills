@@ -73,6 +73,14 @@ Use these `agentType`s — they ship with this plugin, each model-pinned to sonn
 `separation-of-concerns`, `abstraction-quality`, `code-smell`, `type-safety`, `code-cleanliness`,
 `missing-gaps`, `domain-leakage`, `type-smearing`.
 
+The Record phase uses `agentType:'record'` (`agents/record.md`).
+
+**Agent prompt templates (verbatim base, append-only):** each `agentType` above has its rules in
+`agents/<role>.md`, used VERBATIM as the start of the agent's prompt. The string passed to `agent()`
+is ONLY the task context APPENDED after that base (the tree to audit, the findings to record). Do NOT
+modify the base rules inline — append only. (A lens verifies its OWN findings in the Verify phase, so
+the verifier reuses the lens `agentType`.)
+
 ## One round (the Workflow)
 
 Each round is a single Workflow with **three phases**: fan out the 8 lenses over the full tree (Audit),
@@ -119,22 +127,21 @@ const verified = (await pipeline(
   ))
 )).flat().filter(Boolean).filter(f => f.verdict?.real);
 
-// Phase 3: ONE record agent owns AUDIT.md. It reads the file, dedups against
-// what's already there, appends only the genuinely-new findings, and returns
-// just a summary. The root agent never touches AUDIT.md, never sees findings.
+// Phase 3: ONE record agent (agentType:'record') owns AUDIT.md. Its append-only /
+// dedupe / never-rewrite RULES live VERBATIM in agents/record.md; the string below
+// is ONLY the appended task context (the path, the round heading, the findings).
+// The root agent never touches AUDIT.md, never sees findings.
 const summary = await agent(
-  `You are the AUDIT recorder — the SOLE writer of the audit log. Consolidate this round's confirmed ` +
-  `findings into \`${AUDIT_PATH}\` (relative to the project root — NEVER ~/.claude). Steps, exactly:\n` +
-  `1. Read ${AUDIT_PATH} (create it with an "# Audit Log" header, making parent dirs, if absent).\n` +
-  `2. Build the set of already-recorded findings keyed on lens + file + normalized-claim ` +
-  `(normalize: lowercase, collapse whitespace, ignore line-number drift within the same symbol).\n` +
-  `3. Drop this round's findings already present. If a previously recorded finding's file:line no ` +
-  `longer exists, mark it \`~~resolved?~~\` in place — never delete or rewrite history.\n` +
-  `4. APPEND only the genuinely-new findings under a dated heading "## Round — ${ROUND_DATE}", grouped ` +
-  `by lens, each as: - [SEVERITY] \`file:line\` — claim. Evidence: \`quoted code\`.\n` +
-  `5. Return ONLY the structured summary (counts), no prose.\n\n` +
+  `Audit log path: \`${AUDIT_PATH}\` (relative to the project root — NEVER ~/.claude); ` +
+  `create it with an "# Audit Log" header, making parent dirs, if absent.\n` +
+  `Dedupe key: lens + file + normalized-claim (lowercase, collapse whitespace, ignore ` +
+  `line-number drift within the same symbol). If a previously recorded finding's file:line ` +
+  `no longer exists, mark it \`~~resolved?~~\` in place — never delete or rewrite history.\n` +
+  `Append genuinely-new findings under a dated heading "## Round — ${ROUND_DATE}", grouped by ` +
+  `lens, each as: - [SEVERITY] \`file:line\` — claim. Evidence: \`quoted code\`.\n` +
+  `Return ONLY the structured summary (counts).\n\n` +
   `Confirmed findings this round (JSON): ${JSON.stringify(verified)}`,
-  { model: 'sonnet', label: 'record:AUDIT.md', phase: 'Record', schema: SUMMARY_SCHEMA }
+  { model: 'sonnet', agentType: 'record', label: 'record:AUDIT.md', phase: 'Record', schema: SUMMARY_SCHEMA }
 );
 
 return summary; // one-line-summary material; root surfaces it and moves on

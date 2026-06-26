@@ -29,6 +29,10 @@ every claim in it. (verify-loop's defect-research step may invoke this skill.)
 
 ## Non-negotiable principles
 
+0. **Verbatim agent templates, append-only.** Each role's rules live in `agents/*.md`
+   (`researcher-contextfree`, `researcher-breadth`, `refuter`, `synthesizer`, `consolidator`,
+   `doc-reviewer`) and are used VERBATIM via `agentType:'<role>'`. The string passed to `agent()` is
+   ONLY the task context APPENDED after that base. Never modify/paraphrase the base inline.
 1. **Every finding evidence-tagged.** Each finding carries concrete evidence (file:line + quoted
    code, or quoted source) AND a confidence tag: `PROVEN` (authoritative source quoted) /
    `UNCERTAIN` (suggested but not conclusively shown) / `NOT-DETERMINABLE` (cannot be established →
@@ -86,29 +90,35 @@ two responsibilities separate — one review pass here, the full loop there.
 
 ## Workflow shape (adapt counts/paths; pin every model)
 
+Each role's RULES live VERBATIM in its `agents/*.md` file; the strings below are
+ONLY the APPENDED task context. Roles: `researcher-contextfree`, `refuter`,
+`synthesizer`, `researcher-breadth`, `consolidator`, `doc-reviewer`.
+
 ```js
 // Angle 1: one context-free researcher per decomposed sub-question, then refute, then opus synth.
 phase('Angle1');
 const subQs = [ /* you decompose Q into these distinct angle prompts (NO project context) */ ];
 const a1 = await pipeline(subQs,
-  sq => agent(sq.contextFreePrompt, {label:`a1:${sq.key}`, model:'sonnet', schema:FINDINGS, phase:'Angle1'}),
-  f  => agent(`Adversarially refute each finding; keep only what survives with evidence:\n${JSON.stringify(f)}`,
-             {label:`refute:${sq.key}`, model:'sonnet', schema:FINDINGS, phase:'Angle1'}));
-const resultA = await agent(`Synthesize, evidence-tagged proven/uncertain/not-determinable:\n${JSON.stringify(a1)}`,
-             {label:'a1-synth', model:'opus', schema:SYNTH, phase:'Angle1'});
+  sq => agent(sq.contextFreePrompt /* append: just this sub-question, NO project context */,
+             {label:`a1:${sq.key}`, model:'sonnet', agentType:'researcher-contextfree', schema:FINDINGS, phase:'Angle1'}),
+  f  => agent(`Findings to refute:\n${JSON.stringify(f)}`,
+             {label:`refute:${sq.key}`, model:'sonnet', agentType:'refuter', schema:FINDINGS, phase:'Angle1'}));
+const resultA = await agent(`Findings to synthesize:\n${JSON.stringify(a1)}`,
+             {label:'a1-synth', model:'opus', agentType:'synthesizer', schema:SYNTH, phase:'Angle1'});
 
 // Angle 2: same broad prompt (WITH precise context) x (3 sonnet + 1 opus); consolidate sonnets; opus raw.
 phase('Angle2');
-const broad = `<<Q with precise project/task context>> Return everything found, evidence-tagged.`;
+const broad = `<<Q with precise project/task context>>`; // append: the question + full context
 const a2s = await parallel([0,1,2].map(i => () =>
-  agent(broad, {label:`a2-sonnet${i}`, model:'sonnet', schema:FINDINGS, phase:'Angle2'})));
-const a2opus = await agent(broad, {label:'a2-opus', model:'opus', schema:FINDINGS, phase:'Angle2'});
-const resultB = await agent(`Consolidate these 3 research outputs verbatim-faithfully:\n${JSON.stringify(a2s)}`,
-             {label:'a2-consolidate', model:'sonnet', schema:SYNTH, phase:'Angle2'});
+  agent(broad, {label:`a2-sonnet${i}`, model:'sonnet', agentType:'researcher-breadth', schema:FINDINGS, phase:'Angle2'})));
+const a2opus = await agent(broad, {label:'a2-opus', model:'opus', agentType:'researcher-breadth', schema:FINDINGS, phase:'Angle2'});
+const resultB = await agent(`Outputs to consolidate:\n${JSON.stringify(a2s)}`,
+             {label:'a2-consolidate', model:'sonnet', agentType:'consolidator', schema:SYNTH, phase:'Angle2'});
 const resultC = a2opus; // raw, untouched
 return { resultA, resultB, resultC };
-// THEN (you): read A/B/C -> write the doc -> spawn the 1:1 doc-review loop (reviewer1<-A, 2<-B, 3<-C)
-// -> fix -> re-review -> loop until zero discrepancies from all three.
+// THEN (orchestrator): read A/B/C -> write the doc -> spawn the 1:1 doc-review loop via
+// agentType:'doc-reviewer' (reviewer1<-A, 2<-B, 3<-C) -> fix -> re-review -> loop until
+// zero discrepancies from all three.
 ```
 
 ## Reporting

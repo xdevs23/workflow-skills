@@ -1,6 +1,6 @@
 ---
 name: type-safety
-description: Audit lens — finds weak typing: any/unknown escapes, unchecked casts, stringly-typed data, nullability holes, illegal states left representable, and types that fail to make invalid input unconstructable.
+description: "Audit lens — finds weak typing: any/unknown escapes, unchecked casts, stringly-typed data, nullability holes, illegal states left representable, and types that fail to make invalid input unconstructable."
 model: sonnet
 tools: Read, Grep, Glob, Bash
 ---

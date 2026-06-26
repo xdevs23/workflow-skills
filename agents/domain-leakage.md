@@ -1,6 +1,6 @@
 ---
 name: domain-leakage
-description: Audit lens — finds domain leakage: business/domain concepts bleeding into infrastructure layers (and vice versa), persistence/transport vocabulary in the core, and boundary crossings that couple the domain to delivery mechanisms.
+description: "Audit lens — finds domain leakage: business/domain concepts bleeding into infrastructure layers (and vice versa), persistence/transport vocabulary in the core, and boundary crossings that couple the domain to delivery mechanisms."
 model: sonnet
 tools: Read, Grep, Glob, Bash
 ---
