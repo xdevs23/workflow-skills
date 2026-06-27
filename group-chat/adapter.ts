@@ -281,6 +281,9 @@ async function pushChannel(msg: ChatMessage): Promise<void> {
         seq: String(msg.seq),
         // a reply marks the seq it replies to (only present on replies)
         ...(msg.reply_to != null ? { reply_to: String(msg.reply_to) } : {}),
+        // push-targeting: the member names this was directed to (only on to:-targeted
+        // messages). Comma-joined; the display hook renders it as a "→ to: …" marker.
+        ...(msg.to && msg.to.length ? { to: msg.to.join(",") } : {}),
       },
     },
   });
