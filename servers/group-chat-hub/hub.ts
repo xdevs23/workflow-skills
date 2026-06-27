@@ -1077,6 +1077,7 @@ function broadcast(
     msg_id,
     text,
     ...(replyTo != null ? { reply_to: replyTo } : {}),
+    ...(to && to.length ? { to } : {}),
   };
   // 2) keep it in the in-memory window for gap re-send
   group.window.push(msg);

@@ -118,6 +118,9 @@ export interface ChatMessage {
   msg_id: string;
   text: string;
   reply_to?: number; // seq of the message this one replies to (omitted for non-replies)
+  to?: string[]; // member names this was push-TARGETED to (omitted for a plain broadcast).
+  // Display-only: surfaces the `to:` directed-push targeting to the recipient as a marker.
+  // The push is still directed by the hub's fan-out; this just makes targeting legible.
 }
 
 // A group member is DERIVED from a handle `<name>@<group>._group`; there is no
