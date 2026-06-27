@@ -32,12 +32,14 @@ interface HookInput {
 // for group messages and per session-pair for DMs.
 interface ChannelEvent {
   dm: boolean;
-  group: string; // group name (group msgs) — for DMs we synthesize `dm:<from_session>`
+  group: string; // group name (group msgs) — for DMs we synthesize `dm:<from_identity>`
   from: string; // sender handle (group msgs)
-  fromSession: string; // DM sender session id
+  fromIdentity: string; // DM sender identity id
+  toIdentity: string; // DM recipient identity id
   fromAlias: string; // DM sender alias
   toAlias: string; // DM recipient alias (the identity it was addressed to)
   seq: number;
+  replyTo: number | null; // group reply: the seq this message replies to (null otherwise)
   text: string;
 }
 
@@ -69,7 +71,7 @@ function emit(displayContent: string): never {
 
 // Parse one <channel ...>body</channel> string from this plugin. Returns null
 // if it isn't one of ours. Handles both group messages and direct messages
-// (the latter carry dm="1" plus from_session/from_alias/to_alias).
+// (the latter carry dm="1" plus from_identity/to_identity/from_alias/to_alias).
 function parseChannel(content: string): ChannelEvent | null {
   if (!content.startsWith("<channel ")) return null;
   if (!content.includes(`source="${SOURCE}"`)) return null;
@@ -83,27 +85,33 @@ function parseChannel(content: string): ChannelEvent | null {
   if (!Number.isFinite(seq)) return null;
   const isDm = attr("dm") === "1";
   if (isDm) {
-    const fromSession = attr("from_session");
-    if (!fromSession) return null;
+    const fromIdentity = attr("from_identity");
+    if (!fromIdentity) return null;
     return {
       dm: true,
-      group: `dm:${fromSession}`, // synthetic per-peer key for seen-state tracking
+      group: `dm:${fromIdentity}`, // synthetic per-peer key for seen-state tracking
       from: attr("from_alias"),
-      fromSession,
+      fromIdentity,
+      toIdentity: attr("to_identity"),
       fromAlias: attr("from_alias"),
       toAlias: attr("to_alias"),
       seq,
+      replyTo: null,
       text,
     };
   }
+  const replyToRaw = attr("reply_to");
+  const replyTo = replyToRaw ? Number(replyToRaw) : null;
   return {
     dm: false,
     group: attr("group"),
     from: attr("from"),
-    fromSession: "",
+    fromIdentity: "",
+    toIdentity: "",
     fromAlias: "",
     toAlias: "",
     seq,
+    replyTo: Number.isFinite(replyTo as number) ? replyTo : null,
     text,
   };
 }
@@ -169,13 +177,13 @@ function pluginDataDir(): string {
 // dm-reads.jsonl so the adapter (which tails it) emits a `dm_read` to the hub —
 // advancing the DM to the `read` state. This is the honest "read" moment: the
 // assistant has actually seen the message.
-function signalDmRead(fromSession: string, seq: number, recipientSession: string): void {
+function signalDmRead(fromIdentity: string, seq: number, recipientIdentity: string): void {
   try {
     const dir = pluginDataDir();
     if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
     appendFileSync(
       join(dir, "dm-reads.jsonl"),
-      JSON.stringify({ from_session: fromSession, seq, to_session: recipientSession }) + "\n",
+      JSON.stringify({ from_identity: fromIdentity, seq, to_identity: recipientIdentity }) + "\n",
     );
   } catch {
     // best-effort: if we can't signal, the DM simply stays in `received` state
@@ -199,9 +207,10 @@ const C = {
 function box(ev: ChannelEvent): string {
   const color = ev.dm ? C.dm : C.group;
   // The chat identity is the prominent part: bold the group name / the DM pair.
+  const replyMark = !ev.dm && ev.replyTo != null ? `  ↩ reply to seq ${ev.replyTo}` : "";
   const headerText = ev.dm
     ? `🔒 direct message  ${C.bold}${ev.fromAlias} → ${ev.toAlias}${C.reset}${color}  (seq ${ev.seq})`
-    : `📨 #${C.bold}${ev.group}${C.reset}${color}  from ${ev.from}  (seq ${ev.seq})`;
+    : `📨 #${C.bold}${ev.group}${C.reset}${color}  from ${ev.from}  (seq ${ev.seq})${replyMark}`;
   const lines: string[] = [];
   const WIDTH = 72;
   for (const raw of ev.text.split("\n")) {
@@ -320,7 +329,7 @@ function main(): void {
   // the genuine "read" moment (the assistant is seeing it now). The adapter tails
   // the signal file and reports `dm_read` to the hub.
   for (const ev of fresh) {
-    if (ev.dm) signalDmRead(ev.fromSession, ev.seq, sessionId);
+    if (ev.dm) signalDmRead(ev.fromIdentity, ev.seq, ev.toIdentity);
   }
 
   fresh.sort((a, b) => a.group.localeCompare(b.group) || a.seq - b.seq);

@@ -105,14 +105,21 @@ db.exec("PRAGMA foreign_keys = ON;");
 // is one version; we apply every entry whose version is newer than the DB's
 // current `user_version`, in order, each inside its own transaction, bumping the
 // version after each. Adding a future change = append a new entry (an idempotent
-// CREATE or an ALTER) — never edit an applied one.
+// CREATE/ALTER string, or a function for migrations needing imperative backfill) —
+// never edit an applied one.
 //
 // v1 is the UNIFIED schema: ONE `handles` table replaces the old `aliases` AND
 // `members` tables. A handle is a name owned by an identity; a group handle is a
 // handle whose string ends `@<group>._group`; a registered alias is `<name>@<host>`.
 // Group membership is derived (query handles ending in the suffix), not stored
 // separately. Clean-slate per design O1: prior aliases/members data is not carried.
-const MIGRATIONS: string[] = [
+//
+// A migration is either a SQL string (db.exec) or a function that receives the db
+// and does imperative work inside the same per-version transaction. v3 needs the
+// function form: it mints one opaque identity per distinct pre-existing session and
+// rewrites every ownership column to the identity key (backfill — zero data loss).
+type Migration = string | ((db: Database) => void);
+const MIGRATIONS: Migration[] = [
   // v1 — unified handle table + groups/messages/dms/dm_delivery. Clean-slate per
   // design O1: an upgrade from the pre-v1 schema (which booted at user_version 0)
   // drops the old parallel registries so they can't linger as dead tables. A fresh
@@ -151,9 +158,12 @@ const MIGRATIONS: string[] = [
   // an adapter is currently serving, written by bindSession. On reconnect the
   // hello handler reads this table for the presented adapter_id and re-binds
   // each leased session immediately (no tool call), surviving a hub restart
-  // because the lease is on disk. Superseded only by a /resume (bindSession
-  // drops the prior session's row); never deleted on disconnect. GC of orphaned
-  // rows is out of scope (see docs/group-chat-adapter-reconnect.md).
+  // because the lease is on disk. Rows are dropped by an explicit release_session
+  // (a /resume's SessionEnd), which also CASCADE-drops the session stem's subagent
+  // sibling leases (subagent GC); never deleted on plain disconnect. NOTE: this
+  // lease is transport recovery only — /resume IDENTITY adoption keys off the
+  // durable `sessions` table (v4 adapter_id column), not this table, precisely
+  // because SessionEnd GCs the lease before the resumed session binds.
   `
   CREATE TABLE IF NOT EXISTS adapter_sessions (
     adapter_id TEXT,
@@ -161,7 +171,217 @@ const MIGRATIONS: string[] = [
     PRIMARY KEY (adapter_id, session_id)
   );
   `,
+  // v3 — DECOUPLE IDENTITY FROM SESSION. The hub mints an opaque `identity_id`
+  // (UUID) per identity; a `sessions(session_key -> identity_id)` map says which
+  // identity a session credential speaks for (many session keys, e.g. across a
+  // /resume or a subagent, can map to one identity over time). Every ownership /
+  // addressing column moves off the session key onto the identity key. `messages`
+  // gains a durable `from_identity` author anchor and a `reply_to` seq.
+  //
+  // BACKFILL (zero data loss on a live hub): mint one identity per distinct session
+  // value already in the DB across handles.owner_session, dms.*_session and
+  // dm_delivery.recipient_session; build the sessions map 1:1; rewrite each column.
+  // messages.from_identity is backfilled via from_handle -> handles.owner_session ->
+  // sessions.identity_id WHERE the handle still exists (else NULL — an author who
+  // already left was never recorded as an identity and can't be invented).
+  //
+  // Column drops: bun:sqlite (SQLite 3.51) supports ALTER TABLE DROP COLUMN, but
+  // not for a PRIMARY-KEY or indexed column. So `handles` drops its owner index,
+  // ADDs owner_identity, backfills, DROPs owner_session, re-creates the index on
+  // owner_identity; `dms` and `dm_delivery` (whose session columns are in the PK)
+  // are REBUILT via the table-rebuild pattern under the new identity keys.
+  (db: Database): void => {
+    const mint = () => randomUUID();
+    const now = nowIso();
+
+    db.exec(`
+      CREATE TABLE identities (
+        identity_id TEXT PRIMARY KEY,
+        host TEXT,
+        created_ts TEXT
+      );
+      CREATE TABLE sessions (
+        session_key TEXT PRIMARY KEY,
+        identity_id TEXT NOT NULL,
+        created_ts TEXT
+      );
+      CREATE INDEX sessions_by_identity ON sessions (identity_id);
+    `);
+
+    // 1) Gather every distinct pre-existing session value across all ownership
+    //    columns, and a best-known host per session (from a default-alias handle
+    //    `<session>@<host>` it owns, else 'unknown').
+    const sessionSet = new Set<string>();
+    const addCol = (sql: string, col: string) => {
+      for (const r of db.query(sql).all() as Record<string, string | null>[]) {
+        const v = r[col];
+        if (typeof v === "string" && v) sessionSet.add(v);
+      }
+    };
+    addCol("SELECT DISTINCT owner_session FROM handles", "owner_session");
+    addCol("SELECT DISTINCT from_session FROM dms", "from_session");
+    addCol("SELECT DISTINCT to_session FROM dms", "to_session");
+    addCol("SELECT DISTINCT lo_session FROM dms", "lo_session");
+    addCol("SELECT DISTINCT hi_session FROM dms", "hi_session");
+    addCol("SELECT DISTINCT recipient_session FROM dm_delivery", "recipient_session");
+
+    // host carried from a handle the session owns shaped like its default alias
+    // `<session>@<host>`: the local part equals the session id. ESCAPE the alias's
+    // own special chars so a session id with `%`/`_` matches literally.
+    const hostOf = (session: string): string => {
+      const esc = session.replace(/[\\%_]/g, (c) => `\\${c}`);
+      const row = db
+        .query(
+          "SELECT handle FROM handles WHERE owner_session = ? AND handle LIKE ? ESCAPE '\\' LIMIT 1",
+        )
+        .get(session, `${esc}@%`) as { handle: string } | null;
+      if (!row) return "unknown";
+      const at = row.handle.lastIndexOf("@");
+      return at >= 0 ? row.handle.slice(at + 1) : "unknown";
+    };
+
+    const insIdentity = db.query(
+      "INSERT INTO identities (identity_id, host, created_ts) VALUES (?, ?, ?)",
+    );
+    const insSession = db.query(
+      "INSERT INTO sessions (session_key, identity_id, created_ts) VALUES (?, ?, ?)",
+    );
+    const sessionToIdentity = new Map<string, string>();
+    for (const session of sessionSet) {
+      const id = mint();
+      insIdentity.run(id, hostOf(session), now);
+      insSession.run(session, id, now);
+      sessionToIdentity.set(session, id);
+    }
+
+    // 2) handles: owner_session -> owner_identity. Drop the owner index first (a
+    //    DROP COLUMN can't touch an indexed column), rewrite, re-index.
+    db.exec("DROP INDEX IF EXISTS handles_by_owner");
+    db.exec("ALTER TABLE handles ADD COLUMN owner_identity TEXT");
+    db.exec(
+      "UPDATE handles SET owner_identity = " +
+        "(SELECT identity_id FROM sessions WHERE session_key = handles.owner_session)",
+    );
+    db.exec("ALTER TABLE handles DROP COLUMN owner_session");
+    db.exec("CREATE INDEX handles_by_owner ON handles (owner_identity)");
+
+    // 3) dms: rebuild under identity keys (session columns are in the PK / index,
+    //    so an in-place DROP COLUMN is impossible). New canonical pair key is the
+    //    ordered identity pair (lo_identity, hi_identity).
+    db.exec(`
+      CREATE TABLE dms_new (
+        lo_identity TEXT, hi_identity TEXT, seq INTEGER,
+        from_identity TEXT, from_alias TEXT, to_identity TEXT, to_alias TEXT,
+        ts TEXT, msg_id TEXT, text TEXT,
+        state TEXT,
+        PRIMARY KEY (lo_identity, hi_identity, seq)
+      );
+    `);
+    const id = (s: string | null): string | null =>
+      s == null ? null : sessionToIdentity.get(s) ?? null;
+    const oldDms = db
+      .query(
+        "SELECT lo_session, hi_session, seq, from_session, from_alias, to_session, to_alias, ts, msg_id, text, state FROM dms",
+      )
+      .all() as DmV2Row[];
+    const insDmNew = db.query(
+      "INSERT INTO dms_new (lo_identity, hi_identity, seq, from_identity, from_alias, to_identity, to_alias, ts, msg_id, text, state) " +
+        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+    );
+    for (const r of oldDms) {
+      const loI = id(r.lo_session);
+      const hiI = id(r.hi_session);
+      // re-order the pair by the IDENTITY key so the canonical pair is stable.
+      const lo = loI != null && hiI != null ? (loI <= hiI ? loI : hiI) : loI;
+      const hi = loI != null && hiI != null ? (loI <= hiI ? hiI : loI) : hiI;
+      insDmNew.run(
+        lo,
+        hi,
+        r.seq,
+        id(r.from_session),
+        r.from_alias,
+        id(r.to_session),
+        r.to_alias,
+        r.ts,
+        r.msg_id,
+        r.text,
+        r.state,
+      );
+    }
+    db.exec("DROP TABLE dms");
+    db.exec("ALTER TABLE dms_new RENAME TO dms");
+    db.exec("CREATE INDEX dms_by_pair ON dms (lo_identity, hi_identity, seq)");
+
+    // 4) dm_delivery: rebuild under identity keys (recipient_session is in the PK).
+    db.exec(`
+      CREATE TABLE dm_delivery_new (
+        lo_identity TEXT, hi_identity TEXT, recipient_identity TEXT, delivered_seq INTEGER,
+        PRIMARY KEY (lo_identity, hi_identity, recipient_identity)
+      );
+    `);
+    const oldDelivery = db
+      .query(
+        "SELECT lo_session, hi_session, recipient_session, delivered_seq FROM dm_delivery",
+      )
+      .all() as {
+      lo_session: string;
+      hi_session: string;
+      recipient_session: string;
+      delivered_seq: number;
+    }[];
+    const insDelNew = db.query(
+      "INSERT OR IGNORE INTO dm_delivery_new (lo_identity, hi_identity, recipient_identity, delivered_seq) VALUES (?, ?, ?, ?)",
+    );
+    for (const r of oldDelivery) {
+      const loI = id(r.lo_session);
+      const hiI = id(r.hi_session);
+      const lo = loI != null && hiI != null ? (loI <= hiI ? loI : hiI) : loI;
+      const hi = loI != null && hiI != null ? (loI <= hiI ? hiI : loI) : hiI;
+      insDelNew.run(lo, hi, id(r.recipient_session), r.delivered_seq);
+    }
+    db.exec("DROP TABLE dm_delivery");
+    db.exec("ALTER TABLE dm_delivery_new RENAME TO dm_delivery");
+
+    // 5) messages: add the durable author identity + reply_to. `from_handle` stores
+    //    the member NAME (the handle's local part), so the author's full group
+    //    handle is `<from_handle>@<group_name>._group`; backfill from_identity from
+    //    THAT handle's current owner_identity. Authors whose group handle no longer
+    //    exists (they left) stay NULL — we can't invent an identity never recorded.
+    db.exec("ALTER TABLE messages ADD COLUMN from_identity TEXT");
+    db.exec("ALTER TABLE messages ADD COLUMN reply_to INTEGER");
+    db.exec(
+      "UPDATE messages SET from_identity = (SELECT owner_identity FROM handles " +
+        "WHERE handles.handle = messages.from_handle || '@' || messages.group_name || '._group')",
+    );
+  },
+  // v4 — record the adapter on each session row so /resume adoption survives the
+  // SessionEnd lease GC. The v6 re-attach keyed adoption off `adapter_sessions`, but
+  // in the REAL /resume lifecycle the SessionEnd hook fires release_session{oldKey}
+  // (which DELETEs the old key's adapter_sessions row) BEFORE the resumed session's
+  // first tool call binds — so by adoption time the lease is gone and a fresh
+  // identity is wrongly minted. The `sessions(oldKey -> identity)` row, by contrast,
+  // SURVIVES release (it's never deleted — the identity is durable). Stamping the
+  // adapter that bound each session row lets adoption find the adapter's prior MAIN
+  // identity from the durable `sessions` table, independent of the transient lease.
+  // Append-only ALTER; existing rows get NULL adapter_id (they predate adoption and
+  // are never adopted from — adoption requires a non-empty adapter match).
+  "ALTER TABLE sessions ADD COLUMN adapter_id TEXT",
 ];
+
+// The pre-v3 `dms` row shape, used only by the v3 backfill to read the old table.
+interface DmV2Row {
+  lo_session: string;
+  hi_session: string;
+  seq: number;
+  from_session: string;
+  from_alias: string;
+  to_session: string;
+  to_alias: string;
+  ts: string;
+  msg_id: string;
+  text: string;
+  state: string;
+}
 
 function runMigrations(): void {
   const cur =
@@ -169,9 +389,10 @@ function runMigrations(): void {
   for (let i = 0; i < MIGRATIONS.length; i++) {
     const version = i + 1;
     if (version <= cur) continue;
-    const sql = MIGRATIONS[i]!;
+    const m = MIGRATIONS[i]!;
     const apply = db.transaction(() => {
-      db.exec(sql);
+      if (typeof m === "string") db.exec(m);
+      else m(db);
       // PRAGMA user_version can't be parameterized; version is a controlled int.
       db.exec(`PRAGMA user_version = ${version}`);
     });
@@ -204,97 +425,151 @@ function handleToMemberName(handle: string, group: string): string {
   return handle.endsWith(suffix) ? handle.slice(0, -suffix.length) : handle;
 }
 
-// Prepared statements (reused; bun:sqlite caches the compiled plan).
+// Prepared statements (reused; bun:sqlite caches the compiled plan). All
+// ownership/addressing columns are keyed on the opaque IDENTITY id (v3), not a
+// session id; `sessions(session_key -> identity_id)` is the only place a session
+// credential is stored.
 const stmt = {
   insertGroup: db.query("INSERT OR IGNORE INTO groups (name, created_ts) VALUES (?, ?)"),
+  // identities + sessions (v3). The hub mints an identity the first time it sees a
+  // new session_key; `lookupSession`/`insertSession` are the resolution seam.
+  insertIdentity: db.query(
+    "INSERT INTO identities (identity_id, host, created_ts) VALUES (?, ?, ?)",
+  ),
+  selectIdentity: db.query("SELECT identity_id, host, created_ts FROM identities WHERE identity_id = ?"),
+  lookupSession: db.query("SELECT identity_id FROM sessions WHERE session_key = ?"),
+  insertSession: db.query(
+    "INSERT OR IGNORE INTO sessions (session_key, identity_id, created_ts, adapter_id) VALUES (?, ?, ?, ?)",
+  ),
+  // /resume adoption (v4): the prior MAIN identities this adapter has bound, from the
+  // DURABLE sessions table (survives the SessionEnd lease GC, unlike adapter_sessions).
+  // Excludes subagent composite keys (a `:` agent component) so a /resume never adopts
+  // a subagent's identity, and the boot-time NULL adapter rows (existing rows predate
+  // adoption). DISTINCT + ordered newest-first so the live coexistence case and the
+  // conflict check below both see a deterministic set. The caller passes a non-empty
+  // adapterId (guarded at the call site), so NULL/empty adapter rows never match.
+  adoptableMainIdentities: db.query(
+    "SELECT DISTINCT identity_id FROM sessions WHERE adapter_id = ? AND adapter_id <> '' " +
+      "AND instr(session_key, ':') = 0 ORDER BY created_ts DESC",
+  ),
   // handles — the single registry for "a name owned by an identity". A group
   // handle is `<name>@<group>._group`; a registered alias is `<name>@<host>`.
   insertHandle: db.query(
-    "INSERT INTO handles (handle, owner_session, created_ts) VALUES (?, ?, ?)",
+    "INSERT INTO handles (handle, owner_identity, created_ts) VALUES (?, ?, ?)",
   ),
-  deleteHandle: db.query("DELETE FROM handles WHERE handle = ? AND owner_session = ?"),
-  selectHandleOwner: db.query("SELECT owner_session, created_ts FROM handles WHERE handle = ?"),
+  deleteHandle: db.query("DELETE FROM handles WHERE handle = ? AND owner_identity = ?"),
+  selectHandleOwner: db.query("SELECT owner_identity, created_ts FROM handles WHERE handle = ?"),
   // every handle in a group, ordered by name; membership is DERIVED from this.
   selectHandlesInGroup: db.query(
-    "SELECT handle, owner_session, created_ts FROM handles WHERE handle LIKE ? ESCAPE '\\' ORDER BY handle ASC",
+    "SELECT handle, owner_identity, created_ts FROM handles WHERE handle LIKE ? ESCAPE '\\' ORDER BY handle ASC",
   ),
   // the caller identity's handle in a group (it owns at most one).
   selectMyHandleInGroup: db.query(
-    "SELECT handle, owner_session, created_ts FROM handles WHERE owner_session = ? AND handle LIKE ? ESCAPE '\\' LIMIT 1",
+    "SELECT handle, owner_identity, created_ts FROM handles WHERE owner_identity = ? AND handle LIKE ? ESCAPE '\\' LIMIT 1",
   ),
-  // registered aliases (handles NOT ending in the group suffix) owned by a session.
+  // registered aliases (handles NOT ending in the group suffix) owned by an identity.
   // The `_` in `._group` is a LIKE wildcard, so the suffix is escaped and matched
   // with `ESCAPE '\\'` — otherwise `'%._group'` would mean "ends `.<any-char>group`"
   // and could mis-classify a host whose name happens to end that way.
   selectAliasesForOwner: db.query(
-    "SELECT handle FROM handles WHERE owner_session = ? AND handle NOT LIKE '%.\\_group' ESCAPE '\\'",
+    "SELECT handle FROM handles WHERE owner_identity = ? AND handle NOT LIKE '%.\\_group' ESCAPE '\\'",
   ),
   // whoami shows the owner ALL their handles — including group handles
   // (`<name>@<group>._group`), which are identities/addresses too. (The
-  // `aliasesForSession` path above stays `@host`-only for the directory/register
+  // `aliasesForIdentity` path above stays `@host`-only for the directory/register
   // replies.)
-  selectAllHandlesForOwner: db.query("SELECT handle FROM handles WHERE owner_session = ?"),
+  selectAllHandlesForOwner: db.query("SELECT handle FROM handles WHERE owner_identity = ?"),
   selectAllAliases: db.query(
-    "SELECT handle, owner_session FROM handles WHERE handle NOT LIKE '%.\\_group' ESCAPE '\\'",
+    "SELECT handle, owner_identity FROM handles WHERE handle NOT LIKE '%.\\_group' ESCAPE '\\'",
   ),
   insertMessage: db.query(
-    "INSERT INTO messages (group_name, seq, from_handle, ts, msg_id, text) VALUES (?, ?, ?, ?, ?, ?)",
+    "INSERT INTO messages (group_name, seq, from_handle, ts, msg_id, text, from_identity, reply_to) " +
+      "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
   ),
   selectGroups: db.query("SELECT name FROM groups"),
   selectMaxSeq: db.query("SELECT MAX(seq) AS m FROM messages WHERE group_name = ?"),
   selectWindow: db.query(
-    "SELECT group_name, seq, from_handle, ts, msg_id, text FROM messages WHERE group_name = ? ORDER BY seq DESC LIMIT ?",
+    "SELECT group_name, seq, from_handle, ts, msg_id, text, from_identity, reply_to FROM messages WHERE group_name = ? ORDER BY seq DESC LIMIT ?",
   ),
   selectHistory: db.query(
-    "SELECT group_name, seq, from_handle, ts, msg_id, text FROM messages WHERE group_name = ? ORDER BY seq ASC",
+    "SELECT group_name, seq, from_handle, ts, msg_id, text, from_identity, reply_to FROM messages WHERE group_name = ? ORDER BY seq ASC",
+  ),
+  // a single message by (group, seq) — for the reply-to author lookup.
+  selectMessageAt: db.query(
+    "SELECT group_name, seq, from_handle, ts, msg_id, text, from_identity, reply_to FROM messages WHERE group_name = ? AND seq = ?",
   ),
   insertDm: db.query(
-    "INSERT INTO dms (lo_session, hi_session, seq, from_session, from_alias, to_session, to_alias, ts, msg_id, text, state) " +
+    "INSERT INTO dms (lo_identity, hi_identity, seq, from_identity, from_alias, to_identity, to_alias, ts, msg_id, text, state) " +
       "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
   ),
-  maxDmSeq: db.query("SELECT MAX(seq) AS m FROM dms WHERE lo_session = ? AND hi_session = ?"),
+  maxDmSeq: db.query("SELECT MAX(seq) AS m FROM dms WHERE lo_identity = ? AND hi_identity = ?"),
   updateDmState: db.query(
-    "UPDATE dms SET state = ? WHERE lo_session = ? AND hi_session = ? AND seq = ? AND to_session = ?",
+    "UPDATE dms SET state = ? WHERE lo_identity = ? AND hi_identity = ? AND seq = ? AND to_identity = ?",
   ),
   selectDmState: db.query(
-    "SELECT state FROM dms WHERE lo_session = ? AND hi_session = ? AND seq = ?",
+    "SELECT state FROM dms WHERE lo_identity = ? AND hi_identity = ? AND seq = ?",
   ),
   selectUndeliveredDms: db.query(
-    "SELECT lo_session, hi_session, seq, from_session, from_alias, to_session, to_alias, ts, msg_id, text, state " +
-      "FROM dms d WHERE d.to_session = ? AND d.seq > COALESCE(" +
-      "(SELECT delivered_seq FROM dm_delivery dd WHERE dd.lo_session = d.lo_session AND dd.hi_session = d.hi_session AND dd.recipient_session = ?), 0) " +
-      "ORDER BY d.lo_session, d.hi_session, d.seq ASC",
+    "SELECT lo_identity, hi_identity, seq, from_identity, from_alias, to_identity, to_alias, ts, msg_id, text, state " +
+      "FROM dms d WHERE d.to_identity = ? AND d.seq > COALESCE(" +
+      "(SELECT delivered_seq FROM dm_delivery dd WHERE dd.lo_identity = d.lo_identity AND dd.hi_identity = d.hi_identity AND dd.recipient_identity = ?), 0) " +
+      "ORDER BY d.lo_identity, d.hi_identity, d.seq ASC",
   ),
   selectDmThread: db.query(
-    "SELECT lo_session, hi_session, seq, from_session, from_alias, to_session, to_alias, ts, msg_id, text, state " +
-      "FROM dms WHERE lo_session = ? AND hi_session = ? ORDER BY seq ASC",
+    "SELECT lo_identity, hi_identity, seq, from_identity, from_alias, to_identity, to_alias, ts, msg_id, text, state " +
+      "FROM dms WHERE lo_identity = ? AND hi_identity = ? ORDER BY seq ASC",
   ),
   upsertDelivery: db.query(
-    "INSERT INTO dm_delivery (lo_session, hi_session, recipient_session, delivered_seq) VALUES (?, ?, ?, ?) " +
-      "ON CONFLICT(lo_session, hi_session, recipient_session) DO UPDATE SET delivered_seq = excluded.delivered_seq " +
+    "INSERT INTO dm_delivery (lo_identity, hi_identity, recipient_identity, delivered_seq) VALUES (?, ?, ?, ?) " +
+      "ON CONFLICT(lo_identity, hi_identity, recipient_identity) DO UPDATE SET delivered_seq = excluded.delivered_seq " +
       "WHERE excluded.delivered_seq > dm_delivery.delivered_seq",
   ),
-  // every session id we have ever observed: as an alias owner, a dm participant,
-  // or a member handle is NOT enough (handles aren't session ids), so the
-  // directory's session universe is alias owners + dm participants + live conns.
-  selectDmSessions: db.query(
-    "SELECT from_session AS s FROM dms UNION SELECT to_session AS s FROM dms",
+  // every IDENTITY we have ever observed as a dm participant — part of the
+  // directory's identity universe (alias owners + dm participants + live conns).
+  selectDmIdentities: db.query(
+    "SELECT from_identity AS s FROM dms UNION SELECT to_identity AS s FROM dms",
   ),
-  // adapter→session lease (migration v2 / protocol v5 reconnect). UPSERT on bind,
-  // SELECT on hello to re-bind a reconnecting adapter's sessions, DELETE on
-  // resume-supersede.
+  // targeted existence check: is this identity a participant in ANY dm? Used by
+  // hasAnyTrace so a default-alias resolution doesn't scan the whole dms table.
+  dmTraceForIdentity: db.query(
+    "SELECT 1 FROM dms WHERE from_identity = ? OR to_identity = ? LIMIT 1",
+  ),
+  // adapter→session lease (migration v2 / protocol v5 reconnect). STAYS
+  // session-keyed: an adapter serves SESSION keys (the v3 decouple does not change
+  // this — the lease's job is transport recovery, leasing the session credential).
+  // UPSERT on bind, SELECT on hello to re-bind a reconnecting adapter's sessions,
+  // DELETE on an explicit release_session (a /resume's SessionEnd).
   upsertAdapterSession: db.query(
     "INSERT OR IGNORE INTO adapter_sessions (adapter_id, session_id) VALUES (?, ?)",
   ),
   selectAdapterSessions: db.query(
-    // ORDER BY for a deterministic re-bind order. Under normal operation there is
-    // at most ONE row per adapter_id (resume-supersede deletes the prior session's
-    // row on every /resume), so this is a singleton in practice; the ordering only
-    // matters as defensive determinism should that invariant ever break.
+    // ORDER BY for a deterministic re-bind order. An adapter MAY lease several
+    // session keys concurrently (the parent plus live subagents, or a coexisting
+    // /resume before its SessionEnd release), so this is no longer a singleton; the
+    // hello handler re-binds each leased session key, all coexisting.
     "SELECT session_id FROM adapter_sessions WHERE adapter_id = ? ORDER BY session_id ASC",
   ),
-  deleteAdapterSession: db.query(
-    "DELETE FROM adapter_sessions WHERE adapter_id = ? AND session_id = ?",
+  // Release a session key's durable lease across ALL adapters that lease it. A
+  // session key (`<session_id>[:<agent_id>]`) is globally unique to one Claude
+  // session, so in practice one adapter leases it; deleting by key (not by
+  // adapter_id+key) is authoritative even when the releasing socket — a transient
+  // SessionEnd-hook connection — never bound the key itself.
+  deleteAdapterSessionByKey: db.query(
+    "DELETE FROM adapter_sessions WHERE session_id = ?",
+  ),
+  // The adapter ids that currently lease a given session key (read BEFORE the delete
+  // above), used to scope the subagent-lease cascade to the releasing adapter only.
+  selectAdaptersForSession: db.query(
+    "SELECT adapter_id FROM adapter_sessions WHERE session_id = ?",
+  ),
+  // Subagent-lease GC (cascade on main-key release): the subagent sibling leases of
+  // a released MAIN key — same adapter_id, session_id shaped `<mainKey>:<agent_id>`.
+  // A subagent cannot outlive its parent session, so releasing the parent's main key
+  // (its SessionEnd) cascade-releases the session_id stem's `:`-suffixed subagent
+  // keys for THE SAME adapter. The LIKE pattern escapes the main key's own LIKE
+  // wildcards so the `:` boundary is the only structural match (paired with ESCAPE).
+  selectSubagentLeases: db.query(
+    "SELECT session_id FROM adapter_sessions WHERE adapter_id = ? AND session_id LIKE ? ESCAPE '\\'",
   ),
 };
 
@@ -311,10 +586,18 @@ function groupHead(name: string): number {
 // same max and collide. db.transaction(fn) commits on return, rolls back on throw.
 
 const assignAndInsertMessage = db.transaction(
-  (group_name: string, from: string, ts: string, msg_id: string, text: string): number => {
+  (
+    group_name: string,
+    from: string,
+    ts: string,
+    msg_id: string,
+    text: string,
+    fromIdentity: string | null,
+    replyTo: number | null,
+  ): number => {
     const max = (stmt.selectMaxSeq.get(group_name) as { m: number | null })?.m ?? 0;
     const seq = max + 1;
-    stmt.insertMessage.run(group_name, seq, from, ts, msg_id, text);
+    stmt.insertMessage.run(group_name, seq, from, ts, msg_id, text, fromIdentity, replyTo);
     return seq;
   },
 );
@@ -323,9 +606,9 @@ const assignAndInsertDm = db.transaction(
   (p: {
     lo: string;
     hi: string;
-    fromSession: string;
+    fromIdentity: string;
     fromAlias: string;
-    toSession: string;
+    toIdentity: string;
     toAlias: string;
     ts: string;
     msg_id: string;
@@ -337,9 +620,9 @@ const assignAndInsertDm = db.transaction(
       p.lo,
       p.hi,
       seq,
-      p.fromSession,
+      p.fromIdentity,
       p.fromAlias,
-      p.toSession,
+      p.toIdentity,
       p.toAlias,
       p.ts,
       p.msg_id,
@@ -362,20 +645,32 @@ interface Connection {
   // (adapterId, session) row, and the hello handler re-binds the leased sessions
   // for a reconnecting adapter. Set at hello; "" until then.
   adapterId: string;
-  // One adapter socket can serve several Claude SESSIONS (e.g. /resume into a
-  // different session over the same adapter). `sessions` is every session id the
-  // adapter has asserted on this socket; `sessionId` is the one asserted on the
-  // current frame (the account whose identity/DM op we're serving right now).
+  // One adapter socket can serve several Claude SESSION KEYS (a /resume into a
+  // different session, or live subagents whose key is `<session_id>:<agent_id>`,
+  // all over the same socket). `sessions` is every session KEY this socket has
+  // asserted and is routing for; `sessionId` is the key asserted on the current
+  // frame (the credential whose identity/DM op we're serving right now). A session
+  // key is opaque — the hub never parses it.
   sessions: Set<string>;
   sessionId: string | null;
-  // The ACTIVE session last established by `bindSession` (the instance's current
-  // identity — what a /resume changes). Distinct from `sessionId`, which is the
-  // per-FRAME account (and which attribution-only frames like dm_ack/dm_read may
-  // transiently set to a DIFFERENT session). The resume-supersede compares a new
-  // active bind against THIS, so a DM receipt can't masquerade as a resume and
-  // tear down the live session. Null until the first bind. See
-  // docs/group-chat-adapter-reconnect.md.
+  // The ACTIVE session key last established by `bindSession` (the credential the
+  // current frame asserted). Distinct from `sessionId` only in that attribution-
+  // only frames (dm_ack/dm_read) set `sessionId` WITHOUT calling bindSession, so
+  // they never touch `boundSession`. Null until the first bind. The decouple
+  // removed the bind-time supersede: a new key binding over the same socket no
+  // longer evicts the prior (subagents + a /resume's two sessions coexist); only an
+  // explicit release_session (SessionEnd) detaches a session key.
   boundSession: string | null;
+  // The IDENTITY id resolved for the current frame's session key (mint-on-first-
+  // sight). Stamped immediately before handleFrame reads it, like `sessionId`.
+  identityId: string | null;
+  // Every identity id this socket currently routes for, keyed by the session KEY
+  // that resolved to it. Used by onDisconnect/release to know which identityConns
+  // entries to drop when a session key (or the whole socket) goes away. Multiple
+  // session keys can map to the same identity (its value repeats); routing fans to
+  // all live conns of an identity, so we only drop an identityConns membership when
+  // THIS conn no longer serves ANY key mapping to that identity.
+  sessionIdentity: Map<string, string>;
   host: string; // the device hostname the adapter reported at hello
   // groups this connection is joined to, keyed by group name -> the member names
   // it joined as on THIS socket. Kept ONLY to attribute spontaneous `ack`/`read`
@@ -399,12 +694,17 @@ interface Group {
 
 const groups = new Map<string, Group>();
 
-// session id -> the set of live connections bound to it. Normally one, but we
-// tolerate several (e.g. transient overlap during reconnect). Used to route DMs
-// to an online recipient and to compute online state.
-const sessionConns = new Map<string, Set<Connection>>();
-// session id -> the host last reported for it (its default-alias host).
-const sessionHost = new Map<string, string>();
+// IDENTITY id -> the set of live connections currently speaking for it. An
+// identity MAY have several concurrent live sessions (a /resume's two sessions, or
+// several adapters), so this is a Set and a push fans out to ALL of them. Used to
+// route DMs / group pushes to an online recipient and to compute online state.
+const identityConns = new Map<string, Set<Connection>>();
+// identity id -> the host last reported for it (its default-alias host).
+const identityHost = new Map<string, string>();
+// Every live connection. A release_session must find the session key across ALL
+// connections (the releasing SessionEnd hook opens its OWN transient socket, not
+// the adapter's), so it iterates this set rather than a per-socket lookup.
+const allConnections = new Set<Connection>();
 
 // ---- PreToolUse session correlation ---------------------------------------
 // `tool_use_id -> SessionSlot`, the rendezvous between the PreToolUse hook (which
@@ -518,6 +818,89 @@ function nowIso(): string {
 }
 
 // ---------------------------------------------------------------------------
+// The resolution seam: session KEY -> IDENTITY id, minting on first sight. This is
+// the ONE place a session credential becomes an identity. The session key is opaque
+// (`<session_id>` or the composite `<session_id>:<agent_id>` for a subagent) — the
+// hub never parses it EXCEPT for the single structural peek below: detecting the
+// presence of a `:` agent component to tell a main-agent key from a subagent one.
+// That one boundary check is the ONLY place the hub looks inside the key, and it is
+// required by the re-attach predicate (a main-agent /resume adopts the prior main
+// identity; a subagent must always get its own).
+//
+// A brand-new key mints a fresh identity + a `sessions` row; thereafter the same
+// key always resolves to that identity. `host` is recorded on the identity at mint
+// time for its default alias, and refreshed by bindSession.
+
+// The ONE allowed structural peek into the opaque session key: does it carry a
+// `:`-suffixed agent component (i.e. is it a subagent key `<session_id>:<agent_id>`)?
+function isSubagentKey(sessionKey: string): boolean {
+  return sessionKey.includes(":");
+}
+
+// Resolve (mint-on-first-sight, with adapterId-scoped RE-ATTACH adoption). When a
+// NEW, unseen key is resolved during a bind on adapter `adapterId`:
+//   1. If the key already maps in `sessions` -> return that identity (unchanged).
+//   2. Else, if it is a MAIN-agent key (no `:` agent component), look at the prior
+//      MAIN session rows this SAME adapterId has bound (the DURABLE `sessions` table,
+//      v4 adapter_id column — NOT the transient adapter_sessions lease, which the
+//      SessionEnd hook has already GC'd by this point in the real /resume order): if
+//      they share exactly one identity, ADOPT it — insert sessions(newKey -> that
+//      identity) instead of minting. This is the /resume continuity: the new session
+//      id over the same surviving adapter process inherits the prior identity
+//      (handles/aliases/DMs/membership carry over), with no impersonation question
+//      (same adapter = the v5 lease's trust).
+//   3. Else (subagent key, or no adoptable prior main identity, or a degraded
+//      multi-identity adapter) -> mint fresh.
+// A SUBAGENT key NEVER adopts: it always gets its own distinct identity (the
+// composite key path), never collapsing into the parent — even though it shares the
+// parent's adapterId.
+function resolveIdentity(sessionKey: string, host: string, adapterId: string): string {
+  const existing = stmt.lookupSession.get(sessionKey) as { identity_id: string } | null;
+  if (existing) return existing.identity_id;
+
+  // RE-ATTACH adoption: only for a NEW main-agent key on an adapter that has already
+  // bound a prior main key (a /resume). The adopted identity is that prior MAIN key's
+  // identity, read from the DURABLE sessions table — so adoption survives the
+  // SessionEnd lease GC that has, by this point in the real /resume lifecycle, already
+  // dropped the old key's adapter_sessions row.
+  if (adapterId && !isSubagentKey(sessionKey)) {
+    const adopted = adoptableIdentityFor(adapterId);
+    if (adopted) {
+      stmt.insertSession.run(sessionKey, adopted, nowIso(), adapterId);
+      return adopted;
+    }
+  }
+
+  const id = randomUUID();
+  const ts = nowIso();
+  stmt.insertIdentity.run(id, host || "unknown", ts);
+  stmt.insertSession.run(sessionKey, id, ts, adapterId || null);
+  return id;
+}
+
+// The prior MAIN identity this adapter can have a /resume adopt: read from the
+// DURABLE `sessions` table (NOT the transient adapter_sessions lease, which the
+// SessionEnd hook has already GC'd by adoption time in the real /resume order). The
+// adapter's bound MAIN (non-composite) session rows are collapsed to their DISTINCT
+// identities:
+//   - exactly one distinct identity  -> ADOPT it (the /resume continuity case; also
+//     covers a second /resume, where the prior resumed key already shares the one
+//     identity, so DISTINCT still yields one).
+//   - none -> null (a genuinely first-seen adapter) -> resolveIdentity mints fresh.
+//   - MORE THAN ONE distinct identity -> null (force a fresh mint). This only arises
+//     in a DEGRADED state where SessionEnd failed to release a prior main key, leaving
+//     two unrelated identities bound to one adapter; silently adopting an arbitrary one
+//     would mis-attribute, so we decline rather than guess. (Normal operation can't
+//     reach this: each /resume's SessionEnd releases the prior key, and adoption makes
+//     the resumed key share the SAME identity, so DISTINCT stays at one.)
+// Subagent rows are excluded by the query (so a /resume never adopts a subagent).
+function adoptableIdentityFor(adapterId: string): string | null {
+  const rows = stmt.adoptableMainIdentities.all(adapterId) as { identity_id: string }[];
+  if (rows.length !== 1) return null;
+  return rows[0]!.identity_id;
+}
+
+// ---------------------------------------------------------------------------
 // Startup recovery: rebuild groups + per-group seq/window from SQLite. Membership
 // is NOT rebuilt — it's derived on demand from the durable `handles` table.
 
@@ -547,6 +930,8 @@ interface MsgRow {
   ts: string;
   msg_id: string;
   text: string;
+  from_identity: string | null;
+  reply_to: number | null;
 }
 function rowToMsg(r: MsgRow): ChatMessage {
   return {
@@ -556,16 +941,17 @@ function rowToMsg(r: MsgRow): ChatMessage {
     ts: r.ts,
     msg_id: r.msg_id,
     text: r.text,
+    ...(r.reply_to != null ? { reply_to: r.reply_to } : {}),
   };
 }
 
 interface DmRow {
-  lo_session: string;
-  hi_session: string;
+  lo_identity: string;
+  hi_identity: string;
   seq: number;
-  from_session: string;
+  from_identity: string;
   from_alias: string;
-  to_session: string;
+  to_identity: string;
   to_alias: string;
   ts: string;
   msg_id: string;
@@ -575,9 +961,9 @@ interface DmRow {
 function rowToDm(r: DmRow): DirectMessage {
   return {
     seq: r.seq,
-    from_session: r.from_session,
+    from_identity: r.from_identity,
     from_alias: r.from_alias,
-    to_session: r.to_session,
+    to_identity: r.to_identity,
     to_alias: r.to_alias,
     ts: r.ts,
     msg_id: r.msg_id,
@@ -607,7 +993,7 @@ interface GroupMember {
 
 interface HandleRow {
   handle: string;
-  owner_session: string;
+  owner_identity: string;
   created_ts: string;
 }
 
@@ -617,15 +1003,15 @@ function membersOf(group: string): GroupMember[] {
   return rows.map((r) => ({
     name: handleToMemberName(r.handle, group),
     handle: r.handle,
-    owner: r.owner_session,
+    owner: r.owner_identity,
     created_ts: r.created_ts,
   }));
 }
 
 // The caller identity's handle in a group (at most one — one identity per group).
 // Returns the member-name part, or null if the identity is not a member.
-function myMemberName(sessionId: string, group: string): string | null {
-  const row = stmt.selectMyHandleInGroup.get(sessionId, groupHandlePattern(group)) as
+function myMemberName(identityId: string, group: string): string | null {
+  const row = stmt.selectMyHandleInGroup.get(identityId, groupHandlePattern(group)) as
     | HandleRow
     | null;
   return row ? handleToMemberName(row.handle, group) : null;
@@ -634,14 +1020,14 @@ function myMemberName(sessionId: string, group: string): string | null {
 // The member names this connection currently participates as in a group — used to
 // attribute spontaneous `ack`/`read` frames (which carry no identity) back to the
 // right member. Populated by `join` on this conn; falls back to deriving from the
-// conn's bound sessions if the live record is empty (e.g. after a reconnect that
-// re-bound the session before an explicit re-join).
+// conn's bound session keys' identities if the live record is empty (e.g. after a
+// reconnect that re-bound the session before an explicit re-join).
 function connMemberNames(conn: Connection, group: string): Set<string> {
   const live = conn.joinedAs.get(group);
   if (live && live.size > 0) return live;
   const out = new Set<string>();
-  for (const sid of conn.sessions) {
-    const name = myMemberName(sid, group);
+  for (const identity of conn.sessionIdentity.values()) {
+    const name = myMemberName(identity, group);
     if (name !== null) out.add(name);
   }
   return out;
@@ -666,12 +1052,23 @@ function broadcast(
   from: string,
   text: string,
   to?: string[],
+  fromIdentity?: string | null,
+  replyTo?: number,
 ): { msg: ChatMessage; recipients: string[] } {
   // seq is DB-owned: assigned as MAX(seq)+1 and inserted in one transaction (no
   // mirrored in-memory counter). 1) durable append first, getting the seq back.
+  // The durable row stores the author's identity (the reply-to anchor) + reply_to.
   const ts = nowIso();
   const msg_id = randomUUID();
-  const seq = assignAndInsertMessage(group.name, from, ts, msg_id, text);
+  const seq = assignAndInsertMessage(
+    group.name,
+    from,
+    ts,
+    msg_id,
+    text,
+    fromIdentity ?? null,
+    replyTo ?? null,
+  );
   const msg: ChatMessage = {
     group: group.name,
     seq,
@@ -679,13 +1076,16 @@ function broadcast(
     ts,
     msg_id,
     text,
+    ...(replyTo != null ? { reply_to: replyTo } : {}),
   };
   // 2) keep it in the in-memory window for gap re-send
   group.window.push(msg);
   if (group.window.length > WINDOW) group.window.shift();
   // 3) fan out to every online member EXCEPT the sender, and — when `to` is set
   //    — only to member names listed in `to`. "Online" = the member's OWNING
-  //    identity has a live connection (sessionConns); we push to each such conn.
+  //    identity has a live connection (identityConns); we push to each such conn,
+  //    STAMPING the recipient identity so the adapter can gate the push to the
+  //    session it is destined for (delivery gate).
   const filter = to ? new Set(to) : null;
   const recipients: string[] = [];
   for (const m of membersOf(group.name)) {
@@ -696,7 +1096,7 @@ function broadcast(
     if (filter && !filter.has(m.name)) continue; // push-filtered out (still logged)
     const conns = liveConnsFor(m.owner);
     if (conns.length === 0) continue; // offline member: logged, not pushed
-    for (const c of conns) c.send({ t: "message", msg });
+    for (const c of conns) c.send({ t: "message", msg, to_identity: m.owner });
     recipients.push(m.name);
     if (seq > (group.delivered.get(m.name) ?? 0)) group.delivered.set(m.name, seq);
   }
@@ -705,6 +1105,7 @@ function broadcast(
 
 // Re-send the brief-reconnect gap to a returning member: every windowed message
 // past the member's in-memory delivered cursor, to that identity's live conns.
+// Each send is stamped with the recipient identity for the adapter's delivery gate.
 function resendGap(memberName: string, owner: string, group: Group): void {
   const delivered = group.delivered.get(memberName) ?? 0;
   const conns = liveConnsFor(owner);
@@ -712,7 +1113,7 @@ function resendGap(memberName: string, owner: string, group: Group): void {
   let last = delivered;
   for (const msg of group.window) {
     if (msg.seq > delivered) {
-      for (const c of conns) c.send({ t: "message", msg });
+      for (const c of conns) c.send({ t: "message", msg, to_identity: owner });
       if (msg.seq > last) last = msg.seq;
     }
   }
@@ -726,40 +1127,69 @@ function err(conn: Connection, code: string, message: string, rid?: string): voi
 // ---------------------------------------------------------------------------
 // Identity / alias helpers.
 
-// Order a session pair (lo, hi) so a thread has one canonical key regardless of
+// Order an identity pair (lo, hi) so a thread has one canonical key regardless of
 // direction.
 function pairOf(a: string, b: string): { lo: string; hi: string } {
   return a <= b ? { lo: a, hi: b } : { lo: b, hi: a };
 }
 
-function isOnline(sessionId: string): boolean {
-  const set = sessionConns.get(sessionId);
+function isOnline(identityId: string): boolean {
+  const set = identityConns.get(identityId);
   return !!set && set.size > 0;
 }
 
-function liveConnsFor(sessionId: string): Connection[] {
-  const set = sessionConns.get(sessionId);
+function liveConnsFor(identityId: string): Connection[] {
+  const set = identityConns.get(identityId);
   return set ? [...set] : [];
 }
 
-// Every alias (host-qualified form) owned by a session, including its implicit
-// default alias <session-id>@<host>. Registered aliases are handles NOT ending in
+// The host recorded for an identity (its default-alias host): the live one last
+// reported, else the durable one minted onto the identity row, else 'unknown'.
+function hostForIdentity(identityId: string): string {
+  const live = identityHost.get(identityId);
+  if (live) return live;
+  const row = stmt.selectIdentity.get(identityId) as { host: string } | null;
+  return row?.host || "unknown";
+}
+
+// Every alias (host-qualified form) owned by an identity, including its implicit
+// default alias <identity-id>@<host>. Registered aliases are handles NOT ending in
 // the group suffix (the @host ones); they are already full strings.
-function aliasesForSession(sessionId: string, host: string | undefined): string[] {
+function aliasesForIdentity(identityId: string, host: string | undefined): string[] {
   const out: string[] = [];
-  if (host) out.push(`${sessionId}@${host}`);
-  for (const r of stmt.selectAliasesForOwner.all(sessionId) as { handle: string }[]) {
+  if (host) out.push(`${identityId}@${host}`);
+  for (const r of stmt.selectAliasesForOwner.all(identityId) as { handle: string }[]) {
     out.push(r.handle);
   }
   return out;
 }
 
-// Resolve an address to a session id. Three forms, all now a single handle table:
-//   <session-id>@<host>          default alias (the session itself, implicit)
+// The reply-to author-left warning: the author's identity is no longer a member of
+// the group, so the reply was logged but not pushed. Tell the replier where they
+// can reach the author — registered aliases + the canonical default address — and
+// whether they're online. Honest when there is nothing to offer.
+function describeReachability(authorIdentity: string, repliedSeq: number, group: string): string {
+  const host = hostForIdentity(authorIdentity);
+  const addrs: string[] = [];
+  for (const r of stmt.selectAliasesForOwner.all(authorIdentity) as { handle: string }[]) {
+    addrs.push(r.handle);
+  }
+  // the canonical default address always exists for a known identity.
+  addrs.push(`${authorIdentity}@${host}`);
+  const online = isOnline(authorIdentity);
+  return (
+    `the author of seq ${repliedSeq} has left '${group}', so the reply was logged ` +
+    `but not pushed to them. They are ${online ? "online" : "offline"}; you can reach them ` +
+    `by DM at: ${addrs.join(", ")}.`
+  );
+}
+
+// Resolve an address to an IDENTITY id. Three forms, all now a single handle table:
+//   <identity-id>@<host>         default alias (the identity itself, implicit)
 //   <name>@<host>                registered alias (handle row)
 //   <handle>@<group>._group      group handle (handle row) — DURABLE, independent
 //                                of connection/attachment.
-// Returns null if it doesn't resolve to a known session.
+// Returns null if it doesn't resolve to a known identity.
 function resolveAddress(address: string): string | null {
   const at = address.lastIndexOf("@");
   if (at < 0) return null;
@@ -771,35 +1201,40 @@ function resolveAddress(address: string): string | null {
   // owning identity resolves whether or not it is currently attached.
   if (domain.endsWith(GROUP_SUFFIX)) {
     const row = stmt.selectHandleOwner.get(address) as HandleRow | null;
-    return row ? row.owner_session : null;
+    return row ? row.owner_identity : null;
   }
 
-  // default alias: local part contains a dash => it's a session id shape. We
-  // confirm the session is known (has reported this host), else it's unknown.
+  // default alias: local part contains a dash => it's an identity-id shape (UUIDs
+  // are dash-ful, dash-free names are reserved for registered aliases). Accept iff
+  // we have minted that identity (it exists in the identities table) or it has a
+  // durable trace.
   if (local.includes("-")) {
-    // it names a session id directly; accept iff we've seen that session.
-    if (sessionHost.has(local) || hasAnyTrace(local)) return local;
+    if (identityExists(local) || hasAnyTrace(local)) return local;
     return null;
   }
 
   // registered alias: <name>@<host> — the same handle table.
   const row = stmt.selectHandleOwner.get(address) as HandleRow | null;
-  return row ? row.owner_session : null;
+  return row ? row.owner_identity : null;
 }
 
-// Has this session id left any durable trace (owns an alias, or participated in
-// a DM)? Lets a default-alias address resolve for a session that's offline but
-// known. NOTE: a group handle is deliberately NOT a trace here — a group member
-// is addressed via its durable `<name>@<group>._group` handle (resolved directly
-// in resolveAddress), not via its session-id default alias, so a session whose
-// only durable artifact is a group handle need not be reachable by default alias.
-function hasAnyTrace(sessionId: string): boolean {
-  const a = stmt.selectAliasesForOwner.all(sessionId) as unknown[];
+// Does this identity id exist in the identities table?
+function identityExists(identityId: string): boolean {
+  return !!(stmt.selectIdentity.get(identityId) as
+    | { identity_id: string; host: string; created_ts: string }
+    | null);
+}
+
+// Has this identity left any durable trace (owns an alias, or participated in a
+// DM)? Lets a default-alias address resolve for an identity that's offline but
+// known. NOTE: a group handle is deliberately NOT a trace here — a group member is
+// addressed via its durable `<name>@<group>._group` handle (resolved directly in
+// resolveAddress), not via its identity default alias, so an identity whose only
+// durable artifact is a group handle need not be reachable by default alias.
+function hasAnyTrace(identityId: string): boolean {
+  const a = stmt.selectAliasesForOwner.all(identityId) as unknown[];
   if (a.length > 0) return true;
-  for (const r of stmt.selectDmSessions.all() as { s: string }[]) {
-    if (r.s === sessionId) return true;
-  }
-  return false;
+  return !!stmt.dmTraceForIdentity.get(identityId, identityId);
 }
 
 // ---------------------------------------------------------------------------
@@ -808,13 +1243,13 @@ function hasAnyTrace(sessionId: string): boolean {
 // Persist + route a DM. Returns the stored DirectMessage and whether it was
 // pushed live (recipient online).
 function storeDm(
-  fromSession: string,
+  fromIdentity: string,
   fromAlias: string,
-  toSession: string,
+  toIdentity: string,
   toAlias: string,
   text: string,
 ): { dm: DirectMessage; pushed: boolean } {
-  const { lo, hi } = pairOf(fromSession, toSession);
+  const { lo, hi } = pairOf(fromIdentity, toIdentity);
   const ts = nowIso();
   const msg_id = randomUUID();
   // Assign the per-pair seq and insert atomically: reading MAX(seq) and inserting
@@ -824,9 +1259,9 @@ function storeDm(
   const seq = assignAndInsertDm({
     lo,
     hi,
-    fromSession,
+    fromIdentity,
     fromAlias,
-    toSession,
+    toIdentity,
     toAlias,
     ts,
     msg_id,
@@ -834,9 +1269,9 @@ function storeDm(
   });
   const dm: DirectMessage = {
     seq,
-    from_session: fromSession,
+    from_identity: fromIdentity,
     from_alias: fromAlias,
-    to_session: toSession,
+    to_identity: toIdentity,
     to_alias: toAlias,
     ts,
     msg_id,
@@ -844,27 +1279,29 @@ function storeDm(
     state: "sent",
   };
   // Try a live push if the recipient is online. If pushed, advance the
-  // recipient's durable delivery cursor so it isn't re-flushed on reconnect.
+  // recipient's durable delivery cursor so it isn't re-flushed on reconnect. The
+  // dm_message already names its target (to_identity) so the adapter gates it.
   let pushed = false;
-  for (const c of liveConnsFor(toSession)) {
+  for (const c of liveConnsFor(toIdentity)) {
     c.send({ t: "dm_message", msg: dm });
     pushed = true;
   }
   if (pushed) {
-    stmt.upsertDelivery.run(lo, hi, toSession, seq);
+    stmt.upsertDelivery.run(lo, hi, toIdentity, seq);
   }
   return { dm, pushed };
 }
 
-// Flush a reconnecting session's undelivered DM queue: every DM addressed to it
-// past its per-pair delivery cursor, one dm_message each, advancing the cursor.
+// Flush a reconnecting session's undelivered DM queue: every DM addressed to its
+// IDENTITY past its per-pair delivery cursor, one dm_message each, advancing the
+// cursor.
 function flushDmQueue(conn: Connection): void {
-  const sid = conn.sessionId;
-  if (!sid) return;
-  const rows = stmt.selectUndeliveredDms.all(sid, sid) as DmRow[];
+  const identity = conn.identityId;
+  if (!identity) return;
+  const rows = stmt.selectUndeliveredDms.all(identity, identity) as DmRow[];
   for (const r of rows) {
     conn.send({ t: "dm_message", msg: rowToDm(r) });
-    stmt.upsertDelivery.run(r.lo_session, r.hi_session, sid, r.seq);
+    stmt.upsertDelivery.run(r.lo_identity, r.hi_identity, identity, r.seq);
   }
 }
 
@@ -892,17 +1329,13 @@ function handleFrame(conn: Connection, frame: ClientEnvelope): void {
     conn.adapterId =
       typeof frame.adapter_id === "string" && frame.adapter_id ? frame.adapter_id : randomUUID();
     conn.send({ t: "welcome", protocol: PROTOCOL_VERSION, adapter_id: conn.adapterId });
-    // Re-bind every session this adapter was serving (the durable lease). This is
-    // what restores `sessionConns` after a reconnect or hub restart with NO tool
-    // call: each bindSession re-registers the live route and flushes the session's
-    // queued DMs. A first-connect adapter has no lease rows, so this is a no-op.
-    //
-    // INVARIANT: at most ONE lease row per adapter_id (resume-supersede deletes the
-    // prior session on every /resume). So this loop binds exactly one session and
-    // never triggers the supersede inside bindSession (conn.boundSession is null on
-    // entry). Were two rows ever to coexist (the invariant broken), the second bind
-    // would supersede the first — destroying its lease — so the singleton invariant
-    // is load-bearing, not incidental.
+    // Re-bind every session KEY this adapter was serving (the durable lease). This
+    // is what restores `identityConns` after a reconnect or hub restart with NO
+    // tool call: each bindSession resolves the key to its identity, re-registers the
+    // live route, and flushes that identity's queued DMs. A first-connect adapter
+    // has no lease rows, so this is a no-op. An adapter MAY lease several session
+    // keys (subagents, or a /resume's two sessions before SessionEnd releases the
+    // old one) — they all re-bind and coexist; the bind no longer supersedes.
     const leased = stmt.selectAdapterSessions.all(conn.adapterId) as { session_id: string }[];
     for (const { session_id } of leased) bindSession(conn, session_id);
     return;
@@ -924,14 +1357,27 @@ function handleFrame(conn: Connection, frame: ClientEnvelope): void {
       return;
 
     case "map_session": {
-      // The PreToolUse hook authoritatively reports a call's real session id.
-      // Record it and wake any adapter frame already awaiting this tool_use_id.
-      // Fire-and-forget: the hook closes right after; no reply is sent.
+      // The PreToolUse hook authoritatively reports a call's real session key (the
+      // composite "<session_id>[:<agent_id>]" — opaque to the hub). Record it and
+      // wake any adapter frame already awaiting this tool_use_id. Fire-and-forget:
+      // the hook closes right after; no reply is sent.
       if (
         typeof frame.tool_use_id === "string" && frame.tool_use_id &&
         typeof frame.session_id === "string" && frame.session_id
       ) {
         registerSessionMapping(frame.tool_use_id, frame.session_id);
+      }
+      return;
+    }
+
+    case "release_session": {
+      // A genuine /resume (or /clear) ended a session: its SessionEnd hook sends
+      // this so the OLD session key stops receiving pushes. Drop the key's route
+      // across ALL connections that serve it (the lease + identityConns), idempotent
+      // — releasing an already-gone key is a no-op. The identity itself survives;
+      // only this session credential detaches. Fire-and-forget; no reply.
+      if (typeof frame.session_key === "string" && frame.session_key) {
+        releaseSessionKey(frame.session_key);
       }
       return;
     }
@@ -990,19 +1436,19 @@ function handleFrame(conn: Connection, frame: ClientEnvelope): void {
       }
       // Group membership is an identity-owned handle; joining REQUIRES a resolved
       // identity. The handle `<as>@<group>._group` is owned by the caller.
-      const sid = requireSession(conn, rid);
-      if (!sid) return;
+      const identity = requireIdentity(conn, rid);
+      if (!identity) return;
       const g = getOrCreateGroup(frame.group);
       const handle = `${frame.as}${groupHandleSuffix(frame.group)}`;
       const existing = stmt.selectHandleOwner.get(handle) as HandleRow | null;
-      if (existing && existing.owner_session !== sid) {
+      if (existing && existing.owner_identity !== identity) {
         // A DIFFERENT identity holds this handle — genuine collision.
         err(conn, "handle_taken", `'${frame.as}' is already taken in '${frame.group}'`, rid);
         return;
       }
       const isReturning = existing !== null; // same owner re-registering -> idempotent
       if (!isReturning) {
-        stmt.insertHandle.run(handle, sid, nowIso());
+        stmt.insertHandle.run(handle, identity, nowIso());
         // Seed the gap cursor at head: a brand-new member gets NO backfill.
         if (!g.delivered.has(frame.as)) g.delivered.set(frame.as, groupHead(frame.group));
       }
@@ -1017,7 +1463,7 @@ function handleFrame(conn: Connection, frame: ClientEnvelope): void {
       // backfill (group push is online-only; only the live in-memory gap replays).
       if (isReturning) {
         if (!g.delivered.has(frame.as)) g.delivered.set(frame.as, groupHead(frame.group));
-        resendGap(frame.as, sid, g);
+        resendGap(frame.as, identity, g);
       }
       return;
     }
@@ -1025,12 +1471,12 @@ function handleFrame(conn: Connection, frame: ClientEnvelope): void {
     case "leave": {
       // Drop the caller identity's handle in the group (at most one — unambiguous,
       // no `as` needed). Requires a resolved identity.
-      const sid = requireSession(conn, rid);
-      if (!sid) return;
+      const identity = requireIdentity(conn, rid);
+      if (!identity) return;
       const g = groups.get(frame.group);
-      const name = myMemberName(sid, frame.group);
+      const name = myMemberName(identity, frame.group);
       if (name !== null) {
-        stmt.deleteHandle.run(`${name}${groupHandleSuffix(frame.group)}`, sid);
+        stmt.deleteHandle.run(`${name}${groupHandleSuffix(frame.group)}`, identity);
         const names = conn.joinedAs.get(frame.group);
         if (names) {
           names.delete(name);
@@ -1045,10 +1491,10 @@ function handleFrame(conn: Connection, frame: ClientEnvelope): void {
     case "send": {
       // The hub resolves the sender's handle from the caller's identity — no `as`
       // on the wire. Sending REQUIRES being a member (owning a group handle).
-      const sid = requireSession(conn, rid);
-      if (!sid) return;
+      const identity = requireIdentity(conn, rid);
+      if (!identity) return;
       const g = groups.get(frame.group);
-      const as = g ? myMemberName(sid, frame.group) : null;
+      const as = g ? myMemberName(identity, frame.group) : null;
       if (!g || as === null) {
         err(conn, "not_in_group", `join '${frame.group}' first before sending`, rid);
         return;
@@ -1072,7 +1518,62 @@ function handleFrame(conn: Connection, frame: ClientEnvelope): void {
         }
         toFilter = frame.to;
       }
-      const { msg, recipients } = broadcast(g, as, frame.message, toFilter);
+
+      // REPLY-TO: when set, the reply is pushed ONLY to the original author (still
+      // logged for the whole group). Look up the replied-to row; derive the author's
+      // current group handle from its durable identity. If the author is still a
+      // member, push to them (the `to` filter); if they LEFT, log-only + a warning
+      // in the result naming their reachable addresses.
+      let replyWarning: string | undefined;
+      if (frame.reply_to !== undefined && frame.reply_to !== null) {
+        const target = stmt.selectMessageAt.get(g.name, frame.reply_to) as MsgRow | null;
+        if (!target) {
+          err(
+            conn,
+            "no_such_message",
+            `no message seq ${frame.reply_to} in '${frame.group}'`,
+            rid,
+          );
+          return;
+        }
+        const authorIdentity = target.from_identity;
+        if (!authorIdentity) {
+          // pre-migration author: identity was never recorded. Reply still logs; the
+          // warning notes we can't name the author.
+          replyWarning =
+            `the original author of seq ${frame.reply_to} has no recorded identity ` +
+            `(pre-migration message), so it was logged but could not be pushed to anyone.`;
+          toFilter = []; // log-only: push to nobody
+        } else {
+          const authorName = myMemberName(authorIdentity, g.name);
+          if (authorIdentity === identity) {
+            // replying to your OWN message: there is no one else to push the reply
+            // to (the sender is never pushed their own message). Log-only + say so,
+            // rather than reporting an empty send as if it silently went nowhere.
+            toFilter = [];
+            replyWarning =
+              `you replied to your own message (seq ${frame.reply_to}); it was logged ` +
+              `to the group's history but a reply pushes only to its author, and you ` +
+              `are not pushed your own message.`;
+          } else if (authorName !== null) {
+            // author still in the group: push only to them (overrides any `to`).
+            toFilter = [authorName];
+          } else {
+            // author LEFT: log-only, and report where they can be reached.
+            toFilter = [];
+            replyWarning = describeReachability(authorIdentity, frame.reply_to, g.name);
+          }
+        }
+      }
+
+      const { msg, recipients } = broadcast(
+        g,
+        as,
+        frame.message,
+        toFilter,
+        identity,
+        frame.reply_to ?? undefined,
+      );
 
       const key = `${g.name}#${msg.seq}`;
       // The set of names a receipt is awaited from: the recipients we pushed to.
@@ -1087,7 +1588,15 @@ function handleFrame(conn: Connection, frame: ClientEnvelope): void {
       };
 
       if (recipients.length === 0) {
-        conn.send({ t: "sent", rid, group: g.name, seq: msg.seq, read: [], sent: others() });
+        conn.send({
+          t: "sent",
+          rid,
+          group: g.name,
+          seq: msg.seq,
+          read: [],
+          sent: others(),
+          ...(replyWarning ? { warning: replyWarning } : {}),
+        });
         return;
       }
 
@@ -1106,7 +1615,15 @@ function handleFrame(conn: Connection, frame: ClientEnvelope): void {
         pendingReads.delete(key);
         const read = [...col.read];
         const sent = others().filter((n) => !col.read.has(n));
-        conn.send({ t: "sent", rid, group: g.name, seq: msg.seq, read, sent });
+        conn.send({
+          t: "sent",
+          rid,
+          group: g.name,
+          seq: msg.seq,
+          read,
+          sent,
+          ...(replyWarning ? { warning: replyWarning } : {}),
+        });
       };
       col.done = finish;
       const timer = setTimeout(finish, READ_RECEIPT_MS);
@@ -1162,8 +1679,8 @@ function handleFrame(conn: Connection, frame: ClientEnvelope): void {
     // ---- identity / aliases (v3) ----
 
     case "register_alias": {
-      const sid = requireSession(conn, rid);
-      if (!sid) return;
+      const identity = requireIdentity(conn, rid);
+      if (!identity) return;
       if (!ALIAS_NAME_RE.test(frame.name)) {
         err(conn, "bad_alias_name", "alias must match [A-Za-z0-9_]{1,64} (no dashes)", rid);
         return;
@@ -1172,67 +1689,67 @@ function handleFrame(conn: Connection, frame: ClientEnvelope): void {
       const aliasHandle = `${frame.name}@${conn.host}`;
       const existing = stmt.selectHandleOwner.get(aliasHandle) as HandleRow | null;
       if (existing) {
-        if (existing.owner_session === sid) {
+        if (existing.owner_identity === identity) {
           // idempotent: re-registering your own alias succeeds.
-          conn.send({ t: "aliases", rid, aliases: aliasesForSession(sid, conn.host) });
+          conn.send({ t: "aliases", rid, aliases: aliasesForIdentity(identity, conn.host) });
           return;
         }
-        err(conn, "alias_taken", `'${aliasHandle}' is owned by another session`, rid);
+        err(conn, "alias_taken", `'${aliasHandle}' is owned by another identity`, rid);
         return;
       }
-      stmt.insertHandle.run(aliasHandle, sid, nowIso());
-      conn.send({ t: "aliases", rid, aliases: aliasesForSession(sid, conn.host) });
+      stmt.insertHandle.run(aliasHandle, identity, nowIso());
+      conn.send({ t: "aliases", rid, aliases: aliasesForIdentity(identity, conn.host) });
       return;
     }
 
     case "release_alias": {
-      const sid = requireSession(conn, rid);
-      if (!sid) return;
+      const identity = requireIdentity(conn, rid);
+      if (!identity) return;
       const aliasHandle = `${frame.name}@${conn.host}`;
       const existing = stmt.selectHandleOwner.get(aliasHandle) as HandleRow | null;
       if (!existing) {
         err(conn, "no_such_address", `no alias '${aliasHandle}'`, rid);
         return;
       }
-      if (existing.owner_session !== sid) {
+      if (existing.owner_identity !== identity) {
         err(conn, "not_alias_owner", `you do not own '${aliasHandle}'`, rid);
         return;
       }
-      stmt.deleteHandle.run(aliasHandle, sid);
-      conn.send({ t: "aliases", rid, aliases: aliasesForSession(sid, conn.host) });
+      stmt.deleteHandle.run(aliasHandle, identity);
+      conn.send({ t: "aliases", rid, aliases: aliasesForIdentity(identity, conn.host) });
       return;
     }
 
     case "list_aliases": {
-      const sid = requireSession(conn, rid);
-      if (!sid) return;
-      conn.send({ t: "aliases", rid, aliases: aliasesForSession(sid, conn.host) });
+      const identity = requireIdentity(conn, rid);
+      if (!identity) return;
+      conn.send({ t: "aliases", rid, aliases: aliasesForIdentity(identity, conn.host) });
       return;
     }
 
     case "whoami": {
-      const sid = requireSession(conn, rid);
-      if (!sid) return;
-      // ALL of this session's addresses, merged: the implicit default alias plus
+      const identity = requireIdentity(conn, rid);
+      if (!identity) return;
+      // ALL of this identity's addresses, merged: the implicit default alias plus
       // every owned handle — registered `<name>@<host>` AND group
       // `<name>@<group>._group` (group handles are addresses too).
       const aliases: string[] = [];
-      if (conn.host) aliases.push(`${sid}@${conn.host}`);
-      for (const r of stmt.selectAllHandlesForOwner.all(sid) as { handle: string }[]) {
+      if (conn.host) aliases.push(`${identity}@${conn.host}`);
+      for (const r of stmt.selectAllHandlesForOwner.all(identity) as { handle: string }[]) {
         aliases.push(r.handle);
       }
-      conn.send({ t: "whoami", rid, session_id: sid, host: conn.host, aliases });
+      conn.send({ t: "whoami", rid, identity_id: identity, host: conn.host, aliases });
       return;
     }
 
     case "resolve_alias": {
-      const session = resolveAddress(frame.address);
+      const identity = resolveAddress(frame.address);
       conn.send({
         t: "resolved",
         rid,
         address: frame.address,
-        session_id: session,
-        online: session ? isOnline(session) : false,
+        identity_id: identity,
+        online: identity ? isOnline(identity) : false,
       });
       return;
     }
@@ -1245,17 +1762,17 @@ function handleFrame(conn: Connection, frame: ClientEnvelope): void {
     // ---- direct messages (v3) ----
 
     case "dm": {
-      const sid = requireSession(conn, rid);
-      if (!sid) return;
-      const toSession = resolveAddress(frame.to);
-      if (!toSession) {
+      const identity = requireIdentity(conn, rid);
+      if (!identity) return;
+      const toIdentity = resolveAddress(frame.to);
+      if (!toIdentity) {
         err(conn, "no_such_address", `cannot resolve '${frame.to}'`, rid);
         return;
       }
       // The sender's own alias for this DM: the most specific identity it has on
       // this host — its first registered alias, else its default alias.
-      const fromAlias = senderAlias(sid, conn.host);
-      const { dm, pushed } = storeDm(sid, fromAlias, toSession, frame.to, frame.message);
+      const fromAlias = senderAlias(identity, conn.host);
+      const { dm, pushed } = storeDm(identity, fromAlias, toIdentity, frame.to, frame.message);
 
       // If pushed to an online recipient, await a read within the window so the
       // reply can report `read`; else reply `sent` immediately (queued).
@@ -1263,7 +1780,7 @@ function handleFrame(conn: Connection, frame: ClientEnvelope): void {
         conn.send({ t: "dm_sent", rid, seq: dm.seq, state: "sent" });
         return;
       }
-      const { lo, hi } = pairOf(sid, toSession);
+      const { lo, hi } = pairOf(identity, toIdentity);
       const key = `${lo}|${hi}#${dm.seq}`;
       const col: DmReadCollector = { read: false, done: () => {} };
       pendingDmReads.set(key, col);
@@ -1282,24 +1799,26 @@ function handleFrame(conn: Connection, frame: ClientEnvelope): void {
 
     case "dm_ack": {
       // recipient's adapter acked arrival: advance state sent -> received (never
-      // downgrade a read).
-      const sid = conn.sessionId;
-      if (!sid) return;
-      const { lo, hi } = pairOf(sid, frame.from_session);
+      // downgrade a read). Attribution-only: `conn.identityId` was stamped from the
+      // asserted recipient identity (NOT bound — never supersedes), `from_identity`
+      // names the sender. We thread the (sender, recipient) identity pair.
+      const me = conn.identityId;
+      if (!me) return;
+      const { lo, hi } = pairOf(me, frame.from_identity);
       const cur = stmt.selectDmState.get(lo, hi, frame.seq) as { state: string } | null;
       if (cur && cur.state === "sent") {
-        stmt.updateDmState.run("received", lo, hi, frame.seq, sid);
+        stmt.updateDmState.run("received", lo, hi, frame.seq, me);
       }
       return;
     }
 
     case "dm_read": {
       // recipient's display hook surfaced the DM: advance to read and resolve any
-      // pending sender wait.
-      const sid = conn.sessionId;
-      if (!sid) return;
-      const { lo, hi } = pairOf(sid, frame.from_session);
-      stmt.updateDmState.run("read", lo, hi, frame.seq, sid);
+      // pending sender wait. Attribution-only (see dm_ack).
+      const me = conn.identityId;
+      if (!me) return;
+      const { lo, hi } = pairOf(me, frame.from_identity);
+      stmt.updateDmState.run("read", lo, hi, frame.seq, me);
       const col = pendingDmReads.get(`${lo}|${hi}#${frame.seq}`);
       if (col) {
         col.read = true;
@@ -1309,10 +1828,10 @@ function handleFrame(conn: Connection, frame: ClientEnvelope): void {
     }
 
     case "dm_history": {
-      const sid = requireSession(conn, rid);
-      if (!sid) return;
-      const peerSession = resolveAddress(frame.peer) ?? frame.peer; // accept a raw session id too
-      const { lo, hi } = pairOf(sid, peerSession);
+      const identity = requireIdentity(conn, rid);
+      if (!identity) return;
+      const peerIdentity = resolveAddress(frame.peer) ?? frame.peer; // accept a raw identity id too
+      const { lo, hi } = pairOf(identity, peerIdentity);
       const all = (stmt.selectDmThread.all(lo, hi) as DmRow[]).map(rowToDm);
       const fromEnd = Math.max(0, frame.index_from_end | 0);
       const n = Math.max(0, frame.last_n | 0);
@@ -1321,7 +1840,7 @@ function handleFrame(conn: Connection, frame: ClientEnvelope): void {
       conn.send({
         t: "dm_history",
         rid,
-        peer_session: peerSession,
+        peer_identity: peerIdentity,
         messages: all.slice(start, end),
       });
       return;
@@ -1329,22 +1848,23 @@ function handleFrame(conn: Connection, frame: ClientEnvelope): void {
   }
 }
 
-// Session-scoped frames (identity / DM ops) require a bound account. The account
-// is bound in dispatchFrame from the session correlated to the frame's
-// tool_use_id (via the PreToolUse hook's map_session). If that correlation hasn't
-// arrived within SESSION_MAP_WAIT_MS (or the call carried no tool_use_id), the
-// account is unbound and these ops honest-error rather than act as the wrong one.
-function requireSession(conn: Connection, rid?: string): string | null {
-  if (!conn.sessionId) {
+// Identity-scoped frames (group / alias / DM ops) require a resolved identity. The
+// identity is resolved in dispatchFrame from the session key correlated to the
+// frame's tool_use_id (via the PreToolUse hook's map_session), then minted-on-
+// first-sight. If that correlation hasn't arrived within SESSION_MAP_WAIT_MS (or
+// the call carried no tool_use_id), the identity is unresolved and these ops
+// honest-error rather than act as the wrong one.
+function requireIdentity(conn: Connection, rid?: string): string | null {
+  if (!conn.identityId) {
     err(
       conn,
       "no_session",
-      "could not resolve your session (no account bound to this call)",
+      "could not resolve your identity (no session bound to this call)",
       rid,
     );
     return null;
   }
-  return conn.sessionId;
+  return conn.identityId;
 }
 
 // The host part of a registered-alias handle `<name>@<host>` (last @ segment).
@@ -1354,123 +1874,193 @@ function aliasHost(handle: string): string {
 }
 
 // The alias the sender presents on an outgoing DM: its first registered alias on
-// this host if any, else its default alias.
-function senderAlias(sessionId: string, host: string): string {
-  const regs = stmt.selectAliasesForOwner.all(sessionId) as { handle: string }[];
+// this host if any, else its default alias <identity-id>@<host>.
+function senderAlias(identityId: string, host: string): string {
+  const regs = stmt.selectAliasesForOwner.all(identityId) as { handle: string }[];
   const onHost = regs.find((r) => aliasHost(r.handle) === host);
   if (onHost) return onHost.handle;
-  return `${sessionId}@${host}`;
+  return `${identityId}@${host}`;
 }
 
-// Build the directory: every known session (alias owners + DM participants +
+// Build the directory: every known identity (alias owners + DM participants +
 // live connections), with its aliases, group memberships, and online flag.
-// Group membership is DERIVED from the durable handle table — a session is in a
+// Group membership is DERIVED from the durable handle table — an identity is in a
 // group iff it owns a `@<group>._group` handle (independent of attachment).
 function buildDirectory(): DirectoryEntry[] {
-  const sessions = new Map<string, { host: string }>();
+  const byIdentity = new Map<string, { host: string }>();
   // alias owners (registered aliases on the handle table)
-  for (const r of stmt.selectAllAliases.all() as { handle: string; owner_session: string }[]) {
-    if (!sessions.has(r.owner_session)) {
-      sessions.set(r.owner_session, {
-        host: sessionHost.get(r.owner_session) ?? aliasHost(r.handle),
+  for (const r of stmt.selectAllAliases.all() as { handle: string; owner_identity: string }[]) {
+    if (!byIdentity.has(r.owner_identity)) {
+      byIdentity.set(r.owner_identity, {
+        host: identityHost.get(r.owner_identity) ?? aliasHost(r.handle),
       });
     }
   }
   // DM participants
-  for (const r of stmt.selectDmSessions.all() as { s: string }[]) {
-    if (!sessions.has(r.s)) sessions.set(r.s, { host: sessionHost.get(r.s) ?? "unknown" });
+  for (const r of stmt.selectDmIdentities.all() as { s: string }[]) {
+    if (!byIdentity.has(r.s)) byIdentity.set(r.s, { host: hostForIdentity(r.s) });
   }
   // live connections
-  for (const [sid] of sessionConns) {
-    if (!sessions.has(sid)) sessions.set(sid, { host: sessionHost.get(sid) ?? "unknown" });
+  for (const [id] of identityConns) {
+    if (!byIdentity.has(id)) byIdentity.set(id, { host: hostForIdentity(id) });
   }
 
-  // group memberships per session, derived from group handles (durable). Also
-  // ensures any session owning ONLY a group handle appears in the directory.
-  const groupsForSession = new Map<string, Set<string>>();
+  // group memberships per identity, derived from group handles (durable). Also
+  // ensures any identity owning ONLY a group handle appears in the directory.
+  const groupsForIdentity = new Map<string, Set<string>>();
   for (const g of groups.values()) {
     for (const m of membersOf(g.name)) {
-      if (!sessions.has(m.owner)) {
-        sessions.set(m.owner, { host: sessionHost.get(m.owner) ?? "unknown" });
+      if (!byIdentity.has(m.owner)) {
+        byIdentity.set(m.owner, { host: hostForIdentity(m.owner) });
       }
-      let set = groupsForSession.get(m.owner);
-      if (!set) groupsForSession.set(m.owner, (set = new Set()));
+      let set = groupsForIdentity.get(m.owner);
+      if (!set) groupsForIdentity.set(m.owner, (set = new Set()));
       set.add(g.name);
     }
   }
 
   const out: DirectoryEntry[] = [];
-  for (const [sid, info] of sessions) {
-    const aliases = (stmt.selectAliasesForOwner.all(sid) as { handle: string }[]).map(
+  for (const [id, info] of byIdentity) {
+    const aliases = (stmt.selectAliasesForOwner.all(id) as { handle: string }[]).map(
       (r) => r.handle,
     );
     out.push({
-      session_id: sid,
+      identity_id: id,
       host: info.host,
       aliases,
-      groups: [...(groupsForSession.get(sid) ?? [])],
-      online: isOnline(sid),
+      groups: [...(groupsForIdentity.get(id) ?? [])],
+      online: isOnline(id),
     });
   }
   return out;
 }
 
 // ---------------------------------------------------------------------------
-// Account binding. The real session id is correlated per-call by the hub: the
-// PreToolUse hook reports `(tool_use_id, session_id)`, the adapter's frame carries
-// the bare `tool_use_id`, and dispatchFrame resolves it to `sid` before calling
-// this. (A directly-asserted `session` field also binds here, for the in-process/
-// test path.) The hub keys all identity/DM ops off the bound account. A socket
-// binds one account; if a different id is asserted later (e.g. a /resume into
-// another session) we trust the latest, since the per-call correlation is
-// authoritative and the adapter serves one instance.
+// Session binding + identity resolution. A frame's session KEY is correlated per-
+// call by the hub: the PreToolUse hook reports `(tool_use_id, session_key)`, the
+// adapter's frame carries the bare `tool_use_id`, and dispatchFrame resolves it to
+// the session key before calling this. (A directly-asserted `session` field also
+// binds here, for the in-process/test path.) bindSession then resolves the session
+// key to its IDENTITY (mint-on-first-sight) and registers the live route under
+// `identityConns`.
+//
+// The DECOUPLE removed the bind-time supersede: a different session key asserted
+// later (a /resume into a new session, or a subagent's `<sid>:<agent_id>` key over
+// the same socket) is a DISTINCT, coexisting route — it does NOT evict the prior.
+// An identity MAY have several concurrent live sessions; only an explicit
+// release_session (a /resume's SessionEnd) detaches a session key.
 
-function bindSession(conn: Connection, sid: string): void {
-  // RESUME-SUPERSEDE (constraint 2): only the ACTIVE identity receives pushes.
-  // `sessionConns` is the historical set (cleared only by onDisconnect), so a
-  // socket that bound A then /resumes into B would keep delivering to A. Compare
-  // against `boundSession` — the PRIOR ACTIVE session (NOT `sessionId`, which an
-  // attribution-only dm_ack/dm_read frame may have transiently set to a different
-  // account). If the active session is changing to a DIFFERENT non-null one,
-  // detach the prior for THIS adapter — drop the conn from sessionConns[A], drop A
-  // from conn.sessions, and delete its lease row — so a resumed-away identity
-  // stops receiving pushes and is never re-bound on reconnect.
-  const prev = conn.boundSession;
-  if (prev && prev !== sid) {
-    const prevSet = sessionConns.get(prev);
-    if (prevSet) {
-      prevSet.delete(conn);
-      if (prevSet.size === 0) sessionConns.delete(prev);
-    }
-    conn.sessions.delete(prev);
-    if (conn.adapterId) stmt.deleteAdapterSession.run(conn.adapterId, prev);
-  }
+function bindSession(conn: Connection, sessionKey: string): void {
+  // Resolve (minting on first sight, OR adopting a prior identity for a /resume on
+  // the same adapter) the identity this session key speaks for. resolveIdentity reads
+  // the adapter's PRIOR leases for adoption; this is sound because the UPSERT of THIS
+  // key's lease happens BELOW, after resolution — so the new key is never in its own
+  // adoptable set.
+  const identity = resolveIdentity(sessionKey, conn.host, conn.adapterId);
 
-  // The session resolved for THIS frame is the account we serve for it, and it is
-  // now this conn's ACTIVE (bound) identity for the supersede comparison above.
-  conn.sessionId = sid;
-  conn.boundSession = sid;
-  // Durable lease: record that this adapter serves this session, so a reconnect
+  // This session key + identity are what we serve for the CURRENT frame.
+  conn.sessionId = sessionKey;
+  conn.boundSession = sessionKey;
+  conn.identityId = identity;
+  // Durable lease: record that this adapter serves this session KEY, so a reconnect
   // (even after a hub restart) re-binds it. UPSERT is idempotent. Guard on a set
   // adapterId: it's "" only on a pre-hello conn, and every path that reaches
   // bindSession (the hello re-bind loop sets it first; dispatchFrame requires
   // auth, i.e. a completed hello) has it set — so the guard is a belt-and-braces
   // backstop, never false in practice.
-  if (conn.adapterId) stmt.upsertAdapterSession.run(conn.adapterId, sid);
-  if (conn.sessions.has(sid)) {
-    // already routing for this session over this socket; keep host fresh.
-    sessionHost.set(sid, conn.host);
+  if (conn.adapterId) stmt.upsertAdapterSession.run(conn.adapterId, sessionKey);
+
+  // Keep the identity's default-alias host fresh.
+  identityHost.set(identity, conn.host);
+
+  if (conn.sessions.has(sessionKey)) {
+    // already routing for this session key over this socket; nothing new to wire.
+    conn.sessionIdentity.set(sessionKey, identity);
     return;
   }
-  // First time this socket asserts this session: register it as a live route and
-  // flush any DMs queued for it while it was offline (one dm_message each).
-  conn.sessions.add(sid);
-  let set = sessionConns.get(sid);
-  if (!set) sessionConns.set(sid, (set = new Set()));
+  // First time this socket asserts this session key: register it as a live route
+  // under the identity and flush any DMs queued for the identity while it was
+  // offline (one dm_message each). "Offline" = the identity had NO live conn.
+  conn.sessions.add(sessionKey);
+  conn.sessionIdentity.set(sessionKey, identity);
+  let set = identityConns.get(identity);
+  if (!set) identityConns.set(identity, (set = new Set()));
   const wasOffline = set.size === 0;
   set.add(conn);
-  sessionHost.set(sid, conn.host);
   if (wasOffline) flushDmQueue(conn);
+}
+
+// Release a session KEY (an explicit /resume SessionEnd, frame release_session).
+// Drops the key's live route across every connection serving it AND — when the key
+// is a MAIN (non-composite) key — CASCADE-releases its subagent sibling leases for
+// the same adapter (the subagent-lease GC). A subagent never fires its own
+// SessionEnd, so its `<mainKey>:<agent_id>` lease would otherwise linger and be
+// re-bound forever on reconnect; but a subagent cannot outlive its parent session,
+// so the parent's release reaps the stem's subagent keys. Idempotent: a key we don't
+// serve / lease is a no-op. The identity survives.
+function releaseSessionKey(sessionKey: string): void {
+  // Find the adapter(s) that lease this key, BEFORE releaseOneKey deletes the rows —
+  // the cascade is adapter-scoped (only the same adapter's subagent siblings). The
+  // lease table is authoritative even when no conn is currently live (process death
+  // + a transient SessionEnd-hook socket): the cascade keys off the durable leases,
+  // not a live handle.
+  const adaptersForKey = isSubagentKey(sessionKey) ? [] : leasingAdaptersOf(sessionKey);
+
+  releaseOneKey(sessionKey);
+
+  // CASCADE: only a MAIN key reaps subagent siblings. A subagent key being released
+  // (it shares the parent's adapter and stem) must NOT reach back to reap the parent
+  // or other subagents — its release is a no-op cascade.
+  if (!isSubagentKey(sessionKey)) {
+    const escaped = likeEscape(sessionKey);
+    for (const adapterId of adaptersForKey) {
+      const siblings = stmt.selectSubagentLeases.all(adapterId, `${escaped}:%`) as {
+        session_id: string;
+      }[];
+      for (const { session_id } of siblings) releaseOneKey(session_id);
+    }
+  }
+}
+
+// The adapter ids that currently lease a given session key (across the durable lease
+// table). Used to scope the subagent-lease cascade to the releasing adapter only.
+function leasingAdaptersOf(sessionKey: string): string[] {
+  const rows = stmt.selectAdaptersForSession.all(sessionKey) as { adapter_id: string }[];
+  return rows.map((r) => r.adapter_id);
+}
+
+// Release ONE session key: drop its live route across every connection serving it
+// (remove the conn from identityConns[identity] only when it no longer serves ANY
+// key mapping to that identity — a coexisting session of the same identity must NOT
+// be evicted), forget the key on the conn, and delete EVERY durable lease row for the
+// key (across all adapters that lease it) so it isn't re-bound on a future reconnect.
+// Idempotent: a key no conn serves / no row leases is a no-op.
+function releaseOneKey(sessionKey: string): void {
+  // Delete the durable lease rows first, authoritatively — independent of any live
+  // conn (the SessionEnd hook's transient socket never bound this key, so a
+  // conn-scoped delete would miss it after a process-death reconnect gap).
+  stmt.deleteAdapterSessionByKey.run(sessionKey);
+
+  for (const conn of allConnections) {
+    if (!conn.sessions.has(sessionKey)) continue;
+    const identity = conn.sessionIdentity.get(sessionKey);
+    conn.sessions.delete(sessionKey);
+    conn.sessionIdentity.delete(sessionKey);
+    if (conn.boundSession === sessionKey) conn.boundSession = null;
+    if (conn.sessionId === sessionKey) conn.sessionId = null;
+    if (identity) {
+      // only drop the identityConns membership if THIS conn no longer serves any
+      // other session key resolving to the same identity.
+      const stillServes = [...conn.sessionIdentity.values()].includes(identity);
+      if (!stillServes) {
+        const set = identityConns.get(identity);
+        if (set) {
+          set.delete(conn);
+          if (set.size === 0) identityConns.delete(identity);
+        }
+      }
+    }
+  }
 }
 
 // Bind the per-call account (if any) and dispatch one frame. Account binding has
@@ -1484,40 +2074,45 @@ async function dispatchFrame(conn: Connection, frame: ClientEnvelope): Promise<v
     // requires auth but carries no per-call account binding). Neither stamps an
     // account, so skip resolution and dispatch directly.
     //
-    // Lifetime contract for `conn.sessionId`: it is the CURRENT-FRAME account,
-    // stamped here (resolve/bind or clear) immediately before `handleFrame` reads
-    // it, and valid only for that synchronous `handleFrame` call. Because this is
-    // an `await`ing async function fired with `void`, two frames on one socket can
-    // be in-flight at once; each stamps then synchronously hands off to
-    // `handleFrame` with no interleaving await, so in single-threaded JS each frame
-    // reads its own value. Handlers MUST read `conn.sessionId` synchronously and
-    // never cache it across an async boundary.
+    // Lifetime contract for `conn.sessionId`/`conn.identityId`: they are the
+    // CURRENT-FRAME credential + resolved identity, stamped here (resolve/bind or
+    // clear) immediately before `handleFrame` reads them, and valid only for that
+    // synchronous `handleFrame` call. Because this is an `await`ing async function
+    // fired with `void`, two frames on one socket can be in-flight at once; each
+    // stamps then synchronously hands off to `handleFrame` with no interleaving
+    // await, so in single-threaded JS each frame reads its own value. Handlers MUST
+    // read them synchronously and never cache across an async boundary.
     if (conn.authed && frame.t !== "hello" && frame.t !== "map_session") {
       // 1) direct `session` assertion binds verbatim (no resolution needed).
       const direct = (frame as { session?: unknown }).session;
-      // `dm_ack`/`dm_read` are ATTRIBUTION-ONLY: they assert a `session` purely so
-      // the handler attributes a DM receipt to the right account on a multi-session
-      // socket. They are NOT a change of the instance's ACTIVE session (a /resume),
-      // so they must NOT run bindSession — which would register a push route and,
-      // worse, SUPERSEDE the live active session (dropping it from sessionConns and
-      // its lease). Stamp `conn.sessionId` for the handler to read, and skip the
-      // active-session binding machinery entirely. See group-chat-adapter-reconnect.md.
+      // `dm_ack`/`dm_read` are ATTRIBUTION-ONLY: they assert an IDENTITY (the
+      // recipient) in the `session` field purely so the handler threads a DM receipt
+      // to the right identity on a multi-session socket. They are NOT a change of
+      // the instance's active session (a /resume), so they must NOT run bindSession
+      // — which would register a push route. Stamp `conn.identityId` directly (the
+      // asserted value IS an identity here) and skip the binding machinery. See
+      // group-chat-adapter-reconnect.md.
       if (frame.t === "dm_ack" || frame.t === "dm_read") {
-        conn.sessionId = typeof direct === "string" && direct ? direct : null;
+        conn.identityId = typeof direct === "string" && direct ? direct : null;
+        conn.sessionId = null;
       } else if (typeof direct === "string" && direct) {
         bindSession(conn, direct);
       } else if (typeof frame.tool_use_id === "string" && frame.tool_use_id) {
-        // 2) resolve the real session from the PreToolUse correlation map. May
+        // 2) resolve the real session key from the PreToolUse correlation map. May
         //    await the hook's registration up to SESSION_MAP_WAIT_MS. On null
-        //    (timeout): leave conn.sessionId unbound — identity/DM tools then
-        //    honest-error via requireSession; group tools proceed without one.
-        const sid = await resolveToolSession(frame.tool_use_id);
-        if (sid) bindSession(conn, sid);
-        else conn.sessionId = null;
+        //    (timeout): leave the identity unresolved — identity ops then honest-
+        //    error via requireIdentity.
+        const sessionKey = await resolveToolSession(frame.tool_use_id);
+        if (sessionKey) bindSession(conn, sessionKey);
+        else {
+          conn.sessionId = null;
+          conn.identityId = null;
+        }
       } else {
-        // No per-call identity asserted at all: clear any stale current-frame
-        // binding so an unbound frame can't ride a prior frame's account.
+        // No per-call credential asserted at all: clear any stale current-frame
+        // binding so an unbound frame can't ride a prior frame's identity.
         conn.sessionId = null;
+        conn.identityId = null;
       }
     }
     handleFrame(conn, frame);
@@ -1529,12 +2124,18 @@ async function dispatchFrame(conn: Connection, frame: ClientEnvelope): Promise<v
 
 function onDisconnect(conn: Connection): void {
   // Membership is durable (handle rows) — nothing to null out on disconnect. The
-  // member simply becomes "offline" (its owning identity loses its live conn).
-  for (const sid of conn.sessions) {
-    const set = sessionConns.get(sid);
+  // member simply becomes "offline" (its owning identity loses this live conn).
+  // Drop this conn from every identity it routed for; an identity goes offline only
+  // when its LAST conn leaves. THIS is the crash/kill path (the socket drop) — no
+  // release_session needed for process death.
+  for (const identity of new Set(conn.sessionIdentity.values())) {
+    const set = identityConns.get(identity);
     set?.delete(conn);
-    if (set && set.size === 0) sessionConns.delete(sid);
+    if (set && set.size === 0) identityConns.delete(identity);
   }
+  conn.sessions.clear();
+  conn.sessionIdentity.clear();
+  allConnections.delete(conn);
 }
 
 // ---------------------------------------------------------------------------
@@ -1559,10 +2160,13 @@ const server = Bun.serve<{ conn: Connection }>({
         sessions: new Set<string>(),
         sessionId: null,
         boundSession: null,
+        identityId: null,
+        sessionIdentity: new Map<string, string>(),
         host: "unknown",
         joinedAs: new Map<string, Set<string>>(),
         send: (frame) => ws.send(JSON.stringify(frame)),
       };
+      allConnections.add(conn);
       ws.data = { conn };
     },
     message(ws, raw) {
