@@ -98,6 +98,24 @@ let connectAttempts = 0;
 // docs/group-chat-adapter-reconnect.md.
 let adapterId: string | null = null;
 
+// DELIVERY GATE state: the identities this adapter knows it currently serves. An
+// adapter socket may relay for several identities (the main session plus live
+// subagents, all sharing the socket), but a <channel> notification surfaces into
+// THE main Claude session only. The gate drops any push whose stamped target
+// identity is KNOWN-FOREIGN (in nothing this adapter serves) so a push meant for a
+// subagent — or a superseded resume — is never surfaced into the wrong session.
+// Learned from whoami replies (the adapter's own identity); fail-open while empty
+// so a correctly-routed push is never dropped just because we haven't learned yet.
+const servedIdentities = new Set<string>();
+
+// Should a push stamped for `targetIdentity` be surfaced? Drop only when we KNOW
+// our served set and the target isn't in it (fail-open while we know nothing).
+function gateAllows(targetIdentity: string | undefined): boolean {
+  if (!targetIdentity) return true; // unstamped (shouldn't happen post-v6) — surface
+  if (servedIdentities.size === 0) return true; // haven't learned our identity yet
+  return servedIdentities.has(targetIdentity);
+}
+
 const { url: HUB_URL, token: HUB_TOKEN } = parseHub(RAW_URL);
 // This adapter's own device hostname — reported to the hub at `hello` and used to
 // namespace registered aliases (alice@thishost). Docker encodes the host's name
@@ -209,8 +227,11 @@ function onFrame(frame: ServerFrame): void {
 
   if (frame.t === "message") {
     const { group, seq } = frame.msg;
-    // ack immediately for gap-resend bookkeeping (the message reached us)
+    // DELIVERY GATE: drop a push stamped for an identity this adapter doesn't serve
+    // (a subagent's, or a superseded resume's) rather than surface it into the wrong
+    // session. Still ack so the hub's gap bookkeeping stays consistent.
     sendRaw({ t: "ack", group, seq });
+    if (!gateAllows(frame.to_identity)) return;
     // send the READ receipt only AFTER the message is actually surfaced into
     // the session — that's the honest "read" moment the sender awaits.
     pushChannel(frame.msg)
@@ -223,12 +244,14 @@ function onFrame(frame: ServerFrame): void {
 
   if (frame.t === "dm_message") {
     const dm = frame.msg;
+    // DELIVERY GATE: drop a DM whose target identity this adapter doesn't serve.
+    if (!gateAllows(dm.to_identity)) return;
     // DM RECEIVED: ack arrival immediately (state sent -> received). The `read`
     // receipt is sent later by the display hook's signal (see drainDmReads),
     // when the assistant actually surfaces the DM — that's the honest read. We
-    // assert `dm.to_session` as the account so a multi-session socket attributes
-    // the ack to the right recipient (the hub keys the DM thread off it).
-    sendRaw({ t: "dm_ack", from_session: dm.from_session, seq: dm.seq, session: dm.to_session });
+    // assert `dm.to_identity` (the recipient identity) so a multi-session socket
+    // attributes the ack to the right recipient (the hub keys the DM thread off it).
+    sendRaw({ t: "dm_ack", from_identity: dm.from_identity, seq: dm.seq, session: dm.to_identity });
     pushDmChannel(dm).catch(() => {
       /* surfacing failed; the display hook simply won't emit a read signal */
     });
@@ -256,6 +279,8 @@ async function pushChannel(msg: ChatMessage): Promise<void> {
         ts: msg.ts,
         msg_id: msg.msg_id,
         seq: String(msg.seq),
+        // a reply marks the seq it replies to (only present on replies)
+        ...(msg.reply_to != null ? { reply_to: String(msg.reply_to) } : {}),
       },
     },
   });
@@ -273,7 +298,8 @@ async function pushDmChannel(dm: DirectMessage): Promise<void> {
       content: dm.text,
       meta: {
         dm: "1",
-        from_session: dm.from_session,
+        from_identity: dm.from_identity,
+        to_identity: dm.to_identity,
         from_alias: dm.from_alias,
         to_alias: dm.to_alias,
         ts: dm.ts,
@@ -286,7 +312,7 @@ async function pushDmChannel(dm: DirectMessage): Promise<void> {
 
 // DM read-receipt coordination. The display hook is a separate process; when it
 // surfaces a DM to the assistant it appends a line to dm-reads.jsonl in the
-// plugin-data dir — `{from_session, seq}`. We tail that file forward (same
+// plugin-data dir — `{from_identity, seq, to_identity}`. We tail that file forward (same
 // append-only cursor trick used for transcripts) and emit a `dm_read` for each
 // new entry, so "read" reflects the genuine surfacing moment, not mere arrival.
 function dmReadsPath(): string {
@@ -329,18 +355,18 @@ function drainDmReads(): void {
       if (!line.trim()) continue;
       try {
         const e = JSON.parse(line) as {
-          from_session?: string;
+          from_identity?: string;
           seq?: number;
-          to_session?: string;
+          to_identity?: string;
         };
-        if (typeof e.from_session === "string" && typeof e.seq === "number") {
-          // assert the recipient session (to_session) so the hub attributes the
+        if (typeof e.from_identity === "string" && typeof e.seq === "number") {
+          // assert the recipient identity (to_identity) so the hub attributes the
           // read to the right account on a multi-session socket.
           sendRaw({
             t: "dm_read",
-            from_session: e.from_session,
+            from_identity: e.from_identity,
             seq: e.seq,
-            ...(e.to_session ? { session: e.to_session } : {}),
+            ...(e.to_identity ? { session: e.to_identity } : {}),
           });
         }
       } catch {
@@ -452,7 +478,10 @@ const TOOLS = [
       "Broadcast a message to everyone currently in the group. Optional `to` is " +
       "a list of member names to restrict the live PUSH to those members (the " +
       "message is still logged to history for everyone — push-targeting, not " +
-      "privacy). Naming a non-member errors the whole send. For a private message " +
+      "privacy). Naming a non-member errors the whole send. Optional `reply_to` is " +
+      "the seq of a prior message in this group: the reply is logged for everyone " +
+      "but live-pushed ONLY to that message's author (if the author left the group, " +
+      "it is logged and you are told where to reach them). For a private message " +
       "use direct_message instead.",
     inputSchema: {
       type: "object",
@@ -463,6 +492,10 @@ const TOOLS = [
           type: "array",
           items: { type: "string" },
           description: "Member names to push to (others still get it in history). Omit = whole group.",
+        },
+        reply_to: {
+          type: "number",
+          description: "Seq of a message in this group to reply to (pushes only to its author).",
         },
       },
       required: ["group", "message"],
@@ -513,7 +546,7 @@ const TOOLS = [
       "Register a durable alias for yourself: <name>@<your-host>. Others can DM " +
       "you at that address. Names are dash-free [A-Za-z0-9_]{1,64}. First holder " +
       "wins (re-registering your own is a no-op); a name taken by another session " +
-      "errors. You always also have your default alias <session-id>@<host>.",
+      "errors. You always also have your default alias <identity-id>@<host>.",
     inputSchema: {
       type: "object",
       properties: { name: { type: "string", description: "Alias name (no dashes)" } },
@@ -536,14 +569,14 @@ const TOOLS = [
   },
   {
     name: "whoami",
-    description: "Show your session id, host, and all your aliases.",
+    description: "Show your identity id, host, and all your aliases.",
     inputSchema: { type: "object", properties: {} },
   },
   {
     name: "resolve_alias",
     description:
-      "Resolve an address to the session it points at, and whether that session " +
-      "is currently online. Address forms: <session-id>@<host> (default alias), " +
+      "Resolve an address to the identity it points at, and whether that identity " +
+      "is currently online. Address forms: <identity-id>@<host> (default alias), " +
       "<name>@<host> (registered alias), <handle>@<group>._group (a member of a group).",
     inputSchema: {
       type: "object",
@@ -554,7 +587,7 @@ const TOOLS = [
   {
     name: "list_directory",
     description:
-      "List every known session id with its aliases, group memberships, and " +
+      "List every known identity with its aliases, group memberships, and " +
       "online/offline status. (Stale entries accumulate over time — pruning is a " +
       "separate concern.)",
     inputSchema: { type: "object", properties: {} },
@@ -564,7 +597,7 @@ const TOOLS = [
     name: "direct_message",
     description:
       "Send a DIRECT message to one recipient by address — independent of any " +
-      "group. `to` is any address form (default alias <session-id>@<host>, a " +
+      "group. `to` is any address form (default alias <identity-id>@<host>, a " +
       "registered <name>@<host>, or a group member <handle>@<group>._group). " +
       "Unlike group messages, DMs are queued durably and delivered when the " +
       "recipient reconnects. The reply reports the state (read if they saw it in " +
@@ -581,13 +614,13 @@ const TOOLS = [
   {
     name: "list_direct_messages",
     description:
-      "Read your DM thread with one peer (given as any address, or a raw session " +
+      "Read your DM thread with one peer (given as any address, or a raw identity " +
       "id). Newest last; each message shows its sent/received/read state and the " +
       "from/to aliases used.",
     inputSchema: {
       type: "object",
       properties: {
-        peer: { type: "string", description: "The peer's address or session id" },
+        peer: { type: "string", description: "The peer's address or identity id" },
         last_n: { type: "number" },
         index_from_end: { type: "number" },
       },
@@ -664,6 +697,10 @@ mcp.setRequestHandler(CallToolRequestSchema, async (req, extra) => {
           Array.isArray(a.to) && a.to.length > 0
             ? a.to.map((x) => String(x))
             : undefined;
+        // Optional `reply_to`: the seq of a message to reply to. The hub pushes the
+        // reply only to that message's author and warns if they've left.
+        const replyTo =
+          a.reply_to !== undefined && a.reply_to !== null ? Number(a.reply_to) : undefined;
         // No handle on the wire: the hub resolves the caller's identity (from the
         // tool_use_id) to its handle in the group and sends AS it. If the identity
         // owns no handle in the group, the hub returns a "join first" error.
@@ -672,7 +709,13 @@ mcp.setRequestHandler(CallToolRequestSchema, async (req, extra) => {
         // slower than the window).
         const r = expect(
           await request(
-            { t: "send", group, message, ...(to ? { to } : {}) },
+            {
+              t: "send",
+              group,
+              message,
+              ...(to ? { to } : {}),
+              ...(replyTo !== undefined ? { reply_to: replyTo } : {}),
+            },
             toolUseId,
           ),
           "sent",
@@ -684,10 +727,14 @@ mcp.setRequestHandler(CallToolRequestSchema, async (req, extra) => {
         const sentPart =
           r.sent.length > 0 ? ` Sent (unconfirmed): ${r.sent.join(", ")}.` : "";
         const noOthers =
-          r.read.length === 0 && r.sent.length === 0
+          r.read.length === 0 && r.sent.length === 0 && !r.warning
             ? " No other members in the group."
             : "";
-        return text(`Sent to '${group}' (seq ${r.seq}). ${readPart}${sentPart}${noOthers}`);
+        const replyLine = replyTo !== undefined ? ` (reply to seq ${replyTo})` : "";
+        const warnPart = r.warning ? `\nNote: ${r.warning}` : "";
+        return text(
+          `Sent to '${group}' (seq ${r.seq})${replyLine}. ${readPart}${sentPart}${noOthers}${warnPart}`,
+        );
       }
       case "list_members": {
         const group = String(a.group);
@@ -756,17 +803,20 @@ mcp.setRequestHandler(CallToolRequestSchema, async (req, extra) => {
       }
       case "whoami": {
         const r = expect(await request({ t: "whoami" }, toolUseId), "whoami");
+        // Learn our own identity for the delivery gate (so we drop pushes meant for
+        // other identities — e.g. subagents — that share this socket).
+        if (r.identity_id) servedIdentities.add(r.identity_id);
         return text(
-          `session: ${r.session_id}\nhost: ${r.host}\naliases:\n` +
+          `identity: ${r.identity_id}\nhost: ${r.host}\naliases:\n` +
             r.aliases.map((x) => `  ${x}`).join("\n"),
         );
       }
       case "resolve_alias": {
         const address = String(a.address);
         const r = expect(await request({ t: "resolve_alias", address }, toolUseId), "resolved");
-        if (!r.session_id) return text(`'${address}' does not resolve to any known session.`);
+        if (!r.identity_id) return text(`'${address}' does not resolve to any known identity.`);
         return text(
-          `'${address}' -> session ${r.session_id} (${r.online ? "online" : "offline"}).`,
+          `'${address}' -> identity ${r.identity_id} (${r.online ? "online" : "offline"}).`,
         );
       }
       case "list_directory": {
@@ -778,7 +828,7 @@ mcp.setRequestHandler(CallToolRequestSchema, async (req, extra) => {
               .map((e) => {
                 const aliases = e.aliases.length ? e.aliases.join(", ") : "(default only)";
                 const groupsPart = e.groups.length ? ` groups: ${e.groups.join(", ")}` : "";
-                return `  ${e.session_id}@${e.host} [${e.online ? "online" : "offline"}] aliases: ${aliases}${groupsPart}`;
+                return `  ${e.identity_id}@${e.host} [${e.online ? "online" : "offline"}] aliases: ${aliases}${groupsPart}`;
               })
               .join("\n"),
         );

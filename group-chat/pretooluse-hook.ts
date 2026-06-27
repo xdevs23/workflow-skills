@@ -18,9 +18,8 @@
 //
 // Wired on PreToolUse (matcher: the group-chat MCP tools) via hooks/hooks.json.
 
-import { hostname } from "node:os";
 import { readFileSync } from "node:fs";
-import { PROTOCOL_VERSION } from "../servers/group-chat-hub/protocol.ts";
+import { parseHub, composeSessionKey, sendOneFrame } from "./hook-shared.ts";
 
 const CONNECT_TIMEOUT_MS = Number(process.env.GROUP_CHAT_HOOK_TIMEOUT_MS ?? 1500);
 
@@ -28,6 +27,10 @@ interface HookInput {
   session_id?: string;
   tool_use_id?: string;
   tool_name?: string;
+  // present (and unique per invocation) ONLY inside a subagent (Task tool). A
+  // subagent shares its parent's session_id, so the session KEY folds agent_id in
+  // to make a subagent its own chat participant: "<session_id>:<agent_id>".
+  agent_id?: string;
 }
 
 function readStdin(): string {
@@ -38,98 +41,18 @@ function readStdin(): string {
   }
 }
 
-// Parse GROUP_CHAT_URL exactly as the adapter does: ws(s)://[token@]host:port,
-// where the userinfo is the token. Returns null if unset/unparseable.
-function parseHub(raw: string): { url: string; token: string } | null {
-  if (!raw) return null;
-  try {
-    const u = new URL(raw);
-    const token = decodeURIComponent(u.username || "");
-    u.username = "";
-    u.password = "";
-    return { url: u.toString(), token };
-  } catch {
-    return null;
-  }
-}
-
-function selfHost(): string {
-  try {
-    return hostname() || "unknown";
-  } catch {
-    return "unknown";
-  }
-}
-
 // Open a transient authenticated hub connection, send one map_session frame on
-// welcome, then close. Resolves when the frame is sent (or on any failure — we
-// never propagate). Bounded by CONNECT_TIMEOUT_MS.
+// welcome, then close. The shared `sendOneFrame` handles the handshake.
 function registerSession(
   hub: { url: string; token: string },
   toolUseId: string,
-  sessionId: string,
+  sessionKey: string,
 ): Promise<void> {
-  return new Promise<void>((resolve) => {
-    let done = false;
-    const finish = () => {
-      if (done) return;
-      done = true;
-      clearTimeout(timer);
-      try {
-        ws.close();
-      } catch {
-        /* ignore */
-      }
-      resolve();
-    };
-    const timer = setTimeout(finish, CONNECT_TIMEOUT_MS);
-
-    let ws: WebSocket;
-    try {
-      ws = new WebSocket(hub.url);
-    } catch {
-      clearTimeout(timer);
-      resolve();
-      return;
-    }
-    ws.addEventListener("open", () => {
-      try {
-        ws.send(
-          JSON.stringify({
-            t: "hello",
-            token: hub.token,
-            protocol: PROTOCOL_VERSION,
-            host: selfHost(),
-          }),
-        );
-      } catch {
-        finish();
-      }
-    });
-    ws.addEventListener("message", (ev) => {
-      let frame: { t?: string };
-      try {
-        frame = JSON.parse(String(ev.data));
-      } catch {
-        return;
-      }
-      if (frame.t === "welcome") {
-        try {
-          ws.send(
-            JSON.stringify({ t: "map_session", tool_use_id: toolUseId, session_id: sessionId }),
-          );
-        } catch {
-          /* ignore */
-        }
-        // Give the frame a moment to flush, then close. The hub needs no reply.
-        setTimeout(finish, 50);
-      } else if (frame.t === "error") {
-        finish(); // bad token / protocol — nothing we can do, don't block the call
-      }
-    });
-    ws.addEventListener("error", () => finish());
-    ws.addEventListener("close", () => finish());
-  });
+  return sendOneFrame(
+    hub,
+    () => ({ t: "map_session", tool_use_id: toolUseId, session_id: sessionKey }),
+    CONNECT_TIMEOUT_MS,
+  );
 }
 
 async function main(): Promise<void> {
@@ -146,7 +69,9 @@ async function main(): Promise<void> {
   const hub = parseHub(process.env.GROUP_CHAT_URL ?? "");
   if (!hub) return; // no hub configured — nothing to register, don't block the call
 
-  await registerSession(hub, toolUseId, sessionId);
+  // The composite session KEY (subagent-aware) is what the hub keys on.
+  const sessionKey = composeSessionKey(sessionId, input.agent_id);
+  await registerSession(hub, toolUseId, sessionKey);
 }
 
 main()
