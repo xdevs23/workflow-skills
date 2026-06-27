@@ -36,10 +36,24 @@
 // and echoes it on every subsequent `hello`. The hub keeps a DURABLE lease
 // (`adapter_sessions`, one row per (adapter_id, session) the adapter serves),
 // so on reconnect — including a HUB RESTART — the hub re-binds all the sessions
-// that adapter was serving with no tool call, restoring `sessionConns` and push
+// that adapter was serving with no tool call, restoring delivery routes and push
 // delivery. See docs/group-chat-adapter-reconnect.md.
+//
+// v6 DECOUPLES IDENTITY FROM SESSION (and adds reply-to). The hub mints an opaque
+// `identity_id` per identity and maps `session_key -> identity_id`; a session is a
+// pure socket credential. Wire fields that named a session id now name an IDENTITY
+// id (`whoami.identity_id`, `resolved.identity_id`, `directory.identity_id`,
+// `dm.from_identity`/`to_identity`, `dm_history.peer_identity`, the dm_ack/dm_read
+// `from_identity`). The group `message` frame GAINS `to_identity` (the stamped
+// recipient identity, for the adapter's delivery gate). `submit_message`/`send`
+// gains an optional `reply_to: <seq>`, pushed only to that message's author. Two
+// new frames: `release_session{session_key}` (a /resume's SessionEnd → hub drops
+// the old session) and the `sent.warning` field (author-left reply). The ONE place
+// a real session key crosses the wire is `map_session.session_id`, which now
+// carries the composite `"<session_id>[:<agent_id>]"` (opaque to the hub). See
+// docs/group-chat-identity-decouple.md.
 
-export const PROTOCOL_VERSION = 5;
+export const PROTOCOL_VERSION = 6;
 
 // ---- adapter -> hub -------------------------------------------------------
 
@@ -57,7 +71,9 @@ export type ClientFrame =
   | { t: "leave"; group: string } // leave the group: drops the caller identity's <*>@<group>._group handle (unambiguous — one handle per identity per group)
   // The hub resolves the sender's handle from the caller's identity (no `as`).
   // `to` = optional MEMBER NAMES to restrict the live push to (still logged for all).
-  | { t: "send"; group: string; message: string; to?: string[] }
+  // `reply_to` = optional seq of a prior message in this group: the reply is logged
+  // for all but pushed ONLY to that message's author (or nobody if they left).
+  | { t: "send"; group: string; message: string; to?: string[]; reply_to?: number }
   | { t: "list_members"; group: string }
   | { t: "show_member"; group: string; member: string }
   | { t: "history"; group: string; last_n: number; index_from_end: number } // pull scrollback
@@ -67,21 +83,29 @@ export type ClientFrame =
   | { t: "register_alias"; name: string } // claim <name>@<myhost>; dash-free [A-Za-z0-9_]{1,64}
   | { t: "release_alias"; name: string } // relinquish an owned alias
   | { t: "list_aliases" } // my own aliases (default + registered)
-  | { t: "whoami" } // my session id, host, aliases
-  | { t: "resolve_alias"; address: string } // resolve an address to a session id + online flag
-  | { t: "list_directory" } // every known session id + aliases + groups + online
+  | { t: "whoami" } // my identity id, host, aliases
+  | { t: "resolve_alias"; address: string } // resolve an address to an identity id + online flag
+  | { t: "list_directory" } // every known identity id + aliases + groups + online
   // ---- direct messages (v3) ----
   | { t: "dm"; to: string; message: string } // send a DM to any address form
   | { t: "dm_history"; peer: string; last_n: number; index_from_end: number } // DM scrollback for a thread
-  | { t: "dm_ack"; from_session: string; seq: number } // DM received (arrival ack)
-  | { t: "dm_read"; from_session: string; seq: number } // DM read (surfaced by display hook)
+  // dm_ack/dm_read are ATTRIBUTION-ONLY: `from_identity` names the SENDER's identity;
+  // the envelope's `session` field carries the RECIPIENT's identity so the hub threads
+  // the receipt. They never bind/supersede/release.
+  | { t: "dm_ack"; from_identity: string; seq: number } // DM received (arrival ack)
+  | { t: "dm_read"; from_identity: string; seq: number } // DM read (surfaced by display hook)
   // ---- hook -> hub session correlation ----
   // Sent by the PreToolUse hook (after hello/welcome, on a transient connection)
-  // to register the REAL session id of an in-flight tool call. The hub keeps a
-  // Map<tool_use_id, session_id>; the adapter's frame for that same call carries
-  // the bare `tool_use_id` and the hub resolves the account from this map. See
-  // group-chat-session-resolution.md.
+  // to register the REAL session KEY of an in-flight tool call. `session_id` carries
+  // the composite `"<session_id>[:<agent_id>]"` (opaque to the hub — the one place a
+  // real session key crosses the wire). The hub keeps Map<tool_use_id, session_key>;
+  // the adapter's frame for that same call carries the bare `tool_use_id` and the hub
+  // resolves the key (then its identity) from this map. See
+  // group-chat-session-resolution.md / group-chat-identity-decouple.md.
   | { t: "map_session"; tool_use_id: string; session_id: string }
+  // Sent by the SessionEnd hook on a genuine /resume (or /clear): release the OLD
+  // session key so it stops receiving pushes. Idempotent. See the decouple doc.
+  | { t: "release_session"; session_key: string }
   | { t: "ping" };
 
 // ---- hub -> adapter -------------------------------------------------------
@@ -93,6 +117,7 @@ export interface ChatMessage {
   ts: string; // ISO timestamp
   msg_id: string;
   text: string;
+  reply_to?: number; // seq of the message this one replies to (omitted for non-replies)
 }
 
 // A group member is DERIVED from a handle `<name>@<group>._group`; there is no
@@ -109,14 +134,14 @@ export interface MemberInfo {
   last_seen_ts: string;
 }
 
-// A direct message. Threaded by the unordered pair of participant SESSION ids
+// A direct message. Threaded by the unordered pair of participant IDENTITY ids
 // (aliases are only routing — history records the alias the sender used). `seq`
-// is monotonic per session pair; `state` advances sent→received→read.
+// is monotonic per identity pair; `state` advances sent→received→read.
 export interface DirectMessage {
-  seq: number; // per session-pair monotonic
-  from_session: string;
+  seq: number; // per identity-pair monotonic
+  from_identity: string;
   from_alias: string; // the alias the sender used to send (their own identity)
-  to_session: string;
+  to_identity: string;
   to_alias: string; // the alias the message was addressed to
   ts: string; // ISO timestamp
   msg_id: string;
@@ -124,13 +149,13 @@ export interface DirectMessage {
   state: "sent" | "received" | "read";
 }
 
-// A directory entry: one known session id with its aliases + group memberships,
+// A directory entry: one known identity with its aliases + group memberships,
 // marked online when a live connection is currently bound to it.
 export interface DirectoryEntry {
-  session_id: string;
-  host: string; // the host last reported for this session (default alias host)
+  identity_id: string;
+  host: string; // the host last reported for this identity (default alias host)
   aliases: string[]; // registered alias names (host-qualified form rendered by the adapter)
-  groups: string[]; // group names this session currently holds a handle in
+  groups: string[]; // group names this identity currently holds a handle in
   online: boolean;
 }
 
@@ -142,7 +167,10 @@ export type ServerFrame =
   // it and echoes it on every later `hello`.
   | { t: "welcome"; protocol: number; adapter_id: string }
   | { t: "error"; rid?: string; code: string; message: string }
-  | { t: "message"; msg: ChatMessage } // a live (or gap-resent) chat message to push as <channel>
+  // a live (or gap-resent) chat message to push as <channel>. `to_identity` is the
+  // STAMPED recipient identity (the identity this copy is destined for) — the
+  // adapter's delivery gate drops it unless it currently serves that identity.
+  | { t: "message"; msg: ChatMessage; to_identity: string }
   | { t: "groups"; rid?: string; groups: { name: string; members: number }[] }
   | { t: "joined"; rid?: string; group: string; as: string }
   | { t: "left"; rid?: string; group: string }
@@ -152,19 +180,30 @@ export type ServerFrame =
   | { t: "history"; rid?: string; group: string; messages: ChatMessage[] }
   // reply to a `send`: read = members who confirmed surfacing the message within
   // the read-receipt window; sent = the rest of the group (offline or slower
-  // than the window — no positive confirmation, message still logged + fanned out)
-  | { t: "sent"; rid?: string; group: string; seq: number; read: string[]; sent: string[] }
+  // than the window — no positive confirmation, message still logged + fanned out).
+  // `warning` is set only for a reply-to whose author left the group (or was
+  // pre-migration): the reply was logged but pushed to no one — it names where the
+  // author can be reached.
+  | {
+      t: "sent";
+      rid?: string;
+      group: string;
+      seq: number;
+      read: string[];
+      sent: string[];
+      warning?: string;
+    }
   // ---- identity / aliases (v3) ----
   | { t: "aliases"; rid?: string; aliases: string[] } // reply to list_aliases (host-qualified)
-  | { t: "whoami"; rid?: string; session_id: string; host: string; aliases: string[] }
-  | { t: "resolved"; rid?: string; address: string; session_id: string | null; online: boolean }
+  | { t: "whoami"; rid?: string; identity_id: string; host: string; aliases: string[] }
+  | { t: "resolved"; rid?: string; address: string; identity_id: string | null; online: boolean }
   | { t: "directory"; rid?: string; entries: DirectoryEntry[] }
   // ---- direct messages (v3) ----
   // reply to a `dm`: `read` iff the target was online & surfaced it in the
   // window, else `sent` (accepted/queued). No async read receipt is pushed later.
   | { t: "dm_sent"; rid?: string; seq: number; state: "sent" | "read" }
   | { t: "dm_message"; msg: DirectMessage } // a DM to surface as a <channel> direct message
-  | { t: "dm_history"; rid?: string; peer_session: string; messages: DirectMessage[] }
+  | { t: "dm_history"; rid?: string; peer_identity: string; messages: DirectMessage[] }
   | { t: "ok"; rid?: string }
   | { t: "pong" };
 
@@ -177,8 +216,11 @@ export type ServerFrame =
 //
 // `session` is retained as an OPTIONAL direct-assertion path (the hub binds it
 // verbatim when present): it is what the hub binds AFTER resolving a tool_use_id,
-// and lets a trusted in-process driver/test assert identity without the hook. The
-// real adapter no longer sends it — it sends `tool_use_id` instead.
+// and lets a trusted in-process driver/test assert identity without the hook. For
+// account-bound group/identity ops the real adapter no longer sends it — it sends
+// `tool_use_id` instead — but it DOES still send `session` on `dm_ack`/`dm_read`,
+// where the field carries the RECIPIENT's identity id for receipt attribution
+// (see those frames in `ClientFrame`).
 export type ClientEnvelope = ClientFrame & {
   rid?: string;
   session?: string;
