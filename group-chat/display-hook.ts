@@ -40,6 +40,7 @@ interface ChannelEvent {
   toAlias: string; // DM recipient alias (the identity it was addressed to)
   seq: number;
   replyTo: number | null; // group reply: the seq this message replies to (null otherwise)
+  to: string[] | null; // group push-targeting: member names this was directed to (null = plain broadcast)
   text: string;
 }
 
@@ -97,11 +98,14 @@ function parseChannel(content: string): ChannelEvent | null {
       toAlias: attr("to_alias"),
       seq,
       replyTo: null,
+      to: null,
       text,
     };
   }
   const replyToRaw = attr("reply_to");
   const replyTo = replyToRaw ? Number(replyToRaw) : null;
+  const toRaw = attr("to");
+  const to = toRaw ? toRaw.split(",").filter(Boolean) : null;
   return {
     dm: false,
     group: attr("group"),
@@ -112,6 +116,7 @@ function parseChannel(content: string): ChannelEvent | null {
     toAlias: "",
     seq,
     replyTo: Number.isFinite(replyTo as number) ? replyTo : null,
+    to: to && to.length ? to : null,
     text,
   };
 }
@@ -208,9 +213,12 @@ function box(ev: ChannelEvent): string {
   const color = ev.dm ? C.dm : C.group;
   // The chat identity is the prominent part: bold the group name / the DM pair.
   const replyMark = !ev.dm && ev.replyTo != null ? `  ↩ reply to seq ${ev.replyTo}` : "";
+  // push-targeting marker: makes a to:-directed message legible to the recipient
+  // (otherwise indistinguishable from a plain broadcast). Names who it was directed to.
+  const toMark = !ev.dm && ev.to ? `  → to: ${ev.to.join(", ")}` : "";
   const headerText = ev.dm
     ? `🔒 direct message  ${C.bold}${ev.fromAlias} → ${ev.toAlias}${C.reset}${color}  (seq ${ev.seq})`
-    : `📨 #${C.bold}${ev.group}${C.reset}${color}  from ${ev.from}  (seq ${ev.seq})${replyMark}`;
+    : `📨 #${C.bold}${ev.group}${C.reset}${color}  from ${ev.from}  (seq ${ev.seq})${replyMark}${toMark}`;
   const lines: string[] = [];
   const WIDTH = 72;
   for (const raw of ev.text.split("\n")) {
