@@ -41,6 +41,8 @@ interface ChannelEvent {
   seq: number;
   replyTo: number | null; // group reply: the seq this message replies to (null otherwise)
   to: string[] | null; // group push-targeting: member names this was directed to (null = plain broadcast)
+  role: string | null; // the author's DERIVED role ("human"|"agent"|"system"); null when absent.
+  // Only "human" is rendered (a person talking) — agents are the unmarked default, no noise.
   text: string;
 }
 
@@ -99,6 +101,7 @@ function parseChannel(content: string): ChannelEvent | null {
       seq,
       replyTo: null,
       to: null,
+      role: attr("role") || null,
       text,
     };
   }
@@ -117,6 +120,7 @@ function parseChannel(content: string): ChannelEvent | null {
     seq,
     replyTo: Number.isFinite(replyTo as number) ? replyTo : null,
     to: to && to.length ? to : null,
+    role: attr("role") || null,
     text,
   };
 }
@@ -216,9 +220,13 @@ function box(ev: ChannelEvent): string {
   // push-targeting marker: makes a to:-directed message legible to the recipient
   // (otherwise indistinguishable from a plain broadcast). Names who it was directed to.
   const toMark = !ev.dm && ev.to ? `  → to: ${ev.to.join(", ")}` : "";
+  // human-author marker: ONLY for role="human" (a person — the web console user —
+  // talking in the room), so it's distinct from a peer agent's message. Agents are the
+  // unmarked default (no marker, to avoid noise). Consistent with the markers above.
+  const humanMark = ev.role === "human" ? `  👤 human` : "";
   const headerText = ev.dm
-    ? `🔒 direct message  ${C.bold}${ev.fromAlias} → ${ev.toAlias}${C.reset}${color}  (seq ${ev.seq})`
-    : `📨 #${C.bold}${ev.group}${C.reset}${color}  from ${ev.from}  (seq ${ev.seq})${replyMark}${toMark}`;
+    ? `🔒 direct message  ${C.bold}${ev.fromAlias} → ${ev.toAlias}${C.reset}${color}  (seq ${ev.seq})${humanMark}`
+    : `📨 #${C.bold}${ev.group}${C.reset}${color}  from ${ev.from}  (seq ${ev.seq})${replyMark}${toMark}${humanMark}`;
   const lines: string[] = [];
   const WIDTH = 72;
   for (const raw of ev.text.split("\n")) {
