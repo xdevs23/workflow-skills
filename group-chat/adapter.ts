@@ -241,18 +241,29 @@ function deriveTranscriptPath(sessionId: string): string | null {
   return pathJoin(claudeProjectsDir(), slug, `${sessionId}.jsonl`);
 }
 
-// Scan a transcript jsonl for OUR delivered notice: a record with
-// origin.kind === "channel" whose serialized content contains `corrId`. A delivered
-// channel event is written to the transcript at DELIVERY time (not turn time — see
-// the doc), so this is a turn-independent ack that our push actually surfaced. We
-// match on corr_id content so we confirm OUR notice, not a stale earlier one.
+// Scan a transcript jsonl for OUR delivered notice: a record carrying `corrId` in one
+// of the TWO shapes a surfaced channel event takes in the transcript. This is the ack
+// that our push actually landed; we match on the corr_id so we confirm OUR notice, not
+// a stale earlier one.
+//
+// CRITICAL — there are two record shapes, written at DIFFERENT times (proven live, the
+// runaway-spam bug 2026-06-28):
+//   1. `type:"queue-operation"`, `operation:"enqueue"` — written at DELIVERY time, the
+//      instant the event is queued into the session. `origin` is NULL on this record.
+//   2. `type:"user"` with `origin.kind === "channel"` — written only when the queued
+//      event is CONSUMED INTO A TURN, which can be minutes after delivery (events queue
+//      and surface on the next turn).
+// The original code matched ONLY shape (2). Between delivery and the next turn, shape
+// (2) doesn't exist yet, so the poll never acked and re-pushed the SAME notice up to
+// the cap — flooding the session with identical notices. We now accept EITHER shape:
+// the enqueue record is the true delivery-time signal (acks fast, stops the re-push),
+// and origin.kind=="channel" still counts (a turn already consumed it).
 //
 // We read the WHOLE file each scan rather than tail forward from a cursor (the
-// drainDmReads trick). A deliberate tradeoff, not an oversight: this loop runs at most
-// ~120 times over ~30s, transcripts are small, and a from-head read is robust to the
-// glob fallback handing us a DIFFERENT file each iteration (a cursor is per-path state
-// that the multi-candidate fallback can't share). Each line is a JSON record; we test
-// the raw line for the corr_id substring first (cheap), then confirm origin.kind.
+// drainDmReads trick). A deliberate tradeoff, not an oversight: this loop is capped,
+// transcripts are small, and a from-head read is robust to the glob fallback handing us
+// a DIFFERENT file each iteration (a cursor is per-path state the fallback can't share).
+// We test the raw line for the corr_id substring first (cheap), then confirm shape.
 // Returns true on a match, false otherwise (missing file included).
 function transcriptHasNotice(path: string, corrId: string): boolean {
   const textData = readFileFully(path);
@@ -260,8 +271,15 @@ function transcriptHasNotice(path: string, corrId: string): boolean {
   for (const line of textData.split("\n")) {
     if (!line.includes(corrId)) continue; // cheap pre-filter on the raw line
     try {
-      const rec = JSON.parse(line) as { origin?: { kind?: string } };
+      const rec = JSON.parse(line) as {
+        type?: string;
+        operation?: string;
+        origin?: { kind?: string };
+      };
+      // shape (2): turn-consumed channel record
       if (rec.origin?.kind === "channel") return true;
+      // shape (1): delivery-time enqueue record (origin is null here)
+      if (rec.type === "queue-operation" && rec.operation === "enqueue") return true;
     } catch {
       /* skip malformed/partial line */
     }
@@ -300,10 +318,17 @@ function readFileFully(path: string): string | null {
 // transcript for our corr_id, stopping on the first match (the harness wrote our
 // notice → it surfaced). This defeats the proven subscription race (oninitialized is
 // necessary but not sufficient — see the doc) without a fixed-delay guess: we keep
-// re-pushing until the transcript proves landing. Cap ~30s (~120 attempts), then give
-// up quietly (one dbg line, no crash, no stderr spam).
+// re-pushing until the transcript proves landing.
+//
+// The cap is the BLAST RADIUS if detection ever fails: every un-acked attempt surfaces
+// ANOTHER copy of the notice. A too-high cap once flooded the session with ~13 spammed
+// notices before it was caught (the origin.kind-only match bug, since fixed in
+// transcriptHasNotice). So the cap is deliberately LOW: ~10 attempts / ~2.5s. The
+// healthy path acks at attempt 1, so a low cap costs nothing normally; it only bounds
+// the damage if a new detection edge-case slips through. After the cap, give up quietly
+// (one dbg line, no crash, no stderr spam).
 const RECONNECT_NOTICE_INTERVAL_MS = 250;
-const RECONNECT_NOTICE_MAX_ATTEMPTS = 120; // ~30s at 250ms
+const RECONNECT_NOTICE_MAX_ATTEMPTS = 10; // ~2.5s at 250ms — kept low to bound spam
 
 async function runReconnectNotice(): Promise<void> {
   const sessionId = currentSessionId();
