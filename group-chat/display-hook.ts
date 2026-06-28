@@ -7,8 +7,8 @@
 // omits the sender. This hook fires while an assistant message is displayed
 // (display-only — Claude's context and the transcript keep the original), scans
 // the transcript for any group-chat channel events we haven't bannered yet, and
-// PREPENDS a boxed quote (sender + group + text) above the assistant reply so
-// the human sees who said what.
+// PREPENDS a card (ANSI-colored header + markdown-blockquote body, no box-drawing)
+// above the assistant reply so the human sees who said what.
 //
 // Wired on-by-default via hooks/hooks.json. No-ops cleanly when there are no
 // group-chat events.
@@ -199,20 +199,31 @@ function signalDmRead(fromIdentity: string, seq: number, recipientIdentity: stri
   }
 }
 
-// Build the boxed quote for one event. Wraps the body to keep the box tidy.
-// ANSI styling so the channel type is obvious at a glance. DMs and groups get
-// DIFFERENT colors; the group name (or the DM peer) is bolded. Body text stays
-// default for readability. Kept minimal/standard so it's terminal-safe.
+// Build the rendered card for one event: an ANSI-colored header line followed by
+// the body as a MARKDOWN BLOCKQUOTE. DMs and groups get DIFFERENT colors; the
+// group name (or the DM peer) is bolded. Body text stays default for readability.
+// Kept minimal/standard so it's terminal-safe.
 const C = {
   reset: "\x1b[0m",
   bold: "\x1b[1m",
   group: "\x1b[36m", // cyan — group messages
   dm: "\x1b[35m", // magenta — direct messages
-  dim: "\x1b[2m",
 };
 
 // Direct messages render distinctly from group messages: a different glyph, a
 // different COLOR, and a header that names the channel (the group, or the DM peer).
+//
+// NO box-drawing: Claude Code GFM-renders this hook's displayContent. Earlier we
+// drew a box ('╭─' header, per-line '│ ' left-bars, '╰─' footer). That broke in
+// two ways (#9, #10): (a) the renderer's buggy table heuristic latched onto our
+// injected box-drawing verticals lining up across lines plus a lone '|' in the
+// peer's body text and styled it as a table delimiter; (b) when the card rendered
+// while a real table was streaming in the assistant output, our box-drawing
+// characters interleaved into the table grid and scattered it. Removing OUR
+// box-drawing removes the trigger for both — there is nothing of ours left to
+// mis-detect as a table or to interleave into one. (We do NOT make the lone '|'
+// meaningful; a '|' with no delimiter row is still not a valid GFM table — the fix
+// is purely the absence of our verticals.)
 function box(ev: ChannelEvent): string {
   const color = ev.dm ? C.dm : C.group;
   // The chat identity is the prominent part: bold the group name / the DM pair.
@@ -224,33 +235,36 @@ function box(ev: ChannelEvent): string {
   // talking in the room), so it's distinct from a peer agent's message. Agents are the
   // unmarked default (no marker, to avoid noise). Consistent with the markers above.
   const humanMark = ev.role === "human" ? `  👤 human` : "";
-  const headerText = ev.dm
-    ? `🔒 direct message  ${C.bold}${ev.fromAlias} → ${ev.toAlias}${C.reset}${color}  (seq ${ev.seq})${humanMark}`
-    : `📨 #${C.bold}${ev.group}${C.reset}${color}  from ${ev.from}  (seq ${ev.seq})${replyMark}${toMark}${humanMark}`;
-  const lines: string[] = [];
-  const WIDTH = 72;
-  for (const raw of ev.text.split("\n")) {
-    if (raw.length <= WIDTH) {
-      lines.push(raw);
-      continue;
-    }
-    // soft-wrap long lines at word boundaries
-    let cur = "";
-    for (const word of raw.split(" ")) {
-      if ((cur + " " + word).trim().length > WIDTH) {
-        lines.push(cur.trim());
-        cur = word;
-      } else {
-        cur = (cur + " " + word).trim();
-      }
-    }
-    if (cur) lines.push(cur);
-  }
-  // Border + header carry the chat color; the body bar is colored, text is plain.
-  const top = `${color}╭─ ${headerText}${C.reset}`;
-  const body = lines.map((l) => `${color}│${C.reset} ${l}`).join("\n");
-  const bottom = `${color}╰─${C.reset}`;
-  return `${top}\n${body}\n${bottom}`;
+  // ONE standalone ANSI-colored header line, prefixed with the SAME left bar the
+  // markdown blockquote body draws, so the header sits flush above the quote and the
+  // card reads as one connected unit. The bar MUST be U+258E (▎ LEFT ONE QUARTER
+  // BLOCK) — that is exactly the glyph the renderer uses for the blockquote rule
+  // (verified from a hexdump: bytes e2 96 8e). Do NOT "fix" it to U+2502 (│): that is
+  // a thinner box-drawing line that would NOT line up with the quote's thick bar — and
+  // a single header bar is safe (the per-body-line bars are what triggered the table
+  // mis-detection / streaming-table corruption, bugs #9/#10; one header bar does not).
+  const BAR = "▎"; // ▎ — match the blockquote's left rule exactly
+  const header = ev.dm
+    ? `${color}${BAR} 🔒 direct message  ${C.bold}${ev.fromAlias} → ${ev.toAlias}${C.reset}${color}  (seq ${ev.seq})${humanMark}${C.reset}`
+    : `${color}${BAR} 📨 #${C.bold}${ev.group}${C.reset}${color}  from ${ev.from}  (seq ${ev.seq})${replyMark}${toMark}${humanMark}${C.reset}`;
+  // Body as a markdown blockquote: prefix EACH line with '> '. No manual soft-wrap
+  // (the renderer wraps; our old manual wrap fought it and produced ragged lines).
+  // A blank line in the body becomes a bare '>' so the blockquote stays contiguous —
+  // a real empty line would split it into two separate quotes.
+  const body = ev.text
+    .split("\n")
+    .map((l) => (l === "" ? ">" : `> ${l}`))
+    .join("\n");
+  // Blank line between the ANSI header and the blockquote. REQUIRED: the renderer
+  // treats the header (a paragraph) and the blockquote as separate BLOCKS, and inserts
+  // its own inter-block margin — so there's a small gap between the header's ▎ and the
+  // body's ▎ regardless. We accept that gap (the bars stay column-aligned, which reads
+  // fine). Attempts to close it failed for the same root reason — they tried to merge
+  // two blocks into one: a trailing-backslash hard break renders the '\' verbatim (this
+  // renderer's known backslash bug), and a single '\n' still leaves the inter-block
+  // margin. The only way to a truly continuous bar would be putting the header INSIDE
+  // the blockquote ('> ' prefix), which changes the header's styling — not worth it.
+  return `${header}\n\n${body}`;
 }
 
 function main(): void {

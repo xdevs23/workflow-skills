@@ -85,18 +85,32 @@ On fresh-process boot, after `oninitialized` AND a freshly-minted-adapter_id wel
 4. **If engaged → poll-until-acked.** We know the session id, so derive its
    transcript path and watch that ONE file:
    - Push the notice with a unique `corr_id` stamped in meta.
-   - Wait 250ms; scan the known transcript jsonl for a record with
-     `origin.kind == "channel"` whose content contains that `corr_id`.
+   - Wait 250ms; scan the known transcript jsonl for a record carrying that `corr_id`
+     in EITHER of the two channel-event record shapes (see below).
    - If absent, resend; repeat every 250ms.
-   - **Stop on match.** **Cap ~30s (~120 attempts)**, then give up quietly (no crash,
-     no stderr spam beyond one debug line).
+   - **Stop on match.** **Cap ~2.5s (~10 attempts)** — kept LOW because every un-acked
+     attempt re-surfaces another copy of the notice; the cap is the spam blast radius.
+     After the cap, give up quietly (no crash, no stderr spam beyond one debug line).
 
-### Why the transcript is the ack source
+### Why the transcript is the ack source — and the TWO record shapes
 
-A delivered channel event is written to the session transcript jsonl **at delivery
-time, not turn time** — VERIFIED: the 19:11:58 notice's transcript record is
-timestamped 19:11:58.449, ~20ms after the push, with no intervening user turn. Record
-shape (real, from delivered data):
+A surfaced channel event appears in the transcript jsonl in **two different record
+shapes, written at DIFFERENT times** (this distinction caused a runaway-spam bug —
+2026-06-28 — when the code matched only the second):
+
+1. **`type:"queue-operation"`, `operation:"enqueue"`** — written at **DELIVERY time**,
+   the instant the event is queued into the session. **`origin` is NULL** on this
+   record. This is the fast, turn-independent signal.
+2. **`type:"user"` with `origin.kind == "channel"`** — written only when the queued
+   event is **CONSUMED INTO A TURN**, which can be minutes after delivery (events queue
+   and surface on the next turn).
+
+The poll must accept **EITHER** shape. Matching only shape (2) means that between
+delivery and the next turn, the poll never acks and re-pushes up to the cap — flooding
+the session with identical notices (the proven bug). The enqueue record (shape 1) is
+the true delivery-time ack that stops the re-push promptly.
+
+Shape (2) example (real, from delivered data — note origin.kind present here):
 ```
 {"type":"user","message":{"role":"user","content":"<channel source=\"…\" notice=\"adapter-status\" …>…</channel>"},
  "isMeta":true,"origin":{"kind":"channel","server":"plugin:workflow-skills:group-chat"},
