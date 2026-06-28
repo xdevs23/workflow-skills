@@ -14,6 +14,16 @@
 // Config (env):
 //   GROUP_CHAT_URL   ws(s)://[token@]host:port  — hub URL with optional inline creds
 //                    (e.g. ws://s3cr3t@localhost:8787). The userinfo is the token.
+//   CLAUDE_CODE_SESSION_ID  the current session id — trustworthy ONLY on a fresh
+//                    respawn (manual Reconnect / first launch), where it equals the
+//                    live session. Drives the reconnect-notice pre-flight + the
+//                    transcript watch. Unset → the notice path stays silent.
+//   CLAUDE_PROJECT_DIR  the project dir; its '/'→'-' slug locates the per-session
+//                    transcript at ~/.claude/projects/<slug>/<session>.jsonl. Unset →
+//                    we glob the projects dir and match on corr_id content instead.
+//   GROUP_CHAT_DEBUG   "1" enables the on-disk lifecycle log (dbg, below); no-op otherwise.
+//   CLAUDE_PLUGIN_ROOT / CLAUDE_PLUGIN_DATA  locate the .cache debug log and the
+//                    plugin data dir (the display hook's dm-reads signal file).
 
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
@@ -27,6 +37,8 @@ import {
   readSync,
   fstatSync,
   closeSync,
+  appendFileSync,
+  readdirSync,
 } from "node:fs";
 import { join as pathJoin } from "node:path";
 import { tmpdir, homedir, hostname } from "node:os";
@@ -54,6 +66,45 @@ function parseHub(raw: string): { url: string; token: string } {
   u.username = "";
   u.password = "";
   return { url: u.toString(), token };
+}
+
+// ---- debug lifecycle log --------------------------------------------------
+// The adapter's stderr is a socket to the harness and is NOT readable from the
+// sandbox, which is exactly what hid the reconnect-notice failure for cycles: the
+// three failure modes (latch never fired / push written-then-dropped-by-harness /
+// push threw) all presented identically as "no notice appeared". This writes a
+// timestamped, append-only lifecycle log to a file ON DISK that the sandbox CAN
+// read, so a Reconnect leaves a forensic trail that disambiguates them.
+//
+// Path: <CLAUDE_PLUGIN_ROOT>/.cache/adapter-debug.log. In this dev checkout
+// CLAUDE_PLUGIN_ROOT == the project dir (verified live), so this lands in the
+// project's gitignored .cache/. Falls back to cwd. Gated behind GROUP_CHAT_DEBUG
+// so it's a no-op in normal operation — set GROUP_CHAT_DEBUG=1 to enable.
+const DEBUG_ENABLED = process.env.GROUP_CHAT_DEBUG === "1";
+const DEBUG_LOG_PATH = (() => {
+  const root =
+    (process.env.CLAUDE_PLUGIN_ROOT && !process.env.CLAUDE_PLUGIN_ROOT.startsWith("${")
+      ? process.env.CLAUDE_PLUGIN_ROOT
+      : process.cwd());
+  return pathJoin(root, ".cache", "adapter-debug.log");
+})();
+// pid lets us tell a fresh respawn apart from the prior process in one shared log.
+const DEBUG_PID = process.pid;
+function dbg(event: string, detail?: Record<string, unknown>): void {
+  if (!DEBUG_ENABLED) return;
+  try {
+    const line =
+      JSON.stringify({
+        ts: new Date().toISOString(),
+        pid: DEBUG_PID,
+        event,
+        ...(detail ?? {}),
+      }) + "\n";
+    appendFileSync(DEBUG_LOG_PATH, line);
+  } catch {
+    // never let logging crash the adapter; the .cache dir may not exist yet, in
+    // which case we silently skip (the dir is created by the project, not us).
+  }
 }
 
 // ---- MCP server (channel) -------------------------------------------------
@@ -97,6 +148,255 @@ let connectAttempts = 0;
 // drop/reconnect — that's exactly the case it must survive. See
 // docs/group-chat-adapter-reconnect.md.
 let adapterId: string | null = null;
+
+// FRESH-PROCESS NOTICE GATE: set true (in maybeFireAdapterNotice) after we surface
+// the one-shot adapter-status notice. Fires at most once per process, only on a
+// freshly-minted adapter_id (the orphaned-lease gap), never on a transient
+// re-presented-id reconnect (which self-heals). Process-lifetime in-memory flag.
+let adapterStatusNoticeSent = false;
+
+// PENDING-LATCH for the fresh-process notice. The notice must fire only AFTER the
+// MCP handshake completes (`notifications/initialized` from Claude Code), or the
+// push is silently dropped — Claude Code hasn't subscribed to the channel yet.
+// `mcp.connect()` resolves BEFORE that handshake; the correct hook is the Server's
+// `oninitialized` callback (fires once per fresh process when the client sends
+// `notifications/initialized`). But the hub `welcome` (which sets freshlyMinted)
+// and `oninitialized` are INDEPENDENT events with NO guaranteed order, so we latch:
+// whichever happens SECOND triggers the send. `freshProcessNoticePending` is set by
+// a freshly-minted welcome; `mcpInitialized` is set by oninitialized. maybeFire
+// sends iff BOTH hold and we haven't sent yet.
+let freshProcessNoticePending = false;
+let mcpInitialized = false;
+
+// The full wording of the one-shot adapter-status notice. Stated once so the
+// pre-flight/poll machinery below can reference it. Informational only: it states
+// the fact of the unestablished link and that any group-chat tool call re-establishes
+// it; it does not command the model to do anything.
+const ADAPTER_STATUS_TEXT =
+  "The group-chat adapter (re)started and has not yet re-established its " +
+  "link with the hub for this session. Incoming <channel> messages will " +
+  "not be delivered until the link is re-established, which happens " +
+  "automatically the next time you use any group-chat tool (e.g. listing " +
+  "groups, sending a message, or checking message history). Until then " +
+  "you may be missing messages; any queued ones are delivered in full " +
+  "once the link is re-established.";
+
+// Maybe fire the fresh-process adapter-status notice. Gated (as before) on BOTH the
+// MCP handshake completing (mcpInitialized) AND a fresh-process welcome arming the
+// pending flag (freshProcessNoticePending) — regardless of which event arrived
+// first. A non-fresh reconnect never arms the pending flag, so this stays a no-op for
+// transient drops. Idempotent via adapterStatusNoticeSent.
+//
+// THE REAL DESIGN (replaces the prior unconditional delay probe — see
+// docs/group-chat-reconnect-notice.md): a fresh process is INDISTINGUISHABLE from a
+// first launch at this point (both mint a fresh adapter_id), so firing
+// unconditionally bugs a brand-new unrelated session that never used the feature.
+// Instead we PRE-FLIGHT the hub: does this session id (env CLAUDE_CODE_SESSION_ID,
+// trustworthy on a fresh respawn) have a durable `sessions` row — i.e. did it ever
+// engage group-chat? Only if engaged do we run the poll-until-acked loop. A
+// first-launch session has no row → we return silently.
+function maybeFireAdapterNotice(): void {
+  dbg("maybeFireAdapterNotice:enter", {
+    mcpInitialized,
+    freshProcessNoticePending,
+    adapterStatusNoticeSent,
+  });
+  if (!mcpInitialized || !freshProcessNoticePending || adapterStatusNoticeSent) {
+    dbg("maybeFireAdapterNotice:skip");
+    return;
+  }
+  adapterStatusNoticeSent = true; // latch closed: at most one attempt per process.
+  dbg("maybeFireAdapterNotice:firing");
+  // Fire-and-forget the async pre-flight + poll loop. Never let it crash the adapter:
+  // the notice never gates correctness.
+  void runReconnectNotice().catch((err) => {
+    dbg("runReconnectNotice:threw", { err: String(err) });
+  });
+}
+
+// The current Claude Code session id, from the adapter's env. On a MANUAL Reconnect
+// (a fresh respawn) this equals the live session — the one assumption this whole path
+// rests on (see the doc, constraint 1). Empty if unset (an environment we can't
+// pre-flight): we then stay silent.
+function currentSessionId(): string {
+  const v = process.env.CLAUDE_CODE_SESSION_ID;
+  return typeof v === "string" && v && !v.startsWith("${") ? v : "";
+}
+
+// The ~/.claude/projects dir that holds the per-session transcript jsonl files.
+function claudeProjectsDir(): string {
+  const home = process.env.HOME || homedir();
+  return pathJoin(home, ".claude", "projects");
+}
+
+// Derive the transcript path for a session id: ~/.claude/projects/<slug>/<id>.jsonl
+// where <slug> = CLAUDE_PROJECT_DIR with every '/' replaced by '-'. VERIFIED (the
+// doc) the derived slug matches the real on-disk directory. Returns null if we can't
+// build the slug (CLAUDE_PROJECT_DIR unset/placeholder) — the caller then falls back
+// to globbing the projects dir.
+function deriveTranscriptPath(sessionId: string): string | null {
+  const projectDir = process.env.CLAUDE_PROJECT_DIR;
+  if (!projectDir || projectDir.startsWith("${")) return null;
+  const slug = projectDir.replace(/\//g, "-");
+  return pathJoin(claudeProjectsDir(), slug, `${sessionId}.jsonl`);
+}
+
+// Scan a transcript jsonl for OUR delivered notice: a record with
+// origin.kind === "channel" whose serialized content contains `corrId`. A delivered
+// channel event is written to the transcript at DELIVERY time (not turn time — see
+// the doc), so this is a turn-independent ack that our push actually surfaced. We
+// match on corr_id content so we confirm OUR notice, not a stale earlier one.
+//
+// We read the WHOLE file each scan rather than tail forward from a cursor (the
+// drainDmReads trick). A deliberate tradeoff, not an oversight: this loop runs at most
+// ~120 times over ~30s, transcripts are small, and a from-head read is robust to the
+// glob fallback handing us a DIFFERENT file each iteration (a cursor is per-path state
+// that the multi-candidate fallback can't share). Each line is a JSON record; we test
+// the raw line for the corr_id substring first (cheap), then confirm origin.kind.
+// Returns true on a match, false otherwise (missing file included).
+function transcriptHasNotice(path: string, corrId: string): boolean {
+  const textData = readFileFully(path);
+  if (textData === null) return false;
+  for (const line of textData.split("\n")) {
+    if (!line.includes(corrId)) continue; // cheap pre-filter on the raw line
+    try {
+      const rec = JSON.parse(line) as { origin?: { kind?: string } };
+      if (rec.origin?.kind === "channel") return true;
+    } catch {
+      /* skip malformed/partial line */
+    }
+  }
+  return false;
+}
+
+// Read a whole file to a string with the same open/fstat/read/close fd ceremony
+// drainDmReads uses (one place owns the low-level read shape). Returns null on a
+// missing/empty/unreadable file so callers fold all "nothing to scan" cases into one
+// branch. Unlike drainDmReads this is stateless (no cursor) — see transcriptHasNotice
+// for why a from-head read is the right shape there.
+function readFileFully(path: string): string | null {
+  let fd: number;
+  try {
+    if (!existsSync(path)) return null;
+    fd = openSync(path, "r");
+  } catch {
+    return null;
+  }
+  try {
+    const size = fstatSync(fd).size;
+    if (size <= 0) return null;
+    const buf = Buffer.allocUnsafe(size);
+    const n = readSync(fd, buf, 0, size, 0);
+    return buf.toString("utf8", 0, n);
+  } catch {
+    return null;
+  } finally {
+    closeSync(fd);
+  }
+}
+
+// Reconnect-notice delivery: PRE-FLIGHT the hub for engagement, then (only if engaged)
+// POLL-UNTIL-ACKED. The poll re-pushes the notice every 250ms and scans the session's
+// transcript for our corr_id, stopping on the first match (the harness wrote our
+// notice → it surfaced). This defeats the proven subscription race (oninitialized is
+// necessary but not sufficient — see the doc) without a fixed-delay guess: we keep
+// re-pushing until the transcript proves landing. Cap ~30s (~120 attempts), then give
+// up quietly (one dbg line, no crash, no stderr spam).
+const RECONNECT_NOTICE_INTERVAL_MS = 250;
+const RECONNECT_NOTICE_MAX_ATTEMPTS = 120; // ~30s at 250ms
+
+async function runReconnectNotice(): Promise<void> {
+  const sessionId = currentSessionId();
+  dbg("runReconnectNotice:enter", { sessionId });
+  if (!sessionId) {
+    // No env session id (can't pre-flight, can't watch a transcript). Stay silent.
+    dbg("runReconnectNotice:no-session-id");
+    return;
+  }
+
+  // 1) PRE-FLIGHT: has this session id ever engaged group-chat (a durable `sessions`
+  //    row, MAIN key)? If NOT engaged -> do nothing (constraint 2: never nudge a
+  //    session that never used the feature — a first launch has no row).
+  let engaged = false;
+  try {
+    const reply = expect(
+      await request({ t: "session_engaged", session_id: sessionId }),
+      "session_engaged",
+    );
+    engaged = reply.engaged;
+  } catch (err) {
+    // The pre-flight failed (hub down / timeout). Fail SILENT: we can't prove
+    // engagement, and a wrong nudge into an unengaged session is the worse error.
+    dbg("runReconnectNotice:preflight-failed", { err: String(err) });
+    return;
+  }
+  dbg("runReconnectNotice:preflight", { engaged });
+  if (!engaged) return;
+
+  // 2) ENGAGED -> POLL-UNTIL-ACKED. Stamp a unique corr_id (meta key chars are
+  //    [A-Za-z0-9_]; "corr_id" is fine) so we confirm OUR notice landed.
+  const corrId = randomUUID();
+  // Prefer the derived path (session id is known); fall back to globbing the projects
+  // dir and matching purely on corr_id content (path-independent) if it's absent.
+  const derivedPath = deriveTranscriptPath(sessionId);
+  dbg("runReconnectNotice:poll-start", { corrId, derivedPath });
+
+  for (let attempt = 1; attempt <= RECONNECT_NOTICE_MAX_ATTEMPTS; attempt++) {
+    try {
+      await pushAdapterStatus(ADAPTER_STATUS_TEXT, corrId);
+    } catch (err) {
+      // A push failure is non-fatal: the next attempt re-pushes. Don't spam stderr.
+      dbg("runReconnectNotice:push-failed", { attempt, err: String(err) });
+    }
+    await new Promise((r) => setTimeout(r, RECONNECT_NOTICE_INTERVAL_MS));
+
+    // Look for our notice landing in the transcript. Try the derived path first; if
+    // it doesn't exist (or we couldn't derive one), glob *.jsonl under the projects
+    // dir and match on corr_id content alone.
+    let landed = false;
+    if (derivedPath && transcriptHasNotice(derivedPath, corrId)) {
+      landed = true;
+    } else {
+      for (const candidate of globTranscripts()) {
+        if (transcriptHasNotice(candidate, corrId)) {
+          landed = true;
+          break;
+        }
+      }
+    }
+    if (landed) {
+      dbg("runReconnectNotice:acked", { attempt });
+      return; // STOP on match.
+    }
+  }
+  // Cap reached: give up quietly (one dbg line, no crash, no stderr spam).
+  dbg("runReconnectNotice:gave-up", { attempts: RECONNECT_NOTICE_MAX_ATTEMPTS });
+}
+
+// Glob *.jsonl under ~/.claude/projects/*/ — the fallback transcript source when the
+// derived path is absent. Matched purely on corr_id content, so a wrong-directory
+// scan is harmless (no corr_id, no match). Best-effort; returns [] on any error.
+function globTranscripts(): string[] {
+  const base = claudeProjectsDir();
+  const out: string[] = [];
+  try {
+    if (!existsSync(base)) return out;
+    for (const dirent of readdirSync(base, { withFileTypes: true })) {
+      if (!dirent.isDirectory()) continue;
+      const dir = pathJoin(base, dirent.name);
+      try {
+        for (const f of readdirSync(dir)) {
+          if (f.endsWith(".jsonl")) out.push(pathJoin(dir, f));
+        }
+      } catch {
+        /* unreadable subdir — skip */
+      }
+    }
+  } catch {
+    /* projects dir unreadable — return what we have */
+  }
+  return out;
+}
 
 // DELIVERY GATE state: the identities this adapter knows it currently serves. An
 // adapter socket may relay for several identities (the main session plus live
@@ -217,11 +517,35 @@ function pluginDataDir(): string {
 function onFrame(frame: ServerFrame): void {
   if (frame.t === "welcome") {
     helloDone = true;
+    dbg("welcome", {
+      frameAdapterId: frame.adapter_id ?? null,
+      heldAdapterId: adapterId,
+      freshProcess: !!(frame.adapter_id && !adapterId),
+    });
     // Store the hub-minted relay id on the FIRST welcome that carries one. The
     // `!adapterId` guard enforces the contract "never overwrite the held id": on a
     // reconnect we already hold it and the hub echoes the same one back, so the
     // store is skipped — the held id is the stable identity for this process.
-    if (frame.adapter_id && !adapterId) adapterId = frame.adapter_id;
+    //
+    // FRESH-PROCESS detection: a welcome that carries an adapter_id WHILE we held
+    // none is a freshly-minted relay id — i.e. this process connected without a
+    // prior id to re-present (a first connect, or a /reload-plugins respawn, which
+    // are indistinguishable from the adapter's view). In that case the hub could
+    // NOT auto-rebind the prior session lease (it's orphaned), so group push stays
+    // dark until the next tool call's PreToolUse map_session re-binds the session.
+    // A transient socket drop does NOT hit this branch (we still held the id and
+    // re-presented it, so `!adapterId` is false) — that path self-heals, no notice.
+    // Emit ONE informational status notice so the model knows a tool call is what
+    // re-establishes delivery. We do NOT send it inline here: the MCP handshake may
+    // not be complete yet (Claude Code hasn't subscribed to the channel), so the
+    // push would be silently dropped. Instead ARM the latch and let
+    // maybeFireAdapterNotice() send it once the handshake's `oninitialized` has also
+    // fired — whichever of the two events lands second triggers the send.
+    if (frame.adapter_id && !adapterId) {
+      adapterId = frame.adapter_id;
+      freshProcessNoticePending = true;
+      maybeFireAdapterNotice();
+    }
     return;
   }
 
@@ -284,9 +608,45 @@ async function pushChannel(msg: ChatMessage): Promise<void> {
         // push-targeting: the member names this was directed to (only on to:-targeted
         // messages). Comma-joined; the display hook renders it as a "→ to: …" marker.
         ...(msg.to && msg.to.length ? { to: msg.to.join(",") } : {}),
+        // DERIVED author role (only stamped when present). The display hook renders a
+        // visible marker for role="human" so a person talking in the room is legible.
+        ...(msg.role ? { role: msg.role } : {}),
       },
     },
   });
+}
+
+// Push a LOCAL adapter-status notice into the session as a <channel> event. This
+// is NOT a peer chat message and NOT a hub-delivered frame — it originates in the
+// adapter itself to inform the model of its own link state. It reuses the same
+// `notifications/claude/channel` injection path as pushChannel for consistency,
+// but carries a distinct `notice="adapter-status"` meta attribute (and no group/
+// from/seq fields) so it can never be mistaken for peer chatter: the display hook
+// only banners events with a finite `seq` (group msgs) or `dm="1"` (DMs), so this
+// notice carries neither and is left untouched by the hook — its content surfaces
+// plainly to the model as adapter status. Informational only: it states the fact
+// of the unestablished link and that any group-chat tool call re-establishes it;
+// it does not command the model to do anything.
+//
+// `corrId` is a unique correlation token stamped into the meta (and thus the
+// serialized <channel> content) so the poll-until-acked loop can detect THIS push's
+// own delivery in the session transcript — see runReconnectNotice. The meta key
+// "corr_id" is [A-Za-z0-9_], as the channels spec requires.
+async function pushAdapterStatus(text: string, corrId?: string): Promise<void> {
+  dbg("pushAdapterStatus:before-notification", { corrId });
+  await mcp.notification({
+    method: "notifications/claude/channel",
+    params: {
+      content: text,
+      meta: {
+        notice: "adapter-status",
+        role: "system",
+        ts: new Date().toISOString(),
+        ...(corrId ? { corr_id: corrId } : {}),
+      },
+    },
+  });
+  dbg("pushAdapterStatus:after-notification", { corrId });
 }
 
 // Push a DIRECT message into the session as a <channel> event, distinctly marked
@@ -308,6 +668,8 @@ async function pushDmChannel(dm: DirectMessage): Promise<void> {
         ts: dm.ts,
         msg_id: dm.msg_id,
         seq: String(dm.seq),
+        // DERIVED sender role (only when present) — a human's DM is a human talking.
+        ...(dm.role ? { role: dm.role } : {}),
       },
     },
   });
@@ -829,7 +1191,10 @@ mcp.setRequestHandler(CallToolRequestSchema, async (req, extra) => {
           "Directory:\n" +
             r.entries
               .map((e) => {
-                const aliases = e.aliases.length ? e.aliases.join(", ") : "(default only)";
+                // aliases[0] is the default alias `<id>@<host>` (already shown in the
+                // heading); list only the REGISTERED aliases after it.
+                const registered = e.aliases.slice(1);
+                const aliases = registered.length ? registered.join(", ") : "(default only)";
                 const groupsPart = e.groups.length ? ` groups: ${e.groups.join(", ")}` : "";
                 return `  ${e.identity_id}@${e.host} [${e.online ? "online" : "offline"}] aliases: ${aliases}${groupsPart}`;
               })
@@ -885,6 +1250,27 @@ mcp.setRequestHandler(CallToolRequestSchema, async (req, extra) => {
 
 // ---- boot -----------------------------------------------------------------
 
+// Connect the MCP stdio transport FIRST, then open the WS. Keeps the transport
+// live before any WS activity (the prior transport-ordering fix). The fresh-process
+// adapter-status notice no longer fires inline from `welcome`: that moment is too
+// early — the MCP handshake may be incomplete, so Claude Code hasn't subscribed to
+// the channel and the push would be silently dropped. Instead the notice fires from
+// the oninitialized-gated latch (maybeFireAdapterNotice). Safe ordering: the WS path
+// is fully event-driven and self-reconnecting, and tool calls gate on hub-link
+// readiness independently (request() -> waitReady()), so MCP-before-WS cannot race a
+// tool call.
+//
+// Assign `oninitialized` BEFORE connect() so it can't miss the client's
+// `notifications/initialized`. It fires once per fresh process when the MCP
+// handshake completes — the earliest reliable moment Claude Code has subscribed to
+// the channel — and arms the second half of the fresh-process-notice latch.
+mcp.oninitialized = () => {
+  dbg("oninitialized");
+  mcpInitialized = true;
+  maybeFireAdapterNotice();
+};
+dbg("boot:before-mcp-connect", { debugLogPath: DEBUG_LOG_PATH });
+await mcp.connect(new StdioServerTransport());
+dbg("boot:after-mcp-connect");
 connect();
 watchDmReads(); // tail the display hook's DM read-signal file and emit dm_read
-await mcp.connect(new StdioServerTransport());

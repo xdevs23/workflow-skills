@@ -37,8 +37,10 @@ import type {
   MemberInfo,
   DirectMessage,
   DirectoryEntry,
+  AdminEvent,
+  Role,
 } from "./protocol.ts";
-import { PROTOCOL_VERSION } from "./protocol.ts";
+import { PROTOCOL_VERSION, ACCEPTED_PROTOCOL_VERSIONS } from "./protocol.ts";
 
 const TOKEN = process.env.GROUP_CHAT_TOKEN ?? "";
 const ALLOW_NO_AUTH = process.env.GROUP_CHAT_ALLOW_NO_AUTH === "1";
@@ -46,6 +48,14 @@ const PORT = Number(process.env.GROUP_CHAT_PORT ?? 8787);
 const HOST = process.env.GROUP_CHAT_HOST ?? "127.0.0.1";
 const DATA_DIR = process.env.GROUP_CHAT_DATA ?? ".group-chat-data";
 const WINDOW = Number(process.env.GROUP_CHAT_WINDOW ?? 500);
+// Directory of the built web SPA (vite build output). Non-WS HTTP requests serve
+// this static bundle (hashed assets by path, index.html SPA fallback for navigation
+// routes). If the dir is absent (web not built/enabled), non-WS requests fall back
+// to today's 426. See docs/group-chat-web-frontend.md section 4. Resolved relative
+// to this hub file so it works regardless of the process CWD.
+const WEB_DIR =
+  process.env.GROUP_CHAT_WEB_DIR ??
+  new URL("./web/dist", import.meta.url).pathname;
 // How long a `send`/`dm` awaits read-receipts from currently-connected members
 // before replying. Whoever confirms within this window is "read"; everyone else
 // is "sent". 100ms comfortably covers localhost/LAN/tunnel.
@@ -90,6 +100,11 @@ const MEMBER_NAME_RE = /^[A-Za-z0-9_-]{1,64}$/;
 const ALIAS_NAME_RE = /^[A-Za-z0-9_]{1,64}$/;
 // The reserved suffix for group-derived addresses: <handle>@<group>._group.
 const GROUP_SUFFIX = "._group";
+// The reserved suffix for the web console identity (v7): user@<host>._admin. It is
+// reserved the way GROUP_SUFFIX is — register_alias REJECTS it — and resolveAddress
+// learns it (a handle-row lookup, like a group handle). A connection bound to an
+// `._admin` identity is the only one allowed to `admin_subscribe` (the firehose).
+const ADMIN_SUFFIX = "._admin";
 
 // ---------------------------------------------------------------------------
 // SQLite storage. One DB file, WAL journaling, foreign keys on. The DB is the
@@ -472,15 +487,21 @@ const stmt = {
   // with `ESCAPE '\\'` — otherwise `'%._group'` would mean "ends `.<any-char>group`"
   // and could mis-classify a host whose name happens to end that way.
   selectAliasesForOwner: db.query(
-    "SELECT handle FROM handles WHERE owner_identity = ? AND handle NOT LIKE '%.\\_group' ESCAPE '\\'",
+    // registered aliases = handles NOT ending in `._group` (group handles) NOR
+    // `._admin` (the reserved web-console handle); both are hub-managed, not
+    // user-registered aliases, so they never appear in alias/directory replies.
+    "SELECT handle FROM handles WHERE owner_identity = ? AND handle NOT LIKE '%.\\_group' ESCAPE '\\' " +
+      "AND handle NOT LIKE '%.\\_admin' ESCAPE '\\'",
   ),
-  // whoami shows the owner ALL their handles — including group handles
-  // (`<name>@<group>._group`), which are identities/addresses too. (The
-  // `aliasesForIdentity` path above stays `@host`-only for the directory/register
-  // replies.)
-  selectAllHandlesForOwner: db.query("SELECT handle FROM handles WHERE owner_identity = ?"),
   selectAllAliases: db.query(
-    "SELECT handle, owner_identity FROM handles WHERE handle NOT LIKE '%.\\_group' ESCAPE '\\'",
+    // registered aliases = handles NOT ending in `._group` AND NOT in `._admin` (both
+    // are hub-managed reserved address spaces, not user-registered aliases).
+    "SELECT handle, owner_identity FROM handles WHERE handle NOT LIKE '%.\\_group' ESCAPE '\\' " +
+      "AND handle NOT LIKE '%.\\_admin' ESCAPE '\\'",
+  ),
+  // an `._admin` handle owned by an identity — the admin_subscribe access predicate.
+  selectAdminHandleForOwner: db.query(
+    "SELECT handle FROM handles WHERE owner_identity = ? AND handle LIKE '%.\\_admin' ESCAPE '\\' LIMIT 1",
   ),
   insertMessage: db.query(
     "INSERT INTO messages (group_name, seq, from_handle, ts, msg_id, text, from_identity, reply_to) " +
@@ -509,6 +530,12 @@ const stmt = {
   selectDmState: db.query(
     "SELECT state FROM dms WHERE lo_identity = ? AND hi_identity = ? AND seq = ?",
   ),
+  // a single DM row by (pair, seq) — for the admin firehose state-change re-emit
+  // (dm_ack/dm_read advance state, which re-emits the SAME seq as a dm_append upsert).
+  selectDmAt: db.query(
+    "SELECT lo_identity, hi_identity, seq, from_identity, from_alias, to_identity, to_alias, ts, msg_id, text, state " +
+      "FROM dms WHERE lo_identity = ? AND hi_identity = ? AND seq = ?",
+  ),
   selectUndeliveredDms: db.query(
     "SELECT lo_identity, hi_identity, seq, from_identity, from_alias, to_identity, to_alias, ts, msg_id, text, state " +
       "FROM dms d WHERE d.to_identity = ? AND d.seq > COALESCE(" +
@@ -528,6 +555,11 @@ const stmt = {
   // directory's identity universe (alias owners + dm participants + live conns).
   selectDmIdentities: db.query(
     "SELECT from_identity AS s FROM dms UNION SELECT to_identity AS s FROM dms",
+  ),
+  // ALL DMs, oldest-first — the admin snapshot's durable DM backfill (v7).
+  selectAllDms: db.query(
+    "SELECT lo_identity, hi_identity, seq, from_identity, from_alias, to_identity, to_alias, ts, msg_id, text, state " +
+      "FROM dms ORDER BY lo_identity, hi_identity, seq ASC",
   ),
   // targeted existence check: is this identity a participant in ANY dm? Used by
   // hasAnyTrace so a default-alias resolution doesn't scan the whole dms table.
@@ -706,6 +738,24 @@ const identityHost = new Map<string, string>();
 // the adapter's), so it iterates this set rather than a per-socket lookup.
 const allConnections = new Set<Connection>();
 
+// ---- admin event stream (v7) ----------------------------------------------
+// The set of connections that have `admin_subscribe`d — the omniscient firehose
+// sink. Parallel to `identityConns` but NOT per-identity: every mutation site that
+// already fans out to members ALSO calls `emitAdmin(event)`, which iterates this
+// set and pushes the corresponding idempotent-upsert `event` to each admin
+// connection. This is an ADD alongside the existing per-member delivery, never a
+// rewrite. A connection enters on a successful `admin_subscribe` and leaves on
+// disconnect (onDisconnect).
+const adminConns = new Set<Connection>();
+
+// Fan out one admin event to every admin_subscribe'd connection. Called at each
+// existing mutation site (in ADDITION to the per-member/per-recipient push). A
+// no-op when no admin is subscribed (the common case), so it's free on the hot path.
+function emitAdmin(event: AdminEvent): void {
+  if (adminConns.size === 0) return;
+  for (const c of adminConns) c.send({ t: "event", event });
+}
+
 // ---- PreToolUse session correlation ---------------------------------------
 // `tool_use_id -> SessionSlot`, the rendezvous between the PreToolUse hook (which
 // authoritatively reports `(tool_use_id, session_id)` on its own transient
@@ -871,9 +921,12 @@ function resolveIdentity(sessionKey: string, host: string, adapterId: string): s
     }
   }
 
+  // A host is always present here: bindSession is reachable only after a successful
+  // hello, which now REQUIRES a non-empty host. So we persist the real host and never
+  // fabricate the literal "unknown" string onto a newly-minted identity row.
   const id = randomUUID();
   const ts = nowIso();
-  stmt.insertIdentity.run(id, host || "unknown", ts);
+  stmt.insertIdentity.run(id, host, ts);
   stmt.insertSession.run(sessionKey, id, ts, adapterId || null);
   return id;
 }
@@ -942,6 +995,9 @@ function rowToMsg(r: MsgRow): ChatMessage {
     msg_id: r.msg_id,
     text: r.text,
     ...(r.reply_to != null ? { reply_to: r.reply_to } : {}),
+    // DERIVED author role at build time (from the durable from_identity anchor).
+    // Omitted for an author with no recorded identity (pre-migration message).
+    ...(r.from_identity ? { role: roleForIdentity(r.from_identity) } : {}),
   };
 }
 
@@ -949,7 +1005,10 @@ interface DmRow {
   lo_identity: string;
   hi_identity: string;
   seq: number;
-  from_identity: string;
+  // Nullable like messages.from_identity: the v3 migration maps a pre-identity DM's
+  // session to NULL when that session had no identity. roleForIdentity is omitted in
+  // that case (below), mirroring rowToMsg.
+  from_identity: string | null;
   from_alias: string;
   to_identity: string;
   to_alias: string;
@@ -961,7 +1020,11 @@ interface DmRow {
 function rowToDm(r: DmRow): DirectMessage {
   return {
     seq: r.seq,
-    from_identity: r.from_identity,
+    // DM history is selected by the (lo_identity, hi_identity) pair key, so any DM that
+    // reaches here had a resolvable pair; a null from_identity (pre-identity author the
+    // v3 migration couldn't map) is unreachable in practice. Coalesce to "" so the
+    // protocol's from_identity stays a non-null string rather than carrying a type lie.
+    from_identity: r.from_identity ?? "",
     from_alias: r.from_alias,
     to_identity: r.to_identity,
     to_alias: r.to_alias,
@@ -969,6 +1032,9 @@ function rowToDm(r: DmRow): DirectMessage {
     msg_id: r.msg_id,
     text: r.text,
     state: r.state as DirectMessage["state"],
+    // DERIVED sender role (a human's DM is a human talking). Built fresh from the
+    // durable from_identity, like a group message's role.
+    role: roleForIdentity(r.from_identity),
   };
 }
 
@@ -1078,6 +1144,10 @@ function broadcast(
     text,
     ...(replyTo != null ? { reply_to: replyTo } : {}),
     ...(to && to.length ? { to } : {}),
+    // DERIVED author role (roleForIdentity of the message's from_identity). Stamped
+    // here so the live push, the admin firehose, and the adapter all carry it. Omitted
+    // when there is no author identity (a pre-migration/anonymous author).
+    ...(fromIdentity ? { role: roleForIdentity(fromIdentity) } : {}),
   };
   // 2) keep it in the in-memory window for gap re-send
   group.window.push(msg);
@@ -1101,6 +1171,10 @@ function broadcast(
     recipients.push(m.name);
     if (seq > (group.delivered.get(m.name) ?? 0)) group.delivered.set(m.name, seq);
   }
+  // Admin firehose (v7): every group message — every group, regardless of the admin
+  // identity's membership — flows to admin subscribers as the SAME message_append
+  // event the snapshot uses. Carries the FULL ChatMessage (`to`-targeting included).
+  emitAdmin({ type: "message_append", msg });
   return { msg, recipients };
 }
 
@@ -1145,24 +1219,58 @@ function liveConnsFor(identityId: string): Connection[] {
 }
 
 // The host recorded for an identity (its default-alias host): the live one last
-// reported, else the durable one minted onto the identity row, else 'unknown'.
+// reported, else the durable one minted onto the identity row. Every minted identity
+// now carries a real host (the hello requires one), so this is well-defined for any
+// identity the hub knows. The empty-string fallback is unreachable for a known
+// identity and exists only so the return type is a plain string — the literal
+// "unknown" is no longer written or returned (legacy "unknown" rows age out).
 function hostForIdentity(identityId: string): string {
   const live = identityHost.get(identityId);
   if (live) return live;
   const row = stmt.selectIdentity.get(identityId) as { host: string } | null;
-  return row?.host || "unknown";
+  return row?.host ?? "";
 }
 
-// Every alias (host-qualified form) owned by an identity, including its implicit
-// default alias <identity-id>@<host>. Registered aliases are handles NOT ending in
-// the group suffix (the @host ones); they are already full strings.
-function aliasesForIdentity(identityId: string, host: string | undefined): string[] {
-  const out: string[] = [];
-  if (host) out.push(`${identityId}@${host}`);
+// THE ONE authority for "the aliases of an identity". Returns the implicit default
+// alias `<identity-id>@<host>` FIRST, then the identity's registered-alias handles
+// (the `@host` ones — NOT group `._group` or admin `._admin` handles, which are
+// hub-managed address spaces surfaced separately as `groups`). buildDirectory, the
+// admin identity_upsert event, and whoami ALL route through this function, so the
+// directory, the firehose and whoami can never disagree about an identity's aliases.
+//
+// Handle-set choice (deliberate, single): REGISTERED-ONLY (selectAliasesForOwner).
+// Group handles are a derived membership artifact already carried by the `groups`
+// field; folding them into `aliases` too would duplicate that and pollute the
+// directory/admin "aliases" contract (documented as registered alias names). whoami
+// therefore no longer lists raw group handles — they are derivable from `groups`.
+//
+// The host is resolved from `hostForIdentity(id)` at every call site, so aliases[0]
+// is ALWAYS the canonical default alias and there is no standalone host concept.
+function aliasesForIdentity(identityId: string, host: string): string[] {
+  const out: string[] = [`${identityId}@${host}`];
   for (const r of stmt.selectAliasesForOwner.all(identityId) as { handle: string }[]) {
     out.push(r.handle);
   }
   return out;
+}
+
+// THE derivation of an identity's ROLE — a PURE FUNCTION of facts the hub already
+// holds, computed fresh each time it's needed. Nothing stores or sets a role: there
+// is no role column, no set_role frame, no mint-time/hello assertion. It is a UNIFORM
+// property of EVERY identity (not the removed is_admin stored boolean singling out the
+// console). The enum is OPEN — adding a future role is ONE new rule here, no schema
+// change. Today's rules:
+//   - owns a `user@<host>._admin` handle (a web console — the SAME ownership predicate
+//     that gates admin_subscribe) → "human".
+//   - everything else → "agent".
+//   - "system" is reserved for a future distinguishing fact (no rule today).
+// MAY be memoized per-build for efficiency, but NEVER persisted.
+// Accepts a nullable id: a pre-identity historical author (the v3 migration could
+// not map its session) has no `._admin` handle, so the answer is "agent" — the same
+// result SQL null-equality already gives, made explicit here so callers never cast.
+function roleForIdentity(identityId: string | null): Role {
+  if (identityId != null && stmt.selectAdminHandleForOwner.get(identityId)) return "human";
+  return "agent";
 }
 
 // The reply-to author-left warning: the author's identity is no longer a member of
@@ -1171,12 +1279,11 @@ function aliasesForIdentity(identityId: string, host: string | undefined): strin
 // whether they're online. Honest when there is nothing to offer.
 function describeReachability(authorIdentity: string, repliedSeq: number, group: string): string {
   const host = hostForIdentity(authorIdentity);
-  const addrs: string[] = [];
-  for (const r of stmt.selectAliasesForOwner.all(authorIdentity) as { handle: string }[]) {
-    addrs.push(r.handle);
-  }
-  // the canonical default address always exists for a known identity.
-  addrs.push(`${authorIdentity}@${host}`);
+  // Route through THE alias authority so this warning can't diverge from the
+  // directory/whoami/admin view of where the author is reachable. `aliasesForIdentity`
+  // returns the canonical default address first, then registered aliases — both are
+  // DM-routable addresses, which is exactly what we want to offer here.
+  const addrs = aliasesForIdentity(authorIdentity, host);
   const online = isOnline(authorIdentity);
   return (
     `the author of seq ${repliedSeq} has left '${group}', so the reply was logged ` +
@@ -1201,6 +1308,14 @@ function resolveAddress(address: string): string | null {
   // group handle: <handle>@<group>._group — a pure durable handle-row lookup. The
   // owning identity resolves whether or not it is currently attached.
   if (domain.endsWith(GROUP_SUFFIX)) {
+    const row = stmt.selectHandleOwner.get(address) as HandleRow | null;
+    return row ? row.owner_identity : null;
+  }
+
+  // admin handle (v7): <user>@<host>._admin — the reserved web console identity.
+  // Same durable handle-row lookup as a group handle; the owning identity resolves
+  // independent of attachment. Created on demand by `admin_subscribe`.
+  if (domain.endsWith(ADMIN_SUFFIX)) {
     const row = stmt.selectHandleOwner.get(address) as HandleRow | null;
     return row ? row.owner_identity : null;
   }
@@ -1278,6 +1393,8 @@ function storeDm(
     msg_id,
     text,
     state: "sent",
+    // DERIVED sender role — mirrors the group message path (a human's DM is a human).
+    role: roleForIdentity(fromIdentity),
   };
   // Try a live push if the recipient is online. If pushed, advance the
   // recipient's durable delivery cursor so it isn't re-flushed on reconnect. The
@@ -1290,12 +1407,29 @@ function storeDm(
   if (pushed) {
     stmt.upsertDelivery.run(lo, hi, toIdentity, seq);
   }
+  // Admin firehose (v7): every DM, between any two identities, flows to admin
+  // subscribers as a dm_append (the SAME event the snapshot uses). State changes
+  // (sent→received→read) re-emit the same seq with the new state (see dm_ack/dm_read).
+  emitAdmin({ type: "dm_append", msg: dm });
   return { dm, pushed };
+}
+
+// Re-emit a DM to admin subscribers after its state advanced (sent→received→read).
+// The same (pair, seq) carries the new `state`, so the client upserts it in place.
+// A no-op when no admin is subscribed (emitAdmin short-circuits) — the row read is
+// skipped in that case too.
+function emitDmStateChange(lo: string, hi: string, seq: number): void {
+  if (adminConns.size === 0) return;
+  const row = stmt.selectDmAt.get(lo, hi, seq) as DmRow | null;
+  if (row) emitAdmin({ type: "dm_append", msg: rowToDm(row) });
 }
 
 // Flush a reconnecting session's undelivered DM queue: every DM addressed to its
 // IDENTITY past its per-pair delivery cursor, one dm_message each, advancing the
-// cursor.
+// cursor. No emitAdmin here BY DESIGN: these are already-stored DMs being RE-delivered
+// to a newly-online recipient (a delivery-cursor advance, not a new mutation). Each
+// was already emitted to admin as a dm_append at storeDm time; re-emitting on every
+// reconnect flush would be redundant (idempotent, but noise).
 function flushDmQueue(conn: Connection): void {
   const identity = conn.identityId;
   if (!identity) return;
@@ -1313,7 +1447,10 @@ function handleFrame(conn: Connection, frame: ClientEnvelope): void {
   const rid = frame.rid;
 
   if (frame.t === "hello") {
-    if (frame.protocol !== PROTOCOL_VERSION) {
+    // v7 is additive: the hub accepts any protocol in the allow-set (today {6,7}), so
+    // a v6 client (the pre-v7 adapter, the hooks, the test harness) connects unchanged
+    // and simply never uses the v7-only admin stream. An unknown version still errors.
+    if (!ACCEPTED_PROTOCOL_VERSIONS.includes(frame.protocol)) {
       err(conn, "protocol_mismatch", `hub speaks protocol ${PROTOCOL_VERSION}`, rid);
       return;
     }
@@ -1321,8 +1458,16 @@ function handleFrame(conn: Connection, frame: ClientEnvelope): void {
       err(conn, "unauthorized", "bad token", rid);
       return;
     }
+    // A host MUST be present: it is the identity's default-alias host (`<id>@<host>`),
+    // and the hub no longer fabricates the literal "unknown" for a hostless hello.
+    // Every client we control (the adapter, the web console, the tests) always sends
+    // one; reject rather than mint an identity with a bogus host.
+    if (typeof frame.host !== "string" || !frame.host) {
+      err(conn, "host_required", "hello must carry a non-empty host", rid);
+      return;
+    }
     conn.authed = true;
-    conn.host = typeof frame.host === "string" && frame.host ? frame.host : "unknown";
+    conn.host = frame.host;
     // Mint-or-reuse the per-process relay id. A reconnecting adapter echoes the
     // id the hub gave it; a brand-new one sends none and gets a fresh UUID. We
     // trust the presented id verbatim (the token already authed the socket) —
@@ -1383,6 +1528,23 @@ function handleFrame(conn: Connection, frame: ClientEnvelope): void {
       return;
     }
 
+    case "session_engaged": {
+      // Reconnect-notice pre-flight: a freshly-respawned adapter asks "has this
+      // session id ever bound an identity?" before deciding whether to surface its
+      // one-shot adapter-status notice. We answer purely from the durable `sessions`
+      // table, MAIN key only — an exact `session_key == session_id` match, NOT a
+      // prefix/agent match: a subagent composite key ("<id>:<agent>") must not count
+      // the main session as engaged, and vice versa. A first-launch session that
+      // never called a group-chat tool has no row → engaged:false → the adapter stays
+      // silent (the load-bearing gate, constraint 2). No identity binding, no
+      // mutation. See docs/group-chat-reconnect-notice.md.
+      const sid = typeof frame.session_id === "string" ? frame.session_id : "";
+      const engaged =
+        !!sid && !!(stmt.lookupSession.get(sid) as { identity_id: string } | null);
+      conn.send({ t: "session_engaged", rid, session_id: sid, engaged });
+      return;
+    }
+
     case "ack": {
       const g = groups.get(frame.group);
       if (g) {
@@ -1421,7 +1583,11 @@ function handleFrame(conn: Connection, frame: ClientEnvelope): void {
         err(conn, "bad_group_name", "group must match [A-Za-z0-9_-]{1,64}", rid);
         return;
       }
+      const existedC = groups.has(frame.group);
       getOrCreateGroup(frame.group);
+      // Admin firehose (v7): a newly created group surfaces as a group_upsert (0
+      // members). Idempotent re-create of an existing group emits nothing new.
+      if (!existedC) emitAdmin(groupUpsertEvent(frame.group));
       conn.send({ t: "created", rid, group: frame.group });
       return;
     }
@@ -1439,6 +1605,7 @@ function handleFrame(conn: Connection, frame: ClientEnvelope): void {
       // identity. The handle `<as>@<group>._group` is owned by the caller.
       const identity = requireIdentity(conn, rid);
       if (!identity) return;
+      const groupExisted = groups.has(frame.group);
       const g = getOrCreateGroup(frame.group);
       const handle = `${frame.as}${groupHandleSuffix(frame.group)}`;
       const existing = stmt.selectHandleOwner.get(handle) as HandleRow | null;
@@ -1457,6 +1624,23 @@ function handleFrame(conn: Connection, frame: ClientEnvelope): void {
       let names = conn.joinedAs.get(frame.group);
       if (!names) conn.joinedAs.set(frame.group, (names = new Set()));
       names.add(frame.as);
+      // Admin firehose (v7): a brand-new group from this join surfaces first; then a
+      // NEW member surfaces as member_upsert + the group's updated member count. A
+      // returning member (idempotent re-join of its own handle) re-emits the member
+      // (attached state may have flipped) but the count is unchanged — both are
+      // idempotent upserts, so a re-emit is harmless.
+      if (!groupExisted) emitAdmin(groupUpsertEvent(frame.group));
+      emitAdmin(
+        memberUpsertEvent(frame.group, {
+          name: frame.as,
+          handle,
+          owner: identity,
+          created_ts: nowIso(),
+        }),
+      );
+      if (!isReturning) emitAdmin(groupUpsertEvent(frame.group));
+      // The joining identity's group set changed — re-upsert its identity record.
+      emitAdmin(identityUpsertEvent(identity));
       conn.send({ t: "joined", rid, group: frame.group, as: frame.as });
       // Returning identity: re-send the brief-reconnect gap to its live conns. If
       // the hub has no in-memory cursor for this member (a member durable from
@@ -1484,6 +1668,11 @@ function handleFrame(conn: Connection, frame: ClientEnvelope): void {
           if (names.size === 0) conn.joinedAs.delete(frame.group);
         }
         if (g) g.delivered.delete(name);
+        // Admin firehose (v7): the member is gone — remove it, re-upsert the group's
+        // member count, and re-upsert the leaving identity (its group set shrank).
+        emitAdmin({ type: "member_remove", group: frame.group, name });
+        emitAdmin(groupUpsertEvent(frame.group));
+        emitAdmin(identityUpsertEvent(identity));
       }
       conn.send({ t: "left", rid, group: frame.group });
       return;
@@ -1686,6 +1875,15 @@ function handleFrame(conn: Connection, frame: ClientEnvelope): void {
         err(conn, "bad_alias_name", "alias must match [A-Za-z0-9_]{1,64} (no dashes)", rid);
         return;
       }
+      // RESERVED suffixes (v7): `._admin` (the web console identity) and `._group`
+      // (group handles) are hub-managed address spaces, never claimable as a plain
+      // registered alias. The host is `<conn.host>`, so a host literally ending in
+      // `._admin`/`._group` would shape a reserved address — reject it. (ALIAS_NAME_RE
+      // already forbids dashes/dots in the local part; this guards the host segment.)
+      if (conn.host.endsWith(ADMIN_SUFFIX) || conn.host.endsWith(GROUP_SUFFIX)) {
+        err(conn, "alias_reserved", `'${conn.host}' is a reserved address space`, rid);
+        return;
+      }
       // An alias is a handle `<name>@<host>`. First-holder-wins on the handle table.
       const aliasHandle = `${frame.name}@${conn.host}`;
       const existing = stmt.selectHandleOwner.get(aliasHandle) as HandleRow | null;
@@ -1699,6 +1897,8 @@ function handleFrame(conn: Connection, frame: ClientEnvelope): void {
         return;
       }
       stmt.insertHandle.run(aliasHandle, identity, nowIso());
+      // Admin firehose (v7): the identity's alias set grew — re-upsert its record.
+      emitAdmin(identityUpsertEvent(identity));
       conn.send({ t: "aliases", rid, aliases: aliasesForIdentity(identity, conn.host) });
       return;
     }
@@ -1717,6 +1917,8 @@ function handleFrame(conn: Connection, frame: ClientEnvelope): void {
         return;
       }
       stmt.deleteHandle.run(aliasHandle, identity);
+      // Admin firehose (v7): the identity's alias set shrank — re-upsert its record.
+      emitAdmin(identityUpsertEvent(identity));
       conn.send({ t: "aliases", rid, aliases: aliasesForIdentity(identity, conn.host) });
       return;
     }
@@ -1731,15 +1933,17 @@ function handleFrame(conn: Connection, frame: ClientEnvelope): void {
     case "whoami": {
       const identity = requireIdentity(conn, rid);
       if (!identity) return;
-      // ALL of this identity's addresses, merged: the implicit default alias plus
-      // every owned handle — registered `<name>@<host>` AND group
-      // `<name>@<group>._group` (group handles are addresses too).
-      const aliases: string[] = [];
-      if (conn.host) aliases.push(`${identity}@${conn.host}`);
-      for (const r of stmt.selectAllHandlesForOwner.all(identity) as { handle: string }[]) {
-        aliases.push(r.handle);
-      }
-      conn.send({ t: "whoami", rid, identity_id: identity, host: conn.host, aliases });
+      // Route through the ONE alias authority: default alias `<id>@<host>` first,
+      // then registered aliases. (Group handles are addresses too, but they are
+      // derivable from the identity's group memberships — `aliasesForIdentity` is the
+      // single source of truth the directory and the admin firehose also use.)
+      conn.send({
+        t: "whoami",
+        rid,
+        identity_id: identity,
+        host: conn.host,
+        aliases: aliasesForIdentity(identity, conn.host),
+      });
       return;
     }
 
@@ -1809,6 +2013,7 @@ function handleFrame(conn: Connection, frame: ClientEnvelope): void {
       const cur = stmt.selectDmState.get(lo, hi, frame.seq) as { state: string } | null;
       if (cur && cur.state === "sent") {
         stmt.updateDmState.run("received", lo, hi, frame.seq, me);
+        emitDmStateChange(lo, hi, frame.seq);
       }
       return;
     }
@@ -1820,6 +2025,7 @@ function handleFrame(conn: Connection, frame: ClientEnvelope): void {
       if (!me) return;
       const { lo, hi } = pairOf(me, frame.from_identity);
       stmt.updateDmState.run("read", lo, hi, frame.seq, me);
+      emitDmStateChange(lo, hi, frame.seq);
       const col = pendingDmReads.get(`${lo}|${hi}#${frame.seq}`);
       if (col) {
         col.read = true;
@@ -1846,7 +2052,99 @@ function handleFrame(conn: Connection, frame: ClientEnvelope): void {
       });
       return;
     }
+
+    // ---- admin event stream (v7) ----
+
+    case "admin_subscribe": {
+      // The web console asks for the omniscient firehose. It REQUIRES a resolved
+      // identity (the browser binds a stable session key, exactly like the adapter —
+      // reused across reloads via the `sessions` table + adapter adoption). On first
+      // subscribe we CREATE-ON-DEMAND the reserved `user@<host>._admin` handle for
+      // that identity (reused on later reloads, since the same session key resolves to
+      // the same identity); claiming it makes the connection `._admin`-bound. v1
+      // honors admin_subscribe for any connection that thereby owns an `._admin`
+      // handle (no browser auth yet — the suffix is the seam to add it later).
+      const identity = requireIdentity(conn, rid);
+      if (!identity) return;
+      if (!claimAdminHandle(identity, conn.host)) {
+        err(conn, "admin_forbidden", "this connection is not bound to an ._admin identity", rid);
+        return;
+      }
+      adminConns.add(conn);
+      sendSnapshot(conn);
+      return;
+    }
   }
+}
+
+// ---------------------------------------------------------------------------
+// Admin console identity (v7): the reserved `user@<host>._admin` handle.
+
+// Claim the reserved `user@<host>._admin` handle for `identity`, returning whether
+// the identity now owns an `._admin` handle (the predicate that gates admin_subscribe).
+// Created on demand on first admin_subscribe; reused thereafter (the same identity
+// re-subscribes to the same handle). One DB op on the create/own path: a fresh insert
+// (or a pre-existing handle this identity already owns) means it owns one → true,
+// with no second query. The ONLY case that re-checks is a per-host handle owned by a
+// DIFFERENT identity (shouldn't happen for a stable per-host console): we leave that
+// row untouched and fall back to the LIKE-`._admin` ownership lookup, which returns
+// false → admin_subscribe is forbidden for the conflicting identity. (The `_` in
+// `._admin` is a LIKE wildcard, so the suffix is escaped with ESCAPE, mirroring the
+// alias-vs-group classification.)
+// NOTE: this reuses the SAME `._admin`-ownership predicate as roleForIdentity, but for
+// a DIFFERENT purpose — access gating, not role labeling. If that predicate ever
+// changes, update BOTH sites. They are deliberately separate (authz vs. message stamp).
+function claimAdminHandle(identity: string, host: string): boolean {
+  const handle = `user@${host}${ADMIN_SUFFIX}`;
+  const existing = stmt.selectHandleOwner.get(handle) as HandleRow | null;
+  if (!existing) {
+    stmt.insertHandle.run(handle, identity, nowIso());
+    return true;
+  }
+  if (existing.owner_identity === identity) return true;
+  // Conflicting owner on THIS host's handle: this identity may still own an `._admin`
+  // handle from another host — fall back to the general ownership predicate.
+  return !!stmt.selectAdminHandleForOwner.get(identity);
+}
+
+// Stream a full SNAPSHOT of durable/live state to one admin connection as the SAME
+// `event` family the live tail uses, then a `snapshot_end`. Replaying this is the
+// SAME client code path as the live tail — every event is an idempotent upsert, so
+// a reload (re-subscribe → re-snapshot) converges to identical store state.
+//
+// Order: identities → groups (+ members) → group messages (the in-memory window per
+// group) → DMs. The order is not load-bearing (events are idempotent), but emitting
+// identities/groups/members before messages/DMs means referenced records exist by
+// the time a message/DM arrives, which a naive client renders more smoothly.
+function sendSnapshot(conn: Connection): void {
+  // 1) identities — enumerate the directory's identity universe (alias owners + DM
+  //    participants + live conns + group members) for the id SET, but build each
+  //    frame through `identityUpsertEvent` — the SAME builder the live tail uses — so
+  //    a snapshot identity record is byte-identical to a live identity_upsert (one
+  //    builder, no field-list to drift). buildDirectory is only the enumerator here.
+  for (const entry of buildDirectory()) {
+    conn.send({ t: "event", event: identityUpsertEvent(entry.identity_id) });
+  }
+  // 2) groups + their members.
+  for (const g of groups.values()) {
+    conn.send({ t: "event", event: groupUpsertEvent(g.name) });
+    for (const m of membersOf(g.name)) {
+      conn.send({ t: "event", event: memberUpsertEvent(g.name, m) });
+    }
+  }
+  // 3) group messages — the in-memory window per group (bounded recent backfill;
+  //    deeper scrollback stays available via the existing `history` frame on demand).
+  for (const g of groups.values()) {
+    for (const msg of g.window) {
+      conn.send({ t: "event", event: { type: "message_append", msg } });
+    }
+  }
+  // 4) DMs — every durable DM, oldest-first.
+  for (const r of stmt.selectAllDms.all() as DmRow[]) {
+    conn.send({ t: "event", event: { type: "dm_append", msg: rowToDm(r) } });
+  }
+  // 5) boundary marker: snapshot done, live tail follows on the same connection.
+  conn.send({ t: "event", event: { type: "snapshot_end" } });
 }
 
 // Identity-scoped frames (group / alias / DM ops) require a resolved identity. The
@@ -1888,52 +2186,91 @@ function senderAlias(identityId: string, host: string): string {
 // Group membership is DERIVED from the durable handle table — an identity is in a
 // group iff it owns a `@<group>._group` handle (independent of attachment).
 function buildDirectory(): DirectoryEntry[] {
-  const byIdentity = new Map<string, { host: string }>();
-  // alias owners (registered aliases on the handle table)
-  for (const r of stmt.selectAllAliases.all() as { handle: string; owner_identity: string }[]) {
-    if (!byIdentity.has(r.owner_identity)) {
-      byIdentity.set(r.owner_identity, {
-        host: identityHost.get(r.owner_identity) ?? aliasHost(r.handle),
-      });
-    }
+  // The identity universe: alias owners + DM participants + live connections + group
+  // members. We only need the SET of identity ids here; host and aliases are derived
+  // uniformly below via the one authority (hostForIdentity + aliasesForIdentity), so
+  // the directory can never disagree with the admin event or whoami.
+  const ids = new Set<string>();
+  for (const r of stmt.selectAllAliases.all() as { owner_identity: string }[]) {
+    ids.add(r.owner_identity);
   }
-  // DM participants
-  for (const r of stmt.selectDmIdentities.all() as { s: string }[]) {
-    if (!byIdentity.has(r.s)) byIdentity.set(r.s, { host: hostForIdentity(r.s) });
-  }
-  // live connections
-  for (const [id] of identityConns) {
-    if (!byIdentity.has(id)) byIdentity.set(id, { host: hostForIdentity(id) });
-  }
+  for (const r of stmt.selectDmIdentities.all() as { s: string }[]) ids.add(r.s);
+  for (const [id] of identityConns) ids.add(id);
 
   // group memberships per identity, derived from group handles (durable). Also
   // ensures any identity owning ONLY a group handle appears in the directory.
-  const groupsForIdentity = new Map<string, Set<string>>();
+  // (Named distinctly from the module-level `groupsForIdentity` function to avoid
+  // shadowing it — they are different things: this is a precomputed Map.)
+  const groupNamesByOwner = new Map<string, Set<string>>();
   for (const g of groups.values()) {
     for (const m of membersOf(g.name)) {
-      if (!byIdentity.has(m.owner)) {
-        byIdentity.set(m.owner, { host: hostForIdentity(m.owner) });
-      }
-      let set = groupsForIdentity.get(m.owner);
-      if (!set) groupsForIdentity.set(m.owner, (set = new Set()));
+      ids.add(m.owner);
+      let set = groupNamesByOwner.get(m.owner);
+      if (!set) groupNamesByOwner.set(m.owner, (set = new Set()));
       set.add(g.name);
     }
   }
 
   const out: DirectoryEntry[] = [];
-  for (const [id, info] of byIdentity) {
-    const aliases = (stmt.selectAliasesForOwner.all(id) as { handle: string }[]).map(
-      (r) => r.handle,
-    );
+  for (const id of ids) {
+    const host = hostForIdentity(id);
     out.push({
       identity_id: id,
-      host: info.host,
-      aliases,
-      groups: [...(groupsForIdentity.get(id) ?? [])],
+      host,
+      aliases: aliasesForIdentity(id, host),
+      groups: [...(groupNamesByOwner.get(id) ?? [])],
       online: isOnline(id),
     });
   }
   return out;
+}
+
+// ---------------------------------------------------------------------------
+// Admin event builders (v7). Each constructs a full idempotent-upsert event from
+// the CURRENT durable/live state, so snapshot replay and a live mutation tap build
+// the SAME frame. An identity's `aliases` come from the ONE authority
+// (`aliasesForIdentity`) — default alias `<id>@<host>` first, then registered
+// aliases — the SAME function buildDirectory and whoami use, so the firehose can
+// never disagree with the directory.
+
+// The group names an identity currently holds a handle in (derived from the durable
+// handle table, scanning the known groups). Mirrors buildDirectory's per-identity
+// group derivation, for a single identity.
+function groupsForIdentity(identityId: string): string[] {
+  const out: string[] = [];
+  for (const g of groups.values()) {
+    if (myMemberName(identityId, g.name) !== null) out.push(g.name);
+  }
+  return out;
+}
+
+function identityUpsertEvent(identityId: string): AdminEvent {
+  // No standalone `host`: the host is encoded in aliases[0] (the default alias),
+  // which `aliasesForIdentity` always puts first.
+  return {
+    type: "identity_upsert",
+    identity_id: identityId,
+    aliases: aliasesForIdentity(identityId, hostForIdentity(identityId)),
+    groups: groupsForIdentity(identityId),
+    online: isOnline(identityId),
+    // DERIVED role — uniform across every identity (roleForIdentity), so the web can
+    // badge a human console without any stored is_admin flag.
+    role: roleForIdentity(identityId),
+  };
+}
+
+function groupUpsertEvent(group: string): AdminEvent {
+  return { type: "group_upsert", name: group, members: membersOf(group).length };
+}
+
+function memberUpsertEvent(group: string, m: GroupMember): AdminEvent {
+  return {
+    type: "member_upsert",
+    group,
+    name: m.name,
+    owner: m.owner,
+    attached: isOnline(m.owner),
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -1988,7 +2325,14 @@ function bindSession(conn: Connection, sessionKey: string): void {
   if (!set) identityConns.set(identity, (set = new Set()));
   const wasOffline = set.size === 0;
   set.add(conn);
-  if (wasOffline) flushDmQueue(conn);
+  if (wasOffline) {
+    flushDmQueue(conn);
+    // Admin firehose (v7): this identity just came ONLINE (its first live conn).
+    // Re-upsert the full identity record (so a snapshot-equivalent record exists for
+    // a freshly-seen identity) and a thin presence flip.
+    emitAdmin(identityUpsertEvent(identity));
+    emitAdmin({ type: "presence", identity_id: identity, online: true });
+  }
 }
 
 // Release a session KEY (an explicit /resume SessionEnd, frame release_session).
@@ -2057,7 +2401,11 @@ function releaseOneKey(sessionKey: string): void {
         const set = identityConns.get(identity);
         if (set) {
           set.delete(conn);
-          if (set.size === 0) identityConns.delete(identity);
+          if (set.size === 0) {
+            identityConns.delete(identity);
+            // Admin firehose (v7): a release dropped this identity's last live conn.
+            emitAdmin({ type: "presence", identity_id: identity, online: false });
+          }
         }
       }
     }
@@ -2132,11 +2480,72 @@ function onDisconnect(conn: Connection): void {
   for (const identity of new Set(conn.sessionIdentity.values())) {
     const set = identityConns.get(identity);
     set?.delete(conn);
-    if (set && set.size === 0) identityConns.delete(identity);
+    if (set && set.size === 0) {
+      identityConns.delete(identity);
+      // Admin firehose (v7): this identity's LAST live conn left — it is now offline.
+      emitAdmin({ type: "presence", identity_id: identity, online: false });
+    }
   }
   conn.sessions.clear();
   conn.sessionIdentity.clear();
   allConnections.delete(conn);
+  // Admin firehose (v7): drop a departing admin console from the subscriber set.
+  adminConns.delete(conn);
+}
+
+// ---------------------------------------------------------------------------
+// Static web SPA serving (v7, section 4). Non-WS HTTP requests serve the built
+// bundle from WEB_DIR: a hashed asset by its exact path, else index.html as the SPA
+// fallback for client-routed navigation paths. If the bundle is absent (web not
+// built/enabled) every non-WS request returns today's 426 — the web is simply off.
+//
+// The WS upgrade has already been tried (and declined) by the time this runs, so we
+// never intercept an Upgrade request. Returns a Promise (Bun.serve awaits it).
+// A fresh 426 Response per call: a Response body stream is consumed on first read,
+// so this cannot be a shared constant — it is a factory, like serveIndex/serveWeb.
+function web426(): Response {
+  return new Response("group-chat hub: websocket only (web bundle not built)\n", { status: 426 });
+}
+
+async function serveWeb(req: Request): Promise<Response> {
+  const indexFile = Bun.file(pathJoin(WEB_DIR, "index.html"));
+  // No bundle on disk → web disabled → fall back to today's 426. (Probing index.html
+  // is the cheap "is the bundle present?" check; a built bundle always has one.)
+  if (!(await indexFile.exists())) return web426();
+
+  const url = new URL(req.url);
+  // Decode + normalize the request path, then reject any traversal: the resolved
+  // absolute path MUST stay within WEB_DIR. A path that escapes (`..`) or fails to
+  // decode falls through to the SPA index (never serves outside the bundle).
+  let pathname: string;
+  try {
+    pathname = decodeURIComponent(url.pathname);
+  } catch {
+    return serveIndex(indexFile);
+  }
+
+  // Root or a navigation route ("/", "/threads/x") → SPA index. A request for a
+  // concrete asset ("/assets/app-abc123.js", "/favicon.svg") → that file by path.
+  if (pathname === "/" || pathname === "") return serveIndex(indexFile);
+
+  const candidate = pathJoin(WEB_DIR, pathname);
+  // Containment guard: the joined path must remain under WEB_DIR (pathJoin collapses
+  // `..`). If it escaped, treat as a navigation path → index.
+  const root = WEB_DIR.endsWith("/") ? WEB_DIR : WEB_DIR + "/";
+  if (candidate !== WEB_DIR && !candidate.startsWith(root)) return serveIndex(indexFile);
+
+  const file = Bun.file(candidate);
+  if (await file.exists()) return new Response(file); // hashed/static asset by path
+  // Unknown path with no file → SPA fallback (client-side router handles it).
+  return serveIndex(indexFile);
+}
+
+function serveIndex(indexFile: ReturnType<typeof Bun.file>): Response {
+  // index.html is the SPA shell; never cache it so a new deploy is picked up (the
+  // hashed assets it references ARE immutable and cache themselves by filename).
+  return new Response(indexFile, {
+    headers: { "cache-control": "no-cache" },
+  });
 }
 
 // ---------------------------------------------------------------------------
@@ -2147,10 +2556,16 @@ recoverGroups();
 const server = Bun.serve<{ conn: Connection }>({
   port: PORT,
   hostname: HOST,
-  fetch(req, srv) {
-    // `data` is populated in open(); the upgrade just needs the connection slot.
+  fetch(req, srv): Response | Promise<Response> | undefined {
+    // WS UPGRADE KEEPS PRECEDENCE: an Upgrade request becomes a WebSocket exactly as
+    // before (the adapter/hooks/console all connect this way). `data` is populated in
+    // open(); the upgrade just needs the connection slot. The upgrade is decided
+    // SYNCHRONOUSLY (before any await) so Bun completes the handshake correctly.
     if (srv.upgrade(req, { data: {} as { conn: Connection } })) return; // upgraded to WS
-    return new Response("group-chat hub: websocket only\n", { status: 426 });
+    // Otherwise (a plain HTTP request) serve the built web SPA from WEB_DIR: hashed
+    // assets by path, index.html SPA fallback for navigation routes. If the bundle is
+    // absent (web not built/enabled), fall back to today's 426. (v7, section 4.)
+    return serveWeb(req);
   },
   websocket: {
     open(ws) {
@@ -2163,7 +2578,7 @@ const server = Bun.serve<{ conn: Connection }>({
         boundSession: null,
         identityId: null,
         sessionIdentity: new Map<string, string>(),
-        host: "unknown",
+        host: "", // placeholder until hello sets the real host (hello requires one)
         joinedAs: new Map<string, Set<string>>(),
         send: (frame) => ws.send(JSON.stringify(frame)),
       };
