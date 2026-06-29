@@ -39,6 +39,8 @@ import type {
   DirectoryEntry,
   AdminEvent,
   Role,
+  Attachment,
+  FileResult,
 } from "./protocol.ts";
 import { PROTOCOL_VERSION, ACCEPTED_PROTOCOL_VERSIONS } from "./protocol.ts";
 
@@ -863,6 +865,81 @@ interface DmReadCollector {
 }
 const pendingDmReads = new Map<string, DmReadCollector>();
 
+// ---- file transfer (v8) ---------------------------------------------------
+// How long the hub holds a parked /xfer rendezvous before tearing it down. Both ends
+// must be online at transfer time (rendezvous, not store-and-forward): if the
+// counterpart side never shows up within this window, the held side is closed/errored
+// cleanly and the transfer is reported `failed`. Env-overridable for slow links.
+const XFER_RENDEZVOUS_MS = Number(process.env.GROUP_CHAT_XFER_RENDEZVOUS_MS ?? 30_000);
+
+// How long an UN-APPROVED offer stays live before the hub drops it. An offer that no
+// recipient ever approves would otherwise live until the sender disconnects; on a
+// long-running hub with many never-approved offers that is unbounded growth. Pruned
+// opportunistically (no background timer) when new offers are minted, mirroring the
+// session-slot prune. An approved/in-flight transfer is never pruned this way — it is
+// torn down by its own rendezvous deadline or the disconnect reap.
+const XFER_OFFER_TTL_MS = Number(process.env.GROUP_CHAT_XFER_OFFER_TTL_MS ?? 3_600_000);
+
+// One in-flight (or about-to-be) transfer, keyed by the hub-minted `transfer_id`. The
+// hub remembers the SENDER identity, `name`/`size` (offer metadata), the RECEIVER
+// identity (set at approve time), and the live stream rendezvous: a parked GET's stream
+// controller (the receiver side), filled when the receiver's GET arrives, awaited by the
+// sender's POST. The sender's ABSOLUTE PATH is NEVER stored here — only the sender
+// adapter holds it. Each transfer_id is single-use; the entry is dropped on
+// completion/abort/timeout. `offer` keeps the row alive between the send (offer minted)
+// and the approve (bytes move); the rendezvous fields are populated only at approve time.
+interface Transfer {
+  transfer_id: string;
+  group: string;
+  seq: number; // the message seq the offer rode on
+  createdAt: number; // Date.now() at offer mint — used to expire never-approved offers
+  name: string;
+  size: number;
+  senderIdentity: string; // who offered the file (resolved at send time)
+  // The recipient set the carrying message was pushed to, as member NAMES, captured at
+  // send time. `null` means the message was an unaddressed broadcast (no `to`/reply-to
+  // filter) — any group member may approve. When non-null, ONLY a member named here may
+  // approve (DECISION: recipient-only approval). A member who merely sees the offer in
+  // group history but wasn't a recipient cannot pull the bytes.
+  recipients: string[] | null;
+  receiverIdentity: string | null; // who approved it (set at approve time)
+  approved: boolean; // an offer's transfers move at most once
+  // The parked GET response's stream controller, set when the receiver's GET lands. Two
+  // roles: (1) a non-null value is the "GET already parked" sentinel the second-GET 409
+  // guard checks; (2) it is the live controller the POST pipes into — though the POST
+  // reads it via the resolved `receiverReady` promise, not this field. The deferred below
+  // lets the POST (woken AFTER the GET is parked) await the GET arriving.
+  receiverController: ReadableStreamDefaultController<Uint8Array> | null;
+  receiverReady: Promise<ReadableStreamDefaultController<Uint8Array>> | null;
+  resolveReceiver: ((c: ReadableStreamDefaultController<Uint8Array>) => void) | null;
+  rejectReceiver: ((e: Error) => void) | null;
+}
+const transfers = new Map<string, Transfer>();
+
+// Drop UN-APPROVED offers older than the TTL. Called opportunistically when new offers
+// are minted (no background timer), mirroring `pruneSessionSlots`. Approved/in-flight
+// transfers are left alone — they are bounded by the rendezvous deadline + disconnect
+// reap. This is the backstop for offers a recipient never approves while the sender
+// stays online (which would otherwise live until the sender disconnects).
+function pruneStaleOffers(): void {
+  const cutoff = Date.now() - XFER_OFFER_TTL_MS;
+  for (const [id, t] of transfers) {
+    if (!t.approved && t.createdAt < cutoff) transfers.delete(id);
+  }
+}
+
+// A pending `approve_files` collector, keyed by the per-transfer `corr_id` the hub mints
+// on each xfer_pull. The receiver adapter reports its per-file outcome back as an
+// `xfer_result{corr_id,...}`; the collector folds it into the FileResult set, and when
+// every file in the approval has reported (or the deadline passes) the awaiting
+// `approve_files` replies `files_approved`.
+interface ApproveCollector {
+  results: Map<string, FileResult>; // transfer_id -> outcome
+  awaiting: Set<string>; // corr_ids not yet reported
+  done: () => void;
+}
+const pendingApprovals = new Map<string, ApproveCollector>(); // corr_id -> collector
+
 function nowIso(): string {
   return new Date().toISOString();
 }
@@ -1120,6 +1197,7 @@ function broadcast(
   to?: string[],
   fromIdentity?: string | null,
   replyTo?: number,
+  attachments?: Attachment[],
 ): { msg: ChatMessage; recipients: string[] } {
   // seq is DB-owned: assigned as MAX(seq)+1 and inserted in one transaction (no
   // mirrored in-memory counter). 1) durable append first, getting the seq back.
@@ -1148,6 +1226,9 @@ function broadcast(
     // here so the live push, the admin firehose, and the adapter all carry it. Omitted
     // when there is no author identity (a pre-migration/anonymous author).
     ...(fromIdentity ? { role: roleForIdentity(fromIdentity) } : {}),
+    // The v8 FILE OFFER sidecar — name+size+transfer_id per attachment, minted at send
+    // time. Live-only (NOT persisted to the messages table); a plain message omits it.
+    ...(attachments && attachments.length ? { attachments } : {}),
   };
   // 2) keep it in the in-memory window for gap re-send
   group.window.push(msg);
@@ -1197,6 +1278,120 @@ function resendGap(memberName: string, owner: string, group: Group): void {
 
 function err(conn: Connection, code: string, message: string, rid?: string): void {
   conn.send({ t: "error", rid, code, message });
+}
+
+// ---------------------------------------------------------------------------
+// File transfer (v8): the approve-time rendezvous + per-file result collection.
+
+// Run the byte-moving rendezvous for an approved offer and reply `files_approved`. For
+// each transfer: bind the receiver identity, mint a per-file corr_id, then WAKE THE
+// RECEIVER FIRST (xfer_pull → it opens GET /xfer/<id>, which the hub parks) and THEN the
+// SENDER (xfer_push → it opens POST /xfer/<id>, whose body the hub pipes into the parked
+// GET). The receiver reports each file's outcome via xfer_result{corr_id}; when all have
+// reported (or the deadline passes) we reply. A transfer whose sender or receiver has no
+// live conn fails immediately (rendezvous, not store-and-forward).
+async function approveTransfers(
+  conn: Connection,
+  rid: string | undefined,
+  group: string,
+  seq: number,
+  receiverIdentity: string,
+  pend: Transfer[],
+): Promise<void> {
+  const col: ApproveCollector = {
+    results: new Map<string, FileResult>(),
+    awaiting: new Set<string>(),
+    done: () => {},
+  };
+
+  const receiverConns = liveConnsFor(receiverIdentity);
+
+  for (const t of pend) {
+    t.approved = true; // single-use: an offer's transfer moves at most once.
+    t.receiverIdentity = receiverIdentity;
+    const corrId = randomUUID();
+    col.awaiting.add(corrId);
+    pendingApprovals.set(corrId, col);
+
+    // Set up the rendezvous deferred: the POST handler awaits this until the GET parks.
+    t.receiverReady = new Promise<ReadableStreamDefaultController<Uint8Array>>((res, rej) => {
+      t.resolveReceiver = res;
+      t.rejectReceiver = rej;
+    });
+    // Don't leave the rendezvous promise unhandled if nothing ever awaits it.
+    t.receiverReady.catch(() => {});
+
+    const senderConns = liveConnsFor(t.senderIdentity);
+    if (receiverConns.length === 0 || senderConns.length === 0) {
+      // Counterpart offline — rendezvous impossible. Report failed and drop the transfer.
+      col.results.set(t.transfer_id, {
+        transfer_id: t.transfer_id,
+        name: t.name,
+        status: "failed",
+        detail:
+          receiverConns.length === 0
+            ? "receiver is not online"
+            : "sender is not online; both ends must be online to transfer",
+      });
+      col.awaiting.delete(corrId);
+      pendingApprovals.delete(corrId);
+      transfers.delete(t.transfer_id);
+      continue;
+    }
+
+    // 1) wake the RECEIVER: open the GET and park it. corr_id flows back on xfer_result.
+    for (const c of receiverConns) c.send({ t: "xfer_pull", transfer_id: t.transfer_id, corr_id: corrId, name: t.name });
+    // 2) wake the SENDER: open the POST. The sender adapter resolves the path locally.
+    for (const c of senderConns) c.send({ t: "xfer_push", transfer_id: t.transfer_id, corr_id: corrId });
+  }
+
+  // Build the reply once every file has reported, or after the rendezvous deadline.
+  await new Promise<void>((resolve) => {
+    let settled = false;
+    const finish = () => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      resolve();
+    };
+    col.done = finish;
+    if (col.awaiting.size === 0) {
+      finish();
+      return;
+    }
+    const timer = setTimeout(() => {
+      // Deadline: any file that never reported is a timed-out rendezvous — fail it,
+      // tear down its parked side, and drop its state.
+      for (const corrId of [...col.awaiting]) {
+        pendingApprovals.delete(corrId);
+      }
+      for (const t of pend) {
+        if (!col.results.has(t.transfer_id)) {
+          col.results.set(t.transfer_id, {
+            transfer_id: t.transfer_id,
+            name: t.name,
+            status: "failed",
+            detail: "transfer timed out (counterpart did not complete in time)",
+          });
+          if (t.rejectReceiver) t.rejectReceiver(new Error("rendezvous timed out"));
+          transfers.delete(t.transfer_id);
+        }
+      }
+      col.awaiting.clear();
+      finish();
+    }, XFER_RENDEZVOUS_MS);
+  });
+
+  const results: FileResult[] = pend.map(
+    (t) =>
+      col.results.get(t.transfer_id) ?? {
+        transfer_id: t.transfer_id,
+        name: t.name,
+        status: "failed" as const,
+        detail: "no result reported",
+      },
+  );
+  conn.send({ t: "files_approved", rid, group, seq, results });
 }
 
 // ---------------------------------------------------------------------------
@@ -1756,6 +1951,41 @@ function handleFrame(conn: Connection, frame: ClientEnvelope): void {
         }
       }
 
+      // FILE OFFER (v8): mint a single-use transfer_id per attached file and stamp the
+      // resulting offer sidecar onto the message. The sender supplied only name+size
+      // (its adapter validated + kept the abs path locally); the hub OWNS the id (an
+      // unguessable capability bound to the sender identity), so a sender can't collide
+      // with or hijack another transfer. The path never reaches the hub. Validate the
+      // entries defensively (basename + non-negative size); a malformed entry errors the
+      // whole send (no partial offer), mirroring the `to` filter's all-or-nothing rule.
+      let attachments: Attachment[] | undefined;
+      if (frame.attach !== undefined) {
+        if (!Array.isArray(frame.attach)) {
+          err(conn, "bad_attach", "`attach` must be an array of {name,size}", rid);
+          return;
+        }
+        const out: Attachment[] = [];
+        for (const a of frame.attach) {
+          const name = a && typeof a.name === "string" ? a.name : "";
+          const size = a && typeof a.size === "number" ? a.size : NaN;
+          // `name` MUST be a pure basename — no path separators, no traversal — so the
+          // receiver can only ever write it under the fixed sink. The sender adapter
+          // already basenamed it; this is defence-in-depth on the wire.
+          // No separators, no traversal, and no control chars (tab/newline would garble
+          // the rendered offer line without affecting the basename-only transfer).
+          if (!name || name.includes("/") || name === "." || name === ".." || /[\x00-\x1f]/.test(name)) {
+            err(conn, "bad_attach", `attachment name must be a clean basename, got '${name}'`, rid);
+            return;
+          }
+          if (!Number.isFinite(size) || size < 0) {
+            err(conn, "bad_attach", `attachment '${name}' has an invalid size`, rid);
+            return;
+          }
+          out.push({ transfer_id: randomUUID(), name, size });
+        }
+        if (out.length > 0) attachments = out;
+      }
+
       const { msg, recipients } = broadcast(
         g,
         as,
@@ -1763,7 +1993,38 @@ function handleFrame(conn: Connection, frame: ClientEnvelope): void {
         toFilter,
         identity,
         frame.reply_to ?? undefined,
+        attachments,
       );
+
+      // Register each minted transfer so a later approve_files can find it. The offer
+      // lives until the receiver approves (or it's cleaned up). senderIdentity binds the
+      // capability to the offerer; receiverIdentity is set at approve time.
+      if (attachments) {
+        // Opportunistic backstop: drop never-approved offers past their TTL before we add
+        // more, so a long-running hub doesn't accumulate stale offers unbounded.
+        pruneStaleOffers();
+        for (const att of attachments) {
+          transfers.set(att.transfer_id, {
+            transfer_id: att.transfer_id,
+            group: g.name,
+            seq: msg.seq,
+            createdAt: Date.now(),
+            name: att.name,
+            size: att.size,
+            senderIdentity: identity,
+            // The push recipient set (member names), or null for an unaddressed broadcast.
+            // `toFilter` already folds in any reply-to override, so this is exactly who
+            // received the offer — the only members allowed to approve it.
+            recipients: toFilter ? [...toFilter] : null,
+            receiverIdentity: null,
+            approved: false,
+            receiverController: null,
+            receiverReady: null,
+            resolveReceiver: null,
+            rejectReceiver: null,
+          });
+        }
+      }
 
       const key = `${g.name}#${msg.seq}`;
       // The set of names a receipt is awaited from: the recipients we pushed to.
@@ -1786,6 +2047,7 @@ function handleFrame(conn: Connection, frame: ClientEnvelope): void {
           read: [],
           sent: others(),
           ...(replyWarning ? { warning: replyWarning } : {}),
+          ...(attachments ? { attachments } : {}),
         });
         return;
       }
@@ -1813,6 +2075,7 @@ function handleFrame(conn: Connection, frame: ClientEnvelope): void {
           read,
           sent,
           ...(replyWarning ? { warning: replyWarning } : {}),
+          ...(attachments ? { attachments } : {}),
         });
       };
       col.done = finish;
@@ -1863,6 +2126,83 @@ function handleFrame(conn: Connection, frame: ClientEnvelope): void {
       const end = all.length - fromEnd;
       const start = Math.max(0, end - n);
       conn.send({ t: "history", rid, group: frame.group, messages: all.slice(start, end) });
+      return;
+    }
+
+    // ---- file transfer (v8) ----
+
+    case "approve_files": {
+      // Identity-gated like every group op. Only a MEMBER of the group who RECEIVED the
+      // offer may approve its transfers (DECISION: recipient-only approval). "Received the
+      // offer" = the carrying message was pushed to this caller: either it was an
+      // unaddressed broadcast (Transfer.recipients === null → any member), or the caller's
+      // member name is in the recipient set (a `to`/reply-to-targeted offer). A member who
+      // only sees the offer in group history but was NOT a recipient cannot approve it.
+      // Bytes move only after this gate.
+      const identity = requireIdentity(conn, rid);
+      if (!identity) return;
+      const g = groups.get(frame.group);
+      const myName = g ? myMemberName(identity, frame.group) : null;
+      if (!g || myName === null) {
+        err(conn, "not_in_group", `join '${frame.group}' first before approving files`, rid);
+        return;
+      }
+      // The un-approved transfers offered on this (group, seq) the caller did not send AND
+      // was a recipient of. A non-recipient member (saw the offer in history but the push
+      // wasn't addressed to it) gets `no_offer`, same as if no offer existed for it.
+      const pend = [...transfers.values()].filter(
+        (t) =>
+          t.group === frame.group &&
+          t.seq === frame.seq &&
+          !t.approved &&
+          t.senderIdentity !== identity &&
+          (t.recipients === null || t.recipients.includes(myName)),
+      );
+      if (pend.length === 0) {
+        err(
+          conn,
+          "no_offer",
+          `no pending file offer on seq ${frame.seq} in '${frame.group}'`,
+          rid,
+        );
+        return;
+      }
+      void approveTransfers(conn, rid, frame.group, frame.seq, identity, pend);
+      return;
+    }
+
+    case "xfer_result": {
+      // The RECEIVER adapter reported one file's outcome (silent — no reply). Fold it
+      // into the pending approve collector keyed by corr_id; when every file has
+      // reported, the awaiting approve_files replies. Idempotent: a corr_id we no longer
+      // track (timed out, already settled) is a no-op.
+      const col = pendingApprovals.get(frame.corr_id);
+      if (!col) return;
+      col.results.set(frame.transfer_id, {
+        transfer_id: frame.transfer_id,
+        name: transfers.get(frame.transfer_id)?.name ?? "",
+        status: frame.status,
+        ...(frame.detail ? { detail: frame.detail } : {}),
+      });
+      // The transfer is finished (good or bad). If the receiver reported WITHOUT ever
+      // opening its GET (an early collision/validation reject — receiverController stays
+      // null, so the rendezvous deferred was never resolved), a sender POST may be parked
+      // on `await t.receiverReady`. Once this corr_id leaves col.awaiting the rendezvous
+      // timer can be cancelled by col.done(), so nothing else would ever reject it — the
+      // parked POST would hang until its own 60s AbortSignal fires. Reject it now so the
+      // sender's byte channel tears down immediately on an instantly-reported outcome.
+      const fin = transfers.get(frame.transfer_id);
+      if (fin && !fin.receiverController && fin.rejectReceiver) {
+        fin.rejectReceiver(new Error("receiver reported before opening the byte channel"));
+      }
+      // The transfer is finished (good or bad): drop its state + the corr_id mapping so
+      // the id is single-use and the rendezvous map doesn't leak.
+      transfers.delete(frame.transfer_id);
+      if (col.awaiting.has(frame.corr_id)) {
+        col.awaiting.delete(frame.corr_id);
+        pendingApprovals.delete(frame.corr_id);
+      }
+      if (col.awaiting.size === 0) col.done();
       return;
     }
 
@@ -2491,6 +2831,124 @@ function onDisconnect(conn: Connection): void {
   allConnections.delete(conn);
   // Admin firehose (v7): drop a departing admin console from the subscriber set.
   adminConns.delete(conn);
+  // File transfer (v8): reap transfers whose counterpart just went fully offline.
+  // An in-flight (approved) transfer whose sender or receiver lost its last live conn
+  // can never complete — error its parked rendezvous so the byte channel tears down. An
+  // un-approved offer from a now-offline sender can never be fulfilled — drop it.
+  for (const [id, t] of transfers) {
+    const senderGone = !isOnline(t.senderIdentity);
+    const receiverGone = t.receiverIdentity != null && !isOnline(t.receiverIdentity);
+    if (t.approved) {
+      if (senderGone || receiverGone) {
+        if (t.rejectReceiver) t.rejectReceiver(new Error("counterpart disconnected"));
+        // The pending approve collector will time out and report this as failed.
+      }
+    } else if (senderGone) {
+      transfers.delete(id);
+    }
+  }
+}
+
+// ---------------------------------------------------------------------------
+// File transfer byte channel (v8): the `/xfer/<transfer_id>` HTTP branch. A pure
+// streamed relay — the hub spools nothing to disk and reads nothing fully into memory.
+//   GET  /xfer/<id>  — the RECEIVER side. The hub PARKS this response open: it returns a
+//                      Response built from a ReadableStream whose controller it stores in
+//                      the transfer state, then resolves the rendezvous deferred so the
+//                      sender's POST can pipe into it. The response doesn't resolve until
+//                      the POST body has streamed through.
+//   POST /xfer/<id>  — the SENDER side. `req.body` is a native ReadableStream; the hub
+//                      awaits the parked GET's controller and pipes the body straight into
+//                      it (enqueue chunk-by-chunk). Backpressure couples the two ends.
+// Auth: the SAME hub token the WS path uses (the inline-cred scheme). For HTTP the adapter
+// supplies it via `Authorization: Bearer <token>` (or `?token=`). GROUP_CHAT_ALLOW_NO_AUTH
+// skips it, exactly like the WS path.
+
+function xferAuthorized(req: Request, url: URL): boolean {
+  if (ALLOW_NO_AUTH) return true;
+  const auth = req.headers.get("authorization") ?? "";
+  const bearer = auth.startsWith("Bearer ") ? auth.slice("Bearer ".length) : "";
+  const qp = url.searchParams.get("token") ?? "";
+  return bearer === TOKEN || qp === TOKEN;
+}
+
+// The transfer_id from a `/xfer/<id>` path, or null if the shape is wrong.
+function xferIdFromPath(pathname: string): string | null {
+  const m = pathname.match(/^\/xfer\/([^/]+)$/);
+  return m ? decodeURIComponent(m[1]!) : null;
+}
+
+async function serveXfer(req: Request, url: URL): Promise<Response> {
+  if (!xferAuthorized(req, url)) {
+    return new Response("unauthorized\n", { status: 401 });
+  }
+  const id = xferIdFromPath(url.pathname);
+  if (!id) return new Response("bad transfer path\n", { status: 400 });
+  const t = transfers.get(id);
+  // The transfer must exist and have been approved (the byte channel opens only after
+  // approve_files set up the rendezvous). An unknown/unapproved id is rejected — the
+  // transfer_id is an unguessable hub-owned capability, so this also blocks a guess.
+  if (!t || !t.approved) return new Response("no such transfer\n", { status: 404 });
+
+  if (req.method === "GET") {
+    // Single-use rendezvous: only the FIRST GET parks. A second GET for the same id
+    // (an identity with multiple live conns, e.g. a /resume coexistence) is refused so
+    // it can't overwrite the parked controller mid-transfer.
+    if (t.receiverController) return new Response("transfer already claimed\n", { status: 409 });
+    // RECEIVER side: park the response open. Build a ReadableStream and hand its
+    // controller to the transfer state; resolve the rendezvous so the POST can pipe in.
+    const stream = new ReadableStream<Uint8Array>({
+      start(controller) {
+        t.receiverController = controller;
+        if (t.resolveReceiver) t.resolveReceiver(controller);
+      },
+      cancel() {
+        // The receiver hung up before the body finished — error the sender's pipe.
+        if (t.rejectReceiver) t.rejectReceiver(new Error("receiver canceled the transfer"));
+      },
+    });
+    return new Response(stream, {
+      headers: { "content-type": "application/octet-stream" },
+    });
+  }
+
+  if (req.method === "POST") {
+    // SENDER side: await the parked GET's controller, then pipe req.body straight into it
+    // chunk-by-chunk. Nothing is buffered to disk; nothing is read fully into memory.
+    if (!t.receiverReady) return new Response("receiver not ready\n", { status: 409 });
+    let controller: ReadableStreamDefaultController<Uint8Array>;
+    try {
+      controller = await t.receiverReady;
+    } catch (e) {
+      return new Response(`receiver gone: ${String(e)}\n`, { status: 502 });
+    }
+    const body = req.body;
+    if (!body) {
+      controller.error(new Error("sender sent no body"));
+      return new Response("no body\n", { status: 400 });
+    }
+    const reader = body.getReader();
+    try {
+      for (;;) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        if (value) controller.enqueue(value);
+      }
+      controller.close();
+      return new Response("ok\n", { status: 200 });
+    } catch (e) {
+      // Mid-stream abort: error the receiver's stream so its write fails (no half file
+      // is renamed into place — the receiver only renames on full success).
+      try {
+        controller.error(e as Error);
+      } catch {
+        /* already closed */
+      }
+      return new Response(`stream error: ${String(e)}\n`, { status: 502 });
+    }
+  }
+
+  return new Response("method not allowed\n", { status: 405 });
 }
 
 // ---------------------------------------------------------------------------
@@ -2562,6 +3020,11 @@ const server = Bun.serve<{ conn: Connection }>({
     // open(); the upgrade just needs the connection slot. The upgrade is decided
     // SYNCHRONOUSLY (before any await) so Bun completes the handshake correctly.
     if (srv.upgrade(req, { data: {} as { conn: Connection } })) return; // upgraded to WS
+    // FILE TRANSFER (v8): the streamed byte channel. A GET parks the receiver side; a
+    // POST pipes the sender's body into it. Token-authed like the WS path; pure relay.
+    // Decided BEFORE the web SPA fallback so `/xfer/...` is never mistaken for a route.
+    const url = new URL(req.url);
+    if (url.pathname.startsWith("/xfer/")) return serveXfer(req, url);
     // Otherwise (a plain HTTP request) serve the built web SPA from WEB_DIR: hashed
     // assets by path, index.html SPA fallback for navigation routes. If the bundle is
     // absent (web not built/enabled), fall back to today's 426. (v7, section 4.)
