@@ -43,6 +43,9 @@ interface ChannelEvent {
   to: string[] | null; // group push-targeting: member names this was directed to (null = plain broadcast)
   role: string | null; // the author's DERIVED role ("human"|"agent"|"system"); null when absent.
   // Only "human" is rendered (a person talking) — agents are the unmarked default, no noise.
+  attachments: { name: string; size: number }[] | null; // v8 FILE OFFER sidecar on a
+  // group message (null when none). Rendered as a "📎 N file(s) offered on seq S" marker
+  // listing each name + human-readable size, with the approve_files hint.
   text: string;
 }
 
@@ -102,6 +105,7 @@ function parseChannel(content: string): ChannelEvent | null {
       replyTo: null,
       to: null,
       role: attr("role") || null,
+      attachments: null,
       text,
     };
   }
@@ -109,6 +113,22 @@ function parseChannel(content: string): ChannelEvent | null {
   const replyTo = replyToRaw ? Number(replyToRaw) : null;
   const toRaw = attr("to");
   const to = toRaw ? toRaw.split(",").filter(Boolean) : null;
+  // FILE OFFER (v8): `attach` encodes `<size> <name>` per file, files tab-joined (the
+  // adapter's pushChannel encoding). Size is the leading token; the name is the
+  // remainder (it may contain spaces/colons). A malformed entry is skipped.
+  const attachRaw = attr("attach");
+  let attachments: { name: string; size: number }[] | null = null;
+  if (attachRaw) {
+    const list: { name: string; size: number }[] = [];
+    for (const entry of attachRaw.split("\t")) {
+      const sp = entry.indexOf(" ");
+      if (sp <= 0) continue;
+      const size = Number(entry.slice(0, sp));
+      const name = entry.slice(sp + 1);
+      if (name && Number.isFinite(size)) list.push({ name, size });
+    }
+    if (list.length) attachments = list;
+  }
   return {
     dm: false,
     group: attr("group"),
@@ -121,6 +141,7 @@ function parseChannel(content: string): ChannelEvent | null {
     replyTo: Number.isFinite(replyTo as number) ? replyTo : null,
     to: to && to.length ? to : null,
     role: attr("role") || null,
+    attachments,
     text,
   };
 }
@@ -224,6 +245,21 @@ const C = {
 // mis-detect as a table or to interleave into one. (We do NOT make the lone '|'
 // meaningful; a '|' with no delimiter row is still not a valid GFM table — the fix
 // is purely the absence of our verticals.)
+
+// Human-readable byte size for the file-offer marker (e.g. 482 KB, 1.2 MB). Compact and
+// approximate — it's a glanceable hint, not an exact accounting.
+function humanSize(bytes: number): string {
+  if (!Number.isFinite(bytes) || bytes < 0) return "? B";
+  const units = ["B", "KB", "MB", "GB", "TB"];
+  let n = bytes;
+  let i = 0;
+  while (n >= 1024 && i < units.length - 1) {
+    n /= 1024;
+    i++;
+  }
+  return `${i === 0 ? n : n.toFixed(n < 10 ? 1 : 0)} ${units[i]}`;
+}
+
 function box(ev: ChannelEvent): string {
   const color = ev.dm ? C.dm : C.group;
   // The chat identity is the prominent part: bold the group name / the DM pair.
@@ -247,12 +283,23 @@ function box(ev: ChannelEvent): string {
   const header = ev.dm
     ? `${color}${BAR} 🔒 direct message  ${C.bold}${ev.fromAlias} → ${ev.toAlias}${C.reset}${color}  (seq ${ev.seq})${humanMark}${C.reset}`
     : `${color}${BAR} 📨 #${C.bold}${ev.group}${C.reset}${color}  from ${ev.from}  (seq ${ev.seq})${replyMark}${toMark}${humanMark}${C.reset}`;
+  // FILE OFFER (v8): when the message carries an offer, append it INSIDE the blockquote
+  // body (so it stays part of the one card — no new top-level block, no box-drawing) as a
+  // "📎 N file(s) offered on seq S" header, one line per file (name + human size), and
+  // the approve hint. It annotates the message exactly like the reply/to markers do.
+  const offerLines: string[] = [];
+  if (!ev.dm && ev.attachments && ev.attachments.length) {
+    const n = ev.attachments.length;
+    offerLines.push("");
+    offerLines.push(`📎 ${n} file(s) offered on seq ${ev.seq}:`);
+    for (const f of ev.attachments) offerLines.push(`   ${f.name} (${humanSize(f.size)})`);
+    offerLines.push(`approve with approve_files('${ev.group}', ${ev.seq})`);
+  }
   // Body as a markdown blockquote: prefix EACH line with '> '. No manual soft-wrap
   // (the renderer wraps; our old manual wrap fought it and produced ragged lines).
   // A blank line in the body becomes a bare '>' so the blockquote stays contiguous —
   // a real empty line would split it into two separate quotes.
-  const body = ev.text
-    .split("\n")
+  const body = [...ev.text.split("\n"), ...offerLines]
     .map((l) => (l === "" ? ">" : `> ${l}`))
     .join("\n");
   // Blank line between the ANSI header and the blockquote. REQUIRED: the renderer
