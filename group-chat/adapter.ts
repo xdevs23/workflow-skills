@@ -39,8 +39,14 @@ import {
   closeSync,
   appendFileSync,
   readdirSync,
+  realpathSync,
+  statSync,
+  mkdirSync,
+  linkSync,
+  unlinkSync,
 } from "node:fs";
-import { join as pathJoin } from "node:path";
+import { open as fsOpen } from "node:fs/promises";
+import { join as pathJoin, basename, resolve as pathResolve, sep } from "node:path";
 import { tmpdir, homedir, hostname } from "node:os";
 import { randomUUID } from "node:crypto";
 import type {
@@ -48,6 +54,7 @@ import type {
   ClientEnvelope,
   ChatMessage,
   DirectMessage,
+  Attachment,
 } from "../servers/group-chat-hub/protocol.ts";
 import { PROTOCOL_VERSION } from "../servers/group-chat-hub/protocol.ts";
 
@@ -81,15 +88,19 @@ function parseHub(raw: string): { url: string; token: string } {
 // project's gitignored .cache/. Falls back to cwd. Gated behind GROUP_CHAT_DEBUG
 // so it's a no-op in normal operation — set GROUP_CHAT_DEBUG=1 to enable.
 const DEBUG_ENABLED = process.env.GROUP_CHAT_DEBUG === "1";
+// pid lets us tell a fresh respawn apart from the prior process.
+const DEBUG_PID = process.pid;
 const DEBUG_LOG_PATH = (() => {
   const root =
     (process.env.CLAUDE_PLUGIN_ROOT && !process.env.CLAUDE_PLUGIN_ROOT.startsWith("${")
       ? process.env.CLAUDE_PLUGIN_ROOT
       : process.cwd());
-  return pathJoin(root, ".cache", "adapter-debug.log");
+  // PER-PROCESS log file: this dev checkout is shared by SEVERAL agents' adapters
+  // running in the SAME project dir, so a single shared `adapter-debug.log` interleaves
+  // every agent's trace and makes it impossible to read one process's path. Stamp the
+  // pid into the filename so each adapter owns its own log.
+  return pathJoin(root, ".cache", `adapter-debug.${DEBUG_PID}.log`);
 })();
-// pid lets us tell a fresh respawn apart from the prior process in one shared log.
-const DEBUG_PID = process.pid;
 function dbg(event: string, detail?: Record<string, unknown>): void {
   if (!DEBUG_ENABLED) return;
   try {
@@ -140,6 +151,16 @@ let ws: WebSocket | null = null;
 let helloDone = false;
 let reconnectDelay = 250;
 let connectAttempts = 0;
+// HEARTBEAT / half-open detection. `lastInbound` is bumped on EVERY inbound frame
+// (incl. the hub's `pong`), so a link carrying real traffic is never force-closed as
+// "silent". A periodic `ping` keeps a quiet-but-healthy link proving liveness; if no
+// frame arrives within HEARTBEAT_DEAD_MS we declare the socket half-open and force a
+// close — which runs the existing close handler (drains `pending` + reconnects). The
+// per-process timer handle is cleared in the close handler so it never outlives a socket.
+const HEARTBEAT_MS = Number(process.env.GROUP_CHAT_HEARTBEAT_MS ?? 15_000);
+const HEARTBEAT_DEAD_MS = Number(process.env.GROUP_CHAT_HEARTBEAT_DEAD_MS ?? 30_000);
+let lastInbound = Date.now();
+let heartbeatTimer: ReturnType<typeof setInterval> | null = null;
 // The per-process relay id the hub assigns on first connect (in `welcome`). Held
 // in MEMORY for this process's lifetime and echoed on every later `hello`, so the
 // hub recognizes a reconnecting endpoint and re-binds the sessions it was serving
@@ -441,6 +462,99 @@ function gateAllows(targetIdentity: string | undefined): boolean {
   return servedIdentities.has(targetIdentity);
 }
 
+// ---- file transfer (v8) ---------------------------------------------------
+// The sender's per-transfer absolute paths. Minted by the hub on `submit_message`
+// with `attach`; the hub returns the id↔offer mapping in the `sent` reply (same order
+// as the validated paths), and we record `transfer_id -> absPath` HERE. The path NEVER
+// crosses the wire — the hub only ever names the transfer_id. Used when the hub later
+// sends `xfer_push` to stream the file. Process-lifetime in-memory (a transfer is a
+// short-lived rendezvous; a dropped entry just means a stale push is ignored).
+const senderPaths = new Map<string, string>();
+// Backstop against unbounded growth: an offer the receiver never approves leaves its
+// entry here (only an actual xfer_push deletes it). Cap the map and evict oldest-first
+// (Map preserves insertion order) so a long-lived adapter making many never-approved
+// offers can't grow it without bound. The worst case of evicting a still-live entry is a
+// stale push being ignored — the same already-tolerated outcome the lifetime comment notes.
+const SENDER_PATHS_MAX = Number(process.env.GROUP_CHAT_SENDER_PATHS_MAX ?? 1024);
+function recordSenderPath(transferId: string, absPath: string): void {
+  senderPaths.set(transferId, absPath);
+  while (senderPaths.size > SENDER_PATHS_MAX) {
+    const oldest = senderPaths.keys().next().value;
+    if (oldest === undefined) break;
+    senderPaths.delete(oldest);
+  }
+}
+
+// The project dir for path confinement (sender) and the received-files sink (receiver):
+// CLAUDE_PROJECT_DIR, resolved to a real absolute path. A sendable file must resolve to
+// a path CONTAINED within it; a received file lands under <projectDir>/.cache/received-files/.
+function projectDir(): string | null {
+  const v = process.env.CLAUDE_PROJECT_DIR;
+  if (!v || v.startsWith("${")) return null;
+  try {
+    return realpathSync(v);
+  } catch {
+    return null;
+  }
+}
+
+// Is `child` contained within `parent` (both real absolute paths)? A path equal to or
+// under parent (with a real path separator boundary) passes; `..`/symlink escapes fail.
+function isContained(parent: string, child: string): boolean {
+  if (child === parent) return true;
+  const base = parent.endsWith(sep) ? parent : parent + sep;
+  return child.startsWith(base);
+}
+
+// Validate ONE attachable path (DECISION 4 — project-dir confinement). Resolves the path
+// to a real absolute path (follows symlinks), REQUIRES it CONTAINED within the project
+// dir, and REQUIRES a readable REGULAR file (not a dir/device). Returns the resolved
+// absolute path + basename + size on success, or an error string on failure. The whole
+// `submit_message` fails (no partial offer) if ANY path fails — the caller enforces that.
+function validateAttachPath(
+  raw: string,
+): { ok: true; absPath: string; name: string; size: number } | { ok: false; error: string } {
+  const proj = projectDir();
+  if (!proj) {
+    return { ok: false, error: "CLAUDE_PROJECT_DIR is not set; cannot validate attachment paths" };
+  }
+  // Resolve relative to the project dir, then realpath to follow symlinks to the real
+  // target (a symlink pointing OUT of the project is then caught by the containment check).
+  let absPath: string;
+  try {
+    absPath = realpathSync(pathResolve(proj, raw));
+  } catch {
+    return { ok: false, error: `'${raw}': no such file (or unreadable path)` };
+  }
+  if (!isContained(proj, absPath)) {
+    return {
+      ok: false,
+      error:
+        `'${raw}' resolves outside the project dir (${proj}). ` +
+        "Only files inside the project can be attached — copy it into .cache first " +
+        "(cp --reflink is ~free) and attach that.",
+    };
+  }
+  let st;
+  try {
+    st = statSync(absPath);
+  } catch {
+    return { ok: false, error: `'${raw}': cannot stat the file` };
+  }
+  if (!st.isFile()) {
+    return { ok: false, error: `'${raw}' is not a regular file (dirs/devices can't be sent)` };
+  }
+  return { ok: true, absPath, name: basename(absPath), size: st.size };
+}
+
+// The receiver's fixed sink: <projectDir>/.cache/received-files/. Created on demand.
+// The receiver NEVER writes anywhere else and only ever writes a basename here.
+function receivedFilesDir(): string | null {
+  const proj = projectDir();
+  if (!proj) return null;
+  return pathJoin(proj, ".cache", "received-files");
+}
+
 const { url: HUB_URL, token: HUB_TOKEN } = parseHub(RAW_URL);
 // This adapter's own device hostname — reported to the hub at `hello` and used to
 // namespace registered aliases (alice@thishost). Docker encodes the host's name
@@ -460,6 +574,38 @@ const HUB_HOST = (() => {
   }
 })();
 
+// The HTTP base for the v8 `/xfer` byte channel: the hub URL with the ws(s) scheme
+// mapped to http(s). The WS and the HTTP byte channel share the same host/port and the
+// same token (supplied as `Authorization: Bearer <token>` on the xfer request).
+const XFER_BASE = (() => {
+  try {
+    const u = new URL(HUB_URL);
+    u.protocol = u.protocol === "wss:" ? "https:" : "http:";
+    return u.origin;
+  } catch {
+    return "";
+  }
+})();
+
+// Hard ceiling on a single byte-channel transfer. The /xfer fetches stream a whole
+// file, so the cap is generous (>= the hub's own 30s rendezvous deadline), but it MUST
+// exist: a `duplex:"half"` POST body or a half-open GET with no close/error event would
+// otherwise park the single adapter event loop forever — starving the WS message loop
+// and every request() timer (the observed wedge). On abort the catch in each transfer
+// fn reports `failed`/cleans up. Env-overridable for very large files / slow links.
+const XFER_FETCH_TIMEOUT_MS = Number(process.env.GROUP_CHAT_XFER_TIMEOUT_MS ?? 60_000);
+
+// `approve_files` is NOT an ordinary request(): the hub holds the reply until the whole
+// byte rendezvous completes or its own deadline (XFER_RENDEZVOUS_MS, default 30s on the
+// hub) fires. The default 10s request() timeout would reject "hub request timed out"
+// while a perfectly valid >10s transfer is still streaming — and the file then lands in
+// the receiver's sink while the LLM was told it failed. So this one request gets a
+// timeout that comfortably EXCEEDS the hub's rendezvous deadline AND the per-file fetch
+// cap, leaving the hub's own deadline as the authority on when an approval gives up.
+const APPROVE_FILES_TIMEOUT_MS = Number(
+  process.env.GROUP_CHAT_APPROVE_TIMEOUT_MS ?? XFER_FETCH_TIMEOUT_MS + 10_000,
+);
+
 function connect(): void {
   connectAttempts++;
   ws = new WebSocket(HUB_URL);
@@ -467,6 +613,10 @@ function connect(): void {
   ws.addEventListener("open", () => {
     reconnectDelay = 250;
     helloDone = false;
+    // A fresh socket is alive now; reset the liveness clock so the watchdog doesn't
+    // fire on a stale timestamp inherited from a prior connection.
+    lastInbound = Date.now();
+    startHeartbeat();
     // Echo the held adapter_id only if we have one (reconnect); omit it on first
     // connect so the hub mints a fresh one and hands it back in `welcome`.
     sendRaw({
@@ -479,18 +629,34 @@ function connect(): void {
   });
 
   ws.addEventListener("message", (ev) => {
+    // Any inbound frame proves the link is alive — feed the heartbeat watchdog so a
+    // busy link carrying app traffic is never force-closed as "silent".
+    lastInbound = Date.now();
     let frame: ServerFrame;
     try {
       frame = JSON.parse(String(ev.data)) as ServerFrame;
     } catch {
       return;
     }
-    onFrame(frame);
+    // GUARD: a synchronous throw inside any frame handler must NOT escape the listener —
+    // that would kill the message loop and strand every pending request (a wedge). Each
+    // frame is handled in isolation; a bad frame is logged and dropped.
+    try {
+      onFrame(frame);
+    } catch (e) {
+      // Surface ALWAYS (not just under GROUP_CHAT_DEBUG): a dropped frame here is the
+      // highest-stakes invisible path — if the bad frame was a hub reply, its `pending`
+      // entry now leaks until the overall request() timeout fires. The loop survives
+      // (that's the point of the guard), but the cause must not be silent in production.
+      dbg("onFrame:threw", { err: String(e), t: (frame as { t?: string })?.t });
+      console.error(`[group-chat] onFrame handler threw (frame dropped): t=${(frame as { t?: string })?.t} err=${String(e)}`);
+    }
   });
 
   ws.addEventListener("close", () => {
     ws = null;
     helloDone = false;
+    stopHeartbeat();
     // fail any in-flight requests so tool calls don't hang forever
     for (const [, p] of pending) p.reject(new Error("hub connection closed"));
     pending.clear();
@@ -504,7 +670,48 @@ function connect(): void {
 }
 
 function sendRaw(frame: ClientEnvelope): void {
-  if (ws && ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify(frame));
+  if (!(ws && ws.readyState === WebSocket.OPEN)) return;
+  try {
+    ws.send(JSON.stringify(frame));
+  } catch (e) {
+    // A throwing send means the socket has gone bad (CLOSING/errored) without yet
+    // firing `close`. Force the close so the existing handler drains pending +
+    // reconnects, rather than silently dropping the frame onto a dead link.
+    dbg("sendRaw:threw", { err: String(e) });
+    try {
+      ws?.close();
+    } catch {
+      /* best-effort */
+    }
+  }
+}
+
+// HEARTBEAT WATCHDOG: detect a half-open socket (no `close`/`error` event) and convert
+// it into a real close so the link drains pending + reconnects instead of wedging.
+function startHeartbeat(): void {
+  stopHeartbeat();
+  heartbeatTimer = setInterval(() => {
+    if (!(ws && ws.readyState === WebSocket.OPEN)) return;
+    // No inbound frame (incl. pong) within the dead window → the link is unresponsive.
+    if (Date.now() - lastInbound > HEARTBEAT_DEAD_MS) {
+      dbg("heartbeat:dead-socket-forcing-close", { sinceLastInbound: Date.now() - lastInbound });
+      try {
+        ws.close();
+      } catch {
+        /* close handler does the drain + reconnect */
+      }
+      return;
+    }
+    // Prod the hub; its `pong` (or any other inbound frame) refreshes `lastInbound`.
+    sendRaw({ t: "ping" });
+  }, HEARTBEAT_MS);
+}
+
+function stopHeartbeat(): void {
+  if (heartbeatTimer) {
+    clearInterval(heartbeatTimer);
+    heartbeatTimer = null;
+  }
 }
 
 // The adapter tracks NO membership state of its own. The hub is the source of
@@ -607,11 +814,219 @@ function onFrame(frame: ServerFrame): void {
     return;
   }
 
+  // ---- file transfer (v8): SILENT control frames (no mcp.notification) ----
+  // These wake the adapter to move bytes over the /xfer HTTP channel WITHOUT ever
+  // surfacing to the LLM — the same silent-handler shape as the inbound dm_ack, but
+  // hub→adapter. Fire-and-forget; the receiver reports its outcome via xfer_result.
+  if (frame.t === "xfer_pull") {
+    void receiveTransfer(frame.transfer_id, frame.corr_id, frame.name);
+    return;
+  }
+  if (frame.t === "xfer_push") {
+    void sendTransfer(frame.transfer_id);
+    return;
+  }
+
   // everything else is a reply to a pending request (matched by rid)
   const anyFrame = frame as ServerFrame & { rid?: string };
   if (anyFrame.rid && pending.has(anyFrame.rid)) {
     pending.get(anyFrame.rid)!.resolve(frame);
     pending.delete(anyFrame.rid);
+  }
+}
+
+// RECEIVER side of a transfer (hub → xfer_pull). Resolve the fixed sink, reject on a
+// basename COLLISION (never overwrite, no auto-suffix — DECISION 3), else stream
+// GET /xfer/<id> into a TEMP file and atomic-rename to the final basename ONLY on full
+// success (DECISION 3 atomicity). Reports the per-file outcome to the hub via
+// xfer_result (silent). NEVER reads the file fully into memory — Bun's file writer
+// streams the response body chunk-by-chunk.
+async function receiveTransfer(transferId: string, corrId: string, name: string): Promise<void> {
+  const report = (status: "ok" | "rejected" | "failed", detail?: string) =>
+    sendRaw({ t: "xfer_result", corr_id: corrId, transfer_id: transferId, status, ...(detail ? { detail } : {}) });
+
+  const dir = receivedFilesDir();
+  if (!dir) {
+    report("failed", "CLAUDE_PROJECT_DIR is not set; cannot place received file");
+    return;
+  }
+  // Basename defence-in-depth: the hub already enforces a basename, but the receiver is
+  // the last line — never let a name escape the fixed sink.
+  const safe = basename(name);
+  if (!safe || safe === "." || safe === ".." || safe !== name || /[\x00-\x1f]/.test(safe)) {
+    report("failed", `unsafe attachment name '${name}'`);
+    return;
+  }
+  const finalPath = pathJoin(dir, safe);
+  try {
+    mkdirSync(dir, { recursive: true });
+  } catch (e) {
+    report("failed", `cannot create received-files dir: ${String(e)}`);
+    return;
+  }
+  // COLLISION: reject (don't overwrite, don't auto-suffix). The receiver clears the name
+  // and re-approves to retry. This early check gives a clear message BEFORE any bytes
+  // move; the authoritative, race-free collision guard is the atomic `linkSync` claim at
+  // the end (two concurrent receives of the same basename can both pass this check, but
+  // only one `linkSync` wins — see below).
+  if (existsSync(finalPath)) {
+    report("rejected", `'${safe}' already exists in .cache/received-files/; clear it and re-approve`);
+    return;
+  }
+  // Temp file in the SAME dir (so the rename is atomic on one filesystem). On any failure
+  // we remove the temp so a half-written file never lingers and the sink only ever holds
+  // fully-arrived, accepted files.
+  const tmpPath = pathJoin(dir, `.${safe}.${transferId}.part`);
+  try {
+    const resp = await fetch(`${XFER_BASE}/xfer/${encodeURIComponent(transferId)}`, {
+      method: "GET",
+      headers: { authorization: `Bearer ${HUB_TOKEN}` },
+      signal: AbortSignal.timeout(XFER_FETCH_TIMEOUT_MS),
+    });
+    if (!resp.ok || !resp.body) {
+      report("failed", `hub GET /xfer failed (status ${resp.status})`);
+      return;
+    }
+    // Stream the response body to the temp file WITHOUT buffering the whole thing. Bun's
+    // FileSink writes chunk-by-chunk; we await each write for backpressure.
+    const sink = Bun.file(tmpPath).writer();
+    try {
+      const reader = resp.body.getReader();
+      for (;;) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        if (value) {
+          sink.write(value);
+          await sink.flush();
+        }
+      }
+      await sink.end();
+    } catch (e) {
+      try {
+        await sink.end();
+      } catch {
+        /* already ended */
+      }
+      throw e;
+    }
+    // Full success: claim the final basename ATOMICALLY. `linkSync` creates `finalPath`
+    // as a hard link to the fully-written temp and FAILS with EEXIST if the name already
+    // exists — so two concurrent receives of the same basename (distinct transfer_ids)
+    // can both pass the early existsSync check, yet only one link wins; the loser reports
+    // a collision instead of silently overwriting (DECISION 3: never overwrite). We then
+    // unlink the temp so only the final name remains.
+    try {
+      linkSync(tmpPath, finalPath);
+    } catch (e) {
+      if ((e as NodeJS.ErrnoException).code === "EEXIST") {
+        try {
+          unlinkSync(tmpPath);
+        } catch {
+          /* best-effort */
+        }
+        report("rejected", `'${safe}' already exists in .cache/received-files/; clear it and re-approve`);
+        return;
+      }
+      throw e;
+    }
+    try {
+      unlinkSync(tmpPath);
+    } catch {
+      /* the link landed; a leftover temp is harmless best-effort cleanup */
+    }
+    report("ok", finalPath);
+  } catch (e) {
+    // Mid-stream abort / IO error: drop the temp so the sink stays clean.
+    try {
+      if (existsSync(tmpPath)) unlinkSync(tmpPath);
+    } catch {
+      /* best-effort cleanup */
+    }
+    report("failed", `transfer failed: ${e instanceof Error ? e.message : String(e)}`);
+  }
+}
+
+// A streaming fetch body backed by chunked async fs reads. We deliberately do NOT use
+// `Bun.file(path).stream()` here: that path races with the adapter's other concurrent
+// fd activity (e.g. the drainDmReads openSync/closeSync poll) under Bun, corrupting the
+// process fd table and spuriously closing process.stdin — which silently wedges the MCP
+// stdio transport so every later tool call hangs forever while the WS link stays alive.
+// A manual ReadableStream that opens the file once and reads it in chunks via the async
+// FileHandle API streams identically (the whole file is never held in memory) but avoids
+// the buggy Bun.file().stream() fd path. Proven in .cache/repro (filestream wedges,
+// manual-stream does not). The handle is closed on drain, error, or cancel.
+const XFER_READ_CHUNK = 64 * 1024;
+function fileReadableStream(path: string): ReadableStream<Uint8Array> {
+  let handle: Awaited<ReturnType<typeof fsOpen>> | null = null;
+  let pos = 0;
+  return new ReadableStream<Uint8Array>({
+    async pull(controller) {
+      try {
+        if (!handle) handle = await fsOpen(path, "r");
+        const buf = Buffer.allocUnsafe(XFER_READ_CHUNK);
+        const { bytesRead } = await handle.read(buf, 0, XFER_READ_CHUNK, pos);
+        if (bytesRead === 0) {
+          await handle.close();
+          handle = null;
+          controller.close();
+          return;
+        }
+        pos += bytesRead;
+        controller.enqueue(new Uint8Array(buf.buffer, buf.byteOffset, bytesRead));
+      } catch (e) {
+        try {
+          if (handle) await handle.close();
+        } catch {
+          /* best-effort */
+        }
+        handle = null;
+        controller.error(e);
+      }
+    },
+    async cancel() {
+      try {
+        if (handle) await handle.close();
+      } catch {
+        /* best-effort */
+      }
+      handle = null;
+    },
+  });
+}
+
+// SENDER side of a transfer (hub → xfer_push). Look up the abs path we kept locally for
+// this transfer_id (it never crossed the wire), open it read-only and POST /xfer/<id> as
+// a STREAMED body. Never reads the file fully into memory — fileReadableStream chunks it
+// lazily via async fs (see that helper for why NOT Bun.file().stream()). The sender does
+// not report an outcome itself: a POST failure errors the receiver's GET, which the
+// receiver reports. The sender side takes NO corr_id: only the receiver echoes corr_id
+// (on xfer_result) so the hub can fold the outcome into the right approve_files collector.
+// The sender never reports an outcome of its own (a POST failure surfaces as the
+// receiver's GET erroring), so it has nothing to correlate — the hub's xfer_push frame
+// carries corr_id, but this side has no use for it and deliberately does not accept it.
+async function sendTransfer(transferId: string): Promise<void> {
+  const absPath = senderPaths.get(transferId);
+  if (!absPath) {
+    dbg("sendTransfer:no-path", { transferId });
+    return; // stale/unknown push — nothing we can do; the receiver's GET will time out.
+  }
+  try {
+    await fetch(`${XFER_BASE}/xfer/${encodeURIComponent(transferId)}`, {
+      method: "POST",
+      headers: { authorization: `Bearer ${HUB_TOKEN}`, "content-type": "application/octet-stream" },
+      body: fileReadableStream(absPath),
+      // `duplex: "half"` is required by the Fetch spec when sending a ReadableStream body.
+      duplex: "half",
+      // Bound the streamed POST: a half-open hub/receiver would otherwise leave this body
+      // pump parked on the single event loop forever, starving the WS loop and all timers.
+      signal: AbortSignal.timeout(XFER_FETCH_TIMEOUT_MS),
+    } as RequestInit & { duplex: "half" });
+  } catch (e) {
+    // A push failure surfaces on the receiver side (its GET errors); just log here.
+    dbg("sendTransfer:failed", { transferId, err: String(e) });
+  } finally {
+    // Single-use: drop the path once we've attempted the push.
+    senderPaths.delete(transferId);
   }
 }
 
@@ -636,6 +1051,14 @@ async function pushChannel(msg: ChatMessage): Promise<void> {
         // DERIVED author role (only stamped when present). The display hook renders a
         // visible marker for role="human" so a person talking in the room is legible.
         ...(msg.role ? { role: msg.role } : {}),
+        // FILE OFFER (v8): the attachment sidecar, encoded for the display hook as
+        // `<size> <name>` per file (size first so the name — which may contain spaces or
+        // colons — is the unambiguous remainder), files joined by tabs (a tab can't
+        // appear in a basename). The hook renders a "📎 N file(s) offered on seq S"
+        // marker. Omitted for a plain message.
+        ...(msg.attachments && msg.attachments.length
+          ? { attach: msg.attachments.map((x) => `${x.size} ${x.name}`).join("\t") }
+          : {}),
       },
     },
   });
@@ -802,17 +1225,47 @@ async function request(
   toolUseId?: string,
   timeoutMs = 10_000,
 ): Promise<ServerFrame> {
-  await waitReady();
-  return new Promise((resolve, reject) => {
+  // Bound the WHOLE call by a single deadline armed BEFORE `await waitReady()`, so no
+  // request can ever exceed `timeoutMs` regardless of where it stalls (a wedged
+  // waitReady, a lost reply, a half-open socket). The `settled` latch makes the overall
+  // timeout, the reply resolve, and the close-handler reject mutually exclusive — none
+  // can double-settle the promise. This is the contract: every request() resolves,
+  // errors, or times out in bounded time, on every path.
+  return new Promise<ServerFrame>((resolve, reject) => {
     const rid = randomUUID();
-    pending.set(rid, { resolve, reject });
-    sendRaw({ ...frame, rid, ...(toolUseId ? { tool_use_id: toolUseId } : {}) });
-    setTimeout(() => {
-      if (pending.has(rid)) {
-        pending.delete(rid);
-        reject(new Error("hub request timed out"));
-      }
+    let settled = false;
+    const overall = setTimeout(() => {
+      if (settled) return;
+      settled = true;
+      pending.delete(rid);
+      reject(new Error("hub request timed out"));
     }, timeoutMs);
+    void (async () => {
+      try {
+        await waitReady(timeoutMs);
+        if (settled) return; // overall timeout already fired while waiting
+        pending.set(rid, {
+          resolve: (f) => {
+            if (settled) return;
+            settled = true;
+            clearTimeout(overall);
+            resolve(f);
+          },
+          reject: (e) => {
+            if (settled) return;
+            settled = true;
+            clearTimeout(overall);
+            reject(e);
+          },
+        });
+        sendRaw({ ...frame, rid, ...(toolUseId ? { tool_use_id: toolUseId } : {}) });
+      } catch (e) {
+        if (settled) return;
+        settled = true;
+        clearTimeout(overall);
+        reject(e as Error);
+      }
+    })();
   });
 }
 
@@ -872,7 +1325,11 @@ const TOOLS = [
       "the seq of a prior message in this group: the reply is logged for everyone " +
       "but live-pushed ONLY to that message's author (if the author left the group, " +
       "it is logged and you are told where to reach them). For a private message " +
-      "use direct_message instead.",
+      "use direct_message instead. Optional `attach` is a list of file paths to OFFER " +
+      "to the group: the message and the offer go together but NO bytes move yet — a " +
+      "recipient must call approve_files(group, seq) to pull them. Each path must be " +
+      "inside this project's dir (copy external files into .cache first); a path that " +
+      "escapes, is missing, or isn't a regular file errors the whole send.",
     inputSchema: {
       type: "object",
       properties: {
@@ -887,8 +1344,32 @@ const TOOLS = [
           type: "number",
           description: "Seq of a message in this group to reply to (pushes only to its author).",
         },
+        attach: {
+          type: "array",
+          items: { type: "string" },
+          description:
+            "File paths to offer (inside this project dir only). Bytes move only when a " +
+            "recipient calls approve_files. Lands in their .cache/received-files/<basename>.",
+        },
       },
       required: ["group", "message"],
+    },
+  },
+  {
+    name: "approve_files",
+    description:
+      "Approve the file offer carried on a group message's seq (the seq shown in the " +
+      "'📎 N file(s) offered on seq S' marker). ONLY THEN do bytes move: each offered " +
+      "file streams from the sender into your <project>/.cache/received-files/<basename>. " +
+      "Returns a per-file result (which landed, which were rejected for a name collision, " +
+      "which failed). A name collision rejects just that file — clear it and re-approve.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        group: { type: "string" },
+        seq: { type: "number", description: "The seq the offer rode on (from the offer marker)." },
+      },
+      required: ["group", "seq"],
     },
   },
   {
@@ -1091,6 +1572,24 @@ mcp.setRequestHandler(CallToolRequestSchema, async (req, extra) => {
         // reply only to that message's author and warns if they've left.
         const replyTo =
           a.reply_to !== undefined && a.reply_to !== null ? Number(a.reply_to) : undefined;
+        // Optional `attach`: file paths to OFFER. Validate EACH (project-dir confinement,
+        // real path, readable regular file) BEFORE sending — if any fails the whole send
+        // fails (no partial offer). On success we send only name+size per file; the hub
+        // mints a transfer_id per file and returns the offer in the `sent` reply, where we
+        // record transfer_id -> the local absolute path (which never crosses the wire).
+        const attachInputs =
+          Array.isArray(a.attach) && a.attach.length > 0 ? a.attach.map((x) => String(x)) : undefined;
+        const validated: { absPath: string; name: string; size: number }[] = [];
+        if (attachInputs) {
+          for (const raw of attachInputs) {
+            const v = validateAttachPath(raw);
+            if (!v.ok) return text(`Cannot attach ${v.error}`);
+            validated.push({ absPath: v.absPath, name: v.name, size: v.size });
+          }
+        }
+        const attach = validated.length
+          ? validated.map((v) => ({ name: v.name, size: v.size }))
+          : undefined;
         // No handle on the wire: the hub resolves the caller's identity (from the
         // tool_use_id) to its handle in the group and sends AS it. If the identity
         // owns no handle in the group, the hub returns a "join first" error.
@@ -1105,11 +1604,21 @@ mcp.setRequestHandler(CallToolRequestSchema, async (req, extra) => {
               message,
               ...(to ? { to } : {}),
               ...(replyTo !== undefined ? { reply_to: replyTo } : {}),
+              ...(attach ? { attach } : {}),
             },
             toolUseId,
           ),
           "sent",
         );
+        // Record transfer_id -> abs path for each minted attachment, in offer order (the
+        // hub echoes attachments in the same order we sent `attach`). The path is held
+        // ONLY here; the hub later names the transfer_id in xfer_push and we stream it.
+        if (r.attachments && validated.length) {
+          r.attachments.forEach((att: Attachment, i: number) => {
+            const v = validated[i];
+            if (v) recordSenderPath(att.transfer_id, v.absPath);
+          });
+        }
         const readPart =
           r.read.length > 0
             ? `Read by ${r.read.length}: ${r.read.join(", ")}.`
@@ -1122,8 +1631,36 @@ mcp.setRequestHandler(CallToolRequestSchema, async (req, extra) => {
             : "";
         const replyLine = replyTo !== undefined ? ` (reply to seq ${replyTo})` : "";
         const warnPart = r.warning ? `\nNote: ${r.warning}` : "";
+        const offerPart =
+          r.attachments && r.attachments.length
+            ? `\nOffered ${r.attachments.length} file(s): ${r.attachments
+                .map((x: Attachment) => x.name)
+                .join(", ")}. Bytes move when a recipient calls approve_files('${group}', ${r.seq}).`
+            : "";
         return text(
-          `Sent to '${group}' (seq ${r.seq})${replyLine}. ${readPart}${sentPart}${noOthers}${warnPart}`,
+          `Sent to '${group}' (seq ${r.seq})${replyLine}. ${readPart}${sentPart}${noOthers}${warnPart}${offerPart}`,
+        );
+      }
+      case "approve_files": {
+        const group = String(a.group);
+        const seq = Number(a.seq);
+        // The hub runs the rendezvous (pulls bytes sender→hub→here) and replies per-file.
+        const r = expect(
+          await request({ t: "approve_files", group, seq }, toolUseId, APPROVE_FILES_TIMEOUT_MS),
+          "files_approved",
+        );
+        const lines = r.results.map((f) => {
+          if (f.status === "ok") {
+            // detail carries the landed absolute path (received-files/<name>).
+            return `  ✓ ${f.name} -> ${f.detail ?? `.cache/received-files/${f.name}`}`;
+          }
+          if (f.status === "rejected") return `  ✗ ${f.name} rejected: ${f.detail ?? "name collision"}`;
+          return `  ✗ ${f.name} failed: ${f.detail ?? "unknown error"}`;
+        });
+        const okCount = r.results.filter((f) => f.status === "ok").length;
+        return text(
+          `Approved files on '${group}' seq ${seq}: ${okCount}/${r.results.length} landed in ` +
+            `.cache/received-files/.\n${lines.join("\n")}`,
         );
       }
       case "list_members": {

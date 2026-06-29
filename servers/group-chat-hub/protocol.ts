@@ -66,13 +66,29 @@
 // new reserved suffix parallel to `._group`); `admin_subscribe` is honored only on
 // a connection bound to an `._admin` identity. See docs/group-chat-web-frontend.md.
 
-export const PROTOCOL_VERSION = 7;
-// The hub accepts a hello from any client speaking a protocol in this set. v7 is a
-// strict superset of v6 on the wire (additive frames only), so a v6 client — the
-// pre-v7 adapter, the hooks, the test harness — connects unchanged; it simply never
-// sends the v7-only `admin_subscribe`. The check stays an explicit allow-set rather
-// than `>=` so an unknown future/garbage version is still rejected honestly.
-export const ACCEPTED_PROTOCOL_VERSIONS: readonly number[] = [6, 7];
+// v8 adds AGENT-TO-AGENT FILE TRANSFER. It is purely ADDITIVE: every v6/v7 frame is
+// untouched, and the hub still ACCEPTS a v6/v7 hello (so the existing adapter, hooks,
+// tests and web console keep working verbatim) — a pre-v8 client simply never offers
+// or approves files. A sender OFFERS files alongside a normal `submit_message`
+// (`send.attach`); the offer rides on the delivered `message` as `attachments` (name +
+// size metadata only — NO bytes, NO path); a receiver APPROVES by seq (`approve_files`)
+// and the hub replies per-file (`files_approved`). ONLY THEN do bytes move, over a
+// SEPARATE streamed HTTP channel (`/xfer/<transfer_id>` on the hub) — never over this
+// WebSocket. The hub wakes the two adapters with two SILENT control frames
+// (`xfer_pull` → receiver, `xfer_push` → sender) handled WITHOUT an LLM notification,
+// mirroring the inbound `dm_ack` silent-handler shape. The hub is a pure relay: it
+// spools nothing to disk and reads nothing fully into memory. The receiver only ever
+// writes a basename under `<CLAUDE_PROJECT_DIR>/.cache/received-files/`. See
+// docs/group-chat-file-transfer.md.
+
+export const PROTOCOL_VERSION = 8;
+// The hub accepts a hello from any client speaking a protocol in this set. v8 is a
+// strict superset of v6/v7 on the wire (additive frames only), so a v6/v7 client — the
+// pre-v8 adapter, the hooks, the test harness, the web console — connects unchanged; it
+// simply never sends the v8-only `attach`/`approve_files`/`xfer_*`. The check stays an
+// explicit allow-set rather than `>=` so an unknown future/garbage version is still
+// rejected honestly.
+export const ACCEPTED_PROTOCOL_VERSIONS: readonly number[] = [6, 7, 8];
 
 // ---- derived identity role (v7, additive) ---------------------------------
 // The role of WHO is talking, so a receiving instance (and the web UI) can tell a
@@ -85,6 +101,34 @@ export const ACCEPTED_PROTOCOL_VERSIONS: readonly number[] = [6, 7];
 //   "agent"  — every other identity (the unmarked default).
 //   "system" — reserved for a future distinguishing fact (no rule today).
 export type Role = "human" | "agent" | "system";
+
+// ---- file transfer (v8) ---------------------------------------------------
+// The OFFER SIDECAR carried per attachment on a `send`/`message`. Metadata ONLY:
+//   - `transfer_id` is a hub-minted UUID (one per file, single-use), assigned when
+//     the hub processes the `send`. It is the unguessable, hub-owned capability the
+//     /xfer byte channel and the xfer_* control frames key off — NEVER sender-supplied.
+//   - `name` is a BASENAME (the last path component), never a path. It is the only
+//     thing the receiver learns about where the file lives; it lands at
+//     <CLAUDE_PROJECT_DIR>/.cache/received-files/<name>.
+//   - `size` is the file size in bytes, for the rendered offer.
+// The sender's ABSOLUTE PATH is NEVER on the wire — it stays on the sender adapter,
+// keyed by transfer_id, and is only echoed back to that same adapter in `xfer_push`.
+export interface Attachment {
+  transfer_id: string;
+  name: string;
+  size: number;
+}
+
+// The per-file outcome of an `approve_files`, reported in `files_approved`. `status`:
+//   "ok"       — the file streamed in full and atomic-renamed into received-files/.
+//   "rejected" — a name collision (basename already exists) — explicit, recoverable.
+//   "failed"   — a stream/IO error (counterpart offline, aborted mid-stream, etc.).
+export interface FileResult {
+  transfer_id: string;
+  name: string;
+  status: "ok" | "rejected" | "failed";
+  detail?: string;
+}
 
 // ---- adapter -> hub -------------------------------------------------------
 
@@ -104,7 +148,20 @@ export type ClientFrame =
   // `to` = optional MEMBER NAMES to restrict the live push to (still logged for all).
   // `reply_to` = optional seq of a prior message in this group: the reply is logged
   // for all but pushed ONLY to that message's author (or nobody if they left).
-  | { t: "send"; group: string; message: string; to?: string[]; reply_to?: number }
+  // `attach` (v8) = an optional FILE OFFER: per-file `name` (basename) + `size`, which
+  // the sender adapter validated (project-dir confined, readable, regular file) before
+  // sending. The hub MINTS a `transfer_id` per entry and stamps the resulting
+  // `Attachment[]` onto the delivered message as `attachments` — the wire entries carry
+  // NO transfer_id and NO path (the sender keeps the abs path locally, keyed by the
+  // minted id the `sent` reply returns). See docs/group-chat-file-transfer.md.
+  | {
+      t: "send";
+      group: string;
+      message: string;
+      to?: string[];
+      reply_to?: number;
+      attach?: { name: string; size: number }[];
+    }
   | { t: "list_members"; group: string }
   | { t: "show_member"; group: string; member: string }
   | { t: "history"; group: string; last_n: number; index_from_end: number } // pull scrollback
@@ -158,6 +215,25 @@ export type ClientFrame =
   // engaged:true → the adapter nudges. This gate is what separates the two
   // (indistinguishable) fresh-process cases. See docs/group-chat-reconnect-notice.md.
   | { t: "session_engaged"; session_id: string }
+  // ---- file transfer (v8) ----
+  // Approve the file offer carried on group `group`'s message `seq` (the seq the offer
+  // rode on). Identity-gated via `requireIdentity`/`tool_use_id` like every group op;
+  // only a member who RECEIVED the offer may approve it, and an offer is approved once.
+  // The hub then runs the rendezvous (park the receiver's GET, wake the sender's POST)
+  // and replies `files_approved` with the per-file outcome. ONLY this moves bytes.
+  | { t: "approve_files"; group: string; seq: number }
+  // The RECEIVER adapter's outcome for one xfer_pull, sent back to the hub WITHOUT a
+  // reply (a silent control frame, like dm_ack). `corr_id` is the per-transfer token the
+  // hub minted on xfer_pull; the hub matches it to the pending `approve_files` collector
+  // and folds this `status`/`detail` into the `files_approved` result. The SENDER adapter
+  // does NOT report (its POST failing simply errors the receiver's GET, surfaced here).
+  | {
+      t: "xfer_result";
+      corr_id: string;
+      transfer_id: string;
+      status: "ok" | "rejected" | "failed";
+      detail?: string;
+    }
   | { t: "ping" };
 
 // ---- admin event stream (v7) ----------------------------------------------
@@ -275,6 +351,12 @@ export interface ChatMessage {
   role?: Role; // the author's DERIVED role (roleForIdentity of from_identity). Optional
   // for back-compat (old frames omit it); stamped by the hub on every send + history.
   // Surfaces "this message is a human talking" (role==="human") vs an agent peer.
+  attachments?: Attachment[]; // the v8 FILE OFFER sidecar: per-file transfer_id + name
+  // (basename) + size, stamped by the hub when the send carried `attach`. Omitted for a
+  // plain message (a v7 reader that ignores the field renders the message normally). The
+  // display hook renders it as a "📎 N file(s) offered on seq S" marker; the receiver
+  // approves with `approve_files(group, seq)`. NOT persisted/re-derived for history (the
+  // bytes move at most once, on approve — a live-only affordance, like the gap window).
 }
 
 // A group member is DERIVED from a handle `<name>@<group>._group`; there is no
@@ -355,6 +437,11 @@ export type ServerFrame =
       read: string[];
       sent: string[];
       warning?: string;
+      // v8: the minted file offer (transfer_id + name + size per attached file), echoed
+      // back IN THE SAME ORDER the sender's `attach` named them, so the sender adapter can
+      // map each hub-minted transfer_id to the absolute path it kept locally (which never
+      // crossed the wire). Omitted when the send carried no `attach`.
+      attachments?: Attachment[];
     }
   // ---- identity / aliases (v3) ----
   | { t: "aliases"; rid?: string; aliases: string[] } // reply to list_aliases (host-qualified)
@@ -382,6 +469,26 @@ export type ServerFrame =
   // identity via ≥1 group-chat tool call). The adapter fires its reconnect notice
   // only when this is true. `rid` correlates it to the awaiting request.
   | { t: "session_engaged"; rid?: string; session_id: string; engaged: boolean }
+  // ---- file transfer (v8) ----
+  // Reply to `approve_files`: the per-file outcome (which landed, which were rejected
+  // for a name collision, which failed mid-stream). `rid` correlates it to the awaiting
+  // tool call; the tool result renders `results`.
+  | { t: "files_approved"; rid?: string; group: string; seq: number; results: FileResult[] }
+  // The two SILENT control frames (hub → adapter) — handled in `onFrame` WITHOUT an
+  // `mcp.notification`, so they cost no LLM turn (mirrors the inbound dm_ack pattern,
+  // but hub→adapter). The hub references only the transfer_id; the LLM is never told a
+  // transfer is happening.
+  //   xfer_pull → the RECEIVER adapter: open `GET /xfer/<transfer_id>`, stream the body
+  //     to a temp file under .cache/received-files/, atomic-rename to `name` on full
+  //     success (reject if `name` already exists). `corr_id` (the hub's per-transfer
+  //     correlation token) is echoed back on `xfer_result` so the hub matches the result.
+  //   xfer_push → the SENDER adapter: look up its OWN abs path for `transfer_id` (kept
+  //     locally since the offer — the path NEVER reached the hub), open it read-only and
+  //     `POST /xfer/<transfer_id>` as a streamed body. Never reads the file fully into
+  //     memory. The hub carries NO path here (it never had one); the sender adapter is
+  //     the sole holder of the path, keyed by the hub-minted transfer_id.
+  | { t: "xfer_pull"; transfer_id: string; corr_id: string; name: string }
+  | { t: "xfer_push"; transfer_id: string; corr_id: string }
   | { t: "ok"; rid?: string }
   | { t: "pong" };
 
