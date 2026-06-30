@@ -121,6 +121,8 @@ export type ClientFrame =
   | { t: "admin_subscribe" }
   | { t: "join"; group: string; as: string }
   | { t: "leave"; group: string }
+  // PRIVILEGED (._admin only): remove ANOTHER member from a group (the web console kick).
+  | { t: "remove_member"; group: string; name: string }
   | { t: "send"; group: string; message: string; to?: string[]; reply_to?: number }
   | { t: "dm"; to: string; message: string }
   | { t: "register_alias"; name: string }

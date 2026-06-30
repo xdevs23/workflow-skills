@@ -1,9 +1,11 @@
 import { createMemo, For, Show } from "solid-js"
 import { useParams, useNavigate, A } from "@solidjs/router"
 import ArrowLeft from "lucide-solid/icons/arrow-left"
+import UserMinus from "lucide-solid/icons/user-minus"
 import { store } from "../store/store"
 import { membersOf, identityLabel } from "../store/selectors"
 import { selfIdentity } from "../lib/connection"
+import { removeMember } from "../lib/actions"
 import ThreadHead from "../components/thread-head"
 import IconButton from "../components/icon-button"
 import Avatar from "../components/avatar"
@@ -79,7 +81,23 @@ export default function GroupMembers() {
                   {identityLabel(m.owner)} · {m.attached ? "online" : "offline"}
                 </div>
               </div>
-              <Show when={m.owner === selfIdentity()}>
+              <Show when={m.owner === selfIdentity()} fallback={
+                // PRIVILEGED kick: remove this member immediately (no confirm). The row
+                // vanishes when the `member_remove` firehose event echoes back — no
+                // optimistic store mutation. Stops navigation propagation like the DM
+                // button above. Never shown on your own row.
+                <IconButton
+                  danger
+                  title={`Remove ${m.name} from ${group()}`}
+                  onClick={(e) => {
+                    e.preventDefault()
+                    e.stopPropagation()
+                    removeMember(group(), m.name)
+                  }}
+                >
+                  <UserMinus class="w-[1.125rem] h-[1.125rem]" />
+                </IconButton>
+              }>
                 <Pill variant="neutral">you</Pill>
               </Show>
             </A>
