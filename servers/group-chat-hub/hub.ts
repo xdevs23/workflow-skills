@@ -1873,6 +1873,57 @@ function handleFrame(conn: Connection, frame: ClientEnvelope): void {
       return;
     }
 
+    case "remove_member": {
+      // PRIVILEGED kick: drop ANOTHER member's group handle. Modeled on `leave`, but
+      // (1) gated to an `._admin` connection, (2) keyed on the TARGET resolved from
+      // (group, name) rather than the caller, and (3) cleans up EVERY live connection
+      // of the target (an identity may hold many) so it can no longer `send`.
+      const caller = requireIdentity(conn, rid);
+      if (!caller) return;
+      if (!stmt.selectAdminHandleForOwner.get(caller)) {
+        err(conn, "admin_forbidden", "this connection is not bound to an ._admin identity", rid);
+        return;
+      }
+      const handle = `${frame.name}${groupHandleSuffix(frame.group)}`;
+      const row = stmt.selectHandleOwner.get(handle) as HandleRow | null;
+      if (!row) {
+        // already gone — idempotent no-op success (no error, no spurious events).
+        conn.send({ t: "member_removed", rid, group: frame.group, name: frame.name });
+        return;
+      }
+      const target = row.owner_identity;
+      const g = groups.get(frame.group);
+      stmt.deleteHandle.run(handle, target);
+      // Snapshot the target's live connections ONCE: nothing between here and the
+      // eviction-send loop mutates `identityConns` (emitAdmin fans to adminConns), so
+      // both the joinedAs cleanup and the notice send reuse the same array.
+      const live = liveConnsFor(target);
+      // Clear the kicked name from EVERY live connection of the target (leave only
+      // touches the caller's own conn; a kick must clear all so the target can no
+      // longer `send` as a member on any still-open connection).
+      for (const c of live) {
+        const names = c.joinedAs.get(frame.group);
+        if (names) {
+          names.delete(frame.name);
+          if (names.size === 0) c.joinedAs.delete(frame.group);
+        }
+      }
+      if (g) g.delivered.delete(frame.name);
+      // Admin firehose (v7): the SAME three events `leave` emits — the member is gone,
+      // re-upsert the group's member count, re-upsert the target identity (its group
+      // set shrank) — so every subscribed console converges.
+      emitAdmin({ type: "member_remove", group: frame.group, name: frame.name });
+      emitAdmin(groupUpsertEvent(frame.group));
+      emitAdmin(identityUpsertEvent(target));
+      // Online-only notice (decision 2): tell each of the target's live connections it
+      // was evicted; if the target is offline (no live conns), nothing is sent.
+      for (const c of live) {
+        c.send({ t: "evicted", group: frame.group, to_identity: target });
+      }
+      conn.send({ t: "member_removed", rid, group: frame.group, name: frame.name });
+      return;
+    }
+
     case "send": {
       // The hub resolves the sender's handle from the caller's identity — no `as`
       // on the wire. Sending REQUIRES being a member (owning a group handle).

@@ -12,6 +12,12 @@ export function leaveGroup(group: string): void {
   send({ t: "leave", group })
 }
 
+// PRIVILEGED kick: remove another member from a group. The removed member vanishes
+// when the `member_remove` firehose event echoes back — no optimistic store mutation.
+export function removeMember(group: string, name: string): void {
+  send({ t: "remove_member", group, name })
+}
+
 export function sendMessage(
   group: string,
   message: string,
