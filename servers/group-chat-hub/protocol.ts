@@ -144,6 +144,13 @@ export type ClientFrame =
   | { t: "create_group"; group: string } // explicit create (join also auto-creates)
   | { t: "join"; group: string; as: string } // join (or create+join) a group under name `as` (registers the handle <as>@<group>._group owned by the caller's identity)
   | { t: "leave"; group: string } // leave the group: drops the caller identity's <*>@<group>._group handle (unambiguous — one handle per identity per group)
+  // PRIVILEGED (._admin only): drop ANOTHER member's <name>@<group>._group handle.
+  // Mirrors `leave` but keyed on the TARGET member resolved from (group, name), not
+  // the caller's identity. Honored only for a connection that owns an `._admin`
+  // handle (same gate as admin_subscribe); else the hub replies err `admin_forbidden`.
+  // Removing an already-absent member is an idempotent no-op success. See
+  // docs/group-chat-member-removal.md.
+  | { t: "remove_member"; group: string; name: string }
   // The hub resolves the sender's handle from the caller's identity (no `as`).
   // `to` = optional MEMBER NAMES to restrict the live push to (still logged for all).
   // `reply_to` = optional seq of a prior message in this group: the reply is logged
@@ -463,6 +470,18 @@ export type ServerFrame =
   // connection. The `event` envelope keeps the v7 firehose tag-disjoint from every
   // v6 ServerFrame, so a v6 client (which never subscribes) never sees one.
   | { t: "event"; event: AdminEvent }
+  // Reply to a console `remove_member`: the target's group handle was deleted (or was
+  // already gone — idempotent no-op success). `rid` correlates it to the awaiting
+  // console request. The kicked member vanishes from every console via the
+  // `member_remove` firehose event emitted alongside this ack. See
+  // docs/group-chat-member-removal.md.
+  | { t: "member_removed"; rid?: string; group: string; name: string }
+  // hub→adapter: the identity `to_identity` was removed from `group` by a console.
+  // Surface a ONE-SHOT notice into that identity's session(s). `to_identity` is carried
+  // so the adapter's delivery gate drops the frame for a session this adapter doesn't
+  // serve (a subagent's, a superseded resume's) — identical to the `message`/`dm_message`
+  // gate. Sent ONLY to the target's currently-live connections (online-only notice).
+  | { t: "evicted"; group: string; to_identity: string }
   // ---- reconnect-notice engagement pre-flight (v7, additive) ----
   // Reply to the `session_engaged` request: `engaged` is true iff the queried
   // `session_id` has a durable `sessions` row under its MAIN key (it bound an

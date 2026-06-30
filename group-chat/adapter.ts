@@ -814,6 +814,19 @@ function onFrame(frame: ServerFrame): void {
     return;
   }
 
+  if (frame.t === "evicted") {
+    // A console removed this identity from `group`. DELIVERY GATE: drop the notice for
+    // a session this adapter doesn't serve (a subagent's, a superseded resume's) —
+    // identical to the `message`/`dm_message` gate. A kicked member is by definition an
+    // already-engaged, already-subscribed session, so a single push delivers — this
+    // does NOT use the poll-until-acked reconnect-notice machinery.
+    if (!gateAllows(frame.to_identity)) return;
+    pushEvictionNotice(frame.group).catch(() => {
+      /* delivery best-effort; the notice is informational, not state-critical */
+    });
+    return;
+  }
+
   // ---- file transfer (v8): SILENT control frames (no mcp.notification) ----
   // These wake the adapter to move bytes over the /xfer HTTP channel WITHOUT ever
   // surfacing to the LLM — the same silent-handler shape as the inbound dm_ack, but
@@ -1095,6 +1108,30 @@ async function pushAdapterStatus(text: string, corrId?: string): Promise<void> {
     },
   });
   dbg("pushAdapterStatus:after-notification", { corrId });
+}
+
+// Push a ONE-SHOT eviction notice into the session as a <channel> event after a console
+// removed this session from `group`. Mirrors pushAdapterStatus (a local, hub-independent
+// `notifications/claude/channel` push) with a distinct `notice="group-removed"` meta and
+// `role="system"`, so it can never be mistaken for peer chatter (it carries no `seq` or
+// `dm="1"` field, so the display hook never banners it; the `group` field IS present and
+// intentional — it tells the model which group it was removed from). It is purely informational: it states that
+// this session was removed and will no longer receive or post that group's messages.
+async function pushEvictionNotice(group: string): Promise<void> {
+  await mcp.notification({
+    method: "notifications/claude/channel",
+    params: {
+      content:
+        `You were removed from the group-chat group '${group}' by a console. ` +
+        `This session will no longer receive its messages and can no longer post to it.`,
+      meta: {
+        notice: "group-removed",
+        role: "system",
+        group,
+        ts: new Date().toISOString(),
+      },
+    },
+  });
 }
 
 // Push a DIRECT message into the session as a <channel> event, distinctly marked
