@@ -18,6 +18,12 @@ export function removeMember(group: string, name: string): void {
   send({ t: "remove_member", group, name })
 }
 
+// PRIVILEGED: delete an entire group (console only). The group + its members + thread
+// vanish when the `group_remove` firehose event echoes back — no optimistic mutation.
+export function deleteGroup(group: string): void {
+  send({ t: "delete_group", group })
+}
+
 export function sendMessage(
   group: string,
   message: string,

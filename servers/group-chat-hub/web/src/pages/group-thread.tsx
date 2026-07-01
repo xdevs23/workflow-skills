@@ -3,11 +3,12 @@ import { useParams, useNavigate } from "@solidjs/router"
 import SearchIcon from "lucide-solid/icons/search"
 import Users from "lucide-solid/icons/users"
 import LogOut from "lucide-solid/icons/log-out"
+import Trash2 from "lucide-solid/icons/trash-2"
 import { selfIdentity } from "../lib/connection"
 import { store } from "../store/store"
 import { memberKey } from "../store/types"
 import { groupMessages, membersOf, joinedGroups } from "../store/selectors"
-import { sendMessage, leaveGroup, joinGroup } from "../lib/actions"
+import { sendMessage, leaveGroup, joinGroup, deleteGroup } from "../lib/actions"
 import ThreadHead from "../components/thread-head"
 import IconButton from "../components/icon-button"
 import MessageList from "../components/message-list"
@@ -62,6 +63,20 @@ export default function GroupThread() {
     }
   }
 
+  // PRIVILEGED group delete (console only): drop the group, all members, and its entire
+  // history for everyone. The group + thread vanish when the `group_remove` firehose
+  // event echoes back — server-authoritative, no optimistic store mutation.
+  function confirmDelete() {
+    if (
+      confirm(
+        `Delete “${group()}” for everyone? This removes the group, all members, and its entire message history. This cannot be undone.`,
+      )
+    ) {
+      deleteGroup(group())
+      navigate("/")
+    }
+  }
+
   return (
     <Show
       when={store.groups[group()]}
@@ -88,6 +103,9 @@ export default function GroupThread() {
             </Show>
             <IconButton title="Search in chat">
               <SearchIcon class="w-[1.125rem] h-[1.125rem]" />
+            </IconButton>
+            <IconButton danger title="Delete group" onClick={confirmDelete}>
+              <Trash2 class="w-[1.125rem] h-[1.125rem]" />
             </IconButton>
           </>
         }
