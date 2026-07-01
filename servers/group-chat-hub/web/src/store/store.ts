@@ -75,6 +75,21 @@ export function applyEvent(event: AdminEvent): void {
       )
       return
     }
+    case "group_remove": {
+      // The whole group is gone: drop it, every member scoped to it, and its thread in
+      // ONE produce so no dangling reference breaks a selector (the group-level sibling
+      // of member_remove). The console's own `self.groups` shrinks via the per-owner
+      // identity_upsert the hub emits alongside, so joinedGroups drops it reactively too.
+      setStore(
+        produce((s) => {
+          delete s.groups[event.name]
+          for (const key of Object.keys(s.members))
+            if (s.members[key]?.group === event.name) delete s.members[key]
+          delete s.threads[event.name]
+        }),
+      )
+      return
+    }
     case "message_append": {
       const msg = event.msg
       setStore(

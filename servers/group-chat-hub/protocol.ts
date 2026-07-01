@@ -151,6 +151,13 @@ export type ClientFrame =
   // Removing an already-absent member is an idempotent no-op success. See
   // docs/group-chat-member-removal.md.
   | { t: "remove_member"; group: string; name: string }
+  // PRIVILEGED (._admin only): delete an ENTIRE group — its groups row, every
+  // <name>@<group>._group handle, all its messages, and its in-memory Group. The
+  // group-level sibling of remove_member. Honored only for a connection that owns an
+  // `._admin` handle (same gate as admin_subscribe); else the hub replies err
+  // `admin_forbidden`. Deleting an absent group is an idempotent no-op success. See
+  // docs/group-chat-group-deletion.md.
+  | { t: "delete_group"; group: string }
   // The hub resolves the sender's handle from the caller's identity (no `as`).
   // `to` = optional MEMBER NAMES to restrict the live push to (still logged for all).
   // `reply_to` = optional seq of a prior message in this group: the reply is logged
@@ -296,6 +303,16 @@ export interface MemberRemove {
   name: string;
 }
 
+// A group was deleted: remove the whole group — its entry, all its members, and its
+// thread — from the store. The group-level sibling of MemberRemove. Emitted ONCE per
+// delete_group (the client folds the whole group's removal in one mutation), so a
+// delete does NOT additionally emit per-member member_remove events. Idempotent:
+// removing an absent group is a no-op for the client.
+export interface GroupRemove {
+  type: "group_remove";
+  name: string;
+}
+
 // A group message. Carries the full `ChatMessage` (which already names its group).
 // Append/upsert keyed by `(group, seq)`. Emitted for EVERY group message — every
 // group, regardless of whether the admin identity is a member — and in the snapshot
@@ -337,6 +354,7 @@ export type AdminEvent =
   | GroupUpsert
   | MemberUpsert
   | MemberRemove
+  | GroupRemove
   | MessageAppend
   | DmAppend
   | Presence
@@ -476,6 +494,12 @@ export type ServerFrame =
   // `member_remove` firehose event emitted alongside this ack. See
   // docs/group-chat-member-removal.md.
   | { t: "member_removed"; rid?: string; group: string; name: string }
+  // Reply to a console `delete_group`: the group was deleted — its groups row, every
+  // member handle, and all its messages dropped (or the group was already gone —
+  // idempotent no-op success). `rid` correlates it to the awaiting console request.
+  // The group vanishes from every console via the `group_remove` firehose event
+  // emitted alongside this ack. See docs/group-chat-group-deletion.md.
+  | { t: "group_deleted"; rid?: string; group: string }
   // hub→adapter: the identity `to_identity` was removed from `group` by a console.
   // Surface a ONE-SHOT notice into that identity's session(s). `to_identity` is carried
   // so the adapter's delivery gate drops the frame for a session this adapter doesn't
