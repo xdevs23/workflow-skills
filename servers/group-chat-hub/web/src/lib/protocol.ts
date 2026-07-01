@@ -68,6 +68,11 @@ export interface MemberRemove {
   name: string
 }
 
+export interface GroupRemove {
+  type: "group_remove"
+  name: string
+}
+
 export interface MessageAppend {
   type: "message_append"
   msg: ChatMessage
@@ -93,6 +98,7 @@ export type AdminEvent =
   | GroupUpsert
   | MemberUpsert
   | MemberRemove
+  | GroupRemove
   | MessageAppend
   | DmAppend
   | Presence
@@ -123,6 +129,8 @@ export type ClientFrame =
   | { t: "leave"; group: string }
   // PRIVILEGED (._admin only): remove ANOTHER member from a group (the web console kick).
   | { t: "remove_member"; group: string; name: string }
+  // PRIVILEGED (._admin only): delete an ENTIRE group (the web console group delete).
+  | { t: "delete_group"; group: string }
   | { t: "send"; group: string; message: string; to?: string[]; reply_to?: number }
   | { t: "dm"; to: string; message: string }
   | { t: "register_alias"; name: string }

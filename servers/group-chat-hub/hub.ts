@@ -505,6 +505,13 @@ const stmt = {
   selectAdminHandleForOwner: db.query(
     "SELECT handle FROM handles WHERE owner_identity = ? AND handle LIKE '%.\\_admin' ESCAPE '\\' LIMIT 1",
   ),
+  // Group deletion (the console `delete_group`): drop every `%@<group>._group` handle
+  // (the escaped-LIKE group pattern `membersOf` uses), every message row for the group,
+  // and the group row itself. Run together in `deleteGroupTx` so a crash can't leave a
+  // group row without its handles (or vice-versa). See docs/group-chat-group-deletion.md.
+  deleteGroupHandles: db.query("DELETE FROM handles WHERE handle LIKE ? ESCAPE '\\'"),
+  deleteGroupMessages: db.query("DELETE FROM messages WHERE group_name = ?"),
+  deleteGroupRow: db.query("DELETE FROM groups WHERE name = ?"),
   insertMessage: db.query(
     "INSERT INTO messages (group_name, seq, from_handle, ts, msg_id, text, from_identity, reply_to) " +
       "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
@@ -666,6 +673,18 @@ const assignAndInsertDm = db.transaction(
     return seq;
   },
 );
+
+// Delete an ENTIRE group's durable state in ONE transaction (the console
+// `delete_group`): every `%@<group>._group` handle, every message row, and the group
+// row. Atomic so a crash mid-delete can't leave a group row without its handles (or
+// vice-versa). Modeled on the seq-assign transactions above. In-memory cleanup
+// (`groups.delete`, `joinedAs`, the firehose, the online notices) happens in the
+// handler AFTER this commits. See docs/group-chat-group-deletion.md.
+const deleteGroupTx = db.transaction((group: string): void => {
+  stmt.deleteGroupHandles.run(groupHandlePattern(group));
+  stmt.deleteGroupMessages.run(group);
+  stmt.deleteGroupRow.run(group);
+});
 
 // ---------------------------------------------------------------------------
 // In-memory live view. Rebuilt from the DB on startup; transient connection
@@ -1921,6 +1940,62 @@ function handleFrame(conn: Connection, frame: ClientEnvelope): void {
         c.send({ t: "evicted", group: frame.group, to_identity: target });
       }
       conn.send({ t: "member_removed", rid, group: frame.group, name: frame.name });
+      return;
+    }
+
+    case "delete_group": {
+      // PRIVILEGED group delete: drop an ENTIRE group — its groups row, every member
+      // handle, all its messages, and its in-memory Group. The group-level sibling of
+      // remove_member: (1) gated to an `._admin` connection, (2) keyed on the group,
+      // (3) cleans up EVERY live connection of EVERY member so none can still `send`.
+      const caller = requireIdentity(conn, rid);
+      if (!caller) return;
+      if (!stmt.selectAdminHandleForOwner.get(caller)) {
+        err(conn, "admin_forbidden", "this connection is not bound to an ._admin identity", rid);
+        return;
+      }
+      // `groups` mirrors the durable table (recoverGroups loads it, getOrCreateGroup
+      // keeps it in sync, nothing else deletes from it), so it is the authoritative
+      // liveness check: an absent group is an idempotent no-op success (no error, no
+      // events), matching how remove_member treats an already-gone handle.
+      if (!groups.has(frame.group)) {
+        conn.send({ t: "group_deleted", rid, group: frame.group });
+        return;
+      }
+      // Snapshot membership + each owner's live connections ONCE, BEFORE deleting:
+      // nothing between here and the notice loop mutates `handles`/`identityConns`
+      // (emitAdmin fans to adminConns), so the joinedAs cleanup, the per-owner
+      // identity_upsert, and the online notices all reuse the same snapshots.
+      const members = membersOf(frame.group);
+      const owners = new Set(members.map((m) => m.owner));
+      const liveByOwner = new Map<string, Connection[]>();
+      for (const owner of owners) liveByOwner.set(owner, liveConnsFor(owner));
+      // Delete durable state atomically, then the in-memory Group (its window + cursors).
+      deleteGroupTx(frame.group);
+      groups.delete(frame.group);
+      // Clear the group key from EVERY live connection of EVERY member (the whole
+      // group is gone, not just one name), so no still-open member connection can
+      // `send` to the dead group.
+      for (const owner of owners) {
+        for (const c of liveByOwner.get(owner)!) c.joinedAs.delete(frame.group);
+      }
+      // Admin firehose (v7): ONE group_remove carries the whole group's removal (the
+      // client folds group + members + thread in one mutation), then one
+      // identity_upsert per DISTINCT former owner (each member's group set shrank). Do
+      // NOT emit group_upsert (the group no longer exists) nor per-member member_remove
+      // (subsumed by group_remove).
+      emitAdmin({ type: "group_remove", name: frame.group });
+      for (const owner of owners) emitAdmin(identityUpsertEvent(owner));
+      // Online-only notice (decision 4): tell each member's live connections it was
+      // removed; offline members (no live conns) are told nothing. Reuses the kick's
+      // `evicted` frame verbatim — a deleted group's members are removed exactly as a
+      // kick removes one.
+      for (const m of members) {
+        for (const c of liveByOwner.get(m.owner)!) {
+          c.send({ t: "evicted", group: frame.group, to_identity: m.owner });
+        }
+      }
+      conn.send({ t: "group_deleted", rid, group: frame.group });
       return;
     }
 
