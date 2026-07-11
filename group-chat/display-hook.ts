@@ -417,7 +417,11 @@ function main(): void {
   // reset chat (head below saved) re-bases DOWN to the new epoch's head.
   saveSeen(sessionId, mergeSeen(seen, head));
 
-  const banners = fresh.map(box).join("\n");
+  // Blank line BETWEEN cards: a card ends in a blockquote, and a lone '\n' would
+  // put the next card's header on the line right after a '> ' line — GFM lazy
+  // continuation then absorbs that header INTO the previous quote (it renders
+  // glued to the end of the prior message). The blank line terminates the quote.
+  const banners = fresh.map(box).join("\n\n");
   emit(`${banners}\n\n${assistantText}`);
 }
 
