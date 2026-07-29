@@ -1,6 +1,6 @@
 ---
 name: audit-loop
-description: Continuously audit a codebase through a fixed library of independent lenses (separation of concerns, abstraction quality, code smell, type safety, cleanliness, missing gaps, domain leakage, type smearing), adversarially verify each finding, and append confirmed findings to a living AUDIT.md — deduplicated, never overwritten. Designed to run forever via /loop so the audit accumulates in the background while implementation and discussion happen, then everything can be fixed in one sweep. Read-only; it finds and records, it never fixes.
+description: Continuously audit a codebase through a fixed library of independent lenses (separation of concerns, abstraction quality, code smell, type safety, cleanliness, missing gaps, domain leakage, type smearing), adversarially verify each finding, and append confirmed findings to a living AUDIT.md — deduplicated against everything seen (entries plus a Refuted ledger), never overwritten. Designed to run forever via /loop so the audit accumulates in the background while implementation and discussion happen, then everything can be fixed in one sweep. Read-only; it finds and records, it never fixes.
 ---
 
 # Audit Loop — never-ending, lens-based, append-only audit into AUDIT.md
@@ -20,9 +20,12 @@ record agent inside the round's own Record phase**, so the **root agent never ha
 It only receives a one-line summary back and stays focused on steering implementation. `AUDIT.md` is a
 side effect that accumulates in the background, tackled later.
 
-It is **read-only and append-only**: each round may only *add* new, verified, non-duplicate findings to
-`AUDIT.md`. It never edits source, and never rewrites or deletes existing AUDIT entries (except to mark
-them, see Reconciliation). It does not fix anything — fixing is a separate, explicit step.
+It is **read-only and append-only**: each round may only *add* to `AUDIT.md` — new verified
+non-duplicate findings as entries, and the claims the verifier killed as one-line entries in a
+separate `## Refuted` ledger so they are never rediscovered. It never edits source, and never
+rewrites or deletes existing AUDIT entries — the ONE permitted in-place edit is marking a stale
+entry `~~resolved?~~` when its `file:line` no longer exists, which adds a marker and rewrites
+nothing. It does not fix anything — fixing is a separate, explicit step.
 
 ## How it runs continuously
 
@@ -50,21 +53,42 @@ task.
 2. **One lens per agent, fixed library.** Spawn the eight lens subagents below, each auditing the whole
    tree through ONLY its lens. No agent does general review; redundant single-lens depth is the point.
 3. **Adversarially verify before recording.** A raw lens finding is a hypothesis. Each finding is
-   independently verified (refute-by-default) before it may enter `AUDIT.md`. Unconfirmed findings are
-   dropped, not recorded.
-4. **Append-only, deduplicated.** Confirmed findings are *appended* to `AUDIT.md` (default
-   `./.claude/workflow-skills/AUDIT.md`, project-local; elsewhere only on explicit request). Before appending, read the existing
-   `AUDIT.md` and drop any finding already present (same lens + same location + same normalized claim).
-   The file only grows with genuinely new findings; it is never overwritten.
-5. **Evidence mandatory.** Every recorded finding carries a real `file:line` and quoted code. No bare
+   independently verified (refute-by-default) before it may enter `AUDIT.md` as a finding.
+   Unconfirmed findings never become entries — they go to the Refuted ledger instead (principle 5).
+4. **Append-only, deduplicated against everything SEEN.** Confirmed findings are *appended* to
+   `AUDIT.md` (default `./.claude/workflow-skills/AUDIT.md`, project-local; elsewhere only on
+   explicit request). Before appending, read the existing `AUDIT.md` and drop any finding already
+   present under the dedupe key — **same lens + same file (line-number drift within a symbol is
+   ignored) + same normalized claim** — checking that key against **both the confirmed entries AND
+   the Refuted ledger**. The file only grows with genuinely new findings; it is never overwritten.
+   The record agent owns this check and is authoritative; the lenses get the same file as an
+   advisory pre-filter (below) purely to save verification cost.
+5. **Refuted findings are recorded, not forgotten.** A finding the verifier killed goes into a
+   separate, clearly-marked **`## Refuted`** ledger in `AUDIT.md` (lens + file + normalized claim).
+   Dedupe against SEEN, not against CONFIRMED — otherwise every judge-rejected finding is
+   rediscovered, re-verified and re-rejected every single round, forever, and the audit never
+   converges. The ledger is append-only like everything else. Because a lens that never sees the
+   ledger keeps *rediscovering* what it stops *re-recording*, each lens is also told to read
+   `AUDIT.md` and skip claims already adjudicated under its own lens — an advisory pre-filter that
+   spends the ledger where the cost actually is (verification), with the record agent's check still
+   the authority. It does not narrow the sweep: the lens still reads the whole tree (principle 1),
+   it just declines to re-report a claim already judged.
+6. **Evidence mandatory.** Every recorded finding carries a real `file:line` and quoted code. No bare
    assertions.
-6. **Explicit models on every agent.** Lens auditors, verifiers, and the record agent are all
+7. **Explicit models on every agent.** Lens auditors, verifiers, and the record agent are all
    **sonnet** (review/research floor; the record agent does mechanical dedup/append, not coding, so
    sonnet is right). Never haiku. Never rely on an inherited/default model. (There is no fix stage; if
    you later add one, that stage is opus.)
-7. **Read-only on source; one writer for the log.** No agent edits source code. The only write is the
+8. **FAIL-FAST.** An agent returning null or a structurally sub-minimal result retries the SAME agent
+   (3 attempts total), then the WORKFLOW THROWS. This binds EVERY stage, verification included: a
+   verdict that silently vanishes is an unaudited finding. Never let an empty result flow on — a record
+   agent handed an empty verified set "succeeds" vacuously and the round silently audits nothing. An
+   *empty findings list from a clean lens* is a valid result and is not a failure; a null or malformed
+   return is.
+9. **Read-only on source; one writer for the log.** No agent edits source code. The only write is the
    append to `AUDIT.md`, performed by exactly one record agent in the Record phase — never by the root
-   agent and never by a lens/verifier agent.
+   agent and never by a lens/verifier agent. Lenses may READ the log (the pre-filter above); reading
+   is not writing, and there is still exactly one writer.
 
 ## The eight lenses (bundled subagents)
 
@@ -107,41 +131,81 @@ const ROUND_DATE = args?.date ?? 'undated'; // pass today's date in via Workflow
 
 const FINDINGS_SCHEMA = { /* { findings: [{ lens, file, line, claim, evidence, severity }] } */ };
 const VERDICT_SCHEMA  = { /* { real: boolean, reason, evidence } */ };
-const SUMMARY_SCHEMA  = { /* { new_count, dup_count, total, by_lens: {lens: n} } */ };
+const SUMMARY_SCHEMA  = { /* { new_count, dup_count, refuted_count, total, by_lens: {lens: n} } */ };
+
+// FAIL-FAST: retry the same agent on a null/malformed result (3 attempts), then throw.
+// An empty findings list is a VALID result and must not trigger this.
+async function robust(prompt, opts, ok) {
+  for (let i = 0; i < 3; i++) {
+    const r = await agent(prompt, opts);
+    if (r && ok(r)) return r;
+    log('sub-minimal result from ' + opts.label + ', retry ' + (i + 1));
+  }
+  throw new Error('FAIL-FAST: ' + opts.label + ' returned no usable result after 3 attempts');
+}
 
 const auditPrompt = lens =>
   `Audit the ENTIRE codebase as-is through your single lens only. Do NOT skip files as "work in ` +
   `progress" — audit reality. Every finding needs a real file:line and quoted code. Return structured ` +
-  `findings; return an empty list if the tree is clean on your lens. Read-only.`;
+  `findings; return an empty list if the tree is clean on your lens. Read-only.\n` +
+  `Pre-filter: read \`${AUDIT_PATH}\` if it exists and do NOT re-report a claim already recorded ` +
+  `under your lens — in a round entry OR in the "## Refuted" ledger. Still read the whole tree; ` +
+  `you are only declining to re-raise a claim already judged. The record agent's dedupe is the ` +
+  `authority — this only saves you and the verifier the round-trip.`;
 
 // Phases 1+2: audit then verify, per-lens pipeline (no barrier).
-const verified = (await pipeline(
+// FAIL-FAST binds verification too: parallel() turns a thrown robust() into null,
+// so re-raise on any null rather than filtering it away — a vanished verdict is an
+// unaudited finding, and the round would otherwise "succeed" having judged nothing.
+const judged = (await pipeline(
   LENSES,
-  lens => agent(auditPrompt(lens), { agentType: lens, model: 'sonnet', label: `audit:${lens}`, phase: 'Audit', schema: FINDINGS_SCHEMA }),
+  lens => robust(auditPrompt(lens), { agentType: lens, model: 'sonnet', label: `audit:${lens}`, phase: 'Audit', schema: FINDINGS_SCHEMA }, r => Array.isArray(r.findings)),
   (review, lens) => parallel((review?.findings ?? []).map(f => () =>
-    agent(
+    robust(
       `Adversarially verify this ${lens} finding. Default to real=false unless the evidence clearly ` +
       `holds against the actual code. Finding: ${f.claim} @ ${f.file}:${f.line}. Evidence: ${f.evidence}`,
-      { agentType: lens, model: 'sonnet', label: `verify:${f.file}:${f.line}`, phase: 'Verify', schema: VERDICT_SCHEMA }
-    ).then(v => ({ ...f, verdict: v }))
-  ))
-)).flat().filter(Boolean).filter(f => f.verdict?.real);
+      { agentType: lens, model: 'sonnet', label: `verify:${f.file}:${f.line}`, phase: 'Verify', schema: VERDICT_SCHEMA },
+      v => typeof v.real === 'boolean'
+    ).then(v => ({ ...f, lens, verdict: v })) // stamp the lens here; the auditor is not asked to fill it
+  )).then(vs => {
+    if (vs.some(v => !v)) throw new Error(`FAIL-FAST: lost a ${lens} verdict`);
+    return vs;
+  })
+)).flat();
+
+// Both halves are recorded: confirmed findings become entries, refuted ones become
+// ledger lines. Dedupe is against SEEN (entries + ledger), never against CONFIRMED
+// alone — otherwise a judge-rejected finding is rediscovered every round forever.
+const verified = judged.filter(f => f.verdict.real);
+const refuted  = judged.filter(f => !f.verdict.real)
+  .map(f => ({ lens: f.lens, file: f.file, claim: f.claim, reason: f.verdict.reason }));
 
 // Phase 3: ONE record agent (agentType:'record') owns AUDIT.md. Its append-only /
 // dedupe / never-rewrite RULES live VERBATIM in agents/record.md; the string below
 // is ONLY the appended task context (the path, the round heading, the findings).
 // The root agent never touches AUDIT.md, never sees findings.
-const summary = await agent(
+const summary = await robust(
   `Audit log path: \`${AUDIT_PATH}\` (relative to the project root — NEVER ~/.claude); ` +
-  `create it with an "# Audit Log" header, making parent dirs, if absent.\n` +
+  `create it with an "# Audit Log" header plus an empty "## Refuted" section, making parent ` +
+  `dirs, if absent.\n` +
   `Dedupe key: lens + file + normalized-claim (lowercase, collapse whitespace, ignore ` +
-  `line-number drift within the same symbol). If a previously recorded finding's file:line ` +
-  `no longer exists, mark it \`~~resolved?~~\` in place — never delete or rewrite history.\n` +
-  `Append genuinely-new findings under a dated heading "## Round — ${ROUND_DATE}", grouped by ` +
-  `lens, each as: - [SEVERITY] \`file:line\` — claim. Evidence: \`quoted code\`.\n` +
+  `line-number drift within the same symbol). Check that key against EVERYTHING SEEN — the ` +
+  `recorded round entries AND the "## Refuted" ledger — not just the confirmed entries. A ` +
+  `finding already in the ledger is a duplicate and is dropped silently.\n` +
+  `If a previously recorded finding's file:line no longer exists, mark that entry ` +
+  `\`~~resolved?~~\` in place — the ONE permitted in-place edit, and never on a ledger line. ` +
+  `Nothing is ever deleted or reworded.\n` +
+  `Add genuinely-new CONFIRMED findings under a dated heading "## Round — ${ROUND_DATE}", ` +
+  `grouped by lens, each as: - [SEVERITY] \`file:line\` — claim. Evidence: \`quoted code\`. ` +
+  `INSERT that heading ABOVE the "## Refuted" ledger, not at end-of-file.\n` +
+  `Append genuinely-new REFUTED findings to the "## Refuted" ledger, which stays the LAST ` +
+  `section, each as: - <lens> \`file\` — normalized claim (refuted ${ROUND_DATE}: reason). The ` +
+  `ledger exists so a judge-rejected finding is not rediscovered; it is append-only too.\n` +
   `Return ONLY the structured summary (counts).\n\n` +
-  `Confirmed findings this round (JSON): ${JSON.stringify(verified)}`,
-  { model: 'sonnet', agentType: 'record', label: 'record:AUDIT.md', phase: 'Record', schema: SUMMARY_SCHEMA }
+  `Confirmed findings this round (JSON): ${JSON.stringify(verified)}\n` +
+  `Refuted findings this round (JSON): ${JSON.stringify(refuted)}`,
+  { model: 'sonnet', agentType: 'record', label: 'record:AUDIT.md', phase: 'Record', schema: SUMMARY_SCHEMA },
+  r => typeof r.total === 'number'
 );
 
 return summary; // one-line-summary material; root surfaces it and moves on
@@ -153,7 +217,7 @@ The record agent has already done all consolidation **inside** the Workflow. The
 is to surface the returned summary as **one line** and get straight back to whatever it was steering:
 
 ```
-→ audit round: <new_count> new (<by_lens>), <dup_count> dup skipped, <total> total in AUDIT.md
+→ audit round: <new_count> new (<by_lens>), <dup_count> dup skipped, <refuted_count> refuted, <total> total in AUDIT.md
 ```
 
 Do **not** read, dedup, or append to `AUDIT.md` from the root agent — that is the record agent's
@@ -174,7 +238,8 @@ file is the artifact; the root stays focused on implementation.
 
 ```markdown
 # Audit Log
-Living, append-only. Findings are verified before entry and deduplicated across rounds. Read-only audit;
+Living, append-only. Findings are verified before entry and deduplicated across rounds against
+EVERYTHING SEEN — the round entries below AND the Refuted ledger at the end. Read-only audit;
 fixing is a separate, deliberate sweep.
 
 ## Round — <date>
@@ -182,7 +247,20 @@ fixing is a separate, deliberate sweep.
 - [HIGH] `src/foo.ts:42` — Persistence mixed into domain handler. Evidence: `db.query(...)` inside `placeOrder`.
 ### type-smearing
 - [MED] `src/dispatch.ts:88` — Generic `handle(x)` does `instanceof Order`. Evidence: `if (x instanceof Order)`.
+
+## Refuted
+Findings the verifier killed. Recorded ONLY so they are not rediscovered every round — they are not
+problems. Append-only; never promoted, never deleted.
+- code-smell `src/foo.ts` — placeOrder is too long (refuted <date>: 31 lines, within house limit).
+- type-safety `src/dispatch.ts` — handle() takes any (refuted <date>: signature is generic, not any).
 ```
+
+The `## Refuted` section is always the LAST section and grows in place; each new round heading is
+inserted ABOVE it, never at end-of-file — otherwise the round lands inside the ledger and the next
+round's dedupe cannot parse either half. Both halves share one dedupe key (lens + file + normalized
+claim, line-number drift ignored), so a claim that appears in either is a duplicate. Entries carry
+`file:line` and ledger lines carry `file` alone; the key deliberately matches on `file` so the two
+halves cross-match.
 
 ## Exit criteria
 
@@ -190,3 +268,16 @@ There is no natural exit — that's the design. The loop runs until the user sto
 leaves `AUDIT.md` a little more complete. When the user wants to act, they fix everything in `AUDIT.md`
 in one sweep (a separate step — `implement-review-verify` pairs well for that), then can clear or archive
 the file.
+
+**Loop-until-dry (the principle behind the dedupe rule).** A bounded discovery loop stops after K
+consecutive rounds with ZERO NEW findings. It converges only because dedupe is against everything
+SEEN: if refuted findings are dropped rather than recorded, every round rediscovers them, "new
+findings" never hits zero, and the loop cannot terminate. This audit is deliberately never-ending, so
+it has no K — but the same dedupe rule is what stops it re-recording, and (via the lens pre-filter)
+re-verifying, the same dead claims forever, and it is why the Refuted ledger exists. Use
+loop-until-dry when you want a *bounded* audit of a fixed scope; use this skill as-is when you want
+a standing background sweep.
+
+> **Cache-busting on resume:** a resumed run replays cached results for identical (prompt, opts). To
+> re-run one poisoned stage, edit only that stage's prompt or label; never edit a shared constant to
+> fix one stage — it is embedded in every prompt, so every key busts and the whole round re-executes.
