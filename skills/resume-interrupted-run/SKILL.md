@@ -43,7 +43,9 @@ Its path is returned at launch, under the session's `subagents/workflows/<runId>
 `journal.jsonl` (the cached results — one result line per completed agent) plus, per spawned agent,
 an `agent-<id>.jsonl` transcript and a matching `agent-<id>.meta.json`. The meta file carries the agent
 type, the model and a spawn depth. Read the journal first: it is the evidence of which seats completed,
-so a seat holding a transcript with no result line against it is the one to treat as interrupted.
+so a seat holding a transcript with no result line against it is the one to treat as interrupted. A
+result line that is itself EMPTY is a different case: that seat COMPLETED, and no prompt edit will make
+it replay as anything else — see the boundary section at the end of this file.
 
 ### 2. Map transcripts to seats — meta narrows, the transcript head decides
 
@@ -154,9 +156,9 @@ Two different failures, two different fixes:
 
 - **Interrupted** (this skill): no cached result exists, so the prompt may be edited freely and the
   edit costs nothing. The fix is a resume note.
-- **Completed with a bad result**: the bad result **is cached** and will replay verbatim on resume, so
-  fixing the underlying cause and re-invoking changes nothing. The fix is a deliberate cache-bust of
-  that single stage.
+- **Completed with a bad result — an EMPTY journaled result included**: the bad result **is cached**
+  and will replay verbatim on resume, so fixing the underlying cause and re-invoking changes nothing.
+  The fix is a deliberate cache-bust of that single stage.
 
 The cache-bust case is already covered — see `implement-review-verify`, law 5 (*Cache-busting on
 resume*) and its *Resume corollaries*. Do not re-derive it here; the two paths share only the journal
