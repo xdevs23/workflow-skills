@@ -871,6 +871,9 @@ instantly and re-runs the rest.
   edit, never a re-invoke.
 - Before diagnosing a weird resume, READ THE JOURNAL (one result line per agent): a cached result
   can itself be empty, and that is a very different bug from a stage that never ran.
+- If the run was stopped while agents were still MID-FLIGHT, those seats have no cached result and a
+  plain resume restarts them from zero. Recovering their work is a different procedure — see the
+  **resume-interrupted-run** skill.
 
 ### Determinism
 

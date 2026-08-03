@@ -1,7 +1,7 @@
 {
   "name": "workflow-skills",
-  "version": "0.5.0",
-  "description": "Multi-agent workflow skills (research/verify/audit loops, copywriting) plus a library of pinned audit-lens subagents and workflow seats.",
+  "version": "0.6.0",
+  "description": "Multi-agent workflow skills (research/verify/audit loops, copywriting, interrupted-run recovery) plus a library of pinned audit-lens subagents and workflow seats.",
   "author": {
     "name": "xdevs23",
     "url": "https://github.com/xdevs23"

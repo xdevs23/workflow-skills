@@ -25,6 +25,7 @@ Then the skills appear in the skill list and each has a matching slash command (
 | `implement-review-verify` | Cold-review the spec first, implement, then four parallel verdict seats (correctness, cleanliness, spec compliance, duplication) plus two human-lane adversary seats. Every finding routes by defect class — mechanical to the fixer under re-verification rounds, taste and design-authority to the human — and the fix pass proves the suite green. |
 | `copywriting` | Write an increment's user-visible strings BEFORE implementation: intent catalog + writing system, one agent per item, mechanical gate + source-verify + fresh-context critic, human ships the load-bearing lines. |
 | `immaculate-spec-writing` | Research → find-gaps → verify convergence loop for a fully factual, complete spec. |
+| `resume-interrupted-run` | Recover a workflow run that was stopped while agents were mid-flight: hand each interrupted seat its own prior transcript, leave every completed prompt byte-identical, resume near-losslessly. |
 | `audit-loop` | Continuously audit a codebase through 8 lenses, append verified findings to `AUDIT.md` — plus a `Refuted` ledger of killed claims, so nothing is rediscovered every round. |
 | `group-chat` | Join a shared multi-instance group chat so this Claude can talk to other Claude instances across machines/Docker, over a common hub. Built on Claude Code Channels. |
 
