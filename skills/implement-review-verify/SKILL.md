@@ -154,6 +154,14 @@ standing seats:
   also owns **ASSERTION GRANULARITY** (law 16): it READS the assertions and checks that each
   invariant is pinned at the granularity the rule binds at, never aggregated over the artifact —
   a class the gate structurally cannot catch, because the aggregate assertion is green.
+  When the work must PRESERVE AN INVENTORY — every fact, row, entry or capability carried from a
+  source into a new artifact — this seat also owns **TRUNCATION-WITH-ELLIPSIS**: under content
+  pressure the characteristic failure is to COMPRESS, truncating an entry with an ellipsis,
+  collapsing a list, or folding content behind a disclosure device, and the result still reads as
+  complete and well-formed. The check is an explicit **inventory diff against the source, item by
+  item**, treating any collapse or truncation device as a FAILURE rather than a formatting choice.
+  It is a seat check for the same reason as the one above: it needs a reader holding both artifacts
+  side by side, and nothing a gate can run goes red.
 - **Separation of concerns / cleanliness** (`agents/reviewer-cleanliness.md`) — does logic sit in
   the right layer? Did a special-case leak into shared/generic code? Dead code left by the rework?
   Naming — including a **PLAIN-LANGUAGE lens**: identifiers and prose in plain words, no coined
@@ -355,8 +363,27 @@ cannot spin on it, and when that retirement empties the queue the loop ends ther
 `blocked` disposition is likewise permanent — it leaves for the human and no later round revisits it.
 The attempt cap is a **backstop, never the convergence criterion** — a loop whose only exit is its cap
 burns the whole budget every single run. Whatever is still open at exit is **REPORTED to the human,
-never force-fixed**, and the budget exit additionally reports the last round's fixes as an explicit
-**unverified** set, because no cold round ever saw them.
+never force-fixed**.
+
+**ANY exit taken directly after a fix pass reports that round's closures as an explicit `unverified`
+set.** Two of the three are post-fix exits: the budget exit and the no-progress exit both land with
+the last round's fixes seen by nobody but the fixer that made them — and **a closure claimed by the
+party that made the fix is a report, not an attestation.** The queue-empty exit is the one exception,
+precisely because it IS attested: it fires only after a fresh cold round read the tree and found
+nothing fixer-actionable left, so those closures have been independently seen. The rule covers both
+post-fix exits, but only the budget exit can ever carry entries: **on the no-progress exit the set is
+EMPTY BY CONSTRUCTION** — progress counts exactly the closures, so a round that closed nothing has
+none to report, and marking that exit is structurally right and behaviourally inert. Expect a
+non-empty set there and you will go hunting a bug that is not in the code. What that round leaves
+unattested is not nothing, and it leaves by another door: the fixer still wrote to the tree that
+round — a `blocked` defect owes its trace where the work lives, and a `rejected` finding can involve
+edits too — and that residue surfaces through the routed-out and unanswered sets, never by widening
+what `unverified` means. Decide this from a **boolean the loop sets where it exits**, never by
+matching the exit message text — that message is prose for a human, and a check keyed on its wording
+silently stops marking anything the day the wording changes.
+The general rule is the same class as the ordering rule above: **a closure recorded by a party that
+cannot attest it is not a closure** — which is why the rule is stated uniformly over both post-fix
+exits instead of special-cased to the one that can come back non-empty.
 
 **A cheap mechanical check comes before any round.** Every finding carries a file, so the script can
 ask whether the fixer touched that file at all. If it did not, the finding is **trivially unresolved**
@@ -836,6 +863,13 @@ const retired = new Map()     // key -> why it LEFT the loop, for the REST OF TH
 const unanswered = []         // queued keys the fixer never answered: silence IS visible
 const contradictions = []     // 'fixed' claimed on a file the fixer never touched
 let exit = 'budget spent: ' + BUDGET + ' rounds and the queue never emptied'
+// Did the loop end DIRECTLY AFTER a fix pass, with that round's closures seen by nobody but the
+// fixer that made them? True for the budget exit (the default above: the loop falls out of the
+// while with a fix pass as its last act) and for the no-progress exit. The queue-empty exit clears
+// it, being the only exit whose cold round ran AFTER the fixes it attests, never before them.
+// A BOOLEAN and not a test on the exit STRING: that string is prose for a human and reworded
+// freely, and a check keyed on its wording would silently stop marking anything.
+let exitedAfterFix = true
 
 // ONE fix pass, callable with an EMPTY queue. The fix pass is never droppable: it is the only
 // seat that produces the PROOF BAR (suite green plus a per-criterion status), so a run whose
@@ -909,7 +943,11 @@ while (round < BUDGET) {
   }
   // Empty queue is the CLEAN exit: nothing fixer-actionable and must-fix is left to attempt.
   // Anything retired above is escalated in routedOut, not silently counted as convergence.
-  if (queue.length === 0) { exit = 'queue empty: no fixer-actionable must-fix finding to attempt'; break }
+  if (queue.length === 0) {
+    exit = 'queue empty: no fixer-actionable must-fix finding to attempt'
+    exitedAfterFix = false                          // a cold round just attested the last fixes
+    break
+  }
 
   phase('Fix')
   const fixResult = await fixPass(queue, round)
@@ -957,14 +995,18 @@ if (!fix) {
 // Whatever is open at exit is REPORTED, never force-fixed. routedOut is the human's route, each
 // entry carrying WHY it left: a spec edit for the orchestrator, a later phase's work, a
 // rejection, a block, a contradiction, or a stuck key. Non-blocking severities ride along,
-// reported not fixed. On the BUDGET exit the last round's fixes are returned as an explicit
-// UNVERIFIED set, because no cold round ever saw them — an unknown stated, never omitted.
+// reported not fixed. On ANY exit taken straight after a fix pass — budget spent, or a round that
+// closed nothing — that round's closures are returned as an explicit UNVERIFIED set, because a
+// closure claimed by the party that made the fix is a report and not an attestation, and no cold
+// round ever saw them. An unknown stated, never omitted. On the no-progress exit that set is empty
+// by construction — progress counts exactly the closures — and what that round did leave in the
+// tree rides in routedOut and unanswered instead.
 return {
   impl, reviews, fix, adversaries: await adversaries, rounds: round, exit,
   open: [...ledger].filter(x => !retired.has(x[0]) && !x[1].closed)
     .map(x => ({ key: x[0], ...x[1].finding })),
   routedOut: [...retired].map(x => ({ key: x[0], why: x[1] })),
-  unverified: exit.indexOf('budget spent') === 0
+  unverified: exitedAfterFix
     ? [...ledger].filter(x => x[1].closedRound === round).map(x => x[0]) : [],
   unanswered, contradictions,
 }
