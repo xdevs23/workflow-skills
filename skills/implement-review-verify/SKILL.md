@@ -126,10 +126,12 @@ spec — *the prompt is not one of them* (law 8 ranks it UNTRUSTED below both). 
 falls out:
 - **prompt vs spec** → an ordinary MUST-FIX finding, not an abort. The prompt loses, the seat
   proceeds against the spec, and it reports the conflict rather than silently picking a side;
-- **the prompt asserts a plainly false premise about the tree** ("module X already exists") → same
-  disposition. An untrusted input being wrong is exactly what "untrusted" means: disregard that
-  claim, build against the spec, report it as a must-fix. It is not a contradiction between
-  authorities, so it must not fire the marker;
+- **the prompt asserts a plainly false premise about the tree** ("module X already exists") →
+  **VERIFIED-AND-REPORTED**. Every factual claim the prompt makes about the tree is CHECKED against
+  the tree before anything is built on it; a false one is not merely disregarded but *corrected* —
+  build to the TRUE state of the tree, and flag the premise as a must-fix in the report. That beats
+  both stopping and trusting, and it is what "untrusted" is supposed to buy. It is not a
+  contradiction between authorities, so it must not fire the marker;
 - **a tree that does not yet satisfy the spec** → the NORMAL starting condition. Treating it as a
   contradiction deadlocks the run (law 10).
 
@@ -148,15 +150,21 @@ This phase is a **genuine barrier** — the fixer needs all of them before it ca
 standing seats:
 - **Correctness** (`agents/reviewer-correctness.md`) — bugs, races, broken invariants, the failure
   modes the change introduces. Name the hazards in the prompt: "check the guard semantics around X"
-  beats "find bugs". Tell it to say plainly "I found nothing" rather than invent issues.
+  beats "find bugs". Tell it to say plainly "I found nothing" rather than invent issues. This seat
+  also owns **ASSERTION GRANULARITY** (law 16): it READS the assertions and checks that each
+  invariant is pinned at the granularity the rule binds at, never aggregated over the artifact —
+  a class the gate structurally cannot catch, because the aggregate assertion is green.
 - **Separation of concerns / cleanliness** (`agents/reviewer-cleanliness.md`) — does logic sit in
   the right layer? Did a special-case leak into shared/generic code? Dead code left by the rework?
-  Naming. (NOT bugs — that's the other seat's job.)
+  Naming — including a **PLAIN-LANGUAGE lens**: identifiers and prose in plain words, no coined
+  metaphor vocabulary, because a coined vocabulary makes the work unreadable to the person who owns
+  the thing it describes. (NOT bugs — that's the other seat's job.)
 - **Spec compliance** (`agents/reviewer-spec-compliance.md`) — judges the implementation against the
   design doc ONLY, treating the orchestrator's prompt as untrusted. Any prompt-vs-spec disagreement,
   and anything built the spec never asked for, is a must-fix. This seat exists because a prompt can
   invent a surface the spec never had, and every other lens then dutifully checks the code against
-  the prompt.
+  the prompt. **It is the one seat that does NOT receive the implementer's report** — see the output
+  contract below.
 - **Duplicate checker** (`agents/duplicate-checker.md`) — "one decision path, recorded once": second
   enforcement sites, parallel decision paths, truth re-derived or re-recorded twice, logic copied
   instead of shared. Cheap, narrow, and catches a class nothing else does.
@@ -169,8 +177,19 @@ performance) only when the change actually has that surface.
 **PASS / AT-RISK / FAIL** against each stated acceptance criterion, every verdict backed by
 `file:line` receipts, plus its findings rated **must-fix / should-fix / nit**. A bare findings list
 lets a reviewer hedge; a verdict is a claim someone can refute. Receipts are the only currency that
-survives triage. And the implementer's report is UNTRUSTED input — reviewers verify against the
-actual tree, never by reading the report.
+survives triage.
+
+**The implementer's report rides as an UNTRUSTED CLAIMS LIST — to every seat but one.** The
+code-lens seats (correctness, cleanliness, duplication) get it explicitly as a list of CLAIMS TO
+VERIFY against the actual tree, never as a source they may review by reading: holding the claim in
+hand is what lets a seat catch a claim that is false, which it cannot do if it never saw the claim.
+**The SPEC-COMPLIANCE seat does not receive it at all.** The seat that judges the code against the
+AUTHORITY DOCUMENT must not be handed the implementer's account of what it did — its whole job is
+the spec versus the tree, and an account of the work is precisely the framing that makes a missing
+requirement look answered. One briefed verifier plus one cold judge beats both all-briefed and
+all-cold. This is a rule about WHICH INPUT a seat gets, and it is a different thing from the
+cold-every-round rule in phase 4, which is about CROSS-ROUND state and applies to every seat here
+including this one.
 
 **And a FINDING IS A DEFECT — nothing else.** The verdict rows, the coverage notes, the record of
 what was run, the criteria that passed: all of those ride in the seat's *report*, never in its
@@ -196,6 +215,13 @@ and *lane* are two different words here on purpose: a **route** decides who READ
   Mechanical is necessary but **not sufficient**: a mechanical finding enters the fix queue only if
   the FIXER can actually close it. One whose fix is a spec edit belongs to the orchestrator, and one
   about work a later phase performs belongs to nobody yet — see the actionability lanes in phase 4.
+  **A mechanical finding that ORIGINATED with an ADVERSARY seat carries one extra step: the
+  ORCHESTRATOR INDEPENDENTLY VERIFIES IT AGAINST THE CODE before it enters the fix queue at all.**
+  Adversary claims are stated with the same force whether or not they are true, and one that does
+  not survive verification would otherwise become a work order on the strength of its tone. This
+  step sits ON TOP of the relay path below, it does not shortcut it: an adversary finding still
+  reaches the fixer only as a ruled item the human sent back, never straight from the report. Route
+  by class — but never unverified.
 - **TASTE and DESIGN-AUTHORITY calls are HUMAN-ONLY.** Nobody but the human may rule on "is this the
   right shape" or "does this look right". A seat on this route RECORDS; it never auto-fixes.
 
@@ -227,7 +253,8 @@ bound, do not just state it in the prompt; (b) fold out anything a verdict seat 
 fixer already fixed, with a one-line "caught independently, fixed" note, because settled items must
 not be re-adjudicated; (c) present the survivors in plain language, one bullet each, with your own
 recommendation attached (fix / accept / your call). The human's terse rulings then become the NEXT
-round's spec items, VERBATIM.
+round's spec items, VERBATIM — and any of them that returns as mechanical work is verified against
+the code by the orchestrator before it is queued, per the rule above.
 
 ### Phase 4 — Fix (1 agent — `agentType:'fixer'`)
 
@@ -241,6 +268,11 @@ seats' output is not among its inputs at all. It:
   reason)** — keyed to the finding it answers. It is explicitly empowered to reject. Prose in place of
   a disposition is not an answer the loop can read. `rejected` and `blocked` are **permanent**: they
   leave the loop for the human, and no later round has any mechanism to revisit them;
+- **leaves a TRACE IN THE TREE for every `blocked` defect** — a pinned or explicitly-skipped test,
+  at the place the work lives, naming the disagreement and why it is unresolved. A defect recorded
+  only in a report is invisible to everyone who later reads the code, and the report is read once
+  while the code is read forever. This is the counterpart of the terminal disposition: the finding
+  leaves the loop, but it does not leave the tree silently;
 - when a correctness finding implies a fix broader than the original spec (e.g. "re-run on any
   terminal state", not just "on completed"), it is trusted to make that call and document it. That
   is **breadth on the MECHANICAL route** — the fix the finding actually requires — and it is not a
@@ -250,8 +282,9 @@ seats' output is not among its inputs at all. It:
   up with the ruled breadth by a dated disposition (law 15), never by the fixer reverting the fix;
 - **never edits the spec or any other authority document** (law 15): a finding whose fix is a spec
   edit comes back `blocked`, with the evidence, for the orchestrator to disposition;
-- **PROVES** the result: runs the full suite and build BARE (no piping through `head`/`grep` — that
-  hides the error) and quotes the output VERBATIM;
+- **PROVES** the result under the **completion-claim rule** of the quality-gate section below — a
+  BARE rerun AFTER ITS LAST WRITE, quoted VERBATIM. That section is where the rule and its reasons
+  live; this bullet only says the fixer owes it;
 - **returns** the disposition table AND a per-criterion status.
 
 **The PROOF BAR: suite green + a per-criterion status.** Not "the fixer said it's done". Ask the fixer
@@ -347,6 +380,55 @@ The loop branches on **severity, lane and disposition**, so all three are ENUM-L
 (law 11) — a loop keyed on a word a seat is merely trusted to spell right is a loop that silently
 never runs.
 
+## The QUALITY GATE — three different things, and only two of them BLOCK
+
+A gate is not a review seat, and the two words are not interchangeable. Say which of the three a
+given check is, because only two of them stop the run:
+
+- **BLOCKING — committed TOOLS invoked as gate steps.** The repo's own check scripts (tests, lint,
+  format), plus scans of the same objective kind: a banned-vocabulary scanner, an incoming
+  conflict-marker sweep. These are **exit-code gates** — they pass or they fail and nobody
+  adjudicates the result.
+- **BLOCKING — SCRIPT-LEVEL contract checks.** The orchestrator SCRIPT throws on a protocol
+  violation: the fail-fast retry helper (law 4) and the **deliverable-proof** check below. These
+  stop the run deliberately, and **the decision lives in the script** — never delegated to a
+  downstream agent to rediscover, for the same reason the structural abort does not (law 10).
+- **RECORDING — SEATS.** The standing quality and cleanliness lenses ride the review phase and emit
+  findings into the fixer's queue like any other reviewer. **They never block.**
+
+**The boundary is the whole taxonomy in one line: MECHANICAL AND OBJECTIVE goes in the GATE as a
+TOOL; JUDGMENT goes in the REVIEW as a SEAT.** A gate that only reports is a seat wearing the wrong
+name, and a seat that stops the run is a gate — either way the run's exit reason is a lie about
+which mechanism decided it.
+
+**THE COMPLETION-CLAIM RULE: a fixer's completion claim is only valid off a BARE RERUN AFTER ITS
+LAST WRITE, with the tails quoted VERBATIM.** A claim resting on a run from before the last edit is
+not evidence — the edit it is offered as proof of is precisely what that run never saw. And piping a
+check through `head` or `grep` is itself an offense rather than a style question, because it hides
+the failure the gate exists to surface.
+
+**GATE TOOLS ARE VERSIONED AND MATERIALIZED.** A gate tool lives in a REPOSITORY and is materialized
+into every tree the gate runs in (a link or copy placed at tree creation). A tool kept as a loose
+file at one workspace root fails not-found in every OTHER tree, and every run then hand-substitutes
+it — a failure that is silent in the worst way, because it presents as a broken gate rather than as
+a missing tool, so each run debugs the gate instead of installing the tool.
+
+**GATES EXECUTE INSIDE THE FIX PHASE** — the fixer runs them bare after its own last write — and
+never as a later phase that emits findings of its own. A gate placed after the loop produces
+findings no fixer can close, which is exactly the `later-phase` lane of phase 4: the open set is
+pinned above zero, no round can close it, and the run burns its whole budget before the backstop
+exit fires. The ordering rule in that phase already forbids this shape; a gate is simply the most
+tempting way to build it by accident.
+
+**THE RECORDING SEATS RIDE AS TEMPLATE CONSTANTS, not as per-script prose.** Anything retyped per
+run erodes — audits find the standing quality and cleanliness lenses silently absent from the large
+majority of a fleet's scripts, each omission individually reasonable when it was made. A constant
+resists that; retyping does not. This is in genuine tension with law 5(a) — editing a shared
+constant busts every cache key — and the two coexist by a rule about WHEN, not whether:
+**the constant is authored once and then left alone.** When a resume needs one seat re-run,
+bump that seat's OWN prompt, never the constant (law 5a stands unchanged). Erosion is the larger
+cost, because a busted cache costs one run while a dropped seat costs every run after it.
+
 ## Why this shape (the rationale that makes it work)
 
 - **Sequential implement, parallel review.** Implementation has write-conflicts; review is
@@ -377,7 +459,11 @@ Non-negotiable across every run of this skill.
    total), then the WORKFLOW THROWS. Never let an empty result flow into the next stage: a fixer
    triaging an empty review "succeeds" vacuously and you ship unreviewed code believing it was
    reviewed. A *short but complete* result is not a failure — a clean seat still owes a per-criterion
-   verdict block, so set the floor below that and it clears (see the length floor below). The law
+   verdict block, so set the floor below that and it clears. **The floor is a PROSE test and it
+   cannot prove an artifact**, so a stage whose deliverable is FILES is ACCEPTED ON a deliverable-proof
+   marker — a long narration clears any floor with nothing on disk. The floor still rides underneath
+   that marker, because it catches a different failure and costs nothing; it is simply not what
+   decides acceptance there (see the acceptance section below). The law
    guards results a later stage CONSUMES; a seat nothing consumes (the adversaries) reports its own
    failure to the human instead of killing a finished fix.
 5. **Cache-busting on resume.** A resume replays a cached result for an identical (prompt, opts), so
@@ -407,7 +493,10 @@ Non-negotiable across every run of this skill.
    SCOPING — the spec wins on conflict"**, which makes it structurally attackable by every seat. This
    exists because **the orchestrator's own errors are the dominant error class** — a mis-stated
    criterion, a gloss that contradicts another gloss of the same ruling, a "verbatim" appendix that
-   isn't — and this hierarchy is the only mechanism in the run that catches them.
+   isn't — and this hierarchy is the only mechanism in the run that catches them. **Untrusted means
+   VERIFIED, not ignored:** every factual claim the prompt makes about the tree is checked against
+   the tree, and a FALSE one is **verified-and-reported** — build to the true state, flag the
+   premise as a must-fix — which beats both trusting it and stopping on it (law 10).
 9. **SPECS ARE LIVING DOCUMENTS, READ FROM DISK.** Every prompt names the spec by PATH and instructs:
    *"read the current on-disk revision in full; it is the authority, not this prompt's description of
    it."* Never cite a revision number, never restate the spec's content in the prompt. This is what
@@ -420,8 +509,9 @@ Non-negotiable across every run of this skill.
     contradictions AMONG authority documents** — two texts that cannot both be true, where "authority
     document" means the directives or the spec and never the prompt (law 8). A tree that does not yet
     satisfy a coherent spec is the NORMAL precondition of review-and-fix and yields ordinary findings;
-    so does an untrusted prompt that conflicts with the spec or asserts a false premise about the
-    tree. Getting this wrong deadlocks the run: the fixer that would resolve the finding can never
+    so does an untrusted prompt that conflicts with the spec, or one asserting a false premise about
+    the tree — that one is verified-and-reported, built to the truth (law 8), never an abort.
+    Getting this wrong deadlocks the run: the fixer that would resolve the finding can never
     run, because the flag aborts before it. **One trigger, one marker, one disposition** — a second
     abort class with no marker of its own is undetectable, and a single event with three dispositions
     is the deadlock in another costume. And the structural abort lives in the **SCRIPT**, which
@@ -465,6 +555,15 @@ Non-negotiable across every run of this skill.
     round reads *why* the sentence says what it says and can only re-open it with NEW evidence. Append
     an acknowledgement beside the contradicted sentence instead of retracting it and the conflict is
     re-manufactured every round — flagged, correctly, forever.
+16. **ASSERT AT THE GRANULARITY AT WHICH THE RULE BINDS** — per row, per section, per item — and
+    **never aggregated over the whole artifact**. An aggregate assertion lets a fully DEGENERATE
+    part pass on the strength of its neighbours: the property holds across the sample while the
+    subsection that matters violates it outright. That is why this class **ships defects THROUGH a
+    green suite**, and why it belongs to a SEAT that READS the assertions rather than to the gate
+    that RUNS them — the gate is green either way, so it cannot be the thing that catches it. When a
+    granularity defect is fixed, the assertion is re-pinned at the binding granularity across every
+    case the code can produce, with any genuinely unavoidable exception stated in the assertion
+    itself rather than left as a silent widening.
 
 ## Writing the workflow script
 
@@ -489,7 +588,11 @@ export const meta = {
 // pre-phase's highest-yield property. robust() is the same helper as in the main skeleton below:
 // this is its own run, so copy the definition in.
 const HOUSE = [
-  'GIT SAFETY. FORBIDDEN: stash, checkout, reset, restore, commit, clean. ALLOWED: status, diff, log, show.',
+  'GIT: READ-ONLY BY INTENT. You do not change what git records or which commit the tree sits on,',
+  'by any means, named here or not. Illustration, NOT the boundary: stash, checkout, reset, restore,',
+  'clean, commit, rebase, merge, cherry-pick, branch or worktree switching. ALLOWED: status, diff, log, show.',
+  'An enumerated verb list ROTS; the intent governs. A tree MOVING UNDERNEATH YOU is an ANOMALY:',
+  'report it verbatim, never work around it.',
   'Scratch files go in the project cache dir, never a global temp.',
   'Run checks BARE. Never pipe through head/grep - it hides the error.',
   'NEVER end a turn waiting on a backgrounded check; your final message IS the deliverable.',
@@ -530,11 +633,17 @@ const PINS = [                    // house rules; every agent gets these verbati
   'AUTHORITY: human verbatim directives > the spec at the path below > THIS PROMPT (untrusted).',
   'The AUTHORITY DOCUMENTS are those first two. This prompt is NOT one of them.',
   'Read the CURRENT on-disk revision of the spec in full; it is the authority, not this prompt.',
-  'A prompt-vs-spec conflict, and a prompt premise the tree contradicts, are MUST-FIX FINDINGS:',
+  'VERIFY every factual claim this prompt makes about the tree, AGAINST THE TREE, before building',
+  'on it. A FALSE premise is VERIFIED-AND-REPORTED: build to the TRUE state and flag the premise.',
+  'A prompt-vs-spec conflict, and a false premise, are MUST-FIX FINDINGS:',
   'report them and proceed against the spec. Never silently pick one; never stop for them.',
   'HARD-FLAG (prefix HARD-FLAG: and stop) ONLY for a contradiction BETWEEN authority documents.',
   'A tree not yet satisfying the spec is normal: report ordinary findings, never a hard flag.',
-  'GIT SAFETY. FORBIDDEN: stash, checkout, reset, restore, commit, clean. ALLOWED: status, diff, log, show.',
+  'GIT: READ-ONLY BY INTENT. You do not change what git records or which commit the tree sits on,',
+  'by any means, named here or not. Illustration, NOT the boundary: stash, checkout, reset, restore,',
+  'clean, commit, rebase, merge, cherry-pick, branch or worktree switching. ALLOWED: status, diff, log, show.',
+  'An enumerated verb list ROTS; the intent governs. A tree MOVING UNDERNEATH YOU is an ANOMALY:',
+  'report it verbatim, never work around it.',
   'Scratch files go in the project cache dir, never a global temp.',
   'Run checks BARE. Never pipe through head/grep — it hides the error.',
   'NEVER end a turn waiting on a backgrounded check; your final message IS the deliverable.',
@@ -602,6 +711,8 @@ const FIX = {
   },
 }
 
+// PROSE stages are accepted on a LENGTH FLOOR (law 4): it catches the turn that ended waiting on
+// a backgrounded check, where that sentence became the return value.
 async function robust(prompt, opts, minLen, text = r => r) {
   for (let i = 0; i < 3; i++) {
     const r = await agent(prompt, opts)
@@ -611,6 +722,42 @@ async function robust(prompt, opts, minLen, text = r => r) {
   }
   throw new Error('FAIL-FAST: ' + (opts.label || 'agent') + ' returned no usable result after 3 attempts')
 }
+// ARTIFACT stages are accepted on PROOF, never on length: a stage can return a long, immaculate
+// ANALYSIS of the work and never create the file, and that narration clears any floor. The marker
+// check is a SCRIPT-LEVEL contract check (the quality gate): the script throws, no agent is asked
+// to notice. The RETRY states plainly HOW the last attempt failed rather than re-asking.
+const PROOF = 'FILES-ON-DISK:'
+const PROVE = [
+  'Your deliverable is FILES ON DISK, not an account of them.',
+  'Where the deliverable is an AUTHORED ARTIFACT it is MULTI-FILE: ONE FILE PER WRITE CALL, each',
+  'under <the per-file size cap>. One large file written in a single call fails MID-WRITE at any',
+  'output ceiling and leaves a TRUNCATED file rather than an error. The layout of CODE is decided',
+  'by the spec and not by this rule: decomposition governs the DELIVERABLE, never the design.',
+  'END your final message with the literal line ' + PROOF + ' followed by every file you wrote',
+  'with its byte size, then the quoted output of the directory listing you actually ran.',
+].join('\n')
+async function proven(prompt, opts, minLen, text = r => r) {
+  let note = ''
+  for (let i = 0; i < 3; i++) {
+    const r = await agent(prompt + note, opts)
+    const s = r && text(r)
+    // A HARD FLAG OUTRANKS THE PROOF CHECK. A correctly flagging stage stops with the tree
+    // UNMODIFIED, so it owes no files: retrying it here would coerce it into building against
+    // the very contradiction it was told to stop on, and the throw below would then report a
+    // missing deliverable as the run's exit reason instead of the contradiction (law 10).
+    if (typeof s === 'string' && s.includes('HARD-FLAG:')) return r
+    if (typeof s === 'string' && s.length >= minLen && s.includes(PROOF)) return r
+    // The note names the ACTUAL failure: a retry told the wrong cause is itself a false premise.
+    note = '\n\nHOW YOUR PREVIOUS ATTEMPT FAILED, plainly: ' + (
+      typeof s !== 'string' ? 'it returned nothing usable at all.'
+      : !s.includes(PROOF) ? 'it returned an account of the work with no ' + PROOF +
+        ' line, so the files were never proved to exist. An analysis of the work is not the work.'
+      : 'it emitted ' + PROOF + ' but the report itself was far too short to be complete.'
+    ) + ' Write the files, then END with ' + PROOF + ' and the quoted listing.'
+    log('no deliverable proof from ' + (opts.label || 'agent') + ', retry ' + (i + 1))
+  }
+  throw new Error('DELIVERABLE PROOF: ' + (opts.label || 'agent') + ' never emitted ' + PROOF)
+}
 // The structural abort is the SCRIPT'S job (law 10), on EVERY CONSUMED result — never a
 // downstream agent's to rediscover. Seats nothing consumes relay their flag instead (law 4).
 const abortOnFlag = (r, label, s = r) => {
@@ -619,12 +766,16 @@ const abortOnFlag = (r, label, s = r) => {
 }
 
 phase('Implement')
-const impl = abortOnFlag(await robust(
-  [PINS, SPEC, 'Implement now.'].join('\n\n'),
+const impl = abortOnFlag(await proven(
+  [PINS, SPEC, PROVE, 'Implement now.'].join('\n\n'),
   { label: 'impl', phase: 'Implement', agentType: 'implementer', model: '<explicit>', effort: 'high' },
   600,
 ), 'impl')
 
+// TEMPLATE CONSTANT: the standing seats are authored HERE, once, and left alone. Retyped per
+// script they erode - the quality and cleanliness lenses are the ones that silently go missing.
+// Leaving the constant alone is also what keeps law 5(a) satisfied: bump an individual seat's
+// prompt on resume, never this.
 const SEATS = [
   ['reviewer-correctness', 'correctness'],
   ['reviewer-cleanliness', 'cleanliness'],
@@ -635,8 +786,15 @@ const SEATS = [
 // stands — no findings history, no open list, never the fixer's report. Since the prompt is
 // byte-identical across rounds, the ROUND MUST ride in the label: that is what distinguishes
 // the calls, and it makes each round its own cache key so settled rounds replay free (law 5).
+// SEPARATELY from that (this is about WHICH INPUT a seat gets, not about cross-round state):
+// the SPEC seat is the one seat that gets NO implementer report - the seat judging the code
+// against the authority document must not hold the implementer's account of what it did. Every
+// other lens keeps it as a CLAIMS LIST, which is what lets a seat catch a claim that is false.
 const seat = (type, label, round) => robust(
-  [PINS, SPEC, 'Implementer report (UNTRUSTED input - verify against the code):', impl].join('\n\n'),
+  [PINS, SPEC,
+   ...(label === 'spec' ? [] :
+       ['Implementer report (UNTRUSTED CLAIMS - verify every one against the code):', impl]),
+  ].join('\n\n'),
   { label: 'review:' + label + ':r' + round, phase: 'Review', agentType: type,
     model: '<explicit>', effort: 'high', schema: VERDICT },
   300,
@@ -689,13 +847,22 @@ const fixPass = (queue, round) => robust(
    'Answer EVERY key with ONE disposition - fixed / rejected / blocked - plus the reason.',
    'rejected and blocked are PERMANENT: they leave for the human and no later round revisits them.',
    'A fix that needs a SPEC edit is orchestrator-only: disposition it blocked, never apply it.',
+   'A BLOCKED defect leaves a TRACE WHERE THE WORK LIVES - a pinned or explicitly-skipped test',
+   'naming the disagreement - not only a line in a report, which nobody reading the code will see.',
    'A fix BROADER than the spec is yours to make - breadth, never a redesign - and SAY SO, so the',
    'spec-compliance finding it causes routes to the orchestrator instead of back to you.',
    'No reviewer reads explanations, so every fix must be self-explanatory IN THE TREE.',
+   'Each key below is restated as the DEFECT, its EVIDENCE, and WHAT NOT TO TOUCH. Honour the',
+   'third part literally, and confirm in your report that any OPEN DECISION named as not yours',
+   'went untouched.',
    'List every file you touched as a REPO-RELATIVE path in touched.',
-   'End with a PER-CRITERION status plus the verbatim suite/build output.',
+   'End with a PER-CRITERION status plus the verbatim suite/build output, from a BARE RERUN AFTER',
+   'YOUR LAST WRITE: a tail from before that edit is not evidence, and a pipe through head or grep',
+   'hides the failure.',
    queue.length === 0 ? 'NO finding survived triage this round: your job this pass is the PROOF.' : '',
-   ...queue.map(f => 'KEY ' + f.key + '\n[' + f.severity + '] ' + f.file + ' - ' + f.claim),
+   ...queue.map(f => 'KEY ' + f.key + '\nDEFECT [' + f.severity + '] ' + f.file + ' - ' + f.claim +
+     '\nEVIDENCE: the raising seat report below, re-verified by you against the code.' +
+     '\nDO NOT TOUCH: anything this key does not name.'),
    ...reviews.map((v, i) => 'Verdict seat [' + SEATS[i][1] + '] report (UNTRUSTED context):\n' + v.report),
   ].join('\n\n'),
   { label: 'fix:r' + round, phase: 'Fix', agentType: 'fixer', model: '<explicit>',
@@ -811,19 +978,54 @@ literal closes it early and the whole launch dies with an opaque token error far
 line. The array-join convention eliminates the entire class. (This constraint is about the workflow
 *scripts* — backticks in this markdown are fine.)
 
-### The length floor is the fail-fast mechanism
+### Accepting a stage result — PROOF for an ARTIFACT, a LENGTH FLOOR for PROSE
 
-`minLen` in `robust()` is load-bearing, and it is the concrete implementation of law 4. Agents
-sometimes end a turn with "waiting for the check to finish" — **that sentence becomes the return
-value**, and it is a perfectly valid non-null string. A per-stage floor catches it; the retry
-usually lands; three misses throw the run instead of flowing garbage forward. Rough bands:
-implementers **400–800**, reviewers and adversaries **200–400**, fixer **~400**.
+Two acceptance checks. What a stage OWES decides which one DECIDES its acceptance; the length floor
+rides on every stage regardless, because it is cheap and it catches a failure the marker cannot.
+
+**ARTIFACT-PRODUCING STAGES MUST PROVE THE ARTIFACT.** A stage whose deliverable is files on disk
+ends with a literal MARKER LINE (`FILES-ON-DISK:` in the skeleton) naming those files and their
+BYTE SIZES, plus the quoted output of the directory listing it actually ran. **The SCRIPT throws
+when the marker is absent** — a script-level contract check, per the quality gate above.
+
+**A length floor structurally cannot prove an artifact**, and this is not a hypothetical: a stage
+can produce a long, immaculate ANALYSIS of the work and never create the file, and the narration
+clears any floor by a wide margin — a floor measures prose, and prose is exactly what the failure
+produces. Recompute from the artifact instead (law 12); the stage's own account of itself is a
+truncation-and-dishonesty detector, never evidence.
+
+**A retry after this failure states plainly HOW the previous attempt failed** — that it returned an
+account of the work with no marker and no file — rather than re-sending the same instruction and
+hoping. The second line of defense is downstream: **COLD seats refuse to fabricate a review against
+an artifact that is not there**, and say so, which is what surfaces a fabricated deliverable when
+the acceptance check is the thing that failed.
+
+**PROSE STAGES ARE ACCEPTED ON THE LENGTH FLOOR** — a review, a verdict block, a report, anything a
+human reads next. `minLen` in `robust()` is what accepts them, and it is the concrete implementation
+of law 4: agents sometimes end a turn with "waiting for the check to finish" — **that sentence
+becomes the return value**, and it is a perfectly valid non-null string. A per-stage floor catches
+it; the retry usually lands; three misses throw the run instead of flowing garbage forward.
+
+**An ARTIFACT stage carries the floor TOO — under its marker, never instead of it.** The two checks
+answer different questions (did anything come back at all / does the deliverable exist), so
+`proven()` requires both and the artifact stage still gets a band. Rough bands: implementers
+**400–800**, reviewers and adversaries **200–400**, fixer **~400**.
 
 Set each floor BELOW the shortest *legitimate* deliverable for that seat. A clean reviewer still
 owes a per-criterion verdict block with receipts, and a cold-alternatives seat that finds nothing
 still owes why the obvious simpler shapes fail — both clear 200 comfortably. If a floor ever kills
 a genuinely complete short answer, the floor was wrong, not the agent: lower it, do not delete the
 mechanism.
+
+### Deliverables must be DECOMPOSABLE
+
+Specify a deliverable as **MULTI-FILE OUTPUT — one file per write call, with a stated per-file size
+cap** — never as one large artifact written in a single call. Every model has an output ceiling, and
+a single-call artifact sized near it fails **MID-WRITE**: what lands is a TRUNCATED file rather than
+an error, so nothing downstream can distinguish a finished deliverable from half of one, and the
+retry machinery above never fires because the stage did not fail. This is a rule about the SHAPE of a
+deliverable — it is not a property of any particular model, and a deliverable that only works below
+some ceiling is a latent failure waiting for the run that sits above it.
 
 ### Threading stage outputs into later prompts
 
@@ -836,9 +1038,12 @@ const fixPrompt = [
   SPEC,
   'Implementer report (UNTRUSTED input — verify everything against the code):',
   impl,
-  'Findings to triage, one KEY each. Each is a HYPOTHESIS, not a ruling — re-verify before',
-  'acting, and answer EVERY key with one disposition: fixed / rejected / blocked, plus the reason:',
-  ...queue.map(f => 'KEY ' + f.key + '\n[' + f.severity + '] ' + f.file + ' — ' + f.claim),
+  'Findings to triage, one KEY each, restated as DEFECT + EVIDENCE + WHAT NOT TO TOUCH. Each is a',
+  'HYPOTHESIS, not a ruling — re-verify before acting, and answer EVERY key with one disposition:',
+  'fixed / rejected / blocked, plus the reason:',
+  ...queue.map(f => 'KEY ' + f.key + '\nDEFECT [' + f.severity + '] ' + f.file + ' — ' + f.claim +
+    '\nEVIDENCE: the raising seat report below, re-verified by you against the code.' +
+    '\nDO NOT TOUCH: anything this key does not name.'),
   ...reviews.map((v, i) => 'Verdict seat [' + SEATS[i][1] + '] report (UNTRUSTED context):\n' + v.report),
 ].join('\n\n')
 ```
@@ -849,6 +1054,15 @@ KEY rides with each finding for the same reason: the script matches dispositions
 key, so a disposition that answers no key, and a key nothing answered, are both detectable — and the
 loop must actually check BOTH directions and record what it finds, or "detectable" is a property of
 the design that no code exercises.
+
+### The FINDING-RESTATEMENT style
+
+Any prompt handing findings to a fixer restates each one as three parts: **the DEFECT, its
+EVIDENCE, and explicitly WHAT NOT TO TOUCH.** The third part is the one that gets dropped and the
+one that does the work — it is what keeps a fixer inside the finding instead of tidying its
+neighbourhood on the way past. Name any OPEN DECISION in the same block, stated plainly as
+deliberately NOT the fixer's job, and ask the fixer to confirm it went untouched: an unnamed open
+question reads to a fixer as an oversight to correct.
 Unlabelled concatenation is exactly where premise drift starts: the fixer cannot tell a claim from
 a ruling once they are one undifferentiated wall of text.
 
@@ -916,16 +1130,28 @@ This content must ride EVERY agent, verbatim, not paraphrased:
   between authority documents. Spell out the counter-cases too, since they are the common ones: a
   tree that does not yet satisfy the spec, a prompt that conflicts with the spec, and a prompt
   premise the tree contradicts all yield ordinary must-fix findings, never a flag.
-- **Git safety.** FORBIDDEN: `stash`, `checkout`, `reset`, `restore`, `commit`, `clean`. ALLOWED:
-  `status`, `diff`, `log`, `show`. Agents on a real shared tree WILL try to be helpful with git.
+- **Premise verification** (law 8) — every factual claim the prompt makes about the tree is
+  **VERIFIED against the tree** before anything is built on it, and a false one is
+  **VERIFIED-AND-REPORTED**: build to the true state, flag the premise as a must-fix. Say this
+  explicitly, or "untrusted" degrades into "ignored" and the seat builds against nothing at all.
+- **Git — READ-ONLY BY INTENT, then the verbs.** State the INTENT first: the agent does not change
+  what git records or which commit the tree sits on, **by any means, named or not**. Then the verbs
+  as ILLUSTRATION — `stash`, `checkout`, `reset`, `restore`, `clean`, `commit`, `rebase`, `merge`,
+  `cherry-pick`, branch and worktree switching — with `status`, `diff`, `log`, `show` allowed. And
+  say plainly that **an enumerated list ROTS, so the intent governs**: a seat handed only a verb
+  list will rebase a live tree the day the list omits `rebase`, and it is obeying its pin as
+  written. The companion rule rides on every concurrent seat, because it is what surfaces the
+  breach: **a tree MOVING UNDERNEATH a seat is an ANOMALY to report verbatim, never to work
+  around.** Agents on a real shared tree WILL try to be helpful with git.
 - **Scratch directory** — where temp files go (a gitignored cache dir), never a global temp the
   user must approve.
 - **Run checks BARE** — never piped through `head`/`grep`, which hides the error you needed.
 - **No background waits** — never end a turn waiting on a backgrounded check; the final message IS
   the deliverable.
 - **Abort on contradiction, one trigger only** — two authority documents that cannot both be true.
-  Everything else (the prompt losing to the spec, a false prompt premise, a tree that does not yet
-  satisfy the spec) is an ordinary must-fix finding and the seat proceeds; see law 10.
+  Everything else (the prompt losing to the spec, a false prompt premise verified and reported, a
+  tree that does not yet satisfy the spec) is an ordinary must-fix finding and the seat proceeds;
+  see law 10.
 - **The findings contract** — a finding is a DEFECT, it cites a **repo-relative** FILE, and it names
   WHO CAN CLOSE IT (the four actionability lanes, spelled out). This rides in `PINS` and not only in
   the seat templates because the loop's termination depends on it: a non-defect or a file-less item in
