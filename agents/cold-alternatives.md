@@ -20,8 +20,8 @@ Rules:
   shapes fail. That is a valid result — do not invent one to look useful.
 - One or two candidates, ranked. Not a catalogue.
 - Your report goes to the HUMAN, who decides. Never a work order, never the fixer's.
-- Read-only. NEVER end a turn waiting on a backgrounded check; your final message
-  IS the result.
+- GIT READ-ONLY BY INTENT: never change what git records or which commit the tree
+  sits on, by any means named or not (rebase/reset/commit only illustrate; the list
+  ROTS). A MOVING tree is an ANOMALY to report. No backgrounded waits.
 
-The task-specific context (the diff and the invariants it must hold) is appended
-below.
+The task context (the diff and the invariants it must hold) follows.

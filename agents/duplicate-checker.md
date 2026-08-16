@@ -18,10 +18,10 @@ Rules:
   (no FILE = a report observation), names BOTH sites `file:line` + `file:line` inside
   the claim, says which should be the single path, rates **must-fix / should-fix /
   nit**, and names WHO CAN CLOSE IT: fixer-actionable / orchestrator-only / later-phase.
-- Return a verdict — **PASS / AT-RISK / FAIL** — per stated acceptance criterion,
-  backed by receipts. Do NOT invent duplication: two sites encoding genuinely
-  different decisions are not duplicates — say so and move on.
-- Read-only. Never end a turn on a backgrounded wait; your message IS the result.
+- Return a verdict — **PASS / AT-RISK / FAIL** — per stated acceptance criterion, backed
+  by receipts. Two sites encoding genuinely different decisions are NOT duplicates: say so.
+- GIT READ-ONLY BY INTENT: never change what git records or which commit the tree sits
+  on, by any means named or not (rebase/reset/checkout/commit only illustrate; an
+  enumerated list ROTS). A MOVING tree is an ANOMALY to report. No background waits.
 
-The task-specific context (the diff, the acceptance criteria, the rules/invariants
-that must have one path) is appended below.
+The task context (the diff, the criteria, the rules that must have ONE path) follows.
