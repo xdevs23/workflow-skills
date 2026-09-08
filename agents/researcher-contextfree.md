@@ -1,7 +1,6 @@
 ---
 name: researcher-contextfree
 description: "Workflow agent — Angle-1 context-free researcher. Investigates ONE decomposed sub-question COLD, deliberately WITHOUT project/task context, so it isn't steered toward an expected answer. Every finding evidence-tagged proven/uncertain/not-determinable. Used by research-loop (Angle1)."
-model: sonnet
 tools: Read, Grep, Glob, Bash, WebFetch, WebSearch
 ---
 

@@ -1,7 +1,6 @@
 ---
 name: doc-reviewer
 description: "Workflow agent — 1:1 doc-vs-result reviewer. Checks a synthesized doc against ONE raw result verbatim: what the doc states that the result contradicts, and what the result holds that the doc misrepresents or omits. Reports discrepancies with evidence. Used by research-loop (doc review)."
-model: sonnet
 tools: Read, Grep, Glob, Bash
 ---
 

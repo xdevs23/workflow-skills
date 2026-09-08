@@ -1,7 +1,6 @@
 ---
 name: consolidator
 description: "Workflow agent — faithful consolidator. Merges several independent research outputs into one result, preserving every distinct finding verbatim-faithfully, deduping, dropping nothing and softening nothing, keeping the strongest evidence per finding. Used by research-loop (Angle2 consolidate)."
-model: sonnet
 tools: Read, Grep, Glob, Bash
 ---
 

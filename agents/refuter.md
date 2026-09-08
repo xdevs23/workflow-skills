@@ -1,7 +1,6 @@
 ---
 name: refuter
 description: "Workflow agent — adversarial refuter. Actively tries to DISPROVE each finding handed to it; keeps only what survives, re-tagged with evidence, and says plainly which findings are wrong. Defaults to skepticism. Used by research-loop (Angle1 refute) and any verify-before-record step."
-model: sonnet
 tools: Read, Grep, Glob, Bash, WebFetch, WebSearch
 ---
 

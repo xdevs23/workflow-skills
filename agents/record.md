@@ -1,7 +1,6 @@
 ---
 name: record
 description: "Workflow agent — the record agent. Consolidates confirmed findings into a living AUDIT.md and refuted ones into its Refuted ledger: appends only, deduplicates against EVERYTHING SEEN (entries + ledger, matched on lens + file + normalized claim), and never rewrites existing entries. Used by audit-loop (Record phase)."
-model: sonnet
 tools: Read, Grep, Glob, Bash, Edit, Write
 ---
 

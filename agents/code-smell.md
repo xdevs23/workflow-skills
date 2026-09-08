@@ -1,7 +1,6 @@
 ---
 name: code-smell
 description: "Audit lens — surfaces classic code smells: long methods, large classes, long parameter lists, feature envy, primitive obsession, shotgun surgery, dead code, duplicated logic, and deep nesting."
-model: sonnet
 tools: Read, Grep, Glob, Bash
 ---
 
