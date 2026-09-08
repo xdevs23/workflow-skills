@@ -8,7 +8,7 @@
     {
       "name": "workflow-skills",
       "source": "./",
-      "description": "Multi-agent workflow skills: research-loop, verify-loop, find-gaps, implement-review-verify, immaculate-spec-writing, copywriting, resume-interrupted-run, and a continuously-running audit-loop — plus a library of pinned audit-lens subagents and workflow seats.",
+      "description": "Multi-agent workflow skills: research-loop, verify-loop, find-gaps, implement-review-verify, immaculate-spec-writing, copywriting, resume-interrupted-run, and a continuously-running audit-loop — plus a library of model-neutral audit-lens subagents and workflow seats.",
       "keywords": ["workflow", "multi-agent", "review", "audit", "verification", "research", "copywriting"]
     }
   ]
