@@ -92,7 +92,8 @@ task.
 
 ## The eight lenses (bundled subagents)
 
-Use these `agentType`s — they ship with this plugin, each model-pinned to sonnet:
+Use these `agentType`s — they ship with this plugin without model defaults.
+Select an explicit model and effort for each stage under the applicable project policy:
 
 `separation-of-concerns`, `abstraction-quality`, `code-smell`, `type-safety`, `code-cleanliness`,
 `missing-gaps`, `domain-leakage`, `type-smearing`.

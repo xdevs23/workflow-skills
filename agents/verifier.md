@@ -1,7 +1,6 @@
 ---
 name: verifier
 description: "Workflow agent — unbiased claim verifier. Reads the whole target artifact and independently rates EVERY claim against ground truth with evidence; never splits claims, never guesses, flags hedges. Used by verify-loop (Verify phase)."
-model: sonnet
 tools: Read, Grep, Glob, Bash
 ---
 

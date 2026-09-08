@@ -1,7 +1,6 @@
 ---
 name: copy-critic
 description: "Workflow agent — the fresh-context copy critic. Never saw the writing happen: it names each sentence's source line, lists every sentence lacking a subject and a finite verb, and counts the tell markers against the writing system. Audits only — it never rewrites, because a critic that edits stops being a fresh reader. Used by copywriting (Verify phase)."
-model: opus
 tools: Read, Grep, Glob, Bash
 ---
 

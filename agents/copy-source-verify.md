@@ -1,7 +1,6 @@
 ---
 name: copy-source-verify
 description: "Workflow agent — copy source verification. Checks every factual claim in the copy against the facts doc AND the live artifact, enforces register discipline in every language, demands grounding for superlatives, and holds the observed-not-recalled rule: fetch and transcribe real-world wording, never recall it. A detail-strong seat, never the smallest model. Used by copywriting (Verify phase)."
-model: opus
 tools: Read, Grep, Glob, Bash, WebFetch
 ---
 

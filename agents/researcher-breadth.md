@@ -1,7 +1,6 @@
 ---
 name: researcher-breadth
 description: "Workflow agent — Angle-2 breadth researcher. Gets the FULL question with precise project/task context and returns EVERYTHING found, to fight incompleteness. Every finding evidence-tagged proven/uncertain/not-determinable. Used by research-loop (Angle2)."
-model: sonnet
 tools: Read, Grep, Glob, Bash, WebFetch, WebSearch
 ---
 

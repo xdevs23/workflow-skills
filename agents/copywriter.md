@@ -1,7 +1,6 @@
 ---
 name: copywriter
 description: "Workflow agent — the copywriter. Writes ONE item from its goal-level intent, against the writing system, the voice inputs and the SOURCE block; every claim traces to a named source line, and load-bearing strings come back as structurally distinct variants for a human to pick. One item per agent, never a batch grind. Used by copywriting (Write phase)."
-model: sonnet
 tools: Read, Grep, Glob, Edit, Write
 ---
 

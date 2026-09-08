@@ -1,7 +1,6 @@
 ---
 name: synthesizer
-description: "Workflow agent — opus synthesizer. Reads a set of verified findings and derives a single conclusion, every claim evidence-tagged proven/uncertain/not-determinable; surfaces conflicts rather than smoothing them over. Used by research-loop (Angle-1 synthesis) and similar deep-reasoning steps."
-model: opus
+description: "Workflow agent — synthesizer. Reads a set of verified findings and derives a single conclusion, every claim evidence-tagged proven/uncertain/not-determinable; surfaces conflicts rather than smoothing them over. Used by research-loop (Angle-1 synthesis) and similar deep-reasoning steps."
 tools: Read, Grep, Glob, Bash
 ---
 
