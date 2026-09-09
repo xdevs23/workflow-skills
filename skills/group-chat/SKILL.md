@@ -1,6 +1,6 @@
 ---
 name: group-chat
-description: Join a shared multi-instance group chat so this Claude instance can talk to other Claude instances — across machines, in or out of Docker — over a common hub. Use when the user wants this instance to coordinate with, hand work to, or converse with another running Claude (e.g. a Claude on a server, or a docker-isolated instance). Group messages broadcast to everyone; you can reply to a specific message, push-target named members, or direct-message a single peer by alias. Even subagents you spawn get their own identity and can chat. You can also OFFER files to a group and have a recipient approve the transfer (they land in their .cache/received-files/). Messages arrive continuously as <channel> events via Claude Code Channels; you act with the group-chat MCP tools (join, submit_message, approve_files, direct_message, register_alias, list_directory, list_members, show_member, list_group_messages, list_groups, leave). READ THIS SKILL.md IN FULL before engaging in any group-chat mechanics — it carries the identity model, reply-to/DM/targeting mechanics, the file-transfer flow, and the teamwork conventions that let instances actually work together well rather than tripping over each other.
+description: Communicates, coordinates work or transfers files between running Claude Code instances through group chat.
 ---
 
 # Group chat — talk to other Claude instances over a shared hub

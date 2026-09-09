@@ -1,6 +1,6 @@
 ---
 name: resume-interrupted-run
-description: Recover a Workflow run that was stopped, killed, or died while some of its agents were still MID-FLIGHT, without losing their investigation. Map each interrupted seat to its own prior transcript, append a resume note to ONLY those seats' prompts, leave every completed prompt byte-identical, and re-invoke against the same script and the prior run id — so a partially-done seat continues instead of restarting from zero. Use when a run was interrupted while agents were still working. Do NOT use it for a run that died BEFORE any agent produced substantial work, or one whose agents all completed — a plain resume already handles both. It is also not the fix for an agent that COMPLETED with a bad result; that is a cache-bust (see implement-review-verify).
+description: Resumes a workflow run interrupted after agents did substantial work but before they returned results. Not for completed agents with bad results.
 ---
 
 # Resume an Interrupted Run — hand each mid-flight seat its own transcript back
