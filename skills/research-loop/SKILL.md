@@ -1,6 +1,6 @@
 ---
 name: research-loop
-description: Answer an open research question with maximum certainty by triangulating from two independent angles (context-free decomposed expert fan-out + same-prompt breadth fan-out), synthesizing your own conclusion into a doc, then looping a 1:1 doc-vs-result review until the doc faithfully represents every source. Every finding evidence-tagged proven/uncertain/not-determinable. Use when the user wants deep, certain research on "how does X actually work" / "what is the authoritative way to do Y" before relying on or documenting it. Pairs with verify-loop (research produces the doc; verify-loop proves it).
+description: Researches an open question in depth, such as how a system works or the authoritative way to do something.
 ---
 
 # Research Loop — triangulate, synthesize, review-loop to a trustworthy doc

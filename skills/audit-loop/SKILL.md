@@ -1,6 +1,6 @@
 ---
 name: audit-loop
-description: Continuously audit a codebase through a fixed library of independent lenses (separation of concerns, abstraction quality, code smell, type safety, cleanliness, missing gaps, domain leakage, type smearing), adversarially verify each finding, and append confirmed findings to a living AUDIT.md — deduplicated against everything seen (entries plus a Refuted ledger), never overwritten. Designed to run forever via /loop so the audit accumulates in the background while implementation and discussion happen, then everything can be fixed in one sweep. Read-only; it finds and records, it never fixes.
+description: Continuously audits a codebase without applying fixes.
 ---
 
 # Audit Loop — never-ending, lens-based, append-only audit into AUDIT.md

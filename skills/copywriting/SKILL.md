@@ -1,6 +1,6 @@
 ---
 name: copywriting
-description: Produce the finished human-readable strings for an increment through a copy-first workflow — a per-increment intent catalog plus a global writing system, one agent per item, then a mechanical gate, a source-verify seat, a fresh-context critic and a human read before ship. Use when an increment puts user-visible text into a product (landing/marketing sections, onboarding, empty states, error text, any multi-locale UI). Pairs with implement-review-verify, which runs AFTER it and consumes the finished strings. NOT for developer-facing text — log lines, code comments, internal errors.
+description: Writes user-facing product or marketing text, including onboarding, UI states and translations. Not for logs or code comments.
 ---
 
 # Copywriting — copy first, then implement

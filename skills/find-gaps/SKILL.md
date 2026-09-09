@@ -1,6 +1,6 @@
 ---
 name: find-gaps
-description: Audit an artifact (design doc, spec, plan, set of claims) for SINS OF OMISSION — things that SHOULD be present for it to be complete, implementable, and truthful but are MISSING, under-specified, or silently assumed. Distinct from verify-loop (which proves present claims true); this finds what isn't there at all. Spawns scope-bounded, evidence-backed gap-finders, severity-grades each gap, and returns a prioritized list. Use when the user wants a completeness check / "what's missing" / "is anything overlooked" / "is this a complete spec" before relying on or implementing an artifact.
+description: Checks a spec, design or plan for missing requirements, overlooked cases or under-specified behavior.
 ---
 
 # Find Gaps — the sins-of-omission audit

@@ -1,6 +1,6 @@
 ---
 name: verify-loop
-description: Run an adversarial claim-verification loop on a target artifact (design doc, spec, plan, set of claims) until EVERY claim is independently proven true against ground truth with evidence. Spawns N identical unbiased verifiers, reconciles to unanimous-or-defect, then research → fix → re-verify, looping until immaculate. Use when the user demands 100% certainty / "verify everything" / "truth only" / "no guessing" on a document or set of claims before relying on or implementing it.
+description: Checks every factual claim in an existing document or set of claims against authoritative sources.
 ---
 
 # Verify Loop — prove every claim, loop until immaculate

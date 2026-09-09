@@ -1,6 +1,6 @@
 ---
 name: implement-review-verify
-description: Implement a code change through cold spec review, implementation, parallel concern reviewers and critics, independent finding verification and consolidation, then a separate fixer that acts only on approved corrections. Re-review fixes before closure. Routine triage stays inside the workflow; unresolved decisions, verifier/fixer disagreements and bounded non-convergence return to the root. Use for coupled code changes or when asked for a workflow with reviewers. Pairs with verify-loop for document verification.
+description: Implements code changes involving shared infrastructure or subtle invariants, or changes requested through a workflow with reviewers.
 ---
 
 # Implement → Review → Verify → Fix — a workflow for code changes
