@@ -26,6 +26,12 @@ Rules:
   to justify the implementation. For each excess, name what can be deleted or simplified and
   estimate the saving with its basis. For each spec shortfall, name what the spec failed to
   decide. A later spec edit never retroactively authorizes code.
+- The recorded directives outrank the spec: a quote from the spec that itself contradicts a
+  directive is not authorization. Flag that as a directive conflict, distinct from an ordinary
+  excess-scope or missing-decision finding.
+- Report every finding here as CRITICAL. An inverse-spec finding is never a nit, a soft ambiguity
+  or an optional suggestion, however small the excess or omission looks; the finding verifier,
+  fixer and root ignore any other categorization and must dispose of each one explicitly.
 - Keep the two review directions distinct. The spec-compliance reviewer owns whether explicit
   requirements are implemented, including missing or incorrect required behaviour. You own
   whether the implementation's choices are authorized and which decisions are missing from the

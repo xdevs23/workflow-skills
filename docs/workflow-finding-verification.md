@@ -1,11 +1,21 @@
 # Verify and consolidate findings before fixing
 
-## Decision
+## Required behavior
 
 Keep routine finding verification inside the workflow. A read-only `finding-verifier`
-checks and consolidates every reviewer's findings against the code, settled spec and
-recorded directives. A separate fixer receives only its approved corrections.
-The root handles exceptions, not every review round.
+checks and consolidates every reviewer's findings against the code and human directives,
+with the specification as a derived description of the required implementation. A
+separate fixer receives only its approved corrections. The root handles exceptions,
+not every review round.
+
+[Directive authority](directive-authority.md) governs specification fidelity, critical
+inverse-spec findings and the root's question-premise checks. Human directives veto
+conflicting specifications and prompts; writing or accepting a spec does not create
+decision authority. Neither the verifier nor the root may ignore specification reviews
+or use the spec alone to dismiss contradictory directives. The verifier, fixer and root
+ignore supplied categorization and treat every inverse-spec finding as CRITICAL. Every
+one requires root handling, including apparent false positives and findings whose spec
+has since changed. Original private directives remain intact and enforceable.
 
 The main sequence is Implement → Review → Verify → Fix. Review includes the concern
 reviewers, quality, inverse-spec, rule reader and cold alternatives on a clean committed
@@ -22,13 +32,22 @@ claiming closure. The cold spec-review pre-run remains separate and unchanged.
 - **The finding verifier verifies and consolidates.** Inspect the actual code and
   authority sources, merge duplicate findings without losing their source IDs, resolve
   conflicts using evidence, and disposition every source finding exactly once. A
-  reviewer-assigned severity or lane is advice, not permission to edit.
+  reviewer-assigned severity or lane is not permission to edit. Inverse-spec findings
+  always retain CRITICAL classification, including mixed-source consolidated groups;
+  directive conflicts are hard flags, never advisory records. All inverse-spec decisions,
+  with their source identities and evidence or counterevidence, remain unresolved root
+  handoffs rather than routine internal rejections or cleanup.
 - **The fixer fixes approved work only.** Independently check each approved correction,
   preserve its constraints, and return `fixed`, `rejected` or `blocked` for each key.
   It cannot broaden scope, edit authority documents or turn raw reports into work orders.
-- **The root resolves exceptions.** Demonstrated impossibilities, verifier/fixer
-  disagreements and bounded non-convergence return with evidence. A
-  failed required reviewer or invalid handoff stops the run as incomplete verification.
+  Received inverse-spec corrections remain CRITICAL regardless of upstream labels or spec
+  edits; a rejected or blocked correction retains its origin and counterevidence for root.
+- **The root resolves exceptions.** Every inverse-spec finding, demonstrated impossibility,
+  verifier/fixer disagreement and bounded non-convergence returns with evidence. The root
+  handles each inverse-spec finding by correcting the spec to describe an existing human
+  decision faithfully, or asking about a genuinely unsettled choice after checking its
+  premises. Counterevidence remains part of that handling, not permission to drop a finding.
+  A failed required reviewer or invalid handoff stops the run as incomplete verification.
   Neither uncertainty nor a failed check is silently treated as approval.
 
 ## Execution roles
@@ -89,12 +108,19 @@ non-blocking observations; it cannot dispose of a confirmed must-fix or critical
 `cleanup` records verified out-of-scope work for the final cleanup handoff rather than
 expanding this unit. Rejections require counterevidence, not a tone or taste label.
 
-Blocking decisions and root actions require evidence that the assigned work cannot satisfy
-the existing requirements. A suggested spec amendment alone is not a blocker: implement the
-spec as written, retain the usual reviews, and report non-blocking suggestions for the root.
-The existing spec-versus-instructions pre-check remains; no additional approval gate is needed.
-Agents never edit the spec. Routine rejections, consolidation and successful fixes stay in
-the run record, not individual root interruptions.
+Directive conflicts hard-flag the affected work, whether the conflicting text is a spec
+or an assignment prompt. Missing necessary directive evidence requires root action;
+neither case can be relabeled as a nonblocking spec suggestion. Other blocking decisions
+require a genuinely unresolved choice or impossibility. An optional improvement to an
+otherwise faithful spec is nonblocking: ordinary implementation and reviews continue.
+The existing authority pre-check is strengthened, not replaced by another approval gate.
+Stages never edit the spec; the root records only human decisions and corrects transcription
+errors without inventing new scope. Ordinary evidence-backed rejections, consolidation and
+successful fixes remain internal. Inverse-spec findings are the explicit exception: every
+one reaches root with its evidence and counterevidence regardless of disposition. Neither
+`reject`, `cleanup`, `record`, a successful code fix nor an edited spec retires that handoff.
+Enforcement continues against the original directives after root corrections; later human
+decisions can supersede earlier instructions only with preserved source provenance.
 
 The verifier also independently checks each prior fix claim and returns a closure verdict.
 The script requires exactly one verdict per pending key. A fix still unresolved after
@@ -143,7 +169,17 @@ records** section. No separate TODO writer or automatic Git mutation is added to
 ## Root completion checks
 
 Cycle completion is separate from acceptance and integration. The workflow returns acceptance
-as `pending-root-checks`, even when its review/fix cycle is complete.
+as `pending-root-checks`, even when its review/fix cycle is complete. Root acceptance
+accounts for all spec and inverse-spec findings, including early hard-flag exits and
+counterevidenced rejections. Spec edits do not waive original directives or finding closure.
+
+Before presenting a question, trade-off, limitation or acceptance request, the root privately
+identifies its premises, relevant directive/context references and related spec/inverse-spec
+findings. Investigate any challenged premise first, disclose unsupported implementation
+plainly, and do not ask again about a decision the record already settles. Ask only about
+genuinely unresolved choices, not whether to accept consequences of invented scope. Preserve
+the original private record; root edits cannot rewrite, truncate or selectively omit it to
+force agreement. Tests establish instruction wiring and routing, not future interpretation.
 
 After every run the root inspects actual stage durations, including retries and cached replay,
 names the biggest time sink, and removes avoidable waiting, repeated discovery/checks or rework
@@ -186,7 +222,8 @@ call—never a chained check-and-delete or forced removal. Branch deletion is se
 
 - **Root checkpoint every round — rejected.** Verification against existing authority
   does not need the root's judgment. Routing all reports there consumes root context and
-  adds avoidable interruptions. Reserve it for disputes and genuinely unsettled choices.
+  adds avoidable interruptions. Reserve it for explicit exceptions, including every
+  inverse-spec finding, disputes and genuinely unsettled choices.
 - **Combined verify/fix agent — rejected.** Consolidation and approval should happen before
   mutation, independently from the agent that implements the correction.
 - **Mechanical findings straight to the fixer, adversaries always to the human — rejected.**
@@ -213,15 +250,21 @@ call—never a chained check-and-delete or forced removal. Branch deletion is se
 2. One verifier receives all source findings and reports, including adversaries.
 3. Every source finding belongs to exactly one consolidated decision; invalid coverage fails.
 4. Only approvals with evidence, authority, boundaries and acceptance checks reach the fixer.
-5. Demonstrated impossibilities stop before fixing; suggested spec edits alone do not block
-   implementation, approved corrections or normal reviews. Agents leave the spec untouched.
+5. Directive conflicts stop conflicting work and acceptance with preserved evidence;
+   demonstrated impossibilities and missing necessary authority also require resolution.
+   Optional improvements to a faithful spec do not block ordinary work. Stages leave the
+   spec untouched, and the root adds no decisions of its own.
 6. Fixer disagreements return to the root with the approved item and counterevidence.
 7. Independent closure is required after writes; post-fix exits preserve unverified state.
-8. Clean runs and routine consolidation do not require a root checkpoint.
+8. Clean runs and routine consolidation do not require a root checkpoint. Every inverse-spec
+   finding remains CRITICAL at verifier, fixer and root regardless of its supplied labels;
+   every disposition preserves an unresolved root handoff with source evidence. Rejection,
+   cleanup, consolidation and spec edits cannot silently retire it.
 9. Quality receives no spec, directives or implementation briefing; other seats retain their
    own input boundaries, and spec compliance does not duplicate inverse-spec authorization.
-10. Existing research/document verifier roles, model policy, and cold spec pre-review remain
-    unchanged. Gates still run bare after the last write.
+10. Research/spec-writing instructions preserve human decision ownership and directive veto.
+    Existing research coverage, model policy and cold spec pre-review input boundaries remain.
+    Gates still run bare after the last write.
 11. Confirmed adjacent rule violations retain CRITICAL classification and a same-run cleanup
     handoff without extending the current fix loop; TODO.md stays untracked unless explicitly
     requested tracked and committed. Existing tracked files are not silently removed or untracked.

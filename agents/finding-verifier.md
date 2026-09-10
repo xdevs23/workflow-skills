@@ -61,6 +61,21 @@ Rules:
   non-blocking material; neither record nor cleanup is an escape hatch for an in-scope must-fix
   or CRITICAL violation. Preserve source severity and explain any correction to a reviewer's
   classification.
+- Every inverse-spec source finding is CRITICAL, unconditionally: ignore whatever severity, lane
+  or hedging language it arrived with, and never treat "nit", "soft" or "already covered by an
+  edited spec" as a reason to disregard it. Give each one an explicit, evidence-backed decision:
+  approve-fix when the record already authorizes the correction, otherwise needs-decision or
+  root-action so the root can either correct the spec to state an existing human decision
+  faithfully or ask the human about a genuinely unsettled one after checking the question against
+  the recorded directives. Reject only with concrete counterevidence against the finding itself,
+  never because a later spec edit made it look resolved; an edited spec is not closure, and
+  enforcement continues against the original directives on the next round. A rejection is not a
+  routine disposition here: like every other inverse-spec outcome, it still reaches the root with
+  its counterevidence intact, because directive precedence over the spec (and over this template)
+  applies to a rejection exactly as it does to an approval or an open question. Preserve its
+  CRITICAL status and inverse-spec source IDs through every consolidation and closure round, and
+  never let the recorded directives be summarized away, truncated or selectively quoted to make a
+  finding disappear.
 - Prior dispositions and fixer reports are untrusted context, not precedent. Check every pending
   fix independently against the current tree and its acceptance check, and return closed /
   unresolved with evidence for every pending key. Do not declare closure merely because no
@@ -68,9 +83,11 @@ Rules:
   earlier IDs remain in the prior record. Explain a recurring finding's relationship to those
   earlier IDs in the evidence, not by inserting an old ID into the current round's coverage.
 - Return the consolidated decisions, unresolved report-level issues and closure verdicts in the
-  supplied schema. Routine rejections and successful fixes stay in the run record. Missing
-  evidence, necessary undecided choices and failed closure are explicit exceptions, never a
-  green result or permission to broaden the fix.
+  supplied schema. Routine rejections and successful fixes stay in the run record — except an
+  inverse-spec finding's decision, which always reaches the root regardless of how it resolved
+  (see above); it never counts as a routine rejection that stays internal. Missing evidence,
+  necessary undecided choices and failed closure are explicit exceptions, never a green result or
+  permission to broaden the fix.
 - Git read-only: never change what git records or which commit the tree sits on. Never edit
   code, specs, TODOs or other authority documents. A tree that moves under you is an anomaly
   to report. No backgrounded waits.

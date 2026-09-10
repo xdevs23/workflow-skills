@@ -136,6 +136,17 @@ Point authority-aware seats at that private record to verify fidelity without co
 tracked docs, tests, code or commit messages. A broad commit instruction does not authorize
 including private records. Keep workflow scripts containing private text untracked too.
 
+The root builds that private record from the actual conversation: the directives themselves plus
+the qualifications, surrounding context and examples that give them meaning, each with its source
+and order so later statements can be told from earlier ones. Label a summary or an applicable
+project requirement as such — neither substitutes for available verbatim evidence, and neither is
+relabeled as a human quotation. Never selectively omit, truncate or rewrite the original evidence to
+make a spec or implementation pass; only a later, actual human decision may supersede an earlier one,
+and only with its provenance recorded — an assistant's own spec edit never does. The record is fixed
+for the duration of a review cycle; a new directive invalidates the reviews and approvals it affects.
+A necessary part of the record being unavailable or incomplete is an explicit limitation that blocks
+acceptance — it is never license to fall back on trusting the spec.
+
 ## The shape
 
 Four phases: **Implement → Review → Verify → Fix** — after the cold spec review above.
@@ -154,23 +165,28 @@ reviews can be one barrier covering both. Brief it with:
 - a **self-check**: run the relevant test subset before reporting done, and FIX what it added that fails.
 
 **Prompt scrutiny / abort — exactly one trigger.** The implementer checks the prompt against the
-spec and the code *before* editing, and there is a single abort condition: **two AUTHORITY DOCUMENTS
-that cannot both be true.** The authority documents are the human's verbatim directives and the
-spec — *the prompt is not one of them* (law 8 ranks it UNTRUSTED below both). Then everything else
-falls out:
-- **prompt vs spec** → an ordinary MUST-FIX finding, not an abort. The prompt loses, the seat
-  proceeds against the spec, and it reports the conflict rather than silently picking a side;
+spec and the code *before* editing, and there is a single abort condition: **a human verbatim
+directive directly contradicted by either authority document or by this prompt** —
+directive-versus-spec and directive-versus-prompt are the same trigger. The AUTHORITY DOCUMENTS
+are the human's verbatim directives and the spec; the prompt is UNTRUSTED relative to the spec
+(law 8), but that ranking does not exempt the prompt from the directive ranked above both. Then
+everything else falls out:
+- **prompt vs spec, with no directive on either side** → an ordinary MUST-FIX finding, not an
+  abort. The prompt loses, the seat proceeds against the spec, and it reports the conflict rather
+  than silently picking a side;
 - **the prompt asserts a plainly false premise about the tree** ("module X already exists") →
   **VERIFIED-AND-REPORTED**. Every factual claim the prompt makes about the tree is CHECKED against
   the tree before anything is built on it; a false one is not merely disregarded but *corrected* —
   build to the TRUE state of the tree, and flag the premise as a must-fix in the report. That beats
   both stopping and trusting, and it is what "untrusted" is supposed to buy. It is not a
-  contradiction between authorities, so it must not fire the marker;
+  contradiction with a directive, so it must not fire the marker;
 - **a tree that does not yet satisfy the spec** → the NORMAL starting condition. Treating it as a
   contradiction deadlocks the run (law 10).
 
-None of those three emits the marker. Only the authority-vs-authority contradiction emits
-`HARD-FLAG:` and stops with the tree UNMODIFIED. One trigger, one marker,
+None of those three emits the marker. Only a contradiction with a human directive on at least one
+side emits `HARD-FLAG:`. Caught before any edit, it stops with the tree UNMODIFIED; caught after
+some edits already landed, it stops further writes that would extend the conflict and reports the
+existing changes as-is, without reverting them. No extra gate beyond that timing. One trigger, one marker,
 one disposition — a taxonomy with two abort classes and one marker leaves a class undetectable, and
 a class with three dispositions deadlocks. Same rule for scope: touch only what the task needs, and
 flag anything beyond the ruled scope as an invention rather than building it.
@@ -316,6 +332,11 @@ necessary choice cannot proceed merely because a reviewer or verifier prefers it
 - **record** — genuinely non-blocking observations, retained in the ledger. Never use it
   to dispose of a confirmed must-fix or CRITICAL violation.
 
+Every inverse-spec source finding carries CRITICAL severity unconditionally, regardless of the
+label it arrived with (law 15): `record` and `cleanup` are never available for one — an inverse-spec
+finding is about a choice made IN this unit's own diff, never work outside its repair scope — and
+`reject` still needs concrete counterevidence against the finding itself, never against an edited spec.
+
 Reviewer lanes and severity are claims to verify, not queue permissions. Every source ID
 must belong to exactly one decision group. The SCRIPT checks coverage, unknown IDs, duplicate
 IDs and approval payloads before mutation. Missing reports or invalid handoffs stop the run;
@@ -324,7 +345,12 @@ missing evidence is never an implicit rejection or a clean empty queue.
 Only approvals enter the fixer list. Unsettled necessary decisions, required root actions
 and unresolved report-level limitations prevent fixing, including otherwise approved work
 in that unit. Routine rejections and successful consolidation remain in the workflow record
-and final summary; they do not interrupt the root one by one.
+and final summary; they do not interrupt the root one by one. Every decision on an inverse-spec
+source finding, however it resolves, stays visible to the root in that summary: an `approve-fix`
+or a well-evidenced `reject` does not need to interrupt the cycle, but the root still owes each one
+an explicit resolution — correcting the spec to state an existing decision faithfully, or asking
+the human about a genuinely unsettled one — and neither a later spec edit nor a completed run
+closes it on its own.
 
 ### Phase 4 — Fix and roast concurrently
 
@@ -443,6 +469,25 @@ and rejected alternatives are recorded in `docs/workflow-finding-verification.md
 A completed Review/Verify/Fix cycle proves that cycle, not permission to integrate or delete
 its worktree. The root performs the checks below before accepting the unit. These are root
 responsibilities, not extra workflow seats or a second implementer pre-check.
+
+### Root question-premise check
+
+Before presenting any question, trade-off, limitation or acceptance request to the human, the
+root checks its premises first. Identify the proposed question in plain terms, the premise it
+rests on, and the exact directive/context reference and any related spec-compliance or
+inverse-spec finding it touches. Then check the record against that premise: when it challenges
+the premise, investigate the mismatch before asking anything, identify the unsupported scope, and
+report a discovered implementation deviation from the requested result plainly — never present the
+consequence of an invented mechanism as though it were a new choice the human must make. A choice
+the record already settles is never asked again; only a choice it leaves genuinely unresolved is
+presented as a decision request. Every entry the run returns in `inverseSpecDecisions` gets this
+treatment: the root either corrects the spec to state the existing decision faithfully or, after
+this check, asks the human about the part that is genuinely unsettled.
+
+This is a root PROMPT obligation, not a script gate. An executable test can confirm the
+instruction above is wired into the root's prompt and that `exceptions` and `inverseSpecDecisions`
+reach the root intact and unretired; it cannot prove a future model actually performed the
+conversational premise check correctly.
 
 ### Post-run timing review
 
@@ -665,11 +710,18 @@ Non-negotiable across every run of this skill.
    explicitly labelled **UNTRUSTED** relative to both, and *"a prompt-vs-spec conflict is itself a
    must-fix finding"*. **The AUTHORITY DOCUMENTS are the top two tiers only — the directives and the
    spec. The prompt is not one**, which is what makes a prompt-vs-spec conflict an ordinary finding
-   rather than the hard flag of law 10. Anything the orchestrator adds beyond the spec is labelled **"ORCHESTRATOR
-   SCOPING — the spec wins on conflict"**, which makes it structurally attackable by every seat. This
+   rather than the hard flag of law 10 — **but the human veto still reaches the prompt.** A prompt
+   that directly contradicts a directive is the same hard-flag class as a spec that does: being
+   untrusted RELATIVE TO THE SPEC does not exempt the prompt from the directive ranked above both.
+   Anything the orchestrator adds beyond the spec is labelled **"ORCHESTRATOR SCOPING — this added
+   scope loses to the spec on conflict"**, which makes it structurally attackable by every seat; the
+   spec itself never outranks a directive, including a spec the orchestrator amended. This
    exists because **the orchestrator's own errors are the dominant error class** — a mis-stated
    criterion, a gloss that contradicts another gloss of the same ruling, a "verbatim" appendix that
-   isn't — and this hierarchy is the only mechanism in the run that catches them. **Untrusted means
+   isn't, or an assignment overriding a directive it disagrees with — and this hierarchy is the only
+   mechanism in the run that catches them. A specification gains no decision authority merely by
+   being written, even when the orchestrator wrote it: it can be corrected to state an existing
+   directive faithfully, never used to authorize a new one. **Untrusted means
    VERIFIED, not ignored:** every factual claim the prompt makes about the tree is checked against
    the tree, and a FALSE one is **verified-and-reported** — build to the true state, flag the
    premise as a must-fix — which beats both trusting it and stopping on it (law 10).
@@ -682,12 +734,15 @@ Non-negotiable across every run of this skill.
    authority documents RETRACT a contradicted sentence in place.** Never append an acknowledgement
    beside a sentence it contradicts: layered addenda manufacture diverging premises, and seats then
    flag the contradiction forever, correctly.
-10. **HARD-FLAG SEMANTICS.** A hard flag (agent stops, script aborts) is reserved **EXCLUSIVELY for
-    contradictions AMONG authority documents** — two texts that cannot both be true, where "authority
-    document" means the directives or the spec and never the prompt (law 8). A tree that does not yet
-    satisfy a coherent spec is the NORMAL precondition of review-and-fix and yields ordinary findings;
-    so does an untrusted prompt that conflicts with the spec, or one asserting a false premise about
-    the tree — that one is verified-and-reported, built to the truth (law 8), never an abort.
+10. **HARD-FLAG SEMANTICS.** A hard flag (agent stops, script aborts) is reserved for a contradiction
+    that puts a human verbatim directive on at least one side — **directive-vs-spec, or
+    directive-vs-this-prompt** — two texts that cannot both be true (law 8). The prompt being
+    UNTRUSTED relative to the spec does not exempt it from the directive ranked above both: an
+    assignment overriding a directive is the same conflict class as a spec that does, hard-flagged
+    the same way. A tree that does not yet satisfy a coherent spec is the NORMAL precondition of
+    review-and-fix and yields ordinary findings; so does an untrusted prompt that merely conflicts
+    with the SPEC with no directive on either side, or one asserting a false premise about
+    the tree — those are verified-and-reported, built to the truth (law 8), never an abort.
     Getting this wrong deadlocks the run: the fixer that would resolve the finding can never
     run, because the flag aborts before it. **One trigger, one marker, one disposition** — a second
     abort class with no marker of its own is undetectable, and a single event with three dispositions
@@ -730,6 +785,14 @@ Non-negotiable across every run of this skill.
     **ONLY THE ORCHESTRATOR MAY EDIT A SPEC OR OTHER AUTHORITY DOCUMENT.** If the root amends one,
     record the technical rationale, retract contradicted text in place (law 9), and invalidate
     affected cached reviews and approvals. Never retroactively authorize unsupported implementation.
+    **Every inverse-spec finding is CRITICAL regardless of the severity or lane it arrived with; the
+    finding verifier, the fixer and the root all ignore that supplied categorization and must
+    dispose of it explicitly — never leave it implicitly closed.** The root resolves it by
+    correcting the spec to state an existing human decision faithfully, or by asking the human
+    about a genuinely unsettled choice after checking the question's premises against the recorded
+    directives. Amending the spec is not itself the closure: the underlying finding is re-checked
+    against the original directives on the next round, and the original verbatim directives are
+    never erased, rewritten or selectively omitted to make it disappear.
 16. **ASSERT AT THE GRANULARITY AT WHICH THE RULE BINDS** — per row, per section, per item — and
     **never aggregated over the whole artifact**. An aggregate assertion lets a fully DEGENERATE
     part pass on the strength of its neighbours: the property holds across the sample while the
@@ -833,7 +896,8 @@ const PINS = [                    // authority-aware seats only; quality uses HY
   'on it. A FALSE premise is VERIFIED-AND-REPORTED: build to the TRUE state and flag the premise.',
   'A prompt-vs-spec conflict, and a false premise, are MUST-FIX FINDINGS:',
   'report them and proceed against the spec. Never silently pick one; never stop for them.',
-  'HARD-FLAG (prefix HARD-FLAG: and stop) ONLY for a contradiction BETWEEN authority documents.',
+  'HARD-FLAG (prefix HARD-FLAG: and stop) for a contradiction between authority documents, OR for',
+  'this prompt directly contradicting a directive - the human veto reaches the prompt too, not only the spec.',
   'A tree not yet satisfying the spec is normal: report ordinary findings, never a hard flag.',
   'Scratch files go in the project cache dir, never a global temp.',
   'Run checks BARE. Never pipe through head/grep — it hides the error.',
@@ -843,9 +907,16 @@ const PINS = [                    // authority-aware seats only; quality uses HY
   'fixer-actionable / orchestrator-only / later-phase / not-a-defect (report material, never a finding).',
   'Cite every file as a REPO-RELATIVE path: the loop matches findings to fixes by that path.',
   'Ordinary verdicts cover the change; the rule reader checks full changed files and separates cleanup.',
-  'You may NEVER edit a spec or any other AUTHORITY DOCUMENT: report it, the orchestrator edits it.',
+  'You may NEVER edit a spec or any other AUTHORITY DOCUMENT: report it, the orchestrator edits it,',
+  'and only to match an existing decision - a spec gains no decision authority merely by being written.',
   'Implement the spec AS WRITTEN. Suggested spec edits do not block executable work or normal reviews.',
   'Report non-blocking spec suggestions without making them prerequisites; block only on an actual impossibility.',
+  'A spec that contradicts a directive is the hard-flag case above, never "implement it as written".',
+  'Read the private directive record below for its surrounding context and examples, not just its',
+  'lines in isolation - the absence of a particular keyword never licenses behavior that contradicts',
+  'the established context, and an example never authorizes an unrelated feature it did not name.',
+  'A necessary part of that record being unavailable or incomplete is a root-action limitation:',
+  'report it rather than proceeding as if the spec alone were sufficient.',
 ].join('\n')
 const READ_GIT = [
   'GIT READ-ONLY: never stage, commit, reset, amend, rebase, merge or switch branches/worktrees.',
@@ -867,7 +938,8 @@ const WRITE_GIT = [
 const SPEC = [
   'SPEC (authority): docs/<the-spec>.md — read the current on-disk revision in full.',
   'PRIVATE DIRECTIVES: <ignored untracked record path>. Read privately; never copy messages into tracked files.',
-  'ORCHESTRATOR SCOPING (the spec wins on conflict): ...',
+  'ORCHESTRATOR SCOPING (this added scope loses to the spec on conflict; the spec itself never',
+  'outranks a directive, including one the orchestrator later amended it to match): ...',
 ].join('\n')
 
 const CRITERIA = 'ACCEPTANCE CRITERIA: numbered in the spec. Read them there; return a verdict PER criterion.'
@@ -946,13 +1018,21 @@ const FIX = {
   },
 }
 
+// ONE exact-marker guard, reused by both retry helpers below and by the final consumed-result
+// check after them (abortOnFlag) — never a prose classifier. It scans the WHOLE structured
+// result, not a chosen text projection: a marker planted only inside a finding's claim/evidence
+// or a decision's reason/evidence/correction, alongside a SHORT or proof-less report, must be
+// caught here before either retry loop's floor ever sees it — otherwise a legitimate structured
+// hard flag with a short report gets retried into FAIL-FAST or DELIVERABLE PROOF instead of
+// surfacing the contradiction it was raised for (law 10).
+const hasHardFlag = r => r != null && JSON.stringify(r).includes('HARD-FLAG:')
 // PROSE stages are accepted on a LENGTH FLOOR (law 4): it catches the turn that ended waiting on
 // a backgrounded check, where that sentence became the return value.
 async function robust(prompt, opts, minLen, text = r => r) {
   for (let i = 0; i < 3; i++) {
     const r = await agent(prompt, opts)
+    if (hasHardFlag(r)) return r
     const s = r && text(r)
-    if (typeof s === 'string' && s.includes('HARD-FLAG:')) return r
     if (typeof s === 'string' && s.length >= minLen) return r
     log('sub-minimal result from ' + (opts.label || 'agent') + ', retry ' + (i + 1))
   }
@@ -976,12 +1056,14 @@ async function proven(prompt, opts, minLen, text = r => r) {
   let note = ''
   for (let i = 0; i < 3; i++) {
     const r = await agent(prompt + note, opts)
+    // A HARD FLAG OUTRANKS THE PROOF CHECK, checked against the WHOLE structured result via the
+    // same hasHardFlag guard as robust() — not only the report text. A correctly flagging stage
+    // stops with the tree UNMODIFIED, so it owes no files: retrying it here would coerce it into
+    // building against the very contradiction it was told to stop on, and the throw below would
+    // then report a missing deliverable as the run's exit reason instead of the contradiction
+    // (law 10), which is exactly what happens if a short or proof-less report hides the marker.
+    if (hasHardFlag(r)) return r
     const s = r && text(r)
-    // A HARD FLAG OUTRANKS THE PROOF CHECK. A correctly flagging stage stops with the tree
-    // UNMODIFIED, so it owes no files: retrying it here would coerce it into building against
-    // the very contradiction it was told to stop on, and the throw below would then report a
-    // missing deliverable as the run's exit reason instead of the contradiction (law 10).
-    if (typeof s === 'string' && s.includes('HARD-FLAG:')) return r
     if (typeof s === 'string' && s.length >= minLen && s.includes(PROOF)) return r
     // The note names the ACTUAL failure: a retry told the wrong cause is itself a false premise.
     note = '\n\nHOW YOUR PREVIOUS ATTEMPT FAILED, plainly: ' + (
@@ -996,8 +1078,17 @@ async function proven(prompt, opts, minLen, text = r => r) {
 }
 // The structural abort is the SCRIPT'S job (law 10), on EVERY CONSUMED result — never a
 // downstream agent's to rediscover. Every selected reader is consumed by verification.
-const abortOnFlag = (r, label, s = r) => {
-  if (s.includes('HARD-FLAG:')) throw new Error('HARD-FLAG from ' + label + ':\n' + s)
+// Uses the SAME hasHardFlag guard as robust()/proven() above: a marker planted inside a
+// finding's claim/evidence or a decision's reason/evidence/correction must abort exactly like
+// one in the free-prose report, so a structured hard flag cannot slip past this gate into
+// downstream routing. The thrown error always carries the COMPLETE structured result, not just
+// its report text, so distinctive finding/decision evidence survives into the exception handoff
+// even when the report itself is short or unrelated — including a pre-history implementation or
+// review exit that this call throws before any round-based history entry exists.
+const abortOnFlag = (r, label) => {
+  if (hasHardFlag(r)) {
+    throw new Error('HARD-FLAG from ' + label + ':\n' + JSON.stringify(r))
+  }
   return r
 }
 
@@ -1016,7 +1107,7 @@ const implemented = await proven(
   { label: 'impl', phase: 'Implement', agentType: 'implementer', model: '<explicit>', effort: 'high', schema: IMPLEMENT },
   600, r => r.report,
 )
-const impl = abortOnFlag(implemented, 'impl', implemented.report)
+const impl = abortOnFlag(implemented, 'impl')
 checkWriterSnapshot(impl, baseSha)
 if (!impl.proofPassed) throw new Error('Implementation checks failed; no successful snapshot')
 
@@ -1037,12 +1128,13 @@ const SEATS = [
 ]
 const diffInput = sha => 'DIFF: ' + baseSha + '..' + sha + '. The clean worktree must remain at ' + sha + '.'
 const readSeat = async ([type, label, inputs], round, sha) => {
+  const stageLabel = 'review:' + label + ':r' + round
   const result = await robust([...inputs, diffInput(sha)].join('\n\n'), {
-    label: 'review:' + label + ':r' + round, phase: 'Review', agentType: type,
+    label: stageLabel, phase: 'Review', agentType: type,
     model: '<explicit>', effort: 'high', schema: REPORT,
   }, label === 'quality' ? 1 : 200, r => r.report)
-  return { ...abortOnFlag(result, label, result.report), seat: label, snapshotSha: sha,
-    label: 'review:' + label + ':r' + round }
+  return { ...abortOnFlag(result, stageLabel), seat: label, snapshotSha: sha,
+    label: stageLabel }
 }
 const roastPass = async (queue, round, sha) => {
   const result = await robust([
@@ -1059,7 +1151,7 @@ const roastPass = async (queue, round, sha) => {
     label: 'roast:r' + round, phase: 'Fix', agentType: 'roaster',
     model: '<explicit>', effort: 'high', schema: ROAST,
   }, 200, r => r.report)
-  abortOnFlag(result, 'roast:r' + round, result.report)
+  abortOnFlag(result, 'roast:r' + round)
   if (result.snapshotSha !== sha) throw new Error('Roaster reviewed the wrong snapshot')
   return { ...result, seat: 'roaster', label: 'roast:r' + round,
     findings: result.findings.map((f, i) => ({ ...f, id: 'r' + round + ':roaster:' + i,
@@ -1081,6 +1173,7 @@ const exactlyOnce = (actual, expected, label) => {
 const checkVerification = (v, sources, pending, sha) => {
   if (v.snapshotSha !== sha || v.clean !== true) throw new Error('Verifier observed snapshot drift or a dirty worktree')
   exactlyOnce(v.decisions.flatMap(d => d.sourceIds), sources.map(f => f.id), 'source ID')
+  const seatOf = new Map(sources.map(f => [f.id, f.seat]))
   for (const d of v.decisions) {
     if (!d.sourceIds.length) throw new Error('Decision without source IDs')
     requireText(d.reason, 'decision reason')
@@ -1089,6 +1182,17 @@ const checkVerification = (v, sources, pending, sha) => {
       for (const field of ['authority', 'correction', 'constraints', 'acceptance']) requireText(d[field], 'approved ' + field)
     }
     if (d.action === 'record' && ['must-fix', 'CRITICAL'].includes(d.severity)) throw new Error('Blocking defect cannot be recorded as advisory')
+    // Every inverse-spec finding is CRITICAL unconditionally (law 15): ignore whatever severity
+    // a reviewer supplied, and never let a mixed consolidated group launder it to a lower tier.
+    const fromInverse = d.sourceIds.some(id => seatOf.get(id) === 'inverse')
+    if (fromInverse && d.severity !== 'CRITICAL') {
+      throw new Error('Inverse-spec finding must keep CRITICAL severity regardless of supplied categorization')
+    }
+    // cleanup is for work OUTSIDE this unit's repair scope; an inverse-spec finding is about a
+    // choice made INSIDE this unit's own diff, so it can never be deferred there or as record.
+    if (fromInverse && d.action === 'cleanup') {
+      throw new Error('Inverse-spec finding cannot be dispositioned as cleanup; the root must correct the spec or ask the human')
+    }
     if (['needs-decision', 'root-action', 'cleanup'].includes(d.action)) requireText(d.correction, 'next action or question')
   }
   for (const issue of v.issues) requireText(issue.detail, 'unresolved issue')
@@ -1169,7 +1273,7 @@ try {
       label: 'verify:r' + round, phase: 'Verify', agentType: 'finding-verifier',
       model: '<explicit>', effort: 'high', schema: VERIFY,
     }, 200, r => r.report)
-    entry.verification = abortOnFlag(verified, 'verify:r' + round, verified.report)
+    entry.verification = abortOnFlag(verified, 'verify:r' + round)
     checkVerification(verified, sources, pending, snapshotSha)
     const unresolved = verified.closures.filter(c => c.verdict === 'unresolved')
     pending = pending.filter(f => unresolved.some(c => c.key === f.key))
@@ -1206,7 +1310,7 @@ try {
     if (pair[1].status === 'fulfilled') pendingRoasts.push(pair[1].value)
     if (pair[0].status === 'fulfilled') {
       entry.fix = pair[0].value
-      fix = abortOnFlag(entry.fix, 'fix:r' + round, entry.fix.report)
+      fix = abortOnFlag(entry.fix, 'fix:r' + round)
       checkFix(fix, queue, startSha)
       snapshotSha = fix.snapshotSha
       pending = queue.filter(f => fix.dispositions.some(d => d.key === f.key && d.disposition === 'fixed'))
@@ -1233,6 +1337,11 @@ try {
   exceptions.push({ kind: 'protocol-or-stage-failure', detail: error.message })
 }
 const decisions = history.flatMap(h => h.verification?.decisions || [])
+// Every inverse-spec decision, from every round, stays visible to the root by SOURCE IDENTITY —
+// not by aggregate count — whatever it resolved to (approve-fix, reject, needs-decision,
+// root-action): a completed run or a later spec edit never retires one on its own (law 15).
+const seatOfAny = new Map(history.flatMap(h => h.sources).map(s => [s.id, s.seat]))
+const inverseSpecDecisions = decisions.filter(d => d.sourceIds.some(id => seatOfAny.get(id) === 'inverse'))
 return {
   complete, exit, exceptions, proof: fix?.report || null, baseSha, snapshotSha,
   acceptance: 'pending-root-checks', // Cycle completion is not size approval or integration permission.
@@ -1247,6 +1356,7 @@ return {
     reviewers: h.reports.filter(r => r.seat !== 'roaster').map(r => r.label),
     fixer: h.fix ? 'fix:r' + h.round : null, roaster: h.roastLabel || null })),
   cleanup: decisions.filter(d => d.action === 'cleanup'),
+  inverseSpecDecisions, // the root's unconditional handoff: amend the spec, or ask the human.
 }
 ```
 
@@ -1389,7 +1499,8 @@ branches on — verdict rows, coverage notes, what was run — belongs in `repor
 
 **And ENUM-LOCK the vocabulary the script branches on (law 11).** Fixing is authorized by
 `approve-fix`, not a reviewer's free-form lane or severity. Lock verifier actions, severities
-(including `CRITICAL` for rule violations), closure verdicts and fixer dispositions in the schema.
+(including `CRITICAL` for rule violations and, unconditionally, every inverse-spec finding —
+law 15), closure verdicts and fixer dispositions in the schema.
 An unfamiliar word must fail validation, not silently skip a phase and produce success.
 
 ### The PINS constant
@@ -1399,12 +1510,15 @@ spec readers get the hygiene floor only; cold alternatives gets that floor plus 
 Do not defeat an unbriefed seat by appending instructions to read the spec or project docs.
 For the other seats:
 - **The authority hierarchy** (law 8) — human verbatim directives > the spec, named by PATH and read
-  from disk > this prompt, explicitly UNTRUSTED. Name the AUTHORITY DOCUMENTS as the first two and
-  say plainly that the prompt is not one, or the next bullet has no boundary.
-- **Hard-flag semantics** (law 10) — the marker, and the rule that it is ONLY for a contradiction
-  between authority documents. Spell out the counter-cases too, since they are the common ones: a
-  tree that does not yet satisfy the spec, a prompt that conflicts with the spec, and a prompt
-  premise the tree contradicts all yield ordinary must-fix findings, never a flag.
+  from disk > this prompt, explicitly UNTRUSTED relative to the spec. Name the AUTHORITY DOCUMENTS
+  as the first two and say plainly that the prompt is not one, or the next bullet has no boundary
+  — but the directive still reaches the prompt directly (a spec gains no decision authority merely
+  by being written, and neither does a prompt that overrides a directive it disagrees with).
+- **Hard-flag semantics** (law 10) — the marker, and the rule that it fires for a contradiction
+  with a human directive on at least one side, whether the other side is the spec or this prompt.
+  Spell out the counter-case too, since it is the common one: a tree that does not yet satisfy the
+  spec, or a prompt that merely conflicts with the spec with no directive on either side, yields
+  ordinary must-fix findings, never a flag.
 - **Premise verification** (law 8) — every factual claim the prompt makes about the tree is
   **VERIFIED against the tree** before anything is built on it, and a false one is
   **VERIFIED-AND-REPORTED**: build to the true state, flag the premise as a must-fix. Say this
@@ -1419,19 +1533,22 @@ For the other seats:
 - **Run checks BARE** — never piped through `head`/`grep`, which hides the error you needed.
 - **No background waits** — never end a turn waiting on a backgrounded check; the final message IS
   the deliverable.
-- **Abort on contradiction, one trigger only** — two authority documents that cannot both be true.
-  Everything else (the prompt losing to the spec, a false prompt premise verified and reported, a
-  tree that does not yet satisfy the spec) is an ordinary must-fix finding and the seat proceeds;
-  see law 10.
+- **Abort on contradiction, one trigger only** — a contradiction with a human directive on at
+  least one side (directive-vs-spec or directive-vs-this-prompt). Everything else (the prompt
+  losing to the spec with no directive on either side, a false prompt premise verified and
+  reported, a tree that does not yet satisfy the spec) is an ordinary must-fix finding and the
+  seat proceeds; see law 10.
 - **The findings contract** — a source finding is a DEFECT and cites a **repo-relative** FILE.
   Concern reviewers suggest who can close it using their actionability lanes. The verifier
   checks every source and report-level limitation, then consolidates; only its approved
   corrections enter the fixer queue. Source IDs, not file-name heuristics, bind the handoff.
+  Every inverse-spec source finding is CRITICAL unconditionally, whatever label it arrived with.
 - **Bound detection and repair separately.** Ordinary verdicts cover the change; the rule reader
   reads full changed files and separates unrelated cleanup. No seat turns cleanup into in-unit scope.
-- **No seat edits an authority document** (law 15). Implement the spec as written; report
-  suggestions without blocking executable work or normal reviews. Only an actual impossibility
-  warrants blocking on the requirements. Only the orchestrator edits a spec.
+- **No seat edits an authority document** (law 15). Implement the spec as written unless it
+  contradicts a directive (law 10); report suggestions without blocking executable work or normal
+  reviews. Only an actual impossibility warrants blocking on the requirements. Only the
+  orchestrator edits a spec, and only to state an existing decision, never to invent one.
 
 Keeping these in one constant is a deliberate trade-off: editing `PINS` busts every cache key. That
 cost is accepted so no stage's copy of the house rules can drift from another's.

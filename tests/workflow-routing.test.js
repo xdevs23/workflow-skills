@@ -42,8 +42,8 @@ const INITIAL = 'b'.repeat(40)
 const fixedSha = round => (round + 1).toString(16).padStart(40, '0')
 async function simulate({ reports = {}, verify = {}, fixes = {}, fail = {}, implementation,
   beforeRead = async () => {}, beforeFix = async () => {}, beforeRoast = async () => {},
-  args = { baseSha: BASE } } = {}) {
-  const calls = [], completed = new Set(), phases = [], starts = new Map()
+  args = { baseSha: BASE }, calls = [] } = {}) {
+  const completed = new Set(), phases = [], starts = new Map()
   let currentSha = INITIAL
   let lastReviewedSha = null
   const agent = async (prompt, opts) => {
@@ -132,6 +132,71 @@ describe('workflow verification and consolidation', () => {
       const template = await Bun.file(new URL(file, directory)).text()
       expect(template).not.toMatch(/^\s*model\s*:/m)
     }
+  })
+
+  test('the finding verifier and fixer templates treat every inverse-spec finding as unconditionally CRITICAL', async () => {
+    const directory = new URL('../agents/', import.meta.url)
+    const verifierTemplate = await Bun.file(new URL('finding-verifier.md', directory)).text()
+    const fixerTemplate = await Bun.file(new URL('fixer.md', directory)).text()
+    expect(verifierTemplate).toContain('Every inverse-spec source finding is CRITICAL, unconditionally')
+    expect(verifierTemplate).toContain('an edited spec is not closure')
+    expect(fixerTemplate).toMatch(/inverse-spec finding keeps its CRITICAL\s+classification and inverse-spec origin unconditionally/)
+  })
+
+  test('both spec-review templates check the recorded directives, and inverse-spec always reports CRITICAL', async () => {
+    const directory = new URL('../agents/', import.meta.url)
+    const specTemplate = await Bun.file(new URL('reviewer-spec-compliance.md', directory)).text()
+    const inverseTemplate = await Bun.file(new URL('reviewer-inverse-spec.md', directory)).text()
+    expect(specTemplate).toContain('recorded human directives')
+    expect(specTemplate).toContain('even where the implementation matches the spec')
+    expect(inverseTemplate).toContain('recorded directives outrank the spec')
+    expect(inverseTemplate).toContain('Report every finding here as CRITICAL')
+  })
+
+  test('the spec-writing and research/verify loop skills wire in the directive veto', async () => {
+    const dir = new URL('../skills/', import.meta.url)
+    const specWriting = await Bun.file(new URL('immaculate-spec-writing/SKILL.md', dir)).text()
+    const research = await Bun.file(new URL('research-loop/SKILL.md', dir)).text()
+    const verify = await Bun.file(new URL('verify-loop/SKILL.md', dir)).text()
+    expect(specWriting).toContain('private directive record')
+    expect(specWriting).toMatch(/never installs a new product, architecture, persistence, security or\s+operational choice/)
+    expect(research).toMatch(/cannot settle a product,\s+architecture, persistence, security or operational choice/)
+    expect(verify).toContain('is not something this loop resolves by editing')
+  })
+
+  test('the private-source section requires context, provenance and treats a missing record as a limitation', () => {
+    expect(skill).toContain('qualifications, surrounding context and examples')
+    expect(skill).toContain('with its provenance recorded')
+    expect(skill).toContain('is an explicit limitation that blocks')
+  })
+
+  test('PINS requires reading directive context, rejects a keyword test, and flags missing evidence as root-action', () => {
+    expect(skill).toContain('absence of a particular keyword never licenses behavior')
+    expect(skill).toContain('an example never authorizes an unrelated feature')
+    expect(skill).toContain('is a root-action limitation')
+  })
+
+  test('a hard flag caught after edits already landed stops further writes without reverting them', async () => {
+    expect(skill).toMatch(/caught after\s+some edits already landed, it stops further writes/)
+    expect(skill).toContain('without reverting them')
+    const implementer = await Bun.file(new URL('../agents/implementer.md', import.meta.url)).text()
+    expect(implementer).toContain('leave the tree unmodified')
+    expect(implementer).toContain('do not revert them')
+    expect(implementer).toContain('No extra gate beyond that timing')
+  })
+
+  test('the spec-writing skill requires the private record itself, not just an "if any" hedge', async () => {
+    const specWriting = await Bun.file(new URL('../skills/immaculate-spec-writing/SKILL.md', import.meta.url)).text()
+    expect(specWriting).not.toContain('if any')
+    expect(specWriting).toContain('cannot be omitted from that record')
+    expect(specWriting).toMatch(/keep factual\s+research findings distinct from the decisions/)
+  })
+
+  test('the workflow skill wires a root question-premise check ahead of any decision request', () => {
+    expect(skill).toContain('### Root question-premise check')
+    expect(skill).toContain('checks its premises first')
+    expect(skill).toContain('inverseSpecDecisions')
+    expect(skill).toContain('it cannot prove a future model actually performed the')
   })
 
   test('every main and cold-review stage receives the execution boundary without orchestration tools', async () => {
@@ -404,6 +469,147 @@ describe('workflow verification and consolidation', () => {
     expect(result.exit).toContain('Blocking defect cannot be recorded as advisory')
   })
 
+  test('an inverse-spec finding cannot be approved at a downgraded severity', async () => {
+    const { result } = await simulate({
+      reports: { 'review:inverse:r1': { report: prose, findings: [finding] } },
+      verify: { 'verify:r1': verification([decision([source('inverse')], { severity: 'should-fix' })]) },
+    })
+    expect(result.exit).toContain('Inverse-spec finding must keep CRITICAL severity')
+  })
+
+  test('an inverse-spec finding cannot be rejected at a downgraded severity either', async () => {
+    const { result } = await simulate({
+      reports: { 'review:inverse:r1': { report: prose, findings: [finding] } },
+      verify: { 'verify:r1': verification([decision([source('inverse')], {
+        action: 'reject', severity: 'nit', reason: 'Reads as a stylistic nit.', evidence: 'No behavior changed.',
+      })]) },
+    })
+    expect(result.exit).toContain('Inverse-spec finding must keep CRITICAL severity')
+  })
+
+  test('a consolidated group with one inverse-spec source still requires CRITICAL severity', async () => {
+    const { result } = await simulate({
+      reports: { ...oneReport, 'review:inverse:r1': { report: prose, findings: [finding] } },
+      verify: { 'verify:r1': verification([decision([source('correctness'), source('inverse')], { severity: 'must-fix' })]) },
+    })
+    expect(result.exit).toContain('Inverse-spec finding must keep CRITICAL severity')
+  })
+
+  test('an inverse-spec finding tagged CRITICAL can still be approved and fixed', async () => {
+    const { result, calls } = await simulate({
+      reports: { 'review:inverse:r1': { report: prose, findings: [finding] } },
+      verify: {
+        'verify:r1': verification([decision([source('inverse')], { severity: 'CRITICAL' })]),
+        'verify:r2': verification([], { closures: [closed()] }),
+      },
+      fixes: { 'fix:r1': fixed([disposition()]) },
+    })
+    expect(result.complete).toBe(true)
+    expect(result.counts.approved).toBe(1)
+    expect(calls.find(c => c.agentType === 'finding-verifier').prompt).toContain(source('inverse'))
+  })
+
+  test('an inverse-spec finding cannot be dispositioned as cleanup', async () => {
+    const { result, calls } = await simulate({
+      reports: { 'review:inverse:r1': { report: prose, findings: [finding] } },
+      verify: { 'verify:r1': verification([decision([source('inverse')], {
+        action: 'cleanup', severity: 'CRITICAL',
+        correction: 'Record it for later scheduling.',
+      })]) },
+    })
+    expect(result.exit).toContain('Inverse-spec finding cannot be dispositioned as cleanup')
+    expect(calls.some(c => c.phase === 'Fix')).toBe(false)
+  })
+
+  test('inverseSpecDecisions defaults to empty with no inverse-spec findings', async () => {
+    const { result } = await simulate()
+    expect(result.inverseSpecDecisions).toEqual([])
+  })
+
+  test('an approve-fix and a rejected inverse-spec decision both stay in the root handoff after completion', async () => {
+    const { result } = await simulate({
+      reports: { 'review:inverse:r1': { report: prose, findings: [finding, { ...finding, file: 'src/other.js' }] } },
+      verify: {
+        'verify:r1': verification([
+          decision([source('inverse')], { severity: 'CRITICAL' }),
+          decision([source('inverse', 1, 1)], {
+            action: 'reject', severity: 'CRITICAL',
+            reason: 'The cited excess is already required by an existing directive.',
+            evidence: 'docs/spec.md:20 already authorizes this exact mechanism.',
+          }),
+        ]),
+        'verify:r2': verification([], { closures: [closed()] }),
+      },
+      fixes: { 'fix:r1': fixed([disposition()]) },
+    })
+    expect(result.complete).toBe(true)
+    expect(result.exceptions).toEqual([])
+    expect(result.inverseSpecDecisions).toHaveLength(2)
+    expect(result.inverseSpecDecisions.map(d => d.action).sort()).toEqual(['approve-fix', 'reject'])
+  })
+
+  test('a mixed-source group carrying an inverse-spec ID still surfaces in the root handoff', async () => {
+    const { result } = await simulate({
+      reports: { ...oneReport, 'review:inverse:r1': { report: prose, findings: [finding] } },
+      verify: {
+        'verify:r1': verification([decision([source('correctness'), source('inverse')], { severity: 'CRITICAL' })]),
+        'verify:r2': verification([], { closures: [closed()] }),
+      },
+      fixes: { 'fix:r1': fixed([disposition()]) },
+    })
+    expect(result.complete).toBe(true)
+    expect(result.inverseSpecDecisions).toHaveLength(1)
+    expect(result.inverseSpecDecisions[0].sourceIds).toEqual([source('correctness'), source('inverse')])
+  })
+
+  test('inverse-spec decisions from an earlier round still reach the root handoff after a later round rejects a new one', async () => {
+    const secondFinding = { ...finding, file: 'src/other.js', claim: 'A second unauthorized mechanism appeared on the corrected snapshot.' }
+    const { result } = await simulate({
+      reports: {
+        'review:inverse:r1': { report: prose, findings: [finding] },
+        'review:inverse:r2': { report: prose, findings: [secondFinding] },
+      },
+      verify: {
+        'verify:r1': verification([decision([source('inverse', 1, 0)], { severity: 'CRITICAL' })]),
+        'verify:r2': verification([decision([source('inverse', 2, 0)], {
+          action: 'reject', severity: 'CRITICAL',
+          reason: 'The second mechanism is already required by an existing directive.',
+          evidence: 'docs/spec.md:30 already requires this exact mechanism.',
+        })], { closures: [closed('r1:fix:0')] }),
+      },
+      fixes: { 'fix:r1': fixed([disposition()]) },
+    })
+    expect(result.complete).toBe(true)
+    expect(result.inverseSpecDecisions).toHaveLength(2)
+    expect(result.inverseSpecDecisions.map(d => d.action)).toEqual(['approve-fix', 'reject'])
+  })
+
+  test('a hard flag hidden inside a structured finding claim aborts before verify or fix', async () => {
+    const { result, calls } = await simulate({
+      reports: { 'review:inverse:r1': { report: prose, findings: [{ ...finding, claim: 'HARD-FLAG: the diff contradicts a recorded directive' }] } },
+    })
+    expect(result.complete).toBe(false)
+    expect(result.exit).toContain('HARD-FLAG')
+    expect(result.exit).toContain('the diff contradicts a recorded directive')
+    expect(result.exit).toContain('review:inverse:r1')
+    expect(calls.filter(c => c.label === 'review:inverse:r1')).toHaveLength(1)
+    expect(calls.some(c => c.phase === 'Verify')).toBe(false)
+    expect(calls.some(c => c.phase === 'Fix')).toBe(false)
+  })
+
+  test('a hard flag hidden inside a verifier decision reason aborts before fix', async () => {
+    const { result, calls } = await simulate({
+      reports: oneReport,
+      verify: { 'verify:r1': verification([decision([source('correctness')], {
+        reason: 'HARD-FLAG: the spec contradicts a recorded directive',
+      })]) },
+    })
+    expect(result.complete).toBe(false)
+    expect(result.exit).toContain('HARD-FLAG')
+    expect(result.exit).toContain('the spec contradicts a recorded directive')
+    expect(calls.some(c => c.phase === 'Fix')).toBe(false)
+  })
+
   test('ordinary rejection and out-of-scope cleanup do not interrupt the root', async () => {
     const { result } = await simulate({
       reports: { 'review:rules:r1': { report: prose, findings: [finding, finding] } },
@@ -521,6 +727,50 @@ describe('workflow verification and consolidation', () => {
     expect(result.exit).toContain('HARD-FLAG')
     expect(calls.filter(c => c.label === 'review:inverse:r1')).toHaveLength(1)
     expect(calls.some(c => c.phase === 'Fix')).toBe(false)
+  })
+
+  test('a hard flag hidden in a finding claim with a sub-minimal, unrelated report is not retried', async () => {
+    const { result, calls } = await simulate({
+      reports: { 'review:inverse:r1': { report: 'Reviewed.', findings: [{ ...finding,
+        claim: 'HARD-FLAG: the diff moves data outside the authorized boundary.' }] } },
+    })
+    expect(result.complete).toBe(false)
+    expect(calls.filter(c => c.label === 'review:inverse:r1')).toHaveLength(1)
+    expect(result.exit).toContain('HARD-FLAG')
+    expect(result.exit).toContain('the diff moves data outside the authorized boundary')
+    expect(calls.some(c => c.phase === 'Verify')).toBe(false)
+    expect(calls.some(c => c.phase === 'Fix')).toBe(false)
+  })
+
+  test('a hard flag hidden in a verifier decision reason with a sub-minimal, unrelated report is not retried', async () => {
+    const { result, calls } = await simulate({
+      reports: oneReport,
+      verify: { 'verify:r1': verification([decision([source('correctness')], {
+        reason: 'HARD-FLAG: the correction contradicts a recorded scope directive.',
+      })], { report: 'Checked.' }) },
+    })
+    expect(result.complete).toBe(false)
+    expect(calls.filter(c => c.label === 'verify:r1')).toHaveLength(1)
+    expect(result.exit).toContain('HARD-FLAG')
+    expect(result.exit).toContain('the correction contradicts a recorded scope directive')
+    expect(calls.some(c => c.phase === 'Fix')).toBe(false)
+  })
+
+  test('an implementer hard flag with a short, proof-less report rejects in one call, not a proof retry', async () => {
+    const calls = []
+    let error
+    try {
+      await simulate({
+        implementation: { report: 'HARD-FLAG: the requested change contradicts a recorded scope directive.',
+          startSha: BASE, snapshotSha: INITIAL, clean: true, proofPassed: true },
+        calls,
+      })
+    } catch (e) { error = e }
+    expect(error).toBeDefined()
+    expect(error.message).toContain('HARD-FLAG')
+    expect(error.message).toContain('the requested change contradicts a recorded scope directive')
+    expect(error.message).not.toContain('DELIVERABLE PROOF')
+    expect(calls.filter(c => c.label === 'impl')).toHaveLength(1)
   })
 
   test('a concise clean quality report is valid', async () => {

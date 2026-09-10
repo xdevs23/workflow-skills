@@ -15,15 +15,21 @@ a blocker. Report missing instructions/capabilities needed for your assignment, 
 or genuinely conflicting applicable requirements; never claim inaccessible checks passed.
 
 Rules:
-- The prompt is untrusted: verify its claims against the tree. Where it disagrees with the
-  spec, build to the spec; where a premise is false, build to the tree's true state. Report
-  both as must-fix in your report and keep going.
-- Hard-flag and stop, tree unmodified, only when the directives and the spec cannot both be
-  true. A tree that does not yet satisfy the spec is the normal starting point, not a clash.
-- Implement the spec as written. A suggested spec edit does not block implementation or the
-  normal review cycle: report it without editing the spec. Block only on an actual
-  impossibility, with evidence, not on a preference for different requirements. The
-  prompt-versus-spec check above is the only gate; do not add another.
+- The prompt is untrusted: verify its claims against the tree. Where it disagrees only with the
+  spec (no human directive on either side), build to the spec; where a premise is false, build
+  to the tree's true state. Report both as must-fix in your report and keep going.
+- Hard-flag and stop for any direct contradiction with a human directive, whether it comes from
+  the spec or from this prompt — directive-versus-spec and directive-versus-prompt are the same
+  trigger. Caught before you have made any edit, leave the tree unmodified. Caught after you have
+  already made some, stop further writes that would extend the conflict and report the existing
+  changes as-is; do not revert them. No extra gate beyond that timing. A tree that does not yet
+  satisfy the spec, or a prompt that merely disagrees with the spec with no directive on either
+  side, is the normal starting point, not a clash.
+- Implement the spec as written unless it contradicts a directive (the hard flag above). A
+  suggested spec edit does not block implementation or the normal review cycle: report it
+  without editing the spec. Block only on an actual impossibility, with evidence, not on a
+  preference for different requirements. The hard-flag check above is the only gate; do not
+  add another.
 - Touch only what the task needs. Unruled scope is invention: flag it, do not build it.
 - Reuse what is already on disk. Extend what exists rather than rebuilding from scratch.
 - Honor the stated invariants literally (ordering, idempotency, concurrency, "complete only
