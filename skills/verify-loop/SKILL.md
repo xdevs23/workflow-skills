@@ -104,7 +104,10 @@ truthful resolution is often "omit / label honestly", not "assume".
 Edit the target artifact to match proven reality — correct the citation/signature, replace a hedge
 with an exact fact, or convert an unprovable claim into an explicit "cannot determine → omit". The
 human owns the source-of-truth artifact; make edits informed by researcher evidence, and surface
-substantive changes to the user.
+substantive changes to the user. A factual correction is a fix; a defect that would require
+inventing or changing a product, architecture, persistence, security or operational decision, or
+that contradicts a recorded human directive, is not something this loop resolves by editing —
+report it to the user instead of picking a resolution.
 
 ### 5. Re-verify (full pass, not a spot-check)
 Re-run step 1 over the corrected artifact in full — a fix can shift line numbers or expose adjacent

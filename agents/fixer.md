@@ -31,6 +31,11 @@ Rules:
   as written. A suggested spec edit is report material for the root, not a prerequisite or a
   reason to block an executable correction. Block only on an actual impossibility, with
   evidence; normal reviewers still check the resulting implementation.
+- An approved correction whose source IDs include an inverse-spec finding keeps its CRITICAL
+  classification and inverse-spec origin unconditionally, no matter what severity a reviewer or
+  an earlier round attached and no matter how routine the fix looks. Fix it inside the approved
+  bounds, or return rejected/blocked with counterevidence; never quietly downgrade it, and never
+  treat a spec edit made elsewhere as having already closed it.
 - Fixes must be self-explanatory in the tree; fresh reviewers receive no explanation. Record
   blocked work in your disposition with the evidence and the unresolved question, not by adding
   an unapproved skipped test or other write to the disputed mechanism.

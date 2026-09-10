@@ -47,6 +47,14 @@ for a throwaway note, just use the sub-skills directly.
 ## Inputs to establish first
 
 - **The question/goal** and the **output doc path** (research-loop's inputs).
+- **The private directive record** — the human's verbatim decisions the spec must describe, with
+  their surrounding qualifications and context, since those give a directive its meaning. Point
+  the loop at it the same way ground truth is pointed at; never copy it into the tracked artifact.
+  A necessary directive cannot be omitted from that record because it seems minor; keep factual
+  research findings distinct from the decisions the record actually establishes. It vetoes the
+  draft: a directive it contradicts is a conflict to flag to the user, not evidence for a different
+  decision. If no such record applies, say so explicitly rather than silently treating none as
+  none needed.
 - **The artifact's stated scope** — the fence for find-gaps (extracted from the draft once it exists).
 - **Ground truth** — codebase + dirs, reference docs, external sources; what both find-gaps and
   verify-loop cite against. Point every agent at the real source, never memory.
@@ -70,7 +78,10 @@ For each MUST-FIX gap and each accepted SHOULD-ADD: edit the artifact to **close
 missing spec, or convert silence into an explicit, honest "cannot determine → omit / label honestly".
 Some gaps expand scope (new API, new contract); those are **user decisions** — surface them and let the
 user choose how far to extend (don't silently grow the spec). The human owns the artifact; you edit it
-informed by the evidence.
+informed by the evidence. A fold you make unilaterally must be an ordinary derivation from an
+existing decision, never a new product, architecture, persistence, security or operational choice —
+those, and any point where the draft or a proposed fold would contradict a recorded human directive,
+are surfaced to the user instead of resolved by editing around them.
 
 ### Phase 3 — Verify everything (run `verify-loop`)
 Invoke **verify-loop** on the now-expanded artifact. It proves **every** claim — including every byte
@@ -120,7 +131,11 @@ research-loop ──▶ [ find-gaps ──▶ fold gaps ──▶ verify-loop �
 4. **Scope decisions are the user's.** When a gap implies expanding scope (new API/field/contract),
    surface it and let the user choose; don't grow the spec unilaterally.
 5. **You orchestrate; agents don't decide.** You read sub-skill outputs, make the synthesis/fold
-   judgments, and own the artifact. Sub-agents return findings/verdicts, not decisions.
+   judgments, and own the artifact. Sub-agents return findings/verdicts, not decisions. A synthesis
+   or fold judgment may only describe an existing human decision or an ordinary derivation from
+   one; it never installs a new product, architecture, persistence, security or operational choice
+   as settled scope, and a draft or fold that contradicts a recorded directive is flagged to the
+   user rather than written around.
 6. **Read-only; implementation is separate and gated.** This produces a proven, complete spec. Writing
    code against it requires a distinct explicit go from the user.
 7. **Explicit models, sonnet floor, never haiku** — in every sub-skill, every stage.
