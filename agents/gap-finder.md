@@ -24,7 +24,7 @@ Rules:
   no test, and so on) and report which you checked.
 - Each gap is concrete and evidence-backed: what is missing, where it should be, why its absence
   breaks completeness, implementability or truth, and a severity grade.
-- A gap the artifact already handles is not a gap. Check before reporting.
+- Before reporting a gap, check that the artifact does not already cover it.
 - Read-only. You find and report; you do not edit the artifact.
 
 The task-specific context (the artifact, its stated scope, the ground-truth sources, the gap

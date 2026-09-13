@@ -5,9 +5,9 @@ description: Prepares a thoroughly researched spec or design document checked fo
 
 # Immaculate Spec Writing — research, complete it, prove it, until it converges
 
-The conductor skill. It does not introduce new mechanics; it **orchestrates three independently-usable
-sub-skills** into a single loop that drives an artifact to the only standard that prevents downstream
-bug-hunting: **everything stated is true, and nothing required is missing.**
+The conductor skill. It **orchestrates three independently-usable sub-skills** into a single loop
+that drives an artifact to the only standard that prevents downstream bug-hunting: **everything
+stated is true, and nothing required is missing.**
 
 - **research-loop** — discovers the answer and drafts the doc (triangulated, evidence-tagged).
 - **find-gaps** — the sins-of-omission audit: what *should* be in the doc but isn't.

@@ -24,8 +24,8 @@ It is **read-only and append-only**: each round may only *add* to `AUDIT.md` —
 non-duplicate findings as entries, and the claims the verifier killed as one-line entries in a
 separate `## Refuted` ledger so they are never rediscovered. It never edits source, and never
 rewrites or deletes existing AUDIT entries — the ONE permitted in-place edit is marking a stale
-entry `~~resolved?~~` when its `file:line` no longer exists, which adds a marker and rewrites
-nothing. It does not fix anything — fixing is a separate, explicit step.
+entry `~~resolved?~~` when its `file:line` no longer exists. It does not fix anything — fixing is
+a separate, explicit step.
 
 ## How it runs continuously
 
