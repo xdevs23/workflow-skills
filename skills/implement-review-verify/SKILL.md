@@ -63,7 +63,7 @@ loop) first.
 
 **ACCEPTANCE CRITERIA ARE MANDATORY.** Before you launch, state them explicitly — numbered,
 checkable, one per behaviour that must hold — and make sure the spec doc carries them too.
-The concern reviewers return verdicts *per criterion*; the additional seats retain their distinct contracts. This is not ceremony: without pinned
+The concern reviewers return verdicts *per criterion*; the additional seats retain their distinct contracts. Without pinned
 criteria, "review" degrades to vibes, each seat invents its own bar, and nothing the fixer
 receives can be triaged against anything. No criteria, no launch.
 
@@ -265,9 +265,8 @@ hand is what lets a seat catch a claim that is false, which it cannot do if it n
 AUTHORITY DOCUMENT must not be handed the implementer's account of what it did — its whole job is
 the spec versus the tree, and an account of the work is precisely the framing that makes a missing
 requirement look answered. One briefed verifier plus one cold judge beats both all-briefed and
-all-cold. This is a rule about WHICH INPUT a seat gets, and it is a different thing from the
-cold-every-round rule in phase 4, which is about CROSS-ROUND state and applies to every seat here
-including this one.
+all-cold. This rule governs WHICH INPUT a seat gets. The cold-every-round rule in phase 4 governs
+CROSS-ROUND state and applies to every seat here, including this one.
 
 **And a FINDING IS A DEFECT — nothing else.** The verdict rows, the coverage notes, the record of
 what was run, the criteria that passed: all of those ride in the seat's *report*, never in its
@@ -426,8 +425,7 @@ confirms some fixes but cannot close another records both facts separately. A bu
 must not turn the fixer's own claim into a verified result. An empty proof-only run cannot
 invalidate the reviewed tree by editing it. Any unprocessed roast is separately reported
 in `unverifiedRoasts`, even if the concurrent writer failed or disagreed. A successful
-result requires all launched roasts to have been processed. This does not add a second roast
-of the final commit merely to repeat the just-completed post-fix independent review.
+result requires all launched roasts to have been processed.
 
 #### Rule violations and local cleanup records
 
@@ -509,9 +507,7 @@ enforces it. It is a root prompt obligation like the rest of this section.
 Remove avoidable cost at its source: reusable prepared artifacts, narrower assignments,
 missing task context, or redundant checks. Preserve cold-review input boundaries and required
 checks after the last write; do not improve timing by deleting reviewers or trusting stale
-proof. Apply improvements within authorized scope and report any broader follow-up. No hard
-cutoff or abort, automatic model escalation, extra polling loop or provider-specific
-concurrency limit is introduced.
+proof. Apply improvements within authorized scope and report any broader follow-up.
 
 ### Size report and the 20:1 acceptance gate
 
@@ -1621,7 +1617,7 @@ composition entirely rather than running a thinned version of it: **ONE agent in
 WORKTREE** (create it manually with `git worktree add` if the runner cannot), the gates run **inside
 that worktree**, and the orchestrator **inspects the result itself** — reads the diff, looks at the
 actual output — before the project's chosen integration or delivery. Apply the root completion
-checks above; this path does not assume a merge, PR, bundle or patch destination.
+checks above.
 
 Two rules that come with it:
 - **Never run two tree-mutating workflows in one repo at once.** They interleave writes and neither
