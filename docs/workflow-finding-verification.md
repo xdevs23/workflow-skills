@@ -184,8 +184,10 @@ force agreement. Tests establish instruction wiring and routing, not future inte
 After every run the root inspects actual stage durations, including retries and cached replay,
 names the biggest time sink, and removes avoidable waiting, repeated discovery/checks or rework
 at the source within authorized scope. Parallel stage durations are not additive wall time.
-Missing timing data is reported honestly. Required checks and cold-review boundaries remain;
-no arbitrary time ceiling or automatic model escalation is added.
+Missing timing data is reported honestly. Twenty minutes of executed time per agent task is a
+soft ceiling: crossing it automatically triggers that timing review for the agent, while
+necessary reasoning or generation stays acceptable at any length. Required checks and
+cold-review boundaries remain; no hard cutoff or automatic model escalation is added.
 
 Before accepting a spec-governed candidate, the root measures added implementation lines divided
 by non-blank spec lines, using the final immutable candidate/spec and declared comparison base.

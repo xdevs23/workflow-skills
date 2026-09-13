@@ -498,11 +498,19 @@ repeated source discovery, repeated checks, or rework. Parallel durations overla
 agent elapsed times and call the total workflow wall time. If timing data is unavailable,
 report that limitation rather than inventing durations.
 
+Twenty minutes of executed (not cached-replay) elapsed time per agent task is the soft ceiling.
+Any agent whose executed duration exceeds 20 minutes automatically triggers this review for
+that agent: name its largest time sink and remove the avoidable part at the source. Time spent
+on necessary reasoning or generation is acceptable at any length and is not itself a defect;
+crossing the ceiling obliges the review, and what gets removed is machine wait and rework.
+Soft means no agent is aborted, killed or timed out for crossing it, and no script gate
+enforces it. It is a root prompt obligation like the rest of this section.
+
 Remove avoidable cost at its source: reusable prepared artifacts, narrower assignments,
 missing task context, or redundant checks. Preserve cold-review input boundaries and required
 checks after the last write; do not improve timing by deleting reviewers or trusting stale
-proof. Apply improvements within authorized scope and report any broader follow-up. No fixed
-agent-duration ceiling, automatic model escalation, extra polling loop or provider-specific
+proof. Apply improvements within authorized scope and report any broader follow-up. No hard
+cutoff or abort, automatic model escalation, extra polling loop or provider-specific
 concurrency limit is introduced.
 
 ### Size report and the 20:1 acceptance gate

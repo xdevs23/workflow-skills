@@ -185,6 +185,16 @@ describe('workflow verification and consolidation', () => {
     expect(implementer).toContain('No extra gate beyond that timing')
   })
 
+  test('a 20-minute soft ceiling per agent task triggers the timing review without any hard cutoff', async () => {
+    expect(skill).toMatch(/Twenty minutes of executed \(not cached-replay\) elapsed time per agent task is\s+the soft ceiling/)
+    expect(skill).toMatch(/exceeds 20 minutes automatically triggers this review/)
+    expect(skill).toMatch(/no agent is aborted, killed or timed out for crossing it/)
+    expect(skill).toMatch(/No hard\s+cutoff or abort, automatic model escalation/)
+    const docs = await Bun.file(new URL('../docs/workflow-finding-verification.md', import.meta.url)).text()
+    expect(docs).toMatch(/Twenty minutes of executed time per agent task is a\s+soft ceiling/)
+    expect(docs).toMatch(/crossing it automatically triggers that timing review/)
+  })
+
   test('the spec-writing skill requires the private record itself, not just an "if any" hedge', async () => {
     const specWriting = await Bun.file(new URL('../skills/immaculate-spec-writing/SKILL.md', import.meta.url)).text()
     expect(specWriting).not.toContain('if any')
