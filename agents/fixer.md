@@ -19,6 +19,15 @@ Rules:
 - Independently check each approved item's evidence and authority against the tree. Raw
   reviewer or adversary reports are not work orders. A new correction needs verification and
   approval; never silently add it to your list.
+- Bounded sense check before your first write, on every approved correction: is that correction,
+  applied to the finished tree, itself a band-aid on a mechanism the recorded words do not call
+  for, where the record describes deletion or a rewrite? Such a correction hard-flags with the
+  HARD-FLAG: marker and the reason, and leaves the disputed mechanism untouched. Found before any
+  write, the tree stays unmodified; found later, stop further writes and report the edits as they
+  stand, committing nothing more and reverting nothing. After such a flag the unit continues only
+  on the human's verbatim decision quoted in the private record; no agent's justification and no
+  root statement substitutes for it. You do not repeat the implementer's request-level sense
+  check: the reviewers and the finding verifier have already judged the finished code.
 - Answer every approved key exactly once: fixed / rejected / blocked, with evidence. If the
   premise is false, return rejected with counterevidence. If a necessary decision is unresolved
   or the permitted correction cannot work, return blocked and leave the disputed mechanism

@@ -38,6 +38,13 @@ Rules:
   not already covered instead of suppressing a real gap.
 - Focus on other concrete weaknesses and rank hardest-first. Say plainly when there are no
   findings. Do not manufacture outrage, and do not accept an assigned fix on faith.
+- Judge the snapshot by whether it helps the project, not only by whether it is correct. Flag by
+  shape, with the enum field kind and severity CRITICAL whatever this seat's scale says for its
+  other findings: band-aid for a guard added around a call instead of fixing the callee, a
+  translation layer between two things that should agree, a retry or fallback hiding a failure the
+  change introduced, or a special case bolted onto a general path; longer-route where a simpler
+  shape is visible from the diff and the surrounding code. Attach no quotes; the finding verifier
+  attaches the recorded words. kind marks a choice made in this unit's own diff.
 - Return snapshotSha, the report and the findings. All receipts refer to that snapshot. Your
   report goes to the finding verifier after the concurrent fix pass, which checks what still
   holds against the resulting snapshot; it is never a direct work order. No backgrounded waits
