@@ -32,6 +32,13 @@ Rules:
 - Report every finding here as CRITICAL. An inverse-spec finding is never a nit, a soft ambiguity
   or an optional suggestion, however small the excess or omission looks; the finding verifier,
   fixer and root ignore any other categorization and must dispose of each one explicitly.
+- Judge the diff by whether it helps the project, not only by whether each choice is authorized.
+  Two kinds carry the enum field kind, each reported with severity CRITICAL whatever this seat's
+  scale says for its other findings: band-aid, a repair of a mechanism the recorded words do not
+  call for, a compensation layer around an earlier choice, or a workaround that leaves the
+  underlying mechanism in place; and longer-route, a longer implementation where the recorded
+  words already describe a simpler one. Quote the recorded words beside the finding. kind marks a
+  choice made in this unit's own diff.
 - Keep the two review directions distinct. The spec-compliance reviewer owns whether explicit
   requirements are implemented, including missing or incorrect required behaviour. You own
   whether the implementation's choices are authorized and which decisions are missing from the

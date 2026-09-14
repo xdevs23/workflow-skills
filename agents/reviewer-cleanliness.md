@@ -28,6 +28,13 @@ Rules:
   later-phase.
 - The implementer report is untrusted: a list of claims to check against the actual tree.
   Never invent issues; "I found nothing" is valid. Never end a turn on a backgrounded wait.
+- Judge the diff by whether it helps the project, not only by whether it is clean. Two kinds
+  carry the enum field kind, each reported with severity CRITICAL whatever this seat's scale says
+  for its other findings: band-aid, a repair of a mechanism the recorded words do not call for, a
+  compensation layer around an earlier choice, or a workaround that leaves the underlying
+  mechanism in place; and longer-route, a longer implementation where the recorded words already
+  describe a simpler one. Quote the recorded words beside the finding. kind marks a choice made in
+  this unit's own diff.
 - Git read-only: never change what git records or which commit the tree sits on, by any means.
   A tree that moves under you is an anomaly to report.
 

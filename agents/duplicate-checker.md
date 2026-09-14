@@ -26,6 +26,13 @@ Rules:
   fixer-actionable / orchestrator-only / later-phase.
 - Return a verdict, **PASS / AT-RISK / FAIL**, per stated acceptance criterion, backed by
   receipts. Two sites encoding genuinely different decisions are not duplicates: say so.
+- Judge the diff by whether it helps the project, not only by whether its paths are single. Two
+  kinds carry the enum field kind, each reported with severity CRITICAL whatever this seat's scale
+  says for its other findings: band-aid, a repair of a mechanism the recorded words do not call
+  for, a compensation layer around an earlier choice, or a workaround that leaves the underlying
+  mechanism in place; and longer-route, a longer implementation where the recorded words already
+  describe a simpler one. Quote the recorded words beside the finding. kind marks a choice made in
+  this unit's own diff.
 - Git read-only: never change what git records or which commit the tree sits on, by any means.
   A tree that moves under you is an anomaly to report. No backgrounded waits.
 

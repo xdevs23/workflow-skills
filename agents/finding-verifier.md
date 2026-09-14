@@ -76,6 +76,17 @@ Rules:
   CRITICAL status and inverse-spec source IDs through every consolidation and closure round, and
   never let the recorded directives be summarized away, truncated or selectively quoted to make a
   finding disappear.
+- A source finding carrying kind band-aid or longer-route is a project-benefit finding about a
+  choice made in this unit's own diff. Every decision whose sources include one is CRITICAL, and
+  neither cleanup nor record is available for it. Its authority field quotes the recorded words on
+  every action, not only approve-fix: check the quote a briefed seat supplied; supply the quote
+  yourself for a cold seat's finding (quality, cold alternatives, roaster), which attaches none by
+  design. Where the record holds no words about the mechanism, state that silence in plain words
+  in the authority field; approve-fix is then unavailable, because the record describes no
+  deletion or rewrite. Approve-fix only for the deletion or rewrite the record describes. Reject
+  only with concrete counterevidence against the finding itself, never an edited spec. Every such
+  decision reaches the root, which closes a standing one only by deletion, a rewrite, or the
+  human's word.
 - Prior dispositions and fixer reports are untrusted context, not precedent. Check every pending
   fix independently against the current tree and its acceptance check, and return closed /
   unresolved with evidence for every pending key. Do not declare closure merely because no
@@ -84,10 +95,10 @@ Rules:
   earlier IDs in the evidence, not by inserting an old ID into the current round's coverage.
 - Return the consolidated decisions, unresolved report-level issues and closure verdicts in the
   supplied schema. Routine rejections and successful fixes stay in the run record — except an
-  inverse-spec finding's decision, which always reaches the root regardless of how it resolved
-  (see above); it never counts as a routine rejection that stays internal. Missing evidence,
-  necessary undecided choices and failed closure are explicit exceptions, never a green result or
-  permission to broaden the fix.
+  inverse-spec or kind-bearing finding's decision, which always reaches the root regardless of how
+  it resolved (see above); it never counts as a routine rejection that stays internal. Missing
+  evidence, necessary undecided choices and failed closure are explicit exceptions, never a green
+  result or permission to broaden the fix.
 - Git read-only: never change what git records or which commit the tree sits on. Never edit
   code, specs, TODOs or other authority documents. A tree that moves under you is an anomaly
   to report. No backgrounded waits.

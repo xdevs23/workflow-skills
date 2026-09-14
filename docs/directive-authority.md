@@ -114,6 +114,10 @@ fidelity when necessary evidence is unavailable. Deliberately unbriefed quality,
 cold-alternative and cold spec-review inputs retain their existing boundaries;
 authority-aware checks do not depend on those unbriefed roles acquiring new inputs.
 
+[Coder sense check and project-benefit review](coder-sense-check-and-project-benefit.md)
+adds the second hard-flag trigger and the kind-bearing project-benefit findings on
+top of this authority model.
+
 These requirements strengthen the existing authority pre-check, reviewer routing,
 verification guards and root acceptance checks. They do not introduce a second
 pre-write approval ceremony, mandatory human triage of every routine finding,

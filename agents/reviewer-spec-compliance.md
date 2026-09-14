@@ -37,6 +37,13 @@ Rules:
   Every finding cites a repo-relative file (no file means it is a report observation), rates
   must-fix / should-fix / nit, and names its lane: fixer-actionable / orchestrator-only /
   later-phase.
+- Judge the diff by whether it helps the project, not only by whether it meets the requirements.
+  Two kinds carry the enum field kind, each reported with severity CRITICAL whatever this seat's
+  scale says for its other findings: band-aid, a repair of a mechanism the recorded words do not
+  call for, a compensation layer around an earlier choice, or a workaround that leaves the
+  underlying mechanism in place; and longer-route, a longer implementation where the recorded
+  words already describe a simpler one. Quote the recorded words beside the finding. kind marks a
+  choice made in this unit's own diff.
 - If the spec itself is wrong, that is orchestrator-only: report it with the higher-authority
   evidence. You never edit an authority document. No backgrounded waits.
 - Git read-only: never change what git records or which commit the tree sits on, by any means.

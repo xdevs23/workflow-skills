@@ -16,6 +16,9 @@ or use the spec alone to dismiss contradictory directives. The verifier, fixer a
 ignore supplied categorization and treat every inverse-spec finding as CRITICAL. Every
 one requires root handling, including apparent false positives and findings whose spec
 has since changed. Original private directives remain intact and enforceable.
+[Coder sense check and project-benefit review](coder-sense-check-and-project-benefit.md)
+defines the writers' pre-edit sense check and the `band-aid` / `longer-route` finding
+kinds the verifier routes through the same handoff.
 
 The main sequence is Implement → Review → Verify → Fix. Review includes the concern
 reviewers, quality, inverse-spec, rule reader and cold alternatives on a clean committed

@@ -159,18 +159,28 @@ coupled change mutates shared files and parallel writers collide. Multi-implemen
 coupled change is **explicitly rejected**: it produced file collisions and consistency drift.
 Parallel implementers are allowed only across genuinely disjoint trees/repos — and even then the
 reviews can be one barrier covering both. Brief it with:
-- **what is already on disk** (if part of the work exists), file by file, told to REUSE not rebuild;
+- **what is already on disk** (if part of the work exists), file by file, told to REUSE it; where the
+  record permits the rebuild, the sense check below governs instead;
 - the **settled design** and its decisions, stated as authoritative, plus the acceptance criteria;
 - the **invariants** in plain language (the ordering rule, the idempotency rule, …);
 - a **self-check**: run the relevant test subset before reporting done, and FIX what it added that fails.
 
-**Prompt scrutiny / abort — exactly one trigger.** The implementer checks the prompt against the
-spec and the code *before* editing, and there is a single abort condition: **a human verbatim
-directive directly contradicted by either authority document or by this prompt** —
-directive-versus-spec and directive-versus-prompt are the same trigger. The AUTHORITY DOCUMENTS
-are the human's verbatim directives and the spec; the prompt is UNTRUSTED relative to the spec
-(law 8), but that ranking does not exempt the prompt from the directive ranked above both. Then
-everything else falls out:
+**Sense check before any edit.** The implementer reads the private directive record and the spec
+and asks two questions: does any recorded decision rule out the mechanism the request changes, or
+describe the system in a shape that mechanism contradicts; and does growing that mechanism serve
+the project, or would the request stack new behavior onto a mechanism the record has already ruled
+out? A record that says nothing about the mechanism rules nothing out: the check passes and the
+report notes the silence. Where the record permits it, the implementer removes the code and
+rebuilds it to the spec instead of growing it. A failed check emits `HARD-FLAG:` with the reason:
+the mechanism, the recorded decision it contradicts, why extending it is the wrong shape.
+
+**Prompt scrutiny / abort — two triggers, one marker.** The implementer also checks the prompt
+against the spec and the code *before* editing. The abort has exactly two triggers: **a human
+verbatim directive directly contradicted by either authority document or by this prompt** —
+directive-versus-spec and directive-versus-prompt are the same trigger — and **a failed sense
+check** as defined above. The AUTHORITY DOCUMENTS are the human's verbatim directives and the
+spec; the prompt is UNTRUSTED relative to the spec (law 8), but that ranking does not exempt the
+prompt from the directive ranked above both. Then everything else falls out:
 - **prompt vs spec, with no directive on either side** → an ordinary MUST-FIX finding, not an
   abort. The prompt loses, the seat proceeds against the spec, and it reports the conflict rather
   than silently picking a side;
@@ -184,12 +194,17 @@ everything else falls out:
   contradiction deadlocks the run (law 10).
 
 None of those three emits the marker. Only a contradiction with a human directive on at least one
-side emits `HARD-FLAG:`. Caught before any edit, it stops with the tree UNMODIFIED; caught after
-some edits already landed, it stops further writes that would extend the conflict and reports the
-existing changes as-is, without reverting them. No extra gate beyond that timing. One trigger, one marker,
-one disposition — a taxonomy with two abort classes and one marker leaves a class undetectable, and
-a class with three dispositions deadlocks. Same rule for scope: touch only what the task needs, and
-flag anything beyond the ruled scope as an invention rather than building it.
+side, or a failed sense check, emits `HARD-FLAG:`. Caught before any edit, it stops with the tree
+UNMODIFIED; caught after some edits already landed, it stops further writes that would extend the
+conflict or the flagged mechanism and reports the existing changes as-is, committing nothing and
+without reverting them. Two triggers, one marker, one disposition — an abort class with no
+marker of its own is undetectable, and a marker with more than one disposition deadlocks. The
+second trigger belongs to the writing seats: a reading seat reports the same observation as a
+`band-aid` or `longer-route` finding (phase 2), never as a flag.
+After a sense-check flag the unit continues only on the human's verbatim decision quoted in the
+private record; the root chooses the continuation from the coder's report and that decision. Same
+rule for scope: touch only what the task needs, and flag anything beyond the ruled scope as an
+invention rather than building it.
 
 It reports what changed and the test result, commits only its own scoped changes after checks,
 then returns the full immutable snapshot SHA and clean status with quoted Git evidence.
@@ -302,6 +317,16 @@ short no-findings report. Other seats keep their own output contracts; the inver
 owes an authorization map, the rule reader a coverage report. Do not impose acceptance-criterion
 verdicts on these distinct roles just to make their report shapes identical.
 
+**Every review seat also judges whether the diff HELPS THE PROJECT, not only whether it is
+correct.** Two finding kinds, enum-locked as the optional `kind` field of the findings schema, each
+CRITICAL, scoped to choices made in this unit's own diff: **`band-aid`** — a repair of a mechanism
+the recorded words do not call for, a compensation layer around an earlier choice, or a workaround
+that leaves the underlying mechanism in place — and **`longer-route`** — a longer implementation
+where the recorded words already describe a simpler one. Briefed seats quote the recorded words
+beside the finding. Cold seats (quality, cold alternatives, the roaster) keep their input
+boundaries, flag by shape and attach no quotes; the verifier supplies the words. The rule reader
+reports a pre-existing band-aid beside the diff without a kind, so the cleanup lane stays available.
+
 ### Phase 3 — Verify and consolidate (1 read-only `agentType:'finding-verifier'`)
 
 The verifier receives ALL reports available for the current cycle, including quality and
@@ -335,6 +360,15 @@ Every inverse-spec source finding carries CRITICAL severity unconditionally, reg
 label it arrived with (law 15): `record` and `cleanup` are never available for one — an inverse-spec
 finding is about a choice made IN this unit's own diff, never work outside its repair scope — and
 `reject` still needs concrete counterevidence against the finding itself, never against an edited spec.
+
+A decision on a kind-bearing finding (`band-aid` / `longer-route`) is CRITICAL the same way, and
+`cleanup` and `record` are never available for it. Its `authority` quotes the recorded words on
+EVERY action, not only `approve-fix`, supplied by the verifier for a cold seat's finding. Where
+the record holds no words about the mechanism, `authority` states that silence in plain words,
+and `approve-fix` is unavailable because the record describes no deletion or rewrite.
+`approve-fix` only for the deletion or rewrite the record describes; `reject` only with
+counterevidence against the finding itself. Every such decision reaches the root in
+`projectBenefitDecisions`.
 
 Reviewer lanes and severity are claims to verify, not queue permissions. Every source ID
 must belong to exactly one decision group. The SCRIPT checks coverage, unknown IDs, duplicate
@@ -370,6 +404,11 @@ A missing, failed or wrong-snapshot roast leaves the run incomplete.
 The fixer receives ONLY the consolidated approved list, with its source IDs, evidence,
 authority and boundaries. Raw reports are not extra work orders. It:
 - independently rechecks each approved correction before acting;
+- runs its bounded sense check on every approved correction before its first write: a correction
+  that is itself a band-aid on a mechanism the recorded words do not call for, where the record
+  describes deletion or a rewrite, emits `HARD-FLAG:` with the reason and leaves the disputed
+  mechanism untouched, with the implementer's timing and disposition (phase 1). The fixer does not
+  repeat the request-level sense check; reviewers and the verifier have judged the finished code;
 - returns exactly one **fixed / rejected / blocked** disposition per approved key;
 - applies the approved outcome within its bounds, never broadening scope or editing a
   spec or other authority document to make the correction legal after the fact;
@@ -483,9 +522,15 @@ treatment: the root either corrects the spec to state the existing decision fait
 this check, asks the human about the part that is genuinely unsettled.
 
 This is a root PROMPT obligation, not a script gate. An executable test can confirm the
-instruction above is wired into the root's prompt and that `exceptions` and `inverseSpecDecisions`
-reach the root intact and unretired; it cannot prove a future model actually performed the
-conversational premise check correctly.
+instruction above is wired into the root's prompt and that `exceptions`, `inverseSpecDecisions`
+and `projectBenefitDecisions` reach the root intact and unretired;
+it cannot prove a future model actually performed the conversational premise check correctly.
+
+Every entry in `projectBenefitDecisions` reaches the root whatever its disposition. The root closes
+a standing one only by deletion, a rewrite, or the human's verbatim word to keep the shape, quoted
+in the private record; a patch that keeps the flagged mechanism is never closure. A decision the
+verifier rejected closes at the root once it has checked the counterevidence against the tree and
+the record and recorded it.
 
 ### Post-run timing review
 
@@ -738,19 +783,27 @@ Non-negotiable across every run of this skill.
    authority documents RETRACT a contradicted sentence in place.** Never append an acknowledgement
    beside a sentence it contradicts: layered addenda manufacture diverging premises, and seats then
    flag the contradiction forever, correctly.
-10. **HARD-FLAG SEMANTICS.** A hard flag (agent stops, script aborts) is reserved for a contradiction
-    that puts a human verbatim directive on at least one side — **directive-vs-spec, or
-    directive-vs-this-prompt** — two texts that cannot both be true (law 8). The prompt being
-    UNTRUSTED relative to the spec does not exempt it from the directive ranked above both: an
-    assignment overriding a directive is the same conflict class as a spec that does, hard-flagged
-    the same way. A tree that does not yet satisfy a coherent spec is the NORMAL precondition of
-    review-and-fix and yields ordinary findings; so does an untrusted prompt that merely conflicts
-    with the SPEC with no directive on either side, or one asserting a false premise about
-    the tree — those are verified-and-reported, built to the truth (law 8), never an abort.
-    Getting this wrong deadlocks the run: the fixer that would resolve the finding can never
-    run, because the flag aborts before it. **One trigger, one marker, one disposition** — a second
-    abort class with no marker of its own is undetectable, and a single event with three dispositions
-    is the deadlock in another costume. And the structural abort lives in the **SCRIPT**, which
+10. **HARD-FLAG SEMANTICS.** A hard flag (agent stops, script aborts) has exactly two triggers.
+    The first is a contradiction that puts a human verbatim directive on at least one side —
+    **directive-vs-spec, or directive-vs-this-prompt** — two texts that cannot both be true (law
+    8). The prompt being UNTRUSTED relative to the spec does not exempt it from the directive
+    ranked above both: an assignment overriding a directive is the same conflict class as a spec
+    that does, hard-flagged the same way. The second is a **coder sense-check failure**, and it
+    belongs to the writing seats: the implementer finds, before any edit, that the request extends
+    a mechanism the recorded words rule out, or the fixer finds that an approved correction is
+    itself a band-aid where the record describes deletion or a rewrite (phases 1 and 4). A reading
+    seat reports the same observation as a kind-bearing finding, never as a flag. Both triggers
+    share one disposition: caught before any edit, the tree stays unmodified; caught after edits
+    landed, further writes stop and the coder reports the edits as they stand, committing nothing
+    and reverting nothing. A tree that does not yet satisfy a coherent spec is the NORMAL
+    precondition of review-and-fix and yields ordinary findings; so does an untrusted prompt that
+    merely conflicts with the SPEC with no directive on either side, or one asserting a false
+    premise about the tree — those are verified-and-reported, built to the truth (law 8), never an
+    abort. Getting this wrong deadlocks the run: the fixer that would resolve the finding can never
+    run, because the flag aborts before it. **Two triggers, one marker, one disposition** — an
+    abort class with no marker of its own is undetectable, and a marker with more than one
+    disposition is the deadlock in another costume. And the structural abort lives in the
+    **SCRIPT**, which
     checks **every consumed stage result** for the marker and returns — never delegated to a
     downstream agent to rediscover. Every required report is consumed by verification; a failed
     or hard-flagged reader stops the cycle before fixing.
@@ -759,7 +812,8 @@ Non-negotiable across every run of this skill.
     same for every other vocabulary the loop switches on: the actionability **lane**
     (`fixer-actionable` / `orchestrator-only` / `later-phase` / `not-a-defect`) and the **disposition**
     (`fixed` / `rejected` / `blocked`), verifier action (`approve-fix` / `reject` /
-    `needs-decision` / `root-action` / `cleanup` / `record`) and closure (`closed` / `unresolved`).
+    `needs-decision` / `root-action` / `cleanup` / `record`), closure (`closed` / `unresolved`)
+    and the project-benefit finding `kind` (`band-aid` / `longer-route`).
     A seat emitting one word against a check testing for another
     **silently disables the phase and the run reports success** — the worst possible failure mode,
     because it looks like a green run.
@@ -900,8 +954,11 @@ const PINS = [                    // authority-aware seats only; quality uses HY
   'on it. A FALSE premise is VERIFIED-AND-REPORTED: build to the TRUE state and flag the premise.',
   'A prompt-vs-spec conflict, and a false premise, are MUST-FIX FINDINGS:',
   'report them and proceed against the spec. Never silently pick one; never stop for them.',
-  'HARD-FLAG (prefix HARD-FLAG: and stop) for a contradiction between authority documents, OR for',
-  'this prompt directly contradicting a directive - the human veto reaches the prompt too, not only the spec.',
+  'HARD-FLAG (prefix HARD-FLAG: and stop) has TWO triggers, one marker, one disposition. First: a',
+  'contradiction between authority documents, OR this prompt directly contradicting a directive - the',
+  'human veto reaches the prompt too, not only the spec. Second, WRITING SEATS ONLY: a failed sense',
+  'check (implementer before any edit, fixer before its first write, as their templates define).',
+  'A READING SEAT reports the same observation as a finding with kind band-aid or longer-route.',
   'A tree not yet satisfying the spec is normal: report ordinary findings, never a hard flag.',
   'Scratch files go in the project cache dir, never a global temp.',
   'Run checks BARE. Never pipe through head/grep — it hides the error.',
@@ -960,6 +1017,9 @@ const REPORT = {
         file: { type: 'string' }, claim: { type: 'string' },
         severity: { enum: ['must-fix', 'should-fix', 'nit', 'CRITICAL'] },
         lane: { enum: ['fixer-actionable', 'orchestrator-only', 'later-phase', 'not-a-defect'] },
+        // Project-benefit kinds mark a choice made in THIS unit's diff; a finding without kind is
+        // ordinary, which keeps the cleanup lane open for a band-aid that already existed beside it.
+        kind: { enum: ['band-aid', 'longer-route'] },
       },
     } },
   },
@@ -1131,6 +1191,12 @@ const SEATS = [
   ['cold-alternatives', 'alternatives', [HYGIENE, INVARIANTS]],
 ]
 const diffInput = sha => 'DIFF: ' + baseSha + '..' + sha + '. The clean worktree must remain at ' + sha + '.'
+// Source findings get their IDs here, for readers and roasts alike. A kind-bearing (band-aid /
+// longer-route) finding is CRITICAL: one arriving with any other severity or none is set to it here.
+const sourceFindings = (findings, seat, round, sha) => findings.map((f, i) => {
+  if (f.kind && f.severity !== 'CRITICAL') log('Project-benefit finding from ' + seat + ' with kind ' + f.kind + ' set to severity CRITICAL')
+  return { ...f, ...(f.kind ? { severity: 'CRITICAL' } : {}), id: 'r' + round + ':' + seat + ':' + i, seat, snapshotSha: sha }
+})
 const readSeat = async ([type, label, inputs], round, sha) => {
   const stageLabel = 'review:' + label + ':r' + round
   const result = await robust([...inputs, diffInput(sha)].join('\n\n'), {
@@ -1158,8 +1224,7 @@ const roastPass = async (queue, round, sha) => {
   abortOnFlag(result, 'roast:r' + round)
   if (result.snapshotSha !== sha) throw new Error('Roaster reviewed the wrong snapshot')
   return { ...result, seat: 'roaster', label: 'roast:r' + round,
-    findings: result.findings.map((f, i) => ({ ...f, id: 'r' + round + ':roaster:' + i,
-      seat: 'roaster', snapshotSha: sha })) }
+    findings: sourceFindings(result.findings, 'roaster', round, sha) }
 }
 
 // Schema validation handles shapes and enums; these guards enforce cross-item contracts.
@@ -1178,6 +1243,7 @@ const checkVerification = (v, sources, pending, sha) => {
   if (v.snapshotSha !== sha || v.clean !== true) throw new Error('Verifier observed snapshot drift or a dirty worktree')
   exactlyOnce(v.decisions.flatMap(d => d.sourceIds), sources.map(f => f.id), 'source ID')
   const seatOf = new Map(sources.map(f => [f.id, f.seat]))
+  const kindOf = new Map(sources.map(f => [f.id, f.kind]))
   for (const d of v.decisions) {
     if (!d.sourceIds.length) throw new Error('Decision without source IDs')
     requireText(d.reason, 'decision reason')
@@ -1185,6 +1251,12 @@ const checkVerification = (v, sources, pending, sha) => {
     if (d.action === 'approve-fix') {
       for (const field of ['authority', 'correction', 'constraints', 'acceptance']) requireText(d[field], 'approved ' + field)
     }
+    // A kind-bearing finding is about this unit's own diff: CRITICAL whatever its disposition,
+    // never deferred as cleanup or record, and its authority quotes the record on EVERY action.
+    const fromKind = d.sourceIds.some(id => kindOf.get(id))
+    if (fromKind && d.severity !== 'CRITICAL') throw new Error('Project-benefit finding must keep CRITICAL severity whatever its disposition')
+    if (fromKind && ['cleanup', 'record'].includes(d.action)) throw new Error('Project-benefit finding cannot be dispositioned as cleanup or record; the root closes it')
+    if (fromKind) requireText(d.authority, 'project-benefit authority (the recorded words)')
     if (d.action === 'record' && ['must-fix', 'CRITICAL'].includes(d.severity)) throw new Error('Blocking defect cannot be recorded as advisory')
     // Every inverse-spec finding is CRITICAL unconditionally (law 15): ignore whatever severity
     // a reviewer supplied, and never let a mixed consolidated group launder it to a lower tier.
@@ -1250,8 +1322,7 @@ try {
       const failed = readers.find(r => r.status === 'rejected')
       if (failed) throw failed.reason
       readCache = { sha: snapshotSha, reports: readers.map(r => ({ ...r.value,
-        findings: r.value.findings.map((f, i) => ({ ...f, id: 'r' + round + ':' + r.value.seat + ':' + i,
-          seat: r.value.seat, snapshotSha })) })) }
+        findings: sourceFindings(r.value.findings, r.value.seat, round, snapshotSha) })) }
       freshReports = readCache.reports
     }
     const reports = [...freshReports, ...pendingRoasts]
@@ -1344,8 +1415,14 @@ const decisions = history.flatMap(h => h.verification?.decisions || [])
 // Every inverse-spec decision, from every round, stays visible to the root by SOURCE IDENTITY —
 // not by aggregate count — whatever it resolved to (approve-fix, reject, needs-decision,
 // root-action): a completed run or a later spec edit never retires one on its own (law 15).
-const seatOfAny = new Map(history.flatMap(h => h.sources).map(s => [s.id, s.seat]))
-const inverseSpecDecisions = decisions.filter(d => d.sourceIds.some(id => seatOfAny.get(id) === 'inverse'))
+const sourceOfAny = new Map(history.flatMap(h => h.sources).map(s => [s.id, s]))
+const inverseSpecDecisions = decisions.filter(d => d.sourceIds.some(id => sourceOfAny.get(id)?.seat === 'inverse'))
+// Every kind-bearing decision in round order, with its kind-bearing source findings attached.
+const projectBenefitDecisions = history.flatMap(h => (h.verification?.decisions || [])
+  .filter(d => d.sourceIds.some(id => sourceOfAny.get(id)?.kind))
+  .map(d => ({ decision: d, round: h.round,
+    findings: d.sourceIds.map(id => sourceOfAny.get(id)).filter(f => f?.kind)
+      .map(({ id, seat, kind, file, claim }) => ({ id, seat, kind, file, claim })) })))
 return {
   complete, exit, exceptions, proof: fix?.report || null, baseSha, snapshotSha,
   acceptance: 'pending-root-checks', // Cycle completion is not size approval or integration permission.
@@ -1361,6 +1438,7 @@ return {
     fixer: h.fix ? 'fix:r' + h.round : null, roaster: h.roastLabel || null })),
   cleanup: decisions.filter(d => d.action === 'cleanup'),
   inverseSpecDecisions, // the root's unconditional handoff: amend the spec, or ask the human.
+  projectBenefitDecisions, // closed only by deletion, a rewrite, or the human's recorded word.
 }
 ```
 
@@ -1518,8 +1596,8 @@ For the other seats:
   as the first two and say plainly that the prompt is not one, or the next bullet has no boundary
   — but the directive still reaches the prompt directly (a spec gains no decision authority merely
   by being written, and neither does a prompt that overrides a directive it disagrees with).
-- **Hard-flag semantics** (law 10) — the marker, and the rule that it fires for a contradiction
-  with a human directive on at least one side, whether the other side is the spec or this prompt.
+- **Hard-flag semantics** (law 10) — the one marker and its two triggers: a contradiction with a
+  human directive on at least one side, spec or prompt, and a writing seat's failed sense check.
   Spell out the counter-case too, since it is the common one: a tree that does not yet satisfy the
   spec, or a prompt that merely conflicts with the spec with no directive on either side, yields
   ordinary must-fix findings, never a flag.
@@ -1537,11 +1615,11 @@ For the other seats:
 - **Run checks BARE** — never piped through `head`/`grep`, which hides the error you needed.
 - **No background waits** — never end a turn waiting on a backgrounded check; the final message IS
   the deliverable.
-- **Abort on contradiction, one trigger only** — a contradiction with a human directive on at
-  least one side (directive-vs-spec or directive-vs-this-prompt). Everything else (the prompt
-  losing to the spec with no directive on either side, a false prompt premise verified and
-  reported, a tree that does not yet satisfy the spec) is an ordinary must-fix finding and the
-  seat proceeds; see law 10.
+- **Abort on two triggers only** — a contradiction with a human directive on at least one side
+  (spec or this prompt on the other side), or a writing seat's failed sense check. Everything
+  else (the prompt losing to the spec with no directive on either side, a false prompt premise
+  verified and reported, a tree that does not yet satisfy the spec) is an ordinary must-fix
+  finding and the seat proceeds; see law 10.
 - **The findings contract** — a source finding is a DEFECT and cites a **repo-relative** FILE.
   Concern reviewers suggest who can close it using their actionability lanes. The verifier
   checks every source and report-level limitation, then consolidates; only its approved
@@ -1557,7 +1635,7 @@ For the other seats:
 Keeping these in one constant is a deliberate trade-off: editing `PINS` busts every cache key. That
 cost is accepted so no stage's copy of the house rules can drift from another's.
 
-Some of these (no background waits, abort on contradiction) also appear in the `agents/` templates.
+Some of these (no background waits, abort on two triggers) also appear in the `agents/` templates.
 That overlap is **deliberate reinforcement, not a second source of truth**: the template is the
 authority for that role, `PINS` is the floor for authority-aware roles even when a project swaps
 in its own template. Unbriefed roles get only their explicitly limited inputs. Changing a rule means changing both — they are prompt text, and a prompt rule an agent

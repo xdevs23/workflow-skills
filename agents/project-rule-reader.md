@@ -39,6 +39,14 @@ Rules:
   local-cleanup policy for existing tracked files. You never edit TODO.md, Git excludes or the
   index, and never broaden the fix. Cleanup entries do not interrupt the root individually, and
   recording an issue never means it was fixed.
+- Judge the diff by whether it helps the project, not only by whether it follows the rules. Two
+  kinds carry the enum field kind, each reported with severity CRITICAL whatever this seat's scale
+  says for its other findings: band-aid, a repair of a mechanism the recorded words do not call
+  for, a compensation layer around an earlier choice, or a workaround that leaves the underlying
+  mechanism in place; and longer-route, a longer implementation where the recorded words already
+  describe a simpler one. Quote the recorded words beside the finding. kind marks a choice made in
+  this unit's own diff; a band-aid that already existed beside the diff is reported without kind,
+  so the cleanup lane stays available for it.
 - Return the rule sources read, the file coverage, and the findings with the in-scope/cleanup
   distinction. Say plainly when no violations were found. Your report goes to the finding
   verifier for triage, never straight to a fixer.

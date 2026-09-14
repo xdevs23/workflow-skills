@@ -42,7 +42,7 @@ const INITIAL = 'b'.repeat(40)
 const fixedSha = round => (round + 1).toString(16).padStart(40, '0')
 async function simulate({ reports = {}, verify = {}, fixes = {}, fail = {}, implementation,
   beforeRead = async () => {}, beforeFix = async () => {}, beforeRoast = async () => {},
-  args = { baseSha: BASE }, calls = [] } = {}) {
+  args = { baseSha: BASE }, calls = [], logs = [] } = {}) {
   const completed = new Set(), phases = [], starts = new Map()
   let currentSha = INITIAL
   let lastReviewedSha = null
@@ -89,8 +89,8 @@ async function simulate({ reports = {}, verify = {}, fixes = {}, fail = {}, impl
     }
     throw new Error(`Unexpected call: ${opts.label}`)
   }
-  const result = await run(agent, name => phases.push(name), () => {}, args)
-  return { result, calls, phases }
+  const result = await run(agent, name => phases.push(name), line => logs.push(line), args)
+  return { result, calls, phases, logs }
 }
 const oneReport = { 'review:correctness:r1': { report: prose, findings: [finding] } }
 const approveOne = { 'verify:r1': verification([decision([source('correctness')])]) }
@@ -182,7 +182,8 @@ describe('workflow verification and consolidation', () => {
     const implementer = await Bun.file(new URL('../agents/implementer.md', import.meta.url)).text()
     expect(implementer).toContain('leave the tree unmodified')
     expect(implementer).toContain('do not revert them')
-    expect(implementer).toContain('No extra gate beyond that timing')
+    expect(implementer).not.toContain('No extra gate')
+    expect(skill).not.toContain('No extra gate')
   })
 
   test('a 20-minute soft ceiling per agent task triggers the timing review', async () => {
@@ -891,5 +892,137 @@ describe('workflow verification and consolidation', () => {
     }
     expect(calls.find(c => c.agentType === 'cold-alternatives').prompt).not.toContain('SPEC')
     expect(calls.find(c => c.label === 'verify:r2').prompt).toContain('PENDING FIXES')
+  })
+})
+
+const bandAid = { ...finding, kind: 'band-aid', severity: 'CRITICAL', claim: 'A guard around the caller compensates for the callee the change should have fixed.' }
+const benefit = (ids, fields = {}) => decision(ids, { severity: 'CRITICAL', authority: 'recorded decision: the compatibility shim is removed once the new client ships', ...fields })
+const rejectShape = ids => benefit(ids, { action: 'reject', reason: 'The simpler shape breaks the ordering invariant.', evidence: 'src/example.js:4 orders by arrival.' })
+const report = (label, findings) => ({ [label]: { report: prose, findings } })
+// Wording checks compare whitespace-normalized prose so a rewrap never changes the checked rule.
+const flat = text => text.replace(/\s+/g, ' ')
+const template = async name => flat(await Bun.file(new URL(`../agents/${name}.md`, import.meta.url)).text())
+// The verifier prompt carries the source findings serialized; the expected list is serialized the same way.
+const handedTo = (calls, label, findings) =>
+  expect(calls.find(c => c.label === label).prompt).toContain('SOURCE FINDINGS:\n\n' + JSON.stringify(findings))
+
+describe('coder sense check and project-benefit review', () => {
+  test('the finding schemas enum-lock kind to exactly band-aid and longer-route', async () => {
+    const { calls } = await simulate()
+    for (const call of calls.filter(c => c.phase === 'Review' || c.agentType === 'roaster')) {
+      expect(call.schema.properties.findings.items.properties.kind).toEqual({ enum: ['band-aid', 'longer-route'] })
+      expect(call.schema.properties.findings.items.required).toEqual(['file', 'claim'])
+    }
+  })
+
+  test('a kind-bearing source finding is set to CRITICAL at intake, for readers and roasts alike', async () => {
+    const { severity, ...unmarked } = bandAid
+    const reader = await simulate({ reports: report('review:cleanliness:r1', [{ ...bandAid, severity: 'must-fix' }]),
+      verify: { 'verify:r1': verification([rejectShape([source('cleanliness')])]) } })
+    expect(reader.logs).toContain('Project-benefit finding from cleanliness with kind band-aid set to severity CRITICAL')
+    handedTo(reader.calls, 'verify:r1', [{ ...bandAid, id: source('cleanliness'), seat: 'cleanliness', snapshotSha: INITIAL }])
+    const roast = await simulate({ reports: { ...oneReport, ...report('roast:r1', [{ ...unmarked, kind: 'longer-route' }]) },
+      verify: { ...approveOne, 'verify:r2': verification([rejectShape([source('roaster')])], { closures: [closed()] }) },
+      fixes: { 'fix:r1': fixed([disposition()]) } })
+    expect(roast.logs).toContain('Project-benefit finding from roaster with kind longer-route set to severity CRITICAL')
+    handedTo(roast.calls, 'verify:r2', [{ ...unmarked, kind: 'longer-route', severity: 'CRITICAL', id: source('roaster'), seat: 'roaster', snapshotSha: INITIAL }])
+    const plain = await simulate({ reports: oneReport, verify: approveOne })
+    handedTo(plain.calls, 'verify:r1', [{ ...finding, id: source('correctness'), seat: 'correctness', snapshotSha: INITIAL }])
+    expect(plain.logs).toEqual([])
+  })
+
+  test('a decision on a kind-bearing finding throws on a non-CRITICAL severity, cleanup, record or an empty authority', async () => {
+    for (const [fields, message] of [
+      [{ severity: 'must-fix' }, 'Project-benefit finding must keep CRITICAL severity'],
+      [{ action: 'cleanup', correction: 'Record it.' }, 'cannot be dispositioned as cleanup or record'],
+      [{ action: 'record', correction: 'Record it.' }, 'cannot be dispositioned as cleanup or record'],
+      [{ action: 'reject', authority: ' ' }, 'Missing project-benefit authority'],
+    ]) {
+      const { result, calls } = await simulate({ reports: report('review:quality:r1', [bandAid]),
+        verify: { 'verify:r1': verification([benefit([source('quality')], fields)]) } })
+      expect(result.exit).toContain(message)
+      expect(calls.some(c => c.phase === 'Fix')).toBe(false)
+    }
+  })
+
+  test('projectBenefitDecisions carries every kind-bearing decision with its sources in round order; a finding without kind still routes to cleanup', async () => {
+    const longer = { ...bandAid, kind: 'longer-route', file: 'src/route.js', claim: 'The diff took the longer route.' }
+    const cleanup = decision([source('rules')], { action: 'cleanup', severity: 'CRITICAL', correction: 'Record the existing guard in TODO.md.' })
+    const { result } = await simulate({
+      reports: { ...report('review:inverse:r1', [bandAid]), ...report('review:alternatives:r1', [longer]), ...report('review:alternatives:r2', [longer]),
+        ...report('review:correctness:r1', [{ ...finding, file: longer.file, claim: longer.claim }]),
+        ...report('review:rules:r1', [{ ...finding, file: 'src/legacy.js', severity: 'CRITICAL' }]) },
+      verify: { 'verify:r1': verification([benefit([source('inverse')]), rejectShape([source('alternatives'), source('correctness')]), cleanup]),
+        'verify:r2': verification([benefit([source('alternatives', 2)], { action: 'needs-decision', correction: 'Ask whether the shorter route is the required shape.' })], { closures: [closed()] }) },
+      fixes: { 'fix:r1': fixed([disposition()]) } })
+    expect([result.complete, result.cleanup, result.inverseSpecDecisions.length]).toEqual([false, [cleanup], 1])
+    expect(result.projectBenefitDecisions.map(d => [d.round, d.decision.action])).toEqual([[1, 'approve-fix'], [1, 'reject'], [2, 'needs-decision']])
+    expect(result.projectBenefitDecisions[0].findings).toEqual([{ id: source('inverse'), seat: 'inverse', kind: 'band-aid', file: bandAid.file, claim: bandAid.claim }])
+    expect(result.projectBenefitDecisions[1].findings).toEqual([{ id: source('alternatives'), seat: 'alternatives', kind: 'longer-route', file: longer.file, claim: longer.claim }])
+  })
+
+  test("a cold seat's kind-bearing finding on a mechanism the record is silent about reaches the root as needs-decision", async () => {
+    const silent = benefit([source('quality')], { action: 'needs-decision', authority: 'The recorded words hold nothing about the retry wrapper.',
+      correction: 'Ask whether the retry wrapper is a shape to keep.' })
+    const { result, calls } = await simulate({ reports: report('review:quality:r1', [bandAid]), verify: { 'verify:r1': verification([silent]) } })
+    expect([result.complete, result.exit, result.exceptions]).toEqual([false, 'verification needs root resolution', [silent]])
+    expect(result.projectBenefitDecisions).toEqual([{ decision: silent, round: 1,
+      findings: [{ id: source('quality'), seat: 'quality', kind: 'band-aid', file: bandAid.file, claim: bandAid.claim }] }])
+    expect(calls.some(c => c.phase === 'Fix')).toBe(false)
+  })
+
+  test('an implementer sense-check flag aborts before review with its reason preserved', async () => {
+    const calls = []
+    const flagged = 'HARD-FLAG: the request extends the retry wrapper, which the recorded words describe as deleted and rewritten as a direct call.'
+    const run = simulate({ implementation: { report: flagged, startSha: BASE, snapshotSha: BASE, clean: true, proofPassed: false }, calls })
+    await expect(run).rejects.toThrow('HARD-FLAG from impl')
+    await expect(run).rejects.toThrow('the recorded words describe as deleted and rewritten')
+    expect(calls.map(c => c.label)).toEqual(['impl'])
+  })
+
+  test('a fixer sense-check flag in a valid FIX object aborts the loop with its structured result preserved', async () => {
+    const flagged = 'HARD-FLAG: the approved correction patches the compatibility shim the recorded words describe as deleted.'
+    const { result, calls } = await simulate({ reports: report('review:correctness:r1', [finding, { ...finding, claim: 'A second defect.' }]),
+      verify: { 'verify:r1': verification([decision([source('correctness')]), decision([source('correctness', 1, 1)])]) },
+      fixes: { 'fix:r1': fixed([disposition(), disposition('r1:fix:1', 'blocked')], { report: flagged }) } })
+    expect([result.complete, result.exit]).toEqual([false, expect.stringContaining('HARD-FLAG from fix:r1')])
+    expect(result.exit).toContain('"key":"r1:fix:1","disposition":"blocked"')
+    expect([result.unverified, result.treeUnreviewed]).toEqual([['r1:fix:0', 'r1:fix:1'], true])
+    expect(calls.filter(c => c.phase === 'Verify')).toHaveLength(1)
+  })
+
+  test('the nine review seats carry the project-benefit judgment scoped to this diff', async () => {
+    const briefed = ['reviewer-correctness', 'reviewer-cleanliness', 'reviewer-spec-compliance', 'duplicate-checker', 'reviewer-inverse-spec', 'project-rule-reader']
+    const shared = ['helps the project, not only', "severity CRITICAL whatever this seat's scale says for its other findings", "kind marks a choice made in this unit's own diff"]
+    const quoted = ['band-aid, a repair of a mechanism the recorded words do not call for', 'longer-route, a longer implementation where the recorded words already describe a simpler one', 'Quote the recorded words beside the finding']
+    const shaped = ['Flag by shape', 'Attach no quotes; the finding verifier attaches the recorded words']
+    for (const name of [...briefed, 'quality', 'cold-alternatives', 'roaster']) {
+      const text = await template(name)
+      for (const phrase of [...shared, ...(briefed.includes(name) ? quoted : shaped)]) expect(text).toContain(phrase)
+      if (!briefed.includes(name)) expect(text).not.toContain('directive record')
+    }
+    expect(await template('project-rule-reader')).toContain('a band-aid that already existed beside the diff is reported without kind, so the cleanup lane stays available')
+  })
+
+  test('the coder and verifier templates, law 10 and the shared authority constant state the two triggers and the kind rules', async () => {
+    for (const [name, phrases] of [
+      ['implementer', ['Sense check before any edit: read the private directive record and the spec and ask two questions.', 'A record that says nothing about the mechanism rules nothing out: the check passes and your report notes the silence.',
+        'Hard-flag and stop on either of two triggers, with one HARD-FLAG: marker and one disposition', "continues only on the human's verbatim decision quoted in the private record"]],
+      ['fixer', ['Bounded sense check before your first write, on every approved correction', 'itself a band-aid on a mechanism the recorded words do not call for, where the record describes deletion or a rewrite',
+        "no agent's justification and no root statement substitutes for it", "You do not repeat the implementer's request-level sense check"]],
+      ['finding-verifier', ['is CRITICAL, and neither cleanup nor record is available for it', "supply the quote yourself for a cold seat's finding (quality, cold alternatives, roaster)",
+        'Where the record holds no words about the mechanism, state that silence in plain words in the authority field', 'Approve-fix only for the deletion or rewrite the record describes']],
+    ]) { const text = await template(name); for (const phrase of phrases) expect(text).toContain(phrase) }
+    const flatSkill = flat(skill)
+    expect(flatSkill).toContain('10. **HARD-FLAG SEMANTICS.** A hard flag (agent stops, script aborts) has exactly two triggers.')
+    expect(flatSkill).toContain('**Two triggers, one marker, one disposition**')
+    for (const phrase of ['exactly one trigger', 'One trigger, one marker', 'one trigger only', 'single abort condition']) expect(flatSkill).not.toContain(phrase)
+    const { calls } = await simulate()
+    for (const type of ['implementer', 'fixer', 'finding-verifier', 'reviewer-inverse-spec']) {
+      expect(calls.find(c => c.agentType === type).prompt).toContain('has TWO triggers, one marker, one disposition. First:')
+      expect(calls.find(c => c.agentType === type).prompt).toContain('Second, WRITING SEATS ONLY: a failed sense')
+    }
+    for (const type of ['quality', 'cold-alternatives', 'roaster']) expect(calls.find(c => c.agentType === type).prompt).not.toContain('sense check')
+    for (const name of ['directive-authority.md', 'workflow-finding-verification.md']) expect(await Bun.file(new URL(`../docs/${name}`, import.meta.url)).text()).toContain('](coder-sense-check-and-project-benefit.md)')
   })
 })

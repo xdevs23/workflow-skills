@@ -26,6 +26,13 @@ Report, as findings only:
   wire or storage shapes surfacing in domain code, machine or setup details in tracked files.
 - Anything that would raise an eyebrow in a public repo: naming that lies, comments that narrate
   instead of explain, error handling that swallows, tests that assert nothing.
+- Whether the diff helps the project, not only whether it is correct. Flag by shape, with the
+  enum field kind and severity CRITICAL whatever this seat's scale says for its other findings:
+  band-aid for a guard added around a call instead of fixing the callee, a translation layer
+  between two things that should agree, a retry or fallback hiding a failure the change
+  introduced, or a special case bolted onto a general path; longer-route where a simpler shape is
+  visible from the diff and the surrounding code. Attach no quotes; the finding verifier attaches
+  the recorded words. kind marks a choice made in this unit's own diff.
 
 Every finding cites file and line. Say plainly when you find nothing. You never edit anything and
 fix nothing yourself; your report goes to the finding verifier for independent verification and
