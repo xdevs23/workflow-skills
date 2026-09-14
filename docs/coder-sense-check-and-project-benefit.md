@@ -22,9 +22,11 @@ This document builds on [directive authority](directive-authority.md) and
    mechanism the record has already ruled out. A record that says nothing about the mechanism
    rules nothing out: the check passes and the report notes the silence. Where the record
    permits it, the coder removes the code and rebuilds it to the spec instead of growing it.
-2. **A failed check hard-flags.** The report begins with `HARD-FLAG:` and the reason: the
-   mechanism, the recorded decision it contradicts, and why extending it is the wrong shape.
-   Marker, timing and disposition are those of the existing directive-contradiction trigger:
+2. **A failed check hard-flags.** The stage returns its abort field with the `sense-check`
+   trigger and the reason: the mechanism, the recorded decision it contradicts, and why
+   extending it is the wrong shape (the field is defined in
+   [structured stage output](structured-stage-output.md)). Timing and disposition are those of
+   the existing directive-contradiction trigger:
    before any edit the tree stays unmodified; after edits landed, further writes stop and the
    coder reports the edits as they stand, committing nothing and reverting nothing. The unit
    continues only on the human's verbatim decision quoted in the private record; the root
@@ -34,9 +36,9 @@ This document builds on [directive authority](directive-authority.md) and
    the record describes deletion or a rewrite, hard-flags with the reason and leaves the
    disputed mechanism untouched. The fixer does not repeat the request-level check; reviewers
    and the verifier have already judged the finished code.
-4. **Two triggers, one marker, one disposition.** Law 10, the phase 1 abort paragraph and the
-   shared authority constant in the skeleton state two triggers (directive contradiction, coder
-   sense-check failure), the single marker and the single disposition. The second trigger
+4. **Two triggers, one abort field, one disposition.** Law 10, the phase 1 abort paragraph and
+   the shared authority constant in the skeleton state two triggers (directive contradiction,
+   coder sense-check failure), the single abort field and the single disposition. The second trigger
    belongs to the writing seats; a reading seat that makes the same observation reports it as a
    kind-bearing finding, never as a flag.
 5. **What every seat judges.** The nine review seats (correctness, cleanliness, spec
@@ -69,8 +71,8 @@ This document builds on [directive authority](directive-authority.md) and
 
 ## Rejected alternatives
 
-* **A separate marker for the sense check.** The script scans consumed results for one exact
-  marker; a second marker needs a second scan that erodes, or goes unnoticed.
+* **A separate abort field for the sense check.** The script checks consumed results for one
+  abort field; a second field needs a second check that erodes, or goes unnoticed.
 * **A `blocked` disposition instead of a fixer hard flag.** It returns one key as an ordinary
   disagreement and lets the other approved corrections land on a mechanism the fixer has just
   judged should not exist.
@@ -100,11 +102,11 @@ by the root at the time, from the coder's report and the human's recorded decisi
    section states decision 8.
 7. `tests/workflow-routing.test.js` covers: the `kind` enum; the intake coercion and the three
    decision throws through the executable skeleton; `projectBenefitDecisions` with its source
-   findings; an implementer `HARD-FLAG:` with a sense-check reason aborting before review with
-   the report preserved in the exception; a fixer `HARD-FLAG:` in a valid `FIX` object aborting
-   the loop with the structured result preserved; whitespace-tolerant wording checks for the
-   seat bullets, the coder bullets and law 10. `bun test tests/` passes.
-8. The plugin version is 0.8.4, and each of the two related design documents carries one
+   findings; an implementer abort with a sense-check reason aborting before review with the
+   object preserved in the exception; a fixer abort in a valid `FIX` object aborting the loop
+   with the structured result preserved; whitespace-tolerant wording checks for the seat
+   bullets, the coder bullets and law 10. `bun test tests/` passes.
+8. The plugin version is bumped, and each of the two related design documents carries one
    cross-reference line to this document.
 9. Existing behavior is preserved: inverse-spec handling, unbriefed input boundaries, scoped
    writer commits, immutable snapshots, concurrent roasting, source coverage checks, closure
