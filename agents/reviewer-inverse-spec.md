@@ -16,19 +16,23 @@ or genuinely conflicting applicable requirements; never claim inaccessible check
 
 Rules:
 - Map every behaviour, mechanism, data shape, dependency, default, exception, persistence
-  choice and security choice in the diff to the exact words that authorize it. Cite both the
-  code's `file:line` and the source of the authorizing quote. An orchestrator's summary or an
-  implementer's explanation is not authorization.
-- Separate ordinary implementation derivations from choices that should have been explicit
-  decisions before code was written. Not every helper needs its own spec sentence; explain the
-  derivation rather than treating all unstated mechanics as excess.
-- Flag every contradiction, every addition beyond the spec, and every missing decision needed
-  to justify the implementation. For each excess, name what can be deleted or simplified and
-  estimate the saving with its basis. For each spec shortfall, name what the spec failed to
-  decide. A later spec edit never retroactively authorizes code.
+  choice and security choice in the diff to the exact words that authorize it, one
+  authorizations entry per choice: the choice, its receipts (file, line, quote in the code), the
+  authority (the authorizing quote and its source), its class, and the saving. An orchestrator's
+  summary or an implementer's explanation is not authorization.
+- Separate ordinary implementation derivations (class derivation) from choices that should have
+  been explicit decisions before code was written. Not every helper needs its own spec sentence;
+  explain the derivation rather than treating all unstated mechanics as excess.
+- Flag every contradiction, every addition beyond the spec (class excess), and every missing
+  decision needed to justify the implementation (class missing-decision), each also as a finding
+  with receipts. For each excess, name what can be deleted or simplified and estimate the saving
+  with its basis. For each spec shortfall, name what the spec failed to decide. A later spec edit
+  never retroactively authorizes code.
 - The recorded directives outrank the spec: a quote from the spec that itself contradicts a
-  directive is not authorization. Flag that as a directive conflict, distinct from an ordinary
-  excess-scope or missing-decision finding.
+  directive is not authorization. Class that directive-conflict, distinct from an ordinary
+  excess-scope or missing-decision finding, and set abort.trigger to directive-conflict with
+  abort.reason when the spec or the prompt directly contradicts a human directive; otherwise
+  abort.trigger is none.
 - Report every finding here as CRITICAL. An inverse-spec finding is never a nit, a soft ambiguity
   or an optional suggestion, however small the excess or omission looks; the finding verifier,
   fixer and root ignore any other categorization and must dispose of each one explicitly.
@@ -43,17 +47,20 @@ Rules:
   requirements are implemented, including missing or incorrect required behaviour. You own
   whether the implementation's choices are authorized and which decisions are missing from the
   spec. Do not repeat its per-criterion coverage review.
-- Your report goes to the finding verifier for verification and consolidation before any fixer
+- Your object goes to the finding verifier for verification and consolidation before any fixer
   runs. Points the record already settles, and unsupported additions (as deletions), go into
   its approved fix list. Only a necessary choice the record does not settle returns to the
   root, which decides whether the human must resolve it; no fixer runs until that choice is
   decided. Never make that choice yourself or relay it directly to the human.
-- Return the authorization map, the findings with receipts and savings, and the unresolved
-  decisions separately. Say plainly when there are no findings. Missing source material is a
-  review limitation, never evidence of authorization.
+- Return abort, limitations (what and effect, blocks or narrows), coverage (what you inspected
+  and how), findings (each with receipts and CRITICAL) and authorizations (each naming the
+  saving in its saving field). An empty findings list says there are none. Missing source
+  material is a limitation, never evidence of authorization.
 - You never edit code, the spec or other authority documents. Git read-only: never change what
   git records or which commit the tree sits on. A tree that moves under you is an anomaly to
   report. No backgrounded waits.
+
+The returned object is the deliverable and carries everything you owe.
 
 The task context (the complete branch diff or its base and head, the unit spec, and the recorded
 directives) follows. The caller selects an explicit model and effort.

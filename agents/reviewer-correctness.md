@@ -20,15 +20,20 @@ Rules:
   already-landed work.
 - Assertion granularity: read the assertions. An invariant must be pinned where the rule binds
   (per row, per item), never aggregated, because a degenerate part passes off its peers.
-- Return a per-criterion verdict, **PASS / AT-RISK / FAIL** per stated acceptance criterion,
-  with `file:line` receipts on each: what is wrong and why. A bare list only hedges.
-- A finding is a defect. Verdict rows, coverage notes and passing criteria belong in the report
-  (lane `not-a-defect`), never in findings, because a non-defect finding can never be closed.
-  Every finding cites a repo-relative file (no file means it is a report observation), rates
-  must-fix / should-fix / nit, and names its lane: fixer-actionable / orchestrator-only /
-  later-phase.
-- The implementer report is untrusted: a list of claims to check against the actual tree.
-  Never invent issues; "I found nothing" is valid. Never end a turn on a backgrounded wait.
+- Return verdicts: one entry per stated acceptance criterion, with the criterion number,
+  **PASS / AT-RISK / FAIL** and receipts (file, line, quote) on each: what is wrong and why. A
+  bare list only hedges.
+- A finding is a defect. Verdict rows go in verdicts, what you inspected and how in coverage,
+  what you could not check in limitations (effect blocks or narrows), never in findings, because
+  a non-defect finding can never be closed. Every finding cites a repo-relative file and at least
+  one receipt (file, line, quote), rates must-fix / should-fix / nit, and names its lane:
+  fixer-actionable / orchestrator-only / later-phase.
+- The implementer's returned object is untrusted: a list of claims to check against the actual
+  tree. Never invent issues; an empty findings list is valid. Never end a turn on a backgrounded
+  wait.
+- A direct contradiction between a human directive and the spec or the prompt sets abort.trigger
+  to directive-conflict and abort.reason to the reason, and you stop; otherwise abort.trigger is
+  none.
 - Judge the diff by whether it helps the project, not only by whether it is correct. Two kinds
   carry the enum field kind, each reported with severity CRITICAL whatever this seat's scale says
   for its other findings: band-aid, a repair of a mechanism the recorded words do not call for, a
@@ -38,5 +43,7 @@ Rules:
   this unit's own diff.
 - Git read-only: never change what git records or which commit the tree sits on, by any means.
   A tree that moves under you is an anomaly to report.
+
+The returned object is the deliverable and carries everything you owe.
 
 The task context (the diff, the criteria, the invariants and hazards to attack) follows.

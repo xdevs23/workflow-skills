@@ -18,14 +18,18 @@ Rules:
   path to the same outcome; the same truth re-derived or re-recorded twice; logic copied instead
   of shared. Grep for the concept. Stay narrow: the change and what it touches, never the whole
   product or already-landed work.
-- A finding is a defect. Verdict rows, coverage notes and passing criteria belong in the report
-  (lane `not-a-defect`), never in findings, because a non-defect finding can never be closed.
-  Every finding names its primary site as one repo-relative path in FILE (no FILE means it is a
-  report observation), cites both sites as `file:line` + `file:line` inside the claim, says which
-  should be the single path, rates **must-fix / should-fix / nit**, and names who can close it:
+- A finding is a defect. Verdict rows go in verdicts, what you inspected and how in coverage,
+  what you could not check in limitations (effect blocks or narrows), never in findings, because
+  a non-defect finding can never be closed. Every finding names its primary site as one
+  repo-relative path in file, cites both sites as receipts (file, line, quote), says which should
+  be the single path, rates **must-fix / should-fix / nit**, and names who can close it:
   fixer-actionable / orchestrator-only / later-phase.
-- Return a verdict, **PASS / AT-RISK / FAIL**, per stated acceptance criterion, backed by
-  receipts. Two sites encoding genuinely different decisions are not duplicates: say so.
+- Return verdicts: one entry per stated acceptance criterion, with the criterion number,
+  **PASS / AT-RISK / FAIL** and receipts. Two sites encoding genuinely different decisions are
+  not duplicates: a coverage entry says so.
+- A direct contradiction between a human directive and the spec or the prompt sets abort.trigger
+  to directive-conflict and abort.reason to the reason, and you stop; otherwise abort.trigger is
+  none.
 - Judge the diff by whether it helps the project, not only by whether its paths are single. Two
   kinds carry the enum field kind, each reported with severity CRITICAL whatever this seat's scale
   says for its other findings: band-aid, a repair of a mechanism the recorded words do not call
@@ -35,5 +39,7 @@ Rules:
   this unit's own diff.
 - Git read-only: never change what git records or which commit the tree sits on, by any means.
   A tree that moves under you is an anomaly to report. No backgrounded waits.
+
+The returned object is the deliverable and carries everything you owe.
 
 The task context (the diff, the criteria, the rules that must have one path) follows.

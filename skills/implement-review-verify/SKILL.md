@@ -169,12 +169,13 @@ reviews can be one barrier covering both. Brief it with:
 and asks two questions: does any recorded decision rule out the mechanism the request changes, or
 describe the system in a shape that mechanism contradicts; and does growing that mechanism serve
 the project, or would the request stack new behavior onto a mechanism the record has already ruled
-out? A record that says nothing about the mechanism rules nothing out: the check passes and the
-report notes the silence. Where the record permits it, the implementer removes the code and
-rebuilds it to the spec instead of growing it. A failed check emits `HARD-FLAG:` with the reason:
-the mechanism, the recorded decision it contradicts, why extending it is the wrong shape.
+out? A record that says nothing about the mechanism rules nothing out: the check passes and
+`senseCheck.recordSilent` records the silence. Where the record permits it, the implementer removes
+the code and rebuilds it to the spec instead of growing it. A failed check sets `abort.trigger` to
+`sense-check` with the reason in `abort.reason`: the mechanism, the recorded decision it
+contradicts, why extending it is the wrong shape.
 
-**Prompt scrutiny / abort — two triggers, one marker.** The implementer also checks the prompt
+**Prompt scrutiny / abort — two triggers, one abort field.** The implementer also checks the prompt
 against the spec and the code *before* editing. The abort has exactly two triggers: **a human
 verbatim directive directly contradicted by either authority document or by this prompt** —
 directive-versus-spec and directive-versus-prompt are the same trigger — and **a failed sense
@@ -187,28 +188,31 @@ prompt from the directive ranked above both. Then everything else falls out:
 - **the prompt asserts a plainly false premise about the tree** ("module X already exists") →
   **VERIFIED-AND-REPORTED**. Every factual claim the prompt makes about the tree is CHECKED against
   the tree before anything is built on it; a false one is not merely disregarded but *corrected* —
-  build to the TRUE state of the tree, and flag the premise as a must-fix in the report. That beats
-  both stopping and trusting, and it is what "untrusted" is supposed to buy. It is not a
-  contradiction with a directive, so it must not fire the marker;
+  build to the TRUE state of the tree, and flag the premise as a must-fix. That beats both
+  stopping and trusting, and it is what "untrusted" is supposed to buy. It is recorded in
+  `premises` (claim, holds, note). It is not a contradiction with a directive, so it must not set
+  the abort;
 - **a tree that does not yet satisfy the spec** → the NORMAL starting condition. Treating it as a
   contradiction deadlocks the run (law 10).
 
-None of those three emits the marker. Only a contradiction with a human directive on at least one
-side, or a failed sense check, emits `HARD-FLAG:`. Caught before any edit, it stops with the tree
+None of those three sets the abort. Only a contradiction with a human directive on at least one
+side (`abort.trigger` `directive-conflict`), or a failed sense check (`sense-check`), sets a trigger
+other than `none`, with the reason in `abort.reason`. Caught before any edit, it stops with the tree
 UNMODIFIED; caught after some edits already landed, it stops further writes that would extend the
-conflict or the flagged mechanism and reports the existing changes as-is, committing nothing and
-without reverting them. Two triggers, one marker, one disposition — an abort class with no
-marker of its own is undetectable, and a marker with more than one disposition deadlocks. The
-second trigger belongs to the writing seats: a reading seat reports the same observation as a
-`band-aid` or `longer-route` finding (phase 2), never as a flag.
+conflict or the flagged mechanism and returns the existing changes as they stand in `files` and
+`commits`, committing nothing and without reverting them. Two triggers, one field, one disposition
+— an abort class with no trigger of its own is undetectable, and a trigger with more than one
+disposition deadlocks. The second trigger belongs to the writing seats: a reading seat reports the
+same observation as a `band-aid` or `longer-route` finding (phase 2), never as a flag.
 After a sense-check flag the unit continues only on the human's verbatim decision quoted in the
-private record; the root chooses the continuation from the coder's report and that decision. Same
+private record; the root chooses the continuation from the coder's object and that decision. Same
 rule for scope: touch only what the task needs, and flag anything beyond the ruled scope as an
 invention rather than building it.
 
-It reports what changed and the test result, commits only its own scoped changes after checks,
-then returns the full immutable snapshot SHA and clean status with quoted Git evidence.
-A failed check or commit is an incomplete stage, never a fabricated successful snapshot.
+It commits only its own scoped changes after checks, then returns `files` (every path a commit of
+the stage touched, with its byte size at the snapshot), `checks` (each bare run with its quoted
+output), `commits`, the full immutable snapshot SHA, `clean` and `git` (the quoted HEAD and
+status). A failed check or commit is an incomplete stage, never a fabricated successful snapshot.
 
 #### Writer commits are snapshots, not integration permission
 
@@ -220,11 +224,15 @@ checks. No broad add, amend, reset, rebase, merge, cherry-pick, branch switching
 rewriting or push. Honor project commit-message rules and normal hooks/signing. If hooks
 change content, rerun proof on the final committed contents before claiming success.
 
-Return `startSha`, full `snapshotSha`, `clean` and quoted Git/test evidence. Use
-`git rev-parse --verify HEAD^{commit}` and `git status --porcelain=v1 --untracked-files=all`.
-Scratch and local TODO.md remain ignored and untracked; clean status is not permission to
-commit them. Genuine no-ops reuse their starting SHA without an empty commit. Readers and
-the verifier independently check snapshots; a writer's self-report is not proof by itself.
+Return `startSha`, full `snapshotSha`, `clean`, `git` (the quoted output of
+`git rev-parse --verify HEAD^{commit}` and `git status --porcelain=v1 --untracked-files=all`),
+`commits`, `files` and `checks`. The script accepts a writer only when the quoted `git.head`
+equals `snapshotSha`, `clean` agrees with an empty `git.status`, a new snapshot lists commits and
+files with a check whose `passed` equals `proofPassed`, and an unchanged snapshot lists none.
+Scratch and local TODO.md remain ignored and untracked; clean status is not permission to commit
+them. Genuine no-ops reuse their starting SHA without an empty commit. Readers and the verifier
+independently
+check snapshots; a writer's own object is not proof by itself.
 
 All other seats remain Git-read-only. The root pins the starting commit as `args.baseSha`;
 use full object IDs, not HEAD or moving branch names, as review identity. Immutable commits
@@ -256,7 +264,7 @@ standing seats:
   the thing it describes. (NOT bugs — that's the other seat's job.)
 - **Spec compliance** (`agents/reviewer-spec-compliance.md`) — checks explicit requirements
   FORWARD into the implementation: missing or incorrect required behaviour. The spec, not the
-  orchestrator's description, is its reference. It receives NO implementer report. Inverse-spec
+  orchestrator's description, is its reference. It receives NO implementer object. Inverse-spec
   owns the reverse authorization map, excess scope and decisions missing from the spec.
 - **Duplicate checker** (`agents/duplicate-checker.md`) — "one decision path, recorded once": second
   enforcement sites, parallel decision paths, truth re-derived or re-recorded twice, logic copied
@@ -267,15 +275,16 @@ Three identical reviewers are worth less than three different lenses. Add a fift
 performance) only when the change actually has that surface.
 
 **Concern-reviewer output: per-criterion verdicts, never bare lists.** These seats return
-**PASS / AT-RISK / FAIL** against each stated acceptance criterion, every verdict backed by
-`file:line` receipts, plus its findings rated **must-fix / should-fix / nit**. A bare findings list
-lets a reviewer hedge; a verdict is a claim someone can refute. Receipts are the only currency that
-survives triage.
+`verdicts`, exactly one entry per criterion from 1 to `args.criteriaCount`, each
+**PASS / AT-RISK / FAIL** with at least one receipt (file, line, quote), plus `findings` rated
+**must-fix / should-fix / nit**. A bare findings list lets a reviewer hedge; a verdict is a claim
+someone can refute. Receipts are the only currency that survives triage.
 
-**Only the three code-lens verdict seats receive the implementer's report as UNTRUSTED CLAIMS.** The
-code-lens seats (correctness, cleanliness, duplication) get it explicitly as a list of CLAIMS TO
-VERIFY against the actual tree, never as a source they may review by reading: holding the claim in
-hand is what lets a seat catch a claim that is false, which it cannot do if it never saw the claim.
+**Only the three code-lens verdict seats receive the implementer's object as UNTRUSTED CLAIMS.**
+The code-lens seats (correctness, cleanliness, duplication) get it serialized, explicitly as a
+list of CLAIMS TO VERIFY against the actual tree, never as a source they may review by reading:
+holding the claim in hand is what lets a seat catch a claim that is false, which it cannot do if
+it never saw the claim.
 **The SPEC-COMPLIANCE seat does not receive it at all.** The seat that judges the code against the
 AUTHORITY DOCUMENT must not be handed the implementer's account of what it did — its whole job is
 the spec versus the tree, and an account of the work is precisely the framing that makes a missing
@@ -283,21 +292,21 @@ requirement look answered. One briefed verifier plus one cold judge beats both a
 all-cold. This rule governs WHICH INPUT a seat gets. The cold-every-round rule in phase 4 governs
 CROSS-ROUND state and applies to every seat here, including this one.
 
-**And a FINDING IS A DEFECT — nothing else.** The verdict rows, the coverage notes, the record of
-what was run, the criteria that passed: all of those ride in the seat's *report*, never in its
-findings array, because mixing coverage with defects obscures what actually needs correction.
-Every source finding carries a **FILE**, cited **repo-relative**, so verification can trace the
-claim to the tree. Coverage gaps without a code location belong in the report and must still
-be checked by the verifier. Concern reviewers suggest **WHO CAN CLOSE IT** using their
-existing actionability lanes; the verifier validates those suggestions before dispositioning.
+**And a FINDING IS A DEFECT — nothing else.** Verdict rows go in `verdicts`, what the seat
+inspected and how in `coverage`, what it could not check in `limitations`, never in the findings
+array, because mixing coverage with defects obscures what actually needs correction. Every source
+finding carries a **FILE**, cited **repo-relative**, and a receipt, so verification can trace the
+claim to the tree. Concern reviewers suggest **WHO CAN CLOSE IT** using their existing
+actionability lanes; the verifier validates those suggestions before dispositioning, and checks
+every limitation and unchecked coverage entry.
 
-Every source finding and report goes to the finding verifier. A lane or severity assigned
+Every seat object goes to the finding verifier. A lane or severity assigned
 by a reviewer does not authorize a fix; only the verifier's checked, consolidated approval does.
 
 ### Additional review seats — parallel with the verdict reviewers
 
 - **Quality** (`agents/quality.md`) — a broad, deliberately unbriefed read of the diff and
-  touched-file context. No spec, directives, project docs, implementer report, or shared
+  touched-file context. No spec, directives, project docs, implementer object, or shared
   authority briefing. Its ignorance is the mechanism; use only the hygiene floor and diff.
 - **Inverse-spec** (`agents/reviewer-inverse-spec.md`) — maps the COMPLETE branch diff's
   choices back to exact authorizing words. Owns excess scope, missing spec decisions,
@@ -307,15 +316,16 @@ by a reviewer does not authorize a fix; only the verifier's checked, consolidate
   against applicable project/global rules, including violations beside the diff. Its
   cleanup findings are preserved without expanding this unit's repair scope.
 - **Cold alternatives** (`agents/cold-alternatives.md`) — only the diff, surrounding code
-  and required invariants, never the implementer's report. Proposes materially simpler
-  shapes or explains why the current shape is right.
+  and required invariants, never the implementer's object. Returns `candidates` (at most two
+  materially simpler shapes) or `currentShapeRight`.
 
 All selected Review seats are REQUIRED results. Read them against a stable tree and await
 ALL of them before verification. The roaster is the explicit exception to this scheduling:
-it runs in Fix against immutable Git objects, never against the writer's moving filesystem. Quality can legitimately return a
-short no-findings report. Other seats keep their own output contracts; the inverse reviewer
-owes an authorization map, the rule reader a coverage report. Do not impose acceptance-criterion
-verdicts on these distinct roles just to make their report shapes identical.
+it runs in Fix against immutable Git objects, never against the writer's moving filesystem.
+Quality can legitimately return an empty findings list with its coverage. Each seat has its own
+schema: the inverse reviewer owes a non-empty `authorizations` map, the rule reader `ruleSources`
+and a `scope` on every finding, the alternatives seat a candidate, a finding or
+`currentShapeRight` true. Acceptance-criterion verdicts belong to the four concern seats only.
 
 **Every review seat also judges whether the diff HELPS THE PROJECT, not only whether it is
 correct.** Two finding kinds, enum-locked as the optional `kind` field of the findings schema, each
@@ -329,12 +339,16 @@ reports a pre-existing band-aid beside the diff without a kind, so the cleanup l
 
 ### Phase 3 — Verify and consolidate (1 read-only `agentType:'finding-verifier'`)
 
-The verifier receives ALL reports available for the current cycle, including quality and
-cold alternatives. The initial verification precedes roasting; each concurrent roast is
-consumed after its fix pass, before completion or another correction is approved. It checks claims against the code, settled spec, applicable rules and recorded
-instructions, resolves conflicts using evidence, and merges duplicate defects into ONE fix
-list. It preserves every source ID: consolidation is never permission to drop a finding.
-It also checks report-level coverage gaps and independently verifies prior fix claims.
+The verifier receives every seat object of the current cycle serialized, including quality and
+cold alternatives, and the round's writer object (the implementer's in round one, the fixer's
+after a fix pass). The initial verification precedes roasting; each concurrent roast is
+consumed after its fix pass, before completion or another correction is approved. It checks
+claims against the code, settled spec, applicable rules and recorded instructions, resolves
+conflicts using evidence, and merges duplicate defects into ONE fix list, every decision with
+receipts. It preserves every source ID: consolidation is never permission to drop a finding.
+It also checks every seat's limitations and unchecked coverage entries, inspects each writer
+commit of the round in `writerScope` (`filesMatch` when the writer's `files` equal the paths the
+commit touched), returns its own `git` and `checks`, and independently verifies prior fix claims.
 
 This is ordinary workflow work, not a root checkpoint. The root is an exception handler.
 A verifier is neither a rubber stamp nor a new source of design authority. Corrections
@@ -350,7 +364,7 @@ necessary choice cannot proceed merely because a reviewer or verifier prefers it
   requirements. Establish the impossibility, name the question and alternatives; return to the root.
 - **root-action** — a demonstrated impossibility or required investigation the verifier cannot
   complete. A proposed spec edit alone is not a blocker: implement and review the spec as written,
-  retaining non-blocking suggestions in the report or as `record`, not as prerequisites.
+  retaining non-blocking suggestions in `specSuggestions` or as `record`, not as prerequisites.
 - **cleanup** — verified work outside this unit's repair scope, with concrete cleanup
   entries and receipts retained for the root's end-of-run handoff.
 - **record** — genuinely non-blocking observations, retained in the ledger. Never use it
@@ -372,11 +386,13 @@ counterevidence against the finding itself. Every such decision reaches the root
 
 Reviewer lanes and severity are claims to verify, not queue permissions. Every source ID
 must belong to exactly one decision group. The SCRIPT checks coverage, unknown IDs, duplicate
-IDs and approval payloads before mutation. Missing reports or invalid handoffs stop the run;
-missing evidence is never an implicit rejection or a clean empty queue.
+IDs and approval payloads before mutation. A missing seat object or an invalid handoff stops the
+run, and a `blocks` limitation on any accepted stage ends it after that stage with the exit
+`stage limitation needs root resolution`; missing evidence is never an implicit rejection or a
+clean empty queue.
 
 Only approvals enter the fixer list. Unsettled necessary decisions, required root actions
-and unresolved report-level limitations prevent fixing, including otherwise approved work
+and unresolved `issues` and blocking `limitations` prevent fixing, including otherwise approved work
 in that unit. Routine rejections and successful consolidation remain in the workflow record
 and final summary; they do not interrupt the root one by one. Every decision on an inverse-spec
 source finding, however it resolves, stays visible to the root in that summary: an `approve-fix`
@@ -402,21 +418,25 @@ cannot be dropped, including when the approved list is empty and the fixer runs 
 A missing, failed or wrong-snapshot roast leaves the run incomplete.
 
 The fixer receives ONLY the consolidated approved list, with its source IDs, evidence,
-authority and boundaries. Raw reports are not extra work orders. It:
+authority and boundaries. Raw seat objects are not extra work orders. It:
 - independently rechecks each approved correction before acting;
 - runs its bounded sense check on every approved correction before its first write: a correction
   that is itself a band-aid on a mechanism the recorded words do not call for, where the record
-  describes deletion or a rewrite, emits `HARD-FLAG:` with the reason and leaves the disputed
-  mechanism untouched, with the implementer's timing and disposition (phase 1). The fixer does not
-  repeat the request-level sense check; reviewers and the verifier have judged the finished code;
-- returns exactly one **fixed / rejected / blocked** disposition per approved key;
+  describes deletion or a rewrite, sets `abort.trigger` to `sense-check` with the reason in
+  `abort.reason` and leaves the disputed mechanism untouched, with the implementer's timing and
+  disposition (phase 1). The fixer does not repeat the request-level sense check; reviewers and
+  the verifier have judged the finished code;
+- returns exactly one **fixed / rejected / blocked** disposition per approved key in
+  `dispositions`, each with a reason and receipts; the script rejects a missing, unknown or
+  duplicated key;
 - applies the approved outcome within its bounds, never broadening scope or editing a
   spec or other authority document to make the correction legal after the fact;
 - returns disagreements with counterevidence to the ROOT, not automatically to the human
   and not to another automatic fix attempt. A blocked mechanism stays untouched;
 - runs full checks BARE AFTER ITS LAST WRITE, commits completed scoped corrections, then
-  returns the clean snapshot SHA, quoted Git/check output and `proofPassed`. The next
-  independent pass must still verify the commit and any claimed closure.
+  returns the clean snapshot SHA, `git`, `commits`, `files`, `checks` with the quoted output and
+  `proofPassed`; fresh review and verification attest the criteria. The next independent pass
+  must still verify the commit and any claimed closure.
 
 With an EMPTY approved list the fix pass owes PROOF ONLY and may not edit or create an empty
 commit. It returns the original SHA. A failing check is reported for independent triage,
@@ -659,7 +679,7 @@ given check is, because only two of them stop the run:
   conflict-marker sweep. These are **exit-code gates** — they pass or they fail and nobody
   adjudicates the result.
 - **BLOCKING — SCRIPT-LEVEL contract checks.** The orchestrator SCRIPT throws on a protocol
-  violation: the fail-fast retry helper (law 4) and the **deliverable-proof** check below. These
+  violation: the stage helper's completeness checks (law 4) in the acceptance section below. These
   stop the run deliberately, and **the decision lives in the script** — never delegated to a
   downstream agent to rediscover, for the same reason the structural abort does not (law 10).
 - **RECORDING — SEATS.** Quality and cleanliness emit findings for independent verification,
@@ -724,17 +744,15 @@ Non-negotiable across every run of this skill.
 3. **Effort policy.** High for implementation, fixing, and code review. Low/medium for mechanical or
    repetitive stages (list-checking, formatting sweeps). Reserve the top efforts for genuinely hard
    reasoning — they overthink routine work and cost wall-clock for nothing.
-4. **FAIL-FAST.** An agent returning null or a sub-minimal result retries the SAME agent (3 attempts
-   total), then the helper throws and no downstream stage runs. The main loop records the
-   incomplete run with any pending unverified writes; it never treats a failure as an empty review.
-   Set the floor below the shortest legitimate result for each seat. Quality may return a short
-   no-findings report; concern reviewers still owe their per-criterion verdict block. **The floor is a PROSE test and it
-   cannot prove an artifact**, so a stage whose deliverable is FILES is ACCEPTED ON a deliverable-proof
-   marker — a long narration clears any floor with nothing on disk. The floor still rides underneath
-   that marker, because it catches a different failure and costs nothing; it is simply not what
-   decides acceptance there (see the acceptance section below). The law
-   guards EVERY required reader, including adversaries: the verifier consumes them all.
-   A missing report is incomplete verification, never a harmless gap in a finished fix.
+4. **FAIL-FAST.** An agent returning null or an incomplete object retries the SAME agent (3 attempts
+   total) with the failure named, then the helper throws naming the last failure and no downstream
+   stage runs. The main loop records the incomplete run with any pending unverified writes; it
+   never treats a failure as an empty review. Completeness is structural: the schema validates
+   shapes and enums, and the script checks the cross-field contracts (one verdict per criterion, a
+   receipt on every finding and verdict, coverage with a limitation behind every unchecked entry,
+   files and checks behind a new snapshot, a reason behind an abort; see the acceptance section).
+   The law guards EVERY required reader, including adversaries: the verifier consumes them all.
+   A missing object is incomplete verification, never a harmless gap in a finished fix.
 5. **Cache-busting on resume.** A resume replays a cached result for an identical (prompt, opts), so
    retrying a POISONED stage verbatim just replays the same bad output. Edit that ONE stage's prompt
    or label to bust its key, and leave every good stage's key untouched so it replays free. Two
@@ -800,20 +818,26 @@ Non-negotiable across every run of this skill.
     merely conflicts with the SPEC with no directive on either side, or one asserting a false
     premise about the tree — those are verified-and-reported, built to the truth (law 8), never an
     abort. Getting this wrong deadlocks the run: the fixer that would resolve the finding can never
-    run, because the flag aborts before it. **Two triggers, one marker, one disposition** — an
-    abort class with no marker of its own is undetectable, and a marker with more than one
-    disposition is the deadlock in another costume. And the structural abort lives in the
-    **SCRIPT**, which
-    checks **every consumed stage result** for the marker and returns — never delegated to a
-    downstream agent to rediscover. Every required report is consumed by verification; a failed
-    or hard-flagged reader stops the cycle before fixing.
+    run, because the flag aborts before it. **Two triggers, one field, one disposition** — the
+    `abort` field's `trigger` enum names both (`directive-conflict`, `sense-check`) beside `none`,
+    with the reason in `abort.reason`; an abort class with no trigger of its own is undetectable,
+    and a trigger with more than one disposition is the deadlock in another costume. The cold
+    seats carry no `abort` field, because its member names would brief them, and an absent field
+    is no abort. And the structural abort lives in the **SCRIPT**, which checks **every consumed
+    stage result** for a trigger other than `none` and throws with the whole object — never
+    delegated to a downstream agent to rediscover. Every required object is consumed by
+    verification; a failed or hard-flagged reader stops the cycle before fixing.
 11. **ENUM-LOCK ANY VOCABULARY THE SCRIPT BRANCHES ON.** If control flow keys off severity, lock it in
     the output schema as an enum (`must-fix` / `should-fix` / `nit`) with validation-retry — and the
     same for every other vocabulary the loop switches on: the actionability **lane**
     (`fixer-actionable` / `orchestrator-only` / `later-phase` / `not-a-defect`) and the **disposition**
     (`fixed` / `rejected` / `blocked`), verifier action (`approve-fix` / `reject` /
-    `needs-decision` / `root-action` / `cleanup` / `record`), closure (`closed` / `unresolved`)
-    and the project-benefit finding `kind` (`band-aid` / `longer-route`).
+    `needs-decision` / `root-action` / `cleanup` / `record`), closure (`closed` / `unresolved`),
+    the project-benefit finding `kind` (`band-aid` / `longer-route`), the abort `trigger`
+    (`none` / `directive-conflict` / `sense-check`), the verdict (`PASS` / `AT-RISK` / `FAIL`),
+    the limitation `effect` (`blocks` / `narrows`), the authorization `class`, the rule reader's
+    finding `scope` (`in-change` / `beside`), the file `change` (`added` / `modified` / `deleted`)
+    and the gap severity.
     A seat emitting one word against a check testing for another
     **silently disables the phase and the run reports success** — the worst possible failure mode,
     because it looks like a green run.
@@ -834,8 +858,8 @@ Non-negotiable across every run of this skill.
 15. **IMPLEMENT THE SPEC AS WRITTEN; only the ORCHESTRATOR edits it.** A suggested spec change
     does not block implementation, fixing or the normal reviewer cycle. Report the suggestion
     and its evidence to the root without changing the spec or making its amendment a prerequisite.
-    Non-blocking suggestions belong in report material, or `record` when dispositioning a supplied
-    finding. A preference for different requirements is not an impossibility.
+    Non-blocking suggestions belong in `specSuggestions`, or `record` when dispositioning a
+    supplied finding. A preference for different requirements is not an impossibility.
     If the assigned work genuinely cannot satisfy the applicable requirements, report the concrete
     impossibility and block rather than inventing requirements or claiming completion. Contradictions
     between authority documents retain the existing law-10 hard flag; the spec-versus-instructions
@@ -881,8 +905,8 @@ export const meta = {
 // HOUSE is the hygiene floor and NOTHING ELSE. The main run's PINS is these same lines PLUS the
 // review framing (authority tiers, findings contract, lanes, review surface); the cold seats get
 // only this half on purpose, because that framing is a briefing and unbriefedness is this
-// pre-phase's highest-yield property. robust() is the same helper as in the main skeleton below:
-// this is its own run, so copy the definition in.
+// pre-phase's highest-yield property. The field shapes and stage() below are the same as in the
+// main skeleton: this is its own run, so the definitions are copied in.
 // Use this same stage boundary in the main run and any additional seat prompts.
 const STAGE = [
   'EXECUTION CONTEXT: you are one assigned stage, not the orchestrator.',
@@ -902,12 +926,12 @@ const HOUSE = [
   'report it verbatim, never work around it.',
   'Scratch files go in the project cache dir, never a global temp.',
   'Run checks BARE. Never pipe through head/grep - it hides the error.',
-  'NEVER end a turn waiting on a backgrounded check; your final message IS the deliverable.',
+  'NEVER end a turn waiting on a backgrounded check; your returned object IS the deliverable.',
   'You may NEVER edit the spec or any other authority document: report it, the orchestrator amends it.',
 ].join('\n')
-// Two UNBRIEFED seats, DIFFERENT model families. No abortOnFlag here: nothing downstream
-// consumes them, the human does — and a contradiction they find IS the deliverable (law 10).
-// Both are told to PROBE: reading alone catches about a third of what probing catches.
+// Two UNBRIEFED seats, DIFFERENT model families. No abort field and no abortOnFlag here: nothing
+// downstream consumes them, the human does — and a contradiction they find IS the deliverable
+// (law 10). Both are told to PROBE: reading alone catches about a third of what probing catches.
 const PROBE = [
   'PROBE, do not just read: render, recompute, fetch and MEASURE the spec claims against reality.',
   'Concentrate on three blocker classes: JOINT IMPOSSIBILITY (two constraints each satisfiable',
@@ -915,12 +939,47 @@ const PROBE = [
   'CONTRACT (an artifact assumed to exist with no account of how it is produced, sized or kept in',
   'sync); REALITY DRIFT (the world moved under a recorded assumption).',
 ].join('\n')
+// A schema names field shapes, never the spec's content, so both seats stay unbriefed. RECEIPTS,
+// LIMITATIONS, hasHardFlag() and stage() are the main skeleton's: this is its own run, so copy
+// those definitions in.
+const GAPS = { type: 'object', required: ['limitations', 'gaps', 'categories'], additionalProperties: false,
+  properties: { limitations: LIMITATIONS,
+    gaps: { type: 'array', items: { type: 'object', additionalProperties: false,
+      required: ['category', 'what', 'where', 'why', 'severity', 'receipts'],
+      properties: { category: { type: 'string' }, what: { type: 'string' }, where: { type: 'string' }, why: { type: 'string' },
+        severity: { enum: ['must-fix', 'should-fix', 'nit'] }, receipts: RECEIPTS } } },
+    // Every category swept, with its gap count, so "checked, clean" is explicit.
+    categories: { type: 'array', items: { type: 'object', required: ['name', 'gaps'], additionalProperties: false,
+      properties: { name: { type: 'string' }, gaps: { type: 'integer', minimum: 0 } } } } } }
+const SOUNDNESS = { type: 'object', required: ['limitations', 'satisfiable', 'conflicts', 'criteria'], additionalProperties: false,
+  properties: { limitations: LIMITATIONS, satisfiable: { type: 'boolean' },
+    conflicts: { type: 'array', items: { type: 'object', required: ['requirements', 'why'], additionalProperties: false,
+      properties: { requirements: { type: 'array', minItems: 2, items: { type: 'string' } }, why: { type: 'string' } } } },
+    criteria: { type: 'array', items: { type: 'object', required: ['criterion', 'checkable', 'why'], additionalProperties: false,
+      properties: { criterion: { type: 'integer', minimum: 1 }, checkable: { type: 'boolean' }, why: { type: 'string' } } } } } }
+// The same args.criteriaCount as the main run: the count of numbered acceptance criteria.
+const criteriaCount = args.criteriaCount
+if (!Number.isInteger(criteriaCount) || criteriaCount < 1) {
+  throw new Error('args.criteriaCount must be an integer of at least 1: the count of numbered acceptance criteria in the spec')
+}
 phase('Spec review')
 return await Promise.all([
-  robust([HOUSE, PROBE, 'Review the spec at docs/<the-spec>.md. You get no other briefing, by design.'].join('\n\n'),
-    { label: 'spec:gaps', phase: 'Spec review', agentType: 'gap-finder', model: '<explicit>', effort: 'high' }, 300),
-  robust([HOUSE, PROBE, 'Review the spec at docs/<the-spec>.md: are its requirements mutually satisfiable, and is every acceptance criterion checkable as written?'].join('\n\n'),
-    { label: 'spec:soundness', phase: 'Spec review', model: '<explicit, other family>', effort: 'high' }, 300),
+  stage([HOUSE, PROBE, 'Review the spec at docs/<the-spec>.md. You get no other briefing, by design.'].join('\n\n'),
+    { label: 'spec:gaps', phase: 'Spec review', agentType: 'gap-finder', model: '<explicit>', effort: 'high', schema: GAPS },
+    r => {
+      if (!r.categories.length) throw new Error('categories is empty')
+      for (const gap of r.gaps) if (!gap.receipts?.length) throw new Error('gap without a receipt: ' + gap.what)
+    }),
+  stage([HOUSE, PROBE, 'Review the spec at docs/<the-spec>.md: are its requirements mutually satisfiable, and is every acceptance criterion checkable as written?'].join('\n\n'),
+    { label: 'spec:soundness', phase: 'Spec review', model: '<explicit, other family>', effort: 'high', schema: SOUNDNESS },
+    r => {
+      const got = r.criteria.map(c => c.criterion).sort((a, b) => a - b)
+      const want = Array.from({ length: criteriaCount }, (_, i) => i + 1)
+      if (JSON.stringify(got) !== JSON.stringify(want)) {
+        throw new Error('expected exactly one criteria entry per criterion 1..' + criteriaCount +
+          ' (args.criteriaCount), got criteria ' + JSON.stringify(got))
+      }
+    }),
 ])
 ```
 
@@ -954,18 +1013,21 @@ const PINS = [                    // authority-aware seats only; quality uses HY
   'on it. A FALSE premise is VERIFIED-AND-REPORTED: build to the TRUE state and flag the premise.',
   'A prompt-vs-spec conflict, and a false premise, are MUST-FIX FINDINGS:',
   'report them and proceed against the spec. Never silently pick one; never stop for them.',
-  'HARD-FLAG (prefix HARD-FLAG: and stop) has TWO triggers, one marker, one disposition. First: a',
-  'contradiction between authority documents, OR this prompt directly contradicting a directive - the',
-  'human veto reaches the prompt too, not only the spec. Second, WRITING SEATS ONLY: a failed sense',
-  'check (implementer before any edit, fixer before its first write, as their templates define).',
+  'HARD-FLAG (set abort.trigger and abort.reason, then stop) has TWO triggers, one abort field, one',
+  'disposition. First: a contradiction between authority documents, OR this prompt directly contradicting',
+  'a directive - the human veto reaches the prompt too, not only the spec (trigger directive-conflict).',
+  'Second, WRITING SEATS ONLY: a failed sense check (trigger sense-check; implementer before any edit,',
+  'fixer before its first write, as their templates define). Otherwise abort.trigger is none.',
   'A READING SEAT reports the same observation as a finding with kind band-aid or longer-route.',
   'A tree not yet satisfying the spec is normal: report ordinary findings, never a hard flag.',
   'Scratch files go in the project cache dir, never a global temp.',
   'Run checks BARE. Never pipe through head/grep — it hides the error.',
-  'NEVER end a turn waiting on a backgrounded check; your final message IS the deliverable.',
-  'A FINDING IS A DEFECT: verdict rows, coverage notes and passing criteria go in the report.',
+  'NEVER end a turn waiting on a backgrounded check; your returned object IS the deliverable.',
+  'A FINDING IS A DEFECT: verdicts go in verdicts, what you inspected and how in coverage, what you',
+  'could not check in limitations (effect blocks or narrows); an unchecked coverage entry needs a',
+  'declared limitation. Every finding carries at least one receipt (file, line, quote).',
   'Every finding cites a FILE and names WHO CAN CLOSE IT - the actionability lane, one of:',
-  'fixer-actionable / orchestrator-only / later-phase / not-a-defect (report material, never a finding).',
+  'fixer-actionable / orchestrator-only / later-phase / not-a-defect.',
   'Cite every file as a REPO-RELATIVE path: the loop matches findings to fixes by that path.',
   'Ordinary verdicts cover the change; the rule reader checks full changed files and separates cleanup.',
   'You may NEVER edit a spec or any other AUTHORITY DOCUMENT: report it, the orchestrator edits it,',
@@ -989,7 +1051,8 @@ const WRITE_GIT = [
   'No broad add, unrelated changes, amend, reset, rebase, merge, branch switching or push.',
   'Never bypass signing or hooks. Follow project commit style. Recheck proof if hooks change content.',
   'Keep ignored scratch and local TODO.md out of commits unless explicitly requested.',
-  'Return startSha, full snapshotSha, clean status and quoted Git evidence; never an empty commit for a no-op.',
+  'Return startSha, full snapshotSha, clean, git (quoted head and status), commits, files and checks;',
+  'never an empty commit for a no-op, whose commits and files are empty and whose snapshotSha is startSha.',
   'Check git rev-parse --verify HEAD^{commit} and git status --porcelain=v1 --untracked-files=all after committing.',
 ].join('\n')
 // The spec rides as a PATH. The criteria live IN the doc and ride as a POINTER, never as a
@@ -1003,192 +1066,300 @@ const SPEC = [
   'outranks a directive, including one the orchestrator later amended it to match): ...',
 ].join('\n')
 
-const CRITERIA = 'ACCEPTANCE CRITERIA: numbered in the spec. Read them there; return a verdict PER criterion.'
-
-// All readers produce prose plus source findings. Extra verdict metadata is advice to
-// the verifier; only its consolidated dispositions can authorize a correction.
-const REPORT = {
-  type: 'object', required: ['report', 'findings'],
+// Field shapes, declared once and reused inside the stage schemas below. They are field shapes,
+// not stage schemas: every stage declares its own closed object in full, so validation names the
+// seat that omitted a field. No stage schema declares a free-prose field.
+const ABORT = { type: 'object', required: ['trigger', 'reason'], additionalProperties: false,
+  properties: { trigger: { enum: ['none', 'directive-conflict', 'sense-check'] }, reason: { type: 'string' } } }
+const RECEIPT = { type: 'object', required: ['file', 'line', 'quote'], additionalProperties: false,
+  properties: { file: { type: 'string' }, line: { type: 'integer', minimum: 1 }, quote: { type: 'string' } } }
+const RECEIPTS = { type: 'array', minItems: 1, items: RECEIPT }
+const LIMITATIONS = { type: 'array', items: { type: 'object', required: ['what', 'effect'], additionalProperties: false,
+  properties: { what: { type: 'string' }, effect: { enum: ['blocks', 'narrows'] } } } }
+// output quotes the bare run: the last 6000 characters when it printed more, then truncated is true.
+const CHECKS = { type: 'array', items: { type: 'object', additionalProperties: false,
+  required: ['command', 'passed', 'output', 'truncated'],
+  properties: { command: { type: 'string' }, passed: { type: 'boolean' },
+    output: { type: 'string', maxLength: 6000 }, truncated: { type: 'boolean' } } } }
+// head and status quote git rev-parse --verify HEAD^{commit} and git status --porcelain=v1
+// --untracked-files=all; status is the empty string on a clean tree.
+const GIT = { type: 'object', required: ['head', 'status'], additionalProperties: false,
+  properties: { head: { type: 'string' }, status: { type: 'string' } } }
+// A finding is a defect with at least one receipt. Project-benefit kinds mark a choice made in
+// THIS unit's diff; a finding without kind is ordinary, which keeps the cleanup lane open for a
+// band-aid that already existed beside it.
+const FINDING = { type: 'object', required: ['file', 'claim', 'severity', 'lane', 'receipts'], additionalProperties: false,
   properties: {
-    report: { type: 'string' },
-    findings: { type: 'array', items: {
-      type: 'object', required: ['file', 'claim'],
-      properties: {
-        file: { type: 'string' }, claim: { type: 'string' },
+    file: { type: 'string' }, claim: { type: 'string' },
+    severity: { enum: ['must-fix', 'should-fix', 'nit', 'CRITICAL'] },
+    lane: { enum: ['fixer-actionable', 'orchestrator-only', 'later-phase', 'not-a-defect'] },
+    kind: { enum: ['band-aid', 'longer-route'] },
+    receipts: RECEIPTS,
+  } }
+const FINDINGS = { type: 'array', items: FINDING }
+// What the seat inspected and how; an entry with checked false needs a limitation beside it, and
+// the finding verifier judges whether that limitation excuses it.
+const COVERAGE = { type: 'array', items: { type: 'object', required: ['what', 'checked', 'how'], additionalProperties: false,
+  properties: { what: { type: 'string' }, checked: { type: 'boolean' }, how: { type: 'string' } } } }
+const COMMITS = { type: 'array', items: { type: 'object', required: ['sha', 'subject'], additionalProperties: false,
+  properties: { sha: { type: 'string' }, subject: { type: 'string' } } } }
+// One entry per path a commit of the stage touched; bytes is the size at the snapshot, 0 when deleted.
+const FILES = { type: 'array', items: { type: 'object', required: ['path', 'bytes', 'change'], additionalProperties: false,
+  properties: { path: { type: 'string' }, bytes: { type: 'integer', minimum: 0 }, change: { enum: ['added', 'modified', 'deleted'] } } } }
+const STRINGS = { type: 'array', items: { type: 'string' } }
+// Every factual claim the prompt made about the tree, checked against the tree (law 8); a false
+// premise or a prompt-versus-spec conflict is recorded here by both writers.
+const PREMISES = { type: 'array', items: { type: 'object', required: ['claim', 'holds', 'note'], additionalProperties: false,
+  properties: { claim: { type: 'string' }, holds: { type: 'boolean' }, note: { type: 'string' } } } }
+
+// Nine review seat schemas, one per seat, each declared in full. Every reader owes limitations,
+// coverage and findings; the briefed seats also owe abort (law 10). The cold seats (quality,
+// cold alternatives, roaster) carry no abort field, because its member names would brief them.
+const CORRECTNESS = { type: 'object', additionalProperties: false,
+  required: ['abort', 'limitations', 'coverage', 'findings', 'verdicts'],
+  properties: { abort: ABORT, limitations: LIMITATIONS, coverage: COVERAGE, findings: FINDINGS,
+    verdicts: { type: 'array', items: { type: 'object', required: ['criterion', 'verdict', 'receipts'], additionalProperties: false,
+      properties: { criterion: { type: 'integer', minimum: 1 }, verdict: { enum: ['PASS', 'AT-RISK', 'FAIL'] }, receipts: RECEIPTS } } } } }
+const CLEANLINESS = { type: 'object', additionalProperties: false,
+  required: ['abort', 'limitations', 'coverage', 'findings', 'verdicts'],
+  properties: { abort: ABORT, limitations: LIMITATIONS, coverage: COVERAGE, findings: FINDINGS,
+    verdicts: { type: 'array', items: { type: 'object', required: ['criterion', 'verdict', 'receipts'], additionalProperties: false,
+      properties: { criterion: { type: 'integer', minimum: 1 }, verdict: { enum: ['PASS', 'AT-RISK', 'FAIL'] }, receipts: RECEIPTS } } } } }
+const SPEC_COMPLIANCE = { type: 'object', additionalProperties: false,
+  required: ['abort', 'limitations', 'coverage', 'findings', 'verdicts'],
+  properties: { abort: ABORT, limitations: LIMITATIONS, coverage: COVERAGE, findings: FINDINGS,
+    verdicts: { type: 'array', items: { type: 'object', required: ['criterion', 'verdict', 'receipts'], additionalProperties: false,
+      properties: { criterion: { type: 'integer', minimum: 1 }, verdict: { enum: ['PASS', 'AT-RISK', 'FAIL'] }, receipts: RECEIPTS } } } } }
+const DUPLICATES = { type: 'object', additionalProperties: false,
+  required: ['abort', 'limitations', 'coverage', 'findings', 'verdicts'],
+  properties: { abort: ABORT, limitations: LIMITATIONS, coverage: COVERAGE, findings: FINDINGS,
+    verdicts: { type: 'array', items: { type: 'object', required: ['criterion', 'verdict', 'receipts'], additionalProperties: false,
+      properties: { criterion: { type: 'integer', minimum: 1 }, verdict: { enum: ['PASS', 'AT-RISK', 'FAIL'] }, receipts: RECEIPTS } } } } }
+const INVERSE = { type: 'object', additionalProperties: false,
+  required: ['abort', 'limitations', 'coverage', 'findings', 'authorizations'],
+  properties: { abort: ABORT, limitations: LIMITATIONS, coverage: COVERAGE, findings: FINDINGS,
+    authorizations: { type: 'array', items: { type: 'object', additionalProperties: false,
+      required: ['choice', 'receipts', 'authority', 'class', 'saving'],
+      properties: { choice: { type: 'string' }, receipts: RECEIPTS, authority: { type: 'string' }, saving: { type: 'string' },
+        class: { enum: ['authorized', 'derivation', 'excess', 'missing-decision', 'directive-conflict'] } } } } } }
+// The rule reader's finding also carries scope: in the change, or an existing violation beside it.
+const RULES_SEAT = { type: 'object', additionalProperties: false,
+  required: ['abort', 'limitations', 'coverage', 'findings', 'ruleSources'],
+  properties: { abort: ABORT, limitations: LIMITATIONS, coverage: COVERAGE,
+    findings: { type: 'array', items: { type: 'object', additionalProperties: false,
+      required: ['file', 'claim', 'severity', 'lane', 'receipts', 'scope'],
+      properties: { file: { type: 'string' }, claim: { type: 'string' },
         severity: { enum: ['must-fix', 'should-fix', 'nit', 'CRITICAL'] },
         lane: { enum: ['fixer-actionable', 'orchestrator-only', 'later-phase', 'not-a-defect'] },
-        // Project-benefit kinds mark a choice made in THIS unit's diff; a finding without kind is
-        // ordinary, which keeps the cleanup lane open for a band-aid that already existed beside it.
-        kind: { enum: ['band-aid', 'longer-route'] },
-      },
-    } },
-  },
-}
-const ROAST = {
-  ...REPORT, required: [...REPORT.required, 'snapshotSha'],
-  properties: { ...REPORT.properties, snapshotSha: { type: 'string' } },
-}
-const SNAPSHOT_FIELDS = {
-  startSha: { type: 'string' }, snapshotSha: { type: 'string' },
-  clean: { type: 'boolean' }, proofPassed: { type: 'boolean' },
-}
-const IMPLEMENT = {
-  type: 'object', required: ['report', ...Object.keys(SNAPSHOT_FIELDS)],
-  properties: { report: { type: 'string' }, ...SNAPSHOT_FIELDS },
-}
-const VERIFY = {
-  type: 'object', required: ['report', 'decisions', 'issues', 'closures', 'snapshotSha', 'clean'],
-  properties: {
-    snapshotSha: { type: 'string' }, clean: { type: 'boolean' },
-    report: { type: 'string' },
-    decisions: { type: 'array', items: {
-      type: 'object',
+        kind: { enum: ['band-aid', 'longer-route'] }, receipts: RECEIPTS, scope: { enum: ['in-change', 'beside'] } } } },
+    ruleSources: { type: 'array', items: { type: 'object', required: ['path', 'read'], additionalProperties: false,
+      properties: { path: { type: 'string' }, read: { type: 'boolean' } } } } } }
+const QUALITY = { type: 'object', additionalProperties: false, required: ['limitations', 'coverage', 'findings'],
+  properties: { limitations: LIMITATIONS, coverage: COVERAGE, findings: FINDINGS } }
+const ALTERNATIVES = { type: 'object', additionalProperties: false,
+  required: ['limitations', 'coverage', 'findings', 'currentShapeRight', 'candidates'],
+  properties: { limitations: LIMITATIONS, coverage: COVERAGE, findings: FINDINGS, currentShapeRight: { type: 'boolean' },
+    candidates: { type: 'array', maxItems: 2, items: { type: 'object', additionalProperties: false,
+      required: ['shape', 'collapses', 'cost', 'invariants'],
+      properties: { shape: { type: 'string' }, collapses: { type: 'string' }, cost: { type: 'string' }, invariants: { type: 'string' } } } } } }
+const ROAST = { type: 'object', additionalProperties: false, required: ['limitations', 'coverage', 'findings', 'snapshotSha'],
+  properties: { limitations: LIMITATIONS, coverage: COVERAGE, findings: FINDINGS, snapshotSha: { type: 'string' } } }
+
+// Writer schemas. The deliverable proof is files together with checks: an account of the work
+// with an empty files list behind a new snapshot fails the completeness check below.
+const IMPLEMENT = { type: 'object', additionalProperties: false,
+  required: ['abort', 'limitations', 'startSha', 'snapshotSha', 'clean', 'proofPassed', 'premises',
+    'senseCheck', 'commits', 'files', 'checks', 'git', 'specSuggestions'],
+  properties: { abort: ABORT, limitations: LIMITATIONS, startSha: { type: 'string' }, snapshotSha: { type: 'string' },
+    clean: { type: 'boolean' }, proofPassed: { type: 'boolean' },
+    premises: PREMISES,
+    senseCheck: { type: 'object', required: ['passed', 'recordSilent', 'note'], additionalProperties: false,
+      properties: { passed: { type: 'boolean' }, recordSilent: { type: 'boolean' }, note: { type: 'string' } } },
+    commits: COMMITS, files: FILES, checks: CHECKS, git: GIT, specSuggestions: STRINGS } }
+const FIX = { type: 'object', additionalProperties: false,
+  required: ['abort', 'limitations', 'startSha', 'snapshotSha', 'clean', 'proofPassed', 'premises', 'commits',
+    'files', 'checks', 'git', 'specSuggestions', 'dispositions', 'touched'],
+  properties: { abort: ABORT, limitations: LIMITATIONS, startSha: { type: 'string' }, snapshotSha: { type: 'string' },
+    clean: { type: 'boolean' }, proofPassed: { type: 'boolean' }, premises: PREMISES,
+    commits: COMMITS, files: FILES, checks: CHECKS, git: GIT, specSuggestions: STRINGS,
+    dispositions: { type: 'array', items: { type: 'object', additionalProperties: false,
+      required: ['key', 'disposition', 'reason', 'receipts'],
+      properties: { key: { type: 'string' }, disposition: { enum: ['fixed', 'rejected', 'blocked'] },
+        reason: { type: 'string' }, receipts: RECEIPTS } } },
+    touched: STRINGS } }
+const VERIFY = { type: 'object', additionalProperties: false,
+  required: ['abort', 'limitations', 'snapshotSha', 'clean', 'git', 'checks', 'writerScope', 'decisions',
+    'issues', 'closures', 'specSuggestions'],
+  properties: { abort: ABORT, limitations: LIMITATIONS, snapshotSha: { type: 'string' }, clean: { type: 'boolean' },
+    git: GIT, checks: CHECKS,
+    // One entry per writer commit of the round, inspected against its start; filesMatch is true
+    // when the writer's files list equals the paths the commit touched (law 12).
+    writerScope: { type: 'array', items: { type: 'object', required: ['sha', 'ok', 'filesMatch', 'note'], additionalProperties: false,
+      properties: { sha: { type: 'string' }, ok: { type: 'boolean' }, filesMatch: { type: 'boolean' }, note: { type: 'string' } } } },
+    decisions: { type: 'array', items: { type: 'object', additionalProperties: false,
       required: ['sourceIds', 'action', 'severity', 'reason', 'evidence', 'authority',
-        'correction', 'constraints', 'acceptance'],
+        'correction', 'constraints', 'acceptance', 'receipts'],
       properties: {
         sourceIds: { type: 'array', minItems: 1, items: { type: 'string' } },
         action: { enum: ['approve-fix', 'reject', 'needs-decision', 'root-action', 'cleanup', 'record'] },
         severity: { enum: ['must-fix', 'should-fix', 'nit', 'CRITICAL'] },
         reason: { type: 'string' }, evidence: { type: 'string' }, authority: { type: 'string' },
         correction: { type: 'string' }, constraints: { type: 'string' }, acceptance: { type: 'string' },
-      },
-    } },
-    // Report-level gaps must not disappear merely because they lacked a source finding.
-    issues: { type: 'array', items: {
-      type: 'object', required: ['kind', 'detail'],
-      properties: { kind: { enum: ['needs-decision', 'root-action'] }, detail: { type: 'string' } },
-    } },
-    closures: { type: 'array', items: {
-      type: 'object', required: ['key', 'verdict', 'evidence'],
-      properties: {
-        key: { type: 'string' }, verdict: { enum: ['closed', 'unresolved'] }, evidence: { type: 'string' },
-      },
-    } },
-  },
+        receipts: RECEIPTS,
+      } } },
+    // Limitations and unchecked coverage must not disappear merely because they lacked a source finding.
+    issues: { type: 'array', items: { type: 'object', required: ['kind', 'detail'], additionalProperties: false,
+      properties: { kind: { enum: ['needs-decision', 'root-action'] }, detail: { type: 'string' } } } },
+    closures: { type: 'array', items: { type: 'object', required: ['key', 'verdict', 'evidence'], additionalProperties: false,
+      properties: { key: { type: 'string' }, verdict: { enum: ['closed', 'unresolved'] }, evidence: { type: 'string' } } } },
+    specSuggestions: STRINGS } }
+
+// The hard flag is the abort field (law 10): a trigger other than none. Cold seats carry no abort
+// field, and an absent field is no abort. The thrown error carries the WHOLE aborting object, so
+// its reason survives into the exception handoff, including an exit thrown before any round exists.
+const hasHardFlag = r => r?.abort != null && r.abort.trigger !== 'none'
+const abortOnFlag = (r, label) => {
+  if (hasHardFlag(r)) throw new Error('HARD-FLAG from ' + label + ':\n' + JSON.stringify(r))
+  return r
 }
-const FIX = {
-  type: 'object', required: ['report', 'touched', 'dispositions', ...Object.keys(SNAPSHOT_FIELDS)],
-  properties: {
-    ...SNAPSHOT_FIELDS,
-    report: { type: 'string' }, proofPassed: { type: 'boolean' },
-    touched: { type: 'array', items: { type: 'string' } },
-    dispositions: { type: 'array', items: {
-      type: 'object', required: ['key', 'disposition', 'reason'],
-      properties: {
-        key: { type: 'string' }, disposition: { enum: ['fixed', 'rejected', 'blocked'] },
-        reason: { type: 'string' },
-      },
-    } },
-  },
+// ONE acceptance helper for every stage (law 4): a stage is accepted on the completeness of its
+// object, never on the length of a text. The schema validates shapes and enums; complete() checks
+// the cross-field contracts named in the acceptance section. An abort with a reason returns at
+// once. A null result or a failed check retries the SAME agent with the failure named plainly,
+// three attempts in all; the throw names the last failure, so a stale input such as
+// args.criteriaCount is visible as the cause.
+async function stage(prompt, opts, complete = () => {}) {
+  let failure = ''
+  for (let i = 0; i < 3; i++) {
+    const r = await agent(prompt + (failure ? '\n\nHOW YOUR PREVIOUS ATTEMPT FAILED, plainly: ' + failure : ''), opts)
+    if (hasHardFlag(r) && typeof r.abort.reason === 'string' && r.abort.reason.trim()) return r
+    try {
+      if (r == null) throw new Error('it returned nothing usable at all')
+      if (hasHardFlag(r)) throw new Error('abort.trigger is set but abort.reason is empty')
+      complete(r)
+      return r
+    } catch (error) { failure = error.message }
+    log('incomplete result from ' + (opts.label || 'agent') + ', retry ' + (i + 1) + ': ' + failure)
+  }
+  throw new Error('FAIL-FAST: ' + (opts.label || 'agent') + ' returned no complete result after 3 attempts: ' + failure)
 }
 
-// ONE exact-marker guard, reused by both retry helpers below and by the final consumed-result
-// check after them (abortOnFlag) — never a prose classifier. It scans the WHOLE structured
-// result, not a chosen text projection: a marker planted only inside a finding's claim/evidence
-// or a decision's reason/evidence/correction, alongside a SHORT or proof-less report, must be
-// caught here before either retry loop's floor ever sees it — otherwise a legitimate structured
-// hard flag with a short report gets retried into FAIL-FAST or DELIVERABLE PROOF instead of
-// surfacing the contradiction it was raised for (law 10).
-const hasHardFlag = r => r != null && JSON.stringify(r).includes('HARD-FLAG:')
-// PROSE stages are accepted on a LENGTH FLOOR (law 4): it catches the turn that ended waiting on
-// a backgrounded check, where that sentence became the return value.
-async function robust(prompt, opts, minLen, text = r => r) {
-  for (let i = 0; i < 3; i++) {
-    const r = await agent(prompt, opts)
-    if (hasHardFlag(r)) return r
-    const s = r && text(r)
-    if (typeof s === 'string' && s.length >= minLen) return r
-    log('sub-minimal result from ' + (opts.label || 'agent') + ', retry ' + (i + 1))
-  }
-  throw new Error('FAIL-FAST: ' + (opts.label || 'agent') + ' returned no usable result after 3 attempts')
+// The root supplies the clean isolated worktree's starting commit as an immutable ID, and the count
+// of numbered items under the spec's acceptance-criteria heading at the revision it launches (law 9
+// keeps that revision fixed for the run).
+const SHA = /^(?:[0-9a-f]{40}|[0-9a-f]{64})$/
+const baseSha = args.baseSha
+if (!SHA.test(baseSha || '')) throw new Error('A full immutable baseSha is required')
+const criteriaCount = args.criteriaCount
+if (!Number.isInteger(criteriaCount) || criteriaCount < 1) {
+  throw new Error('args.criteriaCount must be an integer of at least 1: the count of numbered acceptance criteria in the spec')
 }
-// ARTIFACT stages are accepted on PROOF, never on length: a stage can return a long, immaculate
-// ANALYSIS of the work and never create the file, and that narration clears any floor. The marker
-// check is a SCRIPT-LEVEL contract check (the quality gate): the script throws, no agent is asked
-// to notice. The RETRY states plainly HOW the last attempt failed rather than re-asking.
-const PROOF = 'FILES-ON-DISK:'
+const CRITERIA = 'ACCEPTANCE CRITERIA: numbered in the spec. Read them there; return a verdict PER criterion in verdicts, each with a receipt.'
+const checkWriterSnapshot = (result, startSha) => {
+  if (result.startSha !== startSha || !SHA.test(result.snapshotSha || '') || result.clean !== true) {
+    throw new Error('Writer did not return a clean immutable snapshot from the expected start SHA')
+  }
+}
+
+// Completeness checks, one per stage kind; each throws naming what is missing.
+const withReceipts = (items, label) => {
+  for (const item of items) if (!item.receipts?.length) throw new Error(label + ' without a receipt: ' + JSON.stringify(item))
+}
+const checkReader = r => {
+  withReceipts(r.findings, 'finding')
+  for (const f of r.findings) if (!f.lane) throw new Error('finding without a lane: ' + f.claim)
+  if (!r.coverage.length) throw new Error('coverage is empty')
+  // The finding verifier judges which limitation excuses which unchecked entry; the script only
+  // requires that a limitation exists to judge.
+  for (const c of r.coverage) {
+    if (!c.checked && !r.limitations.length) throw new Error('coverage entry not checked and no limitation declared: ' + c.what)
+  }
+}
+const checkVerdicts = r => {
+  checkReader(r)
+  const got = r.verdicts.map(v => v.criterion).sort((a, b) => a - b)
+  if (JSON.stringify(got) !== JSON.stringify(Array.from({ length: criteriaCount }, (_, i) => i + 1))) {
+    throw new Error('expected exactly one verdict per criterion 1..' + criteriaCount + ' (args.criteriaCount), got criteria ' + JSON.stringify(got))
+  }
+  withReceipts(r.verdicts, 'verdict')
+}
+const checkInverse = r => { checkReader(r); if (!r.authorizations.length) throw new Error('authorizations is empty') }
+const checkAlternatives = r => {
+  checkReader(r)
+  if (!r.candidates.length && !r.findings.length && !r.currentShapeRight) throw new Error('no candidate, no finding and currentShapeRight false')
+}
+const checkWriter = r => {
+  if (r.git.head.trim() !== r.snapshotSha) throw new Error('git.head ' + JSON.stringify(r.git.head) + ' differs from snapshotSha ' + JSON.stringify(r.snapshotSha))
+  if (r.clean !== (r.git.status === '')) throw new Error('clean disagrees with git.status')
+  if (r.snapshotSha !== r.startSha) {
+    if (!r.commits.length || !r.files.length) throw new Error('a new snapshot needs commits and files')
+    if (!r.checks.some(c => c.passed === r.proofPassed)) throw new Error('no check has passed equal to proofPassed')
+  } else if (r.commits.length || r.files.length) throw new Error('an unchanged snapshot lists commits or files')
+}
+const blocking = r => r.limitations.filter(l => l.effect === 'blocks')
+// The run record, declared ahead of the implement stage so every stage's exit writes the same
+// record. A blocks limitation on any accepted stage ends the run after that stage, the way a
+// verifier exception ends a round: appended to exceptions, with the reason as the exit.
+const BUDGET = 3                 // code-fix passes; final independent verification is still required
+const history = []
+let snapshotSha = null
+let readCache = null
+let pending = []
+let pendingRoasts = []
+const verifiedRoasts = new Set()
+const roastRuns = []
+const roastComplete = () => roastRuns.length > 0 && roastRuns.every(r => verifiedRoasts.has(r.label))
+let fixPasses = 0
+let fix = null
+let treeUnreviewed = true
+let complete = false
+let exit = 'incomplete verification'
+let exceptions = []
+const limited = results => {
+  const blocks = results.flatMap(r => blocking(r).map(l => ({ kind: 'stage-limitation', label: r.label, ...l })))
+  if (blocks.length) { exceptions = [...exceptions, ...blocks]; exit = 'stage limitation needs root resolution' }
+  return blocks.length > 0
+}
+// The deliverable of a writer is FILES ON DISK, proved by files and checks in its object: an
+// account of the work is not the work (law 12). The retry in stage() names the actual failure.
 const PROVE = [
-  'Your deliverable is FILES ON DISK, not an account of them.',
+  'Your deliverable is FILES ON DISK, proved by your returned object: files lists every path a commit',
+  'of this stage touched with its byte size at the snapshot, checks quotes the output of every bare',
+  'run, git quotes HEAD and status. An account of the work with an empty files list is not the work.',
   'Where the deliverable is an AUTHORED ARTIFACT it is MULTI-FILE: ONE FILE PER WRITE CALL, each',
   'under <the per-file size cap>. One large file written in a single call fails MID-WRITE at any',
   'output ceiling and leaves a TRUNCATED file rather than an error. The layout of CODE is decided',
   'by the spec and not by this rule: decomposition governs the DELIVERABLE, never the design.',
-  'END your final message with the literal line ' + PROOF + ' followed by every file you wrote',
-  'with its byte size, then the quoted output of the directory listing you actually ran.',
 ].join('\n')
-async function proven(prompt, opts, minLen, text = r => r) {
-  let note = ''
-  for (let i = 0; i < 3; i++) {
-    const r = await agent(prompt + note, opts)
-    // A HARD FLAG OUTRANKS THE PROOF CHECK, checked against the WHOLE structured result via the
-    // same hasHardFlag guard as robust() — not only the report text. A correctly flagging stage
-    // stops with the tree UNMODIFIED, so it owes no files: retrying it here would coerce it into
-    // building against the very contradiction it was told to stop on, and the throw below would
-    // then report a missing deliverable as the run's exit reason instead of the contradiction
-    // (law 10), which is exactly what happens if a short or proof-less report hides the marker.
-    if (hasHardFlag(r)) return r
-    const s = r && text(r)
-    if (typeof s === 'string' && s.length >= minLen && s.includes(PROOF)) return r
-    // The note names the ACTUAL failure: a retry told the wrong cause is itself a false premise.
-    note = '\n\nHOW YOUR PREVIOUS ATTEMPT FAILED, plainly: ' + (
-      typeof s !== 'string' ? 'it returned nothing usable at all.'
-      : !s.includes(PROOF) ? 'it returned an account of the work with no ' + PROOF +
-        ' line, so the files were never proved to exist. An analysis of the work is not the work.'
-      : 'it emitted ' + PROOF + ' but the report itself was far too short to be complete.'
-    ) + ' Write the files, then END with ' + PROOF + ' and the quoted listing.'
-    log('no deliverable proof from ' + (opts.label || 'agent') + ', retry ' + (i + 1))
-  }
-  throw new Error('DELIVERABLE PROOF: ' + (opts.label || 'agent') + ' never emitted ' + PROOF)
-}
-// The structural abort is the SCRIPT'S job (law 10), on EVERY CONSUMED result — never a
-// downstream agent's to rediscover. Every selected reader is consumed by verification.
-// Uses the SAME hasHardFlag guard as robust()/proven() above: a marker planted inside a
-// finding's claim/evidence or a decision's reason/evidence/correction must abort exactly like
-// one in the free-prose report, so a structured hard flag cannot slip past this gate into
-// downstream routing. The thrown error always carries the COMPLETE structured result, not just
-// its report text, so distinctive finding/decision evidence survives into the exception handoff
-// even when the report itself is short or unrelated — including a pre-history implementation or
-// review exit that this call throws before any round-based history entry exists.
-const abortOnFlag = (r, label) => {
-  if (hasHardFlag(r)) {
-    throw new Error('HARD-FLAG from ' + label + ':\n' + JSON.stringify(r))
-  }
-  return r
-}
-
-// The root supplies the clean isolated worktree's starting commit as an immutable ID.
-const SHA = /^(?:[0-9a-f]{40}|[0-9a-f]{64})$/
-const baseSha = args.baseSha
-if (!SHA.test(baseSha || '')) throw new Error('A full immutable baseSha is required')
-const checkWriterSnapshot = (result, startSha) => {
-  if (result.startSha !== startSha || !SHA.test(result.snapshotSha || '') || result.clean !== true) {
-    throw new Error('Writer did not return a clean pinned snapshot from the expected start SHA')
-  }
-}
 phase('Implement')
-const implemented = await proven(
+const implemented = await stage(
   [PINS, WRITE_GIT, SPEC, PROVE, 'START SHA: ' + baseSha, 'Implement, check, and commit only scoped changes.'].join('\n\n'),
   { label: 'impl', phase: 'Implement', agentType: 'implementer', model: '<explicit>', effort: 'high', schema: IMPLEMENT },
-  600, r => r.report,
+  checkWriter,
 )
 const impl = abortOnFlag(implemented, 'impl')
 checkWriterSnapshot(impl, baseSha)
-if (!impl.proofPassed) throw new Error('Implementation checks failed; no successful snapshot')
+snapshotSha = impl.snapshotSha
+const implLimited = limited([{ ...impl, label: 'impl' }])
+if (!implLimited && !impl.proofPassed) throw new Error('Implementation checks failed; no successful snapshot')
 
 const RULES = 'RULE SOURCES: <applicable project, directory and global rule paths>.'
 const INVARIANTS = 'REQUIRED INVARIANTS, VERBATIM: <only the constraints alternatives must preserve>.'
 const HYGIENE = [
   STAGE, READ_GIT, 'Scratch goes in the project gitignored cache; no background waits.',
 ].join('\n')
+// Only the three briefed code-lens readers receive the implementer's object, as claims to verify.
+const CLAIMS = ['UNTRUSTED implementer claims (its returned object):', JSON.stringify(impl)]
+// Each seat: template, label, inputs, its own schema, and its completeness check.
 const SEATS = [
-  ['reviewer-correctness', 'correctness', [PINS, READ_GIT, SPEC, CRITERIA, 'UNTRUSTED implementer claims:', impl.report]],
-  ['reviewer-cleanliness', 'cleanliness', [PINS, READ_GIT, SPEC, CRITERIA, 'UNTRUSTED implementer claims:', impl.report]],
-  ['reviewer-spec-compliance', 'spec', [PINS, READ_GIT, SPEC, CRITERIA]],
-  ['duplicate-checker', 'dupes', [PINS, READ_GIT, SPEC, CRITERIA, 'UNTRUSTED implementer claims:', impl.report]],
-  ['quality', 'quality', [HYGIENE]],
-  ['reviewer-inverse-spec', 'inverse', [PINS, READ_GIT, SPEC]],
-  ['project-rule-reader', 'rules', [PINS, READ_GIT, SPEC, RULES]],
-  ['cold-alternatives', 'alternatives', [HYGIENE, INVARIANTS]],
+  ['reviewer-correctness', 'correctness', [PINS, READ_GIT, SPEC, CRITERIA, ...CLAIMS], CORRECTNESS, checkVerdicts],
+  ['reviewer-cleanliness', 'cleanliness', [PINS, READ_GIT, SPEC, CRITERIA, ...CLAIMS], CLEANLINESS, checkVerdicts],
+  ['reviewer-spec-compliance', 'spec', [PINS, READ_GIT, SPEC, CRITERIA], SPEC_COMPLIANCE, checkVerdicts],
+  ['duplicate-checker', 'dupes', [PINS, READ_GIT, SPEC, CRITERIA, ...CLAIMS], DUPLICATES, checkVerdicts],
+  ['quality', 'quality', [HYGIENE], QUALITY, checkReader],
+  ['reviewer-inverse-spec', 'inverse', [PINS, READ_GIT, SPEC], INVERSE, checkInverse],
+  ['project-rule-reader', 'rules', [PINS, READ_GIT, SPEC, RULES], RULES_SEAT, checkReader],
+  ['cold-alternatives', 'alternatives', [HYGIENE, INVARIANTS], ALTERNATIVES, checkAlternatives],
 ]
 const diffInput = sha => 'DIFF: ' + baseSha + '..' + sha + '. The clean worktree must remain at ' + sha + '.'
 // Source findings get their IDs here, for readers and roasts alike. A kind-bearing (band-aid /
@@ -1197,30 +1368,29 @@ const sourceFindings = (findings, seat, round, sha) => findings.map((f, i) => {
   if (f.kind && f.severity !== 'CRITICAL') log('Project-benefit finding from ' + seat + ' with kind ' + f.kind + ' set to severity CRITICAL')
   return { ...f, ...(f.kind ? { severity: 'CRITICAL' } : {}), id: 'r' + round + ':' + seat + ':' + i, seat, snapshotSha: sha }
 })
-const readSeat = async ([type, label, inputs], round, sha) => {
+const readSeat = async ([type, label, inputs, schema, complete], round, sha) => {
   const stageLabel = 'review:' + label + ':r' + round
-  const result = await robust([...inputs, diffInput(sha)].join('\n\n'), {
-    label: stageLabel, phase: 'Review', agentType: type,
-    model: '<explicit>', effort: 'high', schema: REPORT,
-  }, label === 'quality' ? 1 : 200, r => r.report)
+  const result = await stage([...inputs, diffInput(sha)].join('\n\n'), {
+    label: stageLabel, phase: 'Review', agentType: type, model: '<explicit>', effort: 'high', schema,
+  }, complete)
   return { ...abortOnFlag(result, stageLabel), seat: label, snapshotSha: sha,
     label: stageLabel }
 }
 const roastPass = async (queue, round, sha) => {
-  const result = await robust([
+  const result = await stage([
     STAGE,
     'IMMUTABLE BASE SHA: ' + baseSha, 'IMMUTABLE SNAPSHOT SHA: ' + sha,
     'Read source ONLY through Git objects at those exact IDs, never HEAD or the source filesystem.',
     'The fixer runs concurrently; its HEAD/worktree changes are expected, not your review surface.',
     'Use git diff --no-ext-diff --no-textconv, git ls-tree, git show SHA:path and git grep at the pinned tree.',
     'No filesystem Read/Grep/Glob, working-tree scripts, builds, external diff helpers or Git mutations.',
-    'Cite the snapshot SHA and snapshot file:line. Return snapshotSha with your report and findings.',
+    'Cite the snapshot SHA and snapshot file:line in receipts. Return snapshotSha, limitations, coverage and findings.',
     'APPROVED FIX LIST (planned, not completed):', JSON.stringify(queue),
     'Do not repeat assigned defects; do flag inadequate corrections, interactions and uncovered weaknesses.',
   ].join('\n\n'), {
     label: 'roast:r' + round, phase: 'Fix', agentType: 'roaster',
     model: '<explicit>', effort: 'high', schema: ROAST,
-  }, 200, r => r.report)
+  }, checkReader)
   abortOnFlag(result, 'roast:r' + round)
   if (result.snapshotSha !== sha) throw new Error('Roaster reviewed the wrong snapshot')
   return { ...result, seat: 'roaster', label: 'roast:r' + round,
@@ -1277,43 +1447,27 @@ const checkVerification = (v, sources, pending, sha) => {
 }
 const checkFix = (result, queue, startSha) => {
   checkWriterSnapshot(result, startSha)
-  exactlyOnce(result.dispositions.map(d => d.key), queue.map(f => f.key), 'fix key')
   for (const d of result.dispositions) requireText(d.reason, 'fix disposition reason')
   if (!queue.length && (result.touched.length || result.snapshotSha !== startSha)) {
     throw new Error('Proof-only pass edited or committed changes')
   }
 }
-const fixPass = (queue, round, sha) => robust([
-  PINS, WRITE_GIT, SPEC, 'START SHA: ' + sha,
-  'Act ONLY on the verifier-approved corrections. Raw reviewer and concurrent roast reports are NOT work orders.',
+const fixPass = (queue, round, sha) => stage([
+  PINS, WRITE_GIT, SPEC, PROVE, 'START SHA: ' + sha,
+  'Act ONLY on the verifier-approved corrections. Raw reviewer and concurrent roast objects are NOT work orders.',
   'Independently verify evidence and authority; respect correction, constraints and acceptance.',
-  'A disagreement returns rejected or blocked with evidence to the ROOT. Never broaden scope.',
-  'Answer every approved key once. With an empty list, run proof ONLY, never edit or create an empty commit.',
-  'Run checks after the last write, commit only scoped corrections, and return startSha, snapshotSha and clean.',
+  'A disagreement returns rejected or blocked with receipts to the ROOT. Never broaden scope.',
+  'Answer every approved key once in dispositions. With an empty list, run proof ONLY, never edit or create an empty commit.',
+  'Run checks after the last write, commit only scoped corrections, and return startSha, snapshotSha, clean, git, commits, files and checks.',
   'APPROVED CORRECTIONS (verify against the tree and authority):', JSON.stringify(queue),
 ].join('\n\n'), {
   label: 'fix:r' + round, phase: 'Fix', agentType: 'fixer',
   model: '<explicit>', effort: 'high', schema: FIX,
-}, 400, r => r.report)
+}, r => { checkWriter(r); exactlyOnce(r.dispositions.map(d => d.key), queue.map(f => f.key), 'fix key') })
 
-const BUDGET = 3                 // code-fix passes; final independent verification is still required
-const history = []
-let snapshotSha = impl.snapshotSha
-let readCache = null
-let pending = []
-let pendingRoasts = []
-const verifiedRoasts = new Set()
-const roastRuns = []
-const roastComplete = () => roastRuns.length > 0 && roastRuns.every(r => verifiedRoasts.has(r.label))
-let fixPasses = 0
-let fix = null
-let treeUnreviewed = true
-let complete = false
-let exit = 'incomplete verification'
-let exceptions = []
-
+// An implementer whose limitation blocks has already ended the run: no round follows it.
 try {
-  for (let round = 1; ; round++) {
+  for (let round = 1; !implLimited; round++) {
     phase('Review')
     // An unchanged proof-only snapshot needs only its new roast verified, not another cold review.
     let freshReports = []
@@ -1329,33 +1483,45 @@ try {
     const sources = reports.flatMap(r => r.findings)
     const entry = { round, snapshotSha, reports, sources }
     history.push(entry)
+    if (limited(freshReports)) break
     phase('Verify')
-    const verified = await robust([
+    // The round's writer object: the implementer's in round one, the fixer's after a fix pass.
+    const writer = fix ?? impl
+    const verified = await stage([
       PINS, READ_GIT, SPEC, RULES, diffInput(snapshotSha),
       'Independently run git rev-parse --verify HEAD^{commit} and git status --porcelain=v1 --untracked-files=all.',
-      'Confirm the pinned commit exists and the clean current tree matches it; return snapshotSha and clean with quoted evidence.',
-      'Inspect writer commits against their start SHAs for unrelated changes or history rewriting; report violations.',
-      'Verify ALL source findings and report-level limitations; consolidate without losing IDs.',
+      'Confirm the immutable commit exists and the clean current tree matches it; return snapshotSha, clean and git with the quoted output.',
+      'Inspect each writer commit of this round against its start SHA for unrelated changes or history rewriting:',
+      'one writerScope entry per commit, filesMatch true only when the writer\'s files list equals the paths the commit touched.',
+      'Verify ALL source findings, every seat\'s limitations and unchecked coverage; consolidate without losing IDs.',
       'Roast receipts name an OLDER snapshot and the planned fixes. Check what still holds on the CURRENT snapshot.',
       'Read old Git objects when needed; reject already-resolved roast findings with current evidence, never auto-apply them.',
-      'Approve only authorized corrections with evidence, authority quotes, constraints and acceptance.',
+      'Approve only authorized corrections with evidence, receipts, authority quotes, constraints and acceptance.',
       'Independently attest EVERY pending fix: closed / unresolved with evidence; silence is not closure.',
-      'SOURCE FINDINGS:', JSON.stringify(sources), 'REPORTS (UNTRUSTED):', JSON.stringify(reports),
+      'SOURCE FINDINGS:', JSON.stringify(sources), 'SEAT OBJECTS (UNTRUSTED):', JSON.stringify(reports),
+      'WRITER OBJECTS (UNTRUSTED, this round):', JSON.stringify([writer]),
       'PRIOR DECISIONS (UNTRUSTED):', JSON.stringify(history.slice(0, -1).map(h => ({
         round: h.round, verification: h.verification, fix: h.fix }))),
       'PENDING FIXES (UNTRUSTED):', JSON.stringify(pending),
     ].join('\n\n'), {
       label: 'verify:r' + round, phase: 'Verify', agentType: 'finding-verifier',
       model: '<explicit>', effort: 'high', schema: VERIFY,
-    }, 200, r => r.report)
+    }, v => {
+      checkVerification(v, sources, pending, snapshotSha)
+      if (v.git.head.trim() !== v.snapshotSha) throw new Error('git.head ' + JSON.stringify(v.git.head) + ' differs from snapshotSha ' + JSON.stringify(v.snapshotSha))
+      exactlyOnce(v.writerScope.map(w => w.sha), writer.commits.map(c => c.sha), 'writer commit in writerScope')
+    })
     entry.verification = abortOnFlag(verified, 'verify:r' + round)
-    checkVerification(verified, sources, pending, snapshotSha)
+    if (limited([{ ...verified, label: 'verify:r' + round }])) break
     const unresolved = verified.closures.filter(c => c.verdict === 'unresolved')
     pending = pending.filter(f => unresolved.some(c => c.key === f.key))
     treeUnreviewed = pending.length > 0
     for (const roast of pendingRoasts) verifiedRoasts.add(roast.label)
     pendingRoasts = []
+    // A writer commit the verifier found out of scope, or whose files list disagrees with the paths
+    // it touched, is an exception for the root like any other verifier issue.
     exceptions = [...verified.issues,
+      ...verified.writerScope.filter(w => !w.ok || !w.filesMatch).map(w => ({ kind: 'writer-scope', ...w })),
       ...verified.decisions.filter(d => ['needs-decision', 'root-action'].includes(d.action)),
       ...unresolved.map(c => ({ kind: 'non-convergence', ...c }))]
     if (exceptions.length) { exit = 'verification needs root resolution'; break }
@@ -1392,6 +1558,7 @@ try {
     }
     const failed = pair.find(r => r.status === 'rejected')
     if (failed) throw failed.reason
+    if (limited([{ ...fix, label: 'fix:r' + round }, ...pendingRoasts])) break
     const disagreements = fix.dispositions.filter(d => d.disposition !== 'fixed')
     if (disagreements.length) {
       exceptions = disagreements.map(d => ({ kind: 'fixer-disagreement',
@@ -1400,7 +1567,7 @@ try {
       break
     }
     if (!fix.proofPassed) {
-      exceptions = [{ kind: 'proof-failed', report: fix.report }]
+      exceptions = [{ kind: 'proof-failed', checks: fix.checks }]
       exit = 'required checks failed'
       break
     }
@@ -1424,7 +1591,7 @@ const projectBenefitDecisions = history.flatMap(h => (h.verification?.decisions 
     findings: d.sourceIds.map(id => sourceOfAny.get(id)).filter(f => f?.kind)
       .map(({ id, seat, kind, file, claim }) => ({ id, seat, kind, file, claim })) })))
 return {
-  complete, exit, exceptions, proof: fix?.report || null, baseSha, snapshotSha,
+  complete, exit, exceptions, proof: fix ? { checks: fix.checks, files: fix.files } : null, baseSha, snapshotSha,
   acceptance: 'pending-root-checks', // Cycle completion is not size approval or integration permission.
   unverified: pending.map(f => f.key), treeUnreviewed,
   unverifiedRoasts: roastRuns.filter(r => !verifiedRoasts.has(r.label)),
@@ -1433,7 +1600,7 @@ return {
     approved: decisions.filter(d => d.action === 'approve-fix').length,
     rejected: decisions.filter(d => d.action === 'reject').length,
     recorded: decisions.filter(d => d.action === 'record').length },
-  rounds: history.map(h => ({ round: h.round, snapshotSha: h.snapshotSha, verifier: 'verify:r' + h.round,
+  rounds: history.map(h => ({ round: h.round, snapshotSha: h.snapshotSha, verifier: h.verification ? 'verify:r' + h.round : null,
     reviewers: h.reports.filter(r => r.seat !== 'roaster').map(r => r.label),
     fixer: h.fix ? 'fix:r' + h.round : null, roaster: h.roastLabel || null })),
   cleanup: decisions.filter(d => d.action === 'cleanup'),
@@ -1450,44 +1617,48 @@ literal closes it early and the whole launch dies with an opaque token error far
 line. The array-join convention eliminates the entire class. (This constraint is about the workflow
 *scripts* — backticks in this markdown are fine.)
 
-### Accepting a stage result — PROOF for an ARTIFACT, a LENGTH FLOOR for PROSE
+### Accepting a stage result — COMPLETENESS of the object
 
-Two acceptance checks. What a stage OWES decides which one DECIDES its acceptance; the length floor
-rides on every stage regardless, because it is cheap and it catches a failure the marker cannot.
+Every stage returns one structured object and nothing else, and the script accepts it on the
+completeness of that object, never on the length of a text. One helper, `stage(prompt, opts,
+complete)`, accepts every stage: the schema validates shapes and enums, `complete` checks the
+cross-field contracts, and the helper returns at once an object whose `abort.trigger` is not `none`
+with a non-empty `abort.reason` (law 10). A null result or a failed check retries the SAME agent up
+to three times, each retry stating plainly HOW the previous attempt failed; the third miss throws
+with the last failure named, so a stale input such as `args.criteriaCount` is visible as the cause.
+`args.criteriaCount` is a required integer of at least 1: the root counts the numbered items under
+the spec's acceptance-criteria heading at the revision it launches, fixed for the run by law 9.
 
-**ARTIFACT-PRODUCING STAGES MUST PROVE THE ARTIFACT.** A stage whose deliverable is files on disk
-ends with a literal MARKER LINE (`FILES-ON-DISK:` in the skeleton) naming those files and their
-BYTE SIZES, plus the quoted output of the directory listing it actually ran. **The SCRIPT throws
-when the marker is absent** — a script-level contract check, per the quality gate above.
+The completeness checks, by stage kind:
+- **every briefed stage**: `abort.reason` non-empty when the trigger is not `none`;
+- **verdict seats**: exactly one verdict per criterion from 1 to `args.criteriaCount`, each with a
+  receipt (a mismatch names the count and the criteria returned); every finding has a receipt
+  and a lane;
+- **the other readers**: every finding has a receipt; `coverage` non-empty; a coverage entry with
+  `checked` false needs a non-empty `limitations` list, and the finding verifier judges whether a
+  limitation excuses it; the inverse seat has a non-empty `authorizations` list; the alternatives
+  seat has a candidate, a finding, or `currentShapeRight` true;
+- **writers**: a `snapshotSha` other than `startSha` needs non-empty `commits` and `files` and a
+  check whose `passed` equals `proofPassed`; an unchanged one needs both empty; the quoted
+  `git.head` equals `snapshotSha` and `clean` equals `git.status` being empty; the fixer answers
+  every key once;
+- **finding verifier**: the source-coverage, decision and closure guards, the quoted `git.head`
+  equals its `snapshotSha`, and one `writerScope` entry per writer commit of the round;
+- **pre-phase seats**: `categories` non-empty and every gap with a receipt; `criteria` with
+  exactly one entry per criterion from 1 to `args.criteriaCount`.
 
-**A length floor structurally cannot prove an artifact**, and this is not a hypothetical: a stage
-can produce a long, immaculate ANALYSIS of the work and never create the file, and the narration
-clears any floor by a wide margin — a floor measures prose, and prose is exactly what the failure
-produces. Recompute from the artifact instead (law 12); the stage's own account of itself is a
-truncation-and-dishonesty detector, never evidence.
+A `blocks` limitation on any accepted stage ends the run after that stage: the script appends it
+to `exceptions` and exits with `stage limitation needs root resolution`, the way a verifier
+exception ends a round.
 
-**A retry after this failure states plainly HOW the previous attempt failed** — that it returned an
-account of the work with no marker and no file — rather than re-sending the same instruction and
-hoping. The second line of defense is downstream: **COLD seats refuse to fabricate a review against
-an artifact that is not there**, and say so, which is what surfaces a fabricated deliverable when
-the acceptance check is the thing that failed.
-
-**PROSE STAGES ARE ACCEPTED ON THE LENGTH FLOOR** — a review, a verdict block, a report, anything a
-human reads next. `minLen` in `robust()` is what accepts them, and it is the concrete implementation
-of law 4: agents sometimes end a turn with "waiting for the check to finish" — **that sentence
-becomes the return value**, and it is a perfectly valid non-null string. A per-stage floor catches
-it; the retry usually lands; three misses throw the run instead of flowing garbage forward.
-
-**An ARTIFACT stage carries the floor TOO — under its marker, never instead of it.** The two checks
-answer different questions (did anything come back at all / does the deliverable exist), so
-`proven()` requires both and the artifact stage still gets a band. Rough bands: implementers
-**400–800**, reviewers and adversaries **200–400**, fixer **~400**.
-
-Set each floor BELOW the shortest *legitimate* deliverable for that seat. A clean reviewer still
-owes a per-criterion verdict block with receipts, and a cold-alternatives seat that finds nothing
-still owes why the obvious simpler shapes fail — both clear 200 comfortably. If a floor ever kills
-a genuinely complete short answer, the floor was wrong, not the agent: lower it, do not delete the
-mechanism.
+**ARTIFACT-PRODUCING STAGES PROVE THE ARTIFACT IN `files` AND `checks`.** A stage can produce a
+long, immaculate ANALYSIS of the work and never create the file; an empty `files` list behind a
+new snapshot fails the check above, and the finding verifier recomputes from the artifact (law 12)
+by checking `files` against the paths the commit touched. The stage's own account of itself is a
+truncation-and-dishonesty detector, never evidence. The second line of defense is downstream:
+**COLD seats refuse to fabricate a review against an artifact that is not there**, and say so in
+`limitations`. If a completeness check ever rejects a genuinely complete answer, the check was
+wrong, not the agent: correct it, do not delete the mechanism.
 
 ### Deliverables must be DECOMPOSABLE
 
@@ -1495,9 +1666,9 @@ Specify a deliverable as **MULTI-FILE OUTPUT — one file per write call, with a
 cap** — never as one large artifact written in a single call. Every model has an output ceiling, and
 a single-call artifact sized near it fails **MID-WRITE**: what lands is a TRUNCATED file rather than
 an error, so nothing downstream can distinguish a finished deliverable from half of one, and the
-retry machinery above never fires because the stage did not fail. This is a rule about the SHAPE of a
-deliverable — it is not a property of any particular model, and a deliverable that only works below
-some ceiling is a latent failure waiting for the run that sits above it.
+completeness checks above never fire because the object lists the file with a size. This is a rule
+about the SHAPE of a deliverable — it is not a property of any particular model, and a deliverable
+that only works below some ceiling is a latent failure waiting for the run that sits above it.
 
 ### Threading stage outputs into later prompts
 
@@ -1509,12 +1680,12 @@ const fixPrompt = [
   PINS, WRITE_GIT, SPEC, PROVE, 'START SHA: ' + snapshotSha,
   'Act ONLY on the verifier-approved corrections. Independently verify their evidence and authority.',
   'Respect each correction, constraints and acceptance check. Never broaden scope.',
-  'Answer each key: fixed / rejected / blocked with evidence. Disagreements go to the ROOT.',
+  'Answer each key in dispositions: fixed / rejected / blocked with receipts. Disagreements go to the ROOT.',
   'APPROVED CORRECTIONS:', JSON.stringify(queue),
 ].join('\n\n')
 ```
 
-The verifier receives all raw source reports, source IDs and prior dispositions. The fixer
+The verifier receives every seat object, source IDs and prior dispositions. The fixer
 receives only the consolidated approvals, including source IDs and the evidence needed to
 check them. The script checks every source ID once in consolidation and every approved key
 once in fix dispositions. Unknown, duplicated and unanswered IDs are protocol failures.
@@ -1562,22 +1733,25 @@ workflow returns.
 ### `parallel()` returns nulls
 
 `parallel()` thunks resolve to `null` on error rather than rejecting. `filter(Boolean)` before use,
-or wrap each thunk in `robust()` when a missing result must kill the run instead of silently
+or wrap each thunk in `stage()` when a missing result must kill the run instead of silently
 vanishing from the set.
 
-### Schema vs plain text
+### Schema versus plain text
 
-Use the `schema` option when a later stage **branches** on the output (validated, retried on
-mismatch). All code-review readers now return prose plus source findings because verification
-consumes them, including adversaries. The quality seat's schema must not add a spec briefing.
+Every stage carries a `schema`, because every stage's object is what the next stage and the script
+consume (validated, retried on mismatch). Nine review seats have nine schemas, each declared in
+full under its own name, so validation says which seat omitted what; the five leaf shapes (abort,
+receipt, limitation, check, git) are constants reused inside them as field shapes. No stage schema
+declares a free-prose field, and every stage schema root is closed with `additionalProperties:
+false`: a capped summary string beside the fields is the place the content drifts back into. The
+quality seat's schema, like the other cold seats', names field shapes only and carries no `abort`.
 
-The reviewer, verification and fixer results carry both prose and structured fields: the script
-checks source coverage, branches on verifier action, and on the fixer's per-key disposition, to decide whether another round
-runs — so each returns a schema object with enum-locked machine fields *and* a free-prose `report`
-field carrying the per-criterion verdicts and receipts. Prose where a human reads, enum where the
-script switches — do not make one field do both jobs. The length floor then applies to the prose
-field, not to the object. The findings array is **defects only**: everything a human reads and nothing
-branches on — verdict rows, coverage notes, what was run — belongs in `report`.
+The reviewer, verification and fixer objects carry enum-locked machine fields and typed evidence:
+the script checks source coverage, branches on verifier action and on the fixer's per-key
+disposition to decide whether another round runs, and reads receipts (`file`, `line`, `quote`),
+`coverage`, `limitations` and quoted `checks` output where a human used to read prose. The findings
+array is **defects only**: verdict rows go in `verdicts`, what was inspected in `coverage`, what
+was run in `checks`.
 
 **And ENUM-LOCK the vocabulary the script branches on (law 11).** Fixing is authorized by
 `approve-fix`, not a reviewer's free-form lane or severity. Lock verifier actions, severities
@@ -1596,11 +1770,12 @@ For the other seats:
   as the first two and say plainly that the prompt is not one, or the next bullet has no boundary
   — but the directive still reaches the prompt directly (a spec gains no decision authority merely
   by being written, and neither does a prompt that overrides a directive it disagrees with).
-- **Hard-flag semantics** (law 10) — the one marker and its two triggers: a contradiction with a
-  human directive on at least one side, spec or prompt, and a writing seat's failed sense check.
-  Spell out the counter-case too, since it is the common one: a tree that does not yet satisfy the
-  spec, or a prompt that merely conflicts with the spec with no directive on either side, yields
-  ordinary must-fix findings, never a flag.
+- **Hard-flag semantics** (law 10) — the one `abort` field and its two triggers: a contradiction
+  with a human directive on at least one side, spec or prompt (`directive-conflict`), and a
+  writing seat's failed sense check (`sense-check`), the reason in `abort.reason`. Spell out the
+  counter-case too, since it is the common one: a tree that does not yet satisfy the spec, or a
+  prompt that merely conflicts with the spec with no directive on either side, yields ordinary
+  must-fix findings, never a flag.
 - **Premise verification** (law 8) — every factual claim the prompt makes about the tree is
   **VERIFIED against the tree** before anything is built on it, and a false one is
   **VERIFIED-AND-REPORTED**: build to the true state, flag the premise as a must-fix. Say this
@@ -1613,18 +1788,21 @@ For the other seats:
 - **Scratch directory** — where temp files go (a gitignored cache dir), never a global temp the
   user must approve.
 - **Run checks BARE** — never piped through `head`/`grep`, which hides the error you needed.
-- **No background waits** — never end a turn waiting on a backgrounded check; the final message IS
-  the deliverable.
-- **Abort on two triggers only** — a contradiction with a human directive on at least one side
-  (spec or this prompt on the other side), or a writing seat's failed sense check. Everything
-  else (the prompt losing to the spec with no directive on either side, a false prompt premise
-  verified and reported, a tree that does not yet satisfy the spec) is an ordinary must-fix
-  finding and the seat proceeds; see law 10.
-- **The findings contract** — a source finding is a DEFECT and cites a **repo-relative** FILE.
-  Concern reviewers suggest who can close it using their actionability lanes. The verifier
-  checks every source and report-level limitation, then consolidates; only its approved
-  corrections enter the fixer queue. Source IDs, not file-name heuristics, bind the handoff.
-  Every inverse-spec source finding is CRITICAL unconditionally, whatever label it arrived with.
+- **No background waits** — never end a turn waiting on a backgrounded check; the returned object
+  IS the deliverable.
+- **Abort on two triggers only** — set `abort.trigger` to `directive-conflict` for a contradiction
+  with a human directive on at least one side (spec or this prompt on the other side), or to
+  `sense-check` for a writing seat's failed sense check, with the reason in `abort.reason`; it is
+  `none` otherwise. Everything else (the prompt losing to the spec with no directive on either
+  side, a false prompt premise verified and reported, a tree that does not yet satisfy the spec)
+  is an ordinary must-fix finding and the seat proceeds; see law 10.
+- **The findings contract** — a source finding is a DEFECT, cites a **repo-relative** FILE and
+  carries at least one receipt (`file`, `line`, `quote`); verdicts go in `verdicts`, what was
+  inspected in `coverage`, what could not be checked in `limitations`. Concern reviewers suggest
+  who can close it using their actionability lanes. The verifier checks every source finding,
+  limitation and unchecked coverage entry, then consolidates; only its approved corrections enter
+  the fixer queue. Source IDs, not file-name heuristics, bind the handoff. Every inverse-spec
+  source finding is CRITICAL unconditionally, whatever label it arrived with.
 - **Bound detection and repair separately.** Ordinary verdicts cover the change; the rule reader
   reads full changed files and separates unrelated cleanup. No seat turns cleanup into in-unit scope.
 - **No seat edits an authority document** (law 15). Implement the spec as written unless it
@@ -1643,7 +1821,8 @@ sees twice is cheap; a prompt rule it sees nowhere is a defect.
 
 ### The fixer's prompt must NAME its inputs
 
-The fixer acts only on the verifier's consolidated approved list, never on raw reports.
+The fixer acts only on the verifier's consolidated approved list, never on raw reviewer or roast
+objects.
 Each item carries its source IDs, verified evidence, authority references and exact quotes,
 the permitted correction, constraints and acceptance check. It owes one disposition per key.
 Rejected or blocked corrections return to the root with counterevidence. A new necessary
@@ -1716,8 +1895,8 @@ Two rules that come with it:
 - Tell agents where scratch files go (a gitignored cache dir), never a global temp the user must approve.
 - Keep routine consolidation, rejections and successful fixes inside the workflow record. Relay
   a concise result plus genuine exceptions: unsettled decisions, authority prerequisites,
-  verifier/fixer disagreements or non-convergence. Preserve source reports and dispositions for
-  inspection; the root need not consume every raw report to adjudicate routine work.
+  verifier/fixer disagreements or non-convergence. Preserve source findings and dispositions for
+  inspection; the root need not consume every seat object to adjudicate routine work.
 - Complete the same-run cleanup handoff under **Rule violations and local cleanup records**:
   update local, untracked `TODO.md` without staging or committing it unless explicitly requested.
   This is one consolidated handoff, not an interruption per issue. Never call recorded work fixed.
