@@ -6,7 +6,7 @@ Keep routine finding verification inside the workflow. A read-only `finding-veri
 checks and consolidates every reviewer's findings against the code and human directives,
 with the specification as a derived description of the required implementation. A
 separate fixer receives only its approved corrections. The root handles exceptions,
-not every review round.
+not every finding.
 
 [Directive authority](directive-authority.md) governs specification fidelity, critical
 inverse-spec findings and the root's question-premise checks. Human directives veto
@@ -23,9 +23,10 @@ kinds the verifier routes through the same handoff.
 The main sequence is Implement → Review → Verify → Fix. Review includes the concern
 reviewers, quality, inverse-spec, rule reader and cold alternatives on a clean committed
 snapshot. The mandatory roaster runs alongside Fix, reading only immutable Git objects at
-the pre-fix SHA and receiving the approved fix list. Its findings join the next Verify
-pass against the resulting snapshot. After a committed fix, repeat Review → Verify before
-claiming closure. The cold spec-review pre-run remains separate and unchanged.
+the pre-fix SHA and receiving the approved fix list. Its findings return to the root with the
+run's remaining items. A run is one pass; what it leaves open is fixed in a follow-up
+workflow ([one pass, then a follow-up](single-pass-workflow.md)). The cold spec-review
+pre-run remains separate and unchanged.
 
 ## Responsibilities
 
@@ -46,7 +47,7 @@ claiming closure. The cold spec-review pre-run remains separate and unchanged.
   Received inverse-spec corrections remain CRITICAL regardless of upstream labels or spec
   edits; a rejected or blocked correction retains its origin and counterevidence for root.
 - **The root resolves exceptions.** Every inverse-spec finding, demonstrated impossibility,
-  verifier/fixer disagreement and bounded non-convergence returns with evidence. The root
+  verifier/fixer disagreement and failed proof returns with evidence. The root
   handles each inverse-spec finding by correcting the spec to describe an existing human
   decision faithfully, or asking about a genuinely unsettled choice after checking its
   premises. Counterevidence remains part of that handling, not permission to drop a finding.
@@ -86,21 +87,16 @@ This is a prompt/tool contract, not a shell security sandbox.
 
 Capture the pre-fix SHA and approved list before launching fixer and roaster together. The
 list is planned work, not proof: avoid repeating assigned defects, but flag inadequate
-corrections, interactions and gaps. Await both tasks even if one fails. Preserve any available
-result and report a missing or unprocessed roast explicitly rather than silently completing.
-The verifier independently checks the resulting clean commit and rechecks stale roast receipts
-against its current code; already-fixed findings are rejected with evidence.
+corrections, interactions and gaps. Await both tasks even if one fails and preserve any
+available result. The roast's findings and limitations return to the root as remaining items,
+and the root checks them against the tree before writing a follow-up spec.
 
-An empty fix list still launches proof and roast together, then verification of the roast.
-Ordinary reviews are reused when that proof-only snapshot has not changed. No second roast
-of the final commit is required merely to repeat the post-fix independent review: every
-fix/proof pass has its concurrent roast, and every roast must be processed before completion.
-The fix budget counts code-fix passes; a final verification may still attest the last pass
-and process its roast even when no further code-fix budget remains.
+An empty fix list still launches proof and roast together. Every fix or proof pass has its
+concurrent roast, and the roast's findings return to the root as remaining items of the run.
 
 ## Handoff and termination
 
-The script assigns immutable source IDs by round, seat and finding index. The verifier
+The script assigns immutable source IDs by seat and finding index. The verifier
 returns consolidated decisions, each naming one or more source IDs. Every input ID must
 appear exactly once: missing, duplicate or invented IDs are protocol failures.
 
@@ -125,23 +121,20 @@ one reaches root with its evidence and counterevidence regardless of disposition
 Enforcement continues against the original directives after root corrections; later human
 decisions can supersede earlier instructions only with preserved source provenance.
 
-The verifier also independently checks each prior fix claim and returns a closure verdict.
-The script requires exactly one verdict per pending key. A fix still unresolved after
-independent checking returns as a failure to converge; the fixer is not repeatedly sent
-an unchanged demand. New findings may form another approved list within the round budget.
+A fix claim is attested outside the pass: the root reads each fix commit against its approved
+correction and runs the checks itself, or lists the fix in the follow-up workflow's spec, whose
+fresh review and verification judge the fixed tree. The fixer is never sent an unchanged
+demand twice; an unfixed approval returns as a remaining item.
 
-The script owns persisted history and passes relevant prior dispositions to the verifier
-as untrusted context. Ordinary detection seats stay cold across rounds: no prior findings or
-fixer explanations, only an updated snapshot reference. The roaster is deliberately informed
-by the current approved fix list. Each source ID retains its original snapshot; a carried
-roast is not relabeled as a finding on the post-fix commit. Consolidation happens in the
-verifier, not through heuristic string matching or silent retirement of a reworded finding.
+The roaster is deliberately informed by the current approved fix list. Each source ID retains
+its snapshot. Consolidation happens in the verifier, not through heuristic string matching or
+silent retirement of a reworded finding.
 
-Any exit after writes without independent verification reports pending fixed keys as
-`unverified` and the tree as unreviewed. A proof-only pass has no approval to write. A green
-suite is necessary evidence, not proof that every requirement has been independently checked.
+Every fixed key returns as an unattested fix among the run's remaining items. A proof-only
+pass has no approval to write. A green suite is necessary evidence, not proof that every
+requirement has been independently checked.
 Reports and structured results remain in workflow journal artifacts. The final return carries
-counts, proof, cleanup entries and genuine exceptions with stage labels for retrieving details,
+counts, proof, cleanup entries and the remaining items with stage labels for retrieving details,
 not another copy of every raw reviewer report into the root's context. No separate queue
 service or new runtime pause mechanism is needed.
 
@@ -151,7 +144,7 @@ The rule reader checks every changed file in full, including adjacent violations
 applicable project/global rules. Confirmed violations are CRITICAL regardless of existing
 house style or age. Operational impact is reported separately from this compliance label.
 The verifier approves authorized in-scope corrections; unrelated existing violations become
-consolidated cleanup entries, not additional work forced into this unit's fix loop.
+consolidated cleanup entries, not additional work forced into this unit's fix pass.
 
 The root records those entries in the project's `TODO.md` during the same run, before
 reporting the task finished, and schedules cleanup promptly. Each entry identifies the issue,
@@ -225,7 +218,7 @@ call—never a chained check-and-delete or forced removal. Branch deletion is se
 
 ## Boundaries and alternatives
 
-- **Root checkpoint every round — rejected.** Verification against existing authority
+- **Root checkpoint after every seat — rejected.** Verification against existing authority
   does not need the root's judgment. Routing all reports there consumes root context and
   adds avoidable interruptions. Reserve it for explicit exceptions, including every
   inverse-spec finding, disputes and genuinely unsettled choices.
@@ -260,7 +253,8 @@ call—never a chained check-and-delete or forced removal. Branch deletion is se
    Optional improvements to a faithful spec do not block ordinary work. Stages leave the
    spec untouched, and the root adds no decisions of its own.
 6. Fixer disagreements return to the root with the approved item and counterevidence.
-7. Independent closure is required after writes; post-fix exits preserve unverified state.
+7. A fix claim is attested by the root or by a follow-up workflow's review, never by the run
+   that made it.
 8. Clean runs and routine consolidation do not require a root checkpoint. Every inverse-spec
    finding remains CRITICAL at verifier, fixer and root regardless of its supplied labels;
    every disposition preserves an unresolved root handoff with source evidence. Rejection,
@@ -271,15 +265,15 @@ call—never a chained check-and-delete or forced removal. Branch deletion is se
     Existing research coverage, model policy and cold spec pre-review input boundaries remain.
     Gates still run bare after the last write.
 11. Confirmed adjacent rule violations retain CRITICAL classification and a same-run cleanup
-    handoff without extending the current fix loop; TODO.md stays untracked unless explicitly
+    handoff without extending the current fix pass; TODO.md stays untracked unless explicitly
     requested tracked and committed. Existing tracked files are not silently removed or untracked.
 
 12. Every successful writer returns a clean immutable scoped commit; proof-only and no-op
     passes reuse their starting SHA. Readers retain no Git mutation permission.
 13. Roasting is mandatory for every fix/proof pass, takes the pinned pre-fix SHA and approved
-    list, and cannot read the moving source filesystem. Its findings are verified post-fix.
-14. Missing, failed, wrong-snapshot or unprocessed roasts prevent completion. Unchanged
-    proof-only snapshots do not cause repeated ordinary reviews.
+    list, and cannot read the moving source filesystem. Its findings and limitations return
+    to the root as remaining items.
+14. A missing, failed or wrong-snapshot roast ends the run as a stage failure.
 15. Root completion checks inspect real stage timings without weakening review or proof.
 16. Above 20:1 added implementation/spec lines blocks acceptance pending root diagnosis and
     correction or explicit candidate-specific approval. Rounded display cannot hide a breach.

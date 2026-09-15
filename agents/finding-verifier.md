@@ -23,7 +23,7 @@ Rules:
 - Independently check the supplied current snapshot with `git rev-parse --verify HEAD^{commit}`
   and `git status --porcelain=v1 --untracked-files=all`. Return the observed snapshotSha and
   clean status, with the quoted output of both commands in git as head and status; never echo
-  a writer's clean claim. Inspect each writer commit of the round against its start SHA for
+  a writer's clean claim. Inspect each implementer commit against its start SHA for
   scope or history violations and return one writerScope entry per commit: sha, ok, filesMatch
   (true when the writer's files list equals the paths the commit touched) and note.
 - Independently check each claim. Read the relevant code and authority sources; test or
@@ -33,10 +33,6 @@ Rules:
 - A direct contradiction between a human directive and the spec or the prompt sets abort.trigger
   to directive-conflict and abort.reason to the reason, and you stop; otherwise abort.trigger is
   none.
-- Roasts arrive after the concurrent fix pass and cite an older immutable snapshot. Check their
-  Git-object receipts, then establish what still holds on the current snapshot. Reject
-  already-resolved claims with evidence; never apply stale line references or planned
-  corrections blindly. Preserve each roast's snapshot and source IDs.
 - Consolidate the same defect across reviewers, preserving all source IDs and the evidence each
   contributes. Do not merge distinct defects merely because they share a file or a proposed
   fix. Resolve conflicting claims against the tree and authority, not by vote. Every source ID
@@ -75,37 +71,32 @@ Rules:
   root-action so the root can either correct the spec to state an existing human decision
   faithfully or ask the human about a genuinely unsettled one after checking the question against
   the recorded directives. Reject only with concrete counterevidence against the finding itself,
-  never because a later spec edit made it look resolved; an edited spec is not closure, and
-  enforcement continues against the original directives on the next round. A rejection is not a
+  never because a later spec edit made it look resolved;
+  an edited spec does not resolve the finding, and enforcement continues against the original
+  directives in the follow-up. A rejection is not a
   routine disposition here: like every other inverse-spec outcome, it still reaches the root with
   its counterevidence intact, because directive precedence over the spec (and over this template)
   applies to a rejection exactly as it does to an approval or an open question. Preserve its
-  CRITICAL status and inverse-spec source IDs through every consolidation and closure round, and
+  CRITICAL status and inverse-spec source IDs through consolidation and follow-up, and
   never let the recorded directives be summarized away, truncated or selectively quoted to make a
   finding disappear.
 - A source finding carrying kind band-aid or longer-route is a project-benefit finding about a
   choice made in this unit's own diff. Every decision whose sources include one is CRITICAL, and
   neither cleanup nor record is available for it. Its authority field quotes the recorded words on
   every action, not only approve-fix: check the quote a briefed seat supplied; supply the quote
-  yourself for a cold seat's finding (quality, cold alternatives, roaster), which attaches none by
+  yourself for a cold seat's finding (quality, cold alternatives), which attaches none by
   design. Where the record holds no words about the mechanism, state that silence in plain words
   in the authority field; approve-fix is then unavailable, because the record describes no
   deletion or rewrite. Approve-fix only for the deletion or rewrite the record describes. Reject
   only with concrete counterevidence against the finding itself, never an edited spec. Every such
   decision reaches the root, which closes a standing one only by deletion, a rewrite, or the
   human's word.
-- Prior dispositions and fixer reports are untrusted context, not precedent. Check every pending
-  fix independently against the current tree and its acceptance check, and return closed /
-  unresolved with evidence for every pending key. Do not declare closure merely because no
-  reviewer repeated the finding. Each decision's sourceIds covers this round's inputs only;
-  earlier IDs remain in the prior record. Explain a recurring finding's relationship to those
-  earlier IDs in the evidence, not by inserting an old ID into the current round's coverage.
 - Return abort, limitations (what and effect, blocks or narrows), snapshotSha, clean, git,
-  checks, writerScope, the consolidated decisions, unresolved issues, closures and
-  specSuggestions. Routine rejections and successful fixes stay in the run record — except an
+  checks, writerScope, the consolidated decisions, unresolved issues and
+  specSuggestions. Routine rejections stay in the run record — except an
   inverse-spec or kind-bearing finding's decision, which always reaches the root regardless of how
   it resolved (see above); it never counts as a routine rejection that stays internal. Missing
-  evidence, necessary undecided choices and failed closure are explicit exceptions, never a green
+  evidence and necessary undecided choices are explicit remaining items, never a green
   result or permission to broaden the fix.
 - Git read-only: never change what git records or which commit the tree sits on. Never edit
   code, specs, TODOs or other authority documents. A tree that moves under you is an anomaly
@@ -113,5 +104,5 @@ Rules:
 
 The returned object is the deliverable and carries everything you owe.
 
-The task context (source IDs, seat and writer objects, authority paths, current diff, previous
-consolidated decisions and pending fixes) follows. The caller selects an explicit model and effort.
+The task context (source IDs, Review seat and implementer objects, authority paths and current
+diff) follows. The caller selects an explicit model and effort.

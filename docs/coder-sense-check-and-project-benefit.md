@@ -56,11 +56,13 @@ This document builds on [directive authority](directive-authority.md) and
    source finding that arrives with any other severity or none, logging the seat and kind; it
    throws on a decision whose sources carry a kind when the severity is not CRITICAL, the action
    is `cleanup` or `record`, or `authority` is empty; and it returns `projectBenefitDecisions`,
-   a flat round-ordered list of such decisions, each with its round and its kind-bearing source
+   a flat list of such decisions, each with its kind-bearing source
    findings (id, seat, kind, file, claim), built the way `inverseSpecDecisions` is.
 7. **Verification.** A decision on a kind-bearing finding is CRITICAL; `authority` quotes the
-   recorded words on every action, supplied by the verifier for a cold seat's finding, and where
-   the record holds no words about the mechanism it states that silence in plain words instead;
+   recorded words on every action, supplied by the verifier for a finding of the quality or
+   cold-alternatives seat, and where the record holds no words about the mechanism it states
+   that silence in plain words instead; a roaster finding of either kind reaches the root as a
+   remaining item of the run, and the root checks it against the tree and the recorded words;
    `approve-fix` only for the deletion or rewrite the record describes, so a silent record never
    yields one; `reject` only with counterevidence against the finding itself; every such
    decision reaches the root.
@@ -103,11 +105,11 @@ by the root at the time, from the coder's report and the human's recorded decisi
 7. `tests/workflow-routing.test.js` covers: the `kind` enum; the intake coercion and the three
    decision throws through the executable skeleton; `projectBenefitDecisions` with its source
    findings; an implementer abort with a sense-check reason aborting before review with the
-   object preserved in the exception; a fixer abort in a valid `FIX` object aborting the loop
+   object preserved in the remaining items; a fixer abort in a valid `FIX` object aborting the run
    with the structured result preserved; whitespace-tolerant wording checks for the seat
    bullets, the coder bullets and law 10. `bun test tests/` passes.
 8. The plugin version is bumped, and each of the two related design documents carries one
    cross-reference line to this document.
 9. Existing behavior is preserved: inverse-spec handling, unbriefed input boundaries, scoped
-   writer commits, immutable snapshots, concurrent roasting, source coverage checks, closure
-   verdicts, the cleanup lane and the root acceptance checks.
+   writer commits, immutable snapshots, concurrent roasting, source coverage checks, the
+   cleanup lane and the root acceptance checks.

@@ -19,7 +19,7 @@ on the completeness of its object, never on the length of a text. This builds on
      `sense-check`, required on every briefed stage object (implementer, fixer, finding
      verifier, correctness, cleanliness, spec compliance, duplicate checker, inverse-spec,
      project rule reader). A trigger other than `none` is the hard flag of law 10: the script
-     stops the run with the whole object in the exception. The cold seats (quality, cold
+     stops the run with the whole object in its remaining items. The cold seats (quality, cold
      alternatives, roaster, the two pre-phase seats) carry no `abort` field, because its member
      names would brief them; `hasHardFlag` treats an absent field as no abort. The marker string
      and the substring scan over the JSON are removed.
@@ -69,9 +69,9 @@ on the completeness of its object, never on the length of a text. This builds on
 4. **Finding verifier schema** (`agents/finding-verifier.md`; the verify-loop's `verifier`
    template is not part of this unit). It returns `abort`, `limitations`, `snapshotSha`, `clean`,
    `git`, `checks` (reproductions it ran), `writerScope` (`[{ sha, ok, filesMatch, note }]`, one
-   entry per writer commit of the round: the commit inspected against its start, and
+   entry per writer commit of the run: the commit inspected against its start, and
    `filesMatch` true when the writer's `files` list equals the paths that commit touched),
-   `decisions` (today's fields plus `receipts`), `issues` and `closures` as today, and
+   `decisions` (today's fields plus `receipts`), `issues` as today, and
    `specSuggestions`.
 5. **Pre-phase schemas.** The gap-finder returns `limitations`, `gaps`
    (`[{ category, what, where, why, severity, receipts }]`, severity the enum `must-fix`,
@@ -103,12 +103,12 @@ on the completeness of its object, never on the length of a text. This builds on
      `files` are empty; `git.head` equal to `snapshotSha` and `clean` equal to `git.status`
      being empty; the fixer answers every key once;
    * finding verifier: today's checks, plus `git.head` equal to its `snapshotSha` and one
-     `writerScope` entry per writer commit of the round;
+     `writerScope` entry per writer commit of the run;
    * pre-phase seats: `categories` non-empty and every gap with a receipt; `criteria` with
      exactly one entry per criterion from 1 to `args.criteriaCount`.
    A `blocks` limitation on any accepted stage ends the run after that stage: the script
-   appends it to `exceptions` and exits with the reason `stage limitation needs root
-   resolution`, in the same way a verifier exception ends a round today.
+   adds it to the run's remaining items as a blocking limitation and ends the run for root
+   resolution, as the [one-pass design](single-pass-workflow.md) defines.
 7. **Templates.** In each of the thirteen templates every sentence that tells the seat to put
    something in its report names the field instead, and each template names every top-level
    field of its schema (the gap-finder excepted, decision 5); the hard-flag sentences of the
@@ -125,10 +125,8 @@ on the completeness of its object, never on the length of a text. This builds on
    keeps its meaning: verdicts and coverage go in their own fields.
 9. **Handoff between stages.** The three briefed code-lens readers receive the implementer's
    object serialized under the untrusted-claims label, where they receive its report today. The
-   finding verifier receives every seat object serialized, the round's writer objects (the
-   implementer's in round one, the fixer's after a fix pass) and, as today, the prior decisions
-   and pending fixes. The fixer receives the approved list; the roaster receives the approved
-   list as today.
+   finding verifier receives every seat object serialized and the implementer's object. The
+   fixer receives the approved list; the roaster receives the approved list as today.
 10. **Sibling design document.** Every sentence of
     `docs/coder-sense-check-and-project-benefit.md` that describes the hard flag by the marker
     string, and its sentence naming a plugin version number, are retracted in place by the root
@@ -147,7 +145,7 @@ on the completeness of its object, never on the length of a text. This builds on
 * **An abort field on the cold seats with only `none` allowed.** A field that can hold one value
   carries nothing, and its enum's member names are the briefing the seats must not receive.
 * **A per-criterion status field on the fixer.** Nobody consumed the prose version; the fresh
-  review round is the attestation.
+  follow-up workflow's review is the attestation.
 
 ## Boundaries
 
@@ -168,8 +166,8 @@ conversion.
    schema declares it; the enums and required fields match decisions 1 to 5, and the nine
    review seat schemas are nine separate declarations.
 2. `hasHardFlag` tests `abort.trigger` and treats an absent field as no abort; the marker string
-   appears nowhere in the skeleton, the templates or the skill prose; the exception carries the
-   whole aborting object.
+   appears nowhere in the skeleton, the templates or the skill prose; the run's remaining items
+   carry the whole aborting object.
 3. The deliverable-proof marker and its search are gone; the single `stage` helper implements
    decision 6 in full, including the `args.criteriaCount` requirement, the mismatch message and
    the `blocks` exit.
@@ -183,12 +181,12 @@ conversion.
    receipt, a coverage entry unchecked without a limitation, a writer with a commit but no
    files, a writer whose `clean` disagrees with its status output, a `blocks` limitation ending
    the run, a missing `criteriaCount` throwing before any agent runs, a count mismatch naming
-   the cause); an abort object returned with its reason preserved in the exception; an abort
+   the cause); an abort object returned with its reason preserved in the remaining items; an abort
    with an empty reason retried and then thrown; a test that no stage schema declares a prose
    field and every root is closed; whitespace-tolerant wording checks for the templates' field
    names and added sentence. `bun test tests/` passes.
 7. The plugin version is 0.8.5, and the sibling design document no longer names the marker or a
    version number.
-8. Existing behavior is preserved: seat input boundaries, the round loop, source IDs, verifier
+8. Existing behavior is preserved: seat input boundaries, the stage order, source IDs, verifier
    actions and guards, the roaster's Git-object rule, writer commit rules, the pre-phase as its
    own run, the size gate, and the find-gaps skill's use of the gap-finder.

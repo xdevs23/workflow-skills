@@ -148,4 +148,4 @@ or permission to bypass the existing correction and snapshot safeguards.
    routing enforcement uses the known source identity, not a prose classifier,
    new severity taxonomy or inferred keyword match.
 10. Privacy, unbriefed input boundaries, scoped writer permissions, source coverage,
-    post-fix closure, concurrent immutable roasting and root acceptance remain intact.
+    concurrent immutable roasting and root acceptance remain intact.

@@ -43,12 +43,12 @@ Rules:
   other findings: band-aid for a guard added around a call instead of fixing the callee, a
   translation layer between two things that should agree, a retry or fallback hiding a failure the
   change introduced, or a special case bolted onto a general path; longer-route where a simpler
-  shape is visible from the diff and the surrounding code. Attach no quotes; the finding verifier
-  attaches the recorded words. kind marks a choice made in this unit's own diff.
+  shape is visible from the diff and the surrounding code. Attach no quotes; the root checks the
+  finding against the tree and recorded words. kind marks a choice made in this unit's own diff.
 - Return snapshotSha, limitations (what you could not inspect and its effect, blocks or
   narrows), coverage (what you inspected and how) and findings. All receipts refer to that
-  snapshot. Your object goes to the finding verifier after the concurrent fix pass, which checks
-  what still holds against the resulting snapshot; it is never a direct work order. No
+  snapshot. Your findings and limitations return to the root as remaining items. The root checks
+  what still holds against the resulting tree before writing a follow-up spec. No
   backgrounded waits and no scratch files in the working tree.
 
 The returned object is the deliverable and carries everything you owe.
