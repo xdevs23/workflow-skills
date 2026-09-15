@@ -16,7 +16,7 @@ const run = new AsyncFunction('agent', 'phase', 'log', 'args',
   skeleton.replace('export const meta =', 'const meta ='))
 
 const readers = ['correctness', 'cleanliness', 'spec', 'dupes', 'quality', 'inverse', 'rules', 'alternatives']
-const source = (seat, round = 1, index = 0) => `r${round}:${seat}:${index}`
+const source = (seat, index = 0) => `${seat}:${index}`
 const CRITERIA = 2
 const receipt = { file: 'src/example.js', line: 12, quote: 'catch (error) {}' }
 const finding = { file: 'src/example.js', claim: 'The specified error is swallowed.', severity: 'must-fix', lane: 'fixer-actionable', receipts: [receipt] }
@@ -49,18 +49,17 @@ const decision = (ids, fields = {}) => ({
 })
 const check = (passed = true) => ({ command: 'bun test tests/', passed, output: passed ? '2 pass' : '1 fail', truncated: false })
 const verification = (decisions = [], fields = {}) => ({
-  abort: noAbort, limitations: [], checks: [], decisions, issues: [], closures: [], specSuggestions: [], ...fields,
+  abort: noAbort, limitations: [], checks: [], decisions, issues: [], specSuggestions: [], ...fields,
 })
 const fixed = (dispositions = [], fields = {}) => ({
   abort: noAbort, limitations: [], premises: [], specSuggestions: [], touched: dispositions.length ? ['src/example.js'] : [],
   proofPassed: true, dispositions, ...fields,
 })
-const disposition = (key = 'r1:fix:0', kind = 'fixed') => ({ key, disposition: kind, reason: 'Checked the approved correction and its acceptance condition.', receipts: [receipt] })
-const closed = (key = 'r1:fix:0') => ({ key, verdict: 'closed', evidence: 'The failure-path test now observes the specified error.' })
+const disposition = (key = 'fix:0', kind = 'fixed') => ({ key, disposition: kind, reason: 'Checked the approved correction and its acceptance condition.', receipts: [receipt] })
 
 const BASE = 'a'.repeat(40)
 const INITIAL = 'b'.repeat(40)
-const fixedSha = round => (round + 1).toString(16).padStart(40, '0')
+const FIXED = 'c'.repeat(40)
 // A writer object whose commits, files, checks and git agree with its snapshot fields unless overridden.
 const writer = (fields, subject) => {
   const r = { abort: noAbort, limitations: [], clean: true, proofPassed: true, specSuggestions: [], ...fields }
@@ -77,9 +76,9 @@ const implemented = (fields = {}) => writer({ startSha: BASE, snapshotSha: INITI
 async function simulate({ reports = {}, verify = {}, fixes = {}, fail = {}, implementation,
   beforeRead = async () => {}, beforeFix = async () => {}, beforeRoast = async () => {},
   args = { baseSha: BASE, criteriaCount: CRITERIA }, calls = [], logs = [] } = {}) {
-  const completed = new Set(), phases = [], starts = new Map()
+  const completed = new Set(), phases = []
+  let fixStart = null
   let currentSha = INITIAL
-  let lastReviewedSha = null
   let lastWriter = null
   const agent = async (prompt, opts) => {
     calls.push({ prompt, ...opts })
@@ -93,30 +92,24 @@ async function simulate({ reports = {}, verify = {}, fixes = {}, fail = {}, impl
       return { ...seatObject[opts.label.split(':')[1]](), ...reports[opts.label] }
     }
     if (opts.phase === 'Verify') {
-      const round = opts.label.slice('verify:r'.length)
-      if (currentSha !== lastReviewedSha) {
-        for (const seat of readers) expect(completed.has(`review:${seat}:r${round}`)).toBe(true)
-        lastReviewedSha = currentSha
-      }
-      if (Number(round) > 1) expect(completed.has(`roast:r${Number(round) - 1}`)).toBe(true)
+      for (const seat of readers) expect(completed.has(`review:${seat}`)).toBe(true)
       return { snapshotSha: currentSha, clean: true, git: { head: currentSha, status: '' },
         writerScope: lastWriter.commits.map(c => ({ sha: c.sha, ok: true, filesMatch: true, note: '' })),
         ...(verify[opts.label] ?? verification()) }
     }
-    const round = Number(opts.label.slice(opts.label.indexOf(':r') + 2))
     if (opts.agentType === 'roaster') {
-      const snapshotSha = starts.get(round) ?? currentSha
+      const snapshotSha = fixStart ?? currentSha
       await beforeRoast(opts)
       completed.add(opts.label)
       return { snapshotSha, ...cold(), ...reports[opts.label] }
     }
     if (opts.agentType === 'fixer') {
-      const startSha = starts.get(round) ?? currentSha   // a retried attempt starts where the first one did
-      starts.set(round, startSha)
+      const startSha = fixStart ?? currentSha   // a retried attempt starts where the first one did
+      fixStart = startSha
       await beforeFix(opts)
       const response = fixes[opts.label] ?? fixed()
       const result = writer({ startSha,
-        snapshotSha: response.snapshotSha ?? (response.touched.length ? fixedSha(round) : startSha),
+        snapshotSha: response.snapshotSha ?? (response.touched.length ? FIXED : startSha),
         ...response }, 'apply the approved corrections')
       currentSha = result.snapshotSha
       lastWriter = result
@@ -128,8 +121,8 @@ async function simulate({ reports = {}, verify = {}, fixes = {}, fail = {}, impl
   const result = await run(agent, name => phases.push(name), line => logs.push(line), args)
   return { result, calls, phases, logs }
 }
-const oneReport = { 'review:correctness:r1': { findings: [finding] } }
-const approveOne = { 'verify:r1': verification([decision([source('correctness')])]) }
+const oneReport = { 'review:correctness': { findings: [finding] } }
+const approveOne = { 'verify': verification([decision([source('correctness')])]) }
 // The pre-run skeleton (two cold spec seats) executed with a mocked agent() and the same args.
 const coldSkeleton = blocks.find(code => code.includes("name: 'spec-cold-review'"))
 const coldObject = label => label === 'spec:gaps'
@@ -148,7 +141,7 @@ const preRun = (agent, args = { criteriaCount: CRITERIA }, logs = []) =>
 describe('workflow verification and consolidation', () => {
   test('cycle completion leaves root acceptance and project integration pending', async () => {
     const { result } = await simulate()
-    expect(result.complete).toBe(true)
+    expect(['clean', 'follow-up'].includes(result.exit)).toBe(true)
     expect(result.acceptance).toBe('pending-root-checks')
   })
 
@@ -187,7 +180,7 @@ describe('workflow verification and consolidation', () => {
     const verifierTemplate = await Bun.file(new URL('finding-verifier.md', directory)).text()
     const fixerTemplate = await Bun.file(new URL('fixer.md', directory)).text()
     expect(verifierTemplate).toContain('Every inverse-spec source finding is CRITICAL, unconditionally')
-    expect(verifierTemplate).toContain('an edited spec is not closure')
+    expect(verifierTemplate).toContain('an edited spec does not resolve the finding')
     expect(fixerTemplate).toMatch(/inverse-spec finding keeps its CRITICAL\s+classification and inverse-spec origin unconditionally/)
   })
 
@@ -218,7 +211,7 @@ describe('workflow verification and consolidation', () => {
     expect(skill).toContain('is an explicit limitation that blocks')
   })
 
-  test('PINS requires reading directive context, rejects a keyword test, and flags missing evidence as root-action', () => {
+  test('AUTHORITY requires reading directive context, rejects a keyword test, and flags missing evidence as root-action', () => {
     expect(skill).toContain('absence of a particular keyword never licenses behavior')
     expect(skill).toContain('an example never authorizes an unrelated feature')
     expect(skill).toContain('is a root-action limitation')
@@ -259,7 +252,7 @@ describe('workflow verification and consolidation', () => {
 
   test('every main and cold-review stage receives the execution boundary without orchestration tools', async () => {
     const { result, calls } = await simulate()
-    expect(result.complete).toBe(true)
+    expect(['clean', 'follow-up'].includes(result.exit)).toBe(true)
     expect(coldSkeleton).toBeDefined()
     const coldCalls = []
     await preRun(async (prompt, opts) => { coldCalls.push({ prompt, ...opts }); return coldObject(opts.label) })
@@ -286,8 +279,8 @@ describe('workflow verification and consolidation', () => {
     const roastEntered = Promise.withResolvers(), releaseRoast = Promise.withResolvers()
     let fixerSawRoaster = false
     const execution = simulate({
-      reports: oneReport, verify: { ...approveOne, 'verify:r2': verification([], { closures: [closed()] }) },
-      fixes: { 'fix:r1': fixed([disposition()]) },
+      reports: oneReport, verify: { ...approveOne },
+      fixes: { 'fix': fixed([disposition()]) },
       beforeFix: async () => { await roastEntered.promise; fixerSawRoaster = true },
       beforeRoast: async () => { roastEntered.resolve(); await releaseRoast.promise },
     })
@@ -296,75 +289,52 @@ describe('workflow verification and consolidation', () => {
     expect(fixerSawRoaster).toBe(true)
     releaseRoast.resolve()
     const { result, calls } = await execution
-    expect(result.complete).toBe(true)
+    expect(['clean', 'follow-up'].includes(result.exit)).toBe(true)
     const roast = calls.find(c => c.agentType === 'roaster')
     expect(roast.prompt).toContain('IMMUTABLE SNAPSHOT SHA: ' + INITIAL)
     expect(roast.prompt).toContain('IMMUTABLE BASE SHA: ' + BASE)
-    expect(roast.prompt).toContain('r1:fix:0')
+    expect(roast.prompt).toContain('fix:0')
     expect(roast.prompt).toContain('planned, not completed')
     expect(roast.prompt).toContain('ONLY through Git objects')
     expect(roast.prompt).not.toContain('SPEC (authority)')
-    expect(roast.prompt).not.toContain(fixedSha(1))
-    expect(result.snapshotSha).toBe(fixedSha(1))
-    expect(result.roastComplete).toBe(true)
-    expect(result.unverifiedRoasts).toEqual([])
-  })
-
-  test('a stale roast is verified on the post-fix snapshot, not sent straight to the fixer', async () => {
-    const { result, calls } = await simulate({
-      reports: { ...oneReport, 'roast:r1': { findings: [finding] } },
-      verify: { ...approveOne, 'verify:r2': verification([
-        decision([source('roaster')], { action: 'reject', reason: 'The concurrent fix already resolved this defect.' }),
-      ], { closures: [closed()] }) },
-      fixes: { 'fix:r1': fixed([disposition()]) },
-    })
-    expect(result.complete).toBe(true)
-    expect(result.counts.rejected).toBe(1)
-    expect(calls.filter(c => c.agentType === 'fixer')).toHaveLength(1)
-    const verifier = calls.find(c => c.label === 'verify:r2')
-    expect(verifier.prompt).toContain(source('roaster'))
-    expect(verifier.prompt).toContain('"snapshotSha":"' + INITIAL + '"')
-    expect(verifier.prompt).toContain('..' + fixedSha(1))
-  })
-
-  test('a surviving roast produces an approved next fix and the next roast uses that pass’s start SHA', async () => {
-    const { result, calls } = await simulate({
-      reports: { ...oneReport, 'roast:r1': { findings: [{ ...finding, claim: 'A separate required field is missing.' }] } },
-      verify: {
-        ...approveOne,
-        'verify:r2': verification([decision([source('roaster')])], { closures: [closed()] }),
-        'verify:r3': verification([], { closures: [closed('r2:fix:0')] }),
-      },
-      fixes: { 'fix:r1': fixed([disposition()]), 'fix:r2': fixed([disposition('r2:fix:0')]) },
-    })
-    expect(result.complete).toBe(true)
-    expect(calls.filter(c => c.agentType === 'fixer')).toHaveLength(2)
-    expect(calls.filter(c => c.agentType === 'roaster')).toHaveLength(2)
-    expect(calls.find(c => c.label === 'roast:r2').prompt).toContain('IMMUTABLE SNAPSHOT SHA: ' + fixedSha(1))
-    expect(calls.find(c => c.label === 'fix:r2').prompt).toContain(source('roaster'))
-    expect(result.snapshotSha).toBe(fixedSha(2))
+    expect(roast.prompt).not.toContain(FIXED)
+    expect(result.snapshotSha).toBe(FIXED)
   })
 
   for (const error of ['failed', 'wrong snapshot']) {
     test(`a ${error} mandatory roast prevents completion but preserves the fixer result`, async () => {
       const { result } = await simulate({
-        reports: { ...oneReport, ...(error === 'wrong snapshot' ? { 'roast:r1': { snapshotSha: BASE } } : {}) },
-        verify: approveOne, fixes: { 'fix:r1': fixed([disposition()]) },
-        fail: error === 'failed' ? { 'roast:r1': 'roaster unavailable' } : {},
+        reports: { ...oneReport, ...(error === 'wrong snapshot' ? { 'roast': { snapshotSha: BASE } } : {}) },
+        verify: approveOne, fixes: { 'fix': fixed([disposition()]) },
+        fail: error === 'failed' ? { 'roast': 'roaster unavailable' } : {},
       })
-      expect(result.complete).toBe(false)
-      expect(result.snapshotSha).toBe(fixedSha(1))
-      expect(result.unverified).toEqual(['r1:fix:0'])
-      expect(result.unverifiedRoasts).toEqual([{ label: 'roast:r1', snapshotSha: INITIAL }])
-      expect(result.roastComplete).toBe(false)
+      expect(['clean', 'follow-up'].includes(result.exit)).toBe(false)
+      expect(result.snapshotSha).toBe(FIXED)
+      expect(result.remaining.some(r => r.item.approved?.key === 'fix:0')).toBe(true)
+      expect(result.remaining.some(r => r.kind === 'stage-failure' && r.item.label === 'roast')).toBe(true)
     })
   }
 
   for (const fields of [{ clean: false }, { snapshotSha: 'HEAD' }, { startSha: INITIAL }]) {
     test(`rejects invalid implementation snapshot metadata: ${JSON.stringify(fields)}`, async () => {
-      await expect(simulate({ implementation: implemented(fields) })).rejects.toThrow('clean immutable snapshot')
+      const { result } = await simulate({ implementation: implemented(fields) })
+      expect(result.exit).toBe('failed')
+      expect(result.detail).toContain('clean immutable snapshot')
     })
   }
+
+  test('a stage error with an unrelated exit property returns a failed run record', async () => {
+    const { result } = await simulate({ beforeRead: async ({ label }) => {
+      if (label === 'review:correctness') {
+        throw Object.assign(new Error('provider unavailable'), { exit: 'provider-error' })
+      }
+    } })
+    expect([result.exit, result.detail]).toEqual(['failed', 'provider unavailable'])
+    expect(result.remaining).toEqual([{
+      kind: 'stage-failure', severity: 'CRITICAL',
+      item: { label: 'review:correctness', message: 'provider unavailable' },
+    }])
+  })
 
   test('requires an immutable launch base, not a branch name', async () => {
     await expect(simulate({ args: { baseSha: 'main' } })).rejects.toThrow('full immutable baseSha')
@@ -372,25 +342,37 @@ describe('workflow verification and consolidation', () => {
 
   test('a dirty or wrongly pinned fixer result cannot become the next snapshot', async () => {
     for (const fields of [{ clean: false }, { snapshotSha: 'HEAD' }, { startSha: BASE }]) {
-      const { result } = await simulate({
-        reports: oneReport, verify: approveOne, fixes: { 'fix:r1': fixed([disposition()], fields) },
+      const response = fixed([disposition()], { ...fields,
+        checks: [{ ...check(), output: 'fixer proof' }],
+        files: [{ path: 'src/example.js', bytes: 240, change: 'modified' }],
       })
-      expect(result.complete).toBe(false)
-      expect(result.unverified).toEqual(['r1:fix:0'])
-      expect(result.treeUnreviewed).toBe(true)
+      const rejectedFix = writer({ startSha: INITIAL, snapshotSha: fields.snapshotSha ?? FIXED,
+        ...response }, 'apply the approved corrections')
+      const implementation = implemented()
+      const { result } = await simulate({ implementation,
+        reports: oneReport, verify: approveOne, fixes: { 'fix': response },
+      })
+      expect(['clean', 'follow-up'].includes(result.exit)).toBe(false)
+      expect(result.remaining.some(r => r.item.approved?.key === 'fix:0')).toBe(true)
+      expect(result.proof).toEqual({ checks: implementation.checks, files: implementation.files })
+      expect(result.snapshotSha).toBe(INITIAL)
+      expect(result.remaining.find(r => r.kind === 'stage-failure').item).toEqual({
+        ...rejectedFix, label: 'fix',
+        message: 'Writer did not return a clean immutable snapshot from the expected start SHA',
+      })
     }
   })
 
   test('proof-only cannot advance the commit even if no touched files are reported', async () => {
-    const { result } = await simulate({ fixes: { 'fix:r1': fixed([], { snapshotSha: fixedSha(1) }) } })
-    expect(result.complete).toBe(false)
-    expect(result.exit).toContain('Proof-only pass edited or committed')
+    const { result } = await simulate({ fixes: { 'fix': fixed([], { snapshotSha: FIXED }) } })
+    expect(['clean', 'follow-up'].includes(result.exit)).toBe(false)
+    expect(result.detail).toContain('Proof-only pass edited or committed')
   })
 
   test('verifier-reported drift or dirty state blocks writing', async () => {
     for (const fields of [{ clean: false }, { snapshotSha: BASE }]) {
-      const { result, calls } = await simulate({ verify: { 'verify:r1': verification([], fields) } })
-      expect(result.complete).toBe(false)
+      const { result, calls } = await simulate({ verify: { 'verify': verification([], fields) } })
+      expect(['clean', 'follow-up'].includes(result.exit)).toBe(false)
       expect(calls.some(c => c.agentType === 'fixer')).toBe(false)
     }
   })
@@ -409,29 +391,24 @@ describe('workflow verification and consolidation', () => {
 
   test('clean review verifies before read-only proof, with no root checkpoint', async () => {
     const { result, calls, phases } = await simulate()
-    expect(result.complete).toBe(true)
-    expect(result.exceptions).toEqual([])
-    expect(result.unverified).toEqual([])
-    expect(result.treeUnreviewed).toBe(false)
-    expect(phases).toEqual(['Implement', 'Review', 'Verify', 'Fix', 'Review', 'Verify'])
-    expect(calls.filter(c => c.agentType === 'finding-verifier')).toHaveLength(2)
+    expect(['clean', 'follow-up'].includes(result.exit)).toBe(true)
+    expect(result.remaining.filter(r => r.kind !== 'unattested-fix')).toEqual([])
+    expect(phases).toEqual(['Implement', 'Review', 'Verify', 'Fix'])
+    expect(calls.filter(c => c.agentType === 'finding-verifier')).toHaveLength(1)
     expect(calls.find(c => c.agentType === 'fixer').prompt).toContain('APPROVED CORRECTIONS (verify against the tree and authority):\n\n[]')
   })
 
   test('duplicates from ordinary and adversary readers produce one approved correction', async () => {
     const { result, calls } = await simulate({
-      reports: { ...oneReport, 'review:alternatives:r1': { findings: [finding] } },
+      reports: { ...oneReport, 'review:alternatives': { findings: [finding] } },
       verify: {
-        'verify:r1': verification([decision([source('correctness'), source('alternatives')])]),
-        'verify:r2': verification([], { closures: [closed()] }),
+        'verify': verification([decision([source('correctness'), source('alternatives')])]),
       },
-      fixes: { 'fix:r1': fixed([disposition()]) },
+      fixes: { 'fix': fixed([disposition()]) },
     })
-    expect(result.complete).toBe(true)
-    expect(result.unverified).toEqual([])
+    expect(['clean', 'follow-up'].includes(result.exit)).toBe(true)
     expect(result.counts.approved).toBe(1)
     expect(result.history).toBeUndefined()
-    expect(result.rounds[0].verifier).toBe('verify:r1')
     const fixer = calls.find(c => c.agentType === 'fixer')
     expect(fixer.prompt).toContain(source('correctness'))
     expect(fixer.prompt).toContain(source('alternatives'))
@@ -447,9 +424,9 @@ describe('workflow verification and consolidation', () => {
     ['empty group', [decision([source('correctness')]), decision([])]],
   ]) {
     test(`rejects ${name} source coverage before fixing`, async () => {
-      const { result, calls } = await simulate({ reports: oneReport, verify: { 'verify:r1': verification(decisions) } })
-      expect(result.complete).toBe(false)
-      expect(result.exit).toStartWith('incomplete verification:')
+      const { result, calls } = await simulate({ reports: oneReport, verify: { 'verify': verification(decisions) } })
+      expect(['clean', 'follow-up'].includes(result.exit)).toBe(false)
+      expect(result.exit).toBe('failed')
       expect(calls.some(c => c.phase === 'Fix')).toBe(false)
     })
   }
@@ -458,9 +435,9 @@ describe('workflow verification and consolidation', () => {
     test(`approval requires ${field}`, async () => {
       const { result, calls } = await simulate({
         reports: oneReport,
-        verify: { 'verify:r1': verification([decision([source('correctness')], { [field]: '' })]) },
+        verify: { 'verify': verification([decision([source('correctness')], { [field]: '' })]) },
       })
-      expect(result.complete).toBe(false)
+      expect(['clean', 'follow-up'].includes(result.exit)).toBe(false)
       expect(calls.some(c => c.phase === 'Fix')).toBe(false)
     })
   }
@@ -468,43 +445,43 @@ describe('workflow verification and consolidation', () => {
   for (const action of ['needs-decision', 'root-action']) {
     test(`${action} blocks even an otherwise approved correction`, async () => {
       const { result, calls } = await simulate({
-        reports: { 'review:correctness:r1': { findings: [finding, finding] } },
-        verify: { 'verify:r1': verification([
+        reports: { 'review:correctness': { findings: [finding, finding] } },
+        verify: { 'verify': verification([
           decision([source('correctness')]),
-          decision([source('correctness', 1, 1)], { action, correction: 'Resolve the necessary retention policy first.' }),
+          decision([source('correctness', 1)], { action, correction: 'Resolve the necessary retention policy first.' }),
         ]) },
       })
-      expect(result.complete).toBe(false)
-      expect(result.exceptions).toHaveLength(1)
+      expect(['clean', 'follow-up'].includes(result.exit)).toBe(false)
+      expect(result.remaining.map(r => r.kind)).toEqual(['open-decision', 'unfixed-approval'])
       expect(calls.some(c => c.phase === 'Fix')).toBe(false)
     })
   }
 
   test('a verifier issue is not lost when the findings list is empty', async () => {
     const { result, calls } = await simulate({
-      verify: { 'verify:r1': verification([], { issues: [{ kind: 'root-action', detail: 'The authority document is unavailable.' }] }) },
+      verify: { 'verify': verification([], { issues: [{ kind: 'root-action', detail: 'The authority document is unavailable.' }] }) },
     })
-    expect(result.complete).toBe(false)
+    expect(['clean', 'follow-up'].includes(result.exit)).toBe(false)
     expect(calls.some(c => c.phase === 'Fix')).toBe(false)
   })
 
   test('a suggested spec edit does not block implementation, normal reviews or proof', async () => {
     const { result, calls } = await simulate({
-      reports: { 'review:spec:r1': { findings: [{
+      reports: { 'review:spec': { findings: [{
         file: 'docs/spec.md', claim: 'The optional example could explain the error response more clearly.',
         severity: 'nit', lane: 'orchestrator-only', receipts: [{ file: 'docs/spec.md', line: 8, quote: 'Return the error to the caller.' }],
       }] } },
-      verify: { 'verify:r1': verification([decision([source('spec')], {
+      verify: { 'verify': verification([decision([source('spec')], {
         action: 'record', severity: 'nit',
         reason: 'The implementation satisfies the existing requirements; clearer examples are optional.',
         evidence: 'The error response matches the specified contract and its tests pass.',
         correction: 'Report the optional documentation improvement for the root without editing the spec.',
       })]) },
     })
-    expect(result.complete).toBe(true)
-    expect(result.exceptions).toEqual([])
+    expect(['clean', 'follow-up'].includes(result.exit)).toBe(true)
+    expect(result.remaining.filter(r => r.kind !== 'unattested-fix')).toEqual([])
     expect(result.counts.recorded).toBe(1)
-    for (const seat of readers) expect(calls.some(c => c.label === `review:${seat}:r1`)).toBe(true)
+    for (const seat of readers) expect(calls.some(c => c.label === `review:${seat}`)).toBe(true)
     for (const type of ['implementer', 'fixer', 'finding-verifier']) {
       const prompt = calls.find(c => c.agentType === type).prompt
       expect(prompt).toContain('Implement the spec AS WRITTEN')
@@ -516,60 +493,59 @@ describe('workflow verification and consolidation', () => {
   test('critical findings cannot silently become advisory records', async () => {
     const { result } = await simulate({
       reports: oneReport,
-      verify: { 'verify:r1': verification([decision([source('correctness')], { action: 'record', severity: 'CRITICAL' })]) },
+      verify: { 'verify': verification([decision([source('correctness')], { action: 'record', severity: 'CRITICAL' })]) },
     })
-    expect(result.exit).toContain('Blocking defect cannot be recorded as advisory')
+    expect(result.detail).toContain('Blocking defect cannot be recorded as advisory')
   })
 
   test('an inverse-spec finding cannot be approved at a downgraded severity', async () => {
     const { result } = await simulate({
-      reports: { 'review:inverse:r1': { findings: [finding] } },
-      verify: { 'verify:r1': verification([decision([source('inverse')], { severity: 'should-fix' })]) },
+      reports: { 'review:inverse': { findings: [finding] } },
+      verify: { 'verify': verification([decision([source('inverse')], { severity: 'should-fix' })]) },
     })
-    expect(result.exit).toContain('Inverse-spec finding must keep CRITICAL severity')
+    expect(result.detail).toContain('Inverse-spec finding must keep CRITICAL severity')
   })
 
   test('an inverse-spec finding cannot be rejected at a downgraded severity either', async () => {
     const { result } = await simulate({
-      reports: { 'review:inverse:r1': { findings: [finding] } },
-      verify: { 'verify:r1': verification([decision([source('inverse')], {
+      reports: { 'review:inverse': { findings: [finding] } },
+      verify: { 'verify': verification([decision([source('inverse')], {
         action: 'reject', severity: 'nit', reason: 'Reads as a stylistic nit.', evidence: 'No behavior changed.',
       })]) },
     })
-    expect(result.exit).toContain('Inverse-spec finding must keep CRITICAL severity')
+    expect(result.detail).toContain('Inverse-spec finding must keep CRITICAL severity')
   })
 
   test('a consolidated group with one inverse-spec source still requires CRITICAL severity', async () => {
     const { result } = await simulate({
-      reports: { ...oneReport, 'review:inverse:r1': { findings: [finding] } },
-      verify: { 'verify:r1': verification([decision([source('correctness'), source('inverse')], { severity: 'must-fix' })]) },
+      reports: { ...oneReport, 'review:inverse': { findings: [finding] } },
+      verify: { 'verify': verification([decision([source('correctness'), source('inverse')], { severity: 'must-fix' })]) },
     })
-    expect(result.exit).toContain('Inverse-spec finding must keep CRITICAL severity')
+    expect(result.detail).toContain('Inverse-spec finding must keep CRITICAL severity')
   })
 
   test('an inverse-spec finding tagged CRITICAL can still be approved and fixed', async () => {
     const { result, calls } = await simulate({
-      reports: { 'review:inverse:r1': { findings: [finding] } },
+      reports: { 'review:inverse': { findings: [finding] } },
       verify: {
-        'verify:r1': verification([decision([source('inverse')], { severity: 'CRITICAL' })]),
-        'verify:r2': verification([], { closures: [closed()] }),
+        'verify': verification([decision([source('inverse')], { severity: 'CRITICAL' })]),
       },
-      fixes: { 'fix:r1': fixed([disposition()]) },
+      fixes: { 'fix': fixed([disposition()]) },
     })
-    expect(result.complete).toBe(true)
+    expect(['clean', 'follow-up'].includes(result.exit)).toBe(true)
     expect(result.counts.approved).toBe(1)
     expect(calls.find(c => c.agentType === 'finding-verifier').prompt).toContain(source('inverse'))
   })
 
   test('an inverse-spec finding cannot be dispositioned as cleanup', async () => {
     const { result, calls } = await simulate({
-      reports: { 'review:inverse:r1': { findings: [finding] } },
-      verify: { 'verify:r1': verification([decision([source('inverse')], {
+      reports: { 'review:inverse': { findings: [finding] } },
+      verify: { 'verify': verification([decision([source('inverse')], {
         action: 'cleanup', severity: 'CRITICAL',
         correction: 'Record it for later scheduling.',
       })]) },
     })
-    expect(result.exit).toContain('Inverse-spec finding cannot be dispositioned as cleanup')
+    expect(result.detail).toContain('Inverse-spec finding cannot be dispositioned as cleanup')
     expect(calls.some(c => c.phase === 'Fix')).toBe(false)
   })
 
@@ -580,70 +556,46 @@ describe('workflow verification and consolidation', () => {
 
   test('an approve-fix and a rejected inverse-spec decision both stay in the root handoff after completion', async () => {
     const { result } = await simulate({
-      reports: { 'review:inverse:r1': { findings: [finding, { ...finding, file: 'src/other.js' }] } },
+      reports: { 'review:inverse': { findings: [finding, { ...finding, file: 'src/other.js' }] } },
       verify: {
-        'verify:r1': verification([
+        'verify': verification([
           decision([source('inverse')], { severity: 'CRITICAL' }),
-          decision([source('inverse', 1, 1)], {
+          decision([source('inverse', 1)], {
             action: 'reject', severity: 'CRITICAL',
             reason: 'The cited excess is already required by an existing directive.',
             evidence: 'docs/spec.md:20 already authorizes this exact mechanism.',
           }),
         ]),
-        'verify:r2': verification([], { closures: [closed()] }),
       },
-      fixes: { 'fix:r1': fixed([disposition()]) },
+      fixes: { 'fix': fixed([disposition()]) },
     })
-    expect(result.complete).toBe(true)
-    expect(result.exceptions).toEqual([])
+    expect(['clean', 'follow-up'].includes(result.exit)).toBe(true)
+    expect(result.remaining.filter(r => r.kind !== 'unattested-fix')).toEqual([])
     expect(result.inverseSpecDecisions).toHaveLength(2)
     expect(result.inverseSpecDecisions.map(d => d.action).sort()).toEqual(['approve-fix', 'reject'])
   })
 
   test('a mixed-source group carrying an inverse-spec ID still surfaces in the root handoff', async () => {
     const { result } = await simulate({
-      reports: { ...oneReport, 'review:inverse:r1': { findings: [finding] } },
+      reports: { ...oneReport, 'review:inverse': { findings: [finding] } },
       verify: {
-        'verify:r1': verification([decision([source('correctness'), source('inverse')], { severity: 'CRITICAL' })]),
-        'verify:r2': verification([], { closures: [closed()] }),
+        'verify': verification([decision([source('correctness'), source('inverse')], { severity: 'CRITICAL' })]),
       },
-      fixes: { 'fix:r1': fixed([disposition()]) },
+      fixes: { 'fix': fixed([disposition()]) },
     })
-    expect(result.complete).toBe(true)
+    expect(['clean', 'follow-up'].includes(result.exit)).toBe(true)
     expect(result.inverseSpecDecisions).toHaveLength(1)
     expect(result.inverseSpecDecisions[0].sourceIds).toEqual([source('correctness'), source('inverse')])
   })
 
-  test('inverse-spec decisions from an earlier round still reach the root handoff after a later round rejects a new one', async () => {
-    const secondFinding = { ...finding, file: 'src/other.js', claim: 'A second unauthorized mechanism appeared on the corrected snapshot.' }
-    const { result } = await simulate({
-      reports: {
-        'review:inverse:r1': { findings: [finding] },
-        'review:inverse:r2': { findings: [secondFinding] },
-      },
-      verify: {
-        'verify:r1': verification([decision([source('inverse', 1, 0)], { severity: 'CRITICAL' })]),
-        'verify:r2': verification([decision([source('inverse', 2, 0)], {
-          action: 'reject', severity: 'CRITICAL',
-          reason: 'The second mechanism is already required by an existing directive.',
-          evidence: 'docs/spec.md:30 already requires this exact mechanism.',
-        })], { closures: [closed('r1:fix:0')] }),
-      },
-      fixes: { 'fix:r1': fixed([disposition()]) },
-    })
-    expect(result.complete).toBe(true)
-    expect(result.inverseSpecDecisions).toHaveLength(2)
-    expect(result.inverseSpecDecisions.map(d => d.action)).toEqual(['approve-fix', 'reject'])
-  })
-
-  test('a reader abort object aborts before verify or fix, in one call, with its whole object in the exception', async () => {
+  test('a reader abort object aborts before verify or fix, in one call, with its whole object in remaining', async () => {
     const abort = { trigger: 'directive-conflict', reason: 'the diff contradicts a recorded directive' }
-    const { result, calls } = await simulate({ reports: { 'review:inverse:r1': { abort, findings: [finding] } } })
-    expect(result.complete).toBe(false)
-    expect(result.exit).toContain('HARD-FLAG from review:inverse:r1')
-    expect(result.exit).toContain(JSON.stringify(abort))
-    expect(result.exit).toContain(finding.claim)
-    expect(calls.filter(c => c.label === 'review:inverse:r1')).toHaveLength(1)
+    const { result, calls } = await simulate({ reports: { 'review:inverse': { abort, findings: [finding] } } })
+    expect(['clean', 'follow-up'].includes(result.exit)).toBe(false)
+    expect(result.detail).toContain('Hard flag from review:inverse')
+    expect(result.remaining[0].item.abort).toEqual(abort)
+    expect(result.remaining[0].item.findings[0].claim).toBe(finding.claim)
+    expect(calls.filter(c => c.label === 'review:inverse')).toHaveLength(1)
     expect(calls.some(c => c.phase === 'Verify')).toBe(false)
     expect(calls.some(c => c.phase === 'Fix')).toBe(false)
   })
@@ -651,33 +603,33 @@ describe('workflow verification and consolidation', () => {
   test('a verifier abort object aborts before fix, whatever its decisions say', async () => {
     const { result, calls } = await simulate({
       reports: oneReport,
-      verify: { 'verify:r1': verification([decision([source('correctness')])], {
+      verify: { 'verify': verification([decision([source('correctness')])], {
         abort: { trigger: 'directive-conflict', reason: 'the spec contradicts a recorded directive' },
       }) },
     })
-    expect(result.complete).toBe(false)
-    expect(result.exit).toContain('HARD-FLAG from verify:r1')
-    expect(result.exit).toContain('the spec contradicts a recorded directive')
-    expect(calls.filter(c => c.label === 'verify:r1')).toHaveLength(1)
+    expect(['clean', 'follow-up'].includes(result.exit)).toBe(false)
+    expect(result.detail).toContain('Hard flag from verify')
+    expect(result.detail).toContain('the spec contradicts a recorded directive')
+    expect(calls.filter(c => c.label === 'verify')).toHaveLength(1)
     expect(calls.some(c => c.phase === 'Fix')).toBe(false)
   })
 
   test('ordinary rejection and out-of-scope cleanup do not interrupt the root', async () => {
     const { result } = await simulate({
-      reports: { 'review:rules:r1': { findings: [finding, finding] } },
-      verify: { 'verify:r1': verification([
+      reports: { 'review:rules': { findings: [finding, finding] } },
+      verify: { 'verify': verification([
         decision([source('rules')], { action: 'reject', reason: 'The caller already propagates the error.', evidence: 'src/caller.js:30 returns the error.' }),
-        decision([source('rules', 1, 1)], { action: 'cleanup', correction: 'Record the unrelated existing violation in TODO.md.' }),
+        decision([source('rules', 1)], { action: 'cleanup', correction: 'Record the unrelated existing violation in TODO.md.' }),
       ]) },
     })
-    expect(result.complete).toBe(true)
-    expect(result.exceptions).toEqual([])
+    expect(['clean', 'follow-up'].includes(result.exit)).toBe(true)
+    expect(result.remaining.filter(r => r.kind !== 'unattested-fix')).toEqual([])
     expect(result.cleanup).toHaveLength(1)
     expect(result.counts.rejected).toBe(1)
   })
 
   test('critical adjacent cleanup retains its receipts without entering the current fix list', async () => {
-    const cleanup = decision([source('rules', 1, 1)], {
+    const cleanup = decision([source('rules', 1)], {
       action: 'cleanup', severity: 'CRITICAL',
       reason: 'An existing violation is outside this unit’s repair scope.',
       evidence: 'src/legacy.js:20 violates docs/rules.md:6; the legacy helper predates this change.',
@@ -685,14 +637,13 @@ describe('workflow verification and consolidation', () => {
       correction: 'Record legacy-helper-error in local untracked TODO.md and schedule its correction promptly.',
     })
     const { result, calls } = await simulate({
-      reports: { 'review:rules:r1': { findings: [finding, { ...finding, file: 'src/legacy.js' }] } },
+      reports: { 'review:rules': { findings: [finding, { ...finding, file: 'src/legacy.js' }] } },
       verify: {
-        'verify:r1': verification([decision([source('rules')], { severity: 'CRITICAL' }), cleanup]),
-        'verify:r2': verification([], { closures: [closed()] }),
+        'verify': verification([decision([source('rules')], { severity: 'CRITICAL' }), cleanup]),
       },
-      fixes: { 'fix:r1': fixed([disposition()]) },
+      fixes: { 'fix': fixed([disposition()]) },
     })
-    expect(result.complete).toBe(true)
+    expect(['clean', 'follow-up'].includes(result.exit)).toBe(true)
     expect(result.counts.approved).toBe(1)
     expect(result.cleanup).toEqual([cleanup])
     expect(result.cleanup[0].severity).toBe('CRITICAL')
@@ -703,12 +654,12 @@ describe('workflow verification and consolidation', () => {
   test('cleanup handoff survives an incomplete run that needs a decision', async () => {
     const cleanup = decision([source('rules')], { action: 'cleanup', severity: 'CRITICAL' })
     const { result, calls } = await simulate({
-      reports: { 'review:rules:r1': { findings: [finding] } },
-      verify: { 'verify:r1': verification([cleanup], {
+      reports: { 'review:rules': { findings: [finding] } },
+      verify: { 'verify': verification([cleanup], {
         issues: [{ kind: 'needs-decision', detail: 'Choose the required retention policy.' }],
       }) },
     })
-    expect(result.complete).toBe(false)
+    expect(['clean', 'follow-up'].includes(result.exit)).toBe(false)
     expect(result.cleanup).toEqual([cleanup])
     expect(calls.some(c => c.phase === 'Fix')).toBe(false)
   })
@@ -717,28 +668,27 @@ describe('workflow verification and consolidation', () => {
     test(`fixer ${kind} returns the approval and counterevidence to the root`, async () => {
       const { result, calls } = await simulate({
         reports: oneReport, verify: approveOne,
-        fixes: { 'fix:r1': fixed([disposition('r1:fix:0', kind)], { touched: [] }) },
+        fixes: { 'fix': fixed([disposition('fix:0', kind)], { touched: [] }) },
       })
-      expect(result.complete).toBe(false)
-      expect(result.exceptions[0].kind).toBe('fixer-disagreement')
-      expect(result.exceptions[0].approved.authority).toContain('Return the error')
-      expect(result.exceptions[0].response.disposition).toBe(kind)
+      expect(['clean', 'follow-up'].includes(result.exit)).toBe(false)
+      expect(result.remaining[0].kind).toBe('unfixed-approval')
+      expect(result.remaining.find(r => r.kind === 'unfixed-approval').item.approved.authority).toContain('Return the error')
+      expect(result.remaining.find(r => r.kind === 'unfixed-approval').item.response.disposition).toBe(kind)
       expect(calls.filter(c => c.agentType === 'fixer')).toHaveLength(1)
     })
   }
 
   for (const answers of [[], [disposition('unknown')], [disposition(), disposition()]]) {
-    test(`invalid fixer answers preserve unverified work: ${JSON.stringify(answers)}`, async () => {
-      const { result } = await simulate({ reports: oneReport, verify: approveOne, fixes: { 'fix:r1': fixed(answers) } })
-      expect(result.complete).toBe(false)
-      expect(result.unverified).toEqual(['r1:fix:0'])
-      expect(result.treeUnreviewed).toBe(true)
+    test(`invalid fixer answers preserve unfixed approvals: ${JSON.stringify(answers)}`, async () => {
+      const { result } = await simulate({ reports: oneReport, verify: approveOne, fixes: { 'fix': fixed(answers) } })
+      expect(['clean', 'follow-up'].includes(result.exit)).toBe(false)
+      expect(result.remaining.some(r => r.item.approved?.key === 'fix:0')).toBe(true)
     })
   }
 
   test('a missing required adversary stops verification and fixing', async () => {
-    const { result, calls } = await simulate({ fail: { 'review:alternatives:r1': 'provider unavailable' } })
-    expect(result.complete).toBe(false)
+    const { result, calls } = await simulate({ fail: { 'review:alternatives': 'provider unavailable' } })
+    expect(['clean', 'follow-up'].includes(result.exit)).toBe(false)
     expect(calls.some(c => ['Verify', 'Fix'].includes(c.phase))).toBe(false)
   })
 
@@ -746,9 +696,9 @@ describe('workflow verification and consolidation', () => {
     const entered = Promise.withResolvers(), release = Promise.withResolvers()
     let finished = false
     const execution = simulate({
-      fail: { 'review:alternatives:r1': 'reader failed' },
+      fail: { 'review:alternatives': 'reader failed' },
       beforeRead: async opts => {
-        if (opts.label === 'review:quality:r1') {
+        if (opts.label === 'review:quality') {
           entered.resolve()
           await release.promise
         }
@@ -759,124 +709,76 @@ describe('workflow verification and consolidation', () => {
     expect(finished).toBe(false)
     release.resolve()
     const { result } = await execution
-    expect(result.complete).toBe(false)
-    expect(result.treeUnreviewed).toBe(true)
+    expect(['clean', 'follow-up'].includes(result.exit)).toBe(false)
   })
 
   test('an abort with an empty reason is retried with the failure named and then thrown', async () => {
     const { result, calls, logs } = await simulate({
-      reports: { 'review:inverse:r1': { abort: { trigger: 'directive-conflict', reason: ' ' } } },
+      reports: { 'review:inverse': { abort: { trigger: 'directive-conflict', reason: ' ' } } },
     })
-    expect(result.complete).toBe(false)
-    expect(calls.filter(c => c.label === 'review:inverse:r1')).toHaveLength(3)
-    expect(calls.filter(c => c.label === 'review:inverse:r1')[1].prompt).toContain('HOW YOUR PREVIOUS ATTEMPT FAILED, plainly: abort.trigger is set but abort.reason is empty')
-    expect(result.exit).toContain('FAIL-FAST: review:inverse:r1 returned no complete result after 3 attempts: abort.trigger is set but abort.reason is empty')
-    expect(logs.filter(line => line.startsWith('incomplete result from review:inverse:r1'))).toHaveLength(3)
+    expect(['clean', 'follow-up'].includes(result.exit)).toBe(false)
+    expect(calls.filter(c => c.label === 'review:inverse')).toHaveLength(3)
+    expect(calls.filter(c => c.label === 'review:inverse')[1].prompt).toContain('HOW YOUR PREVIOUS ATTEMPT FAILED, plainly: abort.trigger is set but abort.reason is empty')
+    expect(result.detail).toContain('FAIL-FAST: review:inverse returned no complete result after 3 attempts: abort.trigger is set but abort.reason is empty')
+    expect(logs.filter(line => line.startsWith('incomplete result from review:inverse'))).toHaveLength(3)
     expect(calls.some(c => c.phase === 'Fix')).toBe(false)
   })
 
-  test('an implementer abort object with an unchanged tree rejects in one call, not a completeness retry', async () => {
+  test('an implementer abort object with an unchanged tree returns in one call, not a completeness retry', async () => {
     const calls = []
-    const run = simulate({
-      implementation: implemented({ snapshotSha: BASE, proofPassed: false,
-        abort: { trigger: 'directive-conflict', reason: 'the requested change contradicts a recorded scope directive.' } }),
-      calls,
-    })
-    await expect(run).rejects.toThrow('HARD-FLAG from impl')
-    await expect(run).rejects.toThrow('the requested change contradicts a recorded scope directive')
-    await expect(run).rejects.not.toThrow('FAIL-FAST')
+    const abort = { trigger: 'directive-conflict', reason: 'the requested change contradicts a recorded scope directive.' }
+    const { result } = await simulate({ implementation: implemented({ snapshotSha: BASE, proofPassed: false, abort }), calls })
+    expect(result.exit).toBe('aborted')
+    expect(result.remaining[0].item.abort).toEqual(abort)
     expect(calls.filter(c => c.label === 'impl')).toHaveLength(1)
   })
 
   test('an empty quality findings list with its coverage is a complete result', async () => {
-    const { result, calls } = await simulate({ reports: { 'review:quality:r1': { findings: [] } } })
-    expect(result.complete).toBe(true)
-    expect(calls.filter(c => c.label === 'review:quality:r1')).toHaveLength(1)
+    const { result, calls } = await simulate({ reports: { 'review:quality': { findings: [] } } })
+    expect(['clean', 'follow-up'].includes(result.exit)).toBe(true)
+    expect(calls.filter(c => c.label === 'review:quality')).toHaveLength(1)
   })
 
-  test('distinct defects in one file remain separate, and partial disagreement preserves unverified fixes', async () => {
+  test('distinct defects in one file remain separate, and partial disagreement preserves unattested fixes', async () => {
     const { result } = await simulate({
-      reports: { 'review:correctness:r1': { findings: [finding, { ...finding, claim: 'The success response omits its identifier.' }] } },
-      verify: { 'verify:r1': verification([
+      reports: { 'review:correctness': { findings: [finding, { ...finding, claim: 'The success response omits its identifier.' }] } },
+      verify: { 'verify': verification([
         decision([source('correctness')]),
-        decision([source('correctness', 1, 1)], { correction: 'Restore the required success identifier.' }),
+        decision([source('correctness', 1)], { correction: 'Restore the required success identifier.' }),
       ]) },
-      fixes: { 'fix:r1': fixed([disposition(), disposition('r1:fix:1', 'blocked')]) },
+      fixes: { 'fix': fixed([disposition(), disposition('fix:1', 'blocked')]) },
     })
     expect(result.counts.approved).toBe(2)
-    expect(result.unverified).toEqual(['r1:fix:0'])
-    expect(result.exceptions[0].approved.key).toBe('r1:fix:1')
-    expect(result.treeUnreviewed).toBe(true)
-    expect(result.complete).toBe(false)
+    expect(result.remaining.some(r => r.item.approved?.key === 'fix:0')).toBe(true)
+    expect(result.remaining.find(r => r.kind === 'unfixed-approval').item.approved.key).toBe('fix:1')
+    expect(['clean', 'follow-up'].includes(result.exit)).toBe(false)
   })
 
-  test('fixer stage failure after possible writes is explicitly unreviewed', async () => {
+  test('fixer stage failure preserves unreached approvals', async () => {
     const { result } = await simulate({
-      reports: oneReport, verify: approveOne, fail: { 'fix:r1': 'writer interrupted' },
+      reports: oneReport, verify: approveOne, fail: { 'fix': 'writer interrupted' },
     })
-    expect(result.unverified).toEqual(['r1:fix:0'])
-    expect(result.treeUnreviewed).toBe(true)
-    expect(result.complete).toBe(false)
-  })
-
-  test('missing or unresolved independent closure is not a clean second round', async () => {
-    for (const closures of [[], [{ ...closed(), verdict: 'unresolved' }]]) {
-      const { result, calls } = await simulate({
-        reports: oneReport,
-        verify: { ...approveOne, 'verify:r2': verification([], { closures }) },
-        fixes: { 'fix:r1': fixed([disposition()]) },
-      })
-      expect(result.complete).toBe(false)
-      expect(result.unverified).toEqual(['r1:fix:0'])
-      expect(calls.filter(c => c.agentType === 'fixer')).toHaveLength(1)
-    }
-  })
-
-  test('a reader failure after fixing retains the unverified closure', async () => {
-    const { result } = await simulate({
-      reports: oneReport, verify: approveOne, fixes: { 'fix:r1': fixed([disposition()]) },
-      fail: { 'review:quality:r2': 'reader failed after writes' },
-    })
-    expect(result.unverified).toEqual(['r1:fix:0'])
-    expect(result.treeUnreviewed).toBe(true)
-    expect(result.complete).toBe(false)
-  })
-
-  test('budget exhaustion still verifies the final fix and processes its roast', async () => {
-    const reports = {}, verify = {}, fixes = {}
-    for (let round = 1; round <= 4; round++) {
-      reports[`review:correctness:r${round}`] = { findings: [finding] }
-      verify[`verify:r${round}`] = verification([decision([source('correctness', round)])], {
-        closures: round > 1 ? [closed(`r${round - 1}:fix:0`)] : [],
-      })
-      fixes[`fix:r${round}`] = fixed([disposition(`r${round}:fix:0`)])
-    }
-    const { result } = await simulate({ reports, verify, fixes })
-    expect(result.complete).toBe(false)
-    expect(result.unverified).toEqual([])
-    expect(result.treeUnreviewed).toBe(false)
-    expect(result.roastComplete).toBe(true)
-    expect(result.exit).toContain('budget spent')
+    expect(result.remaining.some(r => r.item.approved?.key === 'fix:0')).toBe(true)
+    expect(['clean', 'follow-up'].includes(result.exit)).toBe(false)
   })
 
   test('proof failure and proof-only edits cannot claim completion', async () => {
     for (const response of [fixed([], { proofPassed: false }), fixed([], { touched: ['src/example.js'] })]) {
-      const { result } = await simulate({ fixes: { 'fix:r1': response } })
-      expect(result.complete).toBe(false)
-      expect(result.exceptions).not.toHaveLength(0)
+      const { result } = await simulate({ fixes: { 'fix': response } })
+      expect(['clean', 'follow-up'].includes(result.exit)).toBe(false)
+      expect(result.remaining).not.toHaveLength(0)
     }
   })
 
-  test('input isolation holds across rounds, with no findings history in detection prompts', async () => {
+  test('input isolation holds at the review barrier', async () => {
     const { calls } = await simulate({
       reports: oneReport,
-      verify: { ...approveOne, 'verify:r2': verification([], { closures: [closed()] }) },
-      fixes: { 'fix:r1': fixed([disposition()]) },
+      verify: { ...approveOne },
+      fixes: { 'fix': fixed([disposition()]) },
     })
     const quality = calls.filter(c => c.agentType === 'quality')
-    expect(quality).toHaveLength(2)
+    expect(quality).toHaveLength(1)
     expect(quality[0].prompt).toContain(INITIAL)
-    expect(quality[1].prompt).toContain(fixedSha(1))
     for (const c of quality) {
       expect(c.prompt).not.toContain('SPEC')
       expect(c.prompt).not.toContain('AUTHORITY')
@@ -895,7 +797,6 @@ describe('workflow verification and consolidation', () => {
       expect(prompt).toContain('docs/<the-spec>.md')
     }
     expect(calls.find(c => c.agentType === 'cold-alternatives').prompt).not.toContain('SPEC')
-    expect(calls.find(c => c.label === 'verify:r2').prompt).toContain('PENDING FIXES')
   })
 })
 
@@ -923,19 +824,19 @@ describe('coder sense check and project-benefit review', () => {
 
   test('a kind-bearing source finding is set to CRITICAL at intake, for readers and roasts alike', async () => {
     const { severity, ...unmarked } = bandAid
-    const reader = await simulate({ reports: report('review:cleanliness:r1', [{ ...bandAid, severity: 'must-fix' }]),
-      verify: { 'verify:r1': verification([rejectShape([source('cleanliness')])]) } })
+    const reader = await simulate({ reports: report('review:cleanliness', [{ ...bandAid, severity: 'must-fix' }]),
+      verify: { 'verify': verification([rejectShape([source('cleanliness')])]) } })
     expect(reader.logs).toContain('Project-benefit finding from cleanliness with kind band-aid set to severity CRITICAL')
-    handedTo(reader.calls, 'verify:r1', [{ ...bandAid, id: source('cleanliness'), seat: 'cleanliness', snapshotSha: INITIAL }])
-    const roast = await simulate({ reports: { ...oneReport, ...report('roast:r1', [{ ...unmarked, kind: 'longer-route' }]) },
-      verify: { ...approveOne, 'verify:r2': verification([rejectShape([source('roaster')])], { closures: [closed()] }) },
-      fixes: { 'fix:r1': fixed([disposition()]) } })
+    handedTo(reader.calls, 'verify', [{ ...bandAid, id: source('cleanliness'), seat: 'cleanliness', snapshotSha: INITIAL }])
+    const roast = await simulate({ reports: report('roast', [{ ...unmarked, kind: 'longer-route' }]) })
     expect(roast.logs).toContain('Project-benefit finding from roaster with kind longer-route set to severity CRITICAL')
-    handedTo(roast.calls, 'verify:r2', [{ ...unmarked, kind: 'longer-route', severity: 'CRITICAL', id: source('roaster'), seat: 'roaster', snapshotSha: INITIAL }])
-    const plain = await simulate({ reports: oneReport, verify: { ...approveOne, 'verify:r2': verification([], { closures: [closed()] }) },
-      fixes: { 'fix:r1': fixed([disposition()]) } })
-    handedTo(plain.calls, 'verify:r1', [{ ...finding, id: source('correctness'), seat: 'correctness', snapshotSha: INITIAL }])
-    expect([plain.result.complete, plain.logs]).toEqual([true, []])
+    expect(roast.result.remaining).toEqual([{ kind: 'roast-finding', severity: 'CRITICAL', item: {
+      ...unmarked, kind: 'longer-route', severity: 'CRITICAL', id: source('roaster'), seat: 'roaster', snapshotSha: INITIAL,
+    } }])
+    const plain = await simulate({ reports: oneReport, verify: { ...approveOne },
+      fixes: { 'fix': fixed([disposition()]) } })
+    handedTo(plain.calls, 'verify', [{ ...finding, id: source('correctness'), seat: 'correctness', snapshotSha: INITIAL }])
+    expect([plain.result.exit, plain.logs]).toEqual(['follow-up', []])
   })
 
   test('a decision on a kind-bearing finding throws on a non-CRITICAL severity, cleanup, record or an empty authority', async () => {
@@ -945,35 +846,35 @@ describe('coder sense check and project-benefit review', () => {
       [{ action: 'record', correction: 'Record it.' }, 'cannot be dispositioned as cleanup or record'],
       [{ action: 'reject', authority: ' ' }, 'Missing project-benefit authority'],
     ]) {
-      const { result, calls } = await simulate({ reports: report('review:quality:r1', [bandAid]),
-        verify: { 'verify:r1': verification([benefit([source('quality')], fields)]) } })
-      expect(result.exit).toContain(message)
+      const { result, calls } = await simulate({ reports: report('review:quality', [bandAid]),
+        verify: { 'verify': verification([benefit([source('quality')], fields)]) } })
+      expect(result.detail).toContain(message)
       expect(calls.some(c => c.phase === 'Fix')).toBe(false)
     }
   })
 
-  test('projectBenefitDecisions carries every kind-bearing decision with its sources in round order; a finding without kind still routes to cleanup', async () => {
-    const longer = { ...bandAid, kind: 'longer-route', file: 'src/route.js', claim: 'The diff took the longer route.' }
-    const cleanup = decision([source('rules')], { action: 'cleanup', severity: 'CRITICAL', correction: 'Record the existing guard in TODO.md.' })
+  test('projectBenefitDecisions retains kind-bearing sources and separate cleanup', async () => {
+    const approval = benefit([source('inverse')])
+    const rejected = rejectShape([source('alternatives')])
+    const cleanup = decision([source('rules')], { action: 'cleanup', severity: 'CRITICAL' })
     const { result } = await simulate({
-      reports: { ...report('review:inverse:r1', [bandAid]), ...report('review:alternatives:r1', [longer]), ...report('review:alternatives:r2', [longer]),
-        ...report('review:correctness:r1', [{ ...finding, file: longer.file, claim: longer.claim }]),
-        ...report('review:rules:r1', [{ ...finding, file: 'src/legacy.js', severity: 'CRITICAL' }]) },
-      verify: { 'verify:r1': verification([benefit([source('inverse')]), rejectShape([source('alternatives'), source('correctness')]), cleanup]),
-        'verify:r2': verification([benefit([source('alternatives', 2)], { action: 'needs-decision', correction: 'Ask whether the shorter route is the required shape.' })], { closures: [closed()] }) },
-      fixes: { 'fix:r1': fixed([disposition()]) } })
-    expect([result.complete, result.cleanup, result.inverseSpecDecisions.length]).toEqual([false, [cleanup], 1])
-    expect(result.projectBenefitDecisions.map(d => [d.round, d.decision.action])).toEqual([[1, 'approve-fix'], [1, 'reject'], [2, 'needs-decision']])
-    expect(result.projectBenefitDecisions[0].findings).toEqual([{ id: source('inverse'), seat: 'inverse', kind: 'band-aid', file: bandAid.file, claim: bandAid.claim }])
-    expect(result.projectBenefitDecisions[1].findings).toEqual([{ id: source('alternatives'), seat: 'alternatives', kind: 'longer-route', file: longer.file, claim: longer.claim }])
+      reports: { ...report('review:inverse', [bandAid]), ...report('review:alternatives', [bandAid]),
+        ...report('review:rules', [finding]) },
+      verify: { verify: verification([approval, rejected, cleanup]) }, fixes: { fix: fixed([disposition()]) },
+    })
+    expect(result.exit).toBe('follow-up')
+    expect(result.cleanup).toEqual([cleanup])
+    expect(result.inverseSpecDecisions).toEqual([approval])
+    expect(result.projectBenefitDecisions.map(d => d.decision)).toEqual([approval, rejected])
+    expect(result.projectBenefitDecisions.map(d => d.findings[0].id)).toEqual([source('inverse'), source('alternatives')])
   })
 
   test("a cold seat's kind-bearing finding on a mechanism the record is silent about reaches the root as needs-decision", async () => {
     const silent = benefit([source('quality')], { action: 'needs-decision', authority: 'The recorded words hold nothing about the retry wrapper.',
       correction: 'Ask whether the retry wrapper is a shape to keep.' })
-    const { result, calls } = await simulate({ reports: report('review:quality:r1', [bandAid]), verify: { 'verify:r1': verification([silent]) } })
-    expect([result.complete, result.exit, result.exceptions]).toEqual([false, 'verification needs root resolution', [silent]])
-    expect(result.projectBenefitDecisions).toEqual([{ decision: silent, round: 1,
+    const { result, calls } = await simulate({ reports: report('review:quality', [bandAid]), verify: { 'verify': verification([silent]) } })
+    expect([result.exit, result.remaining]).toEqual(['root-resolution', [{ kind: 'open-decision', severity: 'CRITICAL', item: silent }]])
+    expect(result.projectBenefitDecisions).toEqual([{ decision: silent,
       findings: [{ id: source('quality'), seat: 'quality', kind: 'band-aid', file: bandAid.file, claim: bandAid.claim }] }])
     expect(calls.some(c => c.phase === 'Fix')).toBe(false)
   })
@@ -981,23 +882,23 @@ describe('coder sense check and project-benefit review', () => {
   test('an implementer sense-check flag aborts before review with its reason preserved', async () => {
     const calls = []
     const abort = { trigger: 'sense-check', reason: 'the request extends the retry wrapper, which the recorded words describe as deleted and rewritten as a direct call.' }
-    const run = simulate({ implementation: implemented({ abort, snapshotSha: BASE, proofPassed: false,
+    const { result } = await simulate({ implementation: implemented({ abort, snapshotSha: BASE, proofPassed: false,
       senseCheck: { passed: false, recordSilent: false, note: 'the retry wrapper' } }), calls })
-    await expect(run).rejects.toThrow('HARD-FLAG from impl')
-    await expect(run).rejects.toThrow('"trigger":"sense-check"')
-    await expect(run).rejects.toThrow('the recorded words describe as deleted and rewritten')
+    expect(result.exit).toBe('aborted')
+    expect(result.remaining[0].item.abort).toEqual(abort)
     expect(calls.map(c => c.label)).toEqual(['impl'])
   })
 
-  test('a fixer sense-check flag in a valid FIX object aborts the loop with its structured result preserved', async () => {
+  test('a fixer sense-check flag in a valid FIX object ends the run with its structured result preserved', async () => {
     const abort = { trigger: 'sense-check', reason: 'the approved correction patches the compatibility shim the recorded words describe as deleted.' }
-    const { result, calls } = await simulate({ reports: report('review:correctness:r1', [finding, { ...finding, claim: 'A second defect.' }]),
-      verify: { 'verify:r1': verification([decision([source('correctness')]), decision([source('correctness', 1, 1)])]) },
-      fixes: { 'fix:r1': fixed([disposition(), disposition('r1:fix:1', 'blocked')], { abort }) } })
-    expect([result.complete, result.exit]).toEqual([false, expect.stringContaining('HARD-FLAG from fix:r1')])
-    expect(result.exit).toContain(abort.reason)
-    expect(result.exit).toContain('"key":"r1:fix:1","disposition":"blocked"')
-    expect([result.unverified, result.treeUnreviewed]).toEqual([['r1:fix:0', 'r1:fix:1'], true])
+    const { result, calls } = await simulate({ reports: report('review:correctness', [finding, { ...finding, claim: 'A second defect.' }]),
+      verify: { 'verify': verification([decision([source('correctness')]), decision([source('correctness', 1)])]) },
+      fixes: { 'fix': fixed([disposition(), disposition('fix:1', 'blocked')], { abort }) } })
+    expect(result.exit).toBe('aborted')
+    expect(result.detail).toContain(abort.reason)
+    expect(result.remaining.find(r => r.kind === 'abort').item.dispositions[1].key).toBe('fix:1')
+    expect(result.remaining.filter(r => r.kind === 'unfixed-approval')).toHaveLength(1)
+    expect(result.remaining.filter(r => r.kind === 'unattested-fix')).toHaveLength(1)
     expect(calls.filter(c => c.phase === 'Verify')).toHaveLength(1)
   })
 
@@ -1008,7 +909,7 @@ describe('coder sense check and project-benefit review', () => {
     const shaped = ['Flag by shape', 'Attach no quotes; the finding verifier attaches the recorded words']
     for (const name of [...briefed, 'quality', 'cold-alternatives', 'roaster']) {
       const text = await template(name)
-      for (const phrase of [...shared, ...(briefed.includes(name) ? quoted : shaped)]) expect(text).toContain(phrase)
+      for (const phrase of [...shared, ...(briefed.includes(name) ? quoted : name === 'roaster' ? ['Flag by shape', 'Attach no quotes; the root checks'] : shaped)]) expect(text).toContain(phrase)
       if (!briefed.includes(name)) expect(text).not.toContain('directive record')
     }
     expect(await template('project-rule-reader')).toContain('a band-aid that already existed beside the diff is reported without kind, so the cleanup lane stays available')
@@ -1020,7 +921,7 @@ describe('coder sense check and project-benefit review', () => {
         'Hard-flag and stop on either of two triggers, with one abort field and one disposition', "continues only on the human's verbatim decision quoted in the private record"]],
       ['fixer', ['Bounded sense check before your first write, on every approved correction', 'itself a band-aid on a mechanism the recorded words do not call for, where the record describes deletion or a rewrite',
         "no agent's justification and no root statement substitutes for it", "You do not repeat the implementer's request-level sense check"]],
-      ['finding-verifier', ['is CRITICAL, and neither cleanup nor record is available for it', "supply the quote yourself for a cold seat's finding (quality, cold alternatives, roaster)",
+      ['finding-verifier', ['is CRITICAL, and neither cleanup nor record is available for it', "supply the quote yourself for a cold seat's finding (quality, cold alternatives)",
         'Where the record holds no words about the mechanism, state that silence in plain words in the authority field', 'Approve-fix only for the deletion or rewrite the record describes']],
     ]) { const text = await template(name); for (const phrase of phrases) expect(text).toContain(phrase) }
     const flatSkill = flat(skill)
@@ -1042,7 +943,7 @@ const VERDICT_SEAT = ['abort', 'limitations', 'coverage', 'findings', 'verdicts'
 const WRITER = ['abort', 'limitations', 'startSha', 'snapshotSha', 'clean', 'proofPassed', 'commits', 'files', 'checks', 'git', 'specSuggestions']
 const FIELDS = {
   implementer: [...WRITER, 'premises', 'senseCheck'], fixer: [...WRITER, 'premises', 'dispositions', 'touched'],
-  'finding-verifier': ['abort', 'limitations', 'snapshotSha', 'clean', 'git', 'checks', 'writerScope', 'decisions', 'issues', 'closures', 'specSuggestions'],
+  'finding-verifier': ['abort', 'limitations', 'snapshotSha', 'clean', 'git', 'checks', 'writerScope', 'decisions', 'issues', 'specSuggestions'],
   roaster: ['limitations', 'coverage', 'findings', 'snapshotSha'], quality: ['limitations', 'coverage', 'findings'],
   'reviewer-correctness': VERDICT_SEAT, 'reviewer-cleanliness': VERDICT_SEAT, 'reviewer-spec-compliance': VERDICT_SEAT, 'duplicate-checker': VERDICT_SEAT,
   'reviewer-inverse-spec': ['abort', 'limitations', 'coverage', 'findings', 'authorizations'],
@@ -1066,7 +967,7 @@ describe('structured stage output', () => {
         .toEqual([label, undefined, false, briefed, briefed])
       if (briefed) expect(schema.properties.abort.properties.trigger).toEqual({ enum: ['none', 'directive-conflict', 'sense-check'] })
     }
-    const seats = calls.filter(c => c.label.endsWith(':r1') && (c.phase === 'Review' || c.agentType === 'roaster'))
+    const seats = calls.filter(c => c.phase === 'Review' || c.agentType === 'roaster')
     expect(new Set(seats.map(c => c.schema)).size).toBe(9)
     for (const seat of seats) expect(seat.schema.properties.coverage.items.required).toEqual(['what', 'checked', 'how'])
     expect(calls.find(c => c.label === 'impl').schema.properties.checks.items.properties.output).toEqual({ type: 'string', maxLength: 6000 })
@@ -1074,7 +975,7 @@ describe('structured stage output', () => {
     expect(fixSchema.required).toContain('premises')
     expect(fixSchema.properties.premises).toEqual(implSchema.properties.premises)
     const verify = calls.find(c => c.phase === 'Verify').schema.properties
-    for (const field of ['writerScope', 'decisions', 'issues', 'closures']) expect([field, verify[field].items.additionalProperties]).toEqual([field, false])
+    for (const field of ['writerScope', 'decisions', 'issues']) expect([field, verify[field].items.additionalProperties]).toEqual([field, false])
   })
 
   test('a missing criteriaCount throws before any agent runs, in the main run and the pre-run', async () => {
@@ -1087,13 +988,13 @@ describe('structured stage output', () => {
 
   test('a missing verdict is retried with the count and the returned criteria named, then thrown; a stale count is the named cause', async () => {
     const mismatch = 'expected exactly one verdict per criterion 1..2 (args.criteriaCount), got criteria [2]'
-    const { result, calls } = await simulate({ reports: { 'review:correctness:r1': { verdicts: verdicts().slice(1) } } })
-    expect([result.complete, retried(calls, 'review:correctness:r1').length]).toEqual([false, 3])
-    expect(retried(calls, 'review:correctness:r1')[2].prompt).toContain(FAILED + mismatch)
-    expect(result.exit).toContain('FAIL-FAST: review:correctness:r1 returned no complete result after 3 attempts: ' + mismatch)
+    const { result, calls } = await simulate({ reports: { 'review:correctness': { verdicts: verdicts().slice(1) } } })
+    expect([['clean', 'follow-up'].includes(result.exit), retried(calls, 'review:correctness').length]).toEqual([false, 3])
+    expect(retried(calls, 'review:correctness')[2].prompt).toContain(FAILED + mismatch)
+    expect(result.detail).toContain('FAIL-FAST: review:correctness returned no complete result after 3 attempts: ' + mismatch)
     expect(calls.some(c => c.phase === 'Verify')).toBe(false)
     const stale = await simulate({ args: { baseSha: BASE, criteriaCount: 3 } })
-    expect(stale.result.exit).toContain('expected exactly one verdict per criterion 1..3 (args.criteriaCount), got criteria [1,2]')
+    expect(stale.result.detail).toContain('expected exactly one verdict per criterion 1..3 (args.criteriaCount), got criteria [1,2]')
   })
 
   for (const [name, seat, fields, message] of [
@@ -1106,18 +1007,18 @@ describe('structured stage output', () => {
     ['an alternatives seat with no candidate, no finding and currentShapeRight false', 'alternatives', { currentShapeRight: false }, 'no candidate, no finding and currentShapeRight false'],
   ]) {
     test(`${name} is retried and then thrown`, async () => {
-      const { result, calls } = await simulate({ reports: { [`review:${seat}:r1`]: fields } })
-      expect([result.complete, retried(calls, `review:${seat}:r1`).length, calls.some(c => c.phase === 'Verify')]).toEqual([false, 3, false])
-      expect(result.exit).toContain(message)
+      const { result, calls } = await simulate({ reports: { [`review:${seat}`]: fields } })
+      expect([['clean', 'follow-up'].includes(result.exit), retried(calls, `review:${seat}`).length, calls.some(c => c.phase === 'Verify')]).toEqual([false, 3, false])
+      expect(result.detail).toContain(message)
     })
   }
 
   test('an unchecked coverage entry with a limitation beside it is complete on the first attempt', async () => {
-    const { result, calls } = await simulate({ reports: { 'review:quality:r1': {
+    const { result, calls } = await simulate({ reports: { 'review:quality': {
       coverage: [{ what: 'the integration suite', checked: false, how: 'no database' }],
       limitations: [{ what: 'no database is reachable from this seat', effect: 'narrows' }],
     } } })
-    expect([result.complete, retried(calls, 'review:quality:r1').length]).toEqual([true, 1])
+    expect([['clean', 'follow-up'].includes(result.exit), retried(calls, 'review:quality').length]).toEqual([true, 1])
   })
 
   for (const [name, fields, message] of [
@@ -1131,58 +1032,59 @@ describe('structured stage output', () => {
   ]) {
     test(`an implementer with ${name} is retried and then thrown`, async () => {
       const calls = []
-      await expect(simulate({ implementation: implemented(fields), calls })).rejects.toThrow(message)
+      const { result } = await simulate({ implementation: implemented(fields), calls })
+      expect(result.exit).toBe('failed')
+      expect(result.detail).toContain(message)
       expect([retried(calls, 'impl').length, calls.some(c => c.phase === 'Review')]).toEqual([3, false])
     })
   }
 
-  test('a fixer with a commit but no files preserves the unverified work', async () => {
-    const { result, calls } = await simulate({ reports: oneReport, verify: approveOne, fixes: { 'fix:r1': fixed([disposition()], { files: [] }) } })
-    expect([result.complete, result.unverified, result.treeUnreviewed, retried(calls, 'fix:r1').length]).toEqual([false, ['r1:fix:0'], true, 3])
-    expect(result.exit).toContain('a new snapshot needs commits and files')
+  test('a fixer with a commit but no files preserves the unfixed approvals', async () => {
+    const { result, calls } = await simulate({ reports: oneReport, verify: approveOne, fixes: { 'fix': fixed([disposition()], { files: [] }) } })
+    expect([result.exit, retried(calls, 'fix').length]).toEqual(['failed', 3])
+    expect(result.remaining.some(r => r.kind === 'unfixed-approval')).toBe(true)
+    expect(result.detail).toContain('a new snapshot needs commits and files')
   })
 
-  test('a blocks limitation ends the run after its stage; a narrows limitation does not', async () => {
-    const limitation = { what: 'the rule source for the changed directory is unavailable', effect: 'blocks' }
-    const exit = 'stage limitation needs root resolution'
-    const { result, calls } = await simulate({ reports: { ...oneReport, 'review:rules:r1': { limitations: [limitation] } } })
-    expect([result.complete, result.exit, result.exceptions]).toEqual([false, exit, [{ kind: 'stage-limitation', label: 'review:rules:r1', ...limitation }]])
-    for (const seat of readers) expect(retried(calls, `review:${seat}:r1`)).toHaveLength(1)
-    expect(calls.some(c => c.phase === 'Verify')).toBe(false)
-    expect([result.rounds.length, result.rounds[0].reviewers.length, result.rounds[0].verifier, result.counts.sources]).toEqual([1, readers.length, null, 1])
-    const verifier = await simulate({ verify: { 'verify:r1': verification([], { limitations: [limitation] }) } })
-    expect([verifier.result.exit, verifier.result.exceptions.length, verifier.calls.some(c => c.phase === 'Fix')]).toEqual([exit, 1, false])
-    const fixer = await simulate({ fixes: { 'fix:r1': fixed([], { limitations: [limitation] }) } })
-    expect([fixer.result.exit, fixer.result.exceptions[0].label, fixer.calls.filter(c => c.phase === 'Verify').length]).toEqual([exit, 'fix:r1', 1])
-    const implementer = await simulate({ implementation: implemented({ limitations: [limitation] }) })
-    expect([implementer.result.complete, implementer.result.exit, implementer.result.exceptions]).toEqual([false, exit, [{ kind: 'stage-limitation', label: 'impl', ...limitation }]])
-    expect(implementer.calls.map(c => c.label)).toEqual(['impl'])
-    const narrowed = await simulate({ reports: { 'review:rules:r1': { limitations: [{ ...limitation, effect: 'narrows' }] } } })
-    expect(narrowed.result.complete).toBe(true)
+  test('blocking limitations from every stage return their label; narrowing ones continue', async () => {
+    const limitation = { what: 'a required resource is unavailable', effect: 'blocks' }
+    for (const label of ['impl', 'review:rules', 'verify', 'fix', 'roast']) {
+      const { result, calls } = await simulate({
+        implementation: label === 'impl' ? implemented({ limitations: [limitation] }) : undefined,
+        reports: { [label]: { limitations: [limitation] } },
+        verify: label === 'verify' ? { verify: verification([], { limitations: [limitation] }) } : {},
+        fixes: label === 'fix' ? { fix: fixed([], { limitations: [limitation] }) } : {},
+      })
+      expect(result.exit).toBe('root-resolution')
+      expect(result.remaining).toContainEqual({ kind: 'blocking-limitation', severity: 'CRITICAL', item: { ...limitation, label } })
+      if (label === 'impl') expect(calls.map(c => c.label)).toEqual(['impl'])
+      if (label.startsWith('review:')) expect(calls.some(c => c.phase === 'Verify')).toBe(false)
+      if (label === 'verify') expect(calls.some(c => c.phase === 'Fix')).toBe(false)
+    }
+    const { result } = await simulate({ reports: { 'review:rules': { limitations: [{ ...limitation, effect: 'narrows' }] } } })
+    expect(result.exit).toBe('clean')
   })
 
-  test('a writerScope entry reported out of scope or with a files mismatch ends the run as a verifier exception, without a retry', async () => {
+  test('a writerScope entry reported out of scope or with a files mismatch ends the run for root resolution with a writer-scope item, without a retry', async () => {
     for (const fields of [{ ok: false }, { filesMatch: false }]) {
       const entry = { sha: INITIAL, ok: true, filesMatch: true, note: 'the commit also rewrote an unrelated helper', ...fields }
-      const { result, calls } = await simulate({ verify: { 'verify:r1': verification([], { writerScope: [entry] }) } })
-      expect([result.complete, result.exit, result.exceptions]).toEqual([false, 'verification needs root resolution', [{ kind: 'writer-scope', ...entry }]])
-      expect([retried(calls, 'verify:r1').length, calls.some(c => c.phase === 'Fix')]).toEqual([1, false])
+      const { result, calls } = await simulate({ verify: { 'verify': verification([], { writerScope: [entry] }) } })
+      expect([result.exit, result.remaining]).toEqual(['root-resolution', [{ kind: 'writer-scope', severity: 'CRITICAL', item: entry }]])
+      expect([retried(calls, 'verify').length, calls.some(c => c.phase === 'Fix')]).toEqual([1, false])
     }
-    const { result } = await simulate({ verify: { 'verify:r1': verification([], { writerScope: [{ sha: INITIAL, ok: true, filesMatch: true, note: '' }] }) } })
-    expect([result.complete, result.exceptions]).toEqual([true, []])
+    const { result } = await simulate({ verify: { 'verify': verification([], { writerScope: [{ sha: INITIAL, ok: true, filesMatch: true, note: '' }] }) } })
+    expect([result.exit, result.remaining]).toEqual(['clean', []])
   })
 
-  test('the finding verifier needs git.head equal to snapshotSha and one writerScope entry per writer commit, and the round writer object is handed over', async () => {
-    const differs = await simulate({ verify: { 'verify:r1': verification([], { git: { head: BASE, status: '' } }) } })
-    expect([differs.result.exit.includes('git.head "' + BASE + '" differs from snapshotSha "' + INITIAL + '"'), retried(differs.calls, 'verify:r1').length]).toEqual([true, 3])
-    const scope = await simulate({ verify: { 'verify:r1': verification([], { writerScope: [] }) } })
-    expect(scope.result.exit).toContain('Missing writer commit in writerScope')
-    const { calls } = await simulate({ reports: oneReport, verify: { ...approveOne, 'verify:r2': verification([], { closures: [closed()] }) },
-      fixes: { 'fix:r1': fixed([disposition()]) } })
+  test('the finding verifier needs git.head equal to snapshotSha and one writerScope entry per writer commit, and the implementer object is handed over', async () => {
+    const differs = await simulate({ verify: { 'verify': verification([], { git: { head: BASE, status: '' } }) } })
+    expect([differs.result.detail.includes('git.head "' + BASE + '" differs from snapshotSha "' + INITIAL + '"'), retried(differs.calls, 'verify').length]).toEqual([true, 3])
+    const scope = await simulate({ verify: { 'verify': verification([], { writerScope: [] }) } })
+    expect(scope.result.detail).toContain('Missing writer commit in writerScope')
+    const { calls } = await simulate({ reports: oneReport, verify: { ...approveOne },
+      fixes: { 'fix': fixed([disposition()]) } })
     const implObject = JSON.stringify(implemented())
-    expect(calls.find(c => c.label === 'verify:r1').prompt).toContain('WRITER OBJECTS (UNTRUSTED, this round):\n\n[' + implObject + ']')
-    expect(calls.find(c => c.label === 'verify:r2').prompt).toContain('"subject":"apply the approved corrections"')
-    expect(calls.find(c => c.label === 'verify:r2').prompt).not.toContain('"subject":"implement the change"')
+    expect(calls.find(c => c.label === 'verify').prompt).toContain('WRITER OBJECTS (UNTRUSTED):\n\n[' + implObject + ']')
     for (const type of ['reviewer-correctness', 'reviewer-cleanliness', 'duplicate-checker']) {
       expect(calls.find(c => c.agentType === type).prompt).toContain('UNTRUSTED implementer claims (its returned object):\n\n' + implObject)
     }
@@ -1219,5 +1121,148 @@ describe('structured stage output', () => {
     const flatSkill = flat(skill)
     for (const phrase of ['HARD-FLAG:', 'FILES-ON-DISK', 'robust(', 'proven(', 'length floor']) expect([phrase, flatSkill.includes(phrase)]).toEqual([phrase, false])
     expect(flatSkill).toContain('stage(prompt, opts, complete)')
+  })
+})
+describe('one-pass remaining-items handoff', () => {
+  test('all exit values have a detail and every ending returns the run record', async () => {
+    for (const [exit, options] of [
+      ['clean', {}], ['follow-up', { reports: { roast: { findings: [finding] } } }],
+      ['root-resolution', { implementation: implemented({ proofPassed: false }) }],
+      ['aborted', { implementation: implemented({ abort: { trigger: 'sense-check', reason: 'The mechanism must be removed.' } }) }],
+      ['failed', { fail: { impl: 'provider unavailable' } }],
+    ]) {
+      const { result, calls } = await simulate(options)
+      expect(result.exit).toBe(exit)
+      expect(result.detail.length).toBeGreaterThan(0)
+      expect(Object.keys(result).sort()).toEqual(['exit', 'detail', 'remaining', 'decisions', 'proof',
+        'baseSha', 'snapshotSha', 'acceptance', 'counts', 'cleanup', 'inverseSpecDecisions', 'projectBenefitDecisions'].sort())
+      expect(calls.filter(c => c.phase === 'Verify').length).toBeLessThanOrEqual(1)
+    }
+  })
+
+  test('roast findings and limitations return intact without reaching a verifier', async () => {
+    const limitation = { what: 'Integration service unavailable.', effect: 'narrows' }
+    const blocking = { what: 'Required source object unavailable.', effect: 'blocks' }
+    const unchecked = { what: 'Integration path', checked: false, how: 'Service unavailable.' }
+    for (const severity of ['nit', 'should-fix', 'must-fix', 'CRITICAL']) {
+      const { result, calls } = await simulate({ reports: { roast: {
+        findings: [{ ...finding, severity }], limitations: [blocking, limitation],
+        coverage: [unchecked],
+      } } })
+      expect(result.exit).toBe('root-resolution')
+      expect(result.remaining).toEqual([
+        { kind: 'roast-finding', severity, item: {
+          ...finding, severity, id: 'roaster:0', seat: 'roaster', snapshotSha: INITIAL,
+        } },
+        { kind: 'roast-limitation', severity: 'should-fix', item: limitation },
+        { kind: 'roast-limitation', severity: 'should-fix', item: unchecked },
+        { kind: 'blocking-limitation', severity: 'CRITICAL', item: { ...blocking, label: 'roast' } },
+      ])
+      const verifiers = calls.filter(c => c.phase === 'Verify')
+      expect(verifiers).toHaveLength(1)
+      expect(verifiers[0].prompt).not.toContain('roaster:0')
+      expect(verifiers[0].schema.properties.closures).toBeUndefined()
+      expect(calls.map(c => c.label)).toEqual(['impl', ...readers.map(s => 'review:' + s), 'verify', 'fix', 'roast'])
+    }
+  })
+
+  test('failed writer proofs return checks with the writer label', async () => {
+    for (const label of ['impl', 'fix']) {
+      const { result, calls } = await simulate(label === 'impl'
+        ? { implementation: implemented({ proofPassed: false }) }
+        : { fixes: { fix: fixed([], { proofPassed: false }) } })
+      expect(result.exit).toBe('root-resolution')
+      expect(result.remaining).toEqual([{ kind: 'failed-proof', severity: 'CRITICAL', item: { label, checks: [check(false)] } }])
+      expect(result.proof.checks).toEqual([check(false)])
+      if (label === 'impl') expect(calls.map(c => c.label)).toEqual(['impl'])
+    }
+  })
+
+  test('verifier issues and unreached approvals retain their full objects', async () => {
+    const issue = { kind: 'root-action', detail: 'Required evidence is unavailable.' }
+    const approval = decision([source('correctness')])
+    const { result } = await simulate({ reports: oneReport, verify: { verify: verification([approval], { issues: [issue] }) } })
+    expect(result.remaining).toEqual([
+      { kind: 'verifier-issue', severity: 'CRITICAL', item: issue },
+      { kind: 'unfixed-approval', severity: 'CRITICAL', item: { approved: { ...approval, key: 'fix:0' } } },
+    ])
+    expect(result.proof).toEqual({ checks: implemented().checks, files: implemented().files })
+  })
+
+  test('even a low-severity fixed key is unattested with its approval and commit evidence', async () => {
+    const approval = decision([source('correctness')], { severity: 'nit' })
+    const { result, calls } = await simulate({ reports: oneReport, verify: { verify: verification([approval]) },
+      fixes: { fix: fixed([disposition()]) } })
+    expect(result.exit).toBe('follow-up')
+    expect(result.remaining).toEqual([{ kind: 'unattested-fix', severity: 'nit', item: {
+      approved: { ...approval, key: 'fix:0' }, disposition: disposition(), snapshotSha: FIXED,
+      commits: [{ sha: FIXED, subject: 'apply the approved corrections' }],
+    } }])
+    expect(calls.filter(c => c.phase === 'Verify')).toHaveLength(1)
+  })
+
+  test('a failed fixer preserves the settled roast and unreached approvals', async () => {
+    const { result } = await simulate({ reports: { ...oneReport, roast: { findings: [finding] } },
+      verify: approveOne, fail: { fix: 'writer interrupted' } })
+    expect(result.exit).toBe('failed')
+    expect(result.remaining.map(r => r.kind)).toEqual(['stage-failure', 'roast-finding', 'unfixed-approval'])
+    expect(result.remaining[0].item).toEqual({ label: 'fix', message: 'writer interrupted' })
+    expect(result.remaining[1].item.snapshotSha).toBe(INITIAL)
+  })
+
+  test('a reader hard flag remains an abort beside a peer limitation', async () => {
+    const abort = { trigger: 'directive-conflict', reason: 'The requested scope contradicts the record.' }
+    const { result } = await simulate({ reports: {
+      'review:correctness': { limitations: [{ what: 'Required service unavailable.', effect: 'blocks' }] },
+      'review:inverse': { abort },
+    } })
+    expect([result.exit, result.detail]).toEqual([
+      'root-resolution', 'Blocking limitation from review:correctness.',
+    ])
+    expect(result.remaining.map(r => r.kind)).toEqual(['blocking-limitation', 'abort'])
+    expect(result.remaining[1].item.abort).toEqual(abort)
+  })
+
+  test('a fixer proof failure names the cause when the roaster aborts', async () => {
+    const abort = { trigger: 'directive-conflict', reason: 'The scope contradicts the record.' }
+    const { result } = await simulate({
+      fixes: { fix: fixed([], { proofPassed: false }) }, reports: { roast: { abort } },
+    })
+    expect([result.exit, result.detail]).toEqual([
+      'root-resolution', 'Required checks failed in fix.',
+    ])
+    expect(result.remaining.map(r => r.kind)).toEqual(['failed-proof', 'abort'])
+    expect(result.remaining[0].item).toEqual({ label: 'fix', checks: [check(false)] })
+    expect(result.remaining[1].item.abort).toEqual(abort)
+    expect(result.remaining[1].item.label).toBe('roast')
+  })
+
+  test('both concurrent failures survive, with the fixer naming the cause', async () => {
+    const { result } = await simulate({ fail: { fix: 'writer unavailable', roast: 'roaster unavailable' } })
+    expect([result.exit, result.detail]).toEqual(['failed', 'writer unavailable'])
+    expect(result.remaining).toEqual(['fix', 'roast'].map(label => ({ kind: 'stage-failure', severity: 'CRITICAL',
+      item: { label, message: label === 'fix' ? 'writer unavailable' : 'roaster unavailable' } })))
+  })
+
+  test('an aborting fixer keeps the settled roast and its whole abort object', async () => {
+    const abort = { trigger: 'sense-check', reason: 'The approved correction extends a rejected mechanism.' }
+    const { result } = await simulate({ reports: { ...oneReport, roast: { findings: [finding] } }, verify: approveOne,
+      fixes: { fix: fixed([disposition()], { abort }) } })
+    expect(result.exit).toBe('aborted')
+    expect(result.remaining.map(r => r.kind)).toEqual(['abort', 'roast-finding', 'unattested-fix'])
+    expect(result.remaining[0].item.abort).toEqual(abort)
+    expect(result.remaining[0].item.label).toBe('fix')
+  })
+
+  test('root follow-up instructions require evidence, fresh prompts and the normal cold review', () => {
+    const text = flat(skill)
+    for (const phrase of ['records every remaining item', 'wherever a project without one tracks work',
+      'Check each `roast-finding` and `roast-limitation` against the tree',
+      'Attest each `unattested-fix` by reading its commits', 'running the checks yourself',
+      'one numbered acceptance criterion per item with its receipts', 'previous run’s snapshot',
+      'The cold spec review and every other stage apply unchanged', 'new prompts and a new run ID',
+      'Record a disproved item with its counterevidence', '**Resume interrupted runs only.**']) {
+      expect(text).toContain(phrase.replace('run’s', "run's"))
+    }
   })
 })
