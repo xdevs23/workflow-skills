@@ -122,7 +122,11 @@ The unit changes `skills/implement-review-verify/SKILL.md`, the spec-compliance,
 and finding-verifier templates, `skills/immaculate-spec-writing/SKILL.md`, adds
 `tools/check-spec.ts` and a provenance seat template under `agents/`, extends `tests/`, states
 the runtime minimum in the README and bumps the plugin version. Existing Markdown design
-documents stay as they are; no unit is migrated retroactively. The wording sweep of pin, pins
+documents stay as they are; no unit is migrated retroactively.
+
+This unit bootstraps the format it defines, so its own spec is this Markdown document and
+decision 1 does not apply to it: no tool can check a YAML spec until this unit ships one. Every
+unit after it authors `.cache/specs/<unit>.yaml` and generates its tracked document from it. The wording sweep of pin, pins
 and pinned is not part of this unit: it is unrelated to provenance, its permitted replacements
 do not fit every sense in the tree, and bundling it would inflate a unit whose whole subject is
 scope that nobody asked for.
