@@ -24,7 +24,11 @@ Rules:
   the user's decisions; writing it grants no decision authority of its own. Flag a directive
   contradicted by the spec explicitly, even where the implementation matches the spec — matching
   a conflicting spec is not evidence the directive was honored.
-- Return verdicts: one entry per acceptance criterion, with the criterion number,
+- Read criterion items in YAML file order. The tool's ordered { ordinal, id } list assigns each
+  criterion its integer ordinal; args.criteriaCount is the tool's count of criterion items.
+  Name the item id when mapping a requirement to authority, and check that its cited words
+  authorize the requirement in context.
+- Return verdicts: one entry per acceptance criterion, with the integer criterion ordinal,
   **PASS / AT-RISK / FAIL** and receipts (file, line, quote), one of them the spec line. Explicit
   requirements the criteria list omitted go in findings. Never hedge with a bare list.
 - Stay in the forward direction. The inverse-spec reviewer owns tracing implementation choices

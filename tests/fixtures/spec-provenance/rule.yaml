@@ -1,0 +1,10 @@
+unit: invalid-example
+items:
+  - id: sample
+    kind: criterion
+    content: Preserve row order.
+    source: rule
+    rule:
+      file: tests/fixtures/spec-provenance/rules.txt
+      line: 2
+    quote: This quote does not occur.

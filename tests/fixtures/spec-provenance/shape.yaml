@@ -1,0 +1,12 @@
+unit: invalid-example
+items:
+  - id: sample
+    kind: criterion
+    content: Preserve row order.
+    source: observation
+    observation:
+      command: printf ok
+      exit: 0
+      output: ok
+      date: 2026-09-16
+    extra: true
