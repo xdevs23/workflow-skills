@@ -191,12 +191,12 @@ store — keep it server-authoritative, consistent with the rest of the console)
 ## Rejected alternatives
 
 - **Auto-expire detached handles (TTL).** Drop a member's group handles once its
-  session has been detached longer than some TTL. Rejected: the human wants an
+  session has been detached longer than some TTL. Rejected: the user wants an
   explicit, on-demand action, not silent aging — and a TTL risks evicting a member
   during a legitimate long offline stretch (a resume, a reboot). Membership is meant
   to be **durable** (see docs/group-chat-durable-membership.md); silent expiry fights
   that. A kick is deliberate and observable.
 - **Hoster CLI / direct sqlite delete.** Keep removal out of the UI; hoster deletes the
   handle row by hand. Rejected: the whole point is self-service from the console the
-  human already has open; a DB poke also skips the in-memory `joinedAs`/`delivered`
+  user already has open; a DB poke also skips the in-memory `joinedAs`/`delivered`
   cleanup and the firehose events, leaving live state inconsistent until a restart.

@@ -51,7 +51,7 @@ Rules:
   describe a simpler one. Quote the recorded words beside the finding. kind marks a choice made in
   this unit's own diff; a band-aid that already existed beside the diff is reported without kind,
   so the cleanup lane stays available for it.
-- A direct contradiction between a human directive and the spec or the prompt sets abort.trigger
+- A direct contradiction between a user directive and the spec or the prompt sets abort.trigger
   to directive-conflict and abort.reason to the reason, and you stop; otherwise abort.trigger is
   none.
 - Return abort, limitations, coverage, ruleSources and findings, each finding with its scope. An

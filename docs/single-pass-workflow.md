@@ -76,7 +76,7 @@ no loop. This builds on [finding verification](workflow-finding-verification.md)
    until the root has read them: the root checks each `roast-finding` and `roast-limitation`
    against the tree, and attests each `unattested-fix` by reading its commits against the
    approved correction and running the checks itself. A confirmed item of severity `must-fix`
-   or `CRITICAL`, an unfixed approval, a failed proof, and an open decision once the human has
+   or `CRITICAL`, an unfixed approval, a failed proof, and an open decision once the user has
    decided it, are fixed in a follow-up implement-review-verify workflow. The root writes the
    follow-up's spec as it writes any unit spec: one numbered acceptance criterion per item with
    its receipts, the settled decision for a decided item, the previous run's snapshot as the

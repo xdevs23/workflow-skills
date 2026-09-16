@@ -3,13 +3,13 @@
 ## Required behavior
 
 Keep routine finding verification inside the workflow. A read-only `finding-verifier`
-checks and consolidates every reviewer's findings against the code and human directives,
+checks and consolidates every reviewer's findings against the code and user directives,
 with the specification as a derived description of the required implementation. A
 separate fixer receives only its approved corrections. The root handles exceptions,
 not every finding.
 
 [Directive authority](directive-authority.md) governs specification fidelity, critical
-inverse-spec findings and the root's question-premise checks. Human directives veto
+inverse-spec findings and the root's question-premise checks. User directives veto
 conflicting specifications and prompts; writing or accepting a spec does not create
 decision authority. Neither the verifier nor the root may ignore specification reviews
 or use the spec alone to dismiss contradictory directives. The verifier, fixer and root
@@ -48,7 +48,7 @@ pre-run remains separate and unchanged.
   edits; a rejected or blocked correction retains its origin and counterevidence for root.
 - **The root resolves exceptions.** Every inverse-spec finding, demonstrated impossibility,
   verifier/fixer disagreement and failed proof returns with evidence. The root
-  handles each inverse-spec finding by correcting the spec to describe an existing human
+  handles each inverse-spec finding by correcting the spec to describe an existing user
   decision faithfully, or asking about a genuinely unsettled choice after checking its
   premises. Counterevidence remains part of that handling, not permission to drop a finding.
   A failed required reviewer or invalid handoff stops the run as incomplete verification.
@@ -113,12 +113,12 @@ neither case can be relabeled as a nonblocking spec suggestion. Other blocking d
 require a genuinely unresolved choice or impossibility. An optional improvement to an
 otherwise faithful spec is nonblocking: ordinary implementation and reviews continue.
 The existing authority pre-check is strengthened, not replaced by another approval gate.
-Stages never edit the spec; the root records only human decisions and corrects transcription
+Stages never edit the spec; the root records only user decisions and corrects transcription
 errors without inventing new scope. Ordinary evidence-backed rejections, consolidation and
 successful fixes remain internal. Inverse-spec findings are the explicit exception: every
 one reaches root with its evidence and counterevidence regardless of disposition. Neither
 `reject`, `cleanup`, `record`, a successful code fix nor an edited spec retires that handoff.
-Enforcement continues against the original directives after root corrections; later human
+Enforcement continues against the original directives after root corrections; later user
 decisions can supersede earlier instructions only with preserved source provenance.
 
 A fix claim is attested outside the pass: the root reads each fix commit against its approved
@@ -224,7 +224,7 @@ call—never a chained check-and-delete or forced removal. Branch deletion is se
   inverse-spec finding, disputes and genuinely unsettled choices.
 - **Combined verify/fix agent — rejected.** Consolidation and approval should happen before
   mutation, independently from the agent that implements the correction.
-- **Mechanical findings straight to the fixer, adversaries always to the human — rejected.**
+- **Mechanical findings straight to the fixer, adversaries always to the user — rejected.**
   A real authorized correction can originate in any seat; a confident ordinary reviewer
   can also be wrong. All sources pass through the same independent verification.
 - **Repurpose `verifier` or `consolidator` — rejected.** Those existing roles verify entire
@@ -261,7 +261,7 @@ call—never a chained check-and-delete or forced removal. Branch deletion is se
    cleanup, consolidation and spec edits cannot silently retire it.
 9. Quality receives no spec, directives or implementation briefing; other seats retain their
    own input boundaries, and spec compliance does not duplicate inverse-spec authorization.
-10. Research/spec-writing instructions preserve human decision ownership and directive veto.
+10. Research/spec-writing instructions preserve user decision ownership and directive veto.
     Existing research coverage, model policy and cold spec pre-review input boundaries remain.
     Gates still run bare after the last write.
 11. Confirmed adjacent rule violations retain CRITICAL classification and a same-run cleanup

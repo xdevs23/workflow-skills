@@ -6,13 +6,13 @@ This document defines the target behavior, not a claim that the existing templat
 or routing already satisfy it. Root and orchestrator name the same human-facing
 coordinator, distinct from delegated stages.
 
-A specification describes the implementation required by the human's decisions.
+A specification describes the implementation required by the user's decisions.
 It does not make decisions, and its author gains no decision authority by writing
-it. Human directives take precedence over a specification, assignment prompt,
+it. User directives take precedence over a specification, assignment prompt,
 review disposition or implemented behavior. A conflicting specification is an
 error to correct, not evidence that a different decision was approved.
 
-The orchestrator may document decisions the human made, but may not insert its
+The orchestrator may document decisions the user made, but may not insert its
 own product, architecture, persistence, security or operational choices as settled
 requirements. Proposals and unresolved choices are not approved scope. Ordinary
 implementation derivations must remain within the established requirements;
@@ -26,7 +26,7 @@ it must be checked, not replaced by an orchestrator's summary.
 
 ## Conflict reporting and review
 
-Every discovered disagreement between human directives and instructions is a
+Every discovered disagreement between user directives and instructions is a
 critical authority conflict, including conflicts in the specification or the
 orchestrator's assignment. It is explicitly hard-flagged and cannot become a nit,
 soft ambiguity, optional suggestion or accepted limitation. The affected work
@@ -41,7 +41,7 @@ before ordinary verification. Stopping must not erase the findings that caused i
 Spec compliance and inverse-spec review both check the private directive record
 as well as the specification. Spec compliance retains its forward requirement
 coverage; inverse-spec retains its reverse authorization check. Neither accepts
-an assistant-authored specification as proof of a human decision. All inverse-spec
+an assistant-authored specification as proof of a user decision. All inverse-spec
 findings are CRITICAL, regardless of phrasing or perceived operational impact.
 A no-findings report is still legitimate; critical severity is not a finding quota.
 
@@ -53,35 +53,35 @@ soft ambiguity, optional suggestion or already covered by an edited spec.
 Duplicate consolidation preserves all source identities and critical status.
 
 Every inverse-spec finding requires root resolution: the spec is amended to
-faithfully describe existing human decisions, or a genuinely unsettled decision
-is put to the human after the question-premise check. Counterevidence to an
+faithfully describe existing user decisions, or a genuinely unsettled decision
+is put to the user after the question-premise check. Counterevidence to an
 apparent false positive is preserved for root resolution, not used to silently
 drop the finding. An edited spec is not sufficient closure: enforcement continues
 against the original directives and context. The fixer retains inverse-spec origin
 and critical status on received corrections even if an earlier stage downgraded
 them; an absent source finding remains visible to the root rather than becoming
-an unauthorized direct fix. A question that needs the human is first treated as
+an unauthorized direct fix. A question that needs the user is first treated as
 evidence that a recorded direction was not honored, and the root re-reads the
 decisions, designs and code documentation and repairs the design before
-presenting any choice. A question that does reach the human suspends the work
-that depends on its answer until the human answers, and no dependent stage is
+presenting any choice. A question that does reach the user suspends the work
+that depends on its answer until the user answers, and no dependent stage is
 launched alongside the question. The root either records a derivable choice as
 its own decision or asks and stops, and it never offers a choice that stands
 until the user objects, because silence is not a source of authority.
 
-The root may correct a specification to faithfully reflect existing human
-decisions. A new decision requires human authorization. Neither an amendment nor
+The root may correct a specification to faithfully reflect existing user
+decisions. A new decision requires user authorization. Neither an amendment nor
 a passing implementation test retroactively authorizes an unsupported addition.
 Delegated implementers, reviewers and fixers do not edit the task specification.
 
 ## Questions and acceptance
 
 Before presenting a question, trade-off, limitation or request for acceptance,
-the orchestrator checks its premises against the human's directives and context.
+the orchestrator checks its premises against the user's directives and context.
 When the record challenges a premise, the root investigates the mismatch first.
 It identifies unsupported scope and reports deviations from the requested result
 plainly, rather than presenting consequences of an invented mechanism as a new
-choice the human must make. A question already settled by the record is not asked
+choice the user must make. A question already settled by the record is not asked
 again. Only a genuinely unresolved choice is presented as a decision request.
 The private question check identifies the proposed question, its premises, the
 relevant directive/context references, related spec/inverse-spec findings, and
@@ -107,11 +107,11 @@ The root supplies the private record from the actual conversation, preserving
 relevant directives, surrounding qualifications and supplied examples without
 selective omission. References identify their source and ordering; summaries are
 labeled and never substitute for available verbatim evidence. Applicable project
-requirements are referenced alongside, not relabeled as human quotations. Record
+requirements are referenced alongside, not relabeled as user quotations. Record
 content is fixed for a review cycle; new directives invalidate affected reviews
 and approvals. Original verbatim directives are retained: never erase, truncate,
 rewrite or selectively omit them to make a spec or implementation pass. Later
-human decisions may supersede earlier instructions with explicit provenance;
+user decisions may supersede earlier instructions with explicit provenance;
 an assistant's spec edits cannot. An inaccessible or incomplete necessary record is an explicit
 root-action limitation that prevents acceptance, not permission to trust the spec.
 No new storage service or public source-record format is required.
@@ -127,14 +127,14 @@ top of this authority model.
 
 These requirements strengthen the existing authority pre-check, reviewer routing,
 verification guards and root acceptance checks. They do not introduce a second
-pre-write approval ceremony, mandatory human triage of every routine finding,
+pre-write approval ceremony, mandatory user triage of every routine finding,
 or permission to bypass the existing correction and snapshot safeguards.
 
 ## Acceptance criteria
 
 1. Spec-writing and implementation instructions define specifications as derived
    descriptions, not independent sources of product or architecture decisions.
-2. Root-authored decisions cannot enter a specification as approved human scope.
+2. Root-authored decisions cannot enter a specification as approved user scope.
    Context and examples are considered without inventing unrelated requirements.
 3. Both specification reviewers receive the private directive reference and flag
    directive conflicts explicitly, even when the implementation matches the spec.

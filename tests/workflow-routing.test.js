@@ -188,7 +188,7 @@ describe('workflow verification and consolidation', () => {
     const directory = new URL('../agents/', import.meta.url)
     const specTemplate = await Bun.file(new URL('reviewer-spec-compliance.md', directory)).text()
     const inverseTemplate = await Bun.file(new URL('reviewer-inverse-spec.md', directory)).text()
-    expect(specTemplate).toContain('recorded human directives')
+    expect(specTemplate).toContain('recorded user directives')
     expect(specTemplate).toContain('even where the implementation matches the spec')
     expect(inverseTemplate).toContain('recorded directives outrank the spec')
     expect(inverseTemplate).toContain('Report every finding here as CRITICAL')
@@ -918,7 +918,7 @@ describe('coder sense check and project-benefit review', () => {
   test('the coder and verifier templates, law 10 and the shared authority constant state the two triggers and the kind rules', async () => {
     for (const [name, phrases] of [
       ['implementer', ['Sense check before any edit: read the private directive record and the spec and ask two questions.', 'A record that says nothing about the mechanism rules nothing out: the check passes and senseCheck records recordSilent true.',
-        'Hard-flag and stop on either of two triggers, with one abort field and one disposition', "continues only on the human's verbatim decision quoted in the private record"]],
+        'Hard-flag and stop on either of two triggers, with one abort field and one disposition', "continues only on the user's verbatim decision quoted in the private record"]],
       ['fixer', ['Bounded sense check before your first write, on every approved correction', 'itself a band-aid on a mechanism the recorded words do not call for, where the record describes deletion or a rewrite',
         "no agent's justification and no root statement substitutes for it", "You do not repeat the implementer's request-level sense check"]],
       ['finding-verifier', ['is CRITICAL, and neither cleanup nor record is available for it', "supply the quote yourself for a cold seat's finding (quality, cold alternatives)",

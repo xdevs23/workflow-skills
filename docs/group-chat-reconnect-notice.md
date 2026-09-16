@@ -34,7 +34,7 @@ Authoritative spec (https://code.claude.com/docs/en/channels-reference): only
 `await mcp.notification()` resolves on transport-write, NOT delivery; the only
 documented drop causes are channel-not-loaded(-yet) and org-policy-off.
 
-## Hard constraints (set by the human, non-negotiable)
+## Hard constraints (set by the user, non-negotiable)
 
 1. **Session id is unknowable in general.** The adapter is process-persistent for
    the whole Claude Code lifetime and multiplexes many sessions (main + subagents,

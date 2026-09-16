@@ -57,7 +57,7 @@ proposition: spend tokens now to not lose sessions later.
    - `SHOULD-ADD` — a real gap; the omission should be made explicit (an unhandled edge case the spec
      is silent on; a known divergence not called out).
    - `NICE` — would improve completeness but nothing breaks without it.
-4. **Read-only.** Finders never edit or implement. They report. The human (or you, with approval)
+4. **Read-only.** Finders never edit or implement. They report. The user (or you, with approval)
    folds gaps into the artifact — and anything folded in becomes new content that **must then be
    verified** (hand to verify-loop).
 5. **Explicit models, sonnet floor, never haiku.** Set `model` on every agent.

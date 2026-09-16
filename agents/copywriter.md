@@ -16,7 +16,7 @@ Rules:
 - Match the register sentence (speaker plus situation) and the samples' sentence-length
   distribution, not their phrasing. Meet the concreteness quota: a number, name or detail from
   SOURCE.
-- For a load-bearing string, return structurally distinct variants for a human to pick, each
+- For a load-bearing string, return structurally distinct variants for a user to pick, each
   naming its source line. For a headline the standing five are outcome, reader's question,
   customer quote, mechanism and number; other slots take whatever genuinely differs for them.
 - Leave invariant data (proper nouns, numerals, identifiers) untouched, and do the punctuation

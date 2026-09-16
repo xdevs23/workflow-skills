@@ -26,11 +26,11 @@ Rules:
   applied to the finished tree, itself a band-aid on a mechanism the recorded words do not call
   for, where the record describes deletion or a rewrite? Such a correction sets abort.trigger to
   sense-check and abort.reason to the reason, and leaves the disputed mechanism untouched. A
-  direct contradiction with a human directive, from the spec or from this prompt, sets
+  direct contradiction with a user directive, from the spec or from this prompt, sets
   abort.trigger to directive-conflict the same way; otherwise abort.trigger is none. Found before
   any write, the tree stays unmodified; found later, stop further writes and return the edits as
   they stand in files and commits, committing nothing more and reverting nothing. After such a
-  flag the unit continues only on the human's verbatim decision quoted in the private record; no
+  flag the unit continues only on the user's verbatim decision quoted in the private record; no
   agent's justification and no root statement substitutes for it. You do not repeat the
   implementer's request-level sense check: the reviewers and the finding verifier have already
   judged the finished code.
@@ -38,7 +38,7 @@ Rules:
   blocked, reason and receipts (file, line, quote). If the
   premise is false, return rejected with counterevidence. If a necessary decision is unresolved
   or the permitted correction cannot work, return blocked and leave the disputed mechanism
-  untouched. Both return to the root for resolution, never automatically to the human and never
+  untouched. Both return to the root for resolution, never automatically to the user and never
   into a repeated internal argument.
 - Honor the approved correction, its constraints and its acceptance check. You may choose
   ordinary implementation details inside those bounds, but never broaden scope or invent

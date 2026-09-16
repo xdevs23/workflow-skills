@@ -7,7 +7,7 @@ This document builds on [directive authority](directive-authority.md) and
 [finding verification](workflow-finding-verification.md).
 
 1. **Coders check that the request makes sense before writing.** A coder that finds it does
-   not make sense hard-flags and says why. The unit continues only on the human's verbatim
+   not make sense hard-flags and says why. The unit continues only on the user's verbatim
    decision, quoted in the private directive record.
 2. **Every review seat judges whether the diff helps the project, not only whether it is
    correct.** Band-aids, workarounds and longer routes are CRITICAL findings that reach the
@@ -29,7 +29,7 @@ This document builds on [directive authority](directive-authority.md) and
    the existing directive-contradiction trigger:
    before any edit the tree stays unmodified; after edits landed, further writes stop and the
    coder reports the edits as they stand, committing nothing and reverting nothing. The unit
-   continues only on the human's verbatim decision quoted in the private record; the root
+   continues only on the user's verbatim decision quoted in the private record; the root
    chooses the continuation from the coder's report and that decision.
 3. **Fixer bounded check.** The fixer checks each approved correction before its first write:
    a correction that is itself a band-aid on a mechanism the record does not call for, where
@@ -67,7 +67,7 @@ This document builds on [directive authority](directive-authority.md) and
    yields one; `reject` only with counterevidence against the finding itself; every such
    decision reaches the root.
 8. **Closure at the root.** The root closes a standing project-benefit decision only by
-   deletion, a rewrite, or the human's verbatim word to keep the shape, quoted in the private
+   deletion, a rewrite, or the user's verbatim word to keep the shape, quoted in the private
    record. A decision the verifier rejected with counterevidence closes at the root once the
    root has checked the counterevidence against the tree and the record and recorded it.
 
@@ -89,7 +89,7 @@ The unit changes the implement-review-verify skill, the nine seat templates, the
 fixer and finding-verifier templates, this document, one cross-reference line in each of the
 two related design documents, the routing tests and the plugin version. The implementation
 outside this document is about 350 added lines. How a unit continues after a flag is decided
-by the root at the time, from the coder's report and the human's recorded decision.
+by the root at the time, from the coder's report and the user's recorded decision.
 
 ## Acceptance criteria
 
