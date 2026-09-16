@@ -60,6 +60,10 @@ The design is recorded in [`docs/reply-check-hook.md`](docs/reply-check-hook.md)
 
 - **The Workflow tool / multi-agent fan-out.** Every skill orchestrates subagents via Workflow. A
   harness or plan that doesn't expose Workflow can't run these.
+- **Bun 1.2.21 or newer** for `tools/check-spec.ts`, which uses the built-in `Bun.YAML.parse`.
+  Validate a private unit spec with `bun tools/check-spec.ts <spec.yaml> --transcripts <session-dir>`.
+  Add `--json` for counts and criterion ordinals, `--render <path>` to generate its tracked design
+  document, or `--check-render <path>` to check that document before implementation.
 - **Explicit model selection.** Agent templates carry no model defaults. The orchestrator must
   select an explicit model and effort for every stage at launch, following the applicable project
   policy. Do not rely on template defaults or implicit inheritance.

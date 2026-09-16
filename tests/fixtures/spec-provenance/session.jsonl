@@ -1,0 +1,5 @@
+{"type":"user","uuid":"request-string","message":{"content":"<system-reminder>private reminder text</system-reminder>Export the selected rows."}}
+{"type":"user","uuid":"request-blocks","message":{"content":[{"type":"text","text":"Export the "},{"type":"image","text":"ignored image text"},{"type":"text","text":"selected rows.<system-reminder>second reminder</system-reminder>"}]}}
+{"type":"assistant","uuid":"assistant-record","message":{"content":"Export the selected rows."}}
+{"type":"user","message":{"content":"Export the selected rows."}}
+not json

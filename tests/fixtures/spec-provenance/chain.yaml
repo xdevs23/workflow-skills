@@ -1,0 +1,8 @@
+unit: invalid-example
+items:
+  - id: sample
+    kind: criterion
+    content: Preserve row order.
+    source: derivation
+    parents:
+      []

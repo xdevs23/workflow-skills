@@ -123,15 +123,16 @@ async function simulate({ reports = {}, verify = {}, fixes = {}, fail = {}, impl
 }
 const oneReport = { 'review:correctness': { findings: [finding] } }
 const approveOne = { 'verify': verification([decision([source('correctness')])]) }
-// The pre-run skeleton (two cold spec seats) executed with a mocked agent() and the same args.
+// The pre-run skeleton (two cold seats and provenance) executed with a mocked agent().
 const coldSkeleton = blocks.find(code => code.includes("name: 'spec-cold-review'"))
 const coldObject = label => label === 'spec:gaps'
   ? { limitations: [], gaps: [], categories: [{ name: 'edge cases', gaps: 0 }] }
+  : label === 'spec:provenance' ? { ...cold(), checks: [] }
   : { limitations: [], satisfiable: true, conflicts: [],
     criteria: Array.from({ length: CRITERIA }, (_, i) => ({ criterion: i + 1, checkable: true, why: 'observable' })) }
 // The pre-run reuses the main skeleton's leaf shapes and stage() helper: copied in here as its author would.
 const shared = (from, to) => skeleton.slice(skeleton.indexOf(from), skeleton.indexOf(to))
-const preRun = (agent, args = { criteriaCount: CRITERIA }, logs = []) =>
+const preRun = (agent, args = { baseSha: BASE, criteriaCount: CRITERIA }, logs = []) =>
   new AsyncFunction('agent', 'phase', 'log', 'args', [shared('const RECEIPT =', '// output quotes'),
     shared('const hasHardFlag =', '// The root supplies'), coldSkeleton.replace('export const meta =', 'const meta =')].join('\n'))(
     agent, () => {}, line => logs.push(line), args)
@@ -266,7 +267,7 @@ describe('workflow verification and consolidation', () => {
     expect(coldSkeleton).toBeDefined()
     const coldCalls = []
     await preRun(async (prompt, opts) => { coldCalls.push({ prompt, ...opts }); return coldObject(opts.label) })
-    expect(coldCalls).toHaveLength(2)
+    expect(coldCalls).toHaveLength(3)
     for (const { prompt } of [...calls, ...coldCalls]) {
       expect(prompt).toContain('you are one assigned stage, not the orchestrator')
       expect(prompt).toContain('Do not launch workflows or subagents, directly or through skills or shell commands')
@@ -804,7 +805,7 @@ describe('workflow verification and consolidation', () => {
     for (const type of ['reviewer-inverse-spec', 'project-rule-reader']) {
       const prompt = calls.find(c => c.agentType === type).prompt
       expect(prompt).not.toContain('return a verdict PER criterion')
-      expect(prompt).toContain('docs/<the-spec>.md')
+      expect(prompt).toContain('.cache/specs/<unit>.yaml')
     }
     expect(calls.find(c => c.agentType === 'cold-alternatives').prompt).not.toContain('SPEC')
   })
@@ -959,10 +960,98 @@ const FIELDS = {
   'reviewer-inverse-spec': ['abort', 'limitations', 'coverage', 'findings', 'authorizations'],
   'project-rule-reader': ['abort', 'limitations', 'coverage', 'findings', 'ruleSources', 'scope'],
   'cold-alternatives': ['limitations', 'coverage', 'findings', 'currentShapeRight', 'candidates'], 'gap-finder': [],
+  'spec-provenance': ['limitations', 'coverage', 'findings', 'checks'],
 }
 const BRIEFED = ['implementer', 'fixer', 'finding-verifier', 'reviewer-correctness', 'reviewer-cleanliness', 'reviewer-spec-compliance', 'duplicate-checker', 'reviewer-inverse-spec', 'project-rule-reader']
 const retried = (calls, label) => calls.filter(c => c.label === label)
 const FAILED = 'HOW YOUR PREVIOUS ATTEMPT FAILED, plainly: '
+
+describe('spec provenance instructions and routing', () => {
+  test('the third pre-phase seat gets provenance inputs while the two cold seats stay unbriefed', async () => {
+    const calls = []
+    const results = await preRun(async (prompt, opts) => {
+      calls.push({ prompt, ...opts })
+      return coldObject(opts.label)
+    })
+    expect(results).toHaveLength(3)
+    expect(calls.map(c => c.label)).toEqual(['spec:gaps', 'spec:soundness', 'spec:provenance'])
+    const provenance = calls[2]
+    expect(provenance.agentType).toBe('spec-provenance')
+    expect(provenance.model).toBe('<explicit>')
+    expect(provenance.effort).toBe('high')
+    for (const phrase of ['.cache/specs/<unit>.yaml', 'TRANSCRIPTS:', 'PRIVATE DIRECTIVES:', BASE]) {
+      expect(provenance.prompt).toContain(phrase)
+    }
+    for (const call of calls.slice(0, 2)) {
+      expect(call.prompt).toContain('.cache/specs/<unit>.yaml')
+      for (const phrase of ['TRANSCRIPTS:', 'PRIVATE DIRECTIVES:', 'AUTHORITY:', BASE]) expect(call.prompt).not.toContain(phrase)
+    }
+    const noBaseCalls = []
+    await expect(preRun(async (_, opts) => { noBaseCalls.push(opts) }, { criteriaCount: CRITERIA }))
+      .rejects.toThrow('baseSha is required')
+    expect(noBaseCalls).toEqual([])
+  })
+
+  test('provenance requires coverage, finding receipts, and limitations for unchecked items', async () => {
+    for (const [patch, message] of [
+      [{ coverage: [] }, 'coverage is empty'],
+      [{ findings: [{ ...finding, receipts: [] }] }, 'finding without a receipt'],
+      [{ coverage: [{ what: 'item-id', checked: false, how: 'source missing' }] }, 'unchecked provenance coverage without a limitation'],
+    ]) {
+      await expect(preRun(async (_, opts) => opts.label === 'spec:provenance'
+        ? { ...coldObject(opts.label), ...patch } : coldObject(opts.label))).rejects.toThrow(message)
+    }
+  })
+
+  test('the workflow states source rules, both launch checks, regeneration and the generated denominator', () => {
+    for (const phrase of [
+      '`.cache/specs/<unit>.yaml`, ignored and untracked', 'root writes the YAML before launching',
+      '`transcript`', '`rule`', '`observation`', '`derivation`',
+      'asserting that a condition, failure mode or risk exists needs source transcript or observation',
+      'hypothetical hazard stays a finding until an observation', 'simpler alternative it rules out',
+      'parents include the transcript item asking for it or the observation',
+      'root runs the tool before the spec pre-phase and again before the main run',
+      'A failing spec launches neither run', 'regenerate the document after every amendment',
+      'tool fails if the generated document differs from the one in the tree',
+      "tool's `counts.kind.criterion` for `args.criteriaCount`", 'integer ordinals from one in YAML file order',
+      'count non-blank lines in the tracked generated document at the candidate commit',
+      'private YAML holds quoted words',
+    ]) expect(flat(skill)).toContain(phrase)
+  })
+
+  test('authority-aware templates preserve integer ordinals and name authorizing ids', async () => {
+    for (const name of ['reviewer-spec-compliance', 'reviewer-inverse-spec', 'finding-verifier']) {
+      const prose = flat(await template(name))
+      for (const phrase of ['item id', 'integer', 'ordinal', 'args.criteriaCount', '{ ordinal, id }']) {
+        expect([name, prose.includes(phrase)]).toEqual([name, true])
+      }
+    }
+    expect(flat(await template('reviewer-inverse-spec'))).toContain('authority field names the authorizing YAML item id')
+    expect(flat(await template('reviewer-inverse-spec'))).toContain('no item authorizes the choice')
+    const { calls } = await simulate()
+    for (const call of calls.filter(c => c.schema.properties.verdicts)) {
+      expect(call.schema.properties.verdicts.items.properties.criterion).toEqual({ type: 'integer', minimum: 1 })
+    }
+  })
+
+  test('the provenance template judges authorization and repeats read-only observations against the base date', async () => {
+    const prose = flat(await template('spec-provenance'))
+    for (const phrase of ['whether the cited words authorize', 'surrounding context', 'each coverage entry and finding',
+      'source transcript or observation', "seat's claim that it could happen", 'simpler alternative',
+      'parents include the transcript item', "Re-run each observation's command", 'read-only by construction',
+      'output and exit status', 'older than the supplied base commit', 'findings are advisory']) {
+      expect(prose).toContain(phrase)
+    }
+  })
+
+  test('spec writing emits the validated YAML format with source rules and regeneration', async () => {
+    const prose = flat(await Bun.file(new URL('../skills/immaculate-spec-writing/SKILL.md', import.meta.url)).text())
+    for (const phrase of ['`.cache/specs/<unit>.yaml`', 'tools/check-spec.ts', 'valid.yaml', 'regenerate after every amendment',
+      '**transcript:**', '**rule:**', '**observation:**', '**derivation:**', 'user_words', '{ command, exit, output, date }',
+      'source transcript or observation', 'simpler alternative it rules out', 'parents include the transcript item',
+      '{ ordinal, id }', 'args.criteriaCount', '--check-render']) expect(prose).toContain(phrase)
+  })
+})
 
 describe('structured stage output', () => {
   test('no stage schema declares a prose field, every root is closed, and only briefed stages declare abort', async () => {
@@ -1269,7 +1358,7 @@ describe('one-pass remaining-items handoff', () => {
     for (const phrase of ['records every remaining item', 'wherever a project without one tracks work',
       'Check each `roast-finding` and `roast-limitation` against the tree',
       'Attest each `unattested-fix` by reading its commits', 'running the checks yourself',
-      'one numbered acceptance criterion per item with its receipts', 'previous run’s snapshot',
+      'one criterion item per confirmed defect with its sources', 'previous run’s snapshot',
       'The cold spec review and every other stage apply unchanged', 'new prompts and a new run ID',
       'Record a disproved item with its counterevidence', '**Resume interrupted runs only.**']) {
       expect(text).toContain(phrase.replace('run’s', "run's"))

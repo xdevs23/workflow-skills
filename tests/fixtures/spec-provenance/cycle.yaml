@@ -1,0 +1,14 @@
+unit: invalid-example
+items:
+  - id: first
+    kind: criterion
+    content: Preserve row order.
+    source: derivation
+    parents:
+      - second
+  - id: second
+    kind: requirement
+    content: Preserve row count.
+    source: derivation
+    parents:
+      - first

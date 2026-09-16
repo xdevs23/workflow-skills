@@ -70,6 +70,39 @@ for a throwaway note, just use the sub-skills directly.
   hardest reasoning. NEVER haiku. Explicit `model` on every agent in every sub-skill.
 - **Implementation is OUT of scope** and gated — confirm the user knows this produces a spec, not code.
 
+## Output format — one authored YAML spec
+
+Write the unit spec to `.cache/specs/<unit>.yaml`, ignored and untracked because it contains
+verbatim user words. The tracked document under `docs/` is generated from that YAML. Edit the YAML
+and regenerate after every amendment, keeping the source and its rendering together.
+
+`tools/check-spec.ts` defines the validation contract; the committed, synthetic example at
+`tests/fixtures/spec-provenance/valid.yaml` is exercised by the tests. The top-level mapping has
+`unit` and a non-empty `items` list. Each item has a unique kebab-case `id`, a `kind` (requirement,
+criterion, rejected or boundary), non-empty Markdown `content` stating one decision or requirement,
+and `source`. A rejected item also has `reason`. Use exactly the fields of its source kind:
+
+- **transcript:** `evidence`, a non-empty list of `{ file, line, uuid }` pointing to user records in
+  the supplied session directory, and `user_words`, verbatim text in at least one resolved message.
+- **rule:** `rule: { file, line }` and `quote`, matching the rule's words across hard-wrapped lines.
+- **observation:** `observation: { command, exit, output, date }`, recording a fact observed here.
+  Use a read-only command that the provenance seat can repeat and compare against output and exit.
+- **derivation:** `parents`, a non-empty list of item ids whose chains reach a sourced item.
+
+An assertion that a condition, failure mode or risk exists needs source transcript or observation.
+A hypothetical hazard stays a finding until an observation establishes it in this environment.
+A derivation that mandates a mechanism states the simpler alternative it rules out in content,
+and its parents include the transcript item asking for it or the observation showing that simpler
+route failing. Trace ordinary derivations to existing decisions; new decisions remain the user's.
+
+Run `bun tools/check-spec.ts .cache/specs/<unit>.yaml --transcripts <session-dir> --render docs/<unit>.md --json`.
+It validates references and renders technical content, omitting private quotations and evidence.
+Keep each criterion as a criterion item: the tool numbers them from one in file order and supplies
+`{ ordinal, id }` plus `counts.kind.criterion` for the implementation workflow's integer ordinals and
+`args.criteriaCount`. Before either spec review or implementation, validation must pass. Before
+implementation use `--check-render docs/<unit>.md` to fail on a stale rendering. The provenance seat
+judges whether the sources authorize the items before implementation.
+
 ## The convergence loop
 
 ### Phase 0 — Research & draft (run `research-loop`)

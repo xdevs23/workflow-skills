@@ -1,0 +1,11 @@
+unit: invalid-example
+items:
+  - id: sample
+    kind: criterion
+    content: Preserve row order.
+    source: transcript
+    evidence:
+      - file: session.jsonl
+        line: 3
+        uuid: assistant-record
+    user_words: Export the selected rows.

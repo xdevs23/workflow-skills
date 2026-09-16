@@ -1,0 +1,5 @@
+Synthetic export rules
+Retain the input order
+across every exported row.
+
+A different paragraph is outside that rule window.

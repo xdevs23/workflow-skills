@@ -1,0 +1,37 @@
+# Synthetic format example: all kinds and sources.
+unit: example-export
+items:
+  - id: export-request
+    kind: requirement
+    content: Export the selected rows.
+    source: transcript
+    evidence:
+      - { file: session.jsonl, line: 1, uuid: request-string }
+      - { file: session.jsonl, line: 2, uuid: request-blocks }
+    user_words: Export the selected rows.
+  - id: row-order
+    kind: criterion
+    content: Exported rows retain their input order.
+    source: rule
+    rule: { file: tests/fixtures/spec-provenance/rules.txt, line: 2 }
+    quote: Retain the input order across every exported row.
+  - id: stream-result
+    kind: criterion
+    content: Export uses the stream interface in place of the unavailable batch interface.
+    source: derivation
+    parents: [export-request, batch-unavailable]
+  - id: batch-unavailable
+    kind: rejected
+    content: Use the batch interface.
+    reason: The installed example reports that interface as unavailable.
+    source: observation
+    observation:
+      command: printf 'batch unavailable\n'
+      exit: 0
+      output: batch unavailable
+      date: '2026-09-16T12:00:00Z'
+  - id: export-only
+    kind: boundary
+    content: The unit covers export of selected rows.
+    source: derivation
+    parents: [stream-result]

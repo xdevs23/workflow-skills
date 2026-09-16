@@ -20,6 +20,11 @@ Rules:
   its limitations and its seat-specific fields (verdicts, authorizations, ruleSources,
   candidates). An unchecked coverage entry, a limitation or a necessary decision recorded there
   must not disappear. Record such a limitation as an unresolved issue.
+- Check authority mappings against the YAML item id and its cited sources: the words must
+  authorize the claim. An inverse-spec authorizations entry names the authorizing item id in
+  authority or explicitly reports that no item does. The tool's { ordinal, id } list assigns
+  criterion items integer ordinals in file order; args.criteriaCount comes from its count of
+  criterion items. Preserve those integer criterion ordinals when checking verdicts.
 - Independently check the supplied current snapshot with `git rev-parse --verify HEAD^{commit}`
   and `git status --porcelain=v1 --untracked-files=all`. Return the observed snapshotSha and
   clean status, with the quoted output of both commands in git as head and status; never echo

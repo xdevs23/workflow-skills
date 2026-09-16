@@ -70,7 +70,42 @@ The concern reviewers return verdicts *per criterion*; the additional seats reta
 criteria, "review" degrades to vibes, each seat invents its own bar, and nothing the fixer
 receives can be triaged against anything. No criteria, no launch.
 
-### Pre-phase — cold spec review (2 unbriefed seats, BEFORE any implementation)
+### Unit spec — YAML with per-item sources
+
+The root authors `.cache/specs/<unit>.yaml`, ignored and untracked because it quotes the user.
+Read that YAML spec from disk in full at each spec-consuming stage. When a settled design arrives
+as prose, the root writes the YAML before launching. `tools/check-spec.ts` defines the validation
+contract; `tests/fixtures/spec-provenance/valid.yaml` is its exercised format example.
+
+Each item states one requirement or decision with an id, kind, content and one of four sources:
+`transcript` cites session records and verbatim user_words; `rule` cites a file, line and quote;
+`observation` records command, exit, output and date; `derivation` names parent item ids. An item
+asserting that a condition, failure mode or risk exists needs source transcript or observation.
+A seat's hypothetical hazard stays a finding until an observation establishes the condition here.
+A derivation mandating a mechanism names in content the simpler alternative it rules out; its
+parents include the transcript item asking for it or the observation showing the simpler route
+failing. The provenance seat judges these claims against the cited words and observed facts.
+
+The tracked design document under `docs/` is generated from the YAML with private quotations and
+evidence references omitted. Author the YAML once and regenerate the document after every amendment:
+
+```sh
+bun tools/check-spec.ts .cache/specs/<unit>.yaml --transcripts <session-dir> --render docs/<unit>.md --json
+```
+
+The root runs the tool before the spec pre-phase and again before the main run's implement stage.
+A failing spec launches neither run. For the pre-implement check, use `--check-render docs/<unit>.md`
+instead of `--render`: the tool fails if the generated document differs from the one in the tree,
+leaving that file intact. Resolve the mismatch by regenerating before launching.
+
+Use the tool's `counts.kind.criterion` for `args.criteriaCount`, rather than a hand count. Its
+ordered `criteria` list of `{ ordinal, id }` assigns integer ordinals from one in YAML file order;
+verdicts keep that integer in `criterion`. Authority mappings name the item id: an inverse-spec
+entry's authority names the authorizing id or explicitly reports that no item does. The tool proves
+references resolve; the provenance seat judges authorization before code, and spec compliance,
+inverse-spec and finding verification judge it after code.
+
+### Pre-phase — two cold spec seats and provenance, BEFORE any implementation
 
 Since a settled spec is already the precondition for launching, review the SPEC before reviewing
 the code. Two seats, from **DIFFERENT model families**, each given only *"review the spec at
@@ -117,15 +152,21 @@ findable:
 
 Discovered here they cost an edit; discovered in phase 4 they cost the run.
 
+A third seat, **spec-provenance** (`agents/spec-provenance.md`), receives the YAML spec, transcript
+directory, private record and base commit. Item by item it judges authorization, asserted conditions
+and mandated mechanisms. It re-runs each read-only observation command and reports output or exit
+mismatches and observations older than the base commit. Its findings advise the root alongside
+the two cold seats, whose inputs remain the spec and hygiene floor.
+
 Their output is **advisory to the orchestrator**, who triages it against the recorded rulings and
-amends the spec. Amend the SPEC DOC — never patch the finding into a prompt, or the spec and the
-prompts immediately disagree.
+amends the YAML spec, then regenerates the tracked document. Amend the YAML — never patch the
+finding into a prompt, or the spec and the prompts immediately disagree.
 
 **Run the pre-phase as its OWN short run, and let it end there.** A running script cannot pause
 while a person edits a document, so a pre-phase bolted onto the front of the main script launches
 the implementer against the *unamended* spec and the whole yield is advisory to nobody. Two runs:
-one that returns the two cold seats, then the triage-and-amend, then the main workflow against the
-amended doc — which the seats below read from disk (law 9), so no prompt needs rewriting.
+one that returns the two cold seats and provenance, then triage-and-amend, then the main workflow
+against the amended YAML — which the seats below read from disk (law 9), so no prompt needs rewriting.
 
 **Spec discipline: trivial work gets no spec, and *having* a spec is exactly what makes the two cold
 seats worth it.** Do not manufacture a spec to justify the seats, and do not skip the seats when a
@@ -531,9 +572,9 @@ running the checks yourself. Never report a fix as verified on the fixer's claim
 
 A confirmed must-fix or CRITICAL item, an unfixed approval, a failed proof, and an open decision
 once the user has decided it are fixed in a follow-up implement-review-verify workflow. The root
-writes its spec like any unit spec: one numbered acceptance criterion per item with its receipts,
-the settled decision for a decided item, the previous run's snapshot as the base, and the count of
-those criteria as `criteriaCount`. The cold spec review and every other stage apply unchanged.
+writes its YAML spec like any unit spec: one criterion item per confirmed defect with its sources,
+the settled decision for a decided item, the previous run's snapshot as the base, and the tool's
+count of criterion items as `criteriaCount`. The cold spec review and every other stage apply unchanged.
 Every follow-up uses new prompts and a new run ID.
 
 **Two relocations mean the cause is untouched.** When the work record shows the same defect moved
@@ -660,12 +701,14 @@ proof. Apply improvements within authorized scope and report any broader follow-
 ### Size report and the 20:1 acceptance gate
 
 Measure the final candidate against its unit spec before integration, using immutable inputs:
-record the merge-base SHA, candidate SHA, spec path and spec blob ID. Read the spec at that
-candidate, not a moving working file. For bundle/patch delivery the comparison base is the
-project's declared reconstruction base; do not silently substitute a convenient newer base.
+record the merge-base SHA, candidate SHA, generated document path and its blob ID. Read the
+tracked generated document at that candidate, not a moving working file. For bundle/patch delivery
+the comparison base is the project's declared reconstruction base; do not silently substitute a
+convenient newer base.
 
-- **Spec lines:** count non-blank lines in the unit spec. This is a line count, not a Markdown
-  interpretation; include its technical content, not a private conversation record.
+- **Spec lines:** count non-blank lines in the tracked generated document at the candidate commit.
+  This is the denominator of the code-to-spec ratio; the private YAML holds quoted words and its
+  line count belongs only to the tool summary.
 - **Code added/deleted:** sum the added and deleted line counts from
   `git diff --no-ext-diff --no-textconv --no-renames --numstat BASE_SHA CANDIDATE_SHA --`
   over implementation files. Use added lines as the numerator, never net added-minus-deleted.
@@ -1016,13 +1059,14 @@ reviewed text, versioned in one place, changed once. What does not carry across 
 previous run. Reuse the shapes, retype the unit.
 
 The spec review is its own tiny run and it ENDS at the return. A script cannot pause while a person
-edits a document, so the orchestrator triages this output, amends the spec doc, and only then
-launches the main run — which reads the amended doc from disk with no prompt rewritten (law 9).
+edits a document, so the orchestrator triages this output, amends the YAML and regenerates the
+tracked document, then launches the main run after the tool passes again. Seats read the amended
+YAML from disk with no prompt rewritten (law 9).
 
 ```js
 export const meta = {
   name: 'spec-cold-review',
-  description: 'two unbriefed seats read the spec before any code exists',
+  description: 'two cold seats and provenance review the spec before code exists',
   phases: [{ title: 'Spec review' }],
 }
 
@@ -1082,20 +1126,33 @@ const SOUNDNESS = { type: 'object', required: ['limitations', 'satisfiable', 'co
       properties: { requirements: { type: 'array', minItems: 2, items: { type: 'string' } }, why: { type: 'string' } } } },
     criteria: { type: 'array', items: { type: 'object', required: ['criterion', 'checkable', 'why'], additionalProperties: false,
       properties: { criterion: { type: 'integer', minimum: 1 }, checkable: { type: 'boolean' }, why: { type: 'string' } } } } } }
-// The same args.criteriaCount as the main run: the count of numbered acceptance criteria.
+const PROVENANCE = { type: 'object', required: ['limitations', 'coverage', 'findings', 'checks'], additionalProperties: false,
+  properties: { limitations: LIMITATIONS,
+    coverage: { type: 'array', items: { type: 'object', required: ['what', 'checked', 'how'], additionalProperties: false,
+      properties: { what: { type: 'string' }, checked: { type: 'boolean' }, how: { type: 'string' } } } },
+    findings: { type: 'array', items: { type: 'object', required: ['file', 'claim', 'severity', 'lane', 'receipts'], additionalProperties: false,
+      properties: { file: { type: 'string' }, claim: { type: 'string' },
+        severity: { enum: ['must-fix', 'should-fix', 'nit'] }, lane: { enum: ['orchestrator-only'] }, receipts: RECEIPTS } } },
+    checks: { type: 'array', items: { type: 'object', required: ['command', 'passed', 'output', 'truncated'], additionalProperties: false,
+      properties: { command: { type: 'string' }, passed: { type: 'boolean' },
+        output: { type: 'string', maxLength: 6000 }, truncated: { type: 'boolean' } } } } } }
+// The same args.criteriaCount as the main run, from the tool's counts.kind.criterion.
 const criteriaCount = args.criteriaCount
 if (!Number.isInteger(criteriaCount) || criteriaCount < 1) {
   throw new Error('args.criteriaCount must be an integer of at least 1: the count of numbered acceptance criteria in the spec')
 }
+if (!/^(?:[0-9a-f]{40}|[0-9a-f]{64})$/.test(args.baseSha || '')) {
+  throw new Error('A full immutable baseSha is required for observation dates')
+}
 phase('Spec review')
 return await Promise.all([
-  stage([HOUSE, PROBE, 'Review the spec at docs/<the-spec>.md. You get no other briefing, by design.'].join('\n\n'),
+  stage([HOUSE, PROBE, 'Review the spec at .cache/specs/<unit>.yaml. You get no other briefing, by design.'].join('\n\n'),
     { label: 'spec:gaps', phase: 'Spec review', agentType: 'gap-finder', model: '<explicit>', effort: 'high', schema: GAPS },
     r => {
       if (!r.categories.length) throw new Error('categories is empty')
       for (const gap of r.gaps) if (!gap.receipts?.length) throw new Error('gap without a receipt: ' + gap.what)
     }),
-  stage([HOUSE, PROBE, 'Review the spec at docs/<the-spec>.md: are its requirements mutually satisfiable, and is every acceptance criterion checkable as written?'].join('\n\n'),
+  stage([HOUSE, PROBE, 'Review the spec at .cache/specs/<unit>.yaml: are its requirements mutually satisfiable, and is every acceptance criterion checkable as written?'].join('\n\n'),
     { label: 'spec:soundness', phase: 'Spec review', model: '<explicit, other family>', effort: 'high', schema: SOUNDNESS },
     r => {
       const got = r.criteria.map(c => c.criterion).sort((a, b) => a - b)
@@ -1103,6 +1160,19 @@ return await Promise.all([
       if (JSON.stringify(got) !== JSON.stringify(want)) {
         throw new Error('expected exactly one criteria entry per criterion 1..' + criteriaCount +
           ' (args.criteriaCount), got criteria ' + JSON.stringify(got))
+      }
+    }),
+  stage([HOUSE, 'Read the current on-disk spec at .cache/specs/<unit>.yaml in full.',
+    'TRANSCRIPTS: <session-dir>. PRIVATE DIRECTIVES: <ignored untracked record path>.',
+    'BASE COMMIT: ' + args.baseSha,
+    'Judge each item and re-run read-only observations as your template requires; return advisory findings.',
+  ].join('\n\n'),
+    { label: 'spec:provenance', phase: 'Spec review', agentType: 'spec-provenance', model: '<explicit>', effort: 'high', schema: PROVENANCE },
+    r => {
+      if (!r.coverage.length) throw new Error('coverage is empty')
+      for (const f of r.findings) if (!f.receipts?.length) throw new Error('finding without a receipt: ' + f.claim)
+      for (const c of r.coverage) {
+        if (!c.checked && !r.limitations.length) throw new Error('unchecked provenance coverage without a limitation: ' + c.what)
       }
     }),
 ])
@@ -1185,7 +1255,7 @@ const WRITE_GIT = [
 // exists to kill. Private directives also ride as a PATH (law 7), never as inline conversation
 // in a commit-bound script. Orchestrator-only additions are labelled for scrutiny (law 8).
 const SPEC = [
-  'SPEC (authority): docs/<the-spec>.md — read the current on-disk revision in full.',
+  'SPEC (authority): .cache/specs/<unit>.yaml — read the current on-disk revision in full.',
   'PRIVATE DIRECTIVES: <ignored untracked record path>. Read privately; never copy messages into tracked files.',
   'ORCHESTRATOR SCOPING (this added scope loses to the spec on conflict; the spec itself never',
   'outranks a directive, including one the orchestrator later amended it to match): ...',
@@ -1368,9 +1438,9 @@ async function stage(prompt, opts, complete = () => {}) {
   throw new Error('FAIL-FAST: ' + (opts.label || 'agent') + ' returned no complete result after 3 attempts: ' + failure)
 }
 
-// The root supplies the clean isolated worktree's starting commit as an immutable ID, and the count
-// of numbered items under the spec's acceptance-criteria heading at the revision it launches (law 9
-// keeps that revision fixed for the run).
+// The root supplies the clean isolated worktree's starting commit as an immutable ID, and
+// args.criteriaCount from the check tool's counts.kind.criterion. Law 9 keeps the YAML fixed
+// for the run; the tool assigns criterion ordinals in file order.
 const SHA = /^(?:[0-9a-f]{40}|[0-9a-f]{64})$/
 const baseSha = args.baseSha
 if (!SHA.test(baseSha || '')) throw new Error('A full immutable baseSha is required')
@@ -1378,7 +1448,7 @@ const criteriaCount = args.criteriaCount
 if (!Number.isInteger(criteriaCount) || criteriaCount < 1) {
   throw new Error('args.criteriaCount must be an integer of at least 1: the count of numbered acceptance criteria in the spec')
 }
-const CRITERIA = 'ACCEPTANCE CRITERIA: numbered in the spec. Read them there; return a verdict PER criterion in verdicts, each with a receipt.'
+const CRITERIA = 'ACCEPTANCE CRITERIA: criterion items in YAML file order, assigned integer ordinals from one by the tool. Read them there; return a verdict PER criterion in verdicts, each with a receipt.'
 const checkWriterSnapshot = (result, startSha) => {
   if (result.startSha !== startSha || !SHA.test(result.snapshotSha || '') || result.clean !== true) {
     throw new Error('Writer did not return a clean immutable snapshot from the expected start SHA')
@@ -1725,8 +1795,8 @@ cross-field contracts, and the helper returns at once an object whose `abort.tri
 with a non-empty `abort.reason` (law 10). A null result or a failed check retries the SAME agent up
 to three times, each retry stating plainly HOW the previous attempt failed; the third miss throws
 with the last failure named, so a stale input such as `args.criteriaCount` is visible as the cause.
-`args.criteriaCount` is a required integer of at least 1: the root counts the numbered items under
-the spec's acceptance-criteria heading at the revision it launches, fixed for the run by law 9.
+`args.criteriaCount` is a required integer of at least 1, taken from the tool's count of criterion
+items at the YAML revision the root launches, fixed for the run by law 9.
 
 The completeness checks, by stage kind:
 - **every briefed stage**: `abort.reason` non-empty when the trigger is not `none`;
@@ -1744,7 +1814,8 @@ The completeness checks, by stage kind:
 - **finding verifier**: the source-coverage and decision guards, the quoted `git.head`
   equals its `snapshotSha`, and one `writerScope` entry per implementer commit;
 - **pre-phase seats**: `categories` non-empty and every gap with a receipt; `criteria` with
-  exactly one entry per criterion from 1 to `args.criteriaCount`.
+  exactly one entry per criterion from 1 to `args.criteriaCount`; provenance with non-empty
+  coverage, receipts on findings and a limitation for each unchecked entry.
 
 A `blocks` limitation on any accepted stage ends the run after that stage: the script records a
 `blocking-limitation` item with its stage label and exits with `root-resolution`.
@@ -1922,7 +1993,7 @@ Every NAMED role this skill spawns has a fixed prompt template in `agents/` — 
 `agents/reviewer-spec-compliance.md`, `agents/duplicate-checker.md`, `agents/roaster.md`,
 `agents/cold-alternatives.md`, `agents/quality.md`, `agents/reviewer-inverse-spec.md`,
 `agents/project-rule-reader.md`, `agents/finding-verifier.md`, `agents/fixer.md`, plus
-`agents/gap-finder.md` for the cold spec-review
+`agents/gap-finder.md` and `agents/spec-provenance.md` for the spec-review
 pre-phase. That file's body is the agent's **authoritative
 rules** and is used **VERBATIM** as the start of its prompt — invoke the agent via
 `agentType:'<role>'`. The string you pass to `agent()` is **ONLY the task-specific context

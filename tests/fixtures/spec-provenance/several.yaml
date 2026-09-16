@@ -1,0 +1,24 @@
+unit: invalid-example
+items:
+  - id: first
+    kind: criterion
+    content: Preserve row order.
+    source: derivation
+    parents:
+      - missing
+  - id: second
+    kind: unknown
+    content: ""
+    source: observation
+    observation:
+      command: printf ok
+      exit: 0
+      output: ok
+      date: 2026-09-16
+    extra: true
+  - id: third
+    kind: criterion
+    content: Preserve row order.
+    source: observation
+    observation:
+      command: printf ok

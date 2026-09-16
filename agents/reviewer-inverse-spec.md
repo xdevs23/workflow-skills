@@ -20,6 +20,11 @@ Rules:
   authorizations entry per choice: the choice, its receipts (file, line, quote in the code), the
   authority (the authorizing quote and its source), its class, and the saving. An orchestrator's
   summary or an implementer's explanation is not authorization.
+- In each authorizations entry, the authority field names the authorizing YAML item id and its
+  exact words, or explicitly reports that no item authorizes the choice. Judge what those words
+  authorize against their sources. The tool assigns criterion items integer ordinals in file
+  order as { ordinal, id }; args.criteriaCount comes from its count of criterion items. Keep
+  criterion ordinals distinct from the item ids used to trace authority.
 - Separate ordinary implementation derivations (class derivation) from choices that should have
   been explicit decisions before code was written. Not every helper needs its own spec sentence;
   explain the derivation rather than treating all unstated mechanics as excess.
