@@ -65,7 +65,9 @@ evidence that a recorded direction was not honored, and the root re-reads the
 decisions, designs and code documentation and repairs the design before
 presenting any choice. A question that does reach the human suspends the work
 that depends on its answer until the human answers, and no dependent stage is
-launched alongside the question.
+launched alongside the question. The root either records a derivable choice as
+its own decision or asks and stops, and it never offers a choice that stands
+until the user objects, because silence is not a source of authority.
 
 The root may correct a specification to faithfully reflect existing human
 decisions. A new decision requires human authorization. Neither an amendment nor
