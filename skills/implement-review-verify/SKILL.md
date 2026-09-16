@@ -542,6 +542,25 @@ presented as a decision request. Every entry the run returns in `inverseSpecDeci
 treatment: the root either corrects the spec to state the existing decision faithfully or, after
 this check, asks the human about the part that is genuinely unsettled.
 
+**A question is evidence of drift.** Most decisions that reach the human are there because a
+direction already given was not honored, in letter or in spirit, and the shape that resulted is
+then presented as a product choice whose options do not match what was asked for. That is why
+such a question reads as incomprehensible to the person who gave the direction: when a direction
+is honored the design comes out clean and no question arises. So when a stage returns a
+needs-decision, a root-action or an open-decision item, the root elevates one layer before
+relaying anything: re-read the recorded decisions, the design documents and the documentation of
+the code itself, and check whether the answer is already stated there. Where a recorded direction
+was broken, repair the design; asking which broken shape is preferred launders the break into an
+approval. Only a choice that genuinely cannot be derived from what is already decided reaches the
+human.
+
+**Asking means waiting.** A question the root does present stops the work that rests on its
+answer. The root never launches a stage, a fix pass or a follow-up run in the same turn as the
+question that work would answer: pairing them makes the question decorative, because what it
+asked about has already happened by the time an answer can arrive. Either the root is confident
+enough to proceed without asking, or it waits. Work that does not depend on the answer continues
+meanwhile.
+
 This is a root PROMPT obligation, not a script gate. An executable test can confirm the
 instruction above is wired into the root's prompt and that `remaining`, `inverseSpecDecisions`
 and `projectBenefitDecisions` reach the root intact and unretired;
