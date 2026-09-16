@@ -60,7 +60,12 @@ drop the finding. An edited spec is not sufficient closure: enforcement continue
 against the original directives and context. The fixer retains inverse-spec origin
 and critical status on received corrections even if an earlier stage downgraded
 them; an absent source finding remains visible to the root rather than becoming
-an unauthorized direct fix.
+an unauthorized direct fix. A question that needs the human is first treated as
+evidence that a recorded direction was not honored, and the root re-reads the
+decisions, designs and code documentation and repairs the design before
+presenting any choice. A question that does reach the human suspends the work
+that depends on its answer until the human answers, and no dependent stage is
+launched alongside the question.
 
 The root may correct a specification to faithfully reflect existing human
 decisions. A new decision requires human authorization. Neither an amendment nor
