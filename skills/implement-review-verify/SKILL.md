@@ -791,7 +791,7 @@ Non-negotiable across every run of this skill.
    permission. Technical specs record decisions and constraints, not conversational appendices.
 8. **AUTHORITY ARCHITECTURE — state the hierarchy in authority-aware prompts.** Quality and
    cold spec reviewers receive only their hygiene/diff inputs; cold alternatives gets invariants,
-   not the shared authority briefing. For other seats the three tiers are: **owner/user verbatim directives > the spec > this prompt**, with the prompt
+   not the shared authority briefing. For other seats the three tiers are: **user verbatim directives > the spec > this prompt**, with the prompt
    explicitly labelled **UNTRUSTED** relative to both, and *"a prompt-vs-spec conflict is itself a
    must-fix finding"*. **The AUTHORITY DOCUMENTS are the top two tiers only — the directives and the
    spec. The prompt is not one**, which is what makes a prompt-vs-spec conflict an ordinary finding
