@@ -561,6 +561,13 @@ asked about has already happened by the time an answer can arrive. Either the ro
 enough to proceed without asking, or it waits. Work that does not depend on the answer continues
 meanwhile.
 
+**Decide or ask, and never both.** A decision offered with an escape hatch, standing until the user
+objects, is worse than a decision the root simply takes, even when the root takes it wrongly. A
+wrong call stated plainly can be interrupted and reversed. A choice offered while the work is
+already moving cannot be exercised at all, and it records the user as having approved what the root
+chose. So the root either owns the call, says plainly that it is its own, and proceeds, or it asks
+and stops. It never dresses its own call as the user's.
+
 This is a root PROMPT obligation, not a script gate. An executable test can confirm the
 instruction above is wired into the root's prompt and that `remaining`, `inverseSpecDecisions`
 and `projectBenefitDecisions` reach the root intact and unretired;
