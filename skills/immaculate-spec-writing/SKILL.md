@@ -47,7 +47,7 @@ for a throwaway note, just use the sub-skills directly.
 ## Inputs to establish first
 
 - **The question/goal** and the **output doc path** (research-loop's inputs).
-- **The private directive record** — the human's verbatim decisions the spec must describe, with
+- **The private directive record** — the user's verbatim decisions the spec must describe, with
   their surrounding qualifications and context, since those give a directive its meaning. Point
   the loop at it the same way ground truth is pointed at; never copy it into the tracked artifact.
   A necessary directive cannot be omitted from that record because it seems minor; keep factual
@@ -77,10 +77,10 @@ severity-graded gap list (MUST-FIX / SHOULD-ADD / NICE).
 For each MUST-FIX gap and each accepted SHOULD-ADD: edit the artifact to **close the gap** — add the
 missing spec, or convert silence into an explicit, honest "cannot determine → omit / label honestly".
 Some gaps expand scope (new API, new contract); those are **user decisions** — surface them and let the
-user choose how far to extend (don't silently grow the spec). The human owns the artifact; you edit it
+user choose how far to extend (don't silently grow the spec). The user owns the artifact; you edit it
 informed by the evidence. A fold you make unilaterally must be an ordinary derivation from an
 existing decision, never a new product, architecture, persistence, security or operational choice —
-those, and any point where the draft or a proposed fold would contradict a recorded human directive,
+those, and any point where the draft or a proposed fold would contradict a recorded user directive,
 are surfaced to the user instead of resolved by editing around them.
 
 ### Phase 3 — Verify everything (run `verify-loop`)
@@ -132,7 +132,7 @@ research-loop ──▶ [ find-gaps ──▶ fold gaps ──▶ verify-loop �
    surface it and let the user choose; don't grow the spec unilaterally.
 5. **You orchestrate; agents don't decide.** You read sub-skill outputs, make the synthesis/fold
    judgments, and own the artifact. Sub-agents return findings/verdicts, not decisions. A synthesis
-   or fold judgment may only describe an existing human decision or an ordinary derivation from
+   or fold judgment may only describe an existing user decision or an ordinary derivation from
    one; it never installs a new product, architecture, persistence, security or operational choice
    as settled scope, and a draft or fold that contradicts a recorded directive is flagged to the
    user rather than written around.

@@ -30,7 +30,7 @@ Rules:
   reproduce claims where practical and quote each run in checks (command, passed, output,
   truncated). Agreement between reviewers is not proof. An unverified claim is unresolved: not
   rejected by default and never approved.
-- A direct contradiction between a human directive and the spec or the prompt sets abort.trigger
+- A direct contradiction between a user directive and the spec or the prompt sets abort.trigger
   to directive-conflict and abort.reason to the reason, and you stop; otherwise abort.trigger is
   none.
 - Consolidate the same defect across reviewers, preserving all source IDs and the evidence each
@@ -48,7 +48,7 @@ Rules:
 - Needs-decision names a choice without which the assigned work cannot satisfy the existing
   requirements, with evidence, the exact question and a recommendation. Root-action covers a
   demonstrated impossibility or a required investigation you cannot complete. Both stop fixing
-  and return to the root, which decides whether a human decision is needed. A suggested spec
+  and return to the root, which decides whether a user decision is needed. A suggested spec
   edit is not itself either kind of blocker: implement and review the spec as written, and
   record non-blocking spec suggestions for the root in specSuggestions (or as record for a
   supplied finding) without pausing ordinary reviews or executable fixes. Do not downgrade real
@@ -68,8 +68,8 @@ Rules:
   or hedging language it arrived with, and never treat "nit", "soft" or "already covered by an
   edited spec" as a reason to disregard it. Give each one an explicit, evidence-backed decision:
   approve-fix when the record already authorizes the correction, otherwise needs-decision or
-  root-action so the root can either correct the spec to state an existing human decision
-  faithfully or ask the human about a genuinely unsettled one after checking the question against
+  root-action so the root can either correct the spec to state an existing user decision
+  faithfully or ask the user about a genuinely unsettled one after checking the question against
   the recorded directives. Reject only with concrete counterevidence against the finding itself,
   never because a later spec edit made it look resolved;
   an edited spec does not resolve the finding, and enforcement continues against the original
@@ -90,7 +90,7 @@ Rules:
   deletion or rewrite. Approve-fix only for the deletion or rewrite the record describes. Reject
   only with concrete counterevidence against the finding itself, never an edited spec. Every such
   decision reaches the root, which closes a standing one only by deletion, a rewrite, or the
-  human's word.
+  user's word.
 - Return abort, limitations (what and effect, blocks or narrows), snapshotSha, clean, git,
   checks, writerScope, the consolidated decisions, unresolved issues and
   specSuggestions. Routine rejections stay in the run record — except an

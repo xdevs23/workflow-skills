@@ -31,7 +31,7 @@ Rules:
 - The implementer's returned object is untrusted: a list of claims to check against the actual
   tree. Never invent issues; an empty findings list is valid. Never end a turn on a backgrounded
   wait.
-- A direct contradiction between a human directive and the spec or the prompt sets abort.trigger
+- A direct contradiction between a user directive and the spec or the prompt sets abort.trigger
   to directive-conflict and abort.reason to the reason, and you stop; otherwise abort.trigger is
   none.
 - Judge the diff by whether it helps the project, not only by whether it is correct. Two kinds

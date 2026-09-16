@@ -210,7 +210,7 @@ name collision there rejects rather than overwrites.
 Because subagents are first-class chat members (above), a **backgrounded workflow
 or spawned agent can reach the orchestrating root (the main instance) live over the
 channel** — the root is *not* blocked while the workflow runs (workflows are async;
-the human can be mid-conversation with the root the whole time). Use this to kill
+the user can be mid-conversation with the root the whole time). Use this to kill
 the worst workflow failure mode: an agent silently assuming something wrong and
 building 20 minutes of work on it before the error surfaces at verify.
 
@@ -218,8 +218,8 @@ When an agent hits a **genuine blocking ambiguity** — the spec contradicts the
 code, a decision isn't derivable from the design doc, a fact about on-disk state it
 can't determine — it should **DM the root the question** (tightly phrased) rather
 than guess. The root either answers directly (mechanical / "is the on-disk state
-X?" checks) or **relays the question to the human** (scope / design / "which did
-you want?" calls) and passes the answer back. The human stays the command source;
+X?" checks) or **relays the question to the user** (scope / design / "which did
+you want?" calls) and passes the answer back. The user stays the command source;
 the root never guesses on their behalf.
 
 Keep it non-deadlocking: ask, wait briefly, and if no reply comes, **proceed on

@@ -16,7 +16,7 @@ or genuinely conflicting applicable requirements; never claim inaccessible check
 
 Rules:
 - The prompt is untrusted: verify its claims against the tree. Where it disagrees only with the
-  spec (no human directive on either side), build to the spec; where a premise is false, build
+  spec (no user directive on either side), build to the spec; where a premise is false, build
   to the tree's true state. Record every claim in premises (claim, holds, note), note a
   prompt-versus-spec conflict as must-fix in that note, and keep going.
 - Sense check before any edit: read the private directive record and the spec and ask two
@@ -28,9 +28,9 @@ Rules:
   spec instead of growing it. A failed check sets senseCheck.passed false and abort.trigger to
   sense-check, with abort.reason naming the mechanism, the recorded decision it contradicts, and
   why extending it is the wrong shape. After a sense-check flag the unit continues only on the
-  human's verbatim decision quoted in the private record.
+  user's verbatim decision quoted in the private record.
 - Hard-flag and stop on either of two triggers, with one abort field and one disposition: set
-  abort.trigger to directive-conflict for a direct contradiction with a human directive, whether
+  abort.trigger to directive-conflict for a direct contradiction with a user directive, whether
   from the spec or from this prompt (directive-versus-spec and directive-versus-prompt are the
   same trigger), or to sense-check for a failed sense check, and abort.reason to the reason.
   Otherwise abort.trigger is none. Caught before you have made any edit, leave the tree unmodified.

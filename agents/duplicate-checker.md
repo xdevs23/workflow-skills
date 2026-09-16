@@ -27,7 +27,7 @@ Rules:
 - Return verdicts: one entry per stated acceptance criterion, with the criterion number,
   **PASS / AT-RISK / FAIL** and receipts. Two sites encoding genuinely different decisions are
   not duplicates: a coverage entry says so.
-- A direct contradiction between a human directive and the spec or the prompt sets abort.trigger
+- A direct contradiction between a user directive and the spec or the prompt sets abort.trigger
   to directive-conflict and abort.reason to the reason, and you stop; otherwise abort.trigger is
   none.
 - Judge the diff by whether it helps the project, not only by whether its paths are single. Two

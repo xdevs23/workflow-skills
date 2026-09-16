@@ -12,7 +12,7 @@ catalog — and nothing brandful, nothing product-named, lives in the skill itse
 the same machine writes for a different product.
 
 Run it as a `Workflow()`: one intent phase, a fan-out of writers (one per item), a mechanical gate,
-parallel verification seats, and a human who ships.
+parallel verification seats, and a user who ships.
 
 ## When to use it
 
@@ -105,7 +105,7 @@ headline: the outcome, the reader's question, a customer quote, the mechanism, a
 distinct means a different construction, not the same sentence reworded.
 
 **A person ships one.** The hero and the headline are a human-judgment zone: the model supplies
-candidates, the human picks. This is not a bottleneck to optimize away — variant generation is cheap
+candidates, the user picks. This is not a bottleneck to optimize away — variant generation is cheap
 and picking is exactly the part a model cannot ground.
 
 ## Multilingual (only if the product ships more than one locale)
@@ -148,10 +148,10 @@ Four stages, in this order: a tool, two agents, a person.
    Models audit far better than they compose. It names each sentence's source line, lists every
    sentence lacking a subject and a finite verb, and counts the tell markers. It audits; it never
    rewrites.
-4. **A human reads the load-bearing strings before ship.** Non-negotiable, and cheap: it is a handful
+4. **A user reads the load-bearing strings before ship.** Non-negotiable, and cheap: it is a handful
    of sentences.
 
-Alongside stages 2 and 3 — inside Verify, and always **before** the human — runs the **completeness
+Alongside stages 2 and 3 — inside Verify, and always **before** the user — runs the **completeness
 pass**: "which item is missing entirely?" Per-item checks structurally cannot see an absent item, and
 absences are the worst defect class to ship, so the question gets asked once, explicitly, of the
 whole work-list.
@@ -167,7 +167,7 @@ runs in the mechanical gate.
 
 ## The shape
 
-Five phases: **Intent → Write → Gate → Verify → Human.**
+Five phases: **Intent → Write → Gate → Verify → User.**
 
 - **Intent** — the catalog above is written or ruled before any writer starts. No catalog, no launch:
   without goal-level intents the writers each invent their own bar and the critic has nothing to check
@@ -176,10 +176,10 @@ Five phases: **Intent → Write → Gate → Verify → Human.**
   sections or N locales is a batch grind: quality degrades at the tail and absences hide inside a
   plausible-looking report. Each writer gets the writing system verbatim, its ONE intent, the voice
   inputs and the SOURCE block.
-- **Gate** — mechanical, recomputed from the files, run before a human's attention is spent.
+- **Gate** — mechanical, recomputed from the files, run before a user's attention is spent.
 - **Verify** — `copy-source-verify` and `copy-critic` in parallel (they share no state), plus the
   completeness pass.
-- **Human** — picks the variants for load-bearing strings and reads them in place.
+- **User** — picks the variants for load-bearing strings and reads them in place.
 
 ## Laws
 
@@ -191,7 +191,7 @@ Five phases: **Intent → Write → Gate → Verify → Human.**
 4. **Gates recompute from artifacts.** A self-report is never evidence.
 5. **Explicit model AND effort on every seat, never inherited** — and never the smallest model on the
    source-verify seat.
-6. **The human ships the load-bearing strings.** The model supplies structurally distinct variants.
+6. **The user ships the load-bearing strings.** The model supplies structurally distinct variants.
 
 ## Agent prompt templates (verbatim base, append-only)
 

@@ -43,7 +43,7 @@ every claim in it. (verify-loop's defect-research step may invoke this skill.)
    your own conclusion into the doc. Don't outsource the judgment to one agent. Your synthesized
    conclusion may establish facts and ordinary derivations from them; it cannot settle a product,
    architecture, persistence, security or operational choice, and it cannot override a recorded
-   human directive. A finding that contradicts one is reported to the user, not folded into the
+   user directive. A finding that contradicts one is reported to the user, not folded into the
    doc as a resolved conclusion.
 4. **The doc is checked against raw results, verbatim.** The review loop passes each raw result
    verbatim to its paired reviewer — the doc is validated against the actual evidence, not a summary.

@@ -44,7 +44,7 @@ ONLY — it never implements; implementation requires a separate explicit go fro
    IMPRECISE (a defect), not immaculate.
 6. **Explicit models on every agent.** sonnet floor for verify/research; opus for the hardest
    reasoning/synthesis. NEVER haiku. Never rely on an inherited/default model.
-7. **Read-only.** Verifiers and researchers do not edit or implement. The human (or you, with
+7. **Read-only.** Verifiers and researchers do not edit or implement. The user (or you, with
    approval) edits the source-of-truth artifact based on researched evidence.
 8. **Loop to convergence.** Keep cycling verify → research → fix → re-verify until one FULL
    independent pass is unanimously immaculate with zero hedges. Do not declare done early.
@@ -103,10 +103,10 @@ truthful resolution is often "omit / label honestly", not "assume".
 ### 4. Fix the artifact (you, with the user's approval for the source of truth)
 Edit the target artifact to match proven reality — correct the citation/signature, replace a hedge
 with an exact fact, or convert an unprovable claim into an explicit "cannot determine → omit". The
-human owns the source-of-truth artifact; make edits informed by researcher evidence, and surface
+user owns the source-of-truth artifact; make edits informed by researcher evidence, and surface
 substantive changes to the user. A factual correction is a fix; a defect that would require
 inventing or changing a product, architecture, persistence, security or operational decision, or
-that contradicts a recorded human directive, is not something this loop resolves by editing —
+that contradicts a recorded user directive, is not something this loop resolves by editing —
 report it to the user instead of picking a resolution.
 
 ### 5. Re-verify (full pass, not a spot-check)
