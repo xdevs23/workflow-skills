@@ -907,7 +907,27 @@ Non-negotiable across every run of this skill.
 
 The phase shape only holds up if the script is written to hold it up. These are the mechanics.
 
-### Skeleton — the spec-review pre-run
+### Every unit's script is written from scratch
+
+Write the script for THIS unit from the skeletons below. Never copy a previous unit's script and
+edit it, and never generalize one that already ran into a runner several units share.
+
+A script is not neutral plumbing: most of it is prompt text, and every line of that text is
+authority to the stage that receives it. A copied script carries the previous unit's authority —
+an assertion about a record that does not exist here, a boundary that belonged to another spec, a
+validator rule tuned to what a different writer happened to return. Those lines read as true to
+the stage that gets them, and no seat reviews them, because the script is the one artifact that
+never appears in a diff. Copying is how a false premise outlives the unit it was written for.
+
+Observed three times, each caught by a WRITING seat refusing to proceed, never by a reviewer:
+a runner asserted a supersession entry the unit's record did not contain; a runner told every
+authority-bearing seat the check command while the same prompt forbade reviewers from running it;
+a validator rule rejected an implementer for honestly reporting the iterations that failed before
+its final passing run. All three arrived by inheritance from a script written for something else.
+
+What carries across units is this document's skeletons and the template constants they name —
+reviewed text, versioned in one place, changed once. What does not carry across is a file from a
+previous run. Reuse the shapes, retype the unit.
 
 Its own tiny run, and it ENDS at the return. A script cannot pause while a person edits a document,
 so the orchestrator triages this output, amends the spec doc, and only then launches the main run —
