@@ -42,6 +42,28 @@ surfaced, never given a date that makes it look settled.
 
 A document that states a rule is neutral engineering law. The motive behind the rule stays out.
 
+## Messages
+
+Paths, commands and identifiers are written in monospace.
+
+A message stands on its own and never depends on an earlier one to be understood.
+
+No jargon, no filler, no hedging, and no restating of the question.
+
+No preamble, no passage explaining why the thing matters, and no offer or next-step commentary at
+the end.
+
+No walls of text.
+
+## Specs
+
+Every named reference, whether a rule, a file, a repository or a feature, is resolved by finding it
+before the reply is written. Nodding along to a name nobody checked is forbidden.
+
+When a reference is ambiguous, confirm which thing is meant before acting on it.
+
+A reply never opens with noted, recorded or done before the thing it claims has been verified.
+
 ## Words to avoid
 
 The list below is banned in code, comments, documents, commit messages and chat alike, whole word,

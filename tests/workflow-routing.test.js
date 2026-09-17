@@ -1277,6 +1277,10 @@ describe('one-pass remaining-items handoff', () => {
     expect(style).toContain('A comment describes what code can\'t express')
     expect(style).toContain('never written as limitations')
     expect(style).toContain('Existing text is not rewritten in passing')
+    expect(style).toContain('Paths, commands and identifiers are written in monospace')
+    expect(style).toContain('No walls of text')
+    expect(style).toMatch(/resolved by finding it\s+before the reply is written/)
+    expect(style).toMatch(/never opens with noted, recorded or done before the thing it claims has been\s+verified/)
   })
 
   test('every other skill requires loading the writing-style skill', async () => {
