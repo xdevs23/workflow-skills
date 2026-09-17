@@ -55,15 +55,6 @@ the end.
 
 No walls of text.
 
-## Specs
-
-Every named reference, whether a rule, a file, a repository or a feature, is resolved by finding it
-before the reply is written. Nodding along to a name nobody checked is forbidden.
-
-When a reference is ambiguous, confirm which thing is meant before acting on it.
-
-A reply never opens with noted, recorded or done before the thing it claims has been verified.
-
 ## Words to avoid
 
 The list below is banned in code, comments, documents, commit messages and chat alike, whole word,

@@ -557,6 +557,12 @@ was broken, repair the design; asking which broken shape is preferred launders t
 approval. Only a choice that genuinely cannot be derived from what is already decided reaches the
 user.
 
+**Resolve every name before you answer.** A rule, a file, a repository, a feature: each is found
+and read before the reply that relies on it is written, and agreement with a name nobody looked up
+is forbidden. An ambiguous reference is confirmed before anything acts on it, because the wrong
+referent produces work that is internally consistent and answers the wrong question. No reply opens
+with noted, recorded or done before the thing it claims has been verified.
+
 **Asking means waiting.** A question the root does present stops the work that rests on its
 answer. The root never launches a stage, a fix pass or a follow-up run in the same turn as the
 question that work would answer: pairing them makes the question decorative, because what it
