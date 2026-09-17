@@ -64,8 +64,9 @@ proposition: spend tokens now to not lose sessions later.
 
 ## The gap categories (sweep all that apply)
 
-These are the recurring shapes of omission. Give finders these as a checklist; "I checked category X
-and found no gaps" is a valid, valuable result — say it explicitly.
+Omissions recur in a small number of shapes, and the ones below are those shapes. Give finders them
+as a checklist; "I checked category X and found no gaps" is a valid, valuable result — say it
+explicitly.
 
 1. **Enumeration completeness.** Does a claimed-complete set actually cover every case? Every type in
    the enum, every subclass, every branch, every state? Find the member the enumeration silently

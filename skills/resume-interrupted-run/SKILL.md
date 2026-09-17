@@ -39,7 +39,8 @@ rescuing.
 
 ### 1. Locate the run transcript directory
 
-Its path is returned at launch, under the session's `subagents/workflows/<runId>/`. It holds
+The run transcript directory's path is returned at launch, under the session's
+`subagents/workflows/<runId>/`. It holds
 `journal.jsonl` (the cached results — one result line per completed agent) plus, per spawned agent,
 an `agent-<id>.jsonl` transcript and a matching `agent-<id>.meta.json`. The meta file carries the agent
 type, the model and a spawn depth. Read the journal first: it is the evidence of which seats completed,
@@ -152,7 +153,7 @@ contract as any other seat.
 
 ## Boundary — this is NOT the poisoned-result case
 
-Two different failures, two different fixes:
+An interrupted run and a poisoned result are two different failures with two different fixes:
 
 - **Interrupted** (this skill): no cached result exists, so the prompt may be edited freely and the
   edit costs nothing. The fix is a resume note.

@@ -30,7 +30,7 @@ line; it just gets one writer and the critic instead of a full phase.
 
 ## The two-layer contract
 
-Two documents, and keeping them separate is the whole discipline.
+The contract is two documents, and keeping them separate is the whole discipline.
 
 ### Intent catalog — per increment, the WHAT
 
@@ -50,8 +50,9 @@ someone writing from the goal. State the communicative goal; let the writer cons
 
 ### Writing system — global, the HOW
 
-One document, phrased **positively with a pass/fail check on every rule**. Prohibition-framed rules
-("don't be salesy") fail: the model needs the replacement named, not the vice.
+The writing system is one document, phrased **positively with a pass/fail check on every rule**.
+Prohibition-framed rules ("don't be salesy") fail: the model needs the replacement named, not the
+vice.
 
 **Page layer.** One page, one action. The headline names the **reader's outcome**, and passes the
 competitor-swap test — if a competitor could paste it unchanged, it says nothing. Every claim carries
@@ -84,7 +85,8 @@ where a sentence *wraps*, never where it *ends*.
 
 ## Voice and tone are INPUTS, never hardcoded
 
-Three inputs, supplied per project, carried verbatim in every copy prompt:
+Voice and tone arrive as three inputs, supplied per project and carried verbatim in every copy
+prompt:
 
 1. **A register sentence naming speaker and situation** — "a knowledgeable friend explaining this
    across a table" — never texture adjectives. Speaker + situation is checkable; "warm but
