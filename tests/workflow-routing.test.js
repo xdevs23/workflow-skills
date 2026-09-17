@@ -1265,4 +1265,38 @@ describe('one-pass remaining-items handoff', () => {
       expect(text).toContain(phrase.replace('run’s', "run's"))
     }
   })
+
+  test('the writing-style skill exists and states its scope, word list and patterns', async () => {
+    const style = await Bun.file(new URL('../skills/writing-style/SKILL.md', import.meta.url)).text()
+    expect(style).toContain('name: writing-style')
+    expect(style).toMatch(/bind code, comments, documents, commit messages, and every piece of text a person\s+reads/)
+    for (const word of ['seat', 'lane', 'gate', 'landed', 'cold', 'load-bearing', 'guard', 'pin', 'owner']) {
+      expect(style).toContain(word)
+    }
+    expect(style).toContain('Announcement preambles')
+    expect(style).toContain('A comment describes what code can\'t express')
+    expect(style).toContain('never written as limitations')
+    expect(style).toContain('Existing text is not rewritten in passing')
+  })
+
+  test('every other skill requires loading the writing-style skill', async () => {
+    const dir = new URL('../skills/', import.meta.url)
+    const names = ['audit-loop', 'copywriting', 'find-gaps', 'immaculate-spec-writing',
+      'implement-review-verify', 'research-loop', 'resume-interrupted-run', 'verify-loop']
+    for (const name of names) {
+      const text = await Bun.file(new URL(`${name}/SKILL.md`, dir)).text()
+      expect(text).toContain('Load the `writing-style` skill first.')
+      expect(text).toContain('not optional when working with this plugin')
+    }
+  })
+
+  test('both stage constants and every writing template require the writing-style skill', async () => {
+    const required = 'REQUIRED: load the writing-style skill and follow it in every comment, document, commit message and returned string.'
+    expect(skill.split(required).length - 1).toBe(2)
+    const dir = new URL('../agents/', import.meta.url)
+    for (const name of ['implementer', 'fixer', 'record', 'copywriter']) {
+      const text = await Bun.file(new URL(`${name}.md`, dir)).text()
+      expect(text).toMatch(/Load the writing-style skill before you write/)
+    }
+  })
 })

@@ -5,6 +5,9 @@ description: Implements code changes involving shared infrastructure or subtle i
 
 # Implement → Review → Verify → Fix — a workflow for code changes
 
+**Load the `writing-style` skill first.** It binds every comment, document, commit message and
+reply this skill produces, and it is not optional when working with this plugin.
+
 A reusable, project-agnostic shape for landing a non-trivial CODE change with confidence. It is
 the code-implementation counterpart to the document-oriented loops (`verify-loop`, `find-gaps`,
 `research-loop`): those prove a spec; this *builds* against a settled design and adversarially
@@ -951,6 +954,7 @@ const STAGE = [
   'Do not launch workflows or subagents, directly or through skills or shell commands.',
   'The enclosing workflow owns scheduling and remaining checks; those checks have NOT already passed.',
   'Load required skills for instructions when available; apply only your assigned stage, not orchestration.',
+  'REQUIRED: load the writing-style skill and follow it in every comment, document, commit message and returned string.',
   'The caller must supply required stage instructions you cannot load, within your input boundaries.',
   'Missing orchestration tools alone do not block an otherwise executable stage or create an authority conflict.',
   'Report genuinely missing assignment capabilities/instructions, authorization or conflicting applicable requirements.',
@@ -1037,6 +1041,7 @@ const STAGE = [
   'Do not launch workflows or subagents, directly or through skills or shell commands.',
   'The enclosing workflow owns scheduling and remaining checks; those checks have NOT already passed.',
   'Load required skills for instructions when available; apply only your assigned stage, not orchestration.',
+  'REQUIRED: load the writing-style skill and follow it in every comment, document, commit message and returned string.',
   'The caller must supply required stage instructions you cannot load, within your input boundaries.',
   'Missing orchestration tools alone do not block an otherwise executable stage or create an authority conflict.',
   'Report genuinely missing assignment capabilities/instructions, authorization or conflicting applicable requirements.',

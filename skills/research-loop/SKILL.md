@@ -5,6 +5,9 @@ description: Researches an open question in depth, such as how a system works or
 
 # Research Loop — triangulate, synthesize, review-loop to a trustworthy doc
 
+**Load the `writing-style` skill first.** It binds every comment, document, commit message and
+reply this skill produces, and it is not optional when working with this plugin.
+
 A reusable, project-agnostic workflow for answering an OPEN research question (not proving a known
 claim — that's verify-loop) with high certainty. It fights three failure modes at once:
 **framing bias** (Angle 1 runs context-free so researchers aren't steered toward expected answers),

@@ -5,6 +5,9 @@ description: Checks every factual claim in an existing document or set of claims
 
 # Verify Loop — prove every claim, loop until immaculate
 
+**Load the `writing-style` skill first.** It binds every comment, document, commit message and
+reply this skill produces, and it is not optional when working with this plugin.
+
 A reusable, project-agnostic loop that drives a target artifact (a design doc, spec, plan, or any
 set of factual claims) to **100% verified-true with evidence**. The standard is zero-tolerance:
 nothing "acceptable", no hedging, no load-bearing-only shortcuts — **every claim, every byte** is
