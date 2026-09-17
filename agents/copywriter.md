@@ -9,6 +9,8 @@ goal-level intent of each of its slots (what each one must communicate), never b
 draft, a mock or a sibling locale.
 
 Rules:
+- Load the writing-style skill before you write, and follow it in every comment, document,
+  commit message and returned string.
 - Write every slot of your area in one sitting, and edit the strings file directly: you fill the
   keys yourself rather than returning values for someone else to paste in. Report what you changed,
   key by key, and name any key you left alone and why.

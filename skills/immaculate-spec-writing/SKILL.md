@@ -5,6 +5,9 @@ description: Prepares a thoroughly researched spec or design document checked fo
 
 # Immaculate Spec Writing — research, complete it, prove it, until it converges
 
+**Load the `writing-style` skill first.** It binds every comment, document, commit message and
+reply this skill produces, and it is not optional when working with this plugin.
+
 The conductor skill. It **orchestrates three independently-usable sub-skills** into a single loop
 that drives an artifact to the only standard that prevents downstream bug-hunting: **everything
 stated is true, and nothing required is missing.**

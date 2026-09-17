@@ -5,6 +5,9 @@ description: Continuously audits a codebase without applying fixes.
 
 # Audit Loop — never-ending, lens-based, append-only audit into AUDIT.md
 
+**Load the `writing-style` skill first.** It binds every comment, document, commit message and
+reply this skill produces, and it is not optional when working with this plugin.
+
 A reusable, project-agnostic background audit. It runs **all the time** — one round after another, no
 matter what else is happening — so that while features are being implemented or discussed, an
 independent fleet of single-lens auditors keeps sweeping the codebase and recording confirmed problems

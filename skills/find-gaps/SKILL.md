@@ -5,6 +5,9 @@ description: Checks a spec, design or plan for missing requirements, overlooked 
 
 # Find Gaps — the sins-of-omission audit
 
+**Load the `writing-style` skill first.** It binds every comment, document, commit message and
+reply this skill produces, and it is not optional when working with this plugin.
+
 A reusable, project-agnostic completeness audit. It answers a question that claim-verification
 *cannot*: **what should be in this artifact but isn't?** verify-loop proves every claim that is
 *present* is true; it is blind to a claim that *should* be there and is absent. Those are orthogonal
