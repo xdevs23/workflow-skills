@@ -11,8 +11,8 @@ Everything project-specific enters as **INPUTS** — a facts/source doc, a voice
 catalog — and nothing brandful, nothing product-named, lives in the skill itself. Swap the inputs and
 the same machine writes for a different product.
 
-Run it as a `Workflow()`: one intent phase, a fan-out of writers (one per item), a mechanical gate,
-parallel verification seats, and a user who ships.
+Run it as a `Workflow()`: one intent phase, a fan-out of writers (one per area per locale), a
+mechanical gate, parallel verification seats, and a user who ships.
 
 ## When to use it
 
@@ -174,10 +174,11 @@ Five phases: **Intent → Write → Gate → Verify → User.**
 - **Intent** — the catalog above is written or ruled before any writer starts. No catalog, no launch:
   without goal-level intents the writers each invent their own bar and the critic has nothing to check
   against.
-- **Write** — a fan-out of `agentType:'copywriter'`, **one item per agent**. One agent writing N
-  sections or N locales is a batch grind: quality degrades at the tail and absences hide inside a
-  plausible-looking report. Each writer gets the writing system verbatim, its ONE intent, the voice
-  inputs and the SOURCE block.
+- **Write** — a fan-out of `agentType:'copywriter'`, **one writer per area per locale**. An area is a
+  page, a screen or a flow, or the whole strings file when the file is small. The writer edits the
+  i18n strings file directly, fills every slot of its area in one sitting, and returns what it
+  changed. Each writer gets the writing system verbatim, its area's intents, the voice inputs and the
+  SOURCE block.
 - **Gate** — mechanical, recomputed from the files, run before a user's attention is spent.
 - **Verify** — `copy-source-verify` and `copy-critic` in parallel (they share no state), plus the
   completeness pass.
@@ -187,8 +188,9 @@ Five phases: **Intent → Write → Gate → Verify → User.**
 
 1. **Copy first; implementation consumes finished strings.** No placeholder prose ever lands in the
    tree.
-2. **One item per agent.** Never a batch grind, and always an end-of-run completeness pass over the
-   work-list.
+2. **One writer per area, never one per string.** An area's slots are one piece of writing, so one
+   writer fills them all and edits the strings file itself. Never a batch grind across unrelated
+   areas or across locales, and always an end-of-run completeness pass over the work-list.
 3. **Every claim traces to a SOURCE line, named.** No source line, no claim.
 4. **Gates recompute from artifacts.** A self-report is never evidence.
 5. **Explicit model AND effort on every seat, never inherited** — and never the smallest model on the
@@ -217,9 +219,14 @@ The most valuable section in the skill. Each of these was tried and produced wor
 - **Texture adjectives in prompts** ("punchy", "snappy", "bold"). They directly produce the fragment
   rhythm they were meant to prevent, because the model has no grounded referent for them. Specify the
   sentence construction instead.
-- **One-shot batch grinds** (one agent writing N locales or N sections). Quality degrades at the tail
-  and absences hide. Decompose per item and add a completeness pass, because per-item checks
-  structurally cannot see a missing item.
+- **One-shot batch grinds** (one agent writing N locales, or N unrelated areas of the product).
+  Quality degrades at the tail and absences hide. Decompose per area and per locale, and add a
+  completeness pass, because per-slot checks structurally cannot see a missing slot.
+- **One agent per string, returning a value a script then copies into the file.** A whole writer's
+  context is spent on a five-word label, dozens of times over. Worse than the cost, the slots of one
+  screen stop agreeing with each other, because nothing ever wrote them together: they repeat the
+  same noun, or answer a question the neighbouring slot already answered. The area is the unit, and
+  the writer edits the strings file itself.
 - **Intents that carry the draft's imagery.** The writer then translates the draft instead of writing
   from the goal. Intents state the communicative goal only.
 - **Storing uppercase strings.** Casing is presentation: store regular case and uppercase in CSS,
