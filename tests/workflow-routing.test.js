@@ -245,6 +245,8 @@ describe('workflow verification and consolidation', () => {
 
   test('the workflow skill wires a root question-premise check ahead of any decision request', () => {
     expect(skill).toContain('### Root question-premise check')
+    expect(skill).toMatch(/is found\s+and read before the reply that relies on it is written/)
+    expect(skill).toContain('No reply opens')
     expect(skill).toContain('checks its premises first')
     expect(skill).toContain('inverseSpecDecisions')
     expect(skill).toContain('it cannot prove a future model actually performed the')
@@ -1279,8 +1281,6 @@ describe('one-pass remaining-items handoff', () => {
     expect(style).toContain('Existing text is not rewritten in passing')
     expect(style).toContain('Paths, commands and identifiers are written in monospace')
     expect(style).toContain('No walls of text')
-    expect(style).toMatch(/resolved by finding it\s+before the reply is written/)
-    expect(style).toMatch(/never opens with noted, recorded or done before the thing it claims has been\s+verified/)
   })
 
   test('every other skill requires loading the writing-style skill', async () => {
