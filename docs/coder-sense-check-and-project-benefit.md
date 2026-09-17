@@ -2,7 +2,8 @@
 
 ## Required result
 
-Two additions to the implement-review-verify workflow, its agent templates and its tests.
+The unit makes two additions to the implement-review-verify workflow, its agent templates and its
+tests.
 This document builds on [directive authority](directive-authority.md) and
 [finding verification](workflow-finding-verification.md).
 

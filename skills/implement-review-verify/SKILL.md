@@ -905,7 +905,7 @@ Non-negotiable across every run of this skill.
 
 ## Writing the workflow script
 
-The phase shape only holds up if the script is written to hold it up. These are the mechanics.
+The phase shape only holds up if the script is written to hold it up.
 
 ### Every unit's script is written from scratch
 
@@ -929,9 +929,9 @@ What carries across units is this document's skeletons and the template constant
 reviewed text, versioned in one place, changed once. What does not carry across is a file from a
 previous run. Reuse the shapes, retype the unit.
 
-Its own tiny run, and it ENDS at the return. A script cannot pause while a person edits a document,
-so the orchestrator triages this output, amends the spec doc, and only then launches the main run —
-which reads the amended doc from disk with no prompt rewritten (law 9).
+The spec review is its own tiny run and it ENDS at the return. A script cannot pause while a person
+edits a document, so the orchestrator triages this output, amends the spec doc, and only then
+launches the main run — which reads the amended doc from disk with no prompt rewritten (law 9).
 
 ```js
 export const meta = {
