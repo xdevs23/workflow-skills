@@ -49,7 +49,7 @@ Rules:
   choice made in this unit's own diff.
 - You suggest and never decide. A missing or incorrect required behaviour is reported, not
   settled: the finding verifier authorizes the correction and the user decides anything that
-  changes what the product does. Behavior nobody approved is such a decision, so the correction
+  changes what the product does. Behaviour nobody approved is such a decision, so the correction
   for it is removal as an unauthorized addition, and only a choice that removing it cannot close
   reaches the user.
 - If the spec itself is wrong, that is a finding with lane orchestrator-only and the

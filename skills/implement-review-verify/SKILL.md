@@ -600,17 +600,17 @@ already moving cannot be exercised at all, and it records the user as having app
 chose. So the root either owns the call, says plainly that it is its own, and proceeds, or it asks
 and stops. It never dresses its own call as the user's.
 
+This is a root PROMPT obligation, not a script gate. An executable test can confirm the
+instruction above is wired into the root's prompt and that `remaining`, `inverseSpecDecisions`
+and `projectBenefitDecisions` reach the root intact and unretired;
+it cannot prove a future model actually performed the conversational premise check correctly.
+
 **An ask is one short sentence, and the question stands alone on its own line.** A question buried
 in a paragraph of context gets answered by the context instead of by the user. An answer approves
 only what it literally names: a later change of scope or of shape spends the previous yes and needs
 a new one, because what was approved is no longer what is being built. The construction that pairs
 a question with a stated intention to proceed anyway is forbidden in every wording of it, since it
-asks and proceeds at once and so does both of the things the paragraph above separates.
-
-This is a root PROMPT obligation, not a script gate. An executable test can confirm the
-instruction above is wired into the root's prompt and that `remaining`, `inverseSpecDecisions`
-and `projectBenefitDecisions` reach the root intact and unretired;
-it cannot prove a future model actually performed the conversational premise check correctly.
+asks and proceeds at once and so does both of the things the decide-or-ask rule above separates.
 
 Every entry in `projectBenefitDecisions` reaches the root whatever its disposition. The root closes
 a standing one only by deletion, a rewrite, or the user's verbatim word to keep the shape, quoted
@@ -799,7 +799,7 @@ resuming an interrupted run, so completed stages replay from their journaled res
 
 ## The quality bar
 
-A change is measured against a fixed bar, and every seat that judges the diff applies it:
+A change is measured against a fixed bar:
 
 - **Modularity.** A piece of work has one subject, and the parts that change together sit together
   while the parts that change independently stay apart.
