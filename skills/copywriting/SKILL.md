@@ -131,20 +131,14 @@ rendered string with no error anywhere. Ban them unescaped and grep for them in 
 **key parity**: exact key-set equality across locales, because a missing key renders a raw keypath to a
 visitor.
 
-**An empty value is a key's declared starting state, not a leak.** The source-language leak check
-treats a value identical to the source language's as suspect, and an unfilled key is identical
-across every locale by construction, since laws 1 and 2 create it empty. So the check reads
-identical empty values across locales as the expected state and reports them as unwritten copy for
-the copy pass, never as a suspected leak. A locale carrying source-language text in a key another
-locale filled natively is still the leak the check exists to find.
-
 ## Verification — what makes this a workflow
 
 Four stages, in this order: a tool, two agents, a person.
 
 1. **Mechanical gate — a committed ONE-COMMAND TOOL, not a seat.** It RECOMPUTES everything from the
    files: key parity across locales, slot budgets, syntax law, the forbidden-literals grep, and a
-   source-language leak check (a value identical to the pivot's is suspect). Commit it as a script
+   source-language leak check (a value identical to the pivot's is suspect unless it is empty, an
+   empty value being the declared starting state a key is created in). Commit it as a script
    and put the exact invocation in every prompt, because several seats hand-rolling the same checks
    is cost with a disagreement risk attached. It has no prompt template because it has no judgment to
    template. **It never trusts a writer's self-report** — a self-report is only a truncation and

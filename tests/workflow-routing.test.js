@@ -1308,10 +1308,28 @@ describe('one-pass remaining-items handoff', () => {
 // Headings in document order, so a rule required to sit immediately before another is checked by position.
 const headings = text => [...text.matchAll(/^#{2,4} .+$/gm)].map(match => match[0])
 const readSkill = name => Bun.file(new URL(`../skills/${name}/SKILL.md`, import.meta.url)).text()
+// One section's own text: from its heading to the next heading of the same or higher level, so a
+// rule that moves to another section stops satisfying the criterion that names this one.
+const sectionText = (text, heading) => {
+  const start = text.indexOf(`\n${heading}\n`)
+  if (start < 0) throw new Error(`Missing heading: ${heading}`)
+  const body = text.slice(start + heading.length + 2)
+  const next = body.search(new RegExp(`^#{1,${heading.match(/^#+/)[0].length}} `, 'm'))
+  return flat(next < 0 ? body : body.slice(0, next))
+}
+// One numbered law's own item, from its number to the next one.
+const lawText = (text, number) => {
+  const laws = sectionText(text, '## Laws')
+  const start = laws.indexOf(`${number}. **`)
+  if (start < 0) throw new Error(`Missing law: ${number}`)
+  const body = laws.slice(start)
+  const next = body.indexOf(`${number + 1}. **`)
+  return next < 0 ? body : body.slice(0, next)
+}
 
 describe('work execution rules', () => {
   test('the root question-premise section screens a finding before it reaches the user', () => {
-    const text = flat(skill)
+    const text = sectionText(skill, '### Root question-premise check')
     expect(text).toContain('**The root is the judge and acts on its own conclusion.**')
     expect(text).toContain('a claim, not an instruction and not a question to relay')
     expect(text).toContain('fixes it or rejects it with a stated reason')
@@ -1320,7 +1338,7 @@ describe('work execution rules', () => {
   })
 
   test('the review phase states that a seat proposes, the verifier authorizes and the user decides', () => {
-    const text = flat(skill)
+    const text = sectionText(skill, '### Phase 2 — Review (N agents, parallel VERDICT seats, split BY CONCERN)')
     expect(text).toContain('**A reviewer suggests and never decides.**')
     expect(text).toContain('the user decides anything that changes what the product does')
     expect(text).toContain('Behavior nobody approved is such a decision')
@@ -1348,7 +1366,7 @@ describe('work execution rules', () => {
   })
 
   test('the remaining-items section refuses a third relocation and keeps one amended work record entry', () => {
-    const text = flat(skill)
+    const text = sectionText(skill, '### Remaining items and follow-up work')
     expect(text).toContain('**Two relocations mean the cause is untouched.**')
     expect(text).toContain('the third change fixes the cause instead of moving it a third time')
     expect(text).toContain('a third relocation is refused with the cause reported to the user')
@@ -1356,7 +1374,7 @@ describe('work execution rules', () => {
   })
 
   test('law 12 requires an observation before a claim about an external system', () => {
-    const text = flat(skill)
+    const text = lawText(skill, 12)
     expect(text).toContain('**No claim about an external system without an observation of it.**')
     expect(text).toContain('requires an observation of that system misbehaving, quoted')
     expect(text).toContain('never evidence of which component caused it')
@@ -1364,7 +1382,7 @@ describe('work execution rules', () => {
   })
 
   test('the decide-or-ask material states the ask shape, literal approval and the forbidden construction', () => {
-    const text = flat(skill)
+    const text = sectionText(skill, '### Root question-premise check')
     expect(text).toContain('**An ask is one short sentence, and the question stands alone on its own line.**')
     expect(text).toContain('An answer approves only what it literally names')
     expect(text).toContain('spends the previous yes and needs a new one')
@@ -1405,17 +1423,19 @@ describe('work execution rules', () => {
   })
 
   test('the copywriting laws create an i18n key empty and forbid placeholder text in it', async () => {
-    const text = flat(await readSkill('copywriting'))
+    const text = sectionText(await readSkill('copywriting'), '## Laws')
     expect(text).toContain('**A key starts empty.**')
     expect(text).toContain('created with an empty value and the copy pass fills it')
     expect(text).toContain('Placeholder text inside a key is forbidden')
   })
 
-  test('the multilingual section reads identical empty values as the expected starting state', async () => {
-    const text = flat(await readSkill('copywriting'))
-    expect(text).toContain("**An empty value is a key's declared starting state, not a leak.**")
-    expect(text).toContain('identical empty values across locales as the expected state')
-    expect(text).toContain('never as a suspected leak')
+  test('the mechanical-gate item defines the leak check once and exempts an empty value', async () => {
+    const copywriting = await readSkill('copywriting')
+    const text = sectionText(copywriting, '## Verification — what makes this a workflow')
+    expect(text).toContain("identical to the pivot's is suspect unless it is empty")
+    expect(text).toContain('the declared starting state a key is created in')
+    const definitions = [...flat(copywriting).matchAll(/source-language leak check/g)]
+    expect(definitions).toHaveLength(1)
   })
 
   test('the design record states the rules and is linked from both sections that carry them', async () => {
