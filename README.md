@@ -46,6 +46,11 @@ or one question that is not alone on the last line of the reply.
 - The reply has already streamed when the hook runs. The hook holds only the end of the turn, for
   at most its 20 second timeout.
 - A blocked reply stays visible and is followed by a rewrite.
+- On a block, the main model receives the text "Stop hook feedback:", then the whole judge prompt
+  in square brackets, then the judge's reason. The main model reads the judge prompt on every
+  block.
+- On a block, the interface shows a notice that a stop hook error occurred, although nothing
+  failed. The platform presents every blocking stop hook that way.
 - A plugin hook cannot be switched off alone. Disabling the plugin turns the hook off.
 - The upstream hooks reference does not document what happens when the judge fails or times out.
 
