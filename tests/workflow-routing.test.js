@@ -194,6 +194,14 @@ describe('workflow verification and consolidation', () => {
     expect(inverseTemplate).toContain('Report every finding here as CRITICAL')
   })
 
+  test('the inverse-spec template searches the diff for the word deliberate and maps each place to an authorizations entry', async () => {
+    const directory = new URL('../agents/', import.meta.url)
+    const inverseTemplate = await Bun.file(new URL('reviewer-inverse-spec.md', directory)).text()
+    expect(inverseTemplate).toContain('Search the diff for the word deliberate in every form')
+    expect(inverseTemplate).toMatch(/in comments first,\s+then in code and in documents/)
+    expect(inverseTemplate).toMatch(/Treat the choice like any other in the diff: an authorizations\s+entry that maps it to the\s+exact authorizing words, or a finding when no such words exist/)
+  })
+
   test('the spec-writing and research/verify loop skills wire in the directive veto', async () => {
     const dir = new URL('../skills/', import.meta.url)
     const specWriting = await Bun.file(new URL('immaculate-spec-writing/SKILL.md', dir)).text()
