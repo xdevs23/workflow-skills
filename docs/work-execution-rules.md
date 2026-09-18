@@ -67,9 +67,11 @@ is a judgment a reader applies, so each one is prose in the file whose reader ap
     in a key is forbidden because it reads as finished copy. It lives in the laws section of the
     copywriting skill, beside the law that copy comes first.
 12. **The check tolerates an empty key.** An empty value is the declared starting state of a key,
-    so the source-language leak check treats identical empty values across locales as the expected
-    state instead of a suspected leak. It lives in the multilingual section of the copywriting
-    skill and builds nothing new: it states how the existing check reads the state rule 11 creates.
+    so a value identical across locales is a suspected leak unless it is empty. It lives in the
+    parenthesis that defines the source-language leak check, inside the mechanical-gate item of the
+    copywriting skill's verification section, because that parenthesis is the check's only
+    definition and this rule qualifies it. It builds nothing new and prescribes no new output: it
+    states how the existing check reads the state rule 11 creates.
 
 ## Decisions
 
@@ -124,7 +126,8 @@ destinations, the contradiction is reported instead of resolved by rewriting unr
 9. The correctness, cleanliness, spec-compliance and inverse-spec templates each state rule 2.
 10. The spec-writing skill's inputs state the five checks of rule 10.
 11. The copywriting skill's laws state rule 11.
-12. The copywriting skill's multilingual section states rule 12.
+12. The copywriting skill's mechanical-gate item states rule 12, and no other passage in that
+    skill restates the leak check's definition.
 13. This document states the twelve rules, their placement and the rejected alternatives, carries
     no verbatim user words, and is linked from the quality bar section and the in-flight
     subsection.
