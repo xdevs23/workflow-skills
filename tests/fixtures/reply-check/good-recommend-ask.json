@@ -1,0 +1,9 @@
+{
+ "expect": true,
+ "input": {
+  "session_id": "s",
+  "hook_event_name": "Stop",
+  "stop_hook_active": false,
+  "last_assistant_message": "Three fixes are possible. I recommend doing all three: tighten the schema, add the missing index, and drop the legacy endpoint. The index is the only one that pays off without a migration. It costs one slow deploy.\n\nShould the legacy endpoint go in this release, or the next one?\n"
+ }
+}

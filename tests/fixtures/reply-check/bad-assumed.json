@@ -1,0 +1,9 @@
+{
+ "expect": false,
+ "input": {
+  "session_id": "s",
+  "hook_event_name": "Stop",
+  "stop_hook_active": false,
+  "last_assistant_message": "Done. I assumed you want the v2 API and built against that, so correct me if that's wrong. 41 tests pass.\n"
+ }
+}
