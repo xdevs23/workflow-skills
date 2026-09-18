@@ -80,7 +80,9 @@ The Git integration test creates scoped commits in a disposable repository under
 `.cache/` and verifies pinned reads while HEAD changes. The reply check test asserts the shape
 of the hook file and its fixtures. None of these tests makes model calls or launches workflows.
 The live runner sends every reply check fixture to the judge model, one call per fixture, and
-exits non-zero on a mismatch. `bun test` does not match it:
+exits non-zero on a wrong verdict or a failed call. A line that starts with FORMAT means the
+verdict was right and the judge's reason did not begin with the rewrite instruction. The runner
+counts those lines and they do not fail the run. `bun test` does not match it:
 
 ```sh
 bun tests/live/reply-check.live.js

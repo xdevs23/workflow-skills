@@ -72,6 +72,27 @@ The platform presents every blocking stop hook that way.
 The delivery of the judge prompt to the main model and the error notice were both observed in a
 session with the plugin loaded.
 
+Observed over three full runs of the live runner and two repeated runs of the defective fixtures:
+the judge's `ok` value equalled the expected value every time. Under the runner's invocation, about
+one blocking answer in twenty carried a short label in `reason` where the prompt asks for the
+rewrite instruction. While the runner counted such an answer as a mismatch, a full run failed about
+one time in two although no verdict was wrong.
+
+Observed in seven sessions with the plugin loaded: every block carried a well-formed instruction.
+
+Observed in one session where the judge was made to return only a label: the main model still
+produced the correct rewrite, because the platform hands it the judge prompt together with the
+reason.
+
+Observed in twelve sessions with the shipped prompt: the judge blocked each defective reply once
+and passed each rewrite. It also passed six clean replies in sessions whose earlier messages quoted
+defective sentences.
+
+Observed in two sessions with a modified test prompt, and unexplained: the judge blocked a clean
+rewrite and quoted a sentence that occurred only in the previous reply. The hook input of that pass
+was captured and held only the clean rewrite. Where the judge got the sentence is not known. The
+hooks reference does not say whether a prompt hook is given earlier conversation.
+
 ## Tests
 
 The fixtures are JSON files, one case each, holding a `Stop` hook input and the `ok` value a
@@ -86,9 +107,11 @@ The live runner makes one model call per fixture. It reads the prompt and the mo
 file, fills in the fixture's input, and calls the `claude` command in print mode with tools off,
 all hooks disabled so that an installed copy of this hook does not judge the judge, and a response
 schema. It reads the answer from the structured output of the command's JSON result. A fixture
-passes when `ok` equals the expected value, `impossible` is not true, and a false `ok` comes with a
-`reason` that begins with "Rewrite your last reply.". The runner exits non-zero on any mismatch or
-call failure. `bun test` does not match the runner.
+fails when `ok` differs from the expected value, when `impossible` is true, or when the call fails.
+A false `ok` with the right verdict whose `reason` does not begin with "Rewrite your last reply."
+is printed with the word FORMAT in place of PASS and does not fail the run. After the count of
+passed fixtures the runner prints how many reasons were malformed. The runner exits non-zero only
+on a failure. `bun test` does not match the runner.
 
 A later check is added through the live runner: write fixtures for it, change the prompt, run the
 runner.
