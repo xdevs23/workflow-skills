@@ -302,6 +302,14 @@ claim to the tree. Concern reviewers suggest **WHO CAN CLOSE IT** using their ex
 actionability lanes; the verifier validates those suggestions before dispositioning, and checks
 every limitation and unchecked coverage entry.
 
+**A reviewer suggests and never decides.** A review seat proposes, the finding verifier authorizes,
+and the user decides anything that changes what the product does. Behavior nobody approved is such
+a decision, whoever proposed it and however small it looks. One of two existing paths closes it:
+behavior added without authority is removed as an unauthorized addition, which the inverse-spec
+template already prescribes, and only a choice that removing the behavior cannot close reaches the
+user at all. The correctness, cleanliness, spec-compliance and inverse-spec templates carry the
+same rule in their own words.
+
 Every seat object goes to the finding verifier. A lane or severity assigned
 by a reviewer does not authorize a fix; only the verifier's checked, consolidated approval does.
 
@@ -528,6 +536,12 @@ the settled decision for a decided item, the previous run's snapshot as the base
 those criteria as `criteriaCount`. The cold spec review and every other stage apply unchanged.
 Every follow-up uses new prompts and a new run ID.
 
+**Two relocations mean the cause is untouched.** When the work record shows the same defect moved
+twice, the third change fixes the cause instead of moving it a third time, and a third relocation
+is refused with the cause reported to the user. The count lives in the work record entry for that
+defect, which is amended as the same entry each time the defect reappears, never duplicated, since
+a duplicated entry hides the second move behind a fresh-looking first one.
+
 Record a disproved item with its counterevidence; a nit or record stays recorded. Each follow-up
 starts from the previous pass's list. Findings raised by its review become new entries.
 
@@ -557,6 +571,15 @@ was broken, repair the design; asking which broken shape is preferred launders t
 approval. Only a choice that genuinely cannot be derived from what is already decided reaches the
 user.
 
+**The root is the judge and acts on its own conclusion.** A finding from a reviewer or a critic is
+a claim, not an instruction and not a question to relay. The root verifies the claim against the
+tree and the recorded words, then fixes it or rejects it with a stated reason, and never hands the
+claim itself to the user as a decision request. Anything headed for the user passes one screen
+first: is this item in fact a rule violation or an architecture problem that another read of the
+recorded words would close? An item the screen closes is decided by the root there and then. The
+boundary above is unchanged by the screen: a choice the recorded words settle is never asked, and a
+choice the record genuinely leaves open still reaches the user once the screen has passed it.
+
 **Resolve every name before you answer.** A rule, a file, a repository, a feature: each is found
 and read before the reply that relies on it is written, and agreement with a name nobody looked up
 is forbidden. An ambiguous reference is confirmed before anything acts on it, because the wrong
@@ -577,6 +600,13 @@ already moving cannot be exercised at all, and it records the user as having app
 chose. So the root either owns the call, says plainly that it is its own, and proceeds, or it asks
 and stops. It never dresses its own call as the user's.
 
+**An ask is one short sentence, and the question stands alone on its own line.** A question buried
+in a paragraph of context gets answered by the context instead of by the user. An answer approves
+only what it literally names: a later change of scope or of shape spends the previous yes and needs
+a new one, because what was approved is no longer what is being built. The construction that pairs
+a question with a stated intention to proceed anyway is forbidden in every wording of it, since it
+asks and proceeds at once and so does both of the things the paragraph above separates.
+
 This is a root PROMPT obligation, not a script gate. An executable test can confirm the
 instruction above is wired into the root's prompt and that `remaining`, `inverseSpecDecisions`
 and `projectBenefitDecisions` reach the root intact and unretired;
@@ -587,6 +617,23 @@ a standing one only by deletion, a rewrite, or the user's verbatim word to keep 
 in the private record; a patch that keeps the flagged mechanism leaves the decision open. A decision the
 verifier rejected closes at the root once it has checked the counterevidence against the tree and
 the record and recorded it.
+
+### While a run is in flight
+
+The root inspects every active run at least once every thirty minutes, for as long as the run is
+alive. What it reads is the run's journal and the per-agent transcript files in the run directory.
+The signal it looks for is an agent whose transcript has not grown and whose stage has produced no
+journal line for the whole interval, which is what a stuck or looping agent looks like from
+outside. The response is to read that agent's transcript, and then either stop the run and record
+why it was stopped, or record why the agent is still progressing. Recording the second case is what
+makes the next inspection able to tell slow work from a stall.
+
+This inspection is separate from the twenty-minute soft ceiling on one agent's task below, which is
+measured after the fact and is unchanged by this rule: the inspection watches a run that is still
+moving and can still be stopped, and the ceiling reviews a task that has already finished.
+
+The twelve work-execution rules, their placement and the alternatives rejected for each are
+recorded in [work execution rules](../../docs/work-execution-rules.md).
 
 ### Post-run timing review
 
@@ -750,6 +797,32 @@ majority of a fleet's scripts, each omission individually reasonable when it was
 resists that; retyping does not. Author the constant once for the run and retain it when
 resuming an interrupted run, so completed stages replay from their journaled results.
 
+## The quality bar
+
+A change is measured against a fixed bar, and every seat that judges the diff applies it:
+
+- **Modularity.** A piece of work has one subject, and the parts that change together sit together
+  while the parts that change independently stay apart.
+- **The structure carries the cases.** An architecture where each case has its own place beats one
+  generic path with conditionals bolted onto it for every case it did not anticipate.
+- **A generic mechanism stays generic.** It never learns the specifics of one concrete type.
+  Knowledge of a single type, smeared into shared code, makes every later type a special case.
+- **A package is named after the project.** Names describe what the thing does for the project,
+  never the person who wrote it.
+
+One decision recorded once is the fifth item of this bar, and it lives with the duplicate checker:
+its template and the review phase section above own that lens, so the bar names that seat instead
+of repeating the rule here.
+
+**Native mechanisms beat invented markers.** Where the platform, the library or the tool already
+expresses the thing, that expression is what the change uses. A sentinel value, a magic string or a
+marker invented to carry meaning the native mechanism already carries is a defect, because every
+reader and every later tool has to be taught the private convention before either can be correct
+about the code.
+
+The twelve work-execution rules, their placement and the alternatives rejected for each are
+recorded in [work execution rules](../../docs/work-execution-rules.md).
+
 ## Why this shape (the rationale that makes it work)
 
 - **Sequential implement, parallel review.** Implementation has write-conflicts; review is
@@ -871,7 +944,11 @@ Non-negotiable across every run of this skill.
 12. **GROUNDED MEANS OBSERVED.** Code-reading that concludes "it should work" loses to empirical
     observation every time. Verify against real output: real builds, real requests, real rendered
     results. Mechanical gates **RECOMPUTE from the artifacts**; an item's self-report is only a
-    truncation-and-dishonesty detector, never evidence.
+    truncation-and-dishonesty detector, never evidence. **No claim about an external system without
+    an observation of it.** A statement that an external system misbehaved requires an observation
+    of that system misbehaving, quoted where the claim is made. A symptom is evidence that something
+    happened and never evidence of which component caused it, so an attribution drawn from a symptom
+    is a hypothesis and is written down as one.
 13. **END-OF-RUN COMPLETENESS PASS.** Per-item checks structurally CANNOT see a missing item. Every
     fan-out over a work-list ends with one pass whose only question is *"which item is missing
     entirely?"*. Absences are the worst defect class to ship, and they are invisible to exactly the

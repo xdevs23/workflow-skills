@@ -58,6 +58,11 @@ for a throwaway note, just use the sub-skills directly.
   draft: a directive it contradicts is a conflict to flag to the user, not evidence for a different
   decision. If no such record applies, say so explicitly rather than silently treating none as
   none needed.
+- **What the tree already says about the work** — five answers established before any drafting
+  starts: whether the thing is already implemented; what already exists that the work can build
+  on; what needs refactoring before the work can sit on it; what the work conflicts with; and how
+  the applicable rules shape it. Every answer comes from reading the codebase and the rules. An
+  answer from memory is the one that makes a spec describe a system nobody has.
 - **The artifact's stated scope** — the fence for find-gaps (extracted from the draft once it exists).
 - **Ground truth** — codebase + dirs, reference docs, external sources; what both find-gaps and
   verify-loop cite against. Point every agent at the real source, never memory.

@@ -131,6 +131,13 @@ rendered string with no error anywhere. Ban them unescaped and grep for them in 
 **key parity**: exact key-set equality across locales, because a missing key renders a raw keypath to a
 visitor.
 
+**An empty value is a key's declared starting state, not a leak.** The source-language leak check
+treats a value identical to the source language's as suspect, and an unfilled key is identical
+across every locale by construction, since laws 1 and 2 create it empty. So the check reads
+identical empty values across locales as the expected state and reports them as unwritten copy for
+the copy pass, never as a suspected leak. A locale carrying source-language text in a key another
+locale filled natively is still the leak the check exists to find.
+
 ## Verification — what makes this a workflow
 
 Four stages, in this order: a tool, two agents, a person.
@@ -191,14 +198,18 @@ Five phases: **Intent → Write → Gate → Verify → User.**
 
 1. **Copy first; implementation consumes finished strings.** No placeholder prose ever lands in the
    tree.
-2. **One writer per area, never one per string.** An area's slots are one piece of writing, so one
+2. **A key starts empty.** An i18n key is created with an empty value and the copy pass fills it.
+   Placeholder text inside a key is forbidden, because it reads as finished copy to everyone who
+   meets it later: the writer skips the key, the critic finds a sentence to audit, and the product
+   ships the placeholder.
+3. **One writer per area, never one per string.** An area's slots are one piece of writing, so one
    writer fills them all and edits the strings file itself. Never a batch grind across unrelated
    areas or across locales, and always an end-of-run completeness pass over the work-list.
-3. **Every claim traces to a SOURCE line, named.** No source line, no claim.
-4. **Gates recompute from artifacts.** A self-report is never evidence.
-5. **Explicit model AND effort on every seat, never inherited** — and never the smallest model on the
+4. **Every claim traces to a SOURCE line, named.** No source line, no claim.
+5. **Gates recompute from artifacts.** A self-report is never evidence.
+6. **Explicit model AND effort on every seat, never inherited** — and never the smallest model on the
    source-verify seat.
-6. **The user ships the load-bearing strings.** The model supplies structurally distinct variants.
+7. **The user ships the load-bearing strings.** The model supplies structurally distinct variants.
 
 ## Agent prompt templates (verbatim base, append-only)
 

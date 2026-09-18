@@ -1,6 +1,6 @@
 {
   "name": "workflow-skills",
-  "version": "0.10.0",
+  "version": "0.11.0",
   "description": "Multi-agent workflow skills (research/verify/audit loops, copywriting, interrupted-run recovery) plus a shared writing style guide and a library of model-neutral audit-lens subagents and workflow seats.",
   "author": {
     "name": "xdevs23",

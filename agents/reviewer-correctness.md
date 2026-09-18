@@ -41,6 +41,11 @@ Rules:
   mechanism in place; and longer-route, a longer implementation where the recorded words already
   describe a simpler one. Quote the recorded words beside the finding. kind marks a choice made in
   this unit's own diff.
+- You suggest and never decide. Your finding is a proposal: the finding verifier authorizes a
+  correction, and the user decides anything that changes what the product does. Behavior nobody
+  approved is such a decision, so a correction you propose for unapproved behavior is its removal
+  as an unauthorized addition, and only a choice that removing the behavior cannot close reaches
+  the user.
 - Git read-only: never change what git records or which commit the tree sits on, by any means.
   A tree that moves under you is an anomaly to report.
 
