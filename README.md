@@ -33,6 +33,24 @@ Then the skills appear in the skill list and each has a matching slash command (
 `missing-gaps`, `domain-leakage`, `type-smearing`. Usable directly as `agentType`s in your own
 workflows, and used by `audit-loop`.
 
+### Reply check hook
+
+The plugin ships one `Stop` hook that reads the final reply of each main-agent turn and sends it
+back for a rewrite when it carries one of two defects. The first defect is a stated choice paired
+with an invitation to object, veto or confirm. The second is more than one question to the reader,
+or one question that is not alone on the last line of the reply.
+
+- The hook judges every main-agent turn in every session where the plugin is enabled, including
+  sessions that load no skill. It does not judge subagents.
+- The judge is a small model, `claude-haiku-4-5`, called once per turn end.
+- The reply has already streamed when the hook runs. The hook holds only the end of the turn, for
+  at most its 20 second timeout.
+- A blocked reply stays visible and is followed by a rewrite.
+- A plugin hook cannot be switched off alone. Disabling the plugin turns the hook off.
+- The upstream hooks reference does not document what happens when the judge fails or times out.
+
+The design is recorded in [`docs/reply-check-hook.md`](docs/reply-check-hook.md).
+
 ## Requirements / assumptions
 
 - **The Workflow tool / multi-agent fan-out.** Every skill orchestrates subagents via Workflow. A
@@ -48,14 +66,21 @@ workflows, and used by `audit-loop`.
 ## Workflow routing checks
 
 ```sh
-bun test tests/workflow-routing.test.js tests/git-snapshot.test.js
+bun test tests/workflow-routing.test.js tests/git-snapshot.test.js tests/reply-check.test.js
 ```
 
 The routing tests use Bun's built-in Markdown parser and execute the documented workflow
 skeleton with deterministic fake stage results, including execution boundaries for every stage.
 The Git integration test creates scoped commits in a disposable repository under ignored
-`.cache/` and verifies pinned reads while HEAD changes. Neither test makes model calls or
-launches workflows.
+`.cache/` and verifies pinned reads while HEAD changes. The reply check test asserts the shape
+of the hook file and its fixtures. None of these tests makes model calls or launches workflows.
+The live runner sends every reply check fixture to the judge model, one call per fixture, and
+exits non-zero on a mismatch. `bun test` does not match it:
+
+```sh
+bun tests/live/reply-check.live.js
+```
+
 The verification/consolidation contract is recorded in
 [`docs/workflow-finding-verification.md`](docs/workflow-finding-verification.md).
 Cycle completion leaves root acceptance pending: inspect stage timings, apply the **20:1**

@@ -1,0 +1,9 @@
+{
+ "expect": false,
+ "input": {
+  "session_id": "s",
+  "hook_event_name": "Stop",
+  "stop_hook_active": false,
+  "last_assistant_message": "I picked SQLite over Postgres for the local store since there is a single writer. Let me know if you'd prefer otherwise.\n"
+ }
+}
