@@ -1,5 +1,5 @@
 {
- "expect": true,
+ "expect": false,
  "input": {
   "session_id": "s",
   "hook_event_name": "Stop",

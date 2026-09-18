@@ -60,6 +60,22 @@ The hooks reference states what a timed-out command, HTTP or MCP hook does. It d
 happens when a prompt hook times out, its model is unavailable or its answer is malformed. The
 design makes no claim about that case.
 
+## Revision after use in real sessions
+
+The first shipped prompt was long and checked two things: a choice left open to objection, and the
+number and placement of questions. In real sessions it blocked correct replies: a closing line
+saying nothing was needed from the reader, in 4 of 9 sessions, and a single question alone on the
+last line, in 7 of 12. The live runner's print-mode invocation passed the same replies every time,
+so it does not predict the hook, and prompts are now tried in real sessions with the hook loaded.
+
+The prompt is now three sentences and checks the first thing only. It no longer judges questions.
+Its instruction also changed: a choice left open to objection is the reader's decision, so the
+assistant is told to ask it as one question and stop, not to restate it as its own. Observed over
+36 real sessions with this prompt: no question and no closing line was blocked, a reply that
+reported a database choice taken alone was blocked, and one phrasing of the defect, a question
+followed by "otherwise I will", was missed twice. Sections below that describe two defects or the
+rewrite wording describe the first prompt.
+
 ## Observed behavior
 
 On a block, the main model receives the text "Stop hook feedback:", then the whole judge prompt in

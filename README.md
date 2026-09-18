@@ -35,10 +35,10 @@ workflows, and used by `audit-loop`.
 
 ### Reply check hook
 
-The plugin ships one `Stop` hook that reads the final reply of each main-agent turn and sends it
-back for a rewrite when it carries one of two defects. The first defect is a stated choice paired
-with an invitation to object, veto or confirm. The second is more than one question to the reader,
-or one question that is not alone on the last line of the reply.
+The plugin ships one `Stop` hook that reads the final reply of each main-agent turn. It sends the
+reply back when the assistant says it chose, assumed or did something and then leaves it to the
+reader to object, as in "unless you object". The instruction it sends is to ask that choice as one
+question and stop, because a choice left open to objection is the reader's to make.
 
 - The hook judges every main-agent turn in every session where the plugin is enabled, including
   sessions that load no skill. It does not judge subagents.
