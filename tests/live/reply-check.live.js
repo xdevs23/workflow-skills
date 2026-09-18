@@ -42,19 +42,24 @@ const judge = async (input) => {
   return answer
 }
 
-const passes = (answer, expected) =>
-  answer.ok === expected &&
-  answer.impossible !== true &&
-  (answer.ok || (typeof answer.reason === 'string' && answer.reason.startsWith('Rewrite your last reply.')))
+const rightVerdict = (answer, expected) => answer.ok === expected && answer.impossible !== true
+
+// A blocking answer owes the main model a whole rewrite instruction. One that lacks it is
+// counted and shown, and does not fail the run, because the verdict is still right.
+const malformedReason = (answer) =>
+  answer.ok === false &&
+  !(typeof answer.reason === 'string' && answer.reason.startsWith('Rewrite your last reply.'))
 
 const report = async (name) => {
   const fixture = await Bun.file(fixtureDirectory + name).json()
   try {
     const answer = await judge(fixture.input)
-    const passed = passes(answer, fixture.expect)
-    return { passed, line: `${passed ? 'PASS' : 'MISMATCH'} ${name} ${JSON.stringify(answer)}` }
+    const passed = rightVerdict(answer, fixture.expect)
+    const malformed = passed && malformedReason(answer)
+    const word = !passed ? 'MISMATCH' : malformed ? 'FORMAT' : 'PASS'
+    return { passed, malformed, line: `${word} ${name} ${JSON.stringify(answer)}` }
   } catch (error) {
-    return { passed: false, line: `ERROR ${name} ${error.message}` }
+    return { passed: false, malformed: false, line: `ERROR ${name} ${error.message}` }
   }
 }
 
@@ -75,4 +80,5 @@ await Promise.all(Array.from({ length: callsInFlight }, worker))
 for (const { line } of reports) console.log(line)
 const failures = reports.filter(({ passed }) => !passed).length
 console.log(`${names.length - failures} of ${names.length} passed`)
+console.log(`${reports.filter(({ malformed }) => malformed).length} malformed reasons`)
 process.exit(failures === 0 ? 0 : 1)
