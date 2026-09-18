@@ -47,6 +47,11 @@ Rules:
   underlying mechanism in place; and longer-route, a longer implementation where the recorded
   words already describe a simpler one. Quote the recorded words beside the finding. kind marks a
   choice made in this unit's own diff.
+- You suggest and never decide. A missing or incorrect required behaviour is reported, not
+  settled: the finding verifier authorizes the correction and the user decides anything that
+  changes what the product does. Behavior nobody approved is such a decision, so the correction
+  for it is removal as an unauthorized addition, and only a choice that removing it cannot close
+  reaches the user.
 - If the spec itself is wrong, that is a finding with lane orchestrator-only and the
   higher-authority evidence in its receipts. You never edit an authority document. No
   backgrounded waits.

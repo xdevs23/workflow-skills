@@ -1304,3 +1304,136 @@ describe('one-pass remaining-items handoff', () => {
     }
   })
 })
+
+// Headings in document order, so a rule required to sit immediately before another is checked by position.
+const headings = text => [...text.matchAll(/^#{2,4} .+$/gm)].map(match => match[0])
+const readSkill = name => Bun.file(new URL(`../skills/${name}/SKILL.md`, import.meta.url)).text()
+
+describe('work execution rules', () => {
+  test('the root question-premise section screens a finding before it reaches the user', () => {
+    const text = flat(skill)
+    expect(text).toContain('**The root is the judge and acts on its own conclusion.**')
+    expect(text).toContain('a claim, not an instruction and not a question to relay')
+    expect(text).toContain('fixes it or rejects it with a stated reason')
+    expect(text).toContain('is this item in fact a rule violation or an architecture problem that another read of the recorded words would close?')
+    expect(text).toContain('choice the record genuinely leaves open still reaches the user once the screen has passed it')
+  })
+
+  test('the review phase states that a seat proposes, the verifier authorizes and the user decides', () => {
+    const text = flat(skill)
+    expect(text).toContain('**A reviewer suggests and never decides.**')
+    expect(text).toContain('the user decides anything that changes what the product does')
+    expect(text).toContain('Behavior nobody approved is such a decision')
+    expect(text).toContain('removed as an unauthorized addition, which the inverse-spec template already prescribes')
+    expect(text).toContain('only a choice that removing the behavior cannot close reaches the user at all')
+  })
+
+  test('the quality bar section sits immediately before the rationale and names its four items', () => {
+    const order = headings(skill)
+    expect(order[order.indexOf('## The quality bar') + 1]).toBe('## Why this shape (the rationale that makes it work)')
+    const text = flat(skill)
+    for (const phrase of ['**Modularity.**', '**The structure carries the cases.**',
+      'generic path with conditionals bolted onto it', '**A generic mechanism stays generic.**',
+      'never learns the specifics of one concrete type', '**A package is named after the project.**',
+      'One decision recorded once is the fifth item of this bar, and it lives with the duplicate checker']) {
+      expect(text).toContain(phrase)
+    }
+  })
+
+  test('the quality bar section prefers a native mechanism to an invented marker', () => {
+    const text = flat(skill)
+    expect(text).toContain('**Native mechanisms beat invented markers.**')
+    expect(text).toContain('A sentinel value, a magic string or a marker invented to carry meaning the native mechanism already carries is a defect')
+    expect(text).toContain('has to be taught the private convention')
+  })
+
+  test('the remaining-items section refuses a third relocation and keeps one amended work record entry', () => {
+    const text = flat(skill)
+    expect(text).toContain('**Two relocations mean the cause is untouched.**')
+    expect(text).toContain('the third change fixes the cause instead of moving it a third time')
+    expect(text).toContain('a third relocation is refused with the cause reported to the user')
+    expect(text).toContain('amended as the same entry each time the defect reappears, never duplicated')
+  })
+
+  test('law 12 requires an observation before a claim about an external system', () => {
+    const text = flat(skill)
+    expect(text).toContain('**No claim about an external system without an observation of it.**')
+    expect(text).toContain('requires an observation of that system misbehaving, quoted')
+    expect(text).toContain('never evidence of which component caused it')
+    expect(text).toContain('is a hypothesis and is written down as one')
+  })
+
+  test('the decide-or-ask material states the ask shape, literal approval and the forbidden construction', () => {
+    const text = flat(skill)
+    expect(text).toContain('**An ask is one short sentence, and the question stands alone on its own line.**')
+    expect(text).toContain('An answer approves only what it literally names')
+    expect(text).toContain('spends the previous yes and needs a new one')
+    expect(text).toContain('pairs a question with a stated intention to proceed anyway is forbidden in every wording of it')
+  })
+
+  test('an in-flight subsection sits before the timing review and leaves the 20-minute ceiling unchanged', () => {
+    const order = headings(skill)
+    expect(order[order.indexOf('### While a run is in flight') + 1]).toBe('### Post-run timing review')
+    const text = flat(skill)
+    expect(text).toContain('inspects every active run at least once every thirty minutes')
+    expect(text).toContain("the run's journal and the per-agent transcript files in the run directory")
+    expect(text).toContain('an agent whose transcript has not grown and whose stage has produced no journal line for the whole interval')
+    expect(text).toContain("read that agent's transcript, and then either stop the run and record why it was stopped, or record why the agent is still progressing")
+    expect(text).toContain("separate from the twenty-minute soft ceiling on one agent's task below, which is measured after the fact and is unchanged")
+  })
+
+  test('the four briefed review templates state that a reviewer suggests and never decides', async () => {
+    for (const name of ['reviewer-correctness', 'reviewer-cleanliness', 'reviewer-spec-compliance', 'reviewer-inverse-spec']) {
+      const text = await template(name)
+      expect(text).toContain('You suggest and never decide.')
+      expect(text).toContain('the user decides anything that changes what the product does')
+      expect(text).toContain('unauthorized addition')
+    }
+    for (const name of ['quality', 'cold-alternatives', 'roaster', 'duplicate-checker', 'project-rule-reader']) {
+      expect(await template(name)).not.toContain('You suggest and never decide.')
+    }
+  })
+
+  test('the spec-writing inputs establish the five checks from the codebase, never from memory', async () => {
+    const text = flat(await readSkill('immaculate-spec-writing'))
+    expect(text).toContain('**What the tree already says about the work**')
+    for (const phrase of ['whether the thing is already implemented', 'what already exists that the work can build on',
+      'what needs refactoring before the work can sit on it', 'what the work conflicts with',
+      'how the applicable rules shape it', 'Every answer comes from reading the codebase and the rules']) {
+      expect(text).toContain(phrase)
+    }
+  })
+
+  test('the copywriting laws create an i18n key empty and forbid placeholder text in it', async () => {
+    const text = flat(await readSkill('copywriting'))
+    expect(text).toContain('**A key starts empty.**')
+    expect(text).toContain('created with an empty value and the copy pass fills it')
+    expect(text).toContain('Placeholder text inside a key is forbidden')
+  })
+
+  test('the multilingual section reads identical empty values as the expected starting state', async () => {
+    const text = flat(await readSkill('copywriting'))
+    expect(text).toContain("**An empty value is a key's declared starting state, not a leak.**")
+    expect(text).toContain('identical empty values across locales as the expected state')
+    expect(text).toContain('never as a suspected leak')
+  })
+
+  test('the design record states the rules and is linked from both sections that carry them', async () => {
+    const record = await Bun.file(new URL('../docs/work-execution-rules.md', import.meta.url)).text()
+    const text = flat(record)
+    expect(text).toContain('# Work execution rules')
+    for (const phrase of ['**Screen before escalating.**', '**A reviewer suggests and never decides.**',
+      '**The quality bar.**', '**Native mechanisms over invented markers.**',
+      '**Two relocations mean the cause is untouched.**', '**No claim about an external system without observation.**',
+      '**The shape of a decision request.**', '**Every active run is inspected at least every thirty minutes.**',
+      '**The reviewer rule reaches the templates.**', '**What a spec establishes before it is written.**',
+      '**Keys start empty.**', '**The check tolerates an empty key.**', '## Rejected alternatives']) {
+      expect(text).toContain(phrase)
+    }
+    const link = '[work execution rules](../../docs/work-execution-rules.md)'
+    for (const section of ['## The quality bar', '### While a run is in flight']) {
+      const body = skill.slice(skill.indexOf(`\n${section}\n`) + section.length + 2).split(/\n#{2,4} /)[0]
+      expect(body).toContain(link)
+    }
+  })
+})

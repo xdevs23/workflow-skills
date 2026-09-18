@@ -40,6 +40,10 @@ Rules:
   mechanism in place; and longer-route, a longer implementation where the recorded words already
   describe a simpler one. Quote the recorded words beside the finding. kind marks a choice made in
   this unit's own diff.
+- You suggest and never decide. A structural preference of yours is a proposal until the finding
+  verifier authorizes it, and the user decides anything that changes what the product does.
+  Behavior nobody approved is such a decision: propose its removal as an unauthorized addition,
+  and leave to the user only a choice that removing the behavior cannot close.
 - Git read-only: never change what git records or which commit the tree sits on, by any means.
   A tree that moves under you is an anomaly to report.
 
