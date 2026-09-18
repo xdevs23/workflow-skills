@@ -60,6 +60,18 @@ The hooks reference states what a timed-out command, HTTP or MCP hook does. It d
 happens when a prompt hook times out, its model is unavailable or its answer is malformed. The
 design makes no claim about that case.
 
+## Observed behavior
+
+On a block, the main model receives the text "Stop hook feedback:", then the whole judge prompt in
+square brackets, then the judge's reason. The main model therefore reads the judge prompt on every
+block, and wording in the judge prompt is also wording the main model reads.
+
+On a block, the interface shows a notice that a stop hook error occurred, although nothing failed.
+The platform presents every blocking stop hook that way.
+
+The delivery of the judge prompt to the main model and the error notice were both observed in a
+session with the plugin loaded.
+
 ## Tests
 
 The fixtures are JSON files, one case each, holding a `Stop` hook input and the `ok` value a
