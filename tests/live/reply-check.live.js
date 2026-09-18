@@ -1,5 +1,6 @@
 // Runs every reply-check fixture through the judge model and compares the verdicts.
-// This makes one model call per fixture, so `bun test` does not match this file.
+// The file name is outside the patterns `bun test` matches. It has to stay outside them,
+// because this file makes one model call per fixture.
 // Run it with: bun tests/live/reply-check.live.js
 import { readdir } from 'node:fs/promises'
 import { fileURLToPath } from 'node:url'
@@ -46,19 +47,32 @@ const passes = (answer, expected) =>
   answer.impossible !== true &&
   (answer.ok || (typeof answer.reason === 'string' && answer.reason.startsWith('Rewrite your last reply.')))
 
-const names = (await readdir(fixtureDirectory)).filter((name) => name.endsWith('.json')).sort()
-let failures = 0
-for (const name of names) {
+const report = async (name) => {
   const fixture = await Bun.file(fixtureDirectory + name).json()
   try {
     const answer = await judge(fixture.input)
     const passed = passes(answer, fixture.expect)
-    if (!passed) failures += 1
-    console.log(`${passed ? 'PASS' : 'MISMATCH'} ${name} ${JSON.stringify(answer)}`)
+    return { passed, line: `${passed ? 'PASS' : 'MISMATCH'} ${name} ${JSON.stringify(answer)}` }
   } catch (error) {
-    failures += 1
-    console.log(`ERROR ${name} ${error.message}`)
+    return { passed: false, line: `ERROR ${name} ${error.message}` }
   }
 }
+
+const callsInFlight = 4
+const names = (await readdir(fixtureDirectory)).filter((name) => name.endsWith('.json')).sort()
+const reports = new Array(names.length)
+let next = 0
+// Each worker takes the next unjudged fixture until none is left.
+const worker = async () => {
+  while (next < names.length) {
+    const index = next
+    next += 1
+    reports[index] = await report(names[index])
+  }
+}
+await Promise.all(Array.from({ length: callsInFlight }, worker))
+
+for (const { line } of reports) console.log(line)
+const failures = reports.filter(({ passed }) => !passed).length
 console.log(`${names.length - failures} of ${names.length} passed`)
 process.exit(failures === 0 ? 0 : 1)
