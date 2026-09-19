@@ -41,3 +41,15 @@ test('every fixture is a Stop input with an expected verdict, and the set covers
   const rewrites = fixtures.filter((fixture) => fixture.input.stop_hook_active)
   expect(verdicts(rewrites)).toEqual(new Set([true, false]))
 })
+
+test('exactly one fixture is a known miss, and a known miss always expects a block', async () => {
+  const names = (await readdir(fixtureDirectory)).filter((name) => name.endsWith('.json'))
+  const fixtures = await Promise.all(names.map((name) => Bun.file(fixtureDirectory + name).json()))
+
+  const knownMisses = fixtures.filter((fixture) => 'knownMiss' in fixture)
+  expect(knownMisses).toHaveLength(1)
+  for (const fixture of knownMisses) {
+    expect(fixture.knownMiss).toBe(true)
+    expect(fixture.expect).toBe(false)
+  }
+})
