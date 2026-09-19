@@ -1,5 +1,9 @@
 # Synthetic format example: all kinds and sources.
 unit: example-export
+summary: |
+  A synthetic unit that exports selected rows.
+
+  It exercises every kind and every source.
 items:
   - id: export-request
     kind: requirement

@@ -1,4 +1,5 @@
 unit: invalid-example
+summary: A synthetic spec that carries one violation class.
 items:
   - id: first
     kind: criterion
