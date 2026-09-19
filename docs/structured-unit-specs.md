@@ -116,6 +116,8 @@ author to keep references correct by hand.
 **violations-name-the-id**: A violation names the item by its `id`, which is what the author edits, as
 `<file>: <id>.<field>: <message>`. An item with no usable id is named by its 1-based
 position written in words, as `item 3`, never in array notation.
+The simpler alternative this rules out is the array position the first build printed, which
+sends the author counting items to find the one to edit.
 
 **render-shape**: The generated document opens with `# <unit>` and the `summary`, then groups items by kind
 under `## Requirements`, `## Boundaries`, `## Rejected alternatives` and
@@ -124,6 +126,9 @@ boundary renders as a paragraph led by its id in bold. A rejected item renders i
 and its reason. Criteria render as a numbered list whose numbers are the ordinals. The
 document carries `id`, `content` and `reason` only: `user_words`, `evidence`, rule file and
 quote, the whole observation and `parents` are left out.
+The heading names and their order are this format's own choice. The simpler alternative
+this rules out is the flat list of one section per item in file order that the first build
+rendered, which was too thin to commit as a design record.
 
 **summary-stream**: The tool's summary goes to stdout only when neither `--render` nor `--check-render` is
 given. With either of them it goes to stderr, unless `--json` is given, in which case the
