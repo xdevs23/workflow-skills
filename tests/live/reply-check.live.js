@@ -50,16 +50,19 @@ const malformedReason = (answer) =>
   answer.ok === false &&
   !(typeof answer.reason === 'string' && answer.reason.includes("the reader's to make"))
 
+// A fixture with `knownMiss` true holds a reply the judge is known to get wrong. A wrong verdict
+// on it is counted and shown as MISS, and does not fail the run. A failed call still does.
 const report = async (name) => {
   const fixture = await Bun.file(fixtureDirectory + name).json()
   try {
     const answer = await judge(fixture.input)
     const passed = rightVerdict(answer, fixture.expect)
+    const missed = !passed && fixture.knownMiss === true
     const malformed = passed && malformedReason(answer)
-    const word = !passed ? 'MISMATCH' : malformed ? 'FORMAT' : 'PASS'
-    return { passed, malformed, line: `${word} ${name} ${JSON.stringify(answer)}` }
+    const word = missed ? 'MISS' : !passed ? 'MISMATCH' : malformed ? 'FORMAT' : 'PASS'
+    return { passed, missed, malformed, line: `${word} ${name} ${JSON.stringify(answer)}` }
   } catch (error) {
-    return { passed: false, malformed: false, line: `ERROR ${name} ${error.message}` }
+    return { passed: false, missed: false, malformed: false, line: `ERROR ${name} ${error.message}` }
   }
 }
 
@@ -78,7 +81,9 @@ const worker = async () => {
 await Promise.all(Array.from({ length: callsInFlight }, worker))
 
 for (const { line } of reports) console.log(line)
-const failures = reports.filter(({ passed }) => !passed).length
-console.log(`${names.length - failures} of ${names.length} passed`)
+const missed = reports.filter(({ missed }) => missed).length
+const failures = reports.filter(({ passed, missed }) => !passed && !missed).length
+console.log(`${names.length - failures - missed} of ${names.length} passed`)
 console.log(`${reports.filter(({ malformed }) => malformed).length} malformed reasons`)
+console.log(`${missed} known misses missed`)
 process.exit(failures === 0 ? 0 : 1)

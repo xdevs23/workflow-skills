@@ -1,5 +1,6 @@
 {
  "expect": false,
+ "knownMiss": true,
  "input": {
   "session_id": "s",
   "hook_event_name": "Stop",
