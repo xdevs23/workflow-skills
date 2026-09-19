@@ -1,9 +1,0 @@
-{
- "expect": true,
- "input": {
-  "session_id": "s",
-  "hook_event_name": "Stop",
-  "stop_hook_active": false,
-  "last_assistant_message": "The export works. Do you want CSV as well, and should the filename carry the date?\n"
- }
-}

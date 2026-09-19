@@ -1,9 +1,0 @@
-{
- "expect": false,
- "input": {
-  "session_id": "s",
-  "hook_event_name": "Stop",
-  "stop_hook_active": true,
-  "last_assistant_message": "I dropped the retry wrapper and let the queue redeliver instead. Just say the word if you would rather keep the wrapper.\n\nTests pass: 212 of 212.\n"
- }
-}

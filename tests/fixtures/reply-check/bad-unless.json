@@ -1,9 +1,0 @@
-{
- "expect": false,
- "input": {
-  "session_id": "s",
-  "hook_event_name": "Stop",
-  "stop_hook_active": false,
-  "last_assistant_message": "The migration is written. I'll go with a nullable column and backfill later unless you object.\n"
- }
-}

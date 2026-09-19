@@ -1,9 +1,0 @@
-{
- "expect": false,
- "input": {
-  "session_id": "s",
-  "hook_event_name": "Stop",
-  "stop_hook_active": false,
-  "last_assistant_message": "**Decisions I made along the way**\n\n- Dropped the retry wrapper and let the queue redeliver instead, for you to veto.\n- Renamed `fetchAll` to `listSessions`.\n\nTests pass: 212 of 212.\n"
- }
-}

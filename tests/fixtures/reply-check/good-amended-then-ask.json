@@ -1,9 +1,0 @@
-{
- "expect": true,
- "input": {
-  "session_id": "s",
-  "hook_event_name": "Stop",
-  "stop_hook_active": false,
-  "last_assistant_message": "The parser fixes you asked for are in, and the settings page shows the new field.\n\n- I amended the parser so a trailing comma no longer fails the whole file.\n- I moved the line counter into the tokenizer, so error messages now name the right line.\n- I added the timezone field to the settings page with the validation you described.\n- I replaced the three copies of the date check with one shared function.\n- I updated the fixtures that relied on the old error text.\n- I ran the suite: 96 pass, 0 fail, and the lint run is clean.\n- I committed the parser change and the settings change separately.\n- Nothing is pushed.\n\nDo you want the export unit built now?\n"
- }
-}

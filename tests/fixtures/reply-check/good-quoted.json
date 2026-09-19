@@ -1,9 +1,0 @@
-{
- "expect": true,
- "input": {
-  "session_id": "s",
-  "hook_event_name": "Stop",
-  "stop_hook_active": false,
-  "last_assistant_message": "You asked \"does the hook delay messages?\". It does not: the reply has already streamed when the hook runs. The shell check uses `[ \"$x\" = \"?\" ]`, which is why the grep matched.\n"
- }
-}
