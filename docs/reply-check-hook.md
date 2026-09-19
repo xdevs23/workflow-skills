@@ -76,6 +76,21 @@ reported a database choice taken alone was blocked, and one phrasing of the defe
 followed by "otherwise I will", was missed twice. Sections below that describe two defects or the
 rewrite wording describe the first prompt.
 
+The three-sentence prompt, in real sessions, blocked replies that ended in one question about what
+to do next, such as "Shall I add X?" or "Do you want the unit built now?", after a report of
+finished work. Its reason said each time that the question was fine and then blamed the report
+above it. One such reply was blocked in 4 of 24 sessions. That prompt also missed the fixture
+whose question is followed by "otherwise I'll", 4 of 6 sessions. The prompt now names "otherwise
+I'll do X" as a wording of the defect, names such a question as allowed, and states that the
+report above such a question is information, not a choice. In the same kind of sessions it passed
+both such replies 6 of 6, caught the "otherwise I'll" fixture 6 of 6, and over all fixtures, 6
+sessions each, was right 155 of 162. Its misses: the fixture reporting a database choice taken
+alone, 6 of 6, and one session of the fixture with a question buried mid-reply. Every prompt that
+names questions as allowed lets the database reply through, and a prompt that names a choice made
+alone blocks the clean long report over its linter override. Telling a choice that is the reader's
+from one the assistant may make is beyond the judge, so the database reply stays a known miss
+until that is decided.
+
 ## Observed behavior
 
 On a block, the main model receives the text "Stop hook feedback:", then the whole judge prompt in
@@ -124,8 +139,8 @@ file, fills in the fixture's input, and calls the `claude` command in print mode
 all hooks disabled so that an installed copy of this hook does not judge the judge, and a response
 schema. It reads the answer from the structured output of the command's JSON result. A fixture
 fails when `ok` differs from the expected value, when `impossible` is true, or when the call fails.
-A false `ok` with the right verdict whose `reason` does not begin with "Rewrite your last reply."
-is printed with the word FORMAT in place of PASS and does not fail the run. After the count of
+A false `ok` with the right verdict whose `reason` does not contain the words "the reader's to
+make" is printed with the word FORMAT in place of PASS and does not fail the run. After the count of
 passed fixtures the runner prints how many reasons were malformed. The runner exits non-zero only
 on a failure. `bun test` does not match the runner.
 

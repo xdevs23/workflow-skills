@@ -38,7 +38,8 @@ workflows, and used by `audit-loop`.
 The plugin ships one `Stop` hook that reads the final reply of each main-agent turn. It sends the
 reply back when the assistant says it chose, assumed or did something and then leaves it to the
 reader to object, as in "unless you object". The instruction it sends is to ask that choice as one
-question and stop, because a choice left open to objection is the reader's to make.
+question and stop, because a choice left open to objection is the reader's to make. A reply that
+ends in a question about what to do next is not blocked.
 
 - The hook judges every main-agent turn in every session where the plugin is enabled, including
   sessions that load no skill. It does not judge subagents.
