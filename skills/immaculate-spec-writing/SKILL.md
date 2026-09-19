@@ -78,7 +78,7 @@ and regenerate after every amendment, keeping the source and its rendering toget
 
 `tools/check-spec.ts` defines the validation contract; the committed, synthetic example at
 `tests/fixtures/spec-provenance/valid.yaml` is exercised by the tests. The top-level mapping has
-`unit` and a non-empty `items` list. Each item has a unique kebab-case `id`, a `kind` (requirement,
+`unit`, `summary` (Markdown, the preamble of the generated document) and a non-empty `items` list. Each item has a unique kebab-case `id`, a `kind` (requirement,
 criterion, rejected or boundary), non-empty Markdown `content` stating one decision or requirement,
 and `source`. A rejected item also has `reason`. Use exactly the fields of its source kind:
 
@@ -86,7 +86,7 @@ and `source`. A rejected item also has `reason`. Use exactly the fields of its s
   the supplied session directory, and `user_words`, verbatim text in at least one resolved message.
 - **rule:** `rule: { file, line }` and `quote`, matching the rule's words across hard-wrapped lines.
 - **observation:** `observation: { command, exit, output, date }`, recording a fact observed here.
-  Use a read-only command that the provenance seat can repeat and compare against output and exit.
+  Use a read-only command that the provenance reader can repeat and compare against output and exit.
 - **derivation:** `parents`, a non-empty list of item ids whose chains reach a sourced item.
 
 An assertion that a condition, failure mode or risk exists needs source transcript or observation.
@@ -100,7 +100,7 @@ It validates references and renders technical content, omitting private quotatio
 Keep each criterion as a criterion item: the tool numbers them from one in file order and supplies
 `{ ordinal, id }` plus `counts.kind.criterion` for the implementation workflow's integer ordinals and
 `args.criteriaCount`. Before either spec review or implementation, validation must pass. Before
-implementation use `--check-render docs/<unit>.md` to fail on a stale rendering. The provenance seat
+implementation use `--check-render docs/<unit>.md` to fail on a stale rendering. The provenance reader
 judges whether the sources authorize the items before implementation.
 
 ## The convergence loop
