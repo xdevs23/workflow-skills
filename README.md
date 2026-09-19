@@ -75,7 +75,7 @@ The design is recorded in [`docs/reply-check-hook.md`](docs/reply-check-hook.md)
 ## Workflow routing checks
 
 ```sh
-bun test tests/workflow-routing.test.js tests/git-snapshot.test.js tests/reply-check.test.js
+bun test tests/workflow-routing.test.js tests/git-snapshot.test.js tests/reply-check.test.js tests/check-spec.test.js
 ```
 
 The routing tests use Bun's built-in Markdown parser and execute the documented workflow
