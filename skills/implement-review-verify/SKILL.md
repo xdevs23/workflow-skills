@@ -164,8 +164,8 @@ A third reader, **spec-provenance** (`agents/spec-provenance.md`), receives the 
 directory, private record and base commit. Item by item it judges authorization, asserted conditions
 and mandated mechanisms. It re-runs each read-only observation command and reports output or exit
 mismatches and observations older than the base commit. Its findings advise the root alongside
-the two unbriefed seats, whose inputs remain the spec and hygiene floor, and use the same
-must-fix, should-fix and nit severity the gap-finder uses.
+the two unbriefed seats, whose inputs remain the spec and hygiene floor. The spec-provenance
+findings carry the same must-fix, should-fix and nit severity the gap-finder uses.
 
 Their output is **advisory to the orchestrator**, who triages it against the recorded rulings and
 amends the YAML spec, then regenerates the tracked document. Amend the YAML — never patch the

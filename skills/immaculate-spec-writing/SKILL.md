@@ -78,9 +78,10 @@ and regenerate after every amendment, keeping the source and its rendering toget
 
 `tools/check-spec.ts` defines the validation contract; the committed, synthetic example at
 `tests/fixtures/spec-provenance/valid.yaml` is exercised by the tests. The top-level mapping has
-`unit`, `summary` (Markdown, the preamble of the generated document) and a non-empty `items` list. Each item has a unique kebab-case `id`, a `kind` (requirement,
-criterion, rejected or boundary), non-empty Markdown `content` stating one decision or requirement,
-and `source`. A rejected item also has `reason`. Use exactly the fields of its source kind:
+`unit`, `summary` (Markdown, the preamble of the generated document) and a non-empty `items` list.
+Each item has a unique kebab-case `id`, a `kind` (requirement, criterion, rejected or boundary),
+non-empty Markdown `content` stating one decision or requirement, and `source`. A rejected item
+also has `reason`. Use exactly the fields of its source kind:
 
 - **transcript:** `evidence`, a non-empty list of `{ file, line, uuid }` pointing to user records in
   the supplied session directory, and `user_words`, verbatim text in at least one resolved message.
