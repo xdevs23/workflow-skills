@@ -41,12 +41,13 @@ describe('structured unit spec validation', () => {
         source: { transcript: 1, rule: 1, observation: 1, derivation: 2 } },
       criteria: [{ ordinal: 1, id: 'row-order' }, { ordinal: 2, id: 'stream-result' }],
       sha256: createHash('sha256').update(new Uint8Array(bytes)).digest('hex'),
-      nonBlankLines: 37,
+      nonBlankLines: 40,
     })
     const plain = fixture('valid')
     expect(plain.exit).toBe(0)
+    expect(plain.err).toBe('')
     expect(plain.out.trim().split('\n')).toHaveLength(1)
-    for (const value of ['kind=', 'source=', 'criteria=', 'sha256=', 'nonBlankLines=37']) expect(plain.out).toContain(value)
+    for (const value of ['kind=', 'source=', 'criteria=', 'sha256=', 'nonBlankLines=40']) expect(plain.out).toContain(value)
   })
 
   test.each([
@@ -60,14 +61,15 @@ describe('structured unit spec validation', () => {
   test('all violations are reported in item file order, including deferred parent checks', () => {
     const result = fixture('several')
     invalid(result, 'parent id does not exist: missing')
-    const messages = result.err.trim().split('\n').map(line => line.slice(line.indexOf(': items[') + 2))
+    const prefix = 'tests/fixtures/spec-provenance/several.yaml: '
+    const messages = result.err.trim().split('\n').map(line => line.slice(line.indexOf(prefix) + prefix.length))
     expect(messages).toEqual([
-      'items[1].parents: parent id does not exist: missing',
-      'items[1].parents: parent chain never reaches a transcript, rule or observation item',
-      'items[2].extra: unknown key', 'items[2].kind: unknown kind',
-      'items[2].content: expected a non-empty string',
-      'items[3].observation.exit: missing field', 'items[3].observation.output: missing field',
-      'items[3].observation.date: missing field',
+      'first.parents: parent id does not exist: missing',
+      'first.parents: parent chain never reaches a transcript, rule or observation item',
+      'second.extra: unknown key', 'second.kind: unknown kind',
+      'second.content: expected a non-empty string',
+      'third.observation.exit: missing field', 'third.observation.output: missing field',
+      'third.observation.date: missing field',
     ])
   })
 
@@ -75,9 +77,12 @@ describe('structured unit spec validation', () => {
     ['unknown root key', s => { s.extra = true }, 'spec.extra: unknown key'],
     ['empty unit', s => { s.unit = ' ' }, 'spec.unit: expected a non-empty string'],
     ['wrong unit type', s => { s.unit = 3 }, 'spec.unit: expected a non-empty string'],
+    ['missing summary', s => { delete s.summary }, 'spec.summary: missing field'],
+    ['empty summary', s => { s.summary = ' ' }, 'spec.summary: expected a non-empty string'],
+    ['wrong summary type', s => { s.summary = [] }, 'spec.summary: expected a non-empty string'],
     ['empty items', s => { s.items = [] }, 'items: expected a non-empty list'],
     ['wrong items type', s => { s.items = {} }, 'items: expected a non-empty list'],
-    ['wrong item type', s => { s.items[0] = null }, 'items[1]: expected a mapping'],
+    ['wrong item type', s => { s.items[0] = null }, 'item 1: expected a mapping'],
     ['bad id', s => { s.items[0].id = 'Not Kebab' }, 'expected a kebab-case id'],
     ['duplicate id', s => { s.items[1].id = s.items[0].id }, 'duplicate id export-request'],
     ['unknown kind', s => { s.items[0].kind = 'extra' }, 'unknown kind'],
@@ -97,6 +102,16 @@ describe('structured unit spec validation', () => {
     ['empty output', s => { s.items[3].observation.output = '' }, 'output: expected a non-empty string'],
     ['wrong parent type', s => { s.items[4].parents = [3] }, 'expected a non-empty item id'],
   ])('%s fails shape validation', (name, edit, message) => invalid(changed(edit), message))
+
+  test('violations name the item id, or the position in words when no id is usable', () => {
+    const named = changed(s => { s.items[0].evidence[1].uuid = ''; s.items[4].parents = ['export-request', 3] })
+    invalid(named, 'export-request.evidence entry 2.uuid: expected a non-empty string')
+    invalid(named, 'export-only.parents entry 2: expected a non-empty item id')
+    const unnamed = changed(s => { delete s.items[2].id; s.items[2].kind = 'extra'; s.items[4].parents = ['export-request'] })
+    invalid(unnamed, 'item 3.id: missing field')
+    invalid(unnamed, 'item 3.kind: unknown kind')
+    for (const result of [named, unnamed, fixture('several')]) expect(result.err).not.toMatch(/\[\d+\]/)
+  })
 
   test.each([
     [1, 'wrong-uuid', 'expected a user record'], [3, 'assistant-record', 'expected a user record'],
@@ -135,7 +150,7 @@ describe('structured unit spec validation', () => {
     }
   })
 
-  test('a grounded cycle still fails, while a shared-parent acyclic derivation passes', () => {
+  test('a cycle whose chain reaches a sourced item still fails, while a shared-parent acyclic derivation passes', () => {
     invalid(changed(s => { s.items[4].parents = ['export-only', 'export-request'] }), 'cycle among parents')
     expect(changed(s => { s.items[4].parents = ['stream-result', 'export-request'] }).exit).toBe(0)
   })
@@ -146,29 +161,61 @@ describe('structured unit spec validation', () => {
     expect(await Bun.file(marker).exists()).toBe(false)
   })
 
-  test('rendering includes technical content and omits provenance, and stale documents fail without a write', async () => {
+  test('rendering groups items by kind under the summary and omits provenance', async () => {
     const path = join(scratch, 'generated.md')
     expect(fixture('valid', ['--render', path]).exit).toBe(0)
     const rendered = await Bun.file(path).text()
     expect(rendered).toBe('# example-export\n\n' +
-      '## Requirement: export-request\n\nExport the selected rows.\n\n' +
-      '## Criterion 1: row-order\n\nExported rows retain their input order.\n\n' +
-      '## Criterion 2: stream-result\n\nExport uses the stream interface in place of the unavailable batch interface.\n\n' +
-      '## Rejected alternative: batch-unavailable\n\nUse the batch interface.\n\n' +
+      'A synthetic unit that exports selected rows.\n\nIt exercises every kind and every source.\n\n' +
+      '## Requirements\n\n**export-request**: Export the selected rows.\n\n' +
+      '## Boundaries\n\n**export-only**: The unit covers export of selected rows.\n\n' +
+      '## Rejected alternatives\n\n**batch-unavailable**: Use the batch interface.\n' +
       'Reason: The installed example reports that interface as unavailable.\n\n' +
-      '## Boundary: export-only\n\nThe unit covers export of selected rows.\n')
-    for (const privateValue of ['session.jsonl', 'request-string', 'user_words', 'evidence', 'batch unavailable', 'rules.txt']) {
+      '## Acceptance criteria\n\n1. **row-order**: Exported rows retain their input order.\n' +
+      '2. **stream-result**: Export uses the stream interface in place of the unavailable batch interface.\n')
+    for (const privateValue of ['session.jsonl', 'request-string', 'user_words', 'evidence', 'batch unavailable', 'rules.txt', 'parents', 'printf']) {
       expect(rendered).not.toContain(privateValue)
     }
+    const partial = join(scratch, 'partial.md')
+    const result = changed(s => {
+      s.items = s.items.slice(0, 2)
+      s.items[1].content = 'Exported rows retain\ntheir input order.\n'
+    }, ['--render', partial])
+    expect(result.exit).toBe(0)
+    expect(await Bun.file(partial).text()).toBe('# example-export\n\n' +
+      'A synthetic unit that exports selected rows.\n\nIt exercises every kind and every source.\n\n' +
+      '## Requirements\n\n**export-request**: Export the selected rows.\n\n' +
+      '## Acceptance criteria\n\n1. **row-order**: Exported rows retain\n   their input order.\n')
+  })
+
+  test('a stale or unreadable document fails the render check, which writes nothing', async () => {
+    const path = join(scratch, 'checked.md')
+    expect(fixture('valid', ['--render', path]).exit).toBe(0)
     expect(fixture('valid', ['--check-render', path]).exit).toBe(0)
     writeFileSync(path, 'stale\n')
     invalid(fixture('valid', ['--check-render', path]), 'generated document differs')
     expect(await Bun.file(path).text()).toBe('stale\n')
     invalid(fixture('several', ['--render', path]), 'unknown kind')
     expect(await Bun.file(path).text()).toBe('stale\n')
-    expect(fixture('valid', ['--render', path]).exit).toBe(0)
-    invalid(fixture('valid', ['--check-render', join(scratch, 'missing.md')]), 'generated document is unreadable')
+    const missing = join(scratch, 'missing.md')
+    invalid(fixture('valid', ['--check-render', missing]), 'generated document is unreadable')
+    expect(await Bun.file(missing).exists()).toBe(false)
     invalid(fixture('valid', ['--render', join(scratch, 'missing/parent.md')]), 'ENOENT')
+    invalid(fixture('valid', ['--render', path, '--check-render', path]), 'Usage')
+  })
+
+  test('the summary leaves stdout to the caller when a document is rendered or checked', () => {
+    const path = join(scratch, 'streams.md')
+    for (const option of ['--render', '--check-render']) {
+      const plain = fixture('valid', [option, path])
+      expect(plain.exit).toBe(0)
+      expect(plain.out).toBe('')
+      for (const value of ['kind=', 'source=', 'criteria=', 'sha256=', 'nonBlankLines=40']) expect(plain.err).toContain(value)
+      const json = fixture('valid', [option, path, '--json'])
+      expect(json.exit).toBe(0)
+      expect(json.err).toBe('')
+      expect(JSON.parse(json.out).criteria).toEqual([{ ordinal: 1, id: 'row-order' }, { ordinal: 2, id: 'stream-result' }])
+    }
   })
 
   test('unavailable YAML support names the same runtime minimum as the README', async () => {

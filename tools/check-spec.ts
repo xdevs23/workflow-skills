@@ -77,11 +77,12 @@ async function main() {
     fail(-1, 'spec', `unreadable or malformed YAML: ${messageOf(error)}`)
   }
   const items: Mapping[] = []
-  if (parsed && shape(spec, ['unit', 'items'], -1, 'spec')) {
+  if (parsed && shape(spec, ['unit', 'summary', 'items'], -1, 'spec')) {
     stringField(spec, 'unit', -1, 'spec')
+    stringField(spec, 'summary', -1, 'spec')
     if (list(spec.items, -1, 'items')) {
       for (const [index, value] of spec.items.entries()) {
-        const path = `items[${index + 1}]`
+        const path = mapping(value) && text(value.id) ? value.id : `item ${index + 1}`
         if (!mapping(value)) { fail(index, path, 'expected a mapping'); items.push({}); continue }
         items.push(value)
         const extra = typeof value.source === 'string' && Object.hasOwn(sourceFields, value.source)
@@ -100,7 +101,7 @@ async function main() {
           let matched = false
           if (list(value.evidence, index, `${path}.evidence`)) {
             for (const [entry, evidence] of value.evidence.entries()) {
-              const at = `${path}.evidence[${entry + 1}]`
+              const at = `${path}.evidence entry ${entry + 1}`
               const refOK = reference(evidence, ['file', 'line', 'uuid'], index, at)
               const uuidOK = mapping(evidence) && stringField(evidence, 'uuid', index, at)
               if (!refOK || !uuidOK) continue
@@ -160,7 +161,7 @@ async function main() {
         } else if (value.source === 'derivation') {
           if (list(value.parents, index, `${path}.parents`)) {
             value.parents.forEach((parent, entry) => {
-              if (!text(parent)) fail(index, `${path}.parents[${entry + 1}]`, 'expected a non-empty item id')
+              if (!text(parent)) fail(index, `${path}.parents entry ${entry + 1}`, 'expected a non-empty item id')
             })
           }
         }
@@ -170,17 +171,17 @@ async function main() {
   const byId = new Map<string, Mapping>()
   items.forEach((item, index) => {
     if (!text(item.id)) return
-    if (byId.has(item.id)) fail(index, `items[${index + 1}].id`, `duplicate id ${item.id}`)
+    if (byId.has(item.id)) fail(index, `${item.id}.id`, `duplicate id ${item.id}`)
     else byId.set(item.id, item)
   })
   items.forEach((item, index) => {
     if (item.source !== 'derivation' || !Array.isArray(item.parents)) return
-    const path = `items[${index + 1}].parents`
+    const path = `${text(item.id) ? item.id : `item ${index + 1}`}.parents`
     for (const parent of item.parents) {
       if (text(parent) && !byId.has(parent)) fail(index, path, `parent id does not exist: ${parent}`)
     }
     const pending = [...item.parents], seen = new Set<string>()
-    let grounded = false, cycle = false
+    let sourced = false, cycle = false
     while (pending.length) {
       const id = pending.pop()
       if (typeof id !== 'string' || seen.has(id)) continue
@@ -188,10 +189,10 @@ async function main() {
       if (id === item.id) cycle = true
       const parent = byId.get(id)
       if (!parent) continue
-      if (['transcript', 'rule', 'observation'].includes(parent.source as string)) grounded = true
+      if (['transcript', 'rule', 'observation'].includes(parent.source as string)) sourced = true
       else if (parent.source === 'derivation' && Array.isArray(parent.parents)) pending.push(...parent.parents)
     }
-    if (!grounded) fail(index, path, 'parent chain never reaches a transcript, rule or observation item')
+    if (!sourced) fail(index, path, 'parent chain never reaches a transcript, rule or observation item')
     if (cycle) fail(index, path, 'cycle among parents')
   })
   if (violations.length) {
@@ -216,19 +217,28 @@ async function main() {
     sha256: createHash('sha256').update(bytes!).digest('hex'),
     nonBlankLines: nonBlankLines(bytes!.toString('utf8')),
   }
-  console.log(values.json ? JSON.stringify(summary) :
+  const line = values.json ? JSON.stringify(summary) :
     `kind=${JSON.stringify(summary.counts.kind)} source=${JSON.stringify(summary.counts.source)} ` +
-    `criteria=${JSON.stringify(summary.criteria)} sha256=${summary.sha256} nonBlankLines=${summary.nonBlankLines}`)
+    `criteria=${JSON.stringify(summary.criteria)} sha256=${summary.sha256} nonBlankLines=${summary.nonBlankLines}`
+  if (values.json || !(values.render || values['check-render'])) console.log(line)
+  else console.error(line)
 }
 
 function render(spec: Mapping, items: Mapping[]): string {
-  let ordinal = 0
-  return `# ${spec.unit}\n\n` + items.map(item => {
-    const heading = item.kind === 'criterion' ? `Criterion ${++ordinal}` :
-      ({ requirement: 'Requirement', rejected: 'Rejected alternative', boundary: 'Boundary' } as Mapping)[item.kind as string]
-    return `## ${heading}: ${item.id}\n\n${item.content}\n` +
-      (item.kind === 'rejected' ? `\nReason: ${item.reason}\n` : '')
+  const body = (item: Mapping) => `**${item.id}**: ${(item.content as string).trim()}`
+  const paragraphs = (kind: string, tail = (_: Mapping) => '') =>
+    items.filter(item => item.kind === kind).map(item => body(item) + tail(item)).join('\n\n')
+  const criteria = items.filter(item => item.kind === 'criterion').map((item, index) => {
+    const marker = `${index + 1}. `
+    return marker + body(item).replace(/\n(?=.)/g, '\n' + ' '.repeat(marker.length))
   }).join('\n')
+  const groups = [
+    ['Requirements', paragraphs('requirement')], ['Boundaries', paragraphs('boundary')],
+    ['Rejected alternatives', paragraphs('rejected', item => `\nReason: ${(item.reason as string).trim()}`)],
+    ['Acceptance criteria', criteria],
+  ]
+  return [`# ${spec.unit}`, (spec.summary as string).trim(),
+    ...groups.filter(([, content]) => content).map(([heading, content]) => `## ${heading}\n\n${content}`)].join('\n\n') + '\n'
 }
 
 main().catch(error => { console.error(messageOf(error).replace(/[\r\n]+/g, ' ')); process.exitCode = 1 })
