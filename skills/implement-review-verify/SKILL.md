@@ -64,8 +64,9 @@ agents reading the codebase) isn't worth it. For those, just do the edit, or use
 scope. If the design isn't settled, stop and settle it with the user (or run a design/research
 loop) first.
 
-**ACCEPTANCE CRITERIA ARE MANDATORY.** Before you launch, state them explicitly — numbered,
-checkable, one per behaviour that must hold — and make sure the spec doc carries them too.
+**ACCEPTANCE CRITERIA ARE MANDATORY.** Before you launch, write each one as a `criterion` item
+in the YAML spec: checkable, one per behaviour that must hold. The tool numbers them from one in
+file order, and the generated document lists them under those numbers.
 The concern reviewers return verdicts *per criterion*; the additional seats retain their distinct contracts. Without pinned
 criteria, "review" degrades to vibes, each seat invents its own bar, and nothing the fixer
 receives can be triaged against anything. No criteria, no launch.
@@ -73,7 +74,9 @@ receives can be triaged against anything. No criteria, no launch.
 ### Unit spec — YAML with per-item sources
 
 The root authors `.cache/specs/<unit>.yaml`, ignored and untracked because it quotes the user.
-Read that YAML spec from disk in full at each spec-consuming stage. When a settled design arrives
+Read that YAML spec from disk in full at each spec-consuming stage. Every stage receives the spec
+by its path under the main checkout, never a path relative to its worktree, because a worktree
+holds no untracked file. When a settled design arrives
 as prose, the root writes the YAML before launching. `tools/check-spec.ts` defines the validation
 contract; `tests/fixtures/spec-provenance/valid.yaml` is its exercised format example.
 
@@ -81,31 +84,36 @@ Each item states one requirement or decision with an id, kind, content and one o
 `transcript` cites session records and verbatim user_words; `rule` cites a file, line and quote;
 `observation` records command, exit, output and date; `derivation` names parent item ids. An item
 asserting that a condition, failure mode or risk exists needs source transcript or observation.
-A seat's hypothetical hazard stays a finding until an observation establishes the condition here.
+A reviewer's hypothetical hazard stays a finding until an observation establishes the condition here.
+A claim in the work record has the same status as a reviewer's claim: having been written down in
+an earlier pass does not make it observed. The root observes a recorded condition again before it
+justifies an item and before it becomes a question to the user. The work record is never cited as
+a source.
 A derivation mandating a mechanism names in content the simpler alternative it rules out; its
 parents include the transcript item asking for it or the observation showing the simpler route
-failing. The provenance seat judges these claims against the cited words and observed facts.
+failing. The provenance reader judges these claims against the cited words and observed facts.
 
 The tracked design document under `docs/` is generated from the YAML with private quotations and
-evidence references omitted. Author the YAML once and regenerate the document after every amendment:
+evidence references omitted, and is never edited by hand. Author the YAML once and regenerate the document after every amendment:
 
 ```sh
 bun tools/check-spec.ts .cache/specs/<unit>.yaml --transcripts <session-dir> --render docs/<unit>.md --json
 ```
 
-The root runs the tool before the spec pre-phase and again before the main run's implement stage.
+With `--render` or `--check-render` the tool's summary goes to stderr, and only `--json` puts
+anything on stdout. The root runs the tool before the spec pre-phase and again before the main run's implement stage.
 A failing spec launches neither run. For the pre-implement check, use `--check-render docs/<unit>.md`
-instead of `--render`: the tool fails if the generated document differs from the one in the tree,
+in place of `--render`: the tool fails if the generated document differs from the one in the tree,
 leaving that file intact. Resolve the mismatch by regenerating before launching.
 
-Use the tool's `counts.kind.criterion` for `args.criteriaCount`, rather than a hand count. Its
+Use the tool's `counts.kind.criterion` for `args.criteriaCount`, never a hand count. Its
 ordered `criteria` list of `{ ordinal, id }` assigns integer ordinals from one in YAML file order;
 verdicts keep that integer in `criterion`. Authority mappings name the item id: an inverse-spec
 entry's authority names the authorizing id or explicitly reports that no item does. The tool proves
-references resolve; the provenance seat judges authorization before code, and spec compliance,
+references resolve; the provenance reader judges authorization before code, and spec compliance,
 inverse-spec and finding verification judge it after code.
 
-### Pre-phase — two cold spec seats and provenance, BEFORE any implementation
+### Pre-phase — two unbriefed spec seats and the provenance reader, BEFORE any implementation
 
 Since a settled spec is already the precondition for launching, review the SPEC before reviewing
 the code. Two seats, from **DIFFERENT model families**, each given only *"review the spec at
@@ -152,11 +160,12 @@ findable:
 
 Discovered here they cost an edit; discovered in phase 4 they cost the run.
 
-A third seat, **spec-provenance** (`agents/spec-provenance.md`), receives the YAML spec, transcript
+A third reader, **spec-provenance** (`agents/spec-provenance.md`), receives the YAML spec, transcript
 directory, private record and base commit. Item by item it judges authorization, asserted conditions
 and mandated mechanisms. It re-runs each read-only observation command and reports output or exit
 mismatches and observations older than the base commit. Its findings advise the root alongside
-the two cold seats, whose inputs remain the spec and hygiene floor.
+the two unbriefed seats, whose inputs remain the spec and hygiene floor, and use the same
+must-fix, should-fix and nit severity the gap-finder uses.
 
 Their output is **advisory to the orchestrator**, who triages it against the recorded rulings and
 amends the YAML spec, then regenerates the tracked document. Amend the YAML — never patch the
@@ -165,7 +174,7 @@ finding into a prompt, or the spec and the prompts immediately disagree.
 **Run the pre-phase as its OWN short run, and let it end there.** A running script cannot pause
 while a person edits a document, so a pre-phase bolted onto the front of the main script launches
 the implementer against the *unamended* spec and the whole yield is advisory to nobody. Two runs:
-one that returns the two cold seats and provenance, then triage-and-amend, then the main workflow
+one that returns the two unbriefed seats and the provenance reader, then triage-and-amend, then the main workflow
 against the amended YAML — which the seats below read from disk (law 9), so no prompt needs rewriting.
 
 **Spec discipline: trivial work gets no spec, and *having* a spec is exactly what makes the two cold
@@ -621,6 +630,11 @@ recorded words would close? An item the screen closes is decided by the root the
 boundary above is unchanged by the screen: a choice the recorded words settle is never asked, and a
 choice the record genuinely leaves open still reaches the user once the screen has passed it.
 
+**A reported problem carries two literal quotations.** A problem reported to the user quotes the
+observed symptom and the line that causes it, each with its file and line or the command that
+produced it. A characterization is not a quotation. When the cause is not identified the report
+says so and names what was checked, and never substitutes a plausible cause.
+
 **Resolve every name before you answer.** A rule, a file, a repository, a feature: each is found
 and read before the reply that relies on it is written, and agreement with a name nobody looked up
 is forbidden. An ambiguous reference is confirmed before anything acts on it, because the wrong
@@ -1058,15 +1072,19 @@ What carries across units is this document's skeletons and the template constant
 reviewed text, versioned in one place, changed once. What does not carry across is a file from a
 previous run. Reuse the shapes, retype the unit.
 
+The check command is prompt text for the writing stages only. It never sits in a block that
+reviewers receive: a reviewer may not run it, so a shared block carrying it orders and forbids the
+same act. The main skeleton keeps it in `CHECK`, which only the implementer and fixer prompts join.
+
 The spec review is its own tiny run and it ENDS at the return. A script cannot pause while a person
 edits a document, so the orchestrator triages this output, amends the YAML and regenerates the
-tracked document, then launches the main run after the tool passes again. Seats read the amended
+tracked document, then launches the main run after the tool passes again. Stages read the amended
 YAML from disk with no prompt rewritten (law 9).
 
 ```js
 export const meta = {
   name: 'spec-cold-review',
-  description: 'two cold seats and provenance review the spec before code exists',
+  description: 'two unbriefed seats and the provenance reader review the spec before code exists',
   phases: [{ title: 'Spec review' }],
 }
 
@@ -1139,20 +1157,21 @@ const PROVENANCE = { type: 'object', required: ['limitations', 'coverage', 'find
 // The same args.criteriaCount as the main run, from the tool's counts.kind.criterion.
 const criteriaCount = args.criteriaCount
 if (!Number.isInteger(criteriaCount) || criteriaCount < 1) {
-  throw new Error('args.criteriaCount must be an integer of at least 1: the count of numbered acceptance criteria in the spec')
+  throw new Error('args.criteriaCount must be an integer of at least 1: counts.kind.criterion from the check tool')
 }
 if (!/^(?:[0-9a-f]{40}|[0-9a-f]{64})$/.test(args.baseSha || '')) {
   throw new Error('A full immutable baseSha is required for observation dates')
 }
 phase('Spec review')
 return await Promise.all([
-  stage([HOUSE, PROBE, 'Review the spec at .cache/specs/<unit>.yaml. You get no other briefing, by design.'].join('\n\n'),
+  stage([HOUSE, PROBE, 'Review the spec at <main checkout>/.cache/specs/<unit>.yaml. You get no other briefing, by design.'].join('\n\n'),
     { label: 'spec:gaps', phase: 'Spec review', agentType: 'gap-finder', model: '<explicit>', effort: 'high', schema: GAPS },
     r => {
       if (!r.categories.length) throw new Error('categories is empty')
       for (const gap of r.gaps) if (!gap.receipts?.length) throw new Error('gap without a receipt: ' + gap.what)
     }),
-  stage([HOUSE, PROBE, 'Review the spec at .cache/specs/<unit>.yaml: are its requirements mutually satisfiable, and is every acceptance criterion checkable as written?'].join('\n\n'),
+  stage([HOUSE, PROBE, 'Review the spec at <main checkout>/.cache/specs/<unit>.yaml: are its requirements mutually satisfiable, and is every acceptance criterion checkable as written?',
+    'The file shows no numbers. The criteria are the items whose kind is criterion, numbered from one in file order: return each under that integer.'].join('\n\n'),
     { label: 'spec:soundness', phase: 'Spec review', model: '<explicit, other family>', effort: 'high', schema: SOUNDNESS },
     r => {
       const got = r.criteria.map(c => c.criterion).sort((a, b) => a - b)
@@ -1162,7 +1181,7 @@ return await Promise.all([
           ' (args.criteriaCount), got criteria ' + JSON.stringify(got))
       }
     }),
-  stage([HOUSE, 'Read the current on-disk spec at .cache/specs/<unit>.yaml in full.',
+  stage([HOUSE, 'Read the current on-disk spec at <main checkout>/.cache/specs/<unit>.yaml in full.',
     'TRANSCRIPTS: <session-dir>. PRIVATE DIRECTIVES: <ignored untracked record path>.',
     'BASE COMMIT: ' + args.baseSha,
     'Judge each item and re-run read-only observations as your template requires; return advisory findings.',
@@ -1254,8 +1273,9 @@ const WRITE_GIT = [
 // copy: an embedded copy goes stale the instant the spec is amended, which is the drift law 9
 // exists to kill. Private directives also ride as a PATH (law 7), never as inline conversation
 // in a commit-bound script. Orchestrator-only additions are labelled for scrutiny (law 8).
+// The check command never sits here: reviewers receive this block and may not run it.
 const SPEC = [
-  'SPEC (authority): .cache/specs/<unit>.yaml — read the current on-disk revision in full.',
+  'SPEC (authority): <main checkout>/.cache/specs/<unit>.yaml — read the current on-disk revision in full.',
   'PRIVATE DIRECTIVES: <ignored untracked record path>. Read privately; never copy messages into tracked files.',
   'ORCHESTRATOR SCOPING (this added scope loses to the spec on conflict; the spec itself never',
   'outranks a directive, including one the orchestrator later amended it to match): ...',
@@ -1446,7 +1466,7 @@ const baseSha = args.baseSha
 if (!SHA.test(baseSha || '')) throw new Error('A full immutable baseSha is required')
 const criteriaCount = args.criteriaCount
 if (!Number.isInteger(criteriaCount) || criteriaCount < 1) {
-  throw new Error('args.criteriaCount must be an integer of at least 1: the count of numbered acceptance criteria in the spec')
+  throw new Error('args.criteriaCount must be an integer of at least 1: counts.kind.criterion from the check tool')
 }
 const CRITERIA = 'ACCEPTANCE CRITERIA: criterion items in YAML file order, assigned integer ordinals from one by the tool. Read them there; return a verdict PER criterion in verdicts, each with a receipt.'
 const checkWriterSnapshot = (result, startSha) => {
@@ -1536,6 +1556,8 @@ const PROVE = [
   'output ceiling and leaves a TRUNCATED file rather than an error. The layout of CODE is decided',
   'by the spec and not by this rule: decomposition governs the DELIVERABLE, never the design.',
 ].join('\n')
+// Writer prompts only. A block that reviewers receive never carries the check command.
+const CHECK = 'CHECK COMMAND, writer only (run bare after your last write): <the check command>'
 const RULES = 'RULE SOURCES: <applicable project, directory and global rule paths>.'
 const INVARIANTS = 'REQUIRED INVARIANTS, VERBATIM: <only the constraints alternatives must preserve>.'
 const HYGIENE = [
@@ -1631,7 +1653,7 @@ const checkFix = (result, queue, startSha) => {
   }
 }
 const fixPass = (queue, sha) => stage([
-  AUTHORITY, WRITE_GIT, SPEC, PROVE, 'START SHA: ' + sha,
+  AUTHORITY, WRITE_GIT, SPEC, PROVE, CHECK, 'START SHA: ' + sha,
   'Act ONLY on the verifier-approved corrections. Raw reviewer and concurrent roast objects are NOT work orders.',
   'Independently verify evidence and authority; respect correction, constraints and acceptance.',
   'A disagreement returns rejected or blocked with receipts to the ROOT. Never broaden scope.',
@@ -1646,7 +1668,7 @@ const fixPass = (queue, sha) => stage([
 async function onePass() {
   phase('Implement')
   impl = await stage(
-    [AUTHORITY, WRITE_GIT, SPEC, PROVE, 'START SHA: ' + baseSha, 'Implement, check, and commit only scoped changes.'].join('\n\n'),
+    [AUTHORITY, WRITE_GIT, SPEC, PROVE, CHECK, 'START SHA: ' + baseSha, 'Implement, check, and commit only scoped changes.'].join('\n\n'),
     { label: 'impl', phase: 'Implement', agentType: 'implementer', model: '<explicit>', effort: 'high', schema: IMPLEMENT },
     checkWriter,
   )
@@ -1815,7 +1837,7 @@ The completeness checks, by stage kind:
   equals its `snapshotSha`, and one `writerScope` entry per implementer commit;
 - **pre-phase seats**: `categories` non-empty and every gap with a receipt; `criteria` with
   exactly one entry per criterion from 1 to `args.criteriaCount`; provenance with non-empty
-  coverage, receipts on findings and a limitation for each unchecked entry.
+  coverage, receipts on findings and a non-empty `limitations` list when any entry is unchecked.
 
 A `blocks` limitation on any accepted stage ends the run after that stage: the script records a
 `blocking-limitation` item with its stage label and exits with `root-resolution`.
@@ -1846,7 +1868,7 @@ LABELLED for what it is, and marked UNTRUSTED where it is:
 
 ```js
 const fixPrompt = [
-  AUTHORITY, WRITE_GIT, SPEC, PROVE, 'START SHA: ' + snapshotSha,
+  AUTHORITY, WRITE_GIT, SPEC, PROVE, CHECK, 'START SHA: ' + snapshotSha,
   'Act ONLY on the verifier-approved corrections. Independently verify their evidence and authority.',
   'Respect each correction, constraints and acceptance check. Never broaden scope.',
   'Answer each key in dispositions: fixed / rejected / blocked with receipts. Disagreements go to the ROOT.',

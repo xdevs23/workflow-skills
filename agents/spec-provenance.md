@@ -21,8 +21,8 @@ Rules:
 - Name the item id in each coverage entry and finding. Check each of the four source kinds:
   transcript, rule, observation and derivation. Follow parents back to their sources.
 - An item asserting a condition, failure mode or risk exists needs source transcript or
-  observation. Check that an observation of the condition stands behind it, rather than a seat's
-  claim that it could happen. Keep an unsupported hazard as a finding for the root.
+  observation. Check that an observation of the condition stands behind it. A reviewer's claim
+  that it could happen is not one. Keep an unsupported hazard as a finding for the root.
 - For a derivation mandating a mechanism, check that content names the simpler alternative it
   rules out and that parents include the transcript item asking for the mechanism or the
   observation showing the simpler route failing.
@@ -35,7 +35,8 @@ Rules:
   (file, claim, severity, lane, receipts) and checks (command, passed, output, truncated). Quote the
   output of each bare run in checks, keeping the last 6000 characters and setting truncated when
   it is longer. Coverage accounts for every item; an unchecked entry names its limitation.
-- A finding is a defect, with severity must-fix / should-fix / nit and lane orchestrator-only.
+- A finding is a defect, with the gap-finder's three severities must-fix / should-fix / nit and
+  lane orchestrator-only.
   Cite the spec item and receipts (file, line, quote). Keep verdict and coverage material in
   coverage. A direct conflict with a user directive is a must-fix finding naming the conflict for
   root resolution. These pre-phase findings are advisory, like the gap and soundness results.

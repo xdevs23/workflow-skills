@@ -123,7 +123,7 @@ async function simulate({ reports = {}, verify = {}, fixes = {}, fail = {}, impl
 }
 const oneReport = { 'review:correctness': { findings: [finding] } }
 const approveOne = { 'verify': verification([decision([source('correctness')])]) }
-// The pre-run skeleton (two cold seats and provenance) executed with a mocked agent().
+// The pre-run skeleton (two unbriefed seats and the provenance reader) executed with a mocked agent().
 const coldSkeleton = blocks.find(code => code.includes("name: 'spec-cold-review'"))
 const coldObject = label => label === 'spec:gaps'
   ? { limitations: [], gaps: [], categories: [{ name: 'edge cases', gaps: 0 }] }
@@ -967,7 +967,7 @@ const retried = (calls, label) => calls.filter(c => c.label === label)
 const FAILED = 'HOW YOUR PREVIOUS ATTEMPT FAILED, plainly: '
 
 describe('spec provenance instructions and routing', () => {
-  test('the third pre-phase seat gets provenance inputs while the two cold seats stay unbriefed', async () => {
+  test('the provenance reader gets its inputs while the other two pre-phase seats stay unbriefed', async () => {
     const calls = []
     const results = await preRun(async (prompt, opts) => {
       calls.push({ prompt, ...opts })
@@ -982,8 +982,9 @@ describe('spec provenance instructions and routing', () => {
     for (const phrase of ['.cache/specs/<unit>.yaml', 'TRANSCRIPTS:', 'PRIVATE DIRECTIVES:', BASE]) {
       expect(provenance.prompt).toContain(phrase)
     }
+    for (const call of calls) expect(call.prompt).toContain('<main checkout>/.cache/specs/<unit>.yaml')
+    expect(calls[1].prompt).toContain('items whose kind is criterion, numbered from one in file order')
     for (const call of calls.slice(0, 2)) {
-      expect(call.prompt).toContain('.cache/specs/<unit>.yaml')
       for (const phrase of ['TRANSCRIPTS:', 'PRIVATE DIRECTIVES:', 'AUTHORITY:', BASE]) expect(call.prompt).not.toContain(phrase)
     }
     const noBaseCalls = []
@@ -1016,7 +1017,43 @@ describe('spec provenance instructions and routing', () => {
       "tool's `counts.kind.criterion` for `args.criteriaCount`", 'integer ordinals from one in YAML file order',
       'count non-blank lines in the tracked generated document at the candidate commit',
       'private YAML holds quoted words',
+      'by its path under the main checkout, never a path relative to its worktree',
+      "claim in the work record has the same status as a reviewer's claim",
+      'work record is never cited as a source', 'never edited by hand',
+      'write each one as a `criterion` item in the YAML spec',
+      'same must-fix, should-fix and nit severity the gap-finder uses',
+      'non-empty `limitations` list when any entry is unchecked',
+      'A problem reported to the user quotes the observed symptom and the line that causes it',
+      'each with its file and line or the command that produced it',
+      'A characterization is not a quotation', 'never substitutes a plausible cause',
+      'check command is prompt text for the writing stages only',
+      'never sits in a block that reviewers receive',
     ]) expect(flat(skill)).toContain(phrase)
+    for (const stale of ['numbered acceptance criteria in the spec', 'make sure the spec doc carries them',
+      'a limitation for each unchecked entry']) expect(flat(skill)).not.toContain(stale)
+    expect(skill.split('counts.kind.criterion from the check tool')).toHaveLength(3)
+  })
+
+  test('only the writing stages receive the check command', async () => {
+    const { calls } = await simulate()
+    const writers = calls.filter(c => ['implementer', 'fixer'].includes(c.agentType))
+    expect(writers.length).toBeGreaterThan(0)
+    for (const call of calls) {
+      expect([call.label, call.prompt.includes('CHECK COMMAND')]).toEqual([call.label, writers.includes(call)])
+    }
+    const preCalls = []
+    await preRun(async (prompt, opts) => { preCalls.push(prompt); return coldObject(opts.label) })
+    for (const prompt of preCalls) expect(prompt).not.toContain('CHECK COMMAND')
+  })
+
+  test('the size passage and the spec-compliance closing line describe the generated document', async () => {
+    const design = flat(await Bun.file(new URL('../docs/workflow-finding-verification.md', import.meta.url)).text())
+    expect(design).toContain('non-blank lines of the generated design document at the candidate commit')
+    expect(design).toContain('The private YAML spec is never measured')
+    expect(design).not.toContain('non-blank spec lines')
+    const closing = flat(await template('reviewer-spec-compliance'))
+    expect(closing).toContain('the YAML spec path under the main checkout, the criterion count and the diff')
+    expect(closing).not.toContain('the spec doc path')
   })
 
   test('authority-aware templates preserve integer ordinals and name authorizing ids', async () => {
@@ -1037,7 +1074,7 @@ describe('spec provenance instructions and routing', () => {
   test('the provenance template judges authorization and repeats read-only observations against the base date', async () => {
     const prose = flat(await template('spec-provenance'))
     for (const phrase of ['whether the cited words authorize', 'surrounding context', 'each coverage entry and finding',
-      'source transcript or observation', "seat's claim that it could happen", 'simpler alternative',
+      'source transcript or observation', "reviewer's claim that it could happen", "gap-finder's three severities", 'simpler alternative',
       'parents include the transcript item', "Re-run each observation's command", 'read-only by construction',
       'output and exit status', 'older than the supplied base commit', 'findings are advisory']) {
       expect(prose).toContain(phrase)
@@ -1046,7 +1083,7 @@ describe('spec provenance instructions and routing', () => {
 
   test('spec writing emits the validated YAML format with source rules and regeneration', async () => {
     const prose = flat(await Bun.file(new URL('../skills/immaculate-spec-writing/SKILL.md', import.meta.url)).text())
-    for (const phrase of ['`.cache/specs/<unit>.yaml`', 'tools/check-spec.ts', 'valid.yaml', 'regenerate after every amendment',
+    for (const phrase of ['`.cache/specs/<unit>.yaml`', '`summary`', 'tools/check-spec.ts', 'valid.yaml', 'regenerate after every amendment',
       '**transcript:**', '**rule:**', '**observation:**', '**derivation:**', 'user_words', '{ command, exit, output, date }',
       'source transcript or observation', 'simpler alternative it rules out', 'parents include the transcript item',
       '{ ordinal, id }', 'args.criteriaCount', '--check-render']) expect(prose).toContain(phrase)

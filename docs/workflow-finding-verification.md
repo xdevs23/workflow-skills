@@ -186,8 +186,9 @@ necessary reasoning or generation stays acceptable at any length. Required check
 cold-review boundaries remain.
 
 Before accepting a spec-governed candidate, the root measures added implementation lines divided
-by non-blank spec lines, using the final immutable candidate/spec and declared comparison base.
-The report identifies the merge base, candidate and spec blob, implementation added/deleted
+by the non-blank lines of the generated design document at the candidate commit, using the
+declared comparison base. The private YAML spec is never measured. The report identifies the merge
+base, candidate, generated document path and its blob, implementation added/deleted
 counts, separate test counts, and exclusions for tests, Markdown documentation, lockfiles,
 generated files and binaries. The skill defines the repeatable counting rules and arithmetic
 helper. Display one decimal but compare unrounded counts: above **20:1** blocks acceptance;

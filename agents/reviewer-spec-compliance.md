@@ -64,4 +64,5 @@ Rules:
 
 The returned object is the deliverable and carries everything you owe.
 
-The task context (the spec doc path, the acceptance criteria, the diff) follows.
+The task context (the YAML spec path under the main checkout, the criterion count and the diff)
+follows.
