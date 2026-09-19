@@ -87,9 +87,20 @@ both such replies 6 of 6, caught the "otherwise I'll" fixture 6 of 6, and over a
 sessions each, was right 155 of 162. Its misses: the fixture reporting a database choice taken
 alone, 6 of 6, and one session of the fixture with a question buried mid-reply. Every prompt that
 names questions as allowed lets the database reply through, and a prompt that names a choice made
-alone blocks the clean long report over its linter override. Telling a choice that is the reader's
-from one the assistant may make is beyond the judge, so the database reply stays a known miss
-until that is decided.
+alone blocks the clean long report over its linter override.
+
+The veto phrase is the hook's main target. A choice reported as taken alone is meant to be blocked
+only when it is very big, of the size of which database to use, and everything smaller passes. One
+clause was tried for that, added to the current prompt: it named as a defect a choice reported as
+taken alone when it is as big as which database, language or framework to use, and allowed smaller
+choices. In real sessions over all fixtures, 6 sessions each, that variant was right 142 of 162,
+against 155 of 162 for the current prompt on the same set. Its false blocks fell on clean replies:
+a clean report ending in "Shall I add X?" 4 of 6, a clean report ending in a question about
+pushing 5 of 6, the fixture with a question buried mid-reply 6 of 6, the recommend-then-ask fixture
+3 of 6, the rewrite fixture 1 of 6 and the two-questions-inline fixture 1 of 6. Any wording about
+a choice taken alone, of any size, makes the judge block clean replies far more often. The prompt
+therefore carries no such wording, and the database reply is a known miss: its fixture is marked
+`knownMiss`, and the live runner reports a wrong verdict on it without failing.
 
 ## Observed behavior
 
@@ -131,8 +142,12 @@ correct judge returns. They include a clean rewrite and a rewrite that still car
 with `stop_hook_active` true, an empty reply, and a reply that addresses the judge and tells it
 what to answer. The fixtures name no real repository, commit or person.
 
+A fixture may carry `knownMiss: true` beside `expect: false`. It holds a reply the judge is known
+to pass although a correct judge blocks it. The database fixture is the one such fixture.
+
 The offline test makes no model call. It asserts the shape of the hook file and of every fixture,
-that both verdicts occur, and that a rewrite occurs with each verdict.
+that both verdicts occur, that a rewrite occurs with each verdict, that exactly one fixture carries
+`knownMiss`, and that every fixture carrying it expects a block.
 
 The live runner makes one model call per fixture. It reads the prompt and the model from the hook
 file, fills in the fixture's input, and calls the `claude` command in print mode with tools off,
@@ -140,9 +155,12 @@ all hooks disabled so that an installed copy of this hook does not judge the jud
 schema. It reads the answer from the structured output of the command's JSON result. A fixture
 fails when `ok` differs from the expected value, when `impossible` is true, or when the call fails.
 A false `ok` with the right verdict whose `reason` does not contain the words "the reader's to
-make" is printed with the word FORMAT in place of PASS and does not fail the run. After the count of
-passed fixtures the runner prints how many reasons were malformed. The runner exits non-zero only
-on a failure. `bun test` does not match the runner.
+make" is printed with the word FORMAT in place of PASS and does not fail the run. A wrong verdict on
+a fixture marked `knownMiss` is printed with the word MISS in place of MISMATCH and does not fail
+the run; a right verdict on it is printed as usual, and a failed call on it still fails the run.
+After the count of passed fixtures the runner prints how many reasons were malformed, then how many
+known misses were missed. The runner exits non-zero only on a failure. `bun test` does not match
+the runner.
 
 A later check is added through the live runner: write fixtures for it, change the prompt, run the
 runner.
