@@ -1,9 +1,0 @@
-{
- "expect": true,
- "input": {
-  "session_id": "s",
-  "hook_event_name": "Stop",
-  "stop_hook_active": false,
-  "last_assistant_message": "The parser is done. Do you want the error type to be public? I also cleaned up the imports and ran the suite, which passes. Next comes the CLI wiring, which depends on the config loader.\n"
- }
-}

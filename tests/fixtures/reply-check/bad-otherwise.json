@@ -1,9 +1,0 @@
-{
- "expect": false,
- "input": {
-  "session_id": "s",
-  "hook_event_name": "Stop",
-  "stop_hook_active": false,
-  "last_assistant_message": "The cache key can include the locale or not.\n\nShould the key include the locale? Otherwise I'll leave it out and move on to the API layer.\n"
- }
-}

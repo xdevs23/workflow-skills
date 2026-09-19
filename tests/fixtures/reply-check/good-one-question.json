@@ -1,9 +1,0 @@
-{
- "expect": true,
- "input": {
-  "session_id": "s",
-  "hook_event_name": "Stop",
-  "stop_hook_active": false,
-  "last_assistant_message": "The parser is done and the suite passes. The error type is currently private.\n\nShould the error type be public?\n"
- }
-}

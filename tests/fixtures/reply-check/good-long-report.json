@@ -1,9 +1,0 @@
-{
- "expect": true,
- "input": {
-  "session_id": "s",
-  "hook_event_name": "Stop",
-  "stop_hook_active": false,
-  "last_assistant_message": "The refactor checks out against the tree. The branch is rebased, the working tree is clean, and I ran the suite myself: 412 pass, 0 fail.\n\nWhat I confirmed:\n\n- The retry policy lives in one module now.\n- The config loader rejects unknown keys.\n- Both adapters use the shared error type.\n\nI did not re-check the CLI help text beyond the suite passing. I overruled the linter suggestion on the adapter names and kept the domain terms; that was my decision and it is one commit to undo.\n\nThe only open branch is the importer, still parked. Nothing is pushed.\n"
- }
-}

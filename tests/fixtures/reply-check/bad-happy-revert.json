@@ -1,9 +1,0 @@
-{
- "expect": false,
- "input": {
-  "session_id": "s",
-  "hook_event_name": "Stop",
-  "stop_hook_active": false,
-  "last_assistant_message": "The branch is merged into `main` and the worktree is removed. I went with a fast-forward instead of a rebase. Happy to revert if you disagree.\n"
- }
-}

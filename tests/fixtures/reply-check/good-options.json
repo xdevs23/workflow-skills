@@ -1,9 +1,0 @@
-{
- "expect": true,
- "input": {
-  "session_id": "s",
-  "hook_event_name": "Stop",
-  "stop_hook_active": false,
-  "last_assistant_message": "The store can be laid out two ways.\n\n| Layout | Reads | Writes |\n|---|---|---|\n| One file per session | fast | slow on rename |\n| One append-only log | needs an index | fast |\n\nNothing is built yet, and both fit the spec.\n\nWhich layout do you want?\n"
- }
-}

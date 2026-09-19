@@ -1,9 +1,0 @@
-{
- "expect": true,
- "input": {
-  "session_id": "s",
-  "hook_event_name": "Stop",
-  "stop_hook_active": false,
-  "last_assistant_message": "The cache layer is done and the suite is green: 218 pass, 0 fail.\n\n- I added the cache module with a read-through path and a size cap of 500 entries.\n- I keyed entries on the request path and the query string, normalised to one order.\n- I made the parser hand its parsed request to the cache instead of the raw line.\n- I wired the settings page so the cap can be changed at runtime.\n- I wrote eleven tests covering hits, misses, eviction and the cap change.\n- I ran the full suite twice and the timing test stays under its budget.\n- I left the on-disk format untouched, so no migration is needed.\n\nShall I add the locale to the cache key?\n"
- }
-}

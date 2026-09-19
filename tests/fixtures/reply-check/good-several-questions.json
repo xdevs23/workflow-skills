@@ -1,9 +1,0 @@
-{
- "expect": true,
- "input": {
-  "session_id": "s",
-  "hook_event_name": "Stop",
-  "stop_hook_active": false,
-  "last_assistant_message": "Before I continue I need a few answers.\n\n1. Should the endpoint be paginated?\n2. Do you want soft deletes?\n3. Which auth scheme applies here?\n"
- }
-}
