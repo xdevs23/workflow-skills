@@ -48,7 +48,7 @@ const rightVerdict = (answer, expected) => answer.ok === expected && answer.impo
 // counted and shown, and does not fail the run, because the verdict is still right.
 const malformedReason = (answer) =>
   answer.ok === false &&
-  !(typeof answer.reason === 'string' && answer.reason.startsWith('Rewrite your last reply.'))
+  !(typeof answer.reason === 'string' && answer.reason.includes("the reader's to make"))
 
 const report = async (name) => {
   const fixture = await Bun.file(fixtureDirectory + name).json()
