@@ -27,7 +27,7 @@ test('the hook file declares one prompt hook on Stop and nothing else', async ()
 
 test('every fixture is a Stop input with an expected verdict, and the set covers each case', async () => {
   const names = (await readdir(fixtureDirectory)).filter((name) => name.endsWith('.json')).sort()
-  expect(names).toHaveLength(21)
+  expect(names).toHaveLength(23)
 
   const fixtures = await Promise.all(names.map((name) => Bun.file(fixtureDirectory + name).json()))
   for (const fixture of fixtures) {
