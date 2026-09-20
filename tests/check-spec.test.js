@@ -1,6 +1,6 @@
 import { afterAll, describe, expect, test } from 'bun:test'
 import { createHash } from 'node:crypto'
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -194,6 +194,25 @@ describe('structured unit spec validation', () => {
       const result = changed(s => { s.items[1].rule = { file: path, line: 1 }; s.items[1].quote = quote })
       expect(result.exit).toBe(exit)
     }
+  })
+
+  test('with --base a tracked rule file is read at that commit, and an untracked one from disk', () => {
+    // The fixture rule file is tracked, so a quote of its committed text passes at HEAD even when
+    // the working copy has moved on, and a quote of the working copy fails at HEAD.
+    const head = Bun.spawnSync(['git', 'rev-parse', 'HEAD'], { cwd: root }).stdout.toString().trim()
+    const trackedRules = 'tests/fixtures/spec-provenance/rules.txt'
+    const committed = Bun.spawnSync(['git', 'show', `${head}:${trackedRules}`], { cwd: root }).stdout.toString()
+    const original = readFileSync(join(root, trackedRules), 'utf8')
+    writeFileSync(join(root, trackedRules), committed.replace('Retain the input order', 'Keep the input order'))
+    try {
+      expect(changed(s => { s.items[1].rule.file = trackedRules }, ['--base', head]).exit).toBe(0)
+      invalid(changed(s => { s.items[1].rule.file = trackedRules }), 'quote does not match')
+      invalid(changed(s => { s.items[1].rule.file = trackedRules; s.items[1].quote = 'Keep the input order' }, ['--base', head]), 'quote does not match')
+    } finally { writeFileSync(join(root, trackedRules), original) }
+    // An untracked file has no committed state, so --base reads it from disk.
+    const untracked = join(scratch, 'untracked-rule.txt')
+    writeFileSync(untracked, 'Retain the input order across every exported row.\n')
+    expect(changed(s => { s.items[1].rule = { file: untracked, line: 1 } }, ['--base', head]).exit).toBe(0)
   })
 
   test('a cycle whose chain reaches a sourced item still fails, while a shared-parent acyclic derivation passes', () => {
