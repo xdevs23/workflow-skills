@@ -38,9 +38,11 @@ workflows, and used by `audit-loop`.
 - **The Workflow tool / multi-agent fan-out.** Every skill orchestrates subagents via Workflow. A
   harness or plan that doesn't expose Workflow can't run these.
 - **Bun 1.2.21 or newer** for `tools/check-spec.ts`, which uses the built-in `Bun.YAML.parse`.
-  Validate a private unit spec with `bun tools/check-spec.ts <spec.yaml> --transcripts <session-dir>`.
+  Validate a private unit spec with `bun <plugin root>/tools/check-spec.ts <spec.yaml> --transcripts <session-dir>`,
+  where the plugin root is this repository or the installed plugin's directory under the plugin cache.
   Add `--json` for counts and criterion ordinals, `--render <path>` to generate its tracked design
-  document, or `--check-render <path>` to check that document before implementation.
+  document, or `--check-render <path>` to check that document before implementation. A passing run
+  prints a random `proof` that the workflow scripts' launch check returns to prove the tool ran.
 - **Explicit model selection.** Agent templates carry no model defaults. The orchestrator must
   select an explicit model and effort for every stage at launch, following the applicable project
   policy. Do not rely on template defaults or implicit inheritance.
@@ -55,8 +57,10 @@ workflows, and used by `audit-loop`.
 bun test tests/workflow-routing.test.js tests/git-snapshot.test.js tests/check-spec.test.js
 ```
 
-The routing tests use Bun's built-in Markdown parser and execute the documented workflow
-skeleton with deterministic fake stage results, including execution boundaries for every stage.
+The routing tests execute the two shipped workflow scripts under
+`skills/implement-review-verify/scripts/` with deterministic fake stage results, including the
+launch check and execution boundaries for every stage, and read the skill's Markdown with Bun's
+built-in parser for the prose and helper they check.
 The Git integration test creates scoped commits in a disposable repository under ignored
 `.cache/` and verifies pinned reads while HEAD changes. None of these tests makes model calls or
 launches workflows.
