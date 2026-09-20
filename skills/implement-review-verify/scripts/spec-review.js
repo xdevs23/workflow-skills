@@ -151,7 +151,7 @@ await stage([GATE_COMMAND,
 phase('Spec review')
 return await Promise.all([
   stage([HOUSE, PROBE, 'Review the spec at ' + UNIT.specPath + '. You get no other briefing, by design.'].join('\n\n'),
-    { label: 'spec:gaps', phase: 'Spec review', agentType: 'gap-finder', ...UNIT.models.gaps, schema: GAPS },
+    { label: 'spec:gaps', phase: 'Spec review', agentType: 'workflow-skills:gap-finder', ...UNIT.models.gaps, schema: GAPS },
     r => {
       if (!r.categories.length) throw new Error('categories is empty')
       for (const gap of r.gaps) if (!gap.receipts?.length) throw new Error('gap without a receipt: ' + gap.what)
@@ -172,7 +172,7 @@ return await Promise.all([
     'BASE COMMIT: ' + UNIT.baseSha,
     'Judge each item and re-run read-only observations as your template requires; return advisory findings.',
   ].join('\n\n'),
-    { label: 'spec:provenance', phase: 'Spec review', agentType: 'spec-provenance', ...UNIT.models.provenance, schema: PROVENANCE },
+    { label: 'spec:provenance', phase: 'Spec review', agentType: 'workflow-skills:spec-provenance', ...UNIT.models.provenance, schema: PROVENANCE },
     r => {
       if (!r.coverage.length) throw new Error('coverage is empty')
       for (const f of r.findings) if (!f.receipts?.length) throw new Error('finding without a receipt: ' + f.claim)
