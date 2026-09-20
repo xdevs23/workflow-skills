@@ -232,10 +232,12 @@ describe('workflow verification and consolidation', () => {
   })
 
   test('AUTHORITY requires reading directive context, rejects a keyword test, and forbids proceeding on a wordless record', () => {
-    expect(skill).toContain('absence of a particular keyword never licenses behavior')
-    expect(skill).toContain('an example never authorizes an unrelated feature')
-    expect(skill).not.toContain('is a root-action limitation')
-    expect(skill).toContain('Never report that gap as a limitation and proceed')
+    for (const text of [skeleton, skill]) {
+      expect(text).not.toContain('is a root-action limitation')
+      expect(text).toContain('Never report that gap as a limitation and proceed')
+    }
+    expect(skeleton).toContain('absence of a particular keyword never licenses behavior')
+    expect(skeleton).toContain('an example never authorizes an unrelated feature')
   })
 
   test('a hard flag caught after edits already landed stops further writes without reverting them', async () => {
@@ -1061,7 +1063,7 @@ describe('spec provenance instructions and routing', () => {
     ]) expect(flat(skill)).toContain(phrase)
     for (const stale of ['numbered acceptance criteria in the spec', 'make sure the spec doc carries them',
       'a limitation for each unchecked entry']) expect(flat(skill)).not.toContain(stale)
-    expect(skill.split('counts.kind.criterion from the check tool')).toHaveLength(3)
+    for (const script of [skeleton, coldSkeleton]) expect(script.split('counts.kind.criterion from the check tool')).toHaveLength(3)
   })
 
   test('only the writing stages receive the check command', async () => {
@@ -1468,7 +1470,7 @@ describe('one-pass remaining-items handoff', () => {
 
   test('both stage constants and every writing template require the writing-style skill', async () => {
     const required = 'REQUIRED: load the writing-style skill and follow it in every comment, document, commit message and returned string.'
-    expect(skill.split(required).length - 1).toBe(2)
+    for (const script of [skeleton, coldSkeleton]) expect(script.split(required).length - 1).toBe(1)
     const dir = new URL('../agents/', import.meta.url)
     for (const name of ['implementer', 'fixer', 'record', 'copywriter']) {
       const text = await Bun.file(new URL(`${name}.md`, dir)).text()

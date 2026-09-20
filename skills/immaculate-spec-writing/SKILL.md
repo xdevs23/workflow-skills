@@ -76,7 +76,7 @@ Write the unit spec to `.cache/specs/<unit>.yaml`, ignored and untracked because
 verbatim user words. The tracked document under `docs/` is generated from that YAML. Edit the YAML
 and regenerate after every amendment, keeping the source and its rendering together.
 
-`tools/check-spec.ts` defines the validation contract; the committed, synthetic example at
+`<plugin root>/tools/check-spec.ts` defines the validation contract; the committed, synthetic example at
 `tests/fixtures/spec-provenance/valid.yaml` is exercised by the tests. The top-level mapping has
 `unit`, `summary` (Markdown, the preamble of the generated document) and a non-empty `items` list.
 Each item has a unique kebab-case `id`, a `kind` (requirement, criterion, rejected or boundary),
@@ -85,6 +85,10 @@ also has `reason`. Use exactly the fields of its source kind:
 
 - **transcript:** `evidence`, a non-empty list of `{ file, line, uuid }` pointing to user records in
   the supplied session directory, and `user_words`, verbatim text in at least one resolved message.
+  Where the words answer a list, a label or a yes/no question, also `answers`, a verbatim quote of
+  the assistant text they reply to, which the tool resolves in an assistant record between the
+  previous user turn and the cited record. At least one item has this source: a spec with none
+  of the user's words fails, and so does a requirement derived from observations alone.
 - **rule:** `rule: { file, line }` and `quote`, matching the rule's words across hard-wrapped lines.
 - **observation:** `observation: { command, exit, output, date }`, recording a fact observed here.
   Use a read-only command that the provenance reader can repeat and compare against output and exit.
@@ -96,7 +100,7 @@ A derivation that mandates a mechanism states the simpler alternative it rules o
 and its parents include the transcript item asking for it or the observation showing that simpler
 route failing. Trace ordinary derivations to existing decisions; new decisions remain the user's.
 
-Run `bun tools/check-spec.ts .cache/specs/<unit>.yaml --transcripts <session-dir> --render docs/<unit>.md --json`.
+Run `bun <plugin root>/tools/check-spec.ts .cache/specs/<unit>.yaml --transcripts <session-dir> --render docs/<unit>.md --json`.
 It validates references and renders technical content, omitting private quotations and evidence.
 Keep each criterion as a criterion item: the tool numbers them from one in file order and supplies
 `{ ordinal, id }` plus `counts.kind.criterion` for the implementation workflow's integer ordinals and
