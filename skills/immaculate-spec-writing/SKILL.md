@@ -100,7 +100,7 @@ A derivation that mandates a mechanism states the simpler alternative it rules o
 and its parents include the transcript item asking for it or the observation showing that simpler
 route failing. Trace ordinary derivations to existing decisions; new decisions remain the user's.
 
-Run `bun <plugin root>/tools/check-spec.ts .cache/specs/<unit>.yaml --transcripts <session-dir> --render docs/<unit>.md --json`.
+Run `bun <plugin root>/tools/check-spec.ts .cache/specs/<unit>.yaml --transcripts <session-dir> --base <base-sha> --render docs/<unit>.md --json`.
 It validates references and renders technical content, omitting private quotations and evidence.
 Keep each criterion as a criterion item: the tool numbers them from one in file order and supplies
 `{ ordinal, id }` plus `counts.kind.criterion` for the implementation workflow's integer ordinals and
