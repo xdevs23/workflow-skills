@@ -9,11 +9,18 @@ Bun.markdown.render(skill, {
     return ''
   },
 })
-const skeleton = blocks.find(code => code.includes("name: 'kebab-name'"))
-if (!skeleton) throw new Error('Main workflow skeleton is missing')
+// The two shipped scripts, loaded from their files and executed with a mocked agent().
+const scripts = new URL('../skills/implement-review-verify/scripts/', import.meta.url)
+const skeleton = await Bun.file(new URL('implement-review-verify.js', scripts)).text()
+const coldSkeleton = await Bun.file(new URL('spec-review.js', scripts)).text()
 const AsyncFunction = Object.getPrototypeOf(async function () {}).constructor
 const run = new AsyncFunction('agent', 'phase', 'log', 'args',
   skeleton.replace('export const meta =', 'const meta ='))
+const SPEC_PATH = '<main checkout>/.cache/specs/<unit>.yaml'
+const TRANSCRIPTS = '<session-dir>'
+// The launch check's result: the tool ran, passed and printed its proof.
+const passedGate = (fields = {}) => ({ exitCode: 0, stdout: '{"proof":"0123456789abcdef0123456789abcdef"}', stderr: '', proof: '0123456789abcdef0123456789abcdef', ...fields })
+const gateModel = { model: 'claude-haiku-4-5', effort: 'low' }
 
 const readers = ['correctness', 'cleanliness', 'spec', 'dupes', 'quality', 'inverse', 'rules', 'alternatives']
 const source = (seat, index = 0) => `${seat}:${index}`
@@ -73,15 +80,20 @@ const writer = (fields, subject) => {
 }
 const implemented = (fields = {}) => writer({ startSha: BASE, snapshotSha: INITIAL, premises: [],
   senseCheck: { passed: true, recordSilent: true, note: '' }, ...fields }, 'implement the change')
-async function simulate({ reports = {}, verify = {}, fixes = {}, fail = {}, implementation,
+const launchArgs = (fields = {}) => ({ baseSha: BASE, criteriaCount: CRITERIA, specPath: SPEC_PATH, transcripts: TRANSCRIPTS, ...fields })
+async function simulate({ reports = {}, verify = {}, fixes = {}, fail = {}, implementation, gate = passedGate(),
   beforeRead = async () => {}, beforeFix = async () => {}, beforeRoast = async () => {},
-  args = { baseSha: BASE, criteriaCount: CRITERIA }, calls = [], logs = [] } = {}) {
+  args = launchArgs(), calls = [], logs = [] } = {}) {
   const completed = new Set(), phases = []
   let fixStart = null
   let currentSha = INITIAL
   let lastWriter = null
   const agent = async (prompt, opts) => {
     calls.push({ prompt, ...opts })
+    if (opts.label === 'gate') {
+      expect([opts.model, opts.effort, opts.phase]).toEqual([gateModel.model, gateModel.effort, 'Launch'])
+      return gate
+    }
     expect(opts.model).toBe('<explicit>')
     expect(opts.effort).toBe('high')
     if (fail[opts.label]) throw new Error(fail[opts.label])
@@ -123,19 +135,17 @@ async function simulate({ reports = {}, verify = {}, fixes = {}, fail = {}, impl
 }
 const oneReport = { 'review:correctness': { findings: [finding] } }
 const approveOne = { 'verify': verification([decision([source('correctness')])]) }
-// The pre-run skeleton (two unbriefed seats and the provenance reader) executed with a mocked agent().
-const coldSkeleton = blocks.find(code => code.includes("name: 'spec-cold-review'"))
-const coldObject = label => label === 'spec:gaps'
-  ? { limitations: [], gaps: [], categories: [{ name: 'edge cases', gaps: 0 }] }
+// The pre-run script (two unbriefed seats and the provenance reader) executed with a mocked agent().
+const coldObject = label => label === 'gate' ? passedGate()
+  : label === 'spec:gaps' ? { limitations: [], gaps: [], categories: [{ name: 'edge cases', gaps: 0 }] }
   : label === 'spec:provenance' ? { ...cold(), checks: [] }
   : { limitations: [], satisfiable: true, conflicts: [],
     criteria: Array.from({ length: CRITERIA }, (_, i) => ({ criterion: i + 1, checkable: true, why: 'observable' })) }
-// The pre-run reuses the main skeleton's leaf shapes and stage() helper: copied in here as its author would.
-const shared = (from, to) => skeleton.slice(skeleton.indexOf(from), skeleton.indexOf(to))
-const preRun = (agent, args = { baseSha: BASE, criteriaCount: CRITERIA }, logs = []) =>
-  new AsyncFunction('agent', 'phase', 'log', 'args', [shared('const RECEIPT =', '// output quotes'),
-    shared('const hasHardFlag =', '// The root supplies'), coldSkeleton.replace('export const meta =', 'const meta =')].join('\n'))(
-    agent, () => {}, line => logs.push(line), args)
+const preRun = (agent, args = launchArgs(), logs = [], phases = []) =>
+  new AsyncFunction('agent', 'phase', 'log', 'args', coldSkeleton.replace('export const meta =', 'const meta ='))(
+    agent, name => phases.push(name), line => logs.push(line), args)
+// The three review seats of the pre-run, after the launch check.
+const seatCalls = calls => calls.filter(c => c.label !== 'gate')
 
 // These tests execute the documented skeleton with deterministic fake stage results.
 // They do not launch workflows or make model calls.
@@ -214,16 +224,18 @@ describe('workflow verification and consolidation', () => {
     expect(verify).toContain('is not something this loop resolves by editing')
   })
 
-  test('the private-source section requires context, provenance and treats a missing record as a limitation', () => {
+  test('the private-source section requires context, provenance and blocks the launch on a missing record', () => {
     expect(skill).toContain('qualifications, surrounding context and examples')
     expect(skill).toContain('with its provenance recorded')
-    expect(skill).toContain('is an explicit limitation that blocks')
+    expect(skill).toContain('blocks the launch')
+    expect(skill).not.toContain('is an explicit limitation that blocks')
   })
 
-  test('AUTHORITY requires reading directive context, rejects a keyword test, and flags missing evidence as root-action', () => {
+  test('AUTHORITY requires reading directive context, rejects a keyword test, and forbids proceeding on a wordless record', () => {
     expect(skill).toContain('absence of a particular keyword never licenses behavior')
     expect(skill).toContain('an example never authorizes an unrelated feature')
-    expect(skill).toContain('is a root-action limitation')
+    expect(skill).not.toContain('is a root-action limitation')
+    expect(skill).toContain('Never report that gap as a limitation and proceed')
   })
 
   test('a hard flag caught after edits already landed stops further writes without reverting them', async () => {
@@ -266,9 +278,9 @@ describe('workflow verification and consolidation', () => {
     expect(['clean', 'follow-up'].includes(result.exit)).toBe(true)
     expect(coldSkeleton).toBeDefined()
     const coldCalls = []
-    await preRun(async (prompt, opts) => { coldCalls.push({ prompt, ...opts }); return coldObject(opts.label) })
+    await preRun(async (prompt, opts) => { if (opts.label !== 'gate') coldCalls.push({ prompt, ...opts }); return coldObject(opts.label) })
     expect(coldCalls).toHaveLength(3)
-    for (const { prompt } of [...calls, ...coldCalls]) {
+    for (const { prompt } of [...calls.filter(c => c.label !== 'gate'), ...coldCalls]) {
       expect(prompt).toContain('you are one assigned stage, not the orchestrator')
       expect(prompt).toContain('Do not launch workflows or subagents, directly or through skills or shell commands')
       expect(prompt).toContain('those checks have NOT already passed')
@@ -276,6 +288,7 @@ describe('workflow verification and consolidation', () => {
       expect(prompt).toContain('Report genuinely missing assignment capabilities/instructions, authorization or conflicting applicable requirements')
     }
     const types = new Set([...calls, ...coldCalls].map(c => c.agentType).filter(Boolean))
+    expect(types.size).toBeGreaterThan(0)
     for (const type of types) {
       const template = await Bun.file(new URL(`../agents/${type}.md`, import.meta.url)).text()
       const tools = type === 'roaster' ? 'Bash'
@@ -348,7 +361,7 @@ describe('workflow verification and consolidation', () => {
   })
 
   test('requires an immutable launch base, not a branch name', async () => {
-    await expect(simulate({ args: { baseSha: 'main' } })).rejects.toThrow('full immutable baseSha')
+    await expect(simulate({ args: launchArgs({ baseSha: 'main' }) })).rejects.toThrow('full immutable baseSha')
   })
 
   test('a dirty or wrongly pinned fixer result cannot become the next snapshot', async () => {
@@ -404,7 +417,7 @@ describe('workflow verification and consolidation', () => {
     const { result, calls, phases } = await simulate()
     expect(['clean', 'follow-up'].includes(result.exit)).toBe(true)
     expect(result.remaining.filter(r => r.kind !== 'unattested-fix')).toEqual([])
-    expect(phases).toEqual(['Implement', 'Review', 'Verify', 'Fix'])
+    expect(phases).toEqual(['Launch', 'Implement', 'Review', 'Verify', 'Fix'])
     expect(calls.filter(c => c.agentType === 'finding-verifier')).toHaveLength(1)
     expect(calls.find(c => c.agentType === 'fixer').prompt).toContain('APPROVED CORRECTIONS (verify against the tree and authority):\n\n[]')
   })
@@ -744,6 +757,15 @@ describe('workflow verification and consolidation', () => {
     expect(calls.filter(c => c.label === 'impl')).toHaveLength(1)
   })
 
+  test('an implementer no-words abort ends the run as aborted with its whole object in remaining', async () => {
+    const calls = []
+    const abort = { trigger: 'no-words', reason: 'the private directive record holds no quotation attributed to the user.' }
+    const { result } = await simulate({ implementation: implemented({ snapshotSha: BASE, proofPassed: false, abort }), calls })
+    expect([result.exit, result.detail]).toEqual(['aborted', 'Hard flag from impl: ' + abort.reason])
+    expect(result.remaining).toEqual([{ kind: 'abort', severity: 'CRITICAL', item: { ...implemented({ snapshotSha: BASE, proofPassed: false, abort }), label: 'impl' } }])
+    expect(calls.map(c => c.label)).toEqual(['gate', 'impl'])
+  })
+
   test('an empty quality findings list with its coverage is a complete result', async () => {
     const { result, calls } = await simulate({ reports: { 'review:quality': { findings: [] } } })
     expect(['clean', 'follow-up'].includes(result.exit)).toBe(true)
@@ -897,7 +919,7 @@ describe('coder sense check and project-benefit review', () => {
       senseCheck: { passed: false, recordSilent: false, note: 'the retry wrapper' } }), calls })
     expect(result.exit).toBe('aborted')
     expect(result.remaining[0].item.abort).toEqual(abort)
-    expect(calls.map(c => c.label)).toEqual(['impl'])
+    expect(calls.map(c => c.label)).toEqual(['gate', 'impl'])
   })
 
   test('a fixer sense-check flag in a valid FIX object ends the run with its structured result preserved', async () => {
@@ -926,23 +948,30 @@ describe('coder sense check and project-benefit review', () => {
     expect(await template('project-rule-reader')).toContain('a band-aid that already existed beside the diff is reported without kind, so the cleanup lane stays available')
   })
 
-  test('the coder and verifier templates, law 10 and the shared authority constant state the two triggers and the kind rules', async () => {
+  test('the coder and verifier templates, law 10 and the shared authority constant state the three triggers and the kind rules', async () => {
     for (const [name, phrases] of [
       ['implementer', ['Sense check before any edit: read the private directive record and the spec and ask two questions.', 'A record that says nothing about the mechanism rules nothing out: the check passes and senseCheck records recordSilent true.',
-        'Hard-flag and stop on either of two triggers, with one abort field and one disposition', "continues only on the user's verbatim decision quoted in the private record"]],
+        'Hard-flag and stop on one of three triggers, with one abort field and one disposition', "continues only on the user's verbatim decision quoted in the private record",
+        'A record that was never supplied is not a silent record.', 'set abort.trigger to no-words with the reason in abort.reason and leave the tree unmodified',
+        'at least one quotation attributed to the user', "a paraphrase, a summary or a design document's decision list does not count"]],
       ['fixer', ['Bounded sense check before your first write, on every approved correction', 'itself a band-aid on a mechanism the recorded words do not call for, where the record describes deletion or a rewrite',
-        "no agent's justification and no root statement substitutes for it", "You do not repeat the implementer's request-level sense check"]],
+        "no agent's justification and no root statement substitutes for it", "You do not repeat the implementer's request-level sense check",
+        'holds no quotation attributed to the user sets abort.trigger to no-words before your first write']],
       ['finding-verifier', ['is CRITICAL, and neither cleanup nor record is available for it', "supply the quote yourself for a cold seat's finding (quality, cold alternatives)",
         'Where the record holds no words about the mechanism, state that silence in plain words in the authority field', 'Approve-fix only for the deletion or rewrite the record describes']],
     ]) { const text = await template(name); for (const phrase of phrases) expect(text).toContain(phrase) }
     const flatSkill = flat(skill)
-    expect(flatSkill).toContain('10. **HARD-FLAG SEMANTICS.** A hard flag (agent stops, script aborts) has exactly two triggers.')
-    expect(flatSkill).toContain('**Two triggers, one field, one disposition**')
-    for (const phrase of ['exactly one trigger', 'One trigger, one field', 'one trigger only', 'single abort condition']) expect(flatSkill).not.toContain(phrase)
+    expect(flatSkill).toContain('10. **HARD-FLAG SEMANTICS.** A hard flag (agent stops, script aborts) has exactly three triggers.')
+    expect(flatSkill).toContain('**Three triggers, one field, one disposition**')
+    for (const phrase of ['exactly one trigger', 'One trigger, one field', 'one trigger only', 'single abort condition',
+      'exactly two triggers', 'Two triggers, one field', 'two triggers, one abort field', 'abort on two triggers']) expect(flatSkill).not.toContain(phrase)
     const { calls } = await simulate()
     for (const type of ['implementer', 'fixer', 'finding-verifier', 'reviewer-inverse-spec']) {
-      expect(flat(calls.find(c => c.agentType === type).prompt)).toContain('has TWO triggers, one abort field, one disposition. First:')
+      expect(flat(calls.find(c => c.agentType === type).prompt)).toContain('has THREE triggers, one abort field, one disposition. First:')
       expect(calls.find(c => c.agentType === type).prompt).toContain('Second, WRITING SEATS ONLY: a failed sense')
+      expect(calls.find(c => c.agentType === type).prompt).toContain('Third, WRITING SEATS ONLY: no-words.')
+      expect(calls.find(c => c.agentType === type).prompt).toContain('Never report that gap as a limitation and proceed.')
+      expect(calls.find(c => c.agentType === type).prompt).not.toContain('is a root-action limitation')
     }
     for (const type of ['quality', 'cold-alternatives', 'roaster']) expect(calls.find(c => c.agentType === type).prompt).not.toContain('sense check')
     for (const name of ['directive-authority.md', 'workflow-finding-verification.md']) expect(await Bun.file(new URL(`../docs/${name}`, import.meta.url)).text()).toContain('](coder-sense-check-and-project-benefit.md)')
@@ -968,18 +997,19 @@ const FAILED = 'HOW YOUR PREVIOUS ATTEMPT FAILED, plainly: '
 
 describe('spec provenance instructions and routing', () => {
   test('the provenance reader gets its inputs while the other two pre-phase seats stay unbriefed', async () => {
-    const calls = []
+    const all = []
     const results = await preRun(async (prompt, opts) => {
-      calls.push({ prompt, ...opts })
+      all.push({ prompt, ...opts })
       return coldObject(opts.label)
     })
+    const calls = seatCalls(all)
     expect(results).toHaveLength(3)
-    expect(calls.map(c => c.label)).toEqual(['spec:gaps', 'spec:soundness', 'spec:provenance'])
+    expect(all.map(c => c.label)).toEqual(['gate', 'spec:gaps', 'spec:soundness', 'spec:provenance'])
     const provenance = calls[2]
     expect(provenance.agentType).toBe('spec-provenance')
     expect(provenance.model).toBe('<explicit>')
     expect(provenance.effort).toBe('high')
-    for (const phrase of ['.cache/specs/<unit>.yaml', 'TRANSCRIPTS:', 'PRIVATE DIRECTIVES:', BASE]) {
+    for (const phrase of ['.cache/specs/<unit>.yaml', 'TRANSCRIPTS: ' + TRANSCRIPTS, 'PRIVATE DIRECTIVES:', BASE]) {
       expect(provenance.prompt).toContain(phrase)
     }
     for (const call of calls) expect(call.prompt).toContain('<main checkout>/.cache/specs/<unit>.yaml')
@@ -988,7 +1018,7 @@ describe('spec provenance instructions and routing', () => {
       for (const phrase of ['TRANSCRIPTS:', 'PRIVATE DIRECTIVES:', 'AUTHORITY:', BASE]) expect(call.prompt).not.toContain(phrase)
     }
     const noBaseCalls = []
-    await expect(preRun(async (_, opts) => { noBaseCalls.push(opts) }, { criteriaCount: CRITERIA }))
+    await expect(preRun(async (_, opts) => { noBaseCalls.push(opts) }, launchArgs({ baseSha: undefined })))
       .rejects.toThrow('baseSha is required')
     expect(noBaseCalls).toEqual([])
   })
@@ -1043,6 +1073,7 @@ describe('spec provenance instructions and routing', () => {
     }
     const preCalls = []
     await preRun(async (prompt, opts) => { preCalls.push(prompt); return coldObject(opts.label) })
+    expect(preCalls).toHaveLength(4)
     for (const prompt of preCalls) expect(prompt).not.toContain('CHECK COMMAND')
   })
 
@@ -1076,17 +1107,22 @@ describe('spec provenance instructions and routing', () => {
     for (const phrase of ['whether the cited words authorize', 'surrounding context', 'each coverage entry and finding',
       'source transcript or observation', "reviewer's claim that it could happen", "gap-finder's three severities", 'simpler alternative',
       'parents include the transcript item', "Re-run each observation's command", 'read-only by construction',
-      'output and exit status', 'older than the supplied base commit', 'findings are advisory']) {
+      'output and exit status', 'older than the supplied base commit', 'findings are advisory',
+      'read the assistant message the cited words reply to', 'answer a list, a label or a yes/no question, the item must carry answers',
+      'a missing one is a must-fix finding', 'against question and answer together', 'admit two readings, the finding is must-fix and names both readings',
+      'only by asking the user that one question', 'blocks the main run until the user\'s answer is in the record',
+      'the block is a rule for the root and no script enforces it']) {
       expect(prose).toContain(phrase)
     }
   })
 
   test('spec writing emits the validated YAML format with source rules and regeneration', async () => {
     const prose = flat(await Bun.file(new URL('../skills/immaculate-spec-writing/SKILL.md', import.meta.url)).text())
-    for (const phrase of ['`.cache/specs/<unit>.yaml`', '`summary`', 'tools/check-spec.ts', 'valid.yaml', 'regenerate after every amendment',
-      '**transcript:**', '**rule:**', '**observation:**', '**derivation:**', 'user_words', '{ command, exit, output, date }',
+    for (const phrase of ['`.cache/specs/<unit>.yaml`', '`summary`', '<plugin root>/tools/check-spec.ts', 'valid.yaml', 'regenerate after every amendment',
+      '**transcript:**', '**rule:**', '**observation:**', '**derivation:**', 'user_words', '`answers`', '{ command, exit, output, date }',
       'source transcript or observation', 'simpler alternative it rules out', 'parents include the transcript item',
       '{ ordinal, id }', 'args.criteriaCount', '--check-render']) expect(prose).toContain(phrase)
+    expect(prose).not.toContain('bun tools/check-spec.ts')
   })
 })
 
@@ -1101,7 +1137,7 @@ describe('structured stage output', () => {
       const briefed = BRIEFED.includes(agentType)
       expect([label, schema.properties.report, schema.additionalProperties, schema.required.includes('abort'), 'abort' in schema.properties])
         .toEqual([label, undefined, false, briefed, briefed])
-      if (briefed) expect(schema.properties.abort.properties.trigger).toEqual({ enum: ['none', 'directive-conflict', 'sense-check'] })
+      if (briefed) expect(schema.properties.abort.properties.trigger).toEqual({ enum: ['none', 'directive-conflict', 'sense-check', 'no-words'] })
     }
     const seats = calls.filter(c => c.phase === 'Review' || c.agentType === 'roaster')
     expect(new Set(seats.map(c => c.schema)).size).toBe(9)
@@ -1116,9 +1152,9 @@ describe('structured stage output', () => {
 
   test('a missing criteriaCount throws before any agent runs, in the main run and the pre-run', async () => {
     const calls = []
-    await expect(simulate({ args: { baseSha: BASE }, calls })).rejects.toThrow('args.criteriaCount must be an integer of at least 1')
-    await expect(simulate({ args: { baseSha: BASE, criteriaCount: 0 }, calls })).rejects.toThrow('args.criteriaCount')
-    await expect(preRun(async (prompt, opts) => { calls.push(opts); return coldObject(opts.label) }, {})).rejects.toThrow('args.criteriaCount')
+    await expect(simulate({ args: launchArgs({ criteriaCount: undefined }), calls })).rejects.toThrow('args.criteriaCount must be an integer of at least 1')
+    await expect(simulate({ args: launchArgs({ criteriaCount: 0 }), calls })).rejects.toThrow('args.criteriaCount')
+    await expect(preRun(async (prompt, opts) => { calls.push(opts); return coldObject(opts.label) }, launchArgs({ criteriaCount: undefined }))).rejects.toThrow('args.criteriaCount')
     expect(calls).toEqual([])
   })
 
@@ -1129,7 +1165,7 @@ describe('structured stage output', () => {
     expect(retried(calls, 'review:correctness')[2].prompt).toContain(FAILED + mismatch)
     expect(result.detail).toContain('FAIL-FAST: review:correctness returned no complete result after 3 attempts: ' + mismatch)
     expect(calls.some(c => c.phase === 'Verify')).toBe(false)
-    const stale = await simulate({ args: { baseSha: BASE, criteriaCount: 3 } })
+    const stale = await simulate({ args: launchArgs({ criteriaCount: 3 }) })
     expect(stale.result.detail).toContain('expected exactly one verdict per criterion 1..3 (args.criteriaCount), got criteria [1,2]')
   })
 
@@ -1193,7 +1229,7 @@ describe('structured stage output', () => {
       })
       expect(result.exit).toBe('root-resolution')
       expect(result.remaining).toContainEqual({ kind: 'blocking-limitation', severity: 'CRITICAL', item: { ...limitation, label } })
-      if (label === 'impl') expect(calls.map(c => c.label)).toEqual(['impl'])
+      if (label === 'impl') expect(calls.map(c => c.label)).toEqual(['gate', 'impl'])
       if (label.startsWith('review:')) expect(calls.some(c => c.phase === 'Verify')).toBe(false)
       if (label === 'verify') expect(calls.some(c => c.phase === 'Fix')).toBe(false)
     }
@@ -1240,7 +1276,9 @@ describe('structured stage output', () => {
       await expect(run).rejects.toThrow(message)
       expect(calls.filter(c => c.label === label)).toHaveLength(3)
     }
-    const [gaps, soundness] = await preRun(async (prompt, opts) => coldObject(opts.label))
+    const phases = []
+    const [gaps, soundness] = await preRun(async (prompt, opts) => coldObject(opts.label), launchArgs(), [], phases)
+    expect(phases).toEqual(['Launch', 'Spec review'])
     expect([gaps.categories.length, soundness.criteria.length]).toEqual([1, CRITERIA])
   })
 
@@ -1298,7 +1336,7 @@ describe('one-pass remaining-items handoff', () => {
       expect(verifiers).toHaveLength(1)
       expect(verifiers[0].prompt).not.toContain('roaster:0')
       expect(verifiers[0].schema.properties.closures).toBeUndefined()
-      expect(calls.map(c => c.label)).toEqual(['impl', ...readers.map(s => 'review:' + s), 'verify', 'fix', 'roast'])
+      expect(calls.map(c => c.label)).toEqual(['gate', 'impl', ...readers.map(s => 'review:' + s), 'verify', 'fix', 'roast'])
     }
   })
 
@@ -1310,7 +1348,7 @@ describe('one-pass remaining-items handoff', () => {
       expect(result.exit).toBe('root-resolution')
       expect(result.remaining).toEqual([{ kind: 'failed-proof', severity: 'CRITICAL', item: { label, checks: [check(false)] } }])
       expect(result.proof.checks).toEqual([check(false)])
-      if (label === 'impl') expect(calls.map(c => c.label)).toEqual(['impl'])
+      if (label === 'impl') expect(calls.map(c => c.label)).toEqual(['gate', 'impl'])
     }
   })
 
@@ -1588,6 +1626,107 @@ describe('work execution rules', () => {
     for (const section of ['## The quality bar', '### While a run is in flight']) {
       const body = skill.slice(skill.indexOf(`\n${section}\n`) + section.length + 2).split(/\n#{2,4} /)[0]
       expect(body).toContain(link)
+    }
+  })
+})
+
+describe('launch check and shipped scripts', () => {
+  const gatePrompt = calls => calls.find(c => c.label === 'gate')
+  const command = 'bun <plugin root>/tools/check-spec.ts ' + SPEC_PATH + ' --transcripts ' + TRANSCRIPTS + ' --json'
+  const sentence = 'Run this exact command once with the Bash tool and return its exit code, stdout, stderr and the proof string it prints on success, with no interpretation, retry or fix.'
+
+  test('both scripts start with the launch check before any other agent, on the small model at low effort', async () => {
+    const { calls, phases } = await simulate()
+    const gate = gatePrompt(calls)
+    expect(calls[0]).toBe(gate)
+    expect([gate.model, gate.effort, gate.phase, gate.agentType]).toEqual(['claude-haiku-4-5', 'low', 'Launch', undefined])
+    expect(gate.prompt).toBe(command + ' --check-render docs/<unit>.md\n' + sentence)
+    expect(gate.schema).toEqual({ type: 'object', required: ['exitCode', 'stdout', 'stderr', 'proof'], additionalProperties: false,
+      properties: { exitCode: { type: 'integer' }, stdout: { type: 'string' }, stderr: { type: 'string' }, proof: { type: 'string' } } })
+    expect(phases[0]).toBe('Launch')
+    const preCalls = []
+    await preRun(async (prompt, opts) => { preCalls.push({ prompt, ...opts }); return coldObject(opts.label) })
+    const preGate = gatePrompt(preCalls)
+    expect(preCalls[0]).toBe(preGate)
+    expect([preGate.model, preGate.effort, preGate.phase]).toEqual(['claude-haiku-4-5', 'low', 'Launch'])
+    expect(preGate.prompt).toBe(command + '\n' + sentence)
+    expect(preGate.schema).toEqual(gate.schema)
+  })
+
+  for (const [name, gate] of [
+    ['an empty proof', passedGate({ proof: '' })],
+    ['a blank proof', passedGate({ proof: '  ' })],
+    ['a non-zero exit', passedGate({ exitCode: 1, proof: '', stderr: 'unit.yaml: items: no item has source transcript' })],
+  ]) {
+    test(`${name} from the launch check is retried three times and then thrown, quoting stderr, before any stage`, async () => {
+      const calls = []
+      await expect(simulate({ gate, calls })).rejects.toThrow('FAIL-FAST: gate returned no complete result after 3 attempts: the spec check did not pass: exit ' + gate.exitCode + ', proof ' + JSON.stringify(gate.proof) + ', stderr: ' + gate.stderr)
+      expect(calls.map(c => c.label)).toEqual(['gate', 'gate', 'gate'])
+      expect(calls[1].prompt).toContain('HOW YOUR PREVIOUS ATTEMPT FAILED, plainly: the spec check did not pass')
+      const preCalls = []
+      await expect(preRun(async (prompt, opts) => { preCalls.push(opts); return opts.label === 'gate' ? gate : coldObject(opts.label) }))
+        .rejects.toThrow('the spec check did not pass')
+      expect(preCalls.map(c => c.label)).toEqual(['gate', 'gate', 'gate'])
+    })
+  }
+
+  test('a spec path that is not YAML, or a missing transcript directory, throws before any stage', async () => {
+    for (const fields of [{ specPath: '<main checkout>/.cache/specs/<unit>.md' }, { specPath: undefined }, { specPath: '' }]) {
+      const calls = []
+      await expect(simulate({ args: launchArgs(fields), calls })).rejects.toThrow('args.specPath must name the unit spec YAML file')
+      await expect(preRun(async (prompt, opts) => { calls.push(opts); return coldObject(opts.label) }, launchArgs(fields))).rejects.toThrow('args.specPath must name the unit spec YAML file')
+      expect(calls).toEqual([])
+    }
+    const calls = []
+    await expect(simulate({ args: launchArgs({ transcripts: undefined }), calls })).rejects.toThrow('args.transcripts must name the transcript directory')
+    expect(calls).toEqual([])
+  })
+
+  test('the scripts parse nothing from the tool output and read only the proof field', async () => {
+    const { result, calls } = await simulate({ gate: passedGate({ stdout: 'not json at all', proof: 'x' }) })
+    expect(result.exit).toBe('clean')
+    expect(calls.filter(c => c.label === 'gate')).toHaveLength(1)
+    for (const script of [skeleton, coldSkeleton]) {
+      expect(script).not.toContain('JSON.parse')
+      expect(script).not.toContain('Math.random')
+    }
+  })
+
+  test('each script opens with the marked block holding every per-unit value, and the skill keeps no skeleton code block', async () => {
+    const marker = '// ---- UNIT VALUES. A unit copies this file and edits only this block. ----'
+    const end = '// ---- END OF UNIT VALUES ----'
+    for (const [script, fields] of [
+      [skeleton, ['mainCheckout', 'worktree', 'specPath', 'transcripts', 'privateRecord', 'generatedDocument', 'pluginRoot', 'checkCommand', 'baseSha', 'criteriaCount', 'implementerPrompt', 'models']],
+      [coldSkeleton, ['mainCheckout', 'specPath', 'transcripts', 'privateRecord', 'pluginRoot', 'baseSha', 'criteriaCount', 'models']],
+    ]) {
+      const meta = script.indexOf('export const meta =')
+      const start = script.indexOf(marker), stop = script.indexOf(end)
+      expect([meta, start > meta, stop > start]).toEqual([0, true, true])
+      const block = script.slice(start, stop)
+      for (const field of fields) expect([field, block.includes(`  ${field}:`)]).toEqual([field, true])
+      expect(block).toContain("gate: { model: 'claude-haiku-4-5', effort: 'low' }")
+      expect(script.slice(stop)).not.toContain("model: '<explicit>'")
+      expect(script.slice(stop)).not.toContain('<the check command>')
+    }
+    expect(blocks.some(code => code.includes("name: 'kebab-name'") || code.includes("name: 'spec-cold-review'"))).toBe(false)
+    expect(blocks.some(code => code.includes('const assessSize ='))).toBe(true)
+    const text = flat(skill)
+    for (const phrase of ['`scripts/spec-review.js`', '`scripts/implement-review-verify.js`', 'edit only the marked block',
+      "never copy a previous unit's copy", '`<plugin root>/tools/check-spec.ts`', '`.claude-plugin/plugin.json`',
+      'Never copy a previous unit\'s script and edit it']) expect(text).toContain(phrase)
+    expect(text).not.toContain('Skeleton')
+    expect(text).not.toContain('skeletons below')
+    expect(text).not.toContain('bun tools/check-spec.ts')
+  })
+
+  test('the skill states the launch block, the contradiction sentence, the tool location and three triggers', () => {
+    const text = flat(skill)
+    for (const phrase of ['blocks the launch', 'writes no spec and starts no run on it', 'searches the session transcripts for the words',
+      'tells the user which decision it has no words for and waits', 'Writing the gap into the record as a limitation and continuing is the failure',
+      'contradiction between a design and the code, or between two statements of the user, is a question for the user with both sides quoted',
+      'no agent resolves and no spec is written on top of', 'under the plugin root', 'plugin cache', 'carries the loaded version',
+      'An installed plugin older than this', 'prints no proof', '`no-words`', 'Three triggers, one field, one disposition']) {
+      expect([phrase, text.includes(phrase)]).toEqual([phrase, true])
     }
   })
 })
