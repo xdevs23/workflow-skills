@@ -1634,7 +1634,7 @@ describe('work execution rules', () => {
 
 describe('launch check and shipped scripts', () => {
   const gatePrompt = calls => calls.find(c => c.label === 'gate')
-  const command = 'bun <plugin root>/tools/check-spec.ts ' + SPEC_PATH + ' --transcripts ' + TRANSCRIPTS + ' --json'
+  const command = 'bun <plugin root>/tools/check-spec.ts ' + SPEC_PATH + ' --transcripts ' + TRANSCRIPTS + ' --json --base ' + BASE
   const sentence = 'Run this exact command once with the Bash tool and return its exit code, stdout, stderr and the proof string it prints on success, with no interpretation, retry or fix.'
 
   test('both scripts start with the launch check before any other agent, on the small model at low effort', async () => {

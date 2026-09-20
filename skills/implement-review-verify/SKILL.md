@@ -97,7 +97,7 @@ The tracked design document under `docs/` is generated from the YAML with privat
 evidence references omitted, and is never edited by hand. Author the YAML once and regenerate the document after every amendment:
 
 ```sh
-bun <plugin root>/tools/check-spec.ts .cache/specs/<unit>.yaml --transcripts <session-dir> --render docs/<unit>.md --json
+bun <plugin root>/tools/check-spec.ts .cache/specs/<unit>.yaml --transcripts <session-dir> --base <base-sha> --render docs/<unit>.md --json
 ```
 
 The tool lives at `tools/check-spec.ts` under the plugin root. The plugin root is this repository
@@ -1129,7 +1129,7 @@ same act. The main script keeps it in `CHECK`, which only the implementer and fi
 Both scripts begin with a launch check, before any other agent: a small stage on
 `claude-haiku-4-5` at low effort whose prompt is one command line and one sentence. The command
 is `<plugin root>/tools/check-spec.ts` with `--json`, the spec path from `args.specPath`, the
-transcript directory from `args.transcripts`, and for the main run `--check-render` with the
+transcript directory from `args.transcripts`, `--base` with the base commit, and for the main run `--check-render` with the
 generated document. The sentence tells the stage to run that exact command once with the Bash
 tool and return its exit code, stdout, stderr and the proof string printed on success, with no
 interpretation, retry or fix. Its schema requires `exitCode`, `stdout`, `stderr` and `proof`.

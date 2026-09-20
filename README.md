@@ -40,8 +40,10 @@ workflows, and used by `audit-loop`.
 - **Bun 1.2.21 or newer** for `tools/check-spec.ts`, which uses the built-in `Bun.YAML.parse`.
   Validate a private unit spec with `bun <plugin root>/tools/check-spec.ts <spec.yaml> --transcripts <session-dir>`,
   where the plugin root is this repository or the installed plugin's directory under the plugin cache.
-  Add `--json` for counts and criterion ordinals, `--render <path>` to generate its tracked design
-  document, or `--check-render <path>` to check that document before implementation. A passing run
+  Add `--base <commit>` so a cited rule file tracked at that commit is read there and not from
+  the working tree, while an untracked file reads from disk. Add `--json` for counts and
+  criterion ordinals, `--render <path>` to generate its tracked design document, or
+  `--check-render <path>` to check that document before implementation. A passing run
   prints a random `proof` that the workflow scripts' launch check returns to prove the tool ran.
 - **Explicit model selection.** Agent templates carry no model defaults. The orchestrator must
   select an explicit model and effort for every stage at launch, following the applicable project
