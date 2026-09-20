@@ -42,12 +42,57 @@ describe('structured unit spec validation', () => {
       criteria: [{ ordinal: 1, id: 'row-order' }, { ordinal: 2, id: 'stream-result' }],
       sha256: createHash('sha256').update(new Uint8Array(bytes)).digest('hex'),
       nonBlankLines: 40,
+      proof: expect.stringMatching(/^[0-9a-f]{32}$/),
+      spec: join(fixtures, 'valid.yaml'),
     })
     const plain = fixture('valid')
     expect(plain.exit).toBe(0)
     expect(plain.err).toBe('')
     expect(plain.out.trim().split('\n')).toHaveLength(1)
-    for (const value of ['kind=', 'source=', 'criteria=', 'sha256=', 'nonBlankLines=40']) expect(plain.out).toContain(value)
+    for (const value of ['kind=', 'source=', 'criteria=', 'sha256=', 'nonBlankLines=40', 'proof=', `spec=${join(fixtures, 'valid.yaml')}`]) expect(plain.out).toContain(value)
+  })
+
+  test('a passing run prints a fresh 32-character hexadecimal proof in both output forms, a failing run none', () => {
+    const proofs = [fixture('valid', ['--json']), fixture('valid', ['--json'])].map(result => JSON.parse(result.out).proof)
+    expect(proofs[0]).toMatch(/^[0-9a-f]{32}$/)
+    expect(proofs[1]).toMatch(/^[0-9a-f]{32}$/)
+    expect(proofs[0]).not.toBe(proofs[1])
+    expect(fixture('valid').out).toMatch(/ proof=[0-9a-f]{32} /)
+    const failing = fixture('chain', ['--json'])
+    expect(failing.exit).not.toBe(0)
+    expect(failing.out).toBe('')
+    expect(failing.err).not.toContain('proof')
+    expect(failing.err).not.toContain('spec=')
+  })
+
+  test('a spec with no transcript item fails naming items, and a requirement resting on observations alone fails naming it', () => {
+    invalid(changed(s => { s.items = s.items.slice(1) }), 'items: no item has source transcript')
+    const observed = changed(s => {
+      s.items.push({ id: 'harden', kind: 'requirement', content: 'Harden the batch path.', source: 'derivation', parents: ['batch-unavailable'] })
+    })
+    invalid(observed, 'harden.parents: parent chain of a requirement never reaches a transcript or rule item')
+    expect(observed.err).not.toContain('harden.parents: parent chain never reaches')
+    const viaRule = changed(s => {
+      s.items.push({ id: 'ordered', kind: 'requirement', content: 'Keep the order.', source: 'derivation', parents: ['row-order'] })
+    })
+    expect(viaRule.exit).toBe(0)
+    expect(changed(s => {
+      s.items.push({ id: 'shape', kind: 'boundary', content: 'Only the batch path.', source: 'derivation', parents: ['batch-unavailable'] })
+    }).exit).toBe(0)
+  })
+
+  test('answers resolves against the assistant records between the previous user turn and the cited record', () => {
+    const cite = (answers, words = 'Stream the rows.') => changed(s => {
+      s.items[0].evidence = [{ file: 'session.jsonl', line: 9, uuid: 'answer' }]
+      s.items[0].user_words = words
+      if (answers !== undefined) s.items[0].answers = answers
+    })
+    expect(cite(undefined).exit).toBe(0)
+    expect(cite('(a) stream the rows,   (b) batch them. Which one?').exit).toBe(0)
+    invalid(cite('Export the selected rows.'), 'export-request.answers: not found in the assistant messages the cited words reply to')
+    invalid(cite(''), 'export-request.answers: expected a non-empty string')
+    invalid(changed(s => { s.items[1].answers = 'x' }), 'row-order.answers: unknown key')
+    invalid(changed(s => { s.items[0].answers = 'Export the selected rows.' }), 'export-request.answers: not found')
   })
 
   test.each([
@@ -64,6 +109,7 @@ describe('structured unit spec validation', () => {
     const prefix = 'tests/fixtures/spec-provenance/several.yaml: '
     const messages = result.err.trim().split('\n').map(line => line.slice(line.indexOf(prefix) + prefix.length))
     expect(messages).toEqual([
+      "items: no item has source transcript: a spec needs the user's words",
       'first.parents: parent id does not exist: missing',
       'first.parents: parent chain never reaches a transcript, rule or observation item',
       'second.extra: unknown key', 'second.kind: unknown kind',
@@ -116,7 +162,7 @@ describe('structured unit spec validation', () => {
   test.each([
     [1, 'wrong-uuid', 'expected a user record'], [3, 'assistant-record', 'expected a user record'],
     [4, 'missing-uuid', 'expected a user record'], [5, 'malformed', 'transcript reference failed'],
-    [9, 'missing-line', 'line is outside'], [0, 'zero-line', 'expected a positive integer'],
+    [99, 'missing-line', 'line is outside'], [0, 'zero-line', 'expected a positive integer'],
     [1.5, 'fractional', 'expected a positive integer'], ['1', 'string-line', 'expected a positive integer'],
   ])('transcript line %s and uuid %s must resolve', (line, uuid, message) => {
     invalid(changed(s => { s.items[0].evidence = [{ file: 'session.jsonl', line, uuid }] }), message)

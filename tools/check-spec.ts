@@ -21,6 +21,28 @@ const normalize = (value: string) => value.replace(/\s+/g, ' ').trim()
 const lines = (value: string) => value.split(/\r?\n/)
 const nonBlankLines = (value: string) => lines(value).filter(line => line.trim()).length
 const messageOf = (error: unknown) => error instanceof Error ? error.message : String(error)
+// The text of a transcript record: a string body, or its text blocks joined, with reminders removed.
+const textOf = (record: Mapping) => {
+  const content = mapping(record.message) ? record.message.content : undefined
+  let message: string
+  if (typeof content === 'string') message = content
+  else if (Array.isArray(content)) {
+    message = content.filter(block => mapping(block) && block.type === 'text')
+      .map(block => typeof block.text === 'string' ? block.text : '').join('')
+  } else throw new Error('message.content must be a string or block array')
+  return message.replace(/<system-reminder>[\s\S]*?<\/system-reminder>/g, '')
+}
+// A user record that carries a text block and is not a tool result opens a turn: the assistant
+// records after it and before the cited user record are the ones the cited words reply to.
+const opensTurn = (record: Mapping) => {
+  const content = mapping(record.message) ? record.message.content : undefined
+  if (typeof content === 'string') return true
+  return Array.isArray(content) && content.some(block => mapping(block) && block.type === 'text') &&
+    !content.some(block => mapping(block) && block.type === 'tool_result')
+}
+const parseRecord = (line: string): Mapping | undefined => {
+  try { const record = JSON.parse(line); return mapping(record) ? record : undefined } catch { return undefined }
+}
 
 async function main() {
   if (!Bun.YAML?.parse) throw new Error(`Bun ${minimumBun} or newer is required: Bun.YAML is unavailable`)
@@ -36,10 +58,10 @@ async function main() {
   const fail = (item: number, path: string, message: string) => {
     violations.push({ item, message: `${specPath}: ${path}: ${message}` })
   }
-  const shape = (value: unknown, fields: string[], item: number, path: string): value is Mapping => {
+  const shape = (value: unknown, fields: string[], item: number, path: string, optional: string[] = []): value is Mapping => {
     if (!mapping(value)) { fail(item, path, 'expected a mapping'); return false }
     for (const key of Object.keys(value)) {
-      if (!fields.includes(key)) fail(item, `${path}.${key}`, 'unknown key')
+      if (!fields.includes(key) && !optional.includes(key)) fail(item, `${path}.${key}`, 'unknown key')
     }
     for (const key of fields) {
       if (!Object.hasOwn(value, key)) fail(item, `${path}.${key}`, 'missing field')
@@ -88,7 +110,7 @@ async function main() {
         const extra = typeof value.source === 'string' && Object.hasOwn(sourceFields, value.source)
           ? sourceFields[value.source as keyof typeof sourceFields] : []
         shape(value, ['id', 'kind', 'content', 'source', ...(value.kind === 'rejected' ? ['reason'] : []),
-          ...extra], index, path)
+          ...extra], index, path, value.source === 'transcript' ? ['answers'] : [])
         if (stringField(value, 'id', index, path) && !/^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$/.test(value.id as string)) {
           fail(index, `${path}.id`, 'expected a kebab-case id')
         }
@@ -98,7 +120,8 @@ async function main() {
         if (value.kind === 'rejected') stringField(value, 'reason', index, path)
         if (value.source === 'transcript') {
           const wordsOK = stringField(value, 'user_words', index, path)
-          let matched = false
+          const answersOK = Object.hasOwn(value, 'answers') && stringField(value, 'answers', index, path)
+          let matched = false, answered = false
           if (list(value.evidence, index, `${path}.evidence`)) {
             for (const [entry, evidence] of value.evidence.entries()) {
               const at = `${path}.evidence entry ${entry + 1}`
@@ -109,27 +132,31 @@ async function main() {
                 const input = createReadStream(resolve(values.transcripts!, evidence.file as string), { encoding: 'utf8' })
                 const reader = createInterface({ input, crlfDelay: Infinity })
                 let record: unknown, found = false, current = 0
+                // The assistant records since the last user record that opened a turn.
+                let replies: Mapping[] = []
                 try {
                   for await (const line of reader) {
                     if (++current === evidence.line) { record = JSON.parse(line); found = true; break }
+                    if (!answersOK) continue
+                    const earlier = parseRecord(line)
+                    if (!earlier) continue
+                    if (earlier.type === 'assistant') replies.push(earlier)
+                    else if (earlier.type === 'user' && opensTurn(earlier)) replies = []
                   }
                 } finally { reader.close(); input.destroy() }
                 if (!found) throw new Error('line is outside the transcript')
                 if (!mapping(record) || record.type !== 'user' || !text(record.uuid) || record.uuid !== evidence.uuid) {
                   throw new Error('expected a user record with the cited uuid')
                 }
-                const content = mapping(record.message) ? record.message.content : undefined
-                let message: string
-                if (typeof content === 'string') message = content
-                else if (Array.isArray(content)) {
-                  message = content.filter(block => mapping(block) && block.type === 'text')
-                    .map(block => typeof block.text === 'string' ? block.text : '').join('')
-                } else throw new Error('message.content must be a string or block array')
-                message = message.replace(/<system-reminder>[\s\S]*?<\/system-reminder>/g, '')
-                if (wordsOK && message.includes(value.user_words as string)) matched = true
+                if (wordsOK && textOf(record).includes(value.user_words as string)) matched = true
+                if (answersOK) {
+                  const quote = normalize(value.answers as string)
+                  if (replies.some(reply => { try { return normalize(textOf(reply)).includes(quote) } catch { return false } })) answered = true
+                }
               } catch (error) { fail(index, at, `transcript reference failed: ${messageOf(error)}`) }
             }
             if (wordsOK && !matched) fail(index, `${path}.user_words`, 'not found in any resolved user message')
+            if (answersOK && !answered) fail(index, `${path}.answers`, 'not found in the assistant messages the cited words reply to')
           }
         } else if (value.source === 'rule') {
           const refOK = reference(value.rule, ['file', 'line'], index, `${path}.rule`)
@@ -166,6 +193,9 @@ async function main() {
           }
         }
       }
+      if (!items.some(item => item.source === 'transcript')) {
+        fail(-1, 'items', "no item has source transcript: a spec needs the user's words")
+      }
     }
   }
   const byId = new Map<string, Mapping>()
@@ -181,7 +211,7 @@ async function main() {
       if (text(parent) && !byId.has(parent)) fail(index, path, `parent id does not exist: ${parent}`)
     }
     const pending = [...item.parents], seen = new Set<string>()
-    let sourced = false, cycle = false
+    let sourced = false, asked = false, cycle = false
     while (pending.length) {
       const id = pending.pop()
       if (typeof id !== 'string' || seen.has(id)) continue
@@ -189,10 +219,13 @@ async function main() {
       if (id === item.id) cycle = true
       const parent = byId.get(id)
       if (!parent) continue
-      if (['transcript', 'rule', 'observation'].includes(parent.source as string)) sourced = true
+      if (['transcript', 'rule'].includes(parent.source as string)) sourced = asked = true
+      else if (parent.source === 'observation') sourced = true
       else if (parent.source === 'derivation' && Array.isArray(parent.parents)) pending.push(...parent.parents)
     }
     if (!sourced) fail(index, path, 'parent chain never reaches a transcript, rule or observation item')
+    // An observation shows that a condition exists; it does not show that anyone asked for a mechanism.
+    else if (item.kind === 'requirement' && !asked) fail(index, path, 'parent chain of a requirement never reaches a transcript or rule item')
     if (cycle) fail(index, path, 'cycle among parents')
   })
   if (violations.length) {
@@ -208,6 +241,7 @@ async function main() {
     if (current !== document) throw new Error('generated document differs from the one in the tree; regenerate it with --render')
   }
   if (values.render) await writeFile(values.render, document)
+  // The proof is printed only by a passing run, so a stage that returns it has run this tool.
   const summary = {
     counts: {
       kind: Object.fromEntries(kinds.map(kind => [kind, items.filter(item => item.kind === kind).length])),
@@ -216,10 +250,13 @@ async function main() {
     criteria: items.filter(item => item.kind === 'criterion').map((item, index) => ({ ordinal: index + 1, id: item.id })),
     sha256: createHash('sha256').update(bytes!).digest('hex'),
     nonBlankLines: nonBlankLines(bytes!.toString('utf8')),
+    proof: Buffer.from(crypto.getRandomValues(new Uint8Array(16))).toString('hex'),
+    spec: specPath,
   }
   const line = values.json ? JSON.stringify(summary) :
     `kind=${JSON.stringify(summary.counts.kind)} source=${JSON.stringify(summary.counts.source)} ` +
-    `criteria=${JSON.stringify(summary.criteria)} sha256=${summary.sha256} nonBlankLines=${summary.nonBlankLines}`
+    `criteria=${JSON.stringify(summary.criteria)} sha256=${summary.sha256} nonBlankLines=${summary.nonBlankLines} ` +
+    `proof=${summary.proof} spec=${summary.spec}`
   if (values.json || !(values.render || values['check-render'])) console.log(line)
   else console.error(line)
 }

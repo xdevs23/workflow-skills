@@ -3,3 +3,7 @@
 {"type":"assistant","uuid":"assistant-record","message":{"content":"Export the selected rows."}}
 {"type":"user","message":{"content":"Export the selected rows."}}
 not json
+{"type":"user","uuid":"question-turn","message":{"content":"Should the export stream or batch?"}}
+{"type":"user","uuid":"tool-turn","message":{"content":[{"type":"tool_result","tool_use_id":"t1","content":"ok"}]}}
+{"type":"assistant","uuid":"offer","message":{"content":[{"type":"text","text":"Two shapes: (a) stream the rows, (b) batch them."},{"type":"text","text":" Which one?"}]}}
+{"type":"user","uuid":"answer","message":{"content":"Stream the rows."}}
