@@ -48,10 +48,20 @@ async function main() {
   if (!Bun.YAML?.parse) throw new Error(`Bun ${minimumBun} or newer is required: Bun.YAML is unavailable`)
   const { values, positionals } = parseArgs({ args: Bun.argv.slice(2), allowPositionals: true,
     options: { transcripts: { type: 'string' }, render: { type: 'string' },
-      'check-render': { type: 'string' }, json: { type: 'boolean' } } })
+      'check-render': { type: 'string' }, json: { type: 'boolean' }, base: { type: 'string' } } })
   if (positionals.length !== 1 || !values.transcripts || (values.render && values['check-render'])) {
     throw new Error('Usage: bun tools/check-spec.ts <spec.yaml> --transcripts <dir> ' +
-      '[--render <path> | --check-render <path>] [--json]')
+      '[--render <path> | --check-render <path>] [--json] [--base <commit>]')
+  }
+  // A cited rule file is read as it stood at the base commit when it is tracked there, so a unit
+  // that rewrites the very line its spec quotes still passes after the change. A file the commit
+  // does not hold, a path outside the repository, or no repository at all reads from disk.
+  const ruleText = async (file: string) => {
+    if (values.base) {
+      const shown = Bun.spawnSync(['git', 'show', `${values.base}:./${file}`], { stdout: 'pipe', stderr: 'pipe' })
+      if (shown.exitCode === 0) return shown.stdout.toString()
+    }
+    return readFile(file, 'utf8')
   }
   const specPath = positionals[0]
   const violations: { item: number, message: string }[] = []
@@ -164,7 +174,7 @@ async function main() {
           if (refOK) {
             try {
               const rule = value.rule as Mapping
-              const fileLines = lines(await readFile(rule.file as string, 'utf8'))
+              const fileLines = lines(await ruleText(rule.file as string))
               if (fileLines.at(-1) === '') fileLines.pop()
               const start = (rule.line as number) - 1
               if (start >= fileLines.length) throw new Error('line is outside the rule file')
