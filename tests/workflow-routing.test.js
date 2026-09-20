@@ -81,6 +81,13 @@ const writer = (fields, subject) => {
 const implemented = (fields = {}) => writer({ startSha: BASE, snapshotSha: INITIAL, premises: [],
   senseCheck: { passed: true, recordSilent: true, note: '' }, ...fields }, 'implement the change')
 const launchArgs = (fields = {}) => ({ baseSha: BASE, criteriaCount: CRITERIA, specPath: SPEC_PATH, transcripts: TRANSCRIPTS, ...fields })
+// The scripts address every plugin agent by its qualified name, workflow-skills:<name>, which is
+// how the harness lists them. The records keep the bare name, which is what the assertions use.
+const bare = opts => {
+  if (opts.agentType === undefined) return opts
+  expect(opts.agentType).toMatch(/^workflow-skills:[a-z-]+$/)
+  return { ...opts, agentType: opts.agentType.slice('workflow-skills:'.length) }
+}
 async function simulate({ reports = {}, verify = {}, fixes = {}, fail = {}, implementation, gate = passedGate(),
   beforeRead = async () => {}, beforeFix = async () => {}, beforeRoast = async () => {},
   args = launchArgs(), calls = [], logs = [] } = {}) {
@@ -88,7 +95,8 @@ async function simulate({ reports = {}, verify = {}, fixes = {}, fail = {}, impl
   let fixStart = null
   let currentSha = INITIAL
   let lastWriter = null
-  const agent = async (prompt, opts) => {
+  const agent = async (prompt, qualified) => {
+    const opts = bare(qualified)
     calls.push({ prompt, ...opts })
     if (opts.label === 'gate') {
       expect([opts.model, opts.effort, opts.phase]).toEqual([gateModel.model, gateModel.effort, 'Launch'])
@@ -143,7 +151,7 @@ const coldObject = label => label === 'gate' ? passedGate()
     criteria: Array.from({ length: CRITERIA }, (_, i) => ({ criterion: i + 1, checkable: true, why: 'observable' })) }
 const preRun = (agent, args = launchArgs(), logs = [], phases = []) =>
   new AsyncFunction('agent', 'phase', 'log', 'args', coldSkeleton.replace('export const meta =', 'const meta ='))(
-    agent, name => phases.push(name), line => logs.push(line), args)
+    (prompt, opts) => agent(prompt, bare(opts)), name => phases.push(name), line => logs.push(line), args)
 // The three review seats of the pre-run, after the launch check.
 const seatCalls = calls => calls.filter(c => c.label !== 'gate')
 

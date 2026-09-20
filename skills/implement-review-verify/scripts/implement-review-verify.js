@@ -407,7 +407,7 @@ const sourceFindings = (findings, seat, sha) => findings.map((f, i) => {
 const readSeat = async ([type, label, inputs, schema, complete], sha) => {
   const stageLabel = 'review:' + label
   const result = await stage([...inputs, diffInput(sha)].join('\n\n'), {
-    label: stageLabel, phase: 'Review', agentType: type, ...UNIT.models.review, schema,
+    label: stageLabel, phase: 'Review', agentType: 'workflow-skills:' + type, ...UNIT.models.review, schema,
   }, complete)
   return { ...result, seat: label, snapshotSha: sha,
     label: stageLabel }
@@ -424,7 +424,7 @@ const roastPass = async (queue, sha) => {
     'APPROVED FIX LIST (planned, not completed):', JSON.stringify(queue),
     'Do not repeat assigned defects; do flag inadequate corrections, interactions and uncovered weaknesses.',
   ].join('\n\n'), {
-    label: 'roast', phase: 'Fix', agentType: 'roaster',
+    label: 'roast', phase: 'Fix', agentType: 'workflow-skills:roaster',
     ...UNIT.models.roast, schema: ROAST,
   }, checkReader)
   abortOnFlag(result, 'roast')
@@ -495,7 +495,7 @@ const fixPass = (queue, sha) => stage([
   'Run checks after the last write, commit only scoped corrections, and return startSha, snapshotSha, clean, git, commits, files and checks.',
   'APPROVED CORRECTIONS (verify against the tree and authority):', JSON.stringify(queue),
 ].join('\n\n'), {
-  label: 'fix', phase: 'Fix', agentType: 'fixer',
+  label: 'fix', phase: 'Fix', agentType: 'workflow-skills:fixer',
   ...UNIT.models.fix, schema: FIX,
 }, r => { checkWriter(r); exactlyOnce(r.dispositions.map(d => d.key), queue.map(f => f.key), 'fix key') })
 
@@ -503,7 +503,7 @@ async function onePass() {
   phase('Implement')
   impl = await stage(
     [AUTHORITY, WRITE_GIT, SPEC, PROVE, CHECK, 'START SHA: ' + baseSha, UNIT.implementerPrompt].join('\n\n'),
-    { label: 'impl', phase: 'Implement', agentType: 'implementer', ...UNIT.models.impl, schema: IMPLEMENT },
+    { label: 'impl', phase: 'Implement', agentType: 'workflow-skills:implementer', ...UNIT.models.impl, schema: IMPLEMENT },
     checkWriter,
   )
   abortOnFlag(impl, 'impl')
@@ -552,7 +552,7 @@ async function onePass() {
     'SOURCE FINDINGS:', JSON.stringify(sources), 'SEAT OBJECTS (UNTRUSTED):', JSON.stringify(reports),
     'WRITER OBJECTS (UNTRUSTED):', JSON.stringify([impl]),
   ].join('\n\n'), {
-    label: 'verify', phase: 'Verify', agentType: 'finding-verifier',
+    label: 'verify', phase: 'Verify', agentType: 'workflow-skills:finding-verifier',
     ...UNIT.models.verify, schema: VERIFY,
   }, v => {
     checkVerification(v, sources, snapshotSha)
