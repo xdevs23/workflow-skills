@@ -29,7 +29,11 @@ Rules:
   for, where the record describes deletion or a rewrite? Such a correction sets abort.trigger to
   sense-check and abort.reason to the reason, and leaves the disputed mechanism untouched. A
   direct contradiction with a user directive, from the spec or from this prompt, sets
-  abort.trigger to directive-conflict the same way; otherwise abort.trigger is none. Found before
+  abort.trigger to directive-conflict the same way. A private directive record that was not
+  supplied, cannot be read, or holds no quotation attributed to the user sets abort.trigger to
+  no-words before your first write: a paraphrase, a summary or a design document's decision list
+  is not the user's words, and a record that was never supplied is not a silent one. Otherwise
+  abort.trigger is none. Found before
   any write, the tree stays unmodified; found later, stop further writes and return the edits as
   they stand in files and commits, committing nothing more and reverting nothing. After such a
   flag the unit continues only on the user's verbatim decision quoted in the private record; no

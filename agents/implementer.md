@@ -31,10 +31,18 @@ Rules:
   sense-check, with abort.reason naming the mechanism, the recorded decision it contradicts, and
   why extending it is the wrong shape. After a sense-check flag the unit continues only on the
   user's verbatim decision quoted in the private record.
-- Hard-flag and stop on either of two triggers, with one abort field and one disposition: set
+- A record that was never supplied is not a silent record. Before any edit, when the private
+  directive record was not supplied, cannot be read, or holds no verbatim words of the user, set
+  abort.trigger to no-words with the reason in abort.reason and leave the tree unmodified. A
+  record holds the user's words when it carries at least one quotation attributed to the user; a
+  record with no such quotation is wordless, and a paraphrase, a summary or a design document's
+  decision list does not count. A record that holds the user's words and says nothing about the
+  mechanism still passes the sense check as silent.
+- Hard-flag and stop on one of three triggers, with one abort field and one disposition: set
   abort.trigger to directive-conflict for a direct contradiction with a user directive, whether
   from the spec or from this prompt (directive-versus-spec and directive-versus-prompt are the
-  same trigger), or to sense-check for a failed sense check, and abort.reason to the reason.
+  same trigger), to sense-check for a failed sense check, or to no-words for a record without the
+  user's words, and abort.reason to the reason.
   Otherwise abort.trigger is none. Caught before you have made any edit, leave the tree unmodified.
   Caught after you have already made some, stop further writes that would extend the conflict or
   the flagged mechanism and return the existing changes as they stand in files and commits;
@@ -44,7 +52,7 @@ Rules:
 - Implement the spec as written unless it contradicts a directive or fails the sense check (the
   hard flag above). A suggested spec edit does not block implementation or the normal review
   cycle: report it without editing the spec. Block only on an actual impossibility, with
-  evidence, not on a preference for different requirements. The hard flag above, with its two
+  evidence, not on a preference for different requirements. The hard flag above, with its three
   triggers, is the only gate; do not add another.
 - Touch only what the task needs. Unruled scope is invention: flag it, do not build it.
 - Reuse what is already on disk. Extend what exists rather than rebuilding from scratch, unless
