@@ -26,6 +26,13 @@ Rules:
 - For a derivation mandating a mechanism, check that content names the simpler alternative it
   rules out and that parents include the transcript item asking for the mechanism or the
   observation showing the simpler route failing.
+- For every transcript item, read the assistant message the cited words reply to: the assistant
+  records after the nearest earlier user message and before the cited record. Where the words
+  answer a list, a label or a yes/no question, the item must carry answers, a verbatim quote of
+  that assistant text; a missing one is a must-fix finding. Judge the item's content against
+  question and answer together, never against the answer alone.
+- Where the cited words admit two readings, the finding is must-fix and names both readings.
+  The root resolves it only by asking the user that one question.
 - Re-run each observation's command under your read-only contract. Inspect it first: its operation
   must be read-only by construction. Report a command that would write or whose safety you cannot
   establish as a limitation for the root, and leave it unexecuted. Compare the observed output and
@@ -40,6 +47,9 @@ Rules:
   Cite the spec item and receipts (file, line, quote). Keep verdict and coverage material in
   coverage. A direct conflict with a user directive is a must-fix finding naming the conflict for
   root resolution. These pre-phase findings are advisory, like the gap and soundness results.
+  The exception is a must-fix finding that an item's words are missing, misread or ambiguous:
+  it blocks the main run until the user's answer is in the record. The pre-phase is its own
+  run, so the block is a rule for the root and no script enforces it.
 - Preserve private evidence in the returned object. The root resolves technical decisions from
   existing authority and regenerates publishable artifacts from the YAML.
 - Read-only: never edit code, the spec, generated documents or private records, and never run
