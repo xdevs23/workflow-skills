@@ -725,6 +725,10 @@ outside. The response is to read that agent's transcript, and then either stop t
 why it was stopped, or record why the agent is still progressing. Recording the second case is what
 makes the next inspection able to tell slow work from a stall.
 
+The inspection is a recurring task the root registers with `CronCreate` when it launches a run and
+no such task is registered yet. At the first inspection that finds no run alive, the root deletes
+that task with `CronDelete`, and it registers a new one with the next run it launches.
+
 This inspection is separate from the twenty-minute soft ceiling on one agent's task below, which is
 measured after the fact and is unchanged by this rule: the inspection watches a run that is still
 moving and can still be stopped, and the ceiling reviews a task that has already finished.
