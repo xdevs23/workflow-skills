@@ -477,17 +477,18 @@ describe('workflow verification and consolidation', () => {
   }
 
   for (const action of ['needs-decision', 'root-action']) {
-    test(`${action} blocks even an otherwise approved correction`, async () => {
+    test(`${action} reaches the root while the approved correction is still applied`, async () => {
       const { result, calls } = await simulate({
         reports: { 'review:correctness': { findings: [finding, finding] } },
         verify: { 'verify': verification([
           decision([source('correctness')]),
           decision([source('correctness', 1)], { action, correction: 'Resolve the necessary retention policy first.' }),
         ]) },
+        fixes: { fix: fixed([disposition()]) },
       })
-      expect(['clean', 'follow-up'].includes(result.exit)).toBe(false)
-      expect(result.remaining.map(r => r.kind)).toEqual(['open-decision', 'unfixed-approval'])
-      expect(calls.some(c => c.phase === 'Fix')).toBe(false)
+      expect([result.exit, result.detail]).toEqual(['root-resolution', 'Verification left items for the root.'])
+      expect(result.remaining.map(r => r.kind)).toEqual(['open-decision', 'unattested-fix'])
+      expect(calls.filter(c => c.phase === 'Fix').map(c => c.label).sort()).toEqual(['fix', 'roast'])
     })
   }
 
@@ -495,8 +496,10 @@ describe('workflow verification and consolidation', () => {
     const { result, calls } = await simulate({
       verify: { 'verify': verification([], { issues: [{ kind: 'root-action', detail: 'The authority document is unavailable.' }] }) },
     })
-    expect(['clean', 'follow-up'].includes(result.exit)).toBe(false)
-    expect(calls.some(c => c.phase === 'Fix')).toBe(false)
+    expect(result.exit).toBe('root-resolution')
+    expect(result.remaining.map(r => r.kind)).toEqual(['verifier-issue'])
+    // With no approved correction the fixer runs the checks only, and the roast still runs.
+    expect(calls.filter(c => c.phase === 'Fix').map(c => c.label).sort()).toEqual(['fix', 'roast'])
   })
 
   test('a suggested spec edit does not block implementation, normal reviews or proof', async () => {
@@ -693,9 +696,9 @@ describe('workflow verification and consolidation', () => {
         issues: [{ kind: 'needs-decision', detail: 'Choose the required retention policy.' }],
       }) },
     })
-    expect(['clean', 'follow-up'].includes(result.exit)).toBe(false)
+    expect(result.exit).toBe('root-resolution')
     expect(result.cleanup).toEqual([cleanup])
-    expect(calls.some(c => c.phase === 'Fix')).toBe(false)
+    expect(calls.some(c => c.phase === 'Fix')).toBe(true)
   })
 
   for (const kind of ['rejected', 'blocked']) {
@@ -919,7 +922,7 @@ describe('coder sense check and project-benefit review', () => {
     expect([result.exit, result.remaining]).toEqual(['root-resolution', [{ kind: 'open-decision', severity: 'CRITICAL', item: silent }]])
     expect(result.projectBenefitDecisions).toEqual([{ decision: silent,
       findings: [{ id: source('quality'), seat: 'quality', kind: 'band-aid', file: bandAid.file, claim: bandAid.claim }] }])
-    expect(calls.some(c => c.phase === 'Fix')).toBe(false)
+    expect(calls.some(c => c.phase === 'Fix')).toBe(true)
   })
 
   test('an implementer sense-check flag aborts before review with its reason preserved', async () => {
@@ -1241,7 +1244,7 @@ describe('structured stage output', () => {
       expect(result.remaining).toContainEqual({ kind: 'blocking-limitation', severity: 'CRITICAL', item: { ...limitation, label } })
       if (label === 'impl') expect(calls.map(c => c.label)).toEqual(['gate', 'impl'])
       if (label.startsWith('review:')) expect(calls.some(c => c.phase === 'Verify')).toBe(false)
-      if (label === 'verify') expect(calls.some(c => c.phase === 'Fix')).toBe(false)
+      if (label === 'verify') expect(calls.some(c => c.phase === 'Fix')).toBe(true)
     }
     const { result } = await simulate({ reports: { 'review:rules': { limitations: [{ ...limitation, effect: 'narrows' }] } } })
     expect(result.exit).toBe('clean')
@@ -1362,15 +1365,26 @@ describe('one-pass remaining-items handoff', () => {
     }
   })
 
-  test('verifier issues and unreached approvals retain their full objects', async () => {
+  test('verifier issues retain their full objects beside the approvals the fixer applied', async () => {
     const issue = { kind: 'root-action', detail: 'Required evidence is unavailable.' }
     const approval = decision([source('correctness')])
-    const { result } = await simulate({ reports: oneReport, verify: { verify: verification([approval], { issues: [issue] }) } })
-    expect(result.remaining).toEqual([
-      { kind: 'verifier-issue', severity: 'CRITICAL', item: issue },
-      { kind: 'unfixed-approval', severity: 'CRITICAL', item: { approved: { ...approval, key: 'fix:0' } } },
-    ])
-    expect(result.proof).toEqual({ checks: implemented().checks, files: implemented().files })
+    const { result } = await simulate({ reports: oneReport, verify: { verify: verification([approval], { issues: [issue] }) },
+      fixes: { fix: fixed([disposition()]) } })
+    expect(result.exit).toBe('root-resolution')
+    expect(result.remaining[0]).toEqual({ kind: 'verifier-issue', severity: 'CRITICAL', item: issue })
+    expect(result.remaining[1].kind).toBe('unattested-fix')
+    expect(result.remaining[1].item.approved).toEqual({ ...approval, key: 'fix:0' })
+    expect(result.remaining).toHaveLength(2)
+  })
+
+  test('a writer commit outside its scope still keeps the fixer from running', async () => {
+    const entry = { sha: INITIAL, ok: false, filesMatch: true, note: 'the commit also rewrote an unrelated helper' }
+    const approval = decision([source('correctness')])
+    const { result, calls } = await simulate({ reports: oneReport,
+      verify: { verify: verification([approval], { writerScope: [entry] }) } })
+    expect(result.exit).toBe('root-resolution')
+    expect(result.remaining.map(r => r.kind)).toEqual(['writer-scope', 'unfixed-approval'])
+    expect(calls.some(c => c.phase === 'Fix')).toBe(false)
   })
 
   test('even a low-severity fixed key is unattested with its approval and commit evidence', async () => {

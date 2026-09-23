@@ -561,12 +561,17 @@ async function onePass() {
   })
   verified = abortOnFlag(result, 'verify')
   queue = verified.decisions.filter(d => d.action === 'approve-fix').map((d, i) => ({ ...d, key: 'fix:' + i }))
-  limited(verified, 'verify')
+  // A writer commit outside its scope is the one verification result the fixer must not build on.
+  const outOfScope = verified.writerScope.filter(w => !w.ok || !w.filesMatch)
+  for (const w of outOfScope) add('writer-scope', w)
+  if (outOfScope.length) { end('root-resolution', 'A writer commit left its scope.'); return }
+  // Everything else the verifier leaves open goes to the root after the fix stage, not instead of
+  // it. A read-only verifier can never run a build, a test, a capture or a device, so stopping on
+  // every open item would end every run before its approved fixes were applied.
+  for (const l of blocking(verified)) add('blocking-limitation', { ...l, label: 'verify' })
   for (const issue of verified.issues) add('verifier-issue', issue)
-  for (const w of verified.writerScope.filter(w => !w.ok || !w.filesMatch)) add('writer-scope', w)
   for (const d of verified.decisions.filter(d => ['needs-decision', 'root-action'].includes(d.action))) add('open-decision', d)
-  if (remaining.length) end('root-resolution', 'Verification needs root resolution.')
-  if (exit) return
+  const leftForRoot = remaining.length > 0
 
   phase('Fix')
   const startSha = snapshotSha
@@ -596,6 +601,7 @@ async function onePass() {
       }
     } catch (error) { failed(error, label, i === 0 && r.status === 'fulfilled' ? r.value : undefined) }
   })
+  if (leftForRoot) end('root-resolution', 'Verification left items for the root.')
 }
 // The launch check. One small stage runs the spec tool on the unit's spec file and returns the
 // proof the tool prints only when the spec passes; a stage that never ran it has no proof to

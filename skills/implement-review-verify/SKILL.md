@@ -483,13 +483,17 @@ counterevidence against the finding itself. Every such decision reaches the root
 Reviewer lanes and severity are claims to verify, not queue permissions. Every source ID
 must belong to exactly one decision group. The SCRIPT checks coverage, unknown IDs, duplicate
 IDs and approval payloads before mutation. A missing seat object or an invalid handoff stops the
-run, and a `blocks` limitation on any accepted stage ends it after that stage with exit
+run, and a `blocks` limitation on any accepted stage other than the verifier ends it after that stage with exit
 `root-resolution` and a `blocking-limitation` item; missing evidence is never an implicit rejection or a
 clean empty queue.
 
-Only approvals enter the fixer list. Unsettled necessary decisions, required root actions
-and unresolved `issues` and blocking `limitations` prevent fixing, including otherwise approved work
-in that unit. Routine rejections and successful consolidation remain in the workflow record
+Only approvals enter the fixer list. Unsettled necessary decisions, required root actions,
+unresolved `issues` and the verifier's own blocking `limitations` do not hold the approved work
+back: the fixer applies the approved list and runs the checks, and those items reach the root in
+`remaining` with exit `root-resolution`. A read-only verifier can never run a build, a test, a
+capture or a device, so a stop on every open item would end every run before its fixes. A question
+only such a check can answer is the acceptance check of the approved correction it concerns. Only a
+hard flag or a writer commit outside its scope keeps the fixer from running. Routine rejections and successful consolidation remain in the workflow record
 and final summary; they do not interrupt the root one by one. Every decision on an inverse-spec
 source finding, however it resolves, stays visible to the root in that summary: an `approve-fix`
 or a well-evidenced `reject` does not need to interrupt the cycle, but the root still owes each one
@@ -1200,7 +1204,8 @@ The completeness checks, by stage kind:
   coverage, receipts on findings and a non-empty `limitations` list when any entry is unchecked.
 
 A `blocks` limitation on any accepted stage ends the run after that stage: the script records a
-`blocking-limitation` item with its stage label and exits with `root-resolution`.
+`blocking-limitation` item with its stage label and exits with `root-resolution`. The verifier's
+is recorded the same way, after the fix stage has run.
 
 **ARTIFACT-PRODUCING STAGES PROVE THE ARTIFACT IN `files` AND `checks`.** A stage can produce a
 long, immaculate ANALYSIS of the work and never create the file; an empty `files` list behind a
