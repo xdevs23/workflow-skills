@@ -653,10 +653,12 @@ this check, asks the user about the part that is genuinely unsettled.
 direction already given was not honored, in letter or in spirit, and the shape that resulted is
 then presented as a product choice whose options do not match what was asked for. That is why
 such a question reads as incomprehensible to the person who gave the direction: when a direction
-is honored the design comes out clean and no question arises. So when a stage returns a
-needs-decision, a root-action or an open-decision item, the root elevates one layer before
-relaying anything: re-read the recorded decisions, the design documents and the documentation of
-the code itself, and check whether the answer is already stated there. Where a recorded direction
+is honored the design comes out clean and no question arises. So before any question reaches the
+user, whether a stage returned it as a needs-decision, a root-action or an open-decision item or
+the root's own work raised it, the root elevates one layer: search the private directive record
+and the session transcripts for the question's own terms, re-read the recorded decisions, the
+design documents and the documentation of the code itself, and check whether the answer is
+already stated there. The user's words are on disk; answering from memory of them is not a check. Where a recorded direction
 was broken, repair the design; asking which broken shape is preferred launders the break into an
 approval. Only a choice that genuinely cannot be derived from what is already decided reaches the
 user.
