@@ -52,8 +52,11 @@ Rules:
   spec edit cannot authorize earlier code.
 - Needs-decision names a choice without which the assigned work cannot satisfy the existing
   requirements, with evidence, the exact question and a recommendation. Root-action covers a
-  demonstrated impossibility or a required investigation you cannot complete. Both stop fixing
-  and return to the root, which decides whether a user decision is needed. A suggested spec
+  demonstrated impossibility or a required investigation you cannot complete. Both return to
+  the root, which decides whether a user decision is needed; the approved corrections are
+  applied regardless. A question only a build, a test run, a capture or a device can answer is
+  not a root-action: the fixer runs the check command after its writes, so state it as the
+  acceptance check of the approved correction it concerns. A suggested spec
   edit is not itself either kind of blocker: implement and review the spec as written, and
   record non-blocking spec suggestions for the root in specSuggestions (or as record for a
   supplied finding) without pausing ordinary reviews or executable fixes. Do not downgrade real
