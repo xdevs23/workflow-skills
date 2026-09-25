@@ -25,8 +25,10 @@ const blocksOf = (record: Mapping): unknown[] => {
   const content = mapping(record.message) ? record.message.content : undefined
   return Array.isArray(content) ? content : []
 }
-const textBlocks = (blocks: unknown[]) => blocks.filter(block => mapping(block) && block.type === 'text')
-  .map(block => typeof block.text === 'string' ? block.text : '').join('')
+// The text of one text block. Any other block has none.
+const blockText = (block: unknown) =>
+  mapping(block) && block.type === 'text' ? (typeof block.text === 'string' ? block.text : '') : ''
+const textBlocks = (blocks: unknown[]) => blocks.map(blockText).join('')
 // The question dialog is the one tool whose result carries the user's own answer. The result of
 // any other tool is output of a command or a program and never counts as the user's words.
 const dialogTool = 'AskUserQuestion'
@@ -52,7 +54,7 @@ const textOf = (record: Mapping, answered = new Set<string>()) => {
   else if (Array.isArray(content)) {
     message = content.map(block => {
       if (!mapping(block)) return ''
-      if (block.type === 'text') return typeof block.text === 'string' ? block.text : ''
+      if (block.type === 'text') return blockText(block)
       if (block.type !== 'tool_result' || !answered.has(block.tool_use_id as string)) return ''
       return typeof block.content === 'string' ? block.content
         : Array.isArray(block.content) ? textBlocks(block.content) : ''
