@@ -2414,3 +2414,78 @@ describe('the project cache, the todo record and scratch files by role', () => {
     }
   })
 })
+
+// The rule every reading stage receives about what it may report as a limitation, as the scripts
+// write it and as the templates state it.
+const LIMITS_RULE = 'a limitation is only something you were supposed to check and could not. An act your own rules forbid,\n' +
+  'such as running tests, builds or the spec tool as a reading stage, and input you are not given by design, such as\n' +
+  'the private spec for an unbriefed stage, are never limitations and are not reported.'
+const LIMITS_LINE = 'LIMITATIONS: ' + LIMITS_RULE
+const FILES_CHECK = 'one writerScope entry per commit, filesMatch true when every path the commit touched appears in the writer\'s files list.\n' +
+  'The files list covers all commits of the writer together. A path in it that no commit of the writer touched is a\n' +
+  'writer-scope problem: report it in the note of the writer\'s last commit and set that entry\'s ok to false.'
+
+describe('what a limitation is, and the per-commit files check', () => {
+  test('every reading stage of the three scripts receives the limitation rule once, and no writer or launch check does', async () => {
+    const main = await simulate({ reports: oneReport, verify: approveOne, fixes: { fix: fixed([disposition()]) } })
+    const pre = []
+    await preRun(async (prompt, opts) => { pre.push({ prompt, ...opts }); return coldObject(opts.label) })
+    const fix = await simulateFix()
+    const stages = [...main.calls.map(c => ({ ...c, run: 'main' })), ...pre.map(c => ({ ...c, run: 'spec' })),
+      ...fix.calls.map(c => ({ ...c, run: 'fix' }))]
+    expect(stages).toHaveLength(22)
+    for (const call of stages) {
+      const id = call.run + ':' + call.label
+      const reader = !['gate', 'impl', 'fix'].includes(call.label)
+      expect([id, call.prompt.split(LIMITS_LINE).length - 1]).toEqual([id, reader ? 1 : 0])
+    }
+  })
+
+  test('every reading-stage template states the rule, the verifier discards a breaking entry, and the skill states it once', async () => {
+    const readingTemplates = Object.entries(FIELDS)
+      .filter(([name, fields]) => fields.includes('limitations') && !['implementer', 'fixer'].includes(name)).map(([name]) => name)
+    expect(readingTemplates).toHaveLength(13)
+    const rule = flat(LIMITS_RULE.replace(/^a /, 'A '))
+    for (const name of readingTemplates) expect([name, (await template(name)).includes(rule)]).toEqual([name, true])
+    expect(await template('finding-verifier')).toContain('discard a limitation that names an act the stage\'s own rules forbid ' +
+      'or input the stage is not given by design, without a decision.')
+    const text = flat(skill)
+    expect(text.split('A limitation is only something the stage was supposed to check and could not.').length - 1).toBe(1)
+    for (const phrase of ['An act the stage\'s own rules forbid, such as running tests, builds or the spec tool as a reading stage, and ' +
+      'input the stage is not given by design, such as the private spec for an unbriefed stage, are never limitations and are not reported.',
+      'the finding verifier discards such an entry without a decision.']) {
+      expect([phrase, text.includes(phrase)]).toEqual([phrase, true])
+    }
+  })
+
+  test('the verify prompt, the verifier template and the skill compare each commit with the files list of all commits', async () => {
+    const { calls } = await simulate()
+    expect(calls.find(c => c.label === 'verify').prompt).toContain(FILES_CHECK)
+    expect(await template('finding-verifier')).toContain('The writer\'s files list names the paths of all its commits together, ' +
+      'so filesMatch is true when every path the commit touched appears in that list. A path in the files list that no commit of ' +
+      'the writer touched is a writer-scope problem: report it in the note of the writer\'s last commit and set that entry\'s ok to false.')
+    expect(flat(skill)).toContain('A writer\'s `files` list names the paths of all its commits together, so `filesMatch` is true when ' +
+      'every path the commit touched appears in that list. A path in `files` that no commit of the writer touched is a writer-scope ' +
+      'problem, reported in the note of the writer\'s last commit with `ok` false.')
+  })
+
+  test('a writer with two commits and one files list passes the scope check and reaches the fix stage', async () => {
+    const FIRST = 'd'.repeat(40)
+    const implementation = implemented({
+      commits: [{ sha: FIRST, subject: 'add the error helper' }, { sha: INITIAL, subject: 'return the error through the helper' }],
+      files: [{ path: 'src/errors.js', bytes: 80, change: 'added' }, { path: 'src/example.js', bytes: 120, change: 'modified' }],
+    })
+    const { result, calls } = await simulate({ implementation, reports: oneReport, verify: approveOne,
+      fixes: { fix: fixed([disposition()]) } })
+    expect(calls.find(c => c.label === 'verify').prompt).toContain('WRITER OBJECTS (UNTRUSTED):\n\n[' + JSON.stringify(implementation) + ']')
+    expect(calls.filter(c => c.phase === 'Fix').map(c => c.label).sort()).toEqual(['fix', 'roast'])
+    expect(result.remaining.map(r => r.kind)).toEqual(['unattested-fix'])
+    // A listed path no commit touched is reported on the last commit, which keeps the fixer from running.
+    const extra = { sha: INITIAL, ok: false, filesMatch: true, note: 'src/unused.js is in the files list and no commit touched it' }
+    const scoped = await simulate({ implementation, reports: oneReport, fixes: { fix: fixed([disposition()]) },
+      verify: { verify: verification(approveOne.verify.decisions, {
+        writerScope: [{ sha: FIRST, ok: true, filesMatch: true, note: '' }, extra] }) } })
+    expect([scoped.result.exit, scoped.calls.some(c => c.phase === 'Fix')]).toEqual(['root-resolution', false])
+    expect(scoped.result.remaining[0]).toEqual({ kind: 'writer-scope', severity: 'CRITICAL', item: extra })
+  })
+})

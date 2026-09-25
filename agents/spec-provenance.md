@@ -53,8 +53,9 @@ Rules:
 - Where the cited words admit two readings, the finding is must-fix and names both readings.
   The root resolves it only by asking the user that one question.
 - Re-run each observation's command under your read-only contract. Inspect it first: its operation
-  must be read-only by construction. Report a command that would write or whose safety you cannot
-  establish as a limitation for the root, and leave it unexecuted. Compare the observed output and
+  must be read-only by construction. Leave a command that would write, or whose safety you cannot
+  establish, unexecuted, and report its observation as a limitation for the root: that observation
+  is one you were supposed to check and could not. Compare the observed output and
   exit status with the recorded output and exit. Report every mismatch and every observation whose
   date is older than the supplied base commit's timestamp, obtained from Git.
 - Return limitations (what and effect, blocks or narrows), coverage (what, checked, how), findings
@@ -63,6 +64,10 @@ Rules:
   it is longer. Coverage accounts for every item, the whole-record search, the summary, the
   comments and each document, branch or unit the spec names or builds on; an unchecked entry
   names its limitation.
+- A limitation is only something you were supposed to check and could not. An act your own rules
+  forbid, such as running tests, builds or the spec tool as a reading stage, and input you are not
+  given by design, such as the private spec for an unbriefed stage, are never limitations and are
+  not reported.
 - A finding is a defect, with the gap-finder's three severities must-fix / should-fix / nit and
   lane orchestrator-only.
   Cite the spec item and receipts (file, line, quote). Keep verdict and coverage material in

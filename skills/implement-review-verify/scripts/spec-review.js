@@ -57,6 +57,10 @@ const HOUSE = [
   'An enumerated verb list ROTS; the intent governs. A tree MOVING UNDERNEATH YOU is an ANOMALY:',
   'report it verbatim, never work around it.',
   'WRITE NOTHING: no copies of files and no notes. Only the output of a command that cannot be read directly may be written, to the system temporary directory.',
+  // What a reading stage may report as a limitation, in the main script's words.
+  'LIMITATIONS: a limitation is only something you were supposed to check and could not. An act your own rules forbid,',
+  'such as running tests, builds or the spec tool as a reading stage, and input you are not given by design, such as',
+  'the private spec for an unbriefed stage, are never limitations and are not reported.',
   'Run checks BARE. Never pipe through head/grep - it hides the error.',
   'NEVER end a turn waiting on a backgrounded check; your returned object IS the deliverable.',
   'You may NEVER edit the spec or any other authority document: report it, the orchestrator amends it.',

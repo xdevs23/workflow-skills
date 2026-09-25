@@ -429,6 +429,13 @@ claim to the tree. Concern reviewers suggest **WHO CAN CLOSE IT** using their ex
 actionability lanes; the verifier validates those suggestions before dispositioning, and checks
 every limitation and unchecked coverage entry.
 
+**A limitation is only something the stage was supposed to check and could not.** An act the
+stage's own rules forbid, such as running tests, builds or the spec tool as a reading stage, and
+input the stage is not given by design, such as the private spec for an unbriefed stage, are never
+limitations and are not reported. The shared reader blocks of the three scripts and every
+reading-stage template state this, and the finding verifier discards such an entry without a
+decision.
+
 **A reviewer suggests and never decides.** A review seat proposes, the finding verifier authorizes,
 and the user decides anything that changes what the product does. Behavior nobody approved is such
 a decision, whoever proposed it and however small it looks. One of two existing paths closes it:
@@ -483,8 +490,10 @@ and the implementer's object. It checks claims against the code, settled spec, a
 recorded instructions, resolves conflicts using evidence, and merges duplicate defects into ONE fix
 list, every decision with receipts. It preserves every source ID: consolidation is never permission
 to drop a finding. It also checks every seat's limitations and unchecked coverage entries, inspects
-each implementer commit in `writerScope` (`filesMatch` when the writer's `files` equal the paths the
-commit touched), and returns its own `git` and `checks`.
+each implementer commit in `writerScope`, and returns its own `git` and `checks`. A writer's `files`
+list names the paths of all its commits together, so `filesMatch` is true when every path the
+commit touched appears in that list. A path in `files` that no commit of the writer touched is a
+writer-scope problem, reported in the note of the writer's last commit with `ok` false.
 
 This is ordinary workflow work, not a root checkpoint. The root is an exception handler.
 A verifier is neither a rubber stamp nor a new source of design authority. Corrections
