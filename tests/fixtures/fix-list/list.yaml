@@ -1,5 +1,6 @@
-# Synthetic fix list: one entry from a reader whose stage ran twice, one from the roaster.
-parentSpec: tests/fixtures/fix-list/parent.yaml
+# Synthetic fix list: one entry from a reader whose stage ran twice, one from the roaster. It has no
+# parentSpec: that key must be an absolute path, which differs per checkout, so the tests add the
+# absolute path of parent.yaml and write the complete list to their scratch directory.
 run: wf_parent-run
 entries:
   - id: return-error

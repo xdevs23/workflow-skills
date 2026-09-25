@@ -322,7 +322,11 @@ describe('structured unit spec validation', () => {
 
 const fixLists = join(root, 'tests/fixtures/fix-list')
 const transcripts = join(fixLists, 'transcripts')
-const validList = Bun.YAML.parse(await Bun.file(join(fixLists, 'valid.yaml')).text())
+const parentSpec = join(fixLists, 'parent.yaml')
+// The fixture with parentSpec as the absolute path of parent.yaml, written to the scratch directory.
+const validList = { parentSpec, ...Bun.YAML.parse(await Bun.file(join(fixLists, 'list.yaml')).text()) }
+const validPath = join(scratch, 'valid-list.yaml')
+writeFileSync(validPath, Bun.YAML.stringify(validList))
 const checkList = (path, options = []) => {
   const result = Bun.spawnSync([process.execPath, tool, '--fix-list', path, '--transcripts', transcripts, ...options], { cwd: root })
   return { exit: result.exitCode, out: result.stdout.toString(), err: result.stderr.toString() }
@@ -337,12 +341,12 @@ const changedList = (edit, options = []) => {
 
 describe('fix list validation', () => {
   test('a valid fix list passes with a fresh proof and its entries, in both output forms', async () => {
-    const path = join(fixLists, 'valid.yaml')
+    const path = validPath
     const [first, second] = [checkList(path, ['--json']), checkList(path, ['--json'])]
     expect([first.exit, first.err]).toEqual([0, ''])
     const bytes = await Bun.file(path).arrayBuffer()
     expect(JSON.parse(first.out)).toEqual({
-      entries: validList.entries, run: 'wf_parent-run', parentSpec: 'tests/fixtures/fix-list/parent.yaml',
+      entries: validList.entries, run: 'wf_parent-run', parentSpec,
       sha256: createHash('sha256').update(new Uint8Array(bytes)).digest('hex'),
       proof: expect.stringMatching(/^[0-9a-f]{32}$/), fixList: path,
     })
@@ -357,7 +361,8 @@ describe('fix list validation', () => {
     ['an unknown reader', l => { l.entries[0].source = 'naming:0' }, 'return-error.source: the parent run has no stage labelled review:naming'],
     ['an index out of range', l => { l.entries[0].source = 'correctness:2' }, 'return-error.source: index 2 is outside the 2 findings of review:correctness'],
     ['a finding not in the claim', l => { l.entries[1].finding = 'The file handle leaks memory' }, 'close-handle.finding: not found in the claim of roaster:0'],
-    ['a missing parentSpec file', l => { l.parentSpec = 'tests/fixtures/fix-list/absent.yaml' }, 'return-error.parentSpec: does not name an existing file: tests/fixtures/fix-list/absent.yaml'],
+    ['a missing parentSpec file', l => { l.parentSpec = join(fixLists, 'absent.yaml') }, 'return-error.parentSpec: does not name an existing file: ' + join(fixLists, 'absent.yaml')],
+    ['a relative parentSpec', l => { l.parentSpec = 'tests/fixtures/fix-list/parent.yaml' }, 'return-error.parentSpec: expected an absolute path: tests/fixtures/fix-list/parent.yaml'],
     ['an unknown key', l => { l.entries[0].severity = 'must-fix' }, 'return-error.severity: unknown key'],
   ])('%s fails with a violation naming the entry', (name, edit, message) => {
     const result = changedList(edit)
@@ -366,7 +371,7 @@ describe('fix list validation', () => {
   })
 
   test('a run-wide failure names every entry', () => {
-    for (const edit of [l => { l.run = 'wf_missing-run' }, l => { l.parentSpec = 'tests/fixtures/fix-list/absent.yaml' }]) {
+    for (const edit of [l => { l.run = 'wf_missing-run' }, l => { l.parentSpec = join(fixLists, 'absent.yaml') }, l => { l.parentSpec = 'parent.yaml' }]) {
       const result = changedList(edit)
       for (const id of ['return-error', 'close-handle']) invalid(result, `: ${id}.`)
       expect(result.err.trim().split('\n')).toHaveLength(2)
@@ -407,7 +412,7 @@ describe('fix list validation', () => {
   })
 
   describe('launch values', () => {
-    const path = join(fixLists, 'valid.yaml')
+    const path = validPath
     const launch = (edit = () => {}) => {
       const values = structuredClone({ entries: validList.entries, parentSpec: validList.parentSpec })
       edit(values)
@@ -423,7 +428,7 @@ describe('fix list validation', () => {
     test.each([
       ['a changed correction', v => { v.entries[0].correction = 'Log the error and continue.' }, 'return-error.correction: differs from the launch values'],
       ['a missing entry', v => { v.entries.pop() }, 'close-handle: missing from the launch values'],
-      ['a changed parentSpec', v => { v.parentSpec = 'tests/fixtures/fix-list/other.yaml' }, 'return-error.parentSpec: differs from the launch values'],
+      ['a changed parentSpec', v => { v.parentSpec = join(fixLists, 'other.yaml') }, 'return-error.parentSpec: differs from the launch values'],
       ['an entry the list does not hold', v => { v.entries.push({ ...v.entries[0], id: 'rename-helper' }) }, 'launch values.entries: rename-helper is not an entry of the fix list'],
       ['an extra field', v => { v.entries[1].severity = 'must-fix' }, 'close-handle.severity: differs from the launch values'],
     ])('%s fails with a violation naming the entry', (name, edit, message) => {
@@ -444,7 +449,7 @@ describe('fix list validation', () => {
   })
 
   test('a spec argument or a spec option beside --fix-list is a usage error', () => {
-    const path = join(fixLists, 'valid.yaml')
+    const path = validPath
     for (const options of [[join(fixtures, 'valid.yaml')], ['--base', 'HEAD'], ['--render', join(scratch, 'list.md')], ['--check-render', path]]) {
       invalid(checkList(path, options), 'Usage')
     }
