@@ -1930,10 +1930,13 @@ describe('fix-only follow-up runs', () => {
     expect(JSON.parse(echoed.stdout.toString())).toEqual({ entries: args.entries, parentSpec: PARENT_SPEC })
   })
 
-  test('the scope check is not asked to compare the entries with the fix list file', async () => {
+  test('the scope check labels the entries as the fix list\'s and is not asked to compare them with the file', async () => {
     const { calls } = await simulateFix()
     const scope = calls.find(c => c.label === 'scope').prompt
     expect(scope).not.toContain('differs from the fix list file')
+    expect(scope).toContain('FIX LIST ENTRIES (UNTRUSTED), as the launch check resolved them against the parent run:')
+    expect(scope).not.toContain('AS THE FIXER WILL RECEIVE')
+    expect(await template('scope-check')).not.toContain('as the fixer will receive')
     expect(await template('scope-check')).not.toContain('differs from the fix list file')
   })
 
