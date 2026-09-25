@@ -337,7 +337,8 @@ async function main() {
 const fixListFields = ['parentSpec', 'run', 'entries']
 const entryFields = ['id', 'source', 'finding', 'correction']
 // A finding's source id in the parent run: the reader's name and the finding's index in its list.
-const sourceId = /^([a-z][a-z0-9]*(?:-[a-z0-9]+)*):(0|[1-9][0-9]*)$/
+// The name is kebabCase with its anchors removed, and both parts are captured for the resolver.
+const sourceId = new RegExp(`^(${kebabCase.source.slice(1, -1)}):(0|[1-9][0-9]*)$`)
 // A run id is one directory name under the session's workflow directory.
 const runId = /^[A-Za-z0-9][A-Za-z0-9_.-]*$/
 // The stage label the parent run gives a reader: the roaster's stage is roast, every other review:<name>.
@@ -401,7 +402,7 @@ async function checkFixList(file: string, transcripts: string, json: boolean) {
           if (ids.has(value.id)) fail(index, `${path}.id`, `duplicate id ${value.id}`)
           ids.add(value.id)
         }
-        if (text(value.source) && !sourceId.test(value.source)) fail(index, `${path}.source`, 'expected <reader>:<index>')
+        if (text(value.source) && !sourceId.test(value.source)) fail(index, `${path}.source`, 'expected <seat>:<index>')
         entries.push({ index, path, value })
       }
     }
