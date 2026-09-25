@@ -64,6 +64,26 @@ agents reading the codebase) isn't worth it. For those, just do the edit, or use
 scope. If the design isn't settled, stop and settle it with the user (or run a design/research
 loop) first.
 
+**Authority lives only in the items.** A design is settled by the user's words held as spec items,
+never by the root's own say-so. A document enters a spec only as an observation of the current
+state of the code or the documents, re-run and dated, or as a design document the tool generated
+from a spec that passed the tool and the provenance review. A hand-written design document is never
+cited as the design: its decisions become items with the user's words, or they do not count. The
+summary, the boundary items and the comments of a spec state nothing that no item backs, and a
+comment carries provenance notes only.
+
+**Inherited work is listed before it is built on.** A unit that builds on a branch, a design
+document or earlier units made without a spec that passed the tool and the provenance review
+starts by listing the decisions it inherits as items with the user's words. A decision that cannot
+be backed that way goes to the user before building continues. The provenance review's frame check
+covers that list.
+
+**A premise change rewrites the entire spec.** When a premise of a spec changes, the root either
+writes a superseding entry in the todo record kept as `workflow-skills:todo-md` says, discarding
+the old entry, and a new spec from an empty file, or rewrites the spec in place from an empty file.
+The spec is never edited to follow a premise change. The decisions that still stand come from the
+user's words and the private record, never from the old spec.
+
 **ACCEPTANCE CRITERIA ARE MANDATORY.** Before you launch, write each one as a `criterion` item
 in the YAML spec: checkable, one per behaviour that must hold. The tool numbers them from one in
 file order, and the generated document lists them under those numbers.
@@ -719,6 +739,19 @@ presented as a decision request. Every entry the run returns in `inverseSpecDeci
 treatment: the root either corrects the spec to state the existing decision faithfully or, after
 this check, asks the user about the part that is genuinely unsettled.
 
+**A decision that changes what a thing is triggers a redesign.** When a decision of the user
+changes what a thing is, the root redesigns before any unit continues and shows the redesign to the
+user, beginning with what the user sees and then the data model.
+
+**A limit is never attached to a decision.** The root never adds a limit to a decision of the
+user. A limit that seems needed is asked as its own question.
+
+**A question about a premise stops every edit to it.** When the user asks a question about a
+premise, every edit that touches that premise stops until the question is answered.
+
+**Names follow decisions.** A title, module or heading that contradicts a decision of the user is
+renamed in the same change that carries the decision.
+
 **A question is evidence of drift.** Most decisions that reach the user are there because a
 direction already given was not honored, in letter or in spirit, and the shape that resulted is
 then presented as a product choice whose options do not match what was asked for. That is why
@@ -1332,6 +1365,11 @@ const fixPrompt = [
   'APPROVED CORRECTIONS:', JSON.stringify(queue),
 ].join('\n\n')
 ```
+
+No prompt text the root writes, the scoping and the implementer prompt of the marked block
+included, calls a design settled or decided on the root's own authority. A prompt that states a
+decision quotes the user's words and names the date they were said, and the script copy that
+carries them stays untracked like every script holding private text.
 
 The verifier receives every Review seat object, source IDs and the implementer object. The fixer
 receives only the consolidated approvals, including source IDs and the evidence needed to
