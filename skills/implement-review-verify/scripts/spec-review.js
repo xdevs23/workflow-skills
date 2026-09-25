@@ -27,9 +27,9 @@ const UNIT = {
 
 // HOUSE is the hygiene floor and NOTHING ELSE. The main run's AUTHORITY and READ_GIT blocks carry
 // these same lines PLUS the review framing (authority tiers, findings contract, lanes, review
-// surface); the cold seats get only this half on purpose, because that framing is a briefing and
-// unbriefedness is this pre-phase's highest-yield property. The field shapes and stage() below are
-// the same as in the main script: this is its own run, so the definitions are copied in.
+// surface); the unbriefed seats get only this half on purpose, because that framing is a briefing
+// and unbriefedness is this pre-phase's highest-yield property. The field shapes and stage() below
+// are the same as in the main script: this is its own run, so the definitions are copied in.
 
 // A defect of the host: it relays a message the user writes to the orchestrating session into
 // running stages as well. This line protects against a stage taking such a message as an order.

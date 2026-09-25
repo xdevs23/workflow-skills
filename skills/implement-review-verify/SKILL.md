@@ -133,8 +133,8 @@ Since a settled spec is already the precondition for launching, review the SPEC 
 the code. Two seats, from **DIFFERENT model families**, each given only *"review the spec at
 `<path>`"* plus repo access and the run's **hygiene floor** (git safety, that a reading seat
 writes nothing except a command's output that cannot be read directly, to the system temporary
-directory, run checks bare, no background waits, and that no seat edits an authority document)
-— **no briefing, no framing, no orchestrator summary**, because the
+directory, run checks bare, no background waits, and that no seat edits an authority document),
+with **no briefing, no framing, no orchestrator summary**, because the
 absence of briefing is what makes them see what the author stopped seeing. The hygiene floor is not a
 briefing: it says nothing about the spec, the review taxonomy or what the author meant. The main run's
 shared `AUTHORITY` block is *not* handed to these seats, because its authority tiers and findings contract
@@ -598,7 +598,7 @@ those cleanup units promptly; recording an issue is not fixing it or permission 
 indefinitely. Do not force unrelated cleanup into the current fix pass or interrupt the root
 for each entry separately. If recording is blocked, report the incomplete handoff explicitly.
 
-**The todo record stays UNTRACKED by default, not merely unstaged.** Creating or updating a local
+**The todo record stays UNTRACKED by default. Unstaged is not enough.** Creating or updating a local
 cleanup record is not permission to version it. Track and commit it only when the user
 explicitly requests that. Before writing, inspect the file `workflow-skills:todo-md` names and
 check its Git tracking status with `git ls-files --error-unmatch -- <file>`. For an untracked
