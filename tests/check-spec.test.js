@@ -154,7 +154,7 @@ describe('structured unit spec validation', () => {
     const wrapped = join(scratch, 'wrapped-record.md')
     writeFileSync(wrapped, '# Record\n\n> Export the\n  selected   rows.\n')
     expect(changed(s => { s.record = wrapped }).exit).toBe(0)
-    // Every transcript item is checked, not only the first one that matches.
+    // Every transcript item is checked.
     invalid(changed(s => {
       s.record = wrapped
       s.items.push({ ...structuredClone(s.items[0]), id: 'stream-request', evidence: [{ file: 'session.jsonl', line: 9, uuid: 'answer' }], user_words: 'Stream the rows.' })

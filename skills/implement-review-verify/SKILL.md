@@ -64,8 +64,8 @@ agents reading the codebase) isn't worth it. For those, just do the edit, or use
 scope. If the design isn't settled, stop and settle it with the user (or run a design/research
 loop) first.
 
-**Authority lives only in the items.** A design is settled by the user's words held as spec items,
-never by the root's own say-so. A document enters a spec only as an observation of the current
+**Authority lives only in the items.** A design is settled only by the user's words held as spec
+items. A document enters a spec only as an observation of the current
 state of the code or the documents, re-run and dated, or as a design document the tool generated
 from a spec that passed the tool and the provenance review. A hand-written design document is never
 cited as the design: its decisions become items with the user's words, or they do not count. The
@@ -81,8 +81,8 @@ covers that list.
 **A premise change rewrites the entire spec.** When a premise of a spec changes, the root either
 writes a superseding entry in the todo record kept as `workflow-skills:todo-md` says, discarding
 the old entry, and a new spec from an empty file, or rewrites the spec in place from an empty file.
-The spec is never edited to follow a premise change. The decisions that still stand come from the
-user's words and the private record, never from the old spec.
+The spec is never edited to follow a premise change. The decisions that still stand come only from
+the user's words and the private record.
 
 **ACCEPTANCE CRITERIA ARE MANDATORY.** Before you launch, write each one as a `criterion` item
 in the YAML spec: checkable, one per behaviour that must hold. The tool numbers them from one in

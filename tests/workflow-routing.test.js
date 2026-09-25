@@ -1138,7 +1138,7 @@ describe('spec provenance instructions and routing', () => {
       'A hand-written design document is never cited as the design: its decisions become items with the user\'s words, or they do not count.',
       'a comment carries provenance notes only',
       'discarding the old entry, and a new spec from an empty file, or rewrites the spec in place from an empty file',
-      'never edited to follow a premise change', 'never from the old spec',
+      'never edited to follow a premise change', 'come only from the user\'s words and the private record',
       'settled or decided on the', 'quotes the user\'s words and names the date they were said']
     for (const [name, text] of [['implement-review-verify', flat(skill)], ['immaculate-spec-writing', specWriting]]) {
       for (const phrase of shared) expect([name, phrase, text.includes(phrase)]).toEqual([name, phrase, true])
@@ -1166,7 +1166,7 @@ describe('spec provenance instructions and routing', () => {
 
   test('the provenance template searches the whole record and checks the frame around the items', async () => {
     const prose = flat(await template('spec-provenance'))
-    for (const phrase of ['search every message of the user in every transcript of the transcript directory, queued messages included',
+    for (const phrase of ['Search every message of the user on every subject the spec covers, in every transcript of the transcript directory, queued messages included',
       'A later statement that refines, narrows or contradicts a cited one outranks it',
       'An item whose cited words a later statement contradicts or refines is a must-fix finding',
       'a subject the spec decides with no words of the user on it at all',
@@ -1846,9 +1846,9 @@ describe('launch check and shipped scripts', () => {
     await simulateFix({ calls: fixCalls })
     const unitRecord = '<main checkout>/.cache/directives/<unit>.md'
     const parentRecord = '<main checkout>/.cache/directives/<parent unit>.md'
-    for (const [script, gate, record] of [['implement-review-verify.js', gatePrompt(calls), unitRecord],
+    for (const [script, launch, record] of [['implement-review-verify.js', gatePrompt(calls), unitRecord],
       ['spec-review.js', gatePrompt(preCalls), unitRecord], ['fix-follow-up.js', gatePrompt(fixCalls), parentRecord]]) {
-      const passed = (gate.prompt.split('\n')[0] + ' ').includes(' --record ' + record + ' ')
+      const passed = (launch.prompt.split('\n')[0] + ' ').includes(' --record ' + record + ' ')
       expect([script, passed]).toEqual([script, true])
     }
   })
