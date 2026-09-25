@@ -21,14 +21,42 @@ const normalize = (value: string) => value.replace(/\s+/g, ' ').trim()
 const lines = (value: string) => value.split(/\r?\n/)
 const nonBlankLines = (value: string) => lines(value).filter(line => line.trim()).length
 const messageOf = (error: unknown) => error instanceof Error ? error.message : String(error)
+const blocksOf = (record: Mapping): unknown[] => {
+  const content = mapping(record.message) ? record.message.content : undefined
+  return Array.isArray(content) ? content : []
+}
+const textBlocks = (blocks: unknown[]) => blocks.filter(block => mapping(block) && block.type === 'text')
+  .map(block => typeof block.text === 'string' ? block.text : '').join('')
+// The question dialog is the one tool whose result carries the user's own answer. The result of
+// any other tool is output of a command or a program and never counts as the user's words.
+const dialogTool = 'AskUserQuestion'
+const dialogCalls = (record: Mapping) => blocksOf(record).filter((block): block is Mapping =>
+  mapping(block) && block.type === 'tool_use' && block.name === dialogTool && text(block.id))
+const resultIds = (record: Mapping) => blocksOf(record)
+  .filter((block): block is Mapping => mapping(block) && block.type === 'tool_result' && text(block.tool_use_id))
+  .map(block => block.tool_use_id as string)
+// The question strings, option labels and option descriptions of one question-dialog input.
+const dialogText = (input: unknown) => {
+  const questions = mapping(input) && Array.isArray(input.questions) ? input.questions : []
+  return questions.filter(mapping).flatMap(question => [question.question,
+    ...(Array.isArray(question.options) ? question.options : []).filter(mapping).flatMap(option => [option.label, option.description])])
+    .filter(value => typeof value === 'string').join(' ')
+}
 // The text of a transcript record: a string body, or its text blocks joined, with reminders removed.
-const textOf = (record: Mapping) => {
+// A tool result block adds its content, a string or text blocks, only when `answered` holds its
+// tool_use_id, the id of a question-dialog call.
+const textOf = (record: Mapping, answered = new Set<string>()) => {
   const content = mapping(record.message) ? record.message.content : undefined
   let message: string
   if (typeof content === 'string') message = content
   else if (Array.isArray(content)) {
-    message = content.filter(block => mapping(block) && block.type === 'text')
-      .map(block => typeof block.text === 'string' ? block.text : '').join('')
+    message = content.map(block => {
+      if (!mapping(block)) return ''
+      if (block.type === 'text') return typeof block.text === 'string' ? block.text : ''
+      if (block.type !== 'tool_result' || !answered.has(block.tool_use_id as string)) return ''
+      return typeof block.content === 'string' ? block.content
+        : Array.isArray(block.content) ? textBlocks(block.content) : ''
+    }).join('')
   } else throw new Error('message.content must be a string or block array')
   return message.replace(/<system-reminder>[\s\S]*?<\/system-reminder>/g, '')
 }
@@ -144,24 +172,32 @@ async function main() {
                 let record: unknown, found = false, current = 0
                 // The assistant records since the last user record that opened a turn.
                 let replies: Mapping[] = []
+                // The ids of the question-dialog calls in assistant records before the cited one.
+                const asked = new Set<string>()
                 try {
                   for await (const line of reader) {
                     if (++current === evidence.line) { record = JSON.parse(line); found = true; break }
-                    if (!answersOK) continue
+                    if (!answersOK && !line.includes(dialogTool)) continue
                     const earlier = parseRecord(line)
                     if (!earlier) continue
-                    if (earlier.type === 'assistant') replies.push(earlier)
-                    else if (earlier.type === 'user' && opensTurn(earlier)) replies = []
+                    if (earlier.type === 'assistant') {
+                      for (const call of dialogCalls(earlier)) asked.add(call.id as string)
+                      replies.push(earlier)
+                    } else if (earlier.type === 'user' && opensTurn(earlier)) replies = []
                   }
                 } finally { reader.close(); input.destroy() }
                 if (!found) throw new Error('line is outside the transcript')
                 if (!mapping(record) || record.type !== 'user' || !text(record.uuid) || record.uuid !== evidence.uuid) {
                   throw new Error('expected a user record with the cited uuid')
                 }
-                if (wordsOK && textOf(record).includes(value.user_words as string)) matched = true
+                const dialog = new Set(resultIds(record).filter(id => asked.has(id)))
+                if (wordsOK && textOf(record, dialog).includes(value.user_words as string)) matched = true
                 if (answersOK) {
                   const quote = normalize(value.answers as string)
-                  if (replies.some(reply => { try { return normalize(textOf(reply)).includes(quote) } catch { return false } })) answered = true
+                  // A reply's text includes the question text of the dialog calls the cited record answers.
+                  const replyText = (reply: Mapping) => [textOf(reply),
+                    ...dialogCalls(reply).filter(call => dialog.has(call.id as string)).map(call => dialogText(call.input))].join(' ')
+                  if (replies.some(reply => { try { return normalize(replyText(reply)).includes(quote) } catch { return false } })) answered = true
                 }
               } catch (error) { fail(index, at, `transcript reference failed: ${messageOf(error)}`) }
             }

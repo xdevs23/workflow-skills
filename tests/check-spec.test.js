@@ -95,6 +95,27 @@ describe('structured unit spec validation', () => {
     invalid(changed(s => { s.items[0].answers = 'Export the selected rows.' }), 'export-request.answers: not found')
   })
 
+  test('user words match an answer through the question dialog, and a result of any other tool never counts', () => {
+    const cite = (line, uuid, words, answers) => changed(s => {
+      s.items[0].evidence = [{ file: 'session.jsonl', line, uuid }]
+      s.items[0].user_words = words
+      if (answers !== undefined) s.items[0].answers = answers
+    })
+    const unmatched = 'export-request.user_words: not found in any resolved user message'
+    expect(cite(11, 'dialog-answer', 'Stream, in input order').exit).toBe(0)
+    expect(cite(15, 'dialog-answer-blocks', 'Nightly, after the backup').exit).toBe(0)
+    invalid(cite(13, 'command-output', 'Stream, in input order'), unmatched)
+    invalid(cite(7, 'tool-turn', 'ok'), unmatched)
+    invalid(cite(16, 'early-answer', 'An answer before its question'), unmatched)
+    for (const question of ['Which interface should the export use?', 'Stream', 'Rows leave one at a time.', 'Batch Rows leave together.']) {
+      expect([question, cite(11, 'dialog-answer', 'Stream, in input order', question).exit]).toEqual([question, 0])
+    }
+    expect(cite(15, 'dialog-answer-blocks', 'Nightly', 'How often should the export run? Nightly Once after midnight.').exit).toBe(0)
+    invalid(cite(15, 'dialog-answer-blocks', 'Nightly', 'Which interface should the export use?'),
+      'export-request.answers: not found in the assistant messages the cited words reply to')
+    invalid(cite(11, 'dialog-answer', 'Stream, in input order', 'Interface'), 'export-request.answers: not found')
+  })
+
   test.each([
     ['shape', 'unknown key'], ['transcript', 'expected a user record with the cited uuid'],
     ['rule', 'quote does not match'], ['observation', 'output: missing field'],
