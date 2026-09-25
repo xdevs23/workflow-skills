@@ -1132,6 +1132,22 @@ describe('spec provenance instructions and routing', () => {
     }
   })
 
+  test('the provenance template searches the whole record and checks the frame around the items', async () => {
+    const prose = flat(await template('spec-provenance'))
+    for (const phrase of ['search every message of the user in every transcript of the transcript directory, queued messages included',
+      'A later statement that refines, narrows or contradicts a cited one outranks it',
+      'An item whose cited words a later statement contradicts or refines is a must-fix finding',
+      'a subject the spec decides with no words of the user on it at all',
+      'the summary sentence by sentence, every boundary item, every comment line of the raw spec file',
+      'every document, branch or earlier unit the spec names or builds on',
+      'A claim there that no item backs is a must-fix finding, and so is a decision found only in a comment',
+      'Comments may carry provenance notes only', 'Read the comments from the raw file',
+      'A hand-written design document cited as the design is a must-fix finding',
+      'lists the decisions it inherits as items with the user\'s words']) {
+      expect([phrase, prose.includes(phrase)]).toEqual([phrase, true])
+    }
+  })
+
   test('spec writing emits the validated YAML format with source rules and regeneration', async () => {
     const prose = flat(await Bun.file(new URL('../skills/immaculate-spec-writing/SKILL.md', import.meta.url)).text())
     for (const phrase of ['the unit spec, `<unit>.yaml` in the private-spec location that `workflow-skills:local-cache` defines', '`summary`', '<plugin root>/tools/check-spec.ts', 'valid.yaml', 'regenerate after every amendment',
