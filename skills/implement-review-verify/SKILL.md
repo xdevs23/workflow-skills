@@ -663,11 +663,13 @@ remaining item with its reason, and when no entry is corrective the run ends the
 `root-resolution` and no fixer runs. The fixer receives only the corrective entries, one key per
 entry ID with the correction, the scope check's reason and its receipts, while the roaster reads
 the same list. The read-only diff check then maps every change of the fix diff to a corrective
-entry. Each of its findings returns as a CRITICAL `diff-finding` and starts no further fixer. The
-run ends `clean` when every entry was corrective, every one was fixed with passing proof, and
-neither the diff check nor the roaster left a must-fix or CRITICAL item. It ends `root-resolution`
-when an entry was refused, a fix was not applied, the proof failed or the diff check found a
-change without an entry, and ends on an abort or a stage failure as the main script does.
+entry. Each of its findings returns as a CRITICAL `diff-finding` and starts no further fixer.
+Every entry the fixer reports fixed returns as an `unattested-fix` for the root to attest, as in
+the main run, and the run then ends `follow-up`, as it also does when only must-fix or CRITICAL
+roast findings remain. It ends `root-resolution` when an entry was refused, a fix was not applied,
+a fix reported as done has no commit or maps to no change in the diff check (an `unproven-fix`),
+the proof failed, or the diff check found a change without an entry. It ends `clean` only when
+nothing at all remains, and ends on an abort or a stage failure as the main script does.
 
 **Two relocations mean the cause is untouched.** When the work record shows the same defect moved
 twice, the third change fixes the cause instead of moving it a third time, and a third relocation

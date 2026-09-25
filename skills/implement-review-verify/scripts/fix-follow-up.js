@@ -286,7 +286,8 @@ const checkFix = (result, startSha) => {
 // The remaining-items handoff of the main script, with the kinds this run produces.
 const EXIT = ['clean', 'follow-up', 'root-resolution', 'aborted', 'failed']
 const REMAINING = ['new-choice', 'scope-limitation', 'blocking-limitation', 'unfixed-approval', 'failed-proof',
-  'roast-finding', 'roast-limitation', 'diff-finding', 'diff-limitation', 'abort', 'stage-failure']
+  'roast-finding', 'roast-limitation', 'unattested-fix', 'unproven-fix', 'diff-finding', 'diff-limitation', 'abort',
+  'stage-failure']
 const remaining = []
 let scope = null, diff = null, queue = [], snapshotSha = baseSha
 let exit = null, detail = '', activeLabel = 'scope'
@@ -443,7 +444,15 @@ async function fixRun() {
       }
     } catch (error) { failed(error, label, i === 0 && r.status === 'fulfilled' ? r.value : undefined) }
   })
-  if (!passedFix || passedFix.snapshotSha === baseSha) return
+  if (!passedFix) return
+  // A fix reported as done needs a change behind it: a commit of the fixer, and a change of the
+  // fix diff that the diff check maps to its entry.
+  const fixedKeys = passedFix.dispositions.filter(d => d.disposition === 'fixed').map(d => d.key)
+  if (passedFix.snapshotSha === baseSha) {
+    for (const key of fixedKeys) add('unproven-fix', { key, cause: 'The fixer reported it fixed and made no commit.' }, 'must-fix')
+    if (fixedKeys.length) end('root-resolution', 'A fix was reported as done without a commit.')
+    return
+  }
 
   phase('Diff')
   activeLabel = 'diff'
@@ -453,6 +462,10 @@ async function fixRun() {
   narrowed(diff, 'diff-limitation')
   limited(diff, 'diff')
   if (diff.findings.length) end('root-resolution', 'The diff check found a change that no corrective entry covers.')
+  const mapped = new Set(diff.mappings.map(m => m.entry))
+  const unmapped = fixedKeys.filter(key => !mapped.has(key))
+  for (const key of unmapped) add('unproven-fix', { key, cause: 'The fixer reported it fixed and the diff check mapped no change to it.' }, 'must-fix')
+  if (unmapped.length) end('root-resolution', 'A fix reported as done maps to no change in the diff.')
 }
 
 // The launch check, as in the other scripts: the spec tool runs on the fix list in the worktree,
@@ -477,16 +490,18 @@ await stage([GATE_COMMAND,
 ].join('\n'), { label: 'gate', phase: 'Launch', ...UNIT.models.gate, schema: GATE }, checkGate)
 
 try { await fixRun() } catch (error) { failed(error, activeLabel) }
-// A corrective entry the fixer did not fix under a passing result stays open for the root.
+// As in the main script, every entry the fixer reports fixed returns for the root to attest, and
+// every other corrective entry stays open. The fix list carries no severity, and an unattested fix
+// holds acceptance until the root attests it, so it counts as must-fix.
 for (const approved of queue) {
   const response = reportedFix?.dispositions?.find(d => d.key === approved.key)
-  if (!passedFix || response?.disposition !== 'fixed') add('unfixed-approval', { approved, ...(response ? { response } : {}) })
+  if (response?.disposition === 'fixed') {
+    add('unattested-fix', { approved, disposition: response, snapshotSha: reportedFix.snapshotSha, commits: reportedFix.commits }, 'must-fix')
+  } else add('unfixed-approval', { approved, ...(response ? { response } : {}) })
 }
-if (!exit) {
-  const followUp = remaining.some(r => ['must-fix', 'CRITICAL'].includes(r.severity))
-  end(followUp ? 'follow-up' : 'clean', followUp ? 'The fix run completed with items requiring follow-up.'
-    : 'Every entry was corrective and fixed with passing proof.')
-}
+// A run that fixed anything leaves its unattested fixes, so it ends clean only when nothing remains.
+if (!exit) end(remaining.length ? 'follow-up' : 'clean', remaining.length
+  ? 'The fix run completed with items requiring follow-up.' : 'The fix run completed and nothing remains.')
 return {
   exit, detail, remaining,
   classifications: scope?.classifications ?? [],
