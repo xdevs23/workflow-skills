@@ -270,7 +270,10 @@ const withReceipts = (items, label) => {
 const checkCoverage = r => {
   if (!r.coverage.length) throw new Error('coverage is empty')
   for (const c of r.coverage) {
-    if (!c.checked && !r.limitations.length) throw new Error('coverage entry not checked and no limitation declared: ' + c.what)
+    if (!c.checked && !r.limitations.length) {
+      throw new Error('coverage entry not checked and no limitation declared: ' + c.what + '. Drop the entry when it names an act ' +
+        'your own rules forbid or input you are not given by design. Otherwise declare the real limitation that kept it unchecked.')
+    }
   }
 }
 const checkReader = r => {
