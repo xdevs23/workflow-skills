@@ -1826,6 +1826,19 @@ describe('launch check and shipped scripts', () => {
     expect(text).not.toContain('bun tools/check-spec.ts')
   })
 
+  test('the skill lists the fix script, its two templates and its launch check, and the README the fix-list mode', async () => {
+    const text = flat(skill)
+    for (const phrase of ['The skill ships three complete scripts under `scripts/`', '`scripts/fix-follow-up.js` for a fix run',
+      'All three scripts begin with a launch check', "The fix run's launch check runs the tool's fix-list mode",
+      '`agents/scope-check.md` and `agents/diff-check.md` for the fix run']) {
+      expect([phrase, text.includes(phrase)]).toEqual([phrase, true])
+    }
+    const readme = flat(await Bun.file(new URL('../README.md', import.meta.url)).text())
+    for (const phrase of ['`--fix-list <file> --transcripts <session-dir>`', '`--expect <json>`']) {
+      expect([phrase, readme.includes(phrase)]).toEqual([phrase, true])
+    }
+  })
+
   test('the skill states the launch block, the contradiction sentence, the tool location and three triggers', () => {
     const text = flat(skill)
     for (const phrase of ['blocks the launch', 'writes no spec and starts no run on it', 'searches the session transcripts for the words',
