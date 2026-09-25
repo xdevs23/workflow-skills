@@ -54,10 +54,11 @@ Rules:
   The root resolves it only by asking the user that one question.
 - Re-run each observation's command under your read-only contract. Inspect it first: its operation
   must be read-only by construction. Leave a command that would write, or whose safety you cannot
-  establish, unexecuted, and report its observation as a limitation for the root: that observation
-  is one you were supposed to check and could not. Compare the observed output and
-  exit status with the recorded output and exit. Report every mismatch and every observation whose
-  date is older than the supplied base commit's timestamp, obtained from Git.
+  establish, unexecuted, and report a must-fix finding against that observation item, because an
+  observation in a spec must be re-runnable without writing. Never report it as a limitation.
+  Compare the observed output and exit status with the recorded output and exit. Report every
+  mismatch and every observation whose date is older than the supplied base commit's timestamp,
+  obtained from Git.
 - Return limitations (what and effect, blocks or narrows), coverage (what, checked, how), findings
   (file, claim, severity, lane, receipts) and checks (command, passed, output, truncated). Quote the
   output of each bare run in checks, keeping the last 6000 characters and setting truncated when

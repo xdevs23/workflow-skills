@@ -1123,6 +1123,8 @@ describe('spec provenance instructions and routing', () => {
     for (const phrase of ['whether the cited words authorize', 'surrounding context', 'each coverage entry and finding',
       'source transcript or observation', "reviewer's claim that it could happen", "gap-finder's three severities", 'simpler alternative',
       'parents include the transcript item', "Re-run each observation's command", 'read-only by construction',
+      'report a must-fix finding against that observation item, because an observation in a spec must be re-runnable without writing. ' +
+      'Never report it as a limitation.',
       'output and exit status', 'older than the supplied base commit', 'findings are advisory',
       'read the assistant message the cited words reply to', 'answer a list, a label or a yes/no question, the item must carry answers',
       'a missing one is a must-fix finding', 'against question and answer together', 'admit two readings, the finding is must-fix and names both readings',
