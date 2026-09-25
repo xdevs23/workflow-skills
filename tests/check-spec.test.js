@@ -319,3 +319,99 @@ describe('structured unit spec validation', () => {
     expect(await Bun.file(join(root, 'README.md')).text()).toContain('Bun 1.2.21 or newer')
   })
 })
+
+const fixLists = join(root, 'tests/fixtures/fix-list')
+const transcripts = join(fixLists, 'transcripts')
+const validList = Bun.YAML.parse(await Bun.file(join(fixLists, 'valid.yaml')).text())
+const checkList = (path, options = []) => {
+  const result = Bun.spawnSync([process.execPath, tool, '--fix-list', path, '--transcripts', transcripts, ...options], { cwd: root })
+  return { exit: result.exitCode, out: result.stdout.toString(), err: result.stderr.toString() }
+}
+const changedList = (edit, options = []) => {
+  const list = structuredClone(validList)
+  edit(list)
+  const path = join(scratch, `${serial++}.yaml`)
+  writeFileSync(path, Bun.YAML.stringify(list))
+  return checkList(path, options)
+}
+
+describe('fix list validation', () => {
+  test('a valid fix list passes with a fresh proof and its entries, in both output forms', async () => {
+    const path = join(fixLists, 'valid.yaml')
+    const [first, second] = [checkList(path, ['--json']), checkList(path, ['--json'])]
+    expect([first.exit, first.err]).toEqual([0, ''])
+    const bytes = await Bun.file(path).arrayBuffer()
+    expect(JSON.parse(first.out)).toEqual({
+      entries: validList.entries, run: 'wf_parent-run', parentSpec: 'tests/fixtures/fix-list/parent.yaml',
+      sha256: createHash('sha256').update(new Uint8Array(bytes)).digest('hex'),
+      proof: expect.stringMatching(/^[0-9a-f]{32}$/), fixList: path,
+    })
+    expect(JSON.parse(first.out).proof).not.toBe(JSON.parse(second.out).proof)
+    const plain = checkList(path)
+    expect([plain.exit, plain.err]).toEqual([0, ''])
+    expect(plain.out).toMatch(/^entries=2 run=wf_parent-run sha256=[0-9a-f]{64} proof=[0-9a-f]{32} fixList=/)
+  })
+
+  test.each([
+    ['an unknown run', l => { l.run = 'wf_missing-run' }, 'return-error.source: run wf_missing-run has no journal under the transcript directory'],
+    ['an unknown reader', l => { l.entries[0].source = 'naming:0' }, 'return-error.source: the parent run has no stage labelled review:naming'],
+    ['an index out of range', l => { l.entries[0].source = 'correctness:2' }, 'return-error.source: index 2 is outside the 2 findings of review:correctness'],
+    ['a finding not in the claim', l => { l.entries[1].finding = 'The file handle leaks memory' }, 'close-handle.finding: not found in the claim of roaster:0'],
+    ['a missing parentSpec file', l => { l.parentSpec = 'tests/fixtures/fix-list/absent.yaml' }, 'return-error.parentSpec: does not name an existing file: tests/fixtures/fix-list/absent.yaml'],
+    ['an unknown key', l => { l.entries[0].severity = 'must-fix' }, 'return-error.severity: unknown key'],
+  ])('%s fails with a violation naming the entry', (name, edit, message) => {
+    const result = changedList(edit)
+    invalid(result, message)
+    expect(result.err).not.toContain('proof')
+  })
+
+  test('a run-wide failure names every entry', () => {
+    for (const edit of [l => { l.run = 'wf_missing-run' }, l => { l.parentSpec = 'tests/fixtures/fix-list/absent.yaml' }]) {
+      const result = changedList(edit)
+      for (const id of ['return-error', 'close-handle']) invalid(result, `: ${id}.`)
+      expect(result.err.trim().split('\n')).toHaveLength(2)
+    }
+  })
+
+  test('a retried stage resolves against its last result only, and the claim match collapses whitespace', () => {
+    invalid(changedList(l => { l.entries[0].source = 'correctness:0'; l.entries[0].finding = 'Only the first attempt reported this defect.' }),
+      'return-error.finding: not found in the claim of correctness:0')
+    expect(changedList(l => { l.entries[0].finding = 'error is swallowed   by the catch' }).exit).toBe(0)
+    invalid(changedList(l => { l.entries[0].source = 'quality:0' }), 'return-error.source: the last review:quality stage returned no findings list')
+  })
+
+  test.each([
+    ['an unknown list key', l => { l.extra = true }, 'fix list.extra: unknown key'],
+    ['a missing run', l => { delete l.run }, 'fix list.run: missing field'],
+    ['a run id with a path in it', l => { l.run = '../wf_parent-run' }, 'fix list.run: expected a run id'],
+    ['empty entries', l => { l.entries = [] }, 'entries: expected a non-empty list'],
+    ['an entry that is not a mapping', l => { l.entries[1] = 'close-handle' }, 'entry 2: expected a mapping'],
+    ['a missing correction', l => { delete l.entries[0].correction }, 'return-error.correction: missing field'],
+    ['an empty finding', l => { l.entries[0].finding = ' ' }, 'return-error.finding: expected a non-empty string'],
+    ['a duplicate id', l => { l.entries[1].id = 'return-error' }, 'return-error.id: duplicate id return-error'],
+    ['an id that is not kebab-case', l => { l.entries[0].id = 'Return error' }, 'expected a kebab-case id'],
+    ['a malformed source', l => { l.entries[0].source = 'correctness-1' }, 'return-error.source: expected <reader>:<index>'],
+    ['a field for user words', l => { l.entries[0].user_words = 'Fix all findings.' }, 'return-error.user_words: unknown key'],
+  ])('%s fails shape validation', (name, edit, message) => invalid(changedList(edit), message))
+
+  test('an unreadable fix list or a malformed journal line fails', () => {
+    invalid(checkList(join(scratch, 'absent-list.yaml')), 'fix list: unreadable or malformed YAML')
+    const sessions = join(scratch, 'broken-transcripts')
+    mkdirSync(join(sessions, 'session/subagents/workflows/wf_broken'), { recursive: true })
+    writeFileSync(join(sessions, 'session/subagents/workflows/wf_broken/journal.jsonl'), '{"type":"launched"}\nnot json\n')
+    const path = join(scratch, 'broken.yaml')
+    writeFileSync(path, Bun.YAML.stringify({ ...validList, run: 'wf_broken' }))
+    const result = Bun.spawnSync([process.execPath, tool, '--fix-list', path, '--transcripts', sessions], { cwd: root })
+    expect(result.exitCode).not.toBe(0)
+    expect(result.stderr.toString()).toContain('return-error.source: journal line 2 is not JSON')
+  })
+
+  test('a spec argument or a spec option beside --fix-list is a usage error', () => {
+    const path = join(fixLists, 'valid.yaml')
+    for (const options of [[join(fixtures, 'valid.yaml')], ['--base', 'HEAD'], ['--render', join(scratch, 'list.md')], ['--check-render', path]]) {
+      invalid(checkList(path, options), 'Usage')
+    }
+    const bare = Bun.spawnSync([process.execPath, tool, '--fix-list', path], { cwd: root })
+    expect([bare.exitCode, bare.stderr.toString().includes('Usage')]).toEqual([1, true])
+  })
+})

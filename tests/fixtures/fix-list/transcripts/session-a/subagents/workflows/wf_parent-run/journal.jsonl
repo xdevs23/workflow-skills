@@ -1,0 +1,11 @@
+{"type":"launched"}
+{"type":"started","key":"parent-gate","agentId":"a1","label":"gate","phase":"Launch"}
+{"type":"result","key":"parent-gate","agentId":"a1","result":{"exitCode":0,"stdout":"{}","stderr":"","proof":"0123456789abcdef0123456789abcdef"}}
+{"type":"started","key":"parent-correctness-1","agentId":"a2","label":"review:correctness","phase":"Review"}
+{"type":"result","key":"parent-correctness-1","agentId":"a2","result":{"findings":[{"file":"src/example.js","claim":"Only the first attempt reported this defect.","severity":"must-fix","lane":"fixer-actionable","receipts":[{"file":"src/example.js","line":3,"quote":"return value"}]}]}}
+{"type":"started","key":"parent-quality","agentId":"a3","label":"review:quality","phase":"Review"}
+{"type":"started","key":"parent-correctness-2","agentId":"a4","label":"review:correctness","phase":"Review"}
+{"type":"result","key":"parent-quality","agentId":"a3","result":"A prose answer from a stage without a schema."}
+{"type":"result","key":"parent-correctness-2","agentId":"a4","result":{"findings":[{"file":"src/input.js","claim":"The input is not trimmed.","severity":"should-fix","lane":"fixer-actionable","receipts":[{"file":"src/input.js","line":8,"quote":"read(input)"}]},{"file":"src/example.js","claim":"The specified error is\n  swallowed by the catch block.","severity":"must-fix","lane":"fixer-actionable","receipts":[{"file":"src/example.js","line":12,"quote":"catch (error) {}"}]}]}}
+{"type":"started","key":"parent-roast","agentId":"a5","label":"roast","phase":"Fix"}
+{"type":"result","key":"parent-roast","agentId":"a5","result":{"snapshotSha":"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb","findings":[{"file":"src/reader.js","claim":"The file handle stays open when the read fails.","severity":"must-fix","lane":"fixer-actionable","receipts":[{"file":"src/reader.js","line":20,"quote":"open(path)"}]}]}}

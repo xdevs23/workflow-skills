@@ -59,7 +59,7 @@ workflows, and used by `audit-loop`.
 bun test tests/workflow-routing.test.js tests/git-snapshot.test.js tests/check-spec.test.js
 ```
 
-The routing tests execute the two shipped workflow scripts under
+The routing tests execute the three shipped workflow scripts under
 `skills/implement-review-verify/scripts/` with deterministic fake stage results, including the
 launch check and execution boundaries for every stage, and read the skill's Markdown with Bun's
 built-in parser for the prose and helper they check.

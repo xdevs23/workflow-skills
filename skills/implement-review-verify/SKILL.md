@@ -624,11 +624,45 @@ tree. Attest each `unattested-fix` by reading its commits against the approved c
 running the checks yourself. Never report a fix as verified on the fixer's claim.
 
 A confirmed must-fix or CRITICAL item, an unfixed approval, a failed proof, and an open decision
-once the user has decided it are fixed in a follow-up implement-review-verify workflow. The root
-writes its YAML spec like any unit spec: one criterion item per confirmed defect with its sources,
-the settled decision for a decided item, the previous run's snapshot as the base, and the tool's
-count of criterion items as `criteriaCount`. The cold spec review and every other stage apply unchanged.
-Every follow-up uses new prompts and a new run ID.
+once the user has decided it are fixed in a follow-up. A finding whose fix needs no decision of the
+user goes to a fix run, described below. Everything else goes to a follow-up
+implement-review-verify workflow. The root writes its YAML spec like any unit spec: one criterion
+item per confirmed defect with its sources, the settled decision for a decided item, the previous
+run's snapshot as the base, and the tool's count of criterion items as `criteriaCount`. The cold
+spec review and every other stage apply unchanged. Every follow-up uses new prompts and a new run
+ID.
+
+**A fix run fixes findings that need no decision of the user.** The root uses it for findings of
+one named run of a unit whose spec carries the user's words, where the fix needs no decision of the
+user: a logic error, a crash, a race, a rule violation or another mechanical defect in code that
+unit wrote. A general instruction to fix findings does not authorize a particular fix, because the
+user may not agree with the finding, so no unit spec cites such words for one. A finding that needs
+a decision, an open decision, and anything the scope check refused go to the user and then to a
+full unit with a spec. The root never uses the fix run for work it wants done beyond a finding.
+
+The fix run is `scripts/fix-follow-up.js`, copied and filled in its marked block like the other two
+scripts. It takes no spec and no quotation. Its input is a fix list, a YAML file under the main
+checkout's ignored cache directory with the keys `parentSpec` (the unit spec the parent run was
+built against), `run` (the parent run's ID) and `entries`. Each entry has exactly `id`, `source`
+(the finding's source ID in the parent run, `<seat>:<index>` or `roaster:<index>`), `finding` (a
+verbatim part of that finding's claim) and `correction` (the change to make, in plain words). The
+list holds no user words and no field for them. The launch check runs
+`<plugin root>/tools/check-spec.ts --fix-list <file> --transcripts <dir> --json` in the worktree,
+which resolves every entry against the parent run's journal and prints the proof only when every
+entry resolves. The root passes the tool's `entries` output as `args.entries` and the parent
+run's final snapshot as `args.baseSha`, and fills the parent unit's private record into the block.
+
+The read-only scope check runs before any edit and classes every entry as corrective or as a new
+choice, each with a reason and receipts. A new choice is not fixed: it returns as a `new-choice`
+remaining item with its reason, and when no entry is corrective the run ends there with
+`root-resolution` and no fixer runs. The fixer receives only the corrective entries, one key per
+entry ID with the correction, the scope check's reason and its receipts, while the roaster reads
+the same list. The read-only diff check then maps every change of the fix diff to a corrective
+entry. Each of its findings returns as a CRITICAL `diff-finding` and starts no further fixer. The
+run ends `clean` when every entry was corrective, every one was fixed with passing proof, and
+neither the diff check nor the roaster left a must-fix or CRITICAL item. It ends `root-resolution`
+when an entry was refused, a fix was not applied, the proof failed or the diff check found a
+change without an entry, and ends on an abort or a stage failure as the main script does.
 
 **Two relocations mean the cause is untouched.** When the work record shows the same defect moved
 twice, the third change fixes the cause instead of moving it a third time, and a third relocation

@@ -1,0 +1,12 @@
+# Synthetic fix list: one entry from a reader whose stage ran twice, one from the roaster.
+parentSpec: tests/fixtures/fix-list/parent.yaml
+run: wf_parent-run
+entries:
+  - id: return-error
+    source: correctness:1
+    finding: The specified error is swallowed
+    correction: Return the specified error to the caller.
+  - id: close-handle
+    source: roaster:0
+    finding: The file handle stays open
+    correction: Close the file handle on the error path.

@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto'
 import { createReadStream } from 'node:fs'
-import { readFile, writeFile } from 'node:fs/promises'
-import { resolve } from 'node:path'
+import { readdir, readFile, stat, writeFile } from 'node:fs/promises'
+import { join, resolve } from 'node:path'
 import { createInterface } from 'node:readline'
 import { parseArgs } from 'node:util'
 
@@ -74,30 +74,16 @@ const opensTurn = (record: Mapping) => {
 const parseRecord = (line: string): Mapping | undefined => {
   try { const record = JSON.parse(line); return mapping(record) ? record : undefined } catch { return undefined }
 }
+const kebabCase = /^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$/
+// The random string only a passing run prints, so a stage that returns it has run this tool.
+const freshProof = () => Buffer.from(crypto.getRandomValues(new Uint8Array(16))).toString('hex')
 
-async function main() {
-  if (!Bun.YAML?.parse) throw new Error(`Bun ${minimumBun} or newer is required: Bun.YAML is unavailable`)
-  const { values, positionals } = parseArgs({ args: Bun.argv.slice(2), allowPositionals: true,
-    options: { transcripts: { type: 'string' }, render: { type: 'string' },
-      'check-render': { type: 'string' }, json: { type: 'boolean' }, base: { type: 'string' } } })
-  if (positionals.length !== 1 || !values.transcripts || (values.render && values['check-render'])) {
-    throw new Error('Usage: bun tools/check-spec.ts <spec.yaml> --transcripts <dir> ' +
-      '[--render <path> | --check-render <path>] [--json] [--base <commit>]')
-  }
-  // A cited rule file is read as it stood at the base commit when it is tracked there, so a unit
-  // that rewrites the very line its spec quotes still passes after the change. A file the commit
-  // does not hold, a path outside the repository, or no repository at all reads from disk.
-  const ruleText = async (file: string) => {
-    if (values.base) {
-      const shown = Bun.spawnSync(['git', 'show', `${values.base}:./${file}`], { stdout: 'pipe', stderr: 'pipe' })
-      if (shown.exitCode === 0) return shown.stdout.toString()
-    }
-    return readFile(file, 'utf8')
-  }
-  const specPath = positionals[0]
+// The shape checks a spec and a fix list share. Each failure is recorded with the position of the
+// item it concerns, so the report keeps file order, and with a path that names the item.
+function validator(file: string) {
   const violations: { item: number, message: string }[] = []
   const fail = (item: number, path: string, message: string) => {
-    violations.push({ item, message: `${specPath}: ${path}: ${message}` })
+    violations.push({ item, message: `${file}: ${path}: ${message}` })
   }
   const shape = (value: unknown, fields: string[], item: number, path: string, optional: string[] = []): value is Mapping => {
     if (!mapping(value)) { fail(item, path, 'expected a mapping'); return false }
@@ -121,6 +107,46 @@ async function main() {
     }
     return true
   }
+  // Prints every violation in item order and fails the run; returns whether there were any.
+  const report = () => {
+    for (const violation of violations.sort((a, b) => a.item - b.item)) console.error(violation.message.replace(/[\r\n]+/g, ' '))
+    if (violations.length) process.exitCode = 1
+    return violations.length > 0
+  }
+  return { fail, shape, stringField, list, report }
+}
+
+const usage = 'Usage: bun tools/check-spec.ts <spec.yaml> --transcripts <dir> ' +
+  '[--render <path> | --check-render <path>] [--json] [--base <commit>], ' +
+  'or bun tools/check-spec.ts --fix-list <file> --transcripts <dir> [--json]'
+
+async function main() {
+  if (!Bun.YAML?.parse) throw new Error(`Bun ${minimumBun} or newer is required: Bun.YAML is unavailable`)
+  const { values, positionals } = parseArgs({ args: Bun.argv.slice(2), allowPositionals: true,
+    options: { transcripts: { type: 'string' }, render: { type: 'string' },
+      'check-render': { type: 'string' }, json: { type: 'boolean' }, base: { type: 'string' },
+      'fix-list': { type: 'string' } } })
+  if (values['fix-list'] !== undefined) {
+    if (positionals.length || !values['fix-list'] || !values.transcripts || values.render || values['check-render'] || values.base) {
+      throw new Error(usage)
+    }
+    return checkFixList(values['fix-list'], values.transcripts, values.json === true)
+  }
+  if (positionals.length !== 1 || !values.transcripts || (values.render && values['check-render'])) {
+    throw new Error(usage)
+  }
+  // A cited rule file is read as it stood at the base commit when it is tracked there, so a unit
+  // that rewrites the very line its spec quotes still passes after the change. A file the commit
+  // does not hold, a path outside the repository, or no repository at all reads from disk.
+  const ruleText = async (file: string) => {
+    if (values.base) {
+      const shown = Bun.spawnSync(['git', 'show', `${values.base}:./${file}`], { stdout: 'pipe', stderr: 'pipe' })
+      if (shown.exitCode === 0) return shown.stdout.toString()
+    }
+    return readFile(file, 'utf8')
+  }
+  const specPath = positionals[0]
+  const { fail, shape, stringField, list, report } = validator(specPath)
   const reference = (value: unknown, fields: string[], item: number, path: string): value is Mapping => {
     if (!shape(value, fields, item, path)) return false
     const fileOK = stringField(value, 'file', item, path)
@@ -152,7 +178,7 @@ async function main() {
           ? sourceFields[value.source as keyof typeof sourceFields] : []
         shape(value, ['id', 'kind', 'content', 'source', ...(value.kind === 'rejected' ? ['reason'] : []),
           ...extra], index, path, value.source === 'transcript' ? ['answers'] : [])
-        if (stringField(value, 'id', index, path) && !/^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$/.test(value.id as string)) {
+        if (stringField(value, 'id', index, path) && !kebabCase.test(value.id as string)) {
           fail(index, `${path}.id`, 'expected a kebab-case id')
         }
         if (!kinds.includes(value.kind as typeof kinds[number])) fail(index, `${path}.kind`, 'unknown kind')
@@ -278,11 +304,7 @@ async function main() {
     else if (item.kind === 'requirement' && !asked) fail(index, path, 'parent chain of a requirement never reaches a transcript or rule item')
     if (cycle) fail(index, path, 'cycle among parents')
   })
-  if (violations.length) {
-    for (const violation of violations.sort((a, b) => a.item - b.item)) console.error(violation.message.replace(/[\r\n]+/g, ' '))
-    process.exitCode = 1
-    return
-  }
+  if (report()) return
   const document = render(spec as Mapping, items)
   if (values['check-render']) {
     let current: string
@@ -291,7 +313,6 @@ async function main() {
     if (current !== document) throw new Error('generated document differs from the one in the tree; regenerate it with --render')
   }
   if (values.render) await writeFile(values.render, document)
-  // The proof is printed only by a passing run, so a stage that returns it has run this tool.
   const summary = {
     counts: {
       kind: Object.fromEntries(kinds.map(kind => [kind, items.filter(item => item.kind === kind).length])),
@@ -300,7 +321,7 @@ async function main() {
     criteria: items.filter(item => item.kind === 'criterion').map((item, index) => ({ ordinal: index + 1, id: item.id })),
     sha256: createHash('sha256').update(bytes!).digest('hex'),
     nonBlankLines: nonBlankLines(bytes!.toString('utf8')),
-    proof: Buffer.from(crypto.getRandomValues(new Uint8Array(16))).toString('hex'),
+    proof: freshProof(),
     spec: specPath,
   }
   const line = values.json ? JSON.stringify(summary) :
@@ -309,6 +330,126 @@ async function main() {
     `proof=${summary.proof} spec=${summary.spec}`
   if (values.json || !(values.render || values['check-render'])) console.log(line)
   else console.error(line)
+}
+
+// A fix list names findings of one earlier run and the correction each needs. It holds no words of
+// the user, so its check resolves every entry against the parent run's journal in their place.
+const fixListFields = ['parentSpec', 'run', 'entries']
+const entryFields = ['id', 'source', 'finding', 'correction']
+// A finding's source id in the parent run: the reader's name and the finding's index in its list.
+const sourceId = /^([a-z][a-z0-9]*(?:-[a-z0-9]+)*):(0|[1-9][0-9]*)$/
+// A run id is one directory name under the session's workflow directory.
+const runId = /^[A-Za-z0-9][A-Za-z0-9_.-]*$/
+// The stage label the parent run gives a reader: the roaster's stage is roast, every other review:<name>.
+const stageLabel = (reader: string) => reader === 'roaster' ? 'roast' : `review:${reader}`
+const isFile = (path: string) => stat(path).then(found => found.isFile(), () => false)
+
+// The journal of a run: <transcripts>/<session>/subagents/workflows/<run>/journal.jsonl, in exactly
+// one session.
+async function findJournal(transcripts: string, run: string): Promise<string> {
+  const sessions = await readdir(transcripts, { withFileTypes: true })
+  const found: string[] = []
+  for (const session of sessions.filter(entry => entry.isDirectory())) {
+    const path = join(transcripts, session.name, 'subagents', 'workflows', run, 'journal.jsonl')
+    if (await isFile(path)) found.push(path)
+  }
+  if (!found.length) throw new Error(`run ${run} has no journal under the transcript directory`)
+  if (found.length > 1) throw new Error(`run ${run} has a journal in more than one session`)
+  return found[0]
+}
+
+// The result of every stage label's last started agent: a retried stage starts a new agent under
+// the same label, and only the last one's result is the stage's result.
+async function lastResults(journal: string): Promise<Map<string, unknown>> {
+  const started = new Map<string, unknown>(), results = new Map<unknown, unknown>()
+  lines(await readFile(journal, 'utf8')).forEach((line, index) => {
+    if (!line.trim()) return
+    let record: unknown
+    try { record = JSON.parse(line) } catch { throw new Error(`journal line ${index + 1} is not JSON`) }
+    if (!mapping(record)) return
+    if (record.type === 'started' && text(record.label)) started.set(record.label, record.key)
+    else if (record.type === 'result') results.set(record.key, record.result)
+  })
+  return new Map([...started].map(([label, key]) => [label, results.get(key)]))
+}
+
+async function checkFixList(file: string, transcripts: string, json: boolean) {
+  const { fail, shape, stringField, list, report } = validator(file)
+  let bytes: Buffer | undefined
+  let fixList: unknown
+  let parsed = false
+  try {
+    bytes = await readFile(file)
+    fixList = Bun.YAML.parse(bytes.toString('utf8'))
+    parsed = true
+  } catch (error) {
+    fail(-1, 'fix list', `unreadable or malformed YAML: ${messageOf(error)}`)
+  }
+  const entries: { index: number, path: string, value: Mapping }[] = []
+  if (parsed && shape(fixList, fixListFields, -1, 'fix list')) {
+    const parentOK = stringField(fixList, 'parentSpec', -1, 'fix list')
+    const runOK = stringField(fixList, 'run', -1, 'fix list') && runId.test(fixList.run as string)
+    if (text(fixList.run) && !runOK) fail(-1, 'fix list.run', 'expected a run id')
+    if (list(fixList.entries, -1, 'entries')) {
+      const ids = new Set<string>()
+      for (const [index, value] of fixList.entries.entries()) {
+        const path = mapping(value) && text(value.id) ? value.id : `entry ${index + 1}`
+        if (!shape(value, entryFields, index, path)) continue
+        for (const field of entryFields) stringField(value, field, index, path)
+        if (text(value.id)) {
+          if (!kebabCase.test(value.id)) fail(index, `${path}.id`, 'expected a kebab-case id')
+          if (ids.has(value.id)) fail(index, `${path}.id`, `duplicate id ${value.id}`)
+          ids.add(value.id)
+        }
+        if (text(value.source) && !sourceId.test(value.source)) fail(index, `${path}.source`, 'expected <reader>:<index>')
+        entries.push({ index, path, value })
+      }
+    }
+    // Every entry rests on the parent spec and the parent run, so a failure of either is reported
+    // against each entry, or against the list itself when no entry could be read.
+    const eachEntry = (field: string, message: string) => {
+      if (!entries.length) fail(-1, `fix list.${field}`, message)
+      for (const { index, path } of entries) fail(index, `${path}.${field}`, message)
+    }
+    if (parentOK && !await isFile(resolve(fixList.parentSpec as string))) {
+      eachEntry('parentSpec', `does not name an existing file: ${fixList.parentSpec}`)
+    }
+    if (runOK) {
+      let results: Map<string, unknown> | undefined
+      try { results = await lastResults(await findJournal(transcripts, fixList.run as string)) }
+      catch (error) { eachEntry('source', messageOf(error)) }
+      if (results) for (const { index, path, value } of entries) {
+        const match = text(value.source) ? sourceId.exec(value.source) : null
+        if (!match) continue
+        const [, reader, position] = match
+        const label = stageLabel(reader)
+        if (!results.has(label)) { fail(index, `${path}.source`, `the parent run has no stage labelled ${label}`); continue }
+        const result = results.get(label)
+        const findings = mapping(result) && Array.isArray(result.findings) ? result.findings : undefined
+        if (!findings) { fail(index, `${path}.source`, `the last ${label} stage returned no findings list`); continue }
+        if (Number(position) >= findings.length) {
+          fail(index, `${path}.source`, `index ${position} is outside the ${findings.length} findings of ${label}`); continue
+        }
+        const found = findings[Number(position)]
+        const claim = mapping(found) && typeof found.claim === 'string' ? found.claim : ''
+        if (text(value.finding) && !normalize(claim).includes(normalize(value.finding))) {
+          fail(index, `${path}.finding`, `not found in the claim of ${value.source}`)
+        }
+      }
+    }
+  }
+  if (report()) return
+  const { run, parentSpec } = fixList as Mapping
+  const summary = {
+    entries: entries.map(({ value }) => Object.fromEntries(entryFields.map(field => [field, value[field]]))),
+    run,
+    parentSpec,
+    sha256: createHash('sha256').update(bytes!).digest('hex'),
+    proof: freshProof(),
+    fixList: file,
+  }
+  console.log(json ? JSON.stringify(summary) :
+    `entries=${summary.entries.length} run=${summary.run} sha256=${summary.sha256} proof=${summary.proof} fixList=${summary.fixList}`)
 }
 
 function render(spec: Mapping, items: Mapping[]): string {
