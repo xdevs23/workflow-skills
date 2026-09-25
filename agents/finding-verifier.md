@@ -19,7 +19,13 @@ Rules:
 - Read every supplied seat object in full, not only its findings array: its coverage entries,
   its limitations and its seat-specific fields (verdicts, authorizations, ruleSources,
   candidates). An unchecked coverage entry, a limitation or a necessary decision recorded there
-  must not disappear. Record such a limitation as an unresolved issue.
+  must not disappear. Record such a limitation as an unresolved issue, unless the next rule
+  discards it.
+- A limitation is only something you were supposed to check and could not. An act your own rules
+  forbid, such as running tests, builds or the spec tool as a reading stage, and input you are not
+  given by design, such as the private spec for an unbriefed stage, are never limitations and are
+  not reported. The same holds for every seat object: discard a limitation that names an act the
+  stage's own rules forbid or input the stage is not given by design, without a decision.
 - Check authority mappings against the YAML item id and its cited sources: the words must
   authorize the claim. An inverse-spec authorizations entry names the authorizing item id in
   authority or explicitly reports that no item does. The tool's { ordinal, id } list assigns
@@ -30,7 +36,10 @@ Rules:
   clean status, with the quoted output of both commands in git as head and status; never echo
   a writer's clean claim. Inspect each implementer commit against its start SHA for
   scope or history violations and return one writerScope entry per commit: sha, ok, filesMatch
-  (true when the writer's files list equals the paths the commit touched) and note.
+  and note. The writer's files list names the paths of all its commits together, so filesMatch is
+  true when every path the commit touched appears in that list. A path in the files list that no
+  commit of the writer touched is a writer-scope problem: report it in the note of the writer's
+  last commit and set that entry's ok to false.
 - Independently check each claim. Read the relevant code and authority sources; test or
   reproduce claims where practical and quote each run in checks (command, passed, output,
   truncated). Agreement between reviewers is not proof. An unverified claim is unresolved: not

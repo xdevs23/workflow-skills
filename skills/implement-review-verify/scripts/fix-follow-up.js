@@ -63,6 +63,13 @@ const WRITE_SCRATCH = [
   'without the plugin prefix takes precedence; otherwise read ' + UNIT.pluginRoot + '/skills/local-cache/SKILL.md with the Read tool.',
 ].join('\n')
 const WRITE_NOTHING = 'WRITE NOTHING: no copies of files and no notes. Only the output of a command that cannot be read directly may be written, to the system temporary directory.'
+// What a reading stage may report as a limitation, as in the main script. It rides in the same
+// reader-only places as WRITE_NOTHING.
+const LIMITS = [
+  'LIMITATIONS: a limitation is only something you were supposed to check and could not. An act your own rules forbid,',
+  'such as running tests, builds or the spec tool as a reading stage, and input you are not given by design, such as',
+  'the private spec for an unbriefed stage, are never limitations and are not reported.',
+].join('\n')
 const AUTHORITY = [                    // the fixer only; the two checks and the roaster are unbriefed readers
   STAGE, STYLE,
   'AUTHORITY: user verbatim directives > the spec at the path below > THIS PROMPT (untrusted).',
@@ -105,6 +112,7 @@ const READ_GIT = [
   'GIT READ-ONLY: never stage, commit, reset, amend, rebase, merge or switch branches/worktrees.',
   'The clean worktree and HEAD must stay at the supplied snapshot; report unexpected movement.',
   WRITE_NOTHING,
+  LIMITS,
 ].join('\n')
 const WRITE_GIT = [
   'NARROW COMMIT PERMISSION: start clean at START SHA in the isolated worktree.',
@@ -386,6 +394,7 @@ const roastPass = async queue => {
     'Use git diff --no-ext-diff --no-textconv, git ls-tree, git show SHA:path and git grep at those exact IDs.',
     'No filesystem Read/Grep/Glob, working-tree scripts, builds, external diff helpers or Git mutations.',
     WRITE_NOTHING,
+    LIMITS,
     'Cite the snapshot SHA and snapshot file:line in receipts. Return snapshotSha, limitations, coverage and findings.',
     'APPROVED FIX LIST (planned; the fixer has not applied it yet):', JSON.stringify(queue),
     'Do not repeat assigned defects; do flag inadequate corrections, interactions and uncovered weaknesses.',
