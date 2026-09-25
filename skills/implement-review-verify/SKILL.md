@@ -535,9 +535,9 @@ must belong to exactly one decision group. The SCRIPT checks coverage, unknown I
 IDs and approval payloads before mutation. A missing seat object or an invalid handoff stops the
 run, and a `blocks` limitation on any accepted stage other than the eight reading seats and the
 verifier ends it after that stage with exit `root-resolution` and a `blocking-limitation` item. A
-reading seat's `blocks` limitation becomes the same item, and the pass goes on to the verifier, which
-judges it with the seat's object, and then to the fix stage; missing evidence is never an implicit
-rejection or a clean empty queue.
+reading seat's limitation reaches the root only through the verifier, which receives it with the
+seat's object and keeps it as an unresolved issue or discards it, and the pass goes on to the fix
+stage; missing evidence is never an implicit rejection or a clean empty queue.
 
 Only approvals enter the fixer list. Unsettled necessary decisions, required root actions,
 unresolved `issues` and the verifier's own blocking `limitations` do not hold the approved work
@@ -598,9 +598,10 @@ returned with the remaining items; the root checks its claims against the tree.
 
 **Each stage runs once.** Implement, the eight parallel Review seats, Verify, then Fix with its
 concurrent roast. A stage failure, a hard flag or a blocking limitation ends the run after that
-stage, except that a blocking limitation from a reading seat or the verifier, like an unresolved
-verifier decision, ends it after the fix stage. Fix and roast join with settlement: either valid
-result is retained when its peer fails, and the fixer's cause names `detail` when both end the run.
+stage, except that the verifier's own blocking limitation, like an unresolved verifier decision,
+ends it after the fix stage. A reading seat's limitation reaches the root only as the verifier's
+issue. Fix and roast join with settlement: either valid result is retained when its peer fails,
+and the fixer's cause names `detail` when both end the run.
 
 **Source identity is deterministic, consolidation is semantic.** The script assigns IDs by seat
 and finding index, `<seat>:<index>`, with `roaster` as the roast's seat name. The verifier groups the
@@ -1340,8 +1341,11 @@ The completeness checks, by stage kind:
 
 A `blocks` limitation on any accepted stage other than the eight reading seats and the verifier
 ends the run after that stage: the script records a `blocking-limitation` item with its stage label
-and exits with `root-resolution`. A reading seat's and the verifier's are recorded the same way, and
-the run ends with `root-resolution` after the fix stage has run.
+and exits with `root-resolution`. The verifier's own is recorded the same way, and the run ends
+with `root-resolution` after the fix stage has run. The main script records no reading seat's
+limitation: the verifier keeps it as an unresolved issue or discards it. The fix run has no
+verifier, so there the script records the blocking limitations of the scope check, the roaster
+and the diff check itself.
 
 **ARTIFACT-PRODUCING STAGES PROVE THE ARTIFACT IN `files` AND `checks`.** A stage can produce a
 long, immaculate ANALYSIS of the work and never create the file; an empty `files` list behind a
