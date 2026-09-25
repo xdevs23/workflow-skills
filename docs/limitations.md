@@ -44,10 +44,12 @@ passing the scope check.
 finding against that observation item, because an observation in a spec must be re-runnable
 without writing. It is never reported as a limitation.
 
-**readers-limitations-through-verifier**: A reading stage's limitation reaches the orchestrating session only through the finding
-verifier, which keeps it as an unresolved issue or discards it under `limitation-definition`.
-The scripts no longer record a reading stage's blocking limitation as a remaining item of
-their own. The same holds for an unchecked coverage entry that names a forbidden act or
+**readers-limitations-through-verifier**: In the main script, a reading stage's limitation reaches the orchestrating session only
+through the finding verifier, which keeps it as an unresolved issue or discards it under
+`limitation-definition`; the script no longer records a reading stage's blocking limitation
+as a remaining item of its own. The fix-only script runs no verifier, so there the scope
+check's, the roaster's and the diff check's blocking limitations stay recorded by the
+script, and a blocked scope check still stops the fixer. The same holds for an unchecked coverage entry that names a forbidden act or
 withheld input: it is dropped, and the retry message of a failed completeness check tells the
 stage to drop such an entry as well as to declare a real limitation.
 
