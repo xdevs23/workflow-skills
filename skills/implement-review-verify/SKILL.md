@@ -625,8 +625,9 @@ running the checks yourself. Never report a fix as verified on the fixer's claim
 
 A confirmed must-fix or CRITICAL item, an unfixed approval, a failed proof, and an open decision
 once the user has decided it are fixed in a follow-up. A finding whose fix needs no decision of the
-user goes to a fix run, described below. Everything else goes to a follow-up
-implement-review-verify workflow. The root writes its YAML spec like any unit spec: one criterion
+user may go to a fix run, described below. Every other item goes to a follow-up
+implement-review-verify workflow, and such a finding may go there as well when the user's words
+cover its fix. The root writes that workflow's YAML spec like any unit spec: one criterion
 item per confirmed defect with its sources, the settled decision for a decided item, the previous
 run's snapshot as the base, and the tool's count of criterion items as `criteriaCount`. The cold
 spec review and every other stage apply unchanged. Every follow-up uses new prompts and a new run
