@@ -1744,7 +1744,7 @@ describe('launch check and shipped scripts', () => {
     const gate = gatePrompt(calls)
     expect(calls[0]).toBe(gate)
     expect([gate.model, gate.effort, gate.phase, gate.agentType]).toEqual(['claude-haiku-4-5', 'low', 'Launch', undefined])
-    expect(gate.prompt).toBe(command + ' --check-render docs/<unit>.md\n' + sentence + '\n' + relayed)
+    expect(gate.prompt).toBe('cd <isolated worktree> && ' + command + ' --check-render docs/<unit>.md\n' + sentence + '\n' + relayed)
     expect(gate.schema).toEqual({ type: 'object', required: ['exitCode', 'stdout', 'stderr', 'proof'], additionalProperties: false,
       properties: { exitCode: { type: 'integer' }, stdout: { type: 'string' }, stderr: { type: 'string' }, proof: { type: 'string' } } })
     expect(phases[0]).toBe('Launch')
@@ -1753,7 +1753,7 @@ describe('launch check and shipped scripts', () => {
     const preGate = gatePrompt(preCalls)
     expect(preCalls[0]).toBe(preGate)
     expect([preGate.model, preGate.effort, preGate.phase]).toEqual(['claude-haiku-4-5', 'low', 'Launch'])
-    expect(preGate.prompt).toBe(command + '\n' + sentence + '\n' + relayed)
+    expect(preGate.prompt).toBe('cd <main checkout> && ' + command + '\n' + sentence + '\n' + relayed)
     expect(preGate.schema).toEqual(gate.schema)
   })
 

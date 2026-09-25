@@ -1142,7 +1142,9 @@ same act. The main script keeps it in `CHECK`, which only the implementer and fi
 
 Both scripts begin with a launch check, before any other agent: a small stage on
 `claude-haiku-4-5` at low effort whose prompt is one command line and one sentence. The command
-is `<plugin root>/tools/check-spec.ts` with `--json`, the spec path from `args.specPath`, the
+changes to the tree the run works on, the worktree from the marked block for the main run and the
+main checkout for the pre-phase, so the generated document and the cited rule files resolve there.
+It then runs `<plugin root>/tools/check-spec.ts` with `--json`, the spec path from `args.specPath`, the
 transcript directory from `args.transcripts`, `--base` with the base commit, and for the main run `--check-render` with the
 generated document. The sentence tells the stage to run that exact command once with the Bash
 tool and return its exit code, stdout, stderr and the proof string printed on success, with no

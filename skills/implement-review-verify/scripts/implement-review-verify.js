@@ -630,7 +630,9 @@ async function onePass() {
 // on exit zero with a filled proof, and otherwise stage() retries and then throws quoting stderr.
 const GATE = { type: 'object', required: ['exitCode', 'stdout', 'stderr', 'proof'], additionalProperties: false,
   properties: { exitCode: { type: 'integer' }, stdout: { type: 'string' }, stderr: { type: 'string' }, proof: { type: 'string' } } }
-const GATE_COMMAND = 'bun ' + UNIT.pluginRoot + '/tools/check-spec.ts ' + UNIT.specPath +
+// The command runs in the worktree, where the generated document and the cited rule files of this
+// run resolve.
+const GATE_COMMAND = 'cd ' + UNIT.worktree + ' && bun ' + UNIT.pluginRoot + '/tools/check-spec.ts ' + UNIT.specPath +
   ' --transcripts ' + UNIT.transcripts + ' --json --base ' + UNIT.baseSha + ' --check-render ' + UNIT.generatedDocument
 const checkGate = r => {
   if (r.exitCode !== 0 || typeof r.proof !== 'string' || !r.proof.trim()) {
