@@ -647,11 +647,15 @@ checkout's ignored cache directory with the keys `parentSpec` (the unit spec the
 built against), `run` (the parent run's ID) and `entries`. Each entry has exactly `id`, `source`
 (the finding's source ID in the parent run, `<seat>:<index>` or `roaster:<index>`), `finding` (a
 verbatim part of that finding's claim) and `correction` (the change to make, in plain words). The
-list holds no user words and no field for them. The launch check runs
-`<plugin root>/tools/check-spec.ts --fix-list <file> --transcripts <dir> --json` in the worktree,
-which resolves every entry against the parent run's journal and prints the proof only when every
-entry resolves. The root passes the tool's `entries` output as `args.entries` and the parent
-run's final snapshot as `args.baseSha`, and fills the parent unit's private record into the block.
+list holds no user words and no field for them. The root runs
+`<plugin root>/tools/check-spec.ts --fix-list <file> --transcripts <dir> --json`, which resolves
+every entry against the parent run's journal and prints the proof only when every entry resolves.
+The root passes the tool's `entries` and `parentSpec` output as `args.entries` and
+`args.parentSpec` and the parent run's final snapshot as `args.baseSha`, and fills the parent
+unit's private record into the block. The launch check runs the same command in the worktree with
+`--expect` and the JSON of those two launch values, which the script builds and quotes for the
+shell. The tool fails when they differ from the fix list, so the corrections the fixer receives are
+the ones the tool checked.
 
 The read-only scope check runs before any edit and classes every entry as corrective or as a new
 choice, each with a reason and receipts. A new choice is not fixed: it returns as a `new-choice`

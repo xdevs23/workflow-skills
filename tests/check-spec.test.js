@@ -406,6 +406,43 @@ describe('fix list validation', () => {
     expect(result.stderr.toString()).toContain('return-error.source: journal line 2 is not JSON')
   })
 
+  describe('launch values', () => {
+    const path = join(fixLists, 'valid.yaml')
+    const launch = (edit = () => {}) => {
+      const values = structuredClone({ entries: validList.entries, parentSpec: validList.parentSpec })
+      edit(values)
+      return ['--expect', JSON.stringify(values)]
+    }
+
+    test('launch values equal to the fix list pass with a proof', () => {
+      const result = checkList(path, ['--json', ...launch()])
+      expect([result.exit, result.err]).toEqual([0, ''])
+      expect(JSON.parse(result.out).proof).toMatch(/^[0-9a-f]{32}$/)
+    })
+
+    test.each([
+      ['a changed correction', v => { v.entries[0].correction = 'Log the error and continue.' }, 'return-error.correction: differs from the launch values'],
+      ['a missing entry', v => { v.entries.pop() }, 'close-handle: missing from the launch values'],
+      ['a changed parentSpec', v => { v.parentSpec = 'tests/fixtures/fix-list/other.yaml' }, 'return-error.parentSpec: differs from the launch values'],
+      ['an entry the list does not hold', v => { v.entries.push({ ...v.entries[0], id: 'rename-helper' }) }, 'launch values.entries: rename-helper is not an entry of the fix list'],
+      ['an extra field', v => { v.entries[1].severity = 'must-fix' }, 'close-handle.severity: differs from the launch values'],
+    ])('%s fails with a violation naming the entry', (name, edit, message) => {
+      const result = checkList(path, launch(edit))
+      invalid(result, message)
+      expect(result.err).not.toContain('proof')
+    })
+
+    test('malformed launch values fail', () => {
+      invalid(checkList(path, ['--expect', '{"entries": [']), 'launch values: malformed JSON')
+      invalid(checkList(path, ['--expect', '[]']), 'launch values: expected a mapping')
+    })
+
+    test('launch values beside a spec argument are a usage error', () => {
+      const result = Bun.spawnSync([process.execPath, tool, join(fixtures, 'valid.yaml'), '--transcripts', fixtures, ...launch()], { cwd: root })
+      expect([result.exitCode, result.stderr.toString().includes('Usage')]).toEqual([1, true])
+    })
+  })
+
   test('a spec argument or a spec option beside --fix-list is a usage error', () => {
     const path = join(fixLists, 'valid.yaml')
     for (const options of [[join(fixtures, 'valid.yaml')], ['--base', 'HEAD'], ['--render', join(scratch, 'list.md')], ['--check-render', path]]) {
