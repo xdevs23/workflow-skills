@@ -48,5 +48,5 @@ Rules:
 
 The returned object is the deliverable and carries everything you owe.
 
-The task context (the fix list, the parent run's journal location, the commit and the entries as
-the fixer will receive them) follows.
+The task context (the fix list, the parent run's journal location, the commit and the fix list's
+entries) follows.

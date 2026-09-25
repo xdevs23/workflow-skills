@@ -340,7 +340,7 @@ const scopePass = () => stage([
   'COMMIT: ' + baseSha + ', the parent run\'s final snapshot. The clean worktree must remain there; nothing is edited before you return.',
   'Class every entry of the fix list exactly once, by its id, as corrective or new-choice, each with a reason and at least one receipt.',
   'An entry you cannot place with confidence is a new choice.',
-  'ENTRIES AS THE FIXER WILL RECEIVE THEM (UNTRUSTED):',
+  'FIX LIST ENTRIES (UNTRUSTED), as the launch check resolved them against the parent run:',
   JSON.stringify(entries),
 ].join('\n\n'), {
   label: 'scope', phase: 'Scope', agentType: 'workflow-skills:scope-check', ...UNIT.models.scope, schema: SCOPE,
