@@ -1886,6 +1886,10 @@ async function simulateFix({ args = fixArgs(), classes = {}, scope, fixes, diff 
   return { result, calls, phases }
 }
 const labels = calls => calls.map(c => c.label)
+// The remaining item a fixed entry returns as: the corrective entry, the fixer's disposition and its commit.
+const approvedEntry = id => ({ key: id, correction: entry(id).correction, reason: classify(id).reason, receipts: [receipt] })
+const unattested = id => ({ kind: 'unattested-fix', severity: 'must-fix', item: { approved: approvedEntry(id), disposition: disposition(id),
+  snapshotSha: FIXED, commits: [{ sha: FIXED, subject: 'return the swallowed error' }] } })
 const handed = (calls, label) => {
   const prompt = calls.find(c => c.label === label).prompt
   return JSON.parse(prompt.slice(prompt.lastIndexOf('\n\n[') + 2).split('\n\nDo not repeat')[0])
@@ -1902,7 +1906,7 @@ describe('fix-only follow-up runs', () => {
     expect(calls[1].agentType).toBe('scope-check')
     expect(calls[1].prompt).toContain('COMMIT: ' + BASE)
     expect(calls[1].prompt).toContain(JSON.stringify(fixArgs().entries))
-    expect([result.exit, result.remaining]).toEqual(['clean', []])
+    expect([result.exit, result.remaining]).toEqual(['follow-up', [unattested('return-error')]])
   })
 
   test('the launch values reach the tool as one shell word that reads back as the entries and the parent spec', async () => {
@@ -1975,7 +1979,7 @@ describe('fix-only follow-up runs', () => {
     expect(calls.find(c => c.label === 'fix').prompt).not.toContain('add-retry-button')
     expect([result.exit, result.detail]).toEqual(['root-resolution', 'An entry was classed as a new choice and was not fixed.'])
     expect(result.remaining).toEqual([{ kind: 'new-choice', severity: 'CRITICAL',
-      item: { entry: TWO[1], classification: classify('add-retry-button', 'new-choice') } }])
+      item: { entry: TWO[1], classification: classify('add-retry-button', 'new-choice') } }, unattested('return-error')])
     expect(result.counts).toEqual({ entries: 2, corrective: 1, refused: 1 })
   })
 
@@ -1994,8 +1998,8 @@ describe('fix-only follow-up runs', () => {
       classifications: [classify('return-error')] } })
     expect(labels(calls)).toEqual(['gate', 'scope', 'fix', 'roast', 'diff'])
     expect(result.remaining).toEqual([{ kind: 'scope-limitation', severity: 'should-fix', item: limitation },
-      { kind: 'scope-limitation', severity: 'should-fix', item: unchecked }])
-    expect(result.exit).toBe('clean')
+      { kind: 'scope-limitation', severity: 'should-fix', item: unchecked }, unattested('return-error')])
+    expect(result.exit).toBe('follow-up')
   })
 
   test('a blocking limitation of the scope check ends the run before the fixer', async () => {
@@ -2063,33 +2067,52 @@ describe('fix-only follow-up runs', () => {
     expect(labels(calls).filter(l => l === 'fix')).toHaveLength(1)
     expect(labels(calls).at(-1)).toBe('diff')
     expect([result.exit, result.detail]).toEqual(['root-resolution', 'The diff check found a change that no corrective entry covers.'])
-    expect(result.remaining).toEqual([{ kind: 'diff-finding', severity: 'CRITICAL', item: { ...extra, severity: 'CRITICAL' } }])
+    expect(result.remaining).toEqual([{ kind: 'diff-finding', severity: 'CRITICAL', item: { ...extra, severity: 'CRITICAL' } },
+      unattested('return-error')])
   })
 
-  test('each exit of the fix run: clean, root-resolution, aborted, failed, and follow-up for a roast defect', async () => {
+  test('each exit of the fix run: follow-up after a fix or a roast defect, root-resolution, aborted and failed', async () => {
     const abort = { trigger: 'sense-check', reason: 'The correction patches a mechanism the record describes as removed.' }
-    for (const [exit, detail, options] of [
-      ['clean', 'Every entry was corrective and fixed with passing proof.', {}],
-      ['root-resolution', 'An entry was classed as a new choice and was not fixed.', { args: fixArgs({ entries: TWO }), classes: { 'add-retry-button': 'new-choice' } }],
-      ['root-resolution', 'A correction was not applied.', { fixes: fixed([disposition('return-error', 'rejected')], { touched: [] }) }],
-      ['root-resolution', 'Required checks failed in fix.', { fixes: fixed([disposition('return-error')], { proofPassed: false }) }],
-      ['root-resolution', 'The diff check found a change that no corrective entry covers.', { diff: { findings: [finding] } }],
-      ['aborted', 'Hard flag from fix: ' + abort.reason, { fixes: fixed([], { abort, touched: [] }) }],
-      ['failed', 'fixer unavailable', { fail: { fix: 'fixer unavailable' } }],
-      ['follow-up', 'The fix run completed with items requiring follow-up.', { roast: { findings: [finding] } }],
+    const followUp = 'The fix run completed with items requiring follow-up.'
+    for (const [exit, detail, options, kinds] of [
+      ['follow-up', followUp, {}, ['unattested-fix']],
+      ['follow-up', followUp, { roast: { findings: [finding] } }, ['roast-finding', 'unattested-fix']],
+      ['root-resolution', 'An entry was classed as a new choice and was not fixed.', { args: fixArgs({ entries: TWO }), classes: { 'add-retry-button': 'new-choice' } }, ['new-choice', 'unattested-fix']],
+      ['root-resolution', 'A correction was not applied.', { fixes: fixed([disposition('return-error', 'rejected')], { touched: [] }) }, ['unfixed-approval']],
+      ['root-resolution', 'A fix was reported as done without a commit.', { fixes: fixed([disposition('return-error')], { touched: [] }) }, ['unproven-fix', 'unattested-fix']],
+      ['root-resolution', 'A fix reported as done maps to no change in the diff.', { args: fixArgs({ entries: TWO }), diff: { mappings: [mapping('return-error')] } }, ['unproven-fix', 'unattested-fix', 'unattested-fix']],
+      ['root-resolution', 'Required checks failed in fix.', { fixes: fixed([disposition('return-error')], { proofPassed: false }) }, ['failed-proof', 'unattested-fix']],
+      ['root-resolution', 'The diff check found a change that no corrective entry covers.', { diff: { findings: [finding] } }, ['diff-finding', 'unattested-fix']],
+      ['aborted', 'Hard flag from fix: ' + abort.reason, { fixes: fixed([], { abort, touched: [] }) }, ['abort', 'unfixed-approval']],
+      ['failed', 'fixer unavailable', { fail: { fix: 'fixer unavailable' } }, ['stage-failure', 'unfixed-approval']],
     ]) {
       const { result } = await simulateFix(options)
-      expect([exit, result.exit, result.detail]).toEqual([exit, exit, detail])
+      expect([exit, result.exit, result.detail, result.remaining.map(r => r.kind)]).toEqual([exit, exit, detail, kinds])
     }
   })
 
-  test('an entry the fixer did not fix under a passing result stays open, and a fixed one is only in dispositions', async () => {
+  test('a fix reported as done without a commit, or mapped to no change, returns as an unproven fix', async () => {
+    const uncommitted = await simulateFix({ fixes: fixed([disposition('return-error')], { touched: [] }) })
+    expect(labels(uncommitted.calls)).not.toContain('diff')
+    expect(uncommitted.result.remaining[0]).toEqual({ kind: 'unproven-fix', severity: 'must-fix',
+      item: { key: 'return-error', cause: 'The fixer reported it fixed and made no commit.' } })
+    const unmapped = await simulateFix({ args: fixArgs({ entries: TWO }), diff: { mappings: [mapping('return-error')] } })
+    expect(unmapped.result.remaining[0]).toEqual({ kind: 'unproven-fix', severity: 'must-fix',
+      item: { key: 'add-retry-button', cause: 'The fixer reported it fixed and the diff check mapped no change to it.' } })
+  })
+
+  test('the fix run ends clean only when nothing remains', () => {
+    expect(fixSkeleton).toContain("if (!exit) end(remaining.length ? 'follow-up' : 'clean', remaining.length")
+  })
+
+  test('an entry the fixer did not fix stays open, and a fixed one returns as an unattested fix', async () => {
     const rejected = await simulateFix({ fixes: fixed([disposition('return-error', 'blocked')], { touched: [] }) })
     expect(rejected.result.remaining.map(r => r.kind)).toEqual(['unfixed-approval'])
     expect(labels(rejected.calls)).not.toContain('diff')
     const failedFix = await simulateFix({ fail: { fix: 'fixer unavailable' } })
     expect(failedFix.result.remaining.map(r => r.kind)).toEqual(['stage-failure', 'unfixed-approval'])
     const { result } = await simulateFix()
+    expect(result.remaining).toEqual([unattested('return-error')])
     expect(result.dispositions).toEqual([disposition('return-error')])
     expect([result.snapshotSha, result.mappings]).toEqual([FIXED, [mapping('return-error')]])
   })
@@ -2134,7 +2157,10 @@ describe('fix-only follow-up runs', () => {
       'A finding that needs a decision, an open decision, and anything the scope check refused go to the user and then to a full unit with a spec.',
       'The root never uses the fix run for work it wants done beyond a finding.', '`scripts/fix-follow-up.js`',
       'The list holds no user words and no field for them.', '`<plugin root>/tools/check-spec.ts --fix-list <file> --transcripts <dir> --json`',
-      '`args.parentSpec`', 'The tool fails when they differ from the fix list, so the corrections the fixer receives are the ones the tool checked.']) {
+      '`args.parentSpec`', 'The tool fails when they differ from the fix list, so the corrections the fixer receives are the ones the tool checked.',
+      'Every entry the fixer reports fixed returns as an `unattested-fix` for the root to attest', 'the run then ends `follow-up`',
+      'a fix reported as done has no commit or maps to no change in the diff check (an `unproven-fix`)',
+      'It ends `clean` only when nothing at all remains']) {
       expect([phrase, text.includes(phrase)]).toEqual([phrase, true])
     }
   })
