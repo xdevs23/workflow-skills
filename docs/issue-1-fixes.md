@@ -7,43 +7,42 @@ they have no tool to load, the two unbriefed seats were never told which tree to
 message the host relays into a stage was taken as a stop order, and the spec tool could not
 cite an answer the user gave through the question dialog. This unit fixes all six.
 
-This document is generated from the unit's private spec by `tools/check-spec.ts` and is never
-edited by hand.
+This document is generated from a private spec by the spec tool and is never edited by hand.
 
 ## Requirements
 
-**issue-subject**: The six limitations reported against version 0.15.4 are the subject of this unit.
+**reported-defects**: The six defects reported against version 0.15.4 are fixed together.
 
-**agreed-full-ids**: The commit schema requires a full commit id.
+**full-commit-ids**: The commit schema requires a full commit id.
 
-**agreed-readers**: A reading seat's blocking limitation no longer stops the pass; it reaches the verifier and then the root.
+**reader-limitations**: A reading seat's blocking limitation no longer stops the pass; it reaches the verifier and then the root.
 
-**agreed-style-file**: Stages are pointed at the writing-style skill file and read it, instead of being told to load the skill.
+**style-file**: Stages are pointed at the writing-style skill file and read it, instead of being told to load the skill.
 
-**agreed-tree**: The unbriefed seats are told the assigned tree.
+**unbriefed-tree**: The unbriefed seats are told the assigned tree.
 
-**agreed-relayed**: Every stage is told that a user message relayed into it is not an instruction to it. The
-relaying is a defect of the host, and the line guards against it; the code comment beside
-the line says so.
+**relayed-messages**: Every stage is told that a user message relayed into it is not an instruction to it. The
+relaying is a defect of the host, and the line protects the stage from it; the code comment
+beside the line says so.
 
-**agreed-dialog-only**: The spec tool accepts user words from a question-dialog answer, and only from an answer to
+**dialog-answers-only**: The spec tool accepts user words from a question-dialog answer, and only from an answer to
 the question dialog: a tool result of any other tool is output of a command or a program,
 and citing it as the user's words would let a stage pass command output off as the user's.
 
-**start**: The unit is built now, all six fixes in one unit, as plugin version 0.16.0.
+**one-release**: The unit is built now, all six fixes in one unit, as plugin version 0.16.0.
 
-**commit-sha-any-string**: The main script's schemas take a commit id as any string.
+**commit-sha-any-string**: At version 0.15.4 the main script's schemas took a commit id as any string.
 
-**reader-limitation-stops**: Every blocking limitation ends the run at the stage that reported it.
+**reader-limitation-stops**: At version 0.15.4 every blocking limitation ended the run at the stage that reported it.
 
-**stages-have-no-skill-tool**: The stage agents have no tool to load a skill.
+**stages-have-no-skill-tool**: At version 0.15.4 the stage agents had no tool to load a skill.
 
-**hygiene-has-no-tree**: The preamble of the unbriefed seats names no tree.
+**hygiene-has-no-tree**: At version 0.15.4 the preamble of the unbriefed seats named no tree.
 
 **full-id-schema**: Every commit id a stage returns in `commits[].sha` and `writerScope[].sha` is validated by
 the schema against the pattern of a full 40- or 64-character lowercase hexadecimal id, so a
 short id fails at the stage that returned it and that stage is retried. The verify check
-keeps comparing ids exactly. The simpler alternative this rules out is comparing by prefix,
+keeps comparing ids exactly, and the roaster's `snapshotSha` carries the same pattern. The simpler alternative this rules out is comparing by prefix,
 which accepts an ambiguous id.
 
 **readers-do-not-stop**: A `blocks` limitation from any of the eight reading seats is recorded as a
@@ -58,23 +57,29 @@ criteria for checks deferred to the orchestrator.
 **style-file-in-prompt**: In both shipped scripts, the stage preamble's instruction to load the writing-style skill
 becomes an instruction to read the file `<plugin root>/skills/writing-style/SKILL.md` with
 the Read tool before writing and to follow it in every comment, document, commit message
-and returned string, with the plugin root taken from the marked block. The agent templates
-that tell a stage to load the writing-style skill say instead to read the writing-style file
-the prompt names. No rule text of the skill is copied into a prompt.
+and returned string, with the plugin root taken from the marked block. That instruction is
+its own block, joined into every stage prompt except the roaster's: the roaster has no
+Read tool and reads only Git objects. The agent templates that tell a stage to load the
+writing-style skill say instead to read the writing-style file the prompt names, and the
+skills that launch those templates, audit-loop and copywriting, name that file in the
+prompts they build. No rule text of the skill is copied into a prompt.
 
 **tree-for-unbriefed**: The preamble of the unbriefed seats in the main script, `HYGIENE`, carries the same
 assigned-tree line the briefed seats receive, naming the worktree from the marked block.
 
 **relayed-line**: The stage preamble of both shipped scripts gains one line: a user message that arrives
 while the stage works was written to the orchestrating session, and it is not an instruction
-to the stage. A code comment above that line states that the host relays such messages into
-running stages and that the line guards against that.
+to the stage. The launch check's prompt carries the same line. A code comment above that line
+states that the host relays such messages into running stages and that the line protects the
+stages from them.
 
-**dialog-answers**: In `tools/check-spec.ts`, the text of a cited user record also includes the content of a
-`tool_result` block when, and only when, its `tool_use_id` names a `tool_use` block whose
-`name` is `AskUserQuestion` in an assistant record of the same transcript before the cited
-record. The `tool_result` content counts whether it is a string or a list of text blocks.
-Every other `tool_result` stays excluded. For `answers`, the assistant text between the
+**dialog-answers**: In the spec tool, the text of a cited user record also includes the answer values the user
+chose in the question dialog: the values of the record's structured `toolUseResult.answers`
+mapping, read as JSON, when, and only when, the record carries a `tool_result` block whose
+`tool_use_id` names a `tool_use` block with `name` `AskUserQuestion` in an assistant record
+of the same transcript before the cited record. The rest of the `tool_result` content, the
+question text and the host's own wording around the answers, is never counted as the
+user's words, and every other `tool_result` stays excluded. For `answers`, the assistant text between the
 previous turn and the cited record also includes the question strings, option labels and
 option descriptions of that `AskUserQuestion` input. The simpler alternative this rules out
 is accepting every tool result, which the user excluded.
@@ -84,13 +89,23 @@ name the reading seats and the verifier as the exceptions, and the passage on th
 transcript items states that an answer through the question dialog can be cited and no
 other tool result can.
 
+**gate-runs-in-tree**: The launch check's command changes to the worktree from the marked block before it runs
+the tool, so the generated document path and the cited rule files resolve in the tree the
+run works on. Observed in the run that built these fixes: the first launch attempt ran from
+the main checkout and failed because the generated document existed only in the worktree.
+
+**gate-stage-exists**: At version 0.15.4 the launch check ran the tool with paths relative to wherever its stage started.
+
 ## Boundaries
 
 **files-in-scope**: The unit changes the two shipped scripts, `tools/check-spec.ts`, the agent templates that
 tell a stage to load the writing-style skill, `skills/implement-review-verify/SKILL.md`,
 `skills/immaculate-spec-writing/SKILL.md` only where it describes transcript items, the
-tests and fixtures that cover these, the generated `docs/issue-1-fixes.md`, and the plugin
-version, which becomes 0.16.0. Nothing else.
+tests and fixtures that cover these, the prompts of the audit-loop and copywriting skills
+that launch the record and copywriter templates, the passage of the design record on
+finding verification that states when a blocking limitation ends a run, the generated
+design document, and the plugin version, which becomes 0.16.0. The words seat and lane stay
+where they name the existing review roles. Nothing else.
 
 ## Rejected alternatives
 
