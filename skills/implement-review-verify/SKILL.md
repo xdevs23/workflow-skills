@@ -131,9 +131,9 @@ inverse-spec and finding verification judge it after code.
 
 Since a settled spec is already the precondition for launching, review the SPEC before reviewing
 the code. Two seats, from **DIFFERENT model families**, each given only *"review the spec at
-`<path>`"* plus repo access and the run's **hygiene floor** (git safety, that a reading seat
-writes nothing except a command's output that cannot be read directly, to the system temporary
-directory, run checks bare, no background waits, and that no seat edits an authority document),
+`<path>`"* plus repo access and the run's **hygiene floor** (git safety, what
+`workflow-skills:local-cache` lets a reading stage write, run checks bare, no background waits,
+and that no seat edits an authority document),
 with **no briefing, no framing, no orchestrator summary**, because the
 absence of briefing is what makes them see what the author stopped seeing. The hygiene floor is not a
 briefing: it says nothing about the spec, the review taxonomy or what the author meant. The main run's
