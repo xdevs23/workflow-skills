@@ -643,8 +643,9 @@ full unit with a spec. The root never uses the fix run for work it wants done be
 
 The fix run is `scripts/fix-follow-up.js`, copied and filled in its marked block like the other two
 scripts. It takes no spec and no quotation. Its input is a fix list, a YAML file under the main
-checkout's ignored cache directory with the keys `parentSpec` (the unit spec the parent run was
-built against), `run` (the parent run's ID) and `entries`. Each entry has exactly `id`, `source`
+checkout's ignored cache directory with the keys `parentSpec` (the absolute path of the unit spec
+the parent run was built against), `run` (the parent run's ID) and `entries`. The tool reports a
+relative `parentSpec` as a violation. Each entry has exactly `id`, `source`
 (the finding's source ID in the parent run, `<seat>:<index>` or `roaster:<index>`), `finding` (a
 verbatim part of that finding's claim) and `correction` (the change to make, in plain words). The
 list holds no user words and no field for them. The root runs

@@ -2160,7 +2160,8 @@ describe('fix-only follow-up runs', () => {
       '`args.parentSpec`', 'The tool fails when they differ from the fix list, so the corrections the fixer receives are the ones the tool checked.',
       'Every entry the fixer reports fixed returns as an `unattested-fix` for the root to attest', 'the run then ends `follow-up`',
       'a fix reported as done has no commit or maps to no change in the diff check (an `unproven-fix`)',
-      'It ends `clean` only when nothing at all remains']) {
+      'It ends `clean` only when nothing at all remains',
+      '`parentSpec` (the absolute path of the unit spec the parent run was built against)', 'The tool reports a relative `parentSpec` as a violation.']) {
       expect([phrase, text.includes(phrase)]).toEqual([phrase, true])
     }
   })

@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto'
 import { createReadStream } from 'node:fs'
 import { readdir, readFile, stat, writeFile } from 'node:fs/promises'
-import { join, resolve } from 'node:path'
+import { isAbsolute, join, resolve } from 'node:path'
 import { createInterface } from 'node:readline'
 import { parseArgs } from 'node:util'
 
@@ -412,7 +412,11 @@ async function checkFixList(file: string, transcripts: string, json: boolean, ex
       if (!entries.length) fail(-1, `fix list.${field}`, message)
       for (const { index, path } of entries) fail(index, `${path}.${field}`, message)
     }
-    if (parentOK && !await isFile(resolve(fixList.parentSpec as string))) {
+    // The fix script names the parent spec to a stage in another tree, where a relative path
+    // would resolve somewhere else.
+    if (parentOK && !isAbsolute(fixList.parentSpec as string)) {
+      eachEntry('parentSpec', `expected an absolute path: ${fixList.parentSpec}`)
+    } else if (parentOK && !await isFile(fixList.parentSpec as string)) {
       eachEntry('parentSpec', `does not name an existing file: ${fixList.parentSpec}`)
     }
     // The launch values a fix script received: its entries and parentSpec. Each must equal the
