@@ -1,10 +1,8 @@
 # What a limitation is, and the per-commit files check
 
-Reading stages reported, as limitations, that they had not run the tests or the spec tool,
-which their own read-only rules forbid, and unbriefed stages reported not seeing the private
-spec, which is withheld from them on purpose. Each such line reached the verifier and the
-orchestrating session as something to judge. A limitation is now only something the stage was
-supposed to check and could not.
+A limitation is only something a stage was supposed to check and could not. An act the stage's
+own rules forbid, such as a read-only stage running the tests, and input the stage is not given
+by design are no limitations and are not reported.
 
 The same runs showed a defect in the verify step's writer check: a writer that makes several
 commits returns one list of files for all of them, and the check compared that list with each
@@ -14,8 +12,8 @@ This document is generated from a private spec by the spec tool and is never edi
 
 ## Requirements
 
-**forbidden-act-no-limitation**: Not running something a stage's own rules forbid, such as a read-only reviewer not running
-the tests or a build, is not a limitation. Reviews are reviews of code, not compilation checks.
+**forbidden-act-no-limitation**: Leaving out an act a stage's own rules forbid, such as a read-only reviewer running the tests
+or a build, is never reported as a limitation.
 
 **withheld-input-no-limitation**: Input a stage is not given by design, such as the private spec for an unbriefed stage, is not a limitation either.
 
@@ -42,12 +40,23 @@ false. The finding verifier's template, the verify prompt of the main script and
 state this, and a routing test shows a writer with several commits and one files list
 passing the scope check.
 
+**unrunnable-observation**: An observation whose command the provenance review cannot run read-only is a must-fix
+finding against that observation item, because an observation in a spec must be re-runnable
+without writing. It is never reported as a limitation.
+
+**readers-limitations-through-verifier**: A reading stage's limitation reaches the orchestrating session only through the finding
+verifier, which keeps it as an unresolved issue or discards it under `limitation-definition`.
+The scripts no longer record a reading stage's blocking limitation as a remaining item of
+their own. The same holds for an unchecked coverage entry that names a forbidden act or
+withheld input: it is dropped, and the retry message of a failed completeness check tells the
+stage to drop such an entry as well as to declare a real limitation.
+
 ## Boundaries
 
 **files-in-scope**: The change edits the three shipped scripts, the finding verifier's template, the
 reading-stage templates that ask for limitations, the implement-review-verify skill, the
-routing tests, the generated design document and the plugin version, which becomes 0.20.0.
-Nothing else.
+routing tests, the design record on structured stage output where it states the files check,
+the generated design document and the plugin version, which becomes 0.20.0. Nothing else.
 
 ## Acceptance criteria
 
