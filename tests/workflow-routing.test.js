@@ -1643,7 +1643,7 @@ describe('work execution rules', () => {
     expect(text).toContain('has to be taught the private convention')
   })
 
-  test('the remaining-items section refuses a third relocation and keeps one amended work record entry', () => {
+  test('the remaining-items section refuses a third relocation and keeps one amended todo record entry', () => {
     const text = sectionText(skill, '### Remaining items and follow-up work')
     expect(text).toContain('**Two relocations mean the cause is untouched.**')
     expect(text).toContain('the third change fixes the cause instead of moving it a third time')
