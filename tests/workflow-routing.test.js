@@ -1844,9 +1844,12 @@ describe('launch check and shipped scripts', () => {
     await preRun(async (prompt, opts) => { preCalls.push({ prompt, ...opts }); return coldObject(opts.label) })
     const fixCalls = []
     await simulateFix({ calls: fixCalls })
-    for (const [script, gate] of [[skeleton, gatePrompt(calls)], [coldSkeleton, gatePrompt(preCalls)], [fixSkeleton, gatePrompt(fixCalls)]]) {
-      const declared = script.match(/^ {2}privateRecord: '([^']+)',/m)[1]
-      expect((gate.prompt.split('\n')[0] + ' ').includes(' --record ' + declared + ' ')).toBe(true)
+    const unitRecord = '<main checkout>/.cache/directives/<unit>.md'
+    const parentRecord = '<main checkout>/.cache/directives/<parent unit>.md'
+    for (const [script, gate, record] of [['implement-review-verify.js', gatePrompt(calls), unitRecord],
+      ['spec-review.js', gatePrompt(preCalls), unitRecord], ['fix-follow-up.js', gatePrompt(fixCalls), parentRecord]]) {
+      const passed = (gate.prompt.split('\n')[0] + ' ').includes(' --record ' + record + ' ')
+      expect([script, passed]).toEqual([script, true])
     }
   })
 
