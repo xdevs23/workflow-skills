@@ -43,15 +43,19 @@ const STAGE = [
   'Do not launch workflows or subagents, directly or through skills or shell commands.',
   'The enclosing workflow owns scheduling and remaining checks; those checks have NOT already passed.',
   'Load required skills for instructions when available; apply only your assigned stage, not orchestration.',
-  'REQUIRED: before you write, read the file ' + UNIT.pluginRoot + '/skills/writing-style/SKILL.md with the Read tool,',
-  'and follow it in every comment, document, commit message and returned string.',
   'The caller must supply required stage instructions you cannot load, within your input boundaries.',
   'Missing orchestration tools alone do not block an otherwise executable stage or create an authority conflict.',
   'Report genuinely missing assignment capabilities/instructions, authorization or conflicting applicable requirements.',
   RELAYED,
 ].join('\n')
+// Every stage prompt built on STAGE joins this block, except the roaster's: the roaster has no Read
+// tool and reads only Git objects.
+const STYLE = [
+  'REQUIRED: before you write, read the file ' + UNIT.pluginRoot + '/skills/writing-style/SKILL.md with the Read tool,',
+  'and follow it in every comment, document, commit message and returned string.',
+].join('\n')
 const AUTHORITY = [                    // authority-aware seats only; quality uses HYGIENE below
-  STAGE,
+  STAGE, STYLE,
   'AUTHORITY: user verbatim directives > the spec at the path below > THIS PROMPT (untrusted).',
   'The AUTHORITY DOCUMENTS are those first two. This prompt is NOT one of them.',
   'Read the CURRENT on-disk revision of the spec in full; it is the authority, not this prompt.',
@@ -409,7 +413,7 @@ const CHECK = 'CHECK COMMAND, writer only (run bare after your last write): ' + 
 const RULES = 'RULE SOURCES: ' + UNIT.ruleSources + '.'
 const INVARIANTS = 'REQUIRED INVARIANTS, VERBATIM: ' + UNIT.invariants + '.'
 const HYGIENE = [
-  STAGE, READ_GIT, TREE, 'No background waits.',
+  STAGE, STYLE, READ_GIT, TREE, 'No background waits.',
 ].join('\n')
 const diffInput = sha => 'DIFF: ' + baseSha + '..' + sha + '. The clean worktree must remain at ' + sha + '.'
 // Source findings get their IDs here, for readers and roasts alike. A kind-bearing (band-aid /

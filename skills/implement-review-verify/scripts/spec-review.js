@@ -39,15 +39,18 @@ const STAGE = [
   'Do not launch workflows or subagents, directly or through skills or shell commands.',
   'The enclosing workflow owns scheduling and remaining checks; those checks have NOT already passed.',
   'Load required skills for instructions when available; apply only your assigned stage, not orchestration.',
-  'REQUIRED: before you write, read the file ' + UNIT.pluginRoot + '/skills/writing-style/SKILL.md with the Read tool,',
-  'and follow it in every comment, document, commit message and returned string.',
   'The caller must supply required stage instructions you cannot load, within your input boundaries.',
   'Missing orchestration tools alone do not block an otherwise executable stage or create an authority conflict.',
   'Report genuinely missing assignment capabilities/instructions, authorization or conflicting applicable requirements.',
   RELAYED,
 ].join('\n')
+// Every stage prompt built on STAGE joins this block, through HOUSE.
+const STYLE = [
+  'REQUIRED: before you write, read the file ' + UNIT.pluginRoot + '/skills/writing-style/SKILL.md with the Read tool,',
+  'and follow it in every comment, document, commit message and returned string.',
+].join('\n')
 const HOUSE = [
-  STAGE,
+  STAGE, STYLE,
   'GIT: READ-ONLY BY INTENT. You do not change what git records or which commit the tree sits on,',
   'by any means, named here or not. Illustration, NOT the boundary: stash, checkout, reset, restore,',
   'clean, commit, rebase, merge, cherry-pick, branch or worktree switching. ALLOWED: status, diff, log, show.',
