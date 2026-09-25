@@ -1408,10 +1408,10 @@ For the other seats:
   ordinary readers/verifier. The roaster gets only its Git-object-only snapshot contract:
   expected fixer movement is not an anomaly, and it must never inspect that moving tree.
 - **Scratch files by role.** The block only writers receive points them at
-  `workflow-skills:local-cache` for scratch files. Every block a reader receives says it writes
-  nothing, no copies of files and no notes, except a command's output that cannot be read
-  directly, which goes to the system temporary directory. No block both receive names a place for
-  scratch files.
+  `workflow-skills:local-cache` for scratch files. The reader-only places are READ_GIT, and
+  HYGIENE through it, and the roaster's prompt line, and each says the reader writes nothing, no
+  copies of files and no notes, except a command's output that cannot be read directly, which goes
+  to the system temporary directory. No block both receive names a place for scratch files.
 - **Run checks BARE** — never piped through `head`/`grep`, which hides the error you needed.
 - **No background waits** — never end a turn waiting on a backgrounded check; the returned object
   IS the deliverable.
