@@ -87,8 +87,12 @@ also has `reason`. Use exactly the fields of its source kind:
   the supplied session directory, and `user_words`, verbatim text in at least one resolved message.
   Where the words answer a list, a label or a yes/no question, also `answers`, a verbatim quote of
   the assistant text they reply to, which the tool resolves in an assistant record between the
-  previous user turn and the cited record. At least one item has this source: a spec with none
-  of the user's words fails, and so does a requirement derived from observations alone.
+  previous user turn and the cited record. An answer the user gave through the question dialog
+  (`AskUserQuestion`) can be cited: its record is the tool result that answers the dialog call, and
+  `answers` can quote the question, an option label or an option description of that call. No other
+  tool result can be cited, because its content is output of a command or a program. At least one
+  item has this source: a spec with none of the user's words fails, and so does a requirement
+  derived from observations alone.
 - **rule:** `rule: { file, line }` and `quote`, matching the rule's words across hard-wrapped lines.
 - **observation:** `observation: { command, exit, output, date }`, recording a fact observed here.
   Use a read-only command that the provenance reader can repeat and compare against output and exit.

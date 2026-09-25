@@ -81,7 +81,8 @@ as prose, the root writes the YAML before launching. `tools/check-spec.ts` defin
 contract; `tests/fixtures/spec-provenance/valid.yaml` is its exercised format example.
 
 Each item states one requirement or decision with an id, kind, content and one of four sources:
-`transcript` cites session records and verbatim user_words; `rule` cites a file, line and quote;
+`transcript` cites session records and verbatim user_words, where an answer through the question
+dialog counts and no other tool result does; `rule` cites a file, line and quote;
 `observation` records command, exit, output and date; `derivation` names parent item ids. An item
 asserting that a condition, failure mode or risk exists needs source transcript or observation.
 A reviewer's hypothetical hazard stays a finding until an observation establishes the condition here.
@@ -483,9 +484,11 @@ counterevidence against the finding itself. Every such decision reaches the root
 Reviewer lanes and severity are claims to verify, not queue permissions. Every source ID
 must belong to exactly one decision group. The SCRIPT checks coverage, unknown IDs, duplicate
 IDs and approval payloads before mutation. A missing seat object or an invalid handoff stops the
-run, and a `blocks` limitation on any accepted stage other than the verifier ends it after that stage with exit
-`root-resolution` and a `blocking-limitation` item; missing evidence is never an implicit rejection or a
-clean empty queue.
+run, and a `blocks` limitation on any accepted stage other than the eight reading seats and the
+verifier ends it after that stage with exit `root-resolution` and a `blocking-limitation` item. A
+reading seat's `blocks` limitation becomes the same item, and the pass goes on to the verifier, which
+judges it with the seat's object, and then to the fix stage; missing evidence is never an implicit
+rejection or a clean empty queue.
 
 Only approvals enter the fixer list. Unsettled necessary decisions, required root actions,
 unresolved `issues` and the verifier's own blocking `limitations` do not hold the approved work
@@ -545,9 +548,10 @@ returned with the remaining items; the root checks its claims against the tree.
 #### One pass, then a follow-up
 
 **Each stage runs once.** Implement, the eight parallel Review seats, Verify, then Fix with its
-concurrent roast. A stage failure, hard flag, blocking limitation or unresolved verifier decision
-ends the run after that stage. Fix and roast join with settlement: either valid result is retained
-when its peer fails, and the fixer's cause names `detail` when both end the run.
+concurrent roast. A stage failure, a hard flag or a blocking limitation ends the run after that
+stage, except that a blocking limitation from a reading seat or the verifier, like an unresolved
+verifier decision, ends it after the fix stage. Fix and roast join with settlement: either valid
+result is retained when its peer fails, and the fixer's cause names `detail` when both end the run.
 
 **Source identity is deterministic, consolidation is semantic.** The script assigns IDs by seat
 and finding index, `<seat>:<index>`, with `roaster` as the roast's seat name. The verifier groups the
@@ -1209,9 +1213,10 @@ The completeness checks, by stage kind:
   exactly one entry per criterion from 1 to `args.criteriaCount`; provenance with non-empty
   coverage, receipts on findings and a non-empty `limitations` list when any entry is unchecked.
 
-A `blocks` limitation on any accepted stage ends the run after that stage: the script records a
-`blocking-limitation` item with its stage label and exits with `root-resolution`. The verifier's
-is recorded the same way, after the fix stage has run.
+A `blocks` limitation on any accepted stage other than the eight reading seats and the verifier
+ends the run after that stage: the script records a `blocking-limitation` item with its stage label
+and exits with `root-resolution`. A reading seat's and the verifier's are recorded the same way, and
+the run ends with `root-resolution` after the fix stage has run.
 
 **ARTIFACT-PRODUCING STAGES PROVE THE ARTIFACT IN `files` AND `checks`.** A stage can produce a
 long, immaculate ANALYSIS of the work and never create the file; an empty `files` list behind a
