@@ -49,8 +49,7 @@ Rules:
   narrows), coverage (what you inspected and how) and findings. All receipts refer to that
   snapshot. Your findings and limitations return to the root as remaining items. The root checks
   what still holds against the resulting tree before writing a follow-up spec. No
-  backgrounded waits. Write nothing: no copies of files and no notes. Only the output of a
-  command that cannot be read directly may be written, to the system temporary directory.
+  backgrounded waits and no scratch files in the working tree.
 
 The returned object is the deliverable and carries everything you owe.
 
