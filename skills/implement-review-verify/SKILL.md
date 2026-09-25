@@ -185,7 +185,13 @@ Discovered here they cost an edit; discovered in phase 4 they cost the run.
 
 A third reader, **spec-provenance** (`agents/spec-provenance.md`), receives the YAML spec, transcript
 directory, private record and base commit. Item by item it judges authorization, asserted conditions
-and mandated mechanisms. It re-runs each read-only observation command and reports output or exit
+and mandated mechanisms. For every subject the spec covers it searches every message of the user in
+every transcript of that directory, queued messages included, and a later statement that refines,
+narrows or contradicts a cited one outranks it. It also checks the frame around the items: the
+summary sentence by sentence, every boundary item, every comment line of the raw spec file, and
+every document, branch or earlier unit the spec names or builds on. A claim there that no item
+backs, and a decision found only in a comment, are must-fix findings; comments carry provenance
+notes only. It re-runs each read-only observation command and reports output or exit
 mismatches and observations older than the base commit. Its findings advise the root alongside
 the two unbriefed seats, whose inputs remain the spec and hygiene floor. The spec-provenance
 findings carry the same must-fix, should-fix and nit severity the gap-finder uses. One class of
