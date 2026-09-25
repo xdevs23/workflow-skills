@@ -2235,7 +2235,7 @@ describe('the project cache, the todo record and scratch files by role', () => {
       'Nothing in it is ever committed', 'temporary files, logs, research documents and plans', 'private specs, under `.cache/specs/`',
       'private directive records, under `.cache/directives/`', 'workflow worktrees, under `.cache/worktrees/`',
       "a writing stage's scratch files, under `.cache/<agent-scope>/`", "under that worktree's own `.cache/`",
-      'A reading stage writes nothing there and nothing anywhere else: no copies of files and no notes.',
+      'A reading stage writes nothing, in the project cache or anywhere else: no copies of files and no notes.',
       'the output of a command that cannot be read directly, which a reading stage may write to the system temporary directory']) {
       expect([phrase, flat(text).includes(phrase)]).toEqual([phrase, true])
     }

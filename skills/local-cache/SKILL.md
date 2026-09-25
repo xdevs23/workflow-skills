@@ -29,6 +29,6 @@ These files of the work, which are not meant for the repository, go in the proje
 
 ## Reading stages
 
-A reading stage writes nothing there and nothing anywhere else: no copies of files and no notes.
-The one exception is the output of a command that cannot be read directly, which a reading stage
-may write to the system temporary directory.
+A reading stage writes nothing, in the project cache or anywhere else: no copies of files and no
+notes. The one exception is the output of a command that cannot be read directly, which a reading
+stage may write to the system temporary directory.
