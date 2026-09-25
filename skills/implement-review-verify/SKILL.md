@@ -1407,11 +1407,10 @@ For the other seats:
   commits after checks, no unrelated changes or history rewriting. Append READ_GIT to
   ordinary readers/verifier. The roaster gets only its Git-object-only snapshot contract:
   expected fixer movement is not an anomaly, and it must never inspect that moving tree.
-- **Scratch files by role.** The block only writers receive points them at
-  `workflow-skills:local-cache` for scratch files. The reader-only places are READ_GIT, and
-  HYGIENE through it, and the roaster's prompt line, and each says the reader writes nothing, no
-  copies of files and no notes, except a command's output that cannot be read directly, which goes
-  to the system temporary directory. No block both receive names a place for scratch files.
+- **Scratch files by role.** `workflow-skills:local-cache` defines the rule for writing stages and
+  the rule for reading stages. WRITE_GIT, which only writers receive, carries the writing rule. The
+  reader-only places carry the reading rule: READ_GIT, and HYGIENE through it, and the roaster's
+  prompt line. No block both receive names a place for scratch files.
 - **Run checks BARE** — never piped through `head`/`grep`, which hides the error you needed.
 - **No background waits** — never end a turn waiting on a backgrounded check; the returned object
   IS the deliverable.
@@ -1518,9 +1517,8 @@ Two rules that come with it:
 - The root applies **Root completion checks** after every run: inspect stage durations, measure
   the final code/spec ratio (above 20:1 blocks acceptance), and follow the project's chosen
   integration route. Verify preservation/handoff in a separate call before worktree removal.
-- Point writing agents at `workflow-skills:local-cache` for scratch files, and tell reading agents
-  that they write nothing except a command's output that cannot be read directly, to the system
-  temporary directory.
+- Give writing agents and reading agents the rules that `workflow-skills:local-cache` states for
+  each of the two roles.
 - Keep routine consolidation, rejections and successful fixes inside the workflow record. Relay
   a concise result plus genuine exceptions: unsettled decisions, authority prerequisites,
   verifier/fixer disagreements or failed proofs. Preserve source findings and dispositions for
