@@ -45,22 +45,23 @@ const dialogText = (input: unknown) => {
     .filter(value => typeof value === 'string').join(' ')
 }
 // The text of a transcript record: a string body, or its text blocks joined, with reminders removed.
-// A tool result block adds its content, a string or text blocks, only when `answered` holds its
-// tool_use_id, the id of a question-dialog call.
-const textOf = (record: Mapping, answered = new Set<string>()) => {
+// A tool result block adds nothing.
+const textOf = (record: Mapping) => {
   const content = mapping(record.message) ? record.message.content : undefined
   let message: string
   if (typeof content === 'string') message = content
-  else if (Array.isArray(content)) {
-    message = content.map(block => {
-      if (!mapping(block)) return ''
-      if (block.type === 'text') return blockText(block)
-      if (block.type !== 'tool_result' || !answered.has(block.tool_use_id as string)) return ''
-      return typeof block.content === 'string' ? block.content
-        : Array.isArray(block.content) ? textBlocks(block.content) : ''
-    }).join('')
-  } else throw new Error('message.content must be a string or block array')
+  else if (Array.isArray(content)) message = textBlocks(content)
+  else throw new Error('message.content must be a string or block array')
   return message.replace(/<system-reminder>[\s\S]*?<\/system-reminder>/g, '')
+}
+// The answers the user chose in the question dialog: the values of the record's structured
+// `toolUseResult.answers` mapping, when `answered` holds the id of a question-dialog call the
+// record's tool result answers. The tool result's content holds the question text and the host's
+// own wording around the answers, so it never counts as the user's words.
+const dialogAnswers = (record: Mapping, answered: Set<string>): string[] => {
+  if (!answered.size || !mapping(record.toolUseResult)) return []
+  const { answers } = record.toolUseResult
+  return mapping(answers) ? Object.values(answers).filter(text) : []
 }
 // A user record that carries a text block and is not a tool result opens a turn: the assistant
 // records after it and before the cited user record are the ones the cited words reply to.
@@ -193,7 +194,8 @@ async function main() {
                   throw new Error('expected a user record with the cited uuid')
                 }
                 const dialog = new Set(resultIds(record).filter(id => asked.has(id)))
-                if (wordsOK && textOf(record, dialog).includes(value.user_words as string)) matched = true
+                const said = [textOf(record), ...dialogAnswers(record, dialog)]
+                if (wordsOK && said.some(words => words.includes(value.user_words as string))) matched = true
                 if (answersOK) {
                   const quote = normalize(value.answers as string)
                   // A reply's text includes the question text of the dialog calls the cited record answers.

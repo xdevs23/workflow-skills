@@ -95,7 +95,7 @@ describe('structured unit spec validation', () => {
     invalid(changed(s => { s.items[0].answers = 'Export the selected rows.' }), 'export-request.answers: not found')
   })
 
-  test('user words match an answer through the question dialog, and a result of any other tool never counts', () => {
+  test('user words match only the structured answers of the question dialog, and a result of any other tool never counts', () => {
     const cite = (line, uuid, words, answers) => changed(s => {
       s.items[0].evidence = [{ file: 'session.jsonl', line, uuid }]
       s.items[0].user_words = words
@@ -104,6 +104,12 @@ describe('structured unit spec validation', () => {
     const unmatched = 'export-request.user_words: not found in any resolved user message'
     expect(cite(11, 'dialog-answer', 'Stream, in input order').exit).toBe(0)
     expect(cite(15, 'dialog-answer-blocks', 'Nightly, after the backup').exit).toBe(0)
+    // The tool result's content carries the question text and the host's wording, never the user's words.
+    for (const [line, uuid, words] of [[11, 'dialog-answer', 'Which interface should the export use?'],
+      [11, 'dialog-answer', 'The user answered'], [15, 'dialog-answer-blocks', 'How often should the export run?'],
+      [15, 'dialog-answer-blocks', 'The user answered']]) {
+      invalid(cite(line, uuid, words), unmatched)
+    }
     invalid(cite(13, 'command-output', 'Stream, in input order'), unmatched)
     invalid(cite(7, 'tool-turn', 'ok'), unmatched)
     invalid(cite(16, 'early-answer', 'An answer before its question'), unmatched)
