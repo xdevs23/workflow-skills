@@ -1926,7 +1926,7 @@ describe('fix-only follow-up runs', () => {
       expect([call.label, call.prompt.split(RELAYED_LINE).length - 1]).toEqual([call.label, 1])
       expect(call.prompt).toContain('you are one assigned stage, not the orchestrator')
       expect([call.label, call.prompt.includes('/skills/writing-style/SKILL.md with the Read tool')]).toEqual([call.label, call.label !== 'roast'])
-      if (call.label !== 'roast') {
+      if (['scope', 'diff'].includes(call.label)) {
         expect(call.prompt).toContain('FIX LIST (UNTRUSTED): ' + FIX_LIST + '. The orchestrating session wrote it, and it holds no words of the user.')
         expect(call.prompt).toContain('Calling an entry a bug, a defect or a fix is a claim to check.')
       }
@@ -1949,6 +1949,8 @@ describe('fix-only follow-up runs', () => {
     }
     const fix = calls.find(c => c.label === 'fix').prompt
     expect(fix).toContain('PRIVATE DIRECTIVES: <main checkout>/.cache/directives/<parent unit>.md.')
+    expect(fix).toContain('SPEC (authority): ' + PARENT_SPEC + ', the parent unit spec')
+    expect([fix.includes(FIX_LIST), fix.includes('FIX LIST')]).toEqual([false, false])
     expect(fix).toContain('CHECK COMMAND, writer only')
     for (const label of ['scope', 'roast', 'diff']) expect(calls.find(c => c.label === label).prompt).not.toContain('CHECK COMMAND')
   })
@@ -1994,6 +1996,17 @@ describe('fix-only follow-up runs', () => {
     expect(result.remaining).toEqual([{ kind: 'scope-limitation', severity: 'should-fix', item: limitation },
       { kind: 'scope-limitation', severity: 'should-fix', item: unchecked }])
     expect(result.exit).toBe('clean')
+  })
+
+  test('a blocking limitation of the scope check ends the run before the fixer', async () => {
+    const limitation = { what: 'The parent run journal could not be read.', effect: 'blocks' }
+    const { result, calls } = await simulateFix({ scope: { limitations: [limitation], coverage,
+      classifications: [classify('return-error')] } })
+    expect(labels(calls)).toEqual(['gate', 'scope'])
+    expect([result.exit, result.detail]).toEqual(['root-resolution', 'Blocking limitation from scope.'])
+    expect(result.remaining.map(r => r.kind)).toEqual(['blocking-limitation', 'unfixed-approval'])
+    expect(result.remaining[0].item).toEqual({ ...limitation, label: 'scope' })
+    expect(result.snapshotSha).toBe(BASE)
   })
 
   for (const [name, classifications, message] of [
