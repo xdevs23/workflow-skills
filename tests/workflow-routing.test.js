@@ -1063,8 +1063,8 @@ describe('spec provenance instructions and routing', () => {
       'count non-blank lines in the tracked generated document at the candidate commit',
       'private YAML holds quoted words',
       'by its path under the main checkout, never a path relative to its worktree',
-      "claim in the work record, the todo record that `workflow-skills:todo-md` defines, has the same status as a reviewer's claim",
-      'work record is never cited as a source', 'never edited by hand',
+      "claim in the todo record that `workflow-skills:todo-md` defines has the same status as a reviewer's claim",
+      'todo record is never cited as a source', 'never edited by hand',
       'write each one as a `criterion` item in the YAML spec',
       'same must-fix, should-fix and nit severity the gap-finder uses',
       'non-empty `limitations` list when any entry is unchecked',
@@ -1471,7 +1471,7 @@ describe('one-pass remaining-items handoff', () => {
 
   test('root follow-up instructions require evidence, fresh prompts and the normal cold review', () => {
     const text = flat(skill)
-    for (const phrase of ['records every remaining item', "project's work record, the todo record that `workflow-skills:todo-md` defines",
+    for (const phrase of ['records every remaining item', 'every remaining item in the todo record that `workflow-skills:todo-md` defines',
       'Check each `roast-finding` and `roast-limitation` against the tree',
       'Attest each `unattested-fix` by reading its commits', 'running the checks yourself',
       'one criterion item per confirmed defect with its sources', 'previous run’s snapshot',
@@ -2274,7 +2274,7 @@ describe('the project cache, the todo record and scratch files by role', () => {
 
   test('every instruction to record work names workflow-skills:todo-md, and the README states the precedence rule once', async () => {
     const text = flat(skill)
-    for (const phrase of ["records every remaining item in the project's work record, the todo record that `workflow-skills:todo-md` defines",
+    for (const phrase of ['records every remaining item in the todo record that `workflow-skills:todo-md` defines',
       'records this consolidated handoff in the todo record that `workflow-skills:todo-md` defines',
       'records the list in the todo record that `workflow-skills:todo-md` defines',
       'update the todo record of `workflow-skills:todo-md` without staging or committing it']) {

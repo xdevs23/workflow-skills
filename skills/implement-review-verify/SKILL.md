@@ -87,10 +87,10 @@ dialog counts and no other tool result does; `rule` cites a file, line and quote
 `observation` records command, exit, output and date; `derivation` names parent item ids. An item
 asserting that a condition, failure mode or risk exists needs source transcript or observation.
 A reviewer's hypothetical hazard stays a finding until an observation establishes the condition here.
-A claim in the work record, the todo record that `workflow-skills:todo-md` defines, has the same
-status as a reviewer's claim: having been written down in an earlier pass does not make it
-observed. The root observes a recorded condition again before it justifies an item and before it
-becomes a question to the user. The work record is never cited as a source.
+A claim in the todo record that `workflow-skills:todo-md` defines has the same status as a
+reviewer's claim: having been written down in an earlier pass does not make it observed. The root
+observes a recorded condition again before it justifies an item and before it becomes a question
+to the user. The todo record is never cited as a source.
 A derivation mandating a mechanism names in content the simpler alternative it rules out; its
 parents include the transcript item asking for it or the observation showing the simpler route
 failing. The provenance reader judges these claims against the cited words and observed facts.
@@ -623,8 +623,8 @@ seats or a second implementer pre-check.
 
 ### Remaining items and follow-up work
 
-The root records every remaining item in the project's work record, the todo record that
-`workflow-skills:todo-md` defines. Remaining items are claims until the root reads them. Check
+The root records every remaining item in the todo record that `workflow-skills:todo-md` defines.
+Remaining items are claims until the root reads them. Check
 each `roast-finding` and `roast-limitation` against the tree. Attest each `unattested-fix` by
 reading its commits against the approved correction and running the checks yourself. Never
 report a fix as verified on the fixer's claim.
@@ -678,14 +678,15 @@ a fix reported as done has no commit or maps to no change in the diff check (an 
 the proof failed, or the diff check found a change without an entry. It ends `clean` only when
 nothing at all remains, and ends on an abort or a stage failure as the main script does.
 
-**Two relocations mean the cause is untouched.** When the work record shows the same defect moved
+**Two relocations mean the cause is untouched.** When the todo record shows the same defect moved
 twice, the third change fixes the cause instead of moving it a third time, and a third relocation
-is refused with the cause reported to the user. The count lives in the work record entry for that
-defect, which is amended as the same entry each time the defect reappears, never duplicated, since
-a duplicated entry hides the second move behind a fresh-looking first one.
+is refused with the cause reported to the user. The count lives in that defect's entry in the todo
+record of `workflow-skills:todo-md`, which is amended as the same entry each time the defect
+reappears, never duplicated, since a duplicated entry hides the second move behind a
+fresh-looking first one.
 
-Record a disproved item with its counterevidence; a nit or record stays recorded in the work
-record. Each follow-up starts from the previous pass's list. Findings raised by its review
+Record a disproved item with its counterevidence; a nit or record stays recorded in the todo record
+of `workflow-skills:todo-md`. Each follow-up starts from the previous pass's list. Findings raised by its review
 become new entries.
 
 ### Root question-premise check
