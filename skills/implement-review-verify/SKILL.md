@@ -74,6 +74,7 @@ receives can be triaged against anything. No criteria, no launch.
 ### Unit spec — YAML with per-item sources
 
 The root authors `.cache/specs/<unit>.yaml`, ignored and untracked because it quotes the user.
+That path is where `workflow-skills:local-cache` puts private specs.
 Read that YAML spec from disk in full at each spec-consuming stage. Every stage receives the spec
 by its path under the main checkout, never a path relative to its worktree, because a worktree
 holds no untracked file. When a settled design arrives
@@ -86,10 +87,10 @@ dialog counts and no other tool result does; `rule` cites a file, line and quote
 `observation` records command, exit, output and date; `derivation` names parent item ids. An item
 asserting that a condition, failure mode or risk exists needs source transcript or observation.
 A reviewer's hypothetical hazard stays a finding until an observation establishes the condition here.
-A claim in the work record has the same status as a reviewer's claim: having been written down in
-an earlier pass does not make it observed. The root observes a recorded condition again before it
-justifies an item and before it becomes a question to the user. The work record is never cited as
-a source.
+A claim in the work record, the todo record that `workflow-skills:todo-md` defines, has the same
+status as a reviewer's claim: having been written down in an earlier pass does not make it
+observed. The root observes a recorded condition again before it justifies an item and before it
+becomes a question to the user. The work record is never cited as a source.
 A derivation mandating a mechanism names in content the simpler alternative it rules out; its
 parents include the transcript item asking for it or the observation showing the simpler route
 failing. The provenance reader judges these claims against the cited words and observed facts.
@@ -101,9 +102,10 @@ evidence references omitted, and is never edited by hand. Author the YAML once a
 bun <plugin root>/tools/check-spec.ts .cache/specs/<unit>.yaml --transcripts <session-dir> --base <base-sha> --render docs/<unit>.md --json
 ```
 
-The tool lives at `tools/check-spec.ts` under the plugin root. The plugin root is this repository
-when the work is on the plugin itself, and otherwise the installed plugin's directory under the
-plugin cache, the one whose `.claude-plugin/plugin.json` carries the loaded version. Every command
+The spec path in that command is the location `workflow-skills:local-cache` defines for private
+specs. The tool lives at `tools/check-spec.ts` under the plugin root. The plugin root is this
+repository when the work is on the plugin itself, and otherwise the installed plugin's directory
+under the plugin cache, the one whose `.claude-plugin/plugin.json` carries the loaded version. Every command
 below uses `<plugin root>/tools/check-spec.ts`, and the shipped scripts take the plugin root in
 their marked block. An installed plugin older than this tool prints no proof, so its launch check
 fails and no run launches on it until the plugin is updated; that is the intended effect.
@@ -129,9 +131,10 @@ inverse-spec and finding verification judge it after code.
 
 Since a settled spec is already the precondition for launching, review the SPEC before reviewing
 the code. Two seats, from **DIFFERENT model families**, each given only *"review the spec at
-`<path>`"* plus repo access and the run's **hygiene floor** (git safety, where scratch goes, run
-checks bare, no background waits, and that no seat edits an authority document) — **no briefing, no
-framing, no orchestrator summary**, because the
+`<path>`"* plus repo access and the run's **hygiene floor** (git safety, that a reading seat
+writes nothing except a command's output that cannot be read directly, to the system temporary
+directory, run checks bare, no background waits, and that no seat edits an authority document)
+— **no briefing, no framing, no orchestrator summary**, because the
 absence of briefing is what makes them see what the author stopped seeing. The hygiene floor is not a
 briefing: it says nothing about the spec, the review taxonomy or what the author meant. The main run's
 shared `AUTHORITY` block is *not* handed to these seats, because its authority tiers and findings contract
@@ -202,7 +205,8 @@ never conversational quotations. Treat user messages as confidential: verbatim d
 be kept only in untracked, ignored artifacts unless committing them is explicitly authorized.
 Point authority-aware seats at that private record to verify fidelity without copying it into
 tracked docs, tests, code or commit messages. A broad commit instruction does not authorize
-including private records. Keep workflow scripts containing private text untracked too.
+including private records. Keep workflow scripts containing private text untracked too. The
+private record lives where `workflow-skills:local-cache` puts private directive records.
 
 The root builds that private record from the actual conversation: the directives themselves plus
 the qualifications, surrounding context and examples that give them meaning, each with its source
@@ -319,7 +323,8 @@ Return `startSha`, full `snapshotSha`, `clean`, `git` (the quoted output of
 `commits`, `files` and `checks`. The script accepts a writer only when the quoted `git.head`
 equals `snapshotSha`, `clean` agrees with an empty `git.status`, a new snapshot lists commits and
 files with a check whose `passed` equals `proofPassed`, and an unchanged snapshot lists none.
-Scratch and local TODO.md remain ignored and untracked; clean status is not permission to commit
+Scratch files, which go where `workflow-skills:local-cache` says, and the todo record of
+`workflow-skills:todo-md` remain ignored and untracked; clean status is not permission to commit
 them. Genuine no-ops reuse their starting SHA without an empty commit. Readers and the verifier
 independently
 check snapshots; a writer's own object is not proof by itself.
@@ -563,8 +568,8 @@ checks. Stage labels are `review:<seat>`, `verify`, `fix` and `roast`.
 limitation, unfixed approval, failed proof, roast finding or limitation, unattested fix, abort or
 stage failure. Every fixed key carries its disposition, approved correction, snapshot and commits.
 The roast's findings retain their source IDs and snapshot; its limitations and unchecked coverage
-also return for the root to inspect. The root records the list and checks its claims before
-writing a follow-up spec.
+also return for the root to inspect. The root records the list in the todo record that
+`workflow-skills:todo-md` defines and checks its claims before writing a follow-up spec.
 
 The run returns `exit` and a one-sentence `detail`: `clean` for a completed pass with neither a
 must-fix/CRITICAL remaining item nor an unattested fix; `follow-up` for a completed pass with such
@@ -586,25 +591,26 @@ operational impact, which is reported separately.
 The verifier approves authorized corrections in this unit's repair scope. Unrelated existing
 violations become concrete cleanup entries: issue, rule citation, code receipts, source
 finding IDs and the required correction. Existing entries are updated rather than duplicated.
-The root records this consolidated handoff in the project's `TODO.md` in the SAME RUN, before
-reporting the task finished, including when the workflow exits with unresolved work. Schedule
+The root records this consolidated handoff in the todo record that `workflow-skills:todo-md`
+defines, in the SAME RUN, before reporting the task finished, including when the workflow exits
+with unresolved work. Schedule
 those cleanup units promptly; recording an issue is not fixing it or permission to defer it
 indefinitely. Do not force unrelated cleanup into the current fix pass or interrupt the root
 for each entry separately. If recording is blocked, report the incomplete handoff explicitly.
 
-**`TODO.md` stays UNTRACKED by default, not merely unstaged.** Creating or updating a local
+**The todo record stays UNTRACKED by default, not merely unstaged.** Creating or updating a local
 cleanup record is not permission to version it. Track and commit it only when the user
-explicitly requests that. Before writing, inspect any existing file and check its Git tracking
-status with `git ls-files --error-unmatch -- TODO.md`. For an untracked file, ensure Git ignores
-it; prefer a repo-local `/TODO.md` entry in the exclude file located by
+explicitly requests that. Before writing, inspect the file `workflow-skills:todo-md` names and
+check its Git tracking status with `git ls-files --error-unmatch -- <file>`. For an untracked
+file, ensure Git ignores it; prefer a repo-local `/<file>` entry in the exclude file located by
 `git rev-parse --git-path info/exclude` unless an existing ignore rule already covers it.
 Inspect and preserve that exclude file; do not rewrite tracked `.gitignore` just for this
-local default. Never stage or commit TODO content through a broad add/commit operation.
+local default. Never stage or commit todo content through a broad add/commit operation.
 
-If `TODO.md` is already tracked, do not silently delete it or remove it from the index.
+If that file is already tracked, do not silently delete it or remove it from the index.
 Honor a recorded explicit request to track and commit it; otherwise report the tracking
 conflict to the root for direction before writing cleanup entries into it. The read-only
-reviewers and verifier never edit TODO files or Git excludes; this handoff belongs to the root.
+reviewers and verifier never edit the todo record or Git excludes; this handoff belongs to the root.
 
 The enum-locked handoff and the shipped main script implement this contract. The design
 and rejected alternatives are recorded in `docs/workflow-finding-verification.md`.
@@ -617,11 +623,11 @@ seats or a second implementer pre-check.
 
 ### Remaining items and follow-up work
 
-The root records every remaining item in the project's work record: an untracked `TODO.md` in
-this repository's convention, or wherever a project without one tracks work. Remaining items are
-claims until the root reads them. Check each `roast-finding` and `roast-limitation` against the
-tree. Attest each `unattested-fix` by reading its commits against the approved correction and
-running the checks yourself. Never report a fix as verified on the fixer's claim.
+The root records every remaining item in the project's work record, the todo record that
+`workflow-skills:todo-md` defines. Remaining items are claims until the root reads them. Check
+each `roast-finding` and `roast-limitation` against the tree. Attest each `unattested-fix` by
+reading its commits against the approved correction and running the checks yourself. Never
+report a fix as verified on the fixer's claim.
 
 A confirmed must-fix or CRITICAL item, an unfixed approval, a failed proof, and an open decision
 once the user has decided it are fixed in a follow-up. A finding whose fix needs no decision of the
@@ -642,13 +648,13 @@ a decision, an open decision, and anything the scope check refused go to the use
 full unit with a spec. The root never uses the fix run for work it wants done beyond a finding.
 
 The fix run is `scripts/fix-follow-up.js`, copied and filled in its marked block like the other two
-scripts. It takes no spec and no quotation. Its input is a fix list, a YAML file under the main
-checkout's ignored cache directory with the keys `parentSpec` (the absolute path of the unit spec
-the parent run was built against), `run` (the parent run's ID) and `entries`. The tool reports a
-relative `parentSpec` as a violation. Each entry has exactly `id`, `source`
-(the finding's source ID in the parent run, `<seat>:<index>` or `roaster:<index>`), `finding` (a
-verbatim part of that finding's claim) and `correction` (the change to make, in plain words). The
-list holds no user words and no field for them. The root runs
+scripts. It takes no spec and no quotation. Its input is a fix list, a YAML file in the main
+checkout's project cache, which `workflow-skills:local-cache` defines, with the keys `parentSpec`
+(the absolute path of the unit spec the parent run was built against), `run` (the parent run's
+ID) and `entries`. The tool reports a relative `parentSpec` as a violation. Each entry has
+exactly `id`, `source` (the finding's source ID in the parent run, `<seat>:<index>` or
+`roaster:<index>`), `finding` (a verbatim part of that finding's claim) and `correction` (the
+change to make, in plain words). The list holds no user words and no field for them. The root runs
 `<plugin root>/tools/check-spec.ts --fix-list <file> --transcripts <dir> --json`, which resolves
 every entry against the parent run's journal and prints the proof only when every entry resolves.
 The root passes the tool's `entries` and `parentSpec` output as `args.entries` and
@@ -678,8 +684,9 @@ is refused with the cause reported to the user. The count lives in the work reco
 defect, which is amended as the same entry each time the defect reappears, never duplicated, since
 a duplicated entry hides the second move behind a fresh-looking first one.
 
-Record a disproved item with its counterevidence; a nit or record stays recorded. Each follow-up
-starts from the previous pass's list. Findings raised by its review become new entries.
+Record a disproved item with its counterevidence; a nit or record stays recorded in the work
+record. Each follow-up starts from the previous pass's list. Findings raised by its review
+become new entries.
 
 ### Root question-premise check
 
@@ -880,7 +887,7 @@ The size gate applies before accepting the candidate for any route, not only dir
 An explicitly requested draft/review artifact may expose an unresolved gate, but must be labeled
 unaccepted; producing or sending it does not waive the gate.
 
-Keep temporary worktrees inside an ignored project-local directory, such as `.cache/worktrees/`.
+Keep temporary worktrees where `workflow-skills:local-cache` puts workflow worktrees.
 Never delete a worktree merely because the workflow finished. First verify that it is clean,
 inspect ignored/untracked contents for material to preserve, and verify the project's handoff:
 
@@ -1398,8 +1405,11 @@ For the other seats:
   commits after checks, no unrelated changes or history rewriting. Append READ_GIT to
   ordinary readers/verifier. The roaster gets only its Git-object-only snapshot contract:
   expected fixer movement is not an anomaly, and it must never inspect that moving tree.
-- **Scratch directory** — where temp files go (a gitignored cache dir), never a global temp the
-  user must approve.
+- **Scratch files by role.** The block only writers receive points them at
+  `workflow-skills:local-cache` for scratch files. Every block a reader receives says it writes
+  nothing, no copies of files and no notes, except a command's output that cannot be read
+  directly, which goes to the system temporary directory. No block both receive names a place for
+  scratch files.
 - **Run checks BARE** — never piped through `head`/`grep`, which hides the error you needed.
 - **No background waits** — never end a turn waiting on a backgrounded check; the returned object
   IS the deliverable.
@@ -1505,13 +1515,16 @@ Two rules that come with it:
 - The root applies **Root completion checks** after every run: inspect stage durations, measure
   the final code/spec ratio (above 20:1 blocks acceptance), and follow the project's chosen
   integration route. Verify preservation/handoff in a separate call before worktree removal.
-- Tell agents where scratch files go (a gitignored cache dir), never a global temp the user must approve.
+- Point writing agents at `workflow-skills:local-cache` for scratch files, and tell reading agents
+  that they write nothing except a command's output that cannot be read directly, to the system
+  temporary directory.
 - Keep routine consolidation, rejections and successful fixes inside the workflow record. Relay
   a concise result plus genuine exceptions: unsettled decisions, authority prerequisites,
   verifier/fixer disagreements or failed proofs. Preserve source findings and dispositions for
   inspection; the root need not consume every seat object to adjudicate routine work.
 - Complete the same-run cleanup handoff under **Rule violations and local cleanup records**:
-  update local, untracked `TODO.md` without staging or committing it unless explicitly requested.
+  update the todo record of `workflow-skills:todo-md` without staging or committing it unless
+  explicitly requested.
   This is one consolidated handoff, not an interruption per issue. Never call recorded work fixed.
 - A project may carry its OWN scoped copy of this skill with environment specifics (test command,
   isolation quirks, the local model floor, the must-read architecture doc). When present, that scoped

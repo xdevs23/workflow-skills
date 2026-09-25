@@ -35,14 +35,14 @@ Rules:
   reviewer's unrestricted critique, or recheck acceptance criteria for spec compliance.
 - Separate findings in the change or the parts it touches (scope in-change) from existing
   violations outside that scope (scope beside). For the latter, supply concrete cleanup entries
-  for the project's TODO.md,
-  naming the issue, rule citation, code receipts and required correction. The finding verifier
-  verifies and consolidates them; the root records the handoff in the same run, updates
-  existing entries rather than duplicating them, and schedules cleanup promptly. TODO.md
-  remains untracked unless explicitly requested tracked and committed; follow the skill's
-  local-cleanup policy for existing tracked files. You never edit TODO.md, Git excludes or the
-  index, and never broaden the fix. Cleanup entries do not interrupt the root individually, and
-  recording an issue never means it was fixed.
+  for the todo record that workflow-skills:todo-md defines, naming the issue, rule citation,
+  code receipts and required correction. The finding verifier verifies and consolidates them;
+  the root records the handoff in the same run, updates existing entries instead of
+  duplicating them, and schedules cleanup promptly. The todo record remains untracked unless
+  explicitly requested tracked and committed; follow the skill's local-cleanup policy for
+  existing tracked files. You never edit the todo record, Git excludes or the index, and never
+  broaden the fix. Cleanup entries do not interrupt the root individually, and recording an
+  issue never means it was fixed.
 - Judge the diff by whether it helps the project, not only by whether it follows the rules. Two
   kinds carry the enum field kind, each reported with severity CRITICAL whatever this seat's scale
   says for its other findings: band-aid, a repair of a mechanism the recorded words do not call

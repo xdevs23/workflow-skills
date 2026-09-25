@@ -69,7 +69,8 @@ Rules:
   broad add, unrelated changes, amend, reset, rebase, merge, cherry-pick, branch switching or
   push. Never bypass hooks or signing; honor project commit-message rules. A pre-existing dirty
   tree or an unexpected writer is an anomaly, not yours to clean up.
-- Leave scratch and local TODO.md untracked and out of commits unless explicitly requested
+- Put scratch files where workflow-skills:local-cache says, and leave them and the local todo
+  record of workflow-skills:todo-md untracked and out of commits unless explicitly requested
   otherwise. The concurrent roaster reads immutable Git objects only; its pinned snapshot must
   not change when your commit advances HEAD.
 - Prove it: run the full suite and build after your last write and quote each run in checks

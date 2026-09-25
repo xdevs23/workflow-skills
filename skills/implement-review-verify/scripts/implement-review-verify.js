@@ -13,7 +13,7 @@ const UNIT = {
   worktree: '<isolated worktree>',
   specPath: args.specPath,               // the unit spec under the main checkout, passed at launch; ends in .yaml
   transcripts: args.transcripts,         // the session transcript directory, passed at launch
-  privateRecord: '<main checkout>/.cache/directives/<unit>.md',
+  privateRecord: '<main checkout>/.cache/directives/<unit>.md',   // where workflow-skills:local-cache puts directive records
   generatedDocument: 'docs/<unit>.md',   // rendered from the spec before launch, so it exists at launch
   pluginRoot: '<plugin root>',           // the directory holding tools/check-spec.ts
   checkCommand: '<the check command>',   // writers only, run bare after the last write
@@ -54,6 +54,14 @@ const STYLE = [
   'REQUIRED: before you write, read the file ' + UNIT.pluginRoot + '/skills/writing-style/SKILL.md with the Read tool,',
   'and follow it in every comment, document, commit message and returned string.',
 ].join('\n')
+// Scratch files by role. WRITE_GIT, which only the writers receive, carries WRITE_SCRATCH; every
+// block a reading stage receives carries WRITE_NOTHING, and no block both receive names a place
+// for scratch files. The roaster has no Read tool, so it receives WRITE_NOTHING alone.
+const WRITE_SCRATCH = [
+  'SCRATCH: put scratch files where the workflow-skills:local-cache skill says for a writing stage. A local-cache skill',
+  'without the plugin prefix takes precedence; otherwise read ' + UNIT.pluginRoot + '/skills/local-cache/SKILL.md with the Read tool.',
+].join('\n')
+const WRITE_NOTHING = 'WRITE NOTHING: no copies of files and no notes. Only the output of a command that cannot be read directly may be written, to the system temporary directory.'
 const AUTHORITY = [                    // authority-aware seats only; quality uses HYGIENE below
   STAGE, STYLE,
   'AUTHORITY: user verbatim directives > the spec at the path below > THIS PROMPT (untrusted).',
@@ -70,7 +78,6 @@ const AUTHORITY = [                    // authority-aware seats only; quality us
   'fixer before its first write, as their templates define). Otherwise abort.trigger is none.',
   'A READING SEAT reports the same observation as a finding with kind band-aid or longer-route.',
   'A tree not yet satisfying the spec is normal: report ordinary findings, never a hard flag.',
-  'Scratch files go in the project cache dir, never a global temp.',
   'Run checks BARE. Never pipe through head/grep: it hides the error.',
   'NEVER end a turn waiting on a backgrounded check; your returned object IS the deliverable.',
   'A FINDING IS A DEFECT: verdicts go in verdicts, what you inspected and how in coverage, what you',
@@ -96,13 +103,15 @@ const AUTHORITY = [                    // authority-aware seats only; quality us
 const READ_GIT = [
   'GIT READ-ONLY: never stage, commit, reset, amend, rebase, merge or switch branches/worktrees.',
   'The clean worktree and HEAD must stay at the supplied snapshot; report unexpected movement.',
+  WRITE_NOTHING,
 ].join('\n')
 const WRITE_GIT = [
   'NARROW COMMIT PERMISSION: start clean at START SHA in the isolated worktree.',
   'Stage explicit paths for only your scoped changes, inspect the staged diff, check, and create a new commit.',
   'No broad add, unrelated changes, amend, reset, rebase, merge, branch switching or push.',
   'Never bypass signing or hooks. Follow project commit style. Recheck proof if hooks change content.',
-  'Keep ignored scratch and local TODO.md out of commits unless explicitly requested.',
+  WRITE_SCRATCH,
+  'Keep scratch files and the local todo record of workflow-skills:todo-md out of commits unless explicitly requested.',
   'Return startSha, full snapshotSha, clean, git (quoted head and status), commits, files and checks;',
   'never an empty commit for a no-op, whose commits and files are empty and whose snapshotSha is startSha.',
   'Check git rev-parse --verify HEAD^{commit} and git status --porcelain=v1 --untracked-files=all after committing.',
@@ -113,7 +122,7 @@ const WRITE_GIT = [
 // in a commit-bound script. Orchestrator-only additions are labelled for scrutiny (law 8).
 // The check command never sits here: reviewers receive this block and may not run it.
 // The unbriefed seats receive the tree line alone, through HYGIENE below.
-const TREE = 'ASSIGNED TREE: ' + UNIT.worktree + '. Scratch files go in its .cache directory, never a global temp.'
+const TREE = 'ASSIGNED TREE: ' + UNIT.worktree + '.'
 const SPEC = [
   'SPEC (authority): ' + UNIT.specPath + ' - read the current on-disk revision in full.',
   'PRIVATE DIRECTIVES: ' + UNIT.privateRecord + '. Read privately; never copy messages into tracked files.',
@@ -438,6 +447,7 @@ const roastPass = async (queue, sha) => {
     'The fixer runs concurrently; its HEAD/worktree changes are expected, not your review surface.',
     'Use git diff --no-ext-diff --no-textconv, git ls-tree, git show SHA:path and git grep at the pinned tree.',
     'No filesystem Read/Grep/Glob, working-tree scripts, builds, external diff helpers or Git mutations.',
+    WRITE_NOTHING,
     'Cite the snapshot SHA and snapshot file:line in receipts. Return snapshotSha, limitations, coverage and findings.',
     'APPROVED FIX LIST (planned, not completed):', JSON.stringify(queue),
     'Do not repeat assigned defects; do flag inadequate corrections, interactions and uncovered weaknesses.',

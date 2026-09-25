@@ -1063,7 +1063,7 @@ describe('spec provenance instructions and routing', () => {
       'count non-blank lines in the tracked generated document at the candidate commit',
       'private YAML holds quoted words',
       'by its path under the main checkout, never a path relative to its worktree',
-      "claim in the work record has the same status as a reviewer's claim",
+      "claim in the work record, the todo record that `workflow-skills:todo-md` defines, has the same status as a reviewer's claim",
       'work record is never cited as a source', 'never edited by hand',
       'write each one as a `criterion` item in the YAML spec',
       'same must-fix, should-fix and nit severity the gap-finder uses',
@@ -1471,7 +1471,7 @@ describe('one-pass remaining-items handoff', () => {
 
   test('root follow-up instructions require evidence, fresh prompts and the normal cold review', () => {
     const text = flat(skill)
-    for (const phrase of ['records every remaining item', 'wherever a project without one tracks work',
+    for (const phrase of ['records every remaining item', "project's work record, the todo record that `workflow-skills:todo-md` defines",
       'Check each `roast-finding` and `roast-limitation` against the tree',
       'Attest each `unattested-fix` by reading its commits', 'running the checks yourself',
       'one criterion item per confirmed defect with its sources', 'previous run’s snapshot',
@@ -1556,7 +1556,7 @@ describe('one-pass remaining-items handoff', () => {
   })
 
   test('the unbriefed quality and alternatives seats receive the assigned tree line', async () => {
-    const tree = 'ASSIGNED TREE: <isolated worktree>. Scratch files go in its .cache directory, never a global temp.'
+    const tree = 'ASSIGNED TREE: <isolated worktree>.'
     const { calls } = await simulate()
     for (const type of ['quality', 'cold-alternatives']) {
       const prompt = calls.find(c => c.agentType === type).prompt
@@ -2179,6 +2179,118 @@ describe('fix-only follow-up runs', () => {
       'It ends `clean` only when nothing at all remains',
       '`parentSpec` (the absolute path of the unit spec the parent run was built against)', 'The tool reports a relative `parentSpec` as a violation.']) {
       expect([phrase, text.includes(phrase)]).toEqual([phrase, true])
+    }
+  })
+})
+
+// The two scratch rules as the scripts write them: the writers' rule points at the local-cache
+// skill, the readers' rule forbids every write except a command's output to the system temporary directory.
+const WRITE_SCRATCH = 'SCRATCH: put scratch files where the workflow-skills:local-cache skill says for a writing stage. A local-cache skill\n' +
+  'without the plugin prefix takes precedence; otherwise read <plugin root>/skills/local-cache/SKILL.md with the Read tool.'
+const WRITE_NOTHING = 'WRITE NOTHING: no copies of files and no notes. Only the output of a command that cannot be read directly may be written, to the system temporary directory.'
+// The input paths a stage reads, which sit in the project cache and are no place to write.
+const INPUT_PATHS = [SPEC_PATH, PARENT_SPEC, FIX_LIST, '<main checkout>/.cache/directives/<unit>.md', '<main checkout>/.cache/directives/<parent unit>.md']
+const withoutFrontmatter = text => text.replace(/^---\n[\s\S]*?\n---\n/, '')
+const paragraphs = text => withoutFrontmatter(text).split(/\n\s*\n/).map(p => p.trim()).filter(Boolean)
+const firstParagraph = text => paragraphs(text).find(p => !p.startsWith('#'))
+const pluginFiles = () => [
+  ...[...new Bun.Glob('*/SKILL.md').scanSync({ cwd: fileURLToPath(new URL('../skills/', import.meta.url)) })].map(f => 'skills/' + f),
+  ...[...new Bun.Glob('*.md').scanSync({ cwd: fileURLToPath(new URL('../agents/', import.meta.url)) })].map(f => 'agents/' + f),
+  ...['spec-review.js', 'implement-review-verify.js', 'fix-follow-up.js'].map(f => 'skills/implement-review-verify/scripts/' + f),
+]
+const pluginText = file => Bun.file(new URL('../' + file, import.meta.url)).text()
+
+describe('the project cache, the todo record and scratch files by role', () => {
+  test('every writing stage is pointed at local-cache and every reading stage writes nothing, in all three scripts', async () => {
+    const main = await simulate({ reports: oneReport, verify: approveOne, fixes: { fix: fixed([disposition()]) } })
+    const pre = []
+    await preRun(async (prompt, opts) => { pre.push({ prompt, ...opts }); return coldObject(opts.label) })
+    const fix = await simulateFix()
+    const stages = [...main.calls.map(c => ({ ...c, run: 'main' })), ...pre.map(c => ({ ...c, run: 'spec' })),
+      ...fix.calls.map(c => ({ ...c, run: 'fix' }))]
+    expect(stages.map(c => c.run + ':' + c.label).sort()).toEqual([
+      'fix:diff', 'fix:fix', 'fix:gate', 'fix:roast', 'fix:scope', 'main:fix', 'main:gate', 'main:impl', 'main:roast', 'main:verify',
+      ...readers.map(s => 'main:review:' + s), 'spec:gate', 'spec:spec:gaps', 'spec:spec:provenance', 'spec:spec:soundness'].sort())
+    for (const call of stages) {
+      const id = call.run + ':' + call.label
+      const role = call.label === 'gate' ? 'gate' : ['impl', 'fix'].includes(call.label) ? 'writer' : 'reader'
+      const count = line => call.prompt.split(line).length - 1
+      expect([id, count(WRITE_SCRATCH), count(WRITE_NOTHING)]).toEqual([id, role === 'writer' ? 1 : 0, role === 'reader' ? 1 : 0])
+      expect([id, /global temp/i.test(call.prompt)]).toEqual([id, false])
+      if (role === 'writer') continue
+      // A reading stage or the launch check names no place for files beyond the temporary-directory exception.
+      const rest = INPUT_PATHS.reduce((text, path) => text.split(path).join(''), call.prompt)
+      expect([id, rest.includes('.cache'), /scratch/i.test(rest), rest.includes('local-cache')]).toEqual([id, false, false, false])
+    }
+  })
+
+  test('the local-cache skill defines the project cache, what goes there and the reading rule, after the precedence rule', async () => {
+    const text = await readSkill('local-cache')
+    expect(text).toContain('name: local-cache')
+    expect(text).toContain('Load it when deciding where to put a file that is not meant for the repository.')
+    expect(flat(firstParagraph(text))).toBe('When the session has a skill named `local-cache` without the plugin prefix, that skill applies ' +
+      'and this one does not. This skill, `workflow-skills:local-cache`, applies only when it is the only `local-cache` skill available. ' +
+      "The user's global preferences about this directory take priority over this file wherever the two differ.")
+    for (const phrase of ['the `.cache/` directory at the project root', "the project's ignore rules must cover it",
+      'Nothing in it is ever committed', 'temporary files, logs, research documents and plans', 'private specs, under `.cache/specs/`',
+      'private directive records, under `.cache/directives/`', 'workflow worktrees, under `.cache/worktrees/`',
+      "a writing stage's scratch files, under `.cache/<agent-scope>/`", "under that worktree's own `.cache/`",
+      'A reading stage writes nothing there and nothing anywhere else: no copies of files and no notes.',
+      'the output of a command that cannot be read directly, which a reading stage may write to the system temporary directory']) {
+      expect([phrase, flat(text).includes(phrase)]).toEqual([phrase, true])
+    }
+  })
+
+  test('no other skill, template or script names the cache directory except a path marked as the location local-cache defines', async () => {
+    const files = pluginFiles().filter(f => f !== 'skills/local-cache/SKILL.md')
+    expect(files).toContain('skills/todo-md/SKILL.md')
+    for (const file of files) {
+      const text = await pluginText(file)
+      expect([file, /project cache dir|global temp|Scratch files go in/.test(text)]).toEqual([file, false])
+      if (file.endsWith('.js')) {
+        for (const line of text.split('\n').filter(l => l.includes('.cache'))) {
+          expect([file, line, line.includes('workflow-skills:local-cache')]).toEqual([file, line, true])
+        }
+        continue
+      }
+      const parts = paragraphs(text)
+      parts.forEach((part, i) => {
+        if (!part.includes('.cache')) return
+        const marked = [part, parts[i + 1] ?? ''].some(p => p.includes('workflow-skills:local-cache'))
+        expect([file, part, marked]).toEqual([file, part, true])
+      })
+    }
+  })
+
+  test('the todo-md skill states the precedence rule first and carries no private detail', async () => {
+    const text = await readSkill('todo-md')
+    expect(text).toContain('name: todo-md')
+    expect(flat(firstParagraph(text))).toBe('When the session has a skill named `todo-md` without the plugin prefix, that skill applies ' +
+      'and this one does not. This skill, `workflow-skills:todo-md`, applies only when it is the only `todo-md` skill available.')
+    for (const phrase of ['`TODO.md` is the durable record of project state', 'The file is **gitignored and untracked**',
+      '# 4. The states an entry can take', '## 7. When to write']) expect([phrase, text.includes(phrase)]).toEqual([phrase, true])
+    expect(text).not.toMatch(/~\/|\/root\/|\/home\/|\.claude\//)
+  })
+
+  test('every instruction to record work names workflow-skills:todo-md, and the README states the precedence rule once', async () => {
+    const text = flat(skill)
+    for (const phrase of ["records every remaining item in the project's work record, the todo record that `workflow-skills:todo-md` defines",
+      'records this consolidated handoff in the todo record that `workflow-skills:todo-md` defines',
+      'records the list in the todo record that `workflow-skills:todo-md` defines',
+      'update the todo record of `workflow-skills:todo-md` without staging or committing it']) {
+      expect([phrase, text.includes(phrase)]).toEqual([phrase, true])
+    }
+    for (const name of ['project-rule-reader', 'finding-verifier', 'implementer', 'fixer']) {
+      expect([name, (await template(name)).includes('workflow-skills:todo-md')]).toEqual([name, true])
+    }
+    for (const file of pluginFiles().filter(f => f !== 'skills/todo-md/SKILL.md')) {
+      expect([file, (await pluginText(file)).includes('TODO.md')]).toEqual([file, false])
+    }
+    const readme = flat(await Bun.file(new URL('../README.md', import.meta.url)).text())
+    expect(readme.split('without the plugin prefix').length - 1).toBe(1)
+    for (const phrase of ['`workflow-skills:local-cache` and `workflow-skills:todo-md`', "that skill is used and the plugin's is not",
+      "The plugin's skill is used only when it is the only one of that name available."]) {
+      expect([phrase, readme.includes(phrase)]).toEqual([phrase, true])
     }
   })
 })
