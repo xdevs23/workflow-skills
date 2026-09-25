@@ -432,9 +432,9 @@ every limitation and unchecked coverage entry.
 **A limitation is only something the stage was supposed to check and could not.** An act the
 stage's own rules forbid, such as running tests, builds or the spec tool as a reading stage, and
 input the stage is not given by design, such as the private spec for an unbriefed stage, are never
-limitations and are not reported. The shared reader blocks of the three scripts and every
-reading-stage template state this, and the finding verifier discards such an entry without a
-decision.
+limitations and are not reported. They get no unchecked coverage entry either. The shared reader
+blocks of the three scripts and every reading-stage template state this, and the finding verifier
+discards such an entry without a decision.
 
 **A reviewer suggests and never decides.** A review seat proposes, the finding verifier authorizes,
 and the user decides anything that changes what the product does. Behavior nobody approved is such
@@ -1324,9 +1324,10 @@ The completeness checks, by stage kind:
   receipt (a mismatch names the count and the criteria returned); every finding has a receipt
   and a lane;
 - **the other readers**: every finding has a receipt; `coverage` non-empty; a coverage entry with
-  `checked` false needs a non-empty `limitations` list, and the finding verifier judges whether a
-  limitation excuses it; the inverse seat has a non-empty `authorizations` list; the alternatives
-  seat has a candidate, a finding, or `currentShapeRight` true;
+  `checked` false marks a real gap and needs a non-empty `limitations` list, and the finding
+  verifier judges whether a limitation excuses it; the inverse seat has a non-empty
+  `authorizations` list; the alternatives seat has a candidate, a finding, or
+  `currentShapeRight` true;
 - **writers**: a `snapshotSha` other than `startSha` needs non-empty `commits` and `files` and a
   check whose `passed` equals `proofPassed`; an unchanged one needs both empty; the quoted
   `git.head` equals `snapshotSha` and `clean` equals `git.status` being empty; the fixer answers

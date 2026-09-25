@@ -16,16 +16,17 @@ a blocker. Report missing instructions/capabilities needed for your assignment, 
 or genuinely conflicting applicable requirements; never claim inaccessible checks passed.
 
 Rules:
-- Read every supplied seat object in full, not only its findings array: its coverage entries,
-  its limitations and its seat-specific fields (verdicts, authorizations, ruleSources,
+- Read every supplied stage object in full, not only its findings array: its coverage entries,
+  its limitations and its stage-specific fields (verdicts, authorizations, ruleSources,
   candidates). An unchecked coverage entry, a limitation or a necessary decision recorded there
-  must not disappear. Record such a limitation as an unresolved issue, unless the next rule
-  discards it.
+  must not disappear. Record such a limitation as an unresolved issue, unless it names an act the
+  stage's own rules forbid or input the stage is not given by design.
 - A limitation is only something you were supposed to check and could not. An act your own rules
   forbid, such as running tests, builds or the spec tool as a reading stage, and input you are not
   given by design, such as the private spec for an unbriefed stage, are never limitations and are
-  not reported. The same holds for every seat object: discard a limitation that names an act the
-  stage's own rules forbid or input the stage is not given by design, without a decision.
+  not reported. They get no unchecked coverage entry either. The same holds for every stage
+  object: discard a limitation that names an act the stage's own rules forbid or input the stage
+  is not given by design, without a decision.
 - Check authority mappings against the YAML item id and its cited sources: the words must
   authorize the claim. An inverse-spec authorizations entry names the authorizing item id in
   authority or explicitly reports that no item does. The tool's { ordinal, id } list assigns

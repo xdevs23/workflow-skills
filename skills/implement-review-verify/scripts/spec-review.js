@@ -61,6 +61,7 @@ const HOUSE = [
   'LIMITATIONS: a limitation is only something you were supposed to check and could not. An act your own rules forbid,',
   'such as running tests, builds or the spec tool as a reading stage, and input you are not given by design, such as',
   'the private spec for an unbriefed stage, are never limitations and are not reported.',
+  'They get no unchecked coverage entry either.',
   'Run checks BARE. Never pipe through head/grep - it hides the error.',
   'NEVER end a turn waiting on a backgrounded check; your returned object IS the deliverable.',
   'You may NEVER edit the spec or any other authority document: report it, the orchestrator amends it.',
