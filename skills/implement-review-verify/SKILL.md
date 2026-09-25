@@ -274,7 +274,8 @@ Parallel implementers are allowed only across genuinely disjoint trees/repos —
 reviews can be one barrier covering both. Brief it with:
 - **what is already on disk** (if part of the work exists), file by file, told to REUSE it; where the
   record permits the rebuild, the sense check below governs instead;
-- the **settled design** and its decisions, stated as authoritative, plus the acceptance criteria;
+- the **spec**, meaning its items read from the spec path, plus the acceptance criteria. A decision
+  the prompt states quotes the user's words and names the date they were said;
 - the **invariants** in plain language (the ordering rule, the idempotency rule, …);
 - a **self-check**: run the relevant test subset before reporting done, and FIX what it added that fails.
 
