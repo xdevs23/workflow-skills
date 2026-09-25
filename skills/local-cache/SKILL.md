@@ -18,7 +18,7 @@ committed.
 
 ## What goes there
 
-The project cache holds every file of the work that is not meant for the repository:
+These files of the work, which are not meant for the repository, go in the project cache:
 
 - temporary files, logs, research documents and plans;
 - private specs, under `.cache/specs/`;
