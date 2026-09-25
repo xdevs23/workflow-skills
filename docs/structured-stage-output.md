@@ -113,7 +113,9 @@ on the completeness of its object, never on the length of a text. This builds on
    adds it to the run's remaining items as a blocking limitation and ends the run for root
    resolution, as the [one-pass design](single-pass-workflow.md) defines. Since version 0.16.0
    the review seats and the verifier are the exception: their blocking limitation is recorded
-   and the run ends after the fix pass.
+   and the run ends after the fix pass. Since version 0.20.0 the script no longer records a
+   review seat's blocking limitation itself; it reaches the root only as the verifier's issue,
+   and the verifier discards one that names a forbidden act or input withheld by design.
 7. **Templates.** In each of the thirteen templates every sentence that tells the seat to put
    something in its report names the field instead, and each template names every top-level
    field of its schema (the gap-finder excepted, decision 5); the hard-flag sentences of the

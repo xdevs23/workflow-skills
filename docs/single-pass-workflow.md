@@ -16,7 +16,8 @@ no loop. This builds on [finding verification](workflow-finding-verification.md)
    the finding verifier; the fix pass and the roaster concurrently. A stage that aborts, raises
    a `blocks` limitation or fails its checks ends the run after itself. Since version 0.16.0 a
    review seat's or the verifier's `blocks` limitation is recorded instead and the run ends
-   after the fix pass, so approved fixes are applied. Every ending, including every
+   after the fix pass, so approved fixes are applied; since version 0.20.0 a review seat's
+   limitation reaches the root only through the verifier. Every ending, including every
    implement-stage ending, returns the structured run record; no stage ends
    the run as a rejected promise. The fix pass and the roaster are joined with settlement
    (`Promise.allSettled`): a valid result from either is kept when the other fails or aborts,
