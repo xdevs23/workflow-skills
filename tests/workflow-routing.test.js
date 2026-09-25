@@ -1505,15 +1505,18 @@ describe('one-pass remaining-items handoff', () => {
     }
   })
 
-  test('every stage prompt names the writing-style file under the plugin root, and nothing tells a stage to load the skill', async () => {
+  test('every stage prompt but the roaster\'s names the writing-style file under the plugin root, and nothing tells a stage to load the skill', async () => {
     const required = 'REQUIRED: before you write, read the file <plugin root>/skills/writing-style/SKILL.md with the Read tool,\n' +
       'and follow it in every comment, document, commit message and returned string.'
     const { calls } = await simulate()
     const preCalls = []
     await preRun(async (prompt, opts) => { preCalls.push({ prompt, ...opts }); return coldObject(opts.label) })
-    const stages = [...calls, ...preCalls].filter(c => c.label !== 'gate')
-    expect(stages).toHaveLength(calls.length - 1 + preCalls.length - 1)
+    const stages = [...calls, ...preCalls].filter(c => !['gate', 'roast'].includes(c.label))
+    expect(stages).toHaveLength(calls.length - 2 + preCalls.length - 1)
     for (const call of stages) expect([call.label, call.prompt.split(required).length - 1]).toEqual([call.label, 1])
+    // The roaster has no Read tool and reads only Git objects, so its prompt names no file to read.
+    const roast = calls.find(c => c.label === 'roast').prompt
+    expect([roast.includes('writing-style'), /read the file/i.test(roast)]).toEqual([false, false])
     for (const script of [skeleton, coldSkeleton]) {
       expect(script).toContain("UNIT.pluginRoot + '/skills/writing-style/SKILL.md with the Read tool,'")
       expect(script).not.toMatch(/load the writing-style skill/i)
