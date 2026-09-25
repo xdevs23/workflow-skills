@@ -118,21 +118,21 @@ function validator(file: string) {
 
 const usage = 'Usage: bun tools/check-spec.ts <spec.yaml> --transcripts <dir> ' +
   '[--render <path> | --check-render <path>] [--json] [--base <commit>], ' +
-  'or bun tools/check-spec.ts --fix-list <file> --transcripts <dir> [--json]'
+  'or bun tools/check-spec.ts --fix-list <file> --transcripts <dir> [--json] [--expect <json>]'
 
 async function main() {
   if (!Bun.YAML?.parse) throw new Error(`Bun ${minimumBun} or newer is required: Bun.YAML is unavailable`)
   const { values, positionals } = parseArgs({ args: Bun.argv.slice(2), allowPositionals: true,
     options: { transcripts: { type: 'string' }, render: { type: 'string' },
       'check-render': { type: 'string' }, json: { type: 'boolean' }, base: { type: 'string' },
-      'fix-list': { type: 'string' } } })
+      'fix-list': { type: 'string' }, expect: { type: 'string' } } })
   if (values['fix-list'] !== undefined) {
     if (positionals.length || !values['fix-list'] || !values.transcripts || values.render || values['check-render'] || values.base) {
       throw new Error(usage)
     }
-    return checkFixList(values['fix-list'], values.transcripts, values.json === true)
+    return checkFixList(values['fix-list'], values.transcripts, values.json === true, values.expect)
   }
-  if (positionals.length !== 1 || !values.transcripts || (values.render && values['check-render'])) {
+  if (positionals.length !== 1 || !values.transcripts || (values.render && values['check-render']) || values.expect !== undefined) {
     throw new Error(usage)
   }
   // A cited rule file is read as it stood at the base commit when it is tracked there, so a unit
@@ -374,7 +374,7 @@ async function lastResults(journal: string): Promise<Map<string, unknown>> {
   return new Map([...started].map(([label, key]) => [label, results.get(key)]))
 }
 
-async function checkFixList(file: string, transcripts: string, json: boolean) {
+async function checkFixList(file: string, transcripts: string, json: boolean, expected?: string) {
   const { fail, shape, stringField, list, report } = validator(file)
   let bytes: Buffer | undefined
   let fixList: unknown
@@ -414,6 +414,33 @@ async function checkFixList(file: string, transcripts: string, json: boolean) {
     }
     if (parentOK && !await isFile(resolve(fixList.parentSpec as string))) {
       eachEntry('parentSpec', `does not name an existing file: ${fixList.parentSpec}`)
+    }
+    // The launch values a fix script received: its entries and parentSpec. Each must equal the
+    // list's, so the corrections the script hands on are the ones this check resolved.
+    if (expected !== undefined) {
+      let launch: unknown
+      try { launch = JSON.parse(expected) } catch (error) { fail(-1, 'launch values', `malformed JSON: ${messageOf(error)}`) }
+      if (launch !== undefined && shape(launch, ['entries', 'parentSpec'], -1, 'launch values')) {
+        if (launch.parentSpec !== fixList.parentSpec) eachEntry('parentSpec', 'differs from the launch values')
+        const launched = new Map<string, Mapping>()
+        if (!Array.isArray(launch.entries)) fail(-1, 'launch values.entries', 'expected a list')
+        else for (const given of launch.entries) {
+          if (!mapping(given) || !text(given.id) || launched.has(given.id)) {
+            fail(-1, 'launch values.entries', `expected a mapping with a unique id: ${JSON.stringify(given)}`)
+          } else launched.set(given.id, given)
+        }
+        for (const { index, path, value } of entries) {
+          const given = text(value.id) ? launched.get(value.id) : undefined
+          if (!given) { fail(index, path, 'missing from the launch values'); continue }
+          for (const key of new Set([...Object.keys(value), ...Object.keys(given)])) {
+            if (value[key] !== given[key]) fail(index, `${path}.${key}`, 'differs from the launch values')
+          }
+        }
+        const listed = new Set(entries.map(({ value }) => value.id))
+        for (const id of launched.keys()) {
+          if (!listed.has(id)) fail(-1, 'launch values.entries', `${id} is not an entry of the fix list`)
+        }
+      }
     }
     if (runOK) {
       let results: Map<string, unknown> | undefined

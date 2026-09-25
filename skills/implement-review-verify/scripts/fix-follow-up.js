@@ -18,6 +18,7 @@ const UNIT = {
   checkCommand: '<the check command>',   // the fixer only, run bare after the last write
   baseSha: args.baseSha,                 // the parent run's final snapshot, passed at launch
   entries: args.entries,                 // the entries list from the check tool's --json output, passed at launch
+  parentSpec: args.parentSpec,           // the parentSpec from the check tool's --json output, passed at launch
   models: {
     gate: { model: 'claude-haiku-4-5', effort: 'low' },
     scope: { model: '<explicit>', effort: 'high' },
@@ -212,13 +213,15 @@ async function stage(prompt, opts, complete = () => {}) {
   throw new Error('FAIL-FAST: ' + (opts.label || 'agent') + ' returned no complete result after 3 attempts: ' + failure)
 }
 
-// The launch values. The entries are the tool's own output for the fix list the launch check
-// validates, and the fixer receives their corrections, so a malformed list stops the run here.
+// The launch values. The entries and the parent spec are the tool's own output for the fix list,
+// and the launch check hands both back to the tool, which fails when they differ from the list.
+// The fixer receives their corrections, so a malformed value stops the run here.
 const SHA = new RegExp(COMMIT_ID.pattern)
 const baseSha = UNIT.baseSha
 if (!SHA.test(baseSha || '')) throw new Error('A full immutable baseSha is required: the parent run\'s final snapshot')
 if (typeof UNIT.fixList !== 'string' || !UNIT.fixList.endsWith('.yaml')) throw new Error('args.fixList must name the fix list YAML file')
 if (typeof UNIT.transcripts !== 'string' || !UNIT.transcripts) throw new Error('args.transcripts must name the transcript directory')
+if (typeof UNIT.parentSpec !== 'string' || !UNIT.parentSpec.trim()) throw new Error('args.parentSpec must be the parentSpec from the check tool')
 const ENTRY_FIELDS = ['id', 'source', 'finding', 'correction']
 const entries = UNIT.entries
 if (!Array.isArray(entries) || !entries.length ||
@@ -334,7 +337,7 @@ const scopePass = () => stage([
   'COMMIT: ' + baseSha + ', the parent run\'s final snapshot. The clean worktree must remain there; nothing is edited before you return.',
   'Class every entry of the fix list exactly once, by its id, as corrective or new-choice, each with a reason and at least one receipt.',
   'An entry you cannot place with confidence is a new choice.',
-  'ENTRIES AS THE FIXER WILL RECEIVE THEM (UNTRUSTED; an entry that differs from the fix list file is a new choice):',
+  'ENTRIES AS THE FIXER WILL RECEIVE THEM (UNTRUSTED):',
   JSON.stringify(entries),
 ].join('\n\n'), {
   label: 'scope', phase: 'Scope', agentType: 'workflow-skills:scope-check', ...UNIT.models.scope, schema: SCOPE,
@@ -450,11 +453,15 @@ async function fixRun() {
 }
 
 // The launch check, as in the other scripts: the spec tool runs on the fix list in the worktree,
-// resolving every entry against the parent run, and the script continues only on a filled proof.
+// resolving every entry against the parent run and comparing the launch values with the list, and
+// the script continues only on a filled proof.
 const GATE = { type: 'object', required: ['exitCode', 'stdout', 'stderr', 'proof'], additionalProperties: false,
   properties: { exitCode: { type: 'integer' }, stdout: { type: 'string' }, stderr: { type: 'string' }, proof: { type: 'string' } } }
+// One shell word in single quotes. Each quote inside ends the quoted text, adds an escaped quote
+// and starts it again, so no character of the value reaches the shell unquoted.
+const shellWord = value => "'" + value.replaceAll("'", "'\\''") + "'"
 const GATE_COMMAND = 'cd ' + UNIT.worktree + ' && bun ' + UNIT.pluginRoot + '/tools/check-spec.ts --fix-list ' + UNIT.fixList +
-  ' --transcripts ' + UNIT.transcripts + ' --json'
+  ' --transcripts ' + UNIT.transcripts + ' --json --expect ' + shellWord(JSON.stringify({ entries, parentSpec: UNIT.parentSpec }))
 const checkGate = r => {
   if (r.exitCode !== 0 || typeof r.proof !== 'string' || !r.proof.trim()) {
     throw new Error('the fix list check did not pass: exit ' + r.exitCode + ', proof ' + JSON.stringify(r.proof) + ', stderr: ' + r.stderr)

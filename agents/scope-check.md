@@ -32,9 +32,8 @@ Rules:
   - new-choice: the correction adds or changes behavior, a user interface element, a data shape
     or table, a dependency or library, an interface, or a product decision, whatever the entry
     calls itself.
-- An entry you cannot place with confidence is a new choice. So is an entry whose correction
-  differs from the fix list file, whose finding does not match the parent run's finding, or whose
-  correction reaches beyond what that finding names.
+- An entry you cannot place with confidence is a new choice. So is an entry whose finding does
+  not match the parent run's finding, or whose correction reaches beyond what that finding names.
 - Each classification carries a reason and at least one receipt (file, line, quote). For a
   corrective entry, cite the spec item or rule the code fails and the code that fails it. For a
   new choice, cite what the correction would add or change.
