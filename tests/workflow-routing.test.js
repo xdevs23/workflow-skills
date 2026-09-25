@@ -2462,6 +2462,19 @@ describe('what a limitation is, and the per-commit files check', () => {
     }
   })
 
+  test('an unchecked coverage entry without a limitation is retried with the instruction to drop it or declare a real limitation', async () => {
+    const unchecked = { what: 'the integration suite', checked: false, how: 'not run' }
+    const retry = FAILED + 'coverage entry not checked and no limitation declared: the integration suite. Drop the entry when it ' +
+      'names an act your own rules forbid or input you are not given by design. Otherwise declare the real limitation that kept it unchecked.'
+    const main = await simulate({ reports: { 'review:quality': { coverage: [unchecked], limitations: [] } } })
+    expect(retried(main.calls, 'review:quality')[1].prompt).toContain(retry)
+    const fix = await simulateFix({ scope: { limitations: [], coverage: [...coverage, unchecked], classifications: [classify('return-error')] } })
+    expect(retried(fix.calls, 'scope')[1].prompt).toContain(retry)
+    expect(await template('finding-verifier')).toContain('Drop an unchecked coverage entry or a limitation that names an act the ' +
+      'stage\'s own rules forbid or input the stage is not given by design. Every other unchecked coverage entry, limitation or ' +
+      'necessary decision recorded there must not disappear: record such a limitation as an unresolved issue.')
+  })
+
   test('the verify prompt, the verifier template and the skill compare each commit with the files list of all commits', async () => {
     const { calls } = await simulate()
     expect(calls.find(c => c.label === 'verify').prompt).toContain(FILES_CHECK)

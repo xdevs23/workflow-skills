@@ -18,9 +18,10 @@ or genuinely conflicting applicable requirements; never claim inaccessible check
 Rules:
 - Read every supplied stage object in full, not only its findings array: its coverage entries,
   its limitations and its stage-specific fields (verdicts, authorizations, ruleSources,
-  candidates). An unchecked coverage entry, a limitation or a necessary decision recorded there
-  must not disappear. Record such a limitation as an unresolved issue, unless it names an act the
-  stage's own rules forbid or input the stage is not given by design.
+  candidates). Drop an unchecked coverage entry or a limitation that names an act the stage's own
+  rules forbid or input the stage is not given by design. Every other unchecked coverage entry,
+  limitation or necessary decision recorded there must not disappear: record such a limitation as
+  an unresolved issue.
 - A limitation is only something you were supposed to check and could not. An act your own rules
   forbid, such as running tests, builds or the spec tool as a reading stage, and input you are not
   given by design, such as the private spec for an unbriefed stage, are never limitations and are
