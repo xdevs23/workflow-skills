@@ -1132,6 +1132,36 @@ describe('spec provenance instructions and routing', () => {
     }
   })
 
+  test('both skills state that authority lives only in items and that a premise change rewrites the spec', async () => {
+    const specWriting = flat(await Bun.file(new URL('../skills/immaculate-spec-writing/SKILL.md', import.meta.url)).text())
+    const shared = ['A document enters a spec only as an observation of the current state of the code or the documents, re-run and dated',
+      'A hand-written design document is never cited as the design: its decisions become items with the user\'s words, or they do not count.',
+      'a comment carries provenance notes only',
+      'discarding the old entry, and a new spec from an empty file, or rewrites the spec in place from an empty file',
+      'never edited to follow a premise change', 'never from the old spec',
+      'settled or decided on the', 'quotes the user\'s words and names the date they were said']
+    for (const [name, text] of [['implement-review-verify', flat(skill)], ['immaculate-spec-writing', specWriting]]) {
+      for (const phrase of shared) expect([name, phrase, text.includes(phrase)]).toEqual([name, phrase, true])
+    }
+  })
+
+  test('the implement-review-verify skill states the inherited-work rule and four rules beside the question-premise check', () => {
+    const text = flat(skill)
+    for (const phrase of ['starts by listing the decisions it inherits as items with the user\'s words',
+      'A decision that cannot be backed that way goes to the user before building continues',
+      'the root redesigns before any unit continues and shows the redesign to the user, beginning with what the user sees and then the data model',
+      'The root never adds a limit to a decision of the user. A limit that seems needed is asked as its own question.',
+      'every edit that touches that premise stops until the question is answered',
+      'A title, module or heading that contradicts a decision of the user is renamed in the same change']) {
+      expect([phrase, text.includes(phrase)]).toEqual([phrase, true])
+    }
+    const premise = flat(sectionText(skill, '### Root question-premise check'))
+    for (const heading of ['**A decision that changes what a thing is triggers a redesign.**', '**A limit is never attached to a decision.**',
+      '**A question about a premise stops every edit to it.**', '**Names follow decisions.**']) {
+      expect([heading, premise.includes(heading)]).toEqual([heading, true])
+    }
+  })
+
   test('the provenance template searches the whole record and checks the frame around the items', async () => {
     const prose = flat(await template('spec-provenance'))
     for (const phrase of ['search every message of the user in every transcript of the transcript directory, queued messages included',
