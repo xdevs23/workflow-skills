@@ -75,7 +75,8 @@ The routing tests execute the three shipped workflow scripts under
 launch check and execution boundaries for every stage, and read the skill's Markdown with Bun's
 built-in parser for the prose and helper they check.
 The Git integration test creates scoped commits in a disposable repository under the project
-cache that `workflow-skills:local-cache` defines, and verifies pinned reads while HEAD changes.
+cache that `workflow-skills:local-cache` defines, and verifies reads at a fixed commit while HEAD
+changes.
 None of these tests makes model calls or launches workflows.
 
 The verification/consolidation contract is recorded in
