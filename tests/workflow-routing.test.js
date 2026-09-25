@@ -2190,9 +2190,27 @@ const WRITE_SCRATCH = 'SCRATCH: put scratch files where the workflow-skills:loca
 const WRITE_NOTHING = 'WRITE NOTHING: no copies of files and no notes. Only the output of a command that cannot be read directly may be written, to the system temporary directory.'
 // The input paths a stage reads, which sit in the project cache and are no place to write.
 const INPUT_PATHS = [SPEC_PATH, PARENT_SPEC, FIX_LIST, '<main checkout>/.cache/directives/<unit>.md', '<main checkout>/.cache/directives/<parent unit>.md']
-const withoutFrontmatter = text => text.replace(/^---\n[\s\S]*?\n---\n/, '')
-const paragraphs = text => withoutFrontmatter(text).split(/\n\s*\n/).map(p => p.trim()).filter(Boolean)
-const firstParagraph = text => paragraphs(text).find(p => !p.startsWith('#'))
+// The blocks of a Markdown file as Bun's parser reads them, in document order. A block holds only
+// its own inline text, with each code span written in backticks, and the list of code spans in it.
+// The parser has no front matter support: it reads the front matter of these files as a heading,
+// which keeps it out of the paragraphs.
+const markdownBlocks = text => {
+  const blocks = []
+  let spans = []
+  const block = kind => children => {
+    if (children) blocks.push({ kind, text: children, spans })
+    spans = []
+    return ''
+  }
+  Bun.markdown.render(text, {
+    heading: block('heading'), paragraph: block('paragraph'), listItem: block('item'),
+    th: block('cell'), td: block('cell'), html: block('html'),
+    code: body => { blocks.push({ kind: 'code', text: body, spans: [] }); return '' },
+    codespan: span => { spans.push(span); return '`' + span + '`' },
+  })
+  return blocks
+}
+const firstParagraph = text => markdownBlocks(text).find(block => block.kind === 'paragraph').text
 const pluginFiles = () => [
   ...[...new Bun.Glob('*/SKILL.md').scanSync({ cwd: fileURLToPath(new URL('../skills/', import.meta.url)) })].map(f => 'skills/' + f),
   ...[...new Bun.Glob('*.md').scanSync({ cwd: fileURLToPath(new URL('../agents/', import.meta.url)) })].map(f => 'agents/' + f),
@@ -2253,11 +2271,11 @@ describe('the project cache, the todo record and scratch files by role', () => {
         }
         continue
       }
-      const parts = paragraphs(text)
-      parts.forEach((part, i) => {
-        if (!part.includes('.cache')) return
-        const marked = [part, parts[i + 1] ?? ''].some(p => p.includes('workflow-skills:local-cache'))
-        expect([file, part, marked]).toEqual([file, part, true])
+      const blocks = markdownBlocks(text)
+      blocks.forEach((block, i) => {
+        if (!block.text.includes('.cache')) return
+        const marked = [block, blocks[i + 1]].some(b => b?.text.includes('workflow-skills:local-cache'))
+        expect([file, block.text, marked]).toEqual([file, block.text, true])
       })
     }
   })
