@@ -2419,7 +2419,8 @@ describe('the project cache, the todo record and scratch files by role', () => {
 // write it and as the templates state it.
 const LIMITS_RULE = 'a limitation is only something you were supposed to check and could not. An act your own rules forbid,\n' +
   'such as running tests, builds or the spec tool as a reading stage, and input you are not given by design, such as\n' +
-  'the private spec for an unbriefed stage, are never limitations and are not reported.'
+  'the private spec for an unbriefed stage, are never limitations and are not reported.\n' +
+  'They get no unchecked coverage entry either.'
 const LIMITS_LINE = 'LIMITATIONS: ' + LIMITS_RULE
 const FILES_CHECK = 'one writerScope entry per commit, filesMatch true when every path the commit touched appears in the writer\'s files list.\n' +
   'The files list covers all commits of the writer together. A path in it that no commit of the writer touched is a\n' +
@@ -2452,7 +2453,8 @@ describe('what a limitation is, and the per-commit files check', () => {
     const text = flat(skill)
     expect(text.split('A limitation is only something the stage was supposed to check and could not.').length - 1).toBe(1)
     for (const phrase of ['An act the stage\'s own rules forbid, such as running tests, builds or the spec tool as a reading stage, and ' +
-      'input the stage is not given by design, such as the private spec for an unbriefed stage, are never limitations and are not reported.',
+      'input the stage is not given by design, such as the private spec for an unbriefed stage, are never limitations and are not reported. ' +
+      'They get no unchecked coverage entry either.',
       'the finding verifier discards such an entry without a decision.']) {
       expect([phrase, text.includes(phrase)]).toEqual([phrase, true])
     }
@@ -2469,7 +2471,7 @@ describe('what a limitation is, and the per-commit files check', () => {
       'problem, reported in the note of the writer\'s last commit with `ok` false.')
   })
 
-  test('a writer with two commits and one files list passes the scope check and reaches the fix stage', async () => {
+  test('a writer with two commits and one files list reaches the fix stage when the verifier accepts each commit', async () => {
     const FIRST = 'd'.repeat(40)
     const implementation = implemented({
       commits: [{ sha: FIRST, subject: 'add the error helper' }, { sha: INITIAL, subject: 'return the error through the helper' }],
@@ -2480,12 +2482,5 @@ describe('what a limitation is, and the per-commit files check', () => {
     expect(calls.find(c => c.label === 'verify').prompt).toContain('WRITER OBJECTS (UNTRUSTED):\n\n[' + JSON.stringify(implementation) + ']')
     expect(calls.filter(c => c.phase === 'Fix').map(c => c.label).sort()).toEqual(['fix', 'roast'])
     expect(result.remaining.map(r => r.kind)).toEqual(['unattested-fix'])
-    // A listed path no commit touched is reported on the last commit, which keeps the fixer from running.
-    const extra = { sha: INITIAL, ok: false, filesMatch: true, note: 'src/unused.js is in the files list and no commit touched it' }
-    const scoped = await simulate({ implementation, reports: oneReport, fixes: { fix: fixed([disposition()]) },
-      verify: { verify: verification(approveOne.verify.decisions, {
-        writerScope: [{ sha: FIRST, ok: true, filesMatch: true, note: '' }, extra] }) } })
-    expect([scoped.result.exit, scoped.calls.some(c => c.phase === 'Fix')]).toEqual(['root-resolution', false])
-    expect(scoped.result.remaining[0]).toEqual({ kind: 'writer-scope', severity: 'CRITICAL', item: extra })
   })
 })

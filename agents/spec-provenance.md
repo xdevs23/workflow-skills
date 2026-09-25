@@ -67,7 +67,7 @@ Rules:
 - A limitation is only something you were supposed to check and could not. An act your own rules
   forbid, such as running tests, builds or the spec tool as a reading stage, and input you are not
   given by design, such as the private spec for an unbriefed stage, are never limitations and are
-  not reported.
+  not reported. They get no unchecked coverage entry either.
 - A finding is a defect, with the gap-finder's three severities must-fix / should-fix / nit and
   lane orchestrator-only.
   Cite the spec item and receipts (file, line, quote). Keep verdict and coverage material in

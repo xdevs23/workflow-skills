@@ -69,6 +69,7 @@ const LIMITS = [
   'LIMITATIONS: a limitation is only something you were supposed to check and could not. An act your own rules forbid,',
   'such as running tests, builds or the spec tool as a reading stage, and input you are not given by design, such as',
   'the private spec for an unbriefed stage, are never limitations and are not reported.',
+  'They get no unchecked coverage entry either.',
 ].join('\n')
 const AUTHORITY = [                    // the fixer only; the two checks and the roaster are unbriefed readers
   STAGE, STYLE,
@@ -89,8 +90,8 @@ const AUTHORITY = [                    // the fixer only; the two checks and the
   'Run checks BARE. Never pipe through head/grep: it hides the error.',
   'NEVER end a turn waiting on a backgrounded check; your returned object IS the deliverable.',
   'A FINDING IS A DEFECT: verdicts go in verdicts, what you inspected and how in coverage, what you',
-  'could not check in limitations (effect blocks or narrows); an unchecked coverage entry needs a',
-  'declared limitation. Every finding carries at least one receipt (file, line, quote).',
+  'could not check in limitations (effect blocks or narrows); an unchecked coverage entry marks a',
+  'real gap and needs a declared limitation. Every finding carries at least one receipt (file, line, quote).',
   'Every finding cites a FILE and names WHO CAN CLOSE IT - the actionability lane, one of:',
   'fixer-actionable / orchestrator-only / later-phase / not-a-defect.',
   'Cite every file as a REPO-RELATIVE path so each receipt identifies its source.',
