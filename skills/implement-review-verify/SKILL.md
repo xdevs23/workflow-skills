@@ -1149,13 +1149,15 @@ The phase shape only holds up if the script is written to hold it up.
 
 ### Every unit's script is a copy of the shipped one, edited in one block
 
-The skill ships two complete scripts under `scripts/`: `scripts/spec-review.js` for the
-pre-phase and `scripts/implement-review-verify.js` for the main run. Copy the shipped script,
-edit only the marked block, and never copy a previous unit's copy. The block sits at the top of
-each file between two comment lines and holds everything a unit sets: the paths (main checkout,
-worktree, spec, transcripts, private record, generated document, plugin root), the check command,
-the base or start SHA, `criteriaCount`, the unit prompt text for the implementer, the scoping,
-the rule sources, the invariants and the model and effort per stage. Everything below the block
+The skill ships three complete scripts under `scripts/`: `scripts/spec-review.js` for the
+pre-phase, `scripts/implement-review-verify.js` for the main run and `scripts/fix-follow-up.js`
+for a fix run. Copy the shipped script, edit only the marked block, and never copy a previous
+unit's copy. The block sits at the top of each file between two comment lines and holds
+everything a unit sets: the paths (main checkout, worktree, spec, transcripts, private record,
+generated document, plugin root), the check command, the base or start SHA, `criteriaCount`, the
+unit prompt text for the implementer, the scoping, the rule sources, the invariants and the model
+and effort per stage. The fix run's block holds the fix list path, the entries and the parent
+spec in place of the spec, `criteriaCount` and the implementer's prompt. Everything below the block
 is the reviewed script and is not edited per unit. Never copy a previous unit's script and edit
 it, and never generalize one that already ran into a runner several units share.
 
@@ -1182,10 +1184,11 @@ same act. The main script keeps it in `CHECK`, which only the implementer and fi
 
 ### The launch check
 
-Both scripts begin with a launch check, before any other agent: a small stage on
+All three scripts begin with a launch check, before any other agent: a small stage on
 `claude-haiku-4-5` at low effort whose prompt is one command line and one sentence. The command
 changes to the tree the run works on, the worktree from the marked block for the main run and the
-main checkout for the pre-phase, so the generated document and the cited rule files resolve there.
+fix run and the main checkout for the pre-phase, so the generated document and the cited rule files
+resolve there.
 It then runs `<plugin root>/tools/check-spec.ts` with `--json`, the spec path from `args.specPath`, the
 transcript directory from `args.transcripts`, `--base` with the base commit, and for the main run `--check-render` with the
 generated document. The sentence tells the stage to run that exact command once with the Bash
@@ -1196,6 +1199,12 @@ stage helper retries up to three times and then throws, quoting stderr. The scri
 once when `args.specPath` does not end in `.yaml`. The script parses nothing from stdout and
 inlines no check: the tool's own random string proves the tool ran on the one spec file the
 prompt names, and the script does nothing else with it.
+
+The fix run's launch check runs the tool's fix-list mode in place of the spec check:
+`--fix-list` with the fix list from `args.fixList`, the transcript directory, `--json`, and
+`--expect` with the entries and the parent spec from the launch values as one JSON argument. The
+script refuses at once when `args.fixList` does not end in `.yaml`, and the tool fails when the
+launch values differ from the list.
 
 ### The pre-phase script
 
@@ -1440,7 +1449,7 @@ Every NAMED role this skill spawns has a fixed prompt template in `agents/` — 
 `agents/cold-alternatives.md`, `agents/quality.md`, `agents/reviewer-inverse-spec.md`,
 `agents/project-rule-reader.md`, `agents/finding-verifier.md`, `agents/fixer.md`, plus
 `agents/gap-finder.md` and `agents/spec-provenance.md` for the spec-review
-pre-phase. That file's body is the agent's **authoritative
+pre-phase and `agents/scope-check.md` and `agents/diff-check.md` for the fix run. That file's body is the agent's **authoritative
 rules** and is used **VERBATIM** as the start of its prompt — invoke the agent via
 `agentType:'<role>'`. The string you pass to `agent()` is **ONLY the task-specific context
 APPENDED** after that base (the design, the diff, the acceptance criteria, the test command).
