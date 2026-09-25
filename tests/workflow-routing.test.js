@@ -1155,10 +1155,12 @@ describe('spec provenance instructions and routing', () => {
       'A title, module or heading that contradicts a decision of the user is renamed in the same change']) {
       expect([phrase, text.includes(phrase)]).toEqual([phrase, true])
     }
-    const premise = flat(sectionText(skill, '### Root question-premise check'))
-    for (const heading of ['**A decision that changes what a thing is triggers a redesign.**', '**A limit is never attached to a decision.**',
-      '**A question about a premise stops every edit to it.**', '**Names follow decisions.**']) {
-      expect([heading, premise.includes(heading)]).toEqual([heading, true])
+    // Each rule is a paragraph of the question-premise section that opens with its bold sentence.
+    const premise = sectionBlocks(skill, 'Root question-premise check').filter(block => block.kind === 'paragraph')
+    for (const opener of ['A decision that changes what a thing is triggers a redesign.', 'A limit is never attached to a decision.',
+      'A question about a premise stops every edit to it.', 'Names follow decisions.']) {
+      const found = premise.some(block => block.strong[0] === opener && block.text.startsWith(opener))
+      expect([opener, found]).toEqual([opener, true])
     }
   })
 
@@ -2269,24 +2271,36 @@ const WRITE_NOTHING = 'WRITE NOTHING: no copies of files and no notes. Only the 
 // The input paths a stage reads, which sit in the project cache and are no place to write.
 const INPUT_PATHS = [SPEC_PATH, PARENT_SPEC, FIX_LIST, '<main checkout>/.cache/directives/<unit>.md', '<main checkout>/.cache/directives/<parent unit>.md']
 // The blocks of a Markdown file as Bun's parser reads them, in document order. A block holds only
-// its own inline text, with each code span written in backticks, and the list of code spans in it.
+// its own inline text, with each code span written in backticks, the list of code spans in it and
+// the list of its bold phrases. A heading also holds its level.
 // The parser has no front matter support: it reads the front matter of these files as a heading,
 // which keeps it out of the paragraphs.
 const markdownBlocks = text => {
   const blocks = []
   let spans = []
-  const block = kind => children => {
-    if (children) blocks.push({ kind, text: children, spans })
+  let strong = []
+  const block = kind => (children, meta) => {
+    if (children) blocks.push({ kind, text: children, spans, strong, ...(kind === 'heading' && { level: meta.level }) })
     spans = []
+    strong = []
     return ''
   }
   Bun.markdown.render(text, {
     heading: block('heading'), paragraph: block('paragraph'), listItem: block('item'),
     th: block('cell'), td: block('cell'), html: block('html'),
-    code: body => { blocks.push({ kind: 'code', text: body, spans: [] }); return '' },
+    code: body => { blocks.push({ kind: 'code', text: body, spans: [], strong: [] }); return '' },
     codespan: span => { spans.push(span); return '`' + span + '`' },
+    strong: children => { strong.push(children); return children },
   })
   return blocks
+}
+// The blocks of one section, after its heading and up to the next heading of the same or higher level.
+const sectionBlocks = (text, heading) => {
+  const blocks = markdownBlocks(text)
+  const start = blocks.findIndex(block => block.kind === 'heading' && block.text === heading)
+  if (start < 0) throw new Error(`Missing heading: ${heading}`)
+  const end = blocks.findIndex((block, i) => i > start && block.kind === 'heading' && block.level <= blocks[start].level)
+  return blocks.slice(start + 1, end < 0 ? blocks.length : end)
 }
 const firstParagraph = text => markdownBlocks(text).find(block => block.kind === 'paragraph').text
 // A code span holding a command starts with a program name followed by its arguments.
