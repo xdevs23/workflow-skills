@@ -54,9 +54,10 @@ const STYLE = [
   'REQUIRED: before you write, read the file ' + UNIT.pluginRoot + '/skills/writing-style/SKILL.md with the Read tool,',
   'and follow it in every comment, document, commit message and returned string.',
 ].join('\n')
-// Scratch files by role. WRITE_GIT, which only the writers receive, carries WRITE_SCRATCH; every
-// block a reading stage receives carries WRITE_NOTHING, and no block both receive names a place
-// for scratch files. The roaster has no Read tool, so it receives WRITE_NOTHING alone.
+// Scratch files by role. WRITE_GIT, which only the writers receive, carries WRITE_SCRATCH. The
+// reader-only places that carry WRITE_NOTHING are READ_GIT, and HYGIENE through it, and the
+// roaster's line in roastPass, since the roaster receives neither block. No block both receive
+// names a place for scratch files.
 const WRITE_SCRATCH = [
   'SCRATCH: put scratch files where the workflow-skills:local-cache skill says for a writing stage. A local-cache skill',
   'without the plugin prefix takes precedence; otherwise read ' + UNIT.pluginRoot + '/skills/local-cache/SKILL.md with the Read tool.',
