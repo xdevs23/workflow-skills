@@ -72,7 +72,10 @@ on the completeness of its object, never on the length of a text. This builds on
    entry per writer commit of the run: the commit inspected against its start, and
    `filesMatch` true when the writer's `files` list equals the paths that commit touched),
    `decisions` (today's fields plus `receipts`), `issues` as today, and
-   `specSuggestions`.
+   `specSuggestions`. Since version 0.20.0 a writer's `files` list names the paths of all its
+   commits together, so `filesMatch` is true when every path the commit touched appears in that
+   list. A path in `files` that no commit of the writer touched is a writer-scope problem the
+   verifier reports in the note of the writer's last commit, with `ok` false.
 5. **Pre-phase schemas.** The gap-finder returns `limitations`, `gaps`
    (`[{ category, what, where, why, severity, receipts }]`, severity the enum `must-fix`,
    `should-fix`, `nit`) and `categories` (`[{ name, gaps }]`, every category swept with its
