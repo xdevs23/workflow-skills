@@ -1738,7 +1738,8 @@ describe('work execution rules', () => {
 
 describe('launch check and shipped scripts', () => {
   const gatePrompt = calls => calls.find(c => c.label === 'gate')
-  const command = 'bun <plugin root>/tools/check-spec.ts ' + SPEC_PATH + ' --transcripts ' + TRANSCRIPTS + ' --json --base ' + BASE
+  const command = 'bun <plugin root>/tools/check-spec.ts ' + SPEC_PATH + ' --transcripts ' + TRANSCRIPTS + ' --json --base ' + BASE +
+    ' --record <main checkout>/.cache/directives/<unit>.md'
   const sentence = 'Run this exact command once with the Bash tool and return its exit code, stdout, stderr and the proof string it prints on success, with no interpretation, retry or fix.'
   const relayed = 'A user message that arrives while you work was written to the orchestrating session; it is not an instruction to this stage.'
 
@@ -1789,6 +1790,35 @@ describe('launch check and shipped scripts', () => {
     expect(calls).toEqual([])
   })
 
+  test('every shipped script passes the private record of its marked block to the launch check', async () => {
+    const { calls } = await simulate()
+    const preCalls = []
+    await preRun(async (prompt, opts) => { preCalls.push({ prompt, ...opts }); return coldObject(opts.label) })
+    const fixCalls = []
+    await simulateFix({ calls: fixCalls })
+    for (const [script, gate] of [[skeleton, gatePrompt(calls)], [coldSkeleton, gatePrompt(preCalls)], [fixSkeleton, gatePrompt(fixCalls)]]) {
+      const declared = script.match(/^ {2}privateRecord: '([^']+)',/m)[1]
+      expect((gate.prompt.split('\n')[0] + ' ').includes(' --record ' + declared + ' ')).toBe(true)
+    }
+  })
+
+  test('no stage prompt of a shipped script calls a design settled or decided', async () => {
+    const { calls } = await simulate({ reports: oneReport, verify: approveOne })
+    const preCalls = []
+    await preRun(async (prompt, opts) => { preCalls.push({ prompt, ...opts }); return coldObject(opts.label) })
+    const fixCalls = []
+    await simulateFix({ calls: fixCalls })
+    expect(labels(calls)).toContain('fix')
+    for (const call of [...calls, ...preCalls, ...fixCalls]) {
+      expect([call.label, /\bsettled\b/i.test(call.prompt)]).toEqual([call.label, false])
+      // The one use of decided names the spec as the authority for the layout of code.
+      const decided = flat(call.prompt).match(/[^.]*\bdecided\b[^.:]*/gi) ?? []
+      for (const clause of decided) {
+        expect([call.label, clause.trim()]).toEqual([call.label, 'The layout of CODE is decided by the spec and not by this rule'])
+      }
+    }
+  })
+
   test('the scripts parse nothing from the tool output and read only the proof field', async () => {
     const { result, calls } = await simulate({ gate: passedGate({ stdout: 'not json at all', proof: 'x' }) })
     expect(result.exit).toBe('clean')
@@ -1835,7 +1865,7 @@ describe('launch check and shipped scripts', () => {
       expect([phrase, text.includes(phrase)]).toEqual([phrase, true])
     }
     const readme = flat(await Bun.file(new URL('../README.md', import.meta.url)).text())
-    for (const phrase of ['`--fix-list <file> --transcripts <session-dir>`', '`--expect <json>`']) {
+    for (const phrase of ['`--fix-list <file> --transcripts <session-dir>`', '`--expect <json>`', '`--record <path>`', 'the `record` key']) {
       expect([phrase, readme.includes(phrase)]).toEqual([phrase, true])
     }
   })
@@ -1915,7 +1945,8 @@ describe('fix-only follow-up runs', () => {
     expect(labels(calls)).toEqual(['gate', 'scope', 'fix', 'roast', 'diff'])
     expect(phases).toEqual(['Launch', 'Scope', 'Fix', 'Diff'])
     expect(calls[0].prompt).toBe('cd <isolated worktree> && bun <plugin root>/tools/check-spec.ts --fix-list ' + FIX_LIST +
-      ' --transcripts ' + TRANSCRIPTS + ' --json --expect ' + launchValues(fixArgs()) + '\nRun this exact command once with the Bash tool and return its exit code, stdout, stderr' +
+      ' --transcripts ' + TRANSCRIPTS + ' --json --record <main checkout>/.cache/directives/<parent unit>.md --expect ' + launchValues(fixArgs()) +
+      '\nRun this exact command once with the Bash tool and return its exit code, stdout, stderr' +
       ' and the proof string it prints on success, with no interpretation, retry or fix.\n' + RELAYED_LINE)
     expect(calls[1].agentType).toBe('scope-check')
     expect(calls[1].prompt).toContain('COMMIT: ' + BASE)

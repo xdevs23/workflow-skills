@@ -15,3 +15,9 @@ not json
 {"type":"user","uuid":"dialog-answer-blocks","message":{"content":[{"type":"tool_result","tool_use_id":"ask-2","content":[{"type":"text","text":"The user answered: \"How often should the export run?\"=\"Nightly, after the backup\""}]}]},"toolUseResult":{"questions":[{"question":"How often should the export run?","header":"Schedule","options":[{"label":"Nightly","description":"Once after midnight."}],"multiSelect":false}],"answers":{"How often should the export run?":"Nightly, after the backup"},"annotations":{}}}
 {"type":"user","uuid":"early-answer","message":{"content":[{"type":"tool_result","tool_use_id":"ask-3","content":"The user answered: \"Asked too late?\"=\"An answer before its question\""}]},"toolUseResult":{"questions":[{"question":"Asked too late?","header":"Late","options":[],"multiSelect":false}],"answers":{"Asked too late?":"An answer before its question"},"annotations":{}}}
 {"type":"assistant","uuid":"late-call","message":{"content":[{"type":"tool_use","id":"ask-3","name":"AskUserQuestion","input":{"questions":[{"question":"Asked too late?","header":"Late","multiSelect":false,"options":[]}]}}]}}
+{"type":"user","uuid":"queue-turn","message":{"content":"Start the export."}}
+{"type":"assistant","uuid":"queue-offer","message":{"content":[{"type":"text","text":"Should the export skip empty rows?"}]}}
+{"type":"attachment","uuid":"queued-human","attachment":{"type":"queued_command","prompt":"<system-reminder>queued reminder</system-reminder>Skip the empty rows.","origin":{"kind":"human"}}}
+{"type":"attachment","uuid":"queued-task","attachment":{"type":"queued_command","prompt":"Skip the empty rows.","origin":{"kind":"task-notification"}}}
+{"type":"attachment","uuid":"queued-no-origin","attachment":{"type":"queued_command","prompt":"Skip the empty rows."}}
+{"type":"attachment","uuid":"other-attachment","attachment":{"type":"file","prompt":"Skip the empty rows.","origin":{"kind":"human"}}}

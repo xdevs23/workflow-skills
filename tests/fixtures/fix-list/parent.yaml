@@ -1,4 +1,5 @@
-# Synthetic parent unit spec: a fix list only needs it to exist.
+# Synthetic parent unit spec: a fix list needs it to exist, and a launch record path is compared with its record.
 unit: example-parent
 summary: A synthetic unit whose run left findings behind.
+record: tests/fixtures/spec-provenance/record.md
 items: []

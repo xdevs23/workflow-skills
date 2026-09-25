@@ -146,9 +146,10 @@ if (typeof UNIT.transcripts !== 'string' || !UNIT.transcripts) throw new Error('
 // on exit zero with a filled proof, and otherwise stage() retries and then throws quoting stderr.
 const GATE = { type: 'object', required: ['exitCode', 'stdout', 'stderr', 'proof'], additionalProperties: false,
   properties: { exitCode: { type: 'integer' }, stdout: { type: 'string' }, stderr: { type: 'string' }, proof: { type: 'string' } } }
-// The command runs in the main checkout, where the cited rule files resolve.
+// The command runs in the main checkout, where the cited rule files resolve. The tool fails when the
+// private record of the marked block is not the record the spec names.
 const GATE_COMMAND = 'cd ' + UNIT.mainCheckout + ' && bun ' + UNIT.pluginRoot + '/tools/check-spec.ts ' + UNIT.specPath +
-  ' --transcripts ' + UNIT.transcripts + ' --json --base ' + UNIT.baseSha
+  ' --transcripts ' + UNIT.transcripts + ' --json --base ' + UNIT.baseSha + ' --record ' + UNIT.privateRecord
 const checkGate = r => {
   if (r.exitCode !== 0 || typeof r.proof !== 'string' || !r.proof.trim()) {
     throw new Error('the spec check did not pass: exit ' + r.exitCode + ', proof ' + JSON.stringify(r.proof) + ', stderr: ' + r.stderr)

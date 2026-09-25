@@ -80,7 +80,10 @@ source and its rendering together.
 
 `<plugin root>/tools/check-spec.ts` defines the validation contract; the committed, synthetic example at
 `tests/fixtures/spec-provenance/valid.yaml` is exercised by the tests. The top-level mapping has
-`unit`, `summary` (Markdown, the preamble of the generated document) and a non-empty `items` list.
+`unit`, `summary` (Markdown, the preamble of the generated document), `record` and a non-empty
+`items` list. `record` is the absolute path of the private directive record the spec was written
+from; the tool fails when that file does not exist or does not contain every `user_words` of the
+spec once whitespace is collapsed, and the generated document never shows the path.
 Each item has a unique kebab-case `id`, a `kind` (requirement, criterion, rejected or boundary),
 non-empty Markdown `content` stating one decision or requirement, and `source`. A rejected item
 also has `reason`. Use exactly the fields of its source kind:
@@ -91,7 +94,11 @@ also has `reason`. Use exactly the fields of its source kind:
   the assistant text they reply to, which the tool resolves in an assistant record between the
   previous user turn and the cited record. An answer the user gave through the question dialog
   (`AskUserQuestion`) can be cited: its record is the tool result that answers the dialog call, and
-  `answers` can quote the question, an option label or an option description of that call. No other
+  `answers` can quote the question, an option label or an option description of that call. A
+  message the user sent while the session was working can be cited too: its record is an
+  `attachment` whose `attachment.type` is `queued_command` and whose `attachment.origin.kind` is
+  `human`, with the text in `attachment.prompt`, and `answers` resolves before it as before a user
+  record. A queued command of any other origin is refused. No other
   tool result can be cited, because its content is output of a command or a program. At least one
   item has this source: a spec with none of the user's words fails, and so does a requirement
   derived from observations alone.
