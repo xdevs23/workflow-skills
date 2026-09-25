@@ -1565,11 +1565,11 @@ describe('one-pass remaining-items handoff', () => {
     }
   })
 
-  test('both commit-id fields carry the full-id pattern, which rejects a short id and accepts a full one', async () => {
+  test('both commit-id fields and the roaster\'s snapshotSha carry the full-id pattern, which rejects a short id and accepts a full one', async () => {
     const { calls } = await simulate()
     const schemaOf = label => calls.find(c => c.label === label).schema.properties
     const fields = [schemaOf('impl').commits.items.properties.sha, schemaOf('fix').commits.items.properties.sha,
-      schemaOf('verify').writerScope.items.properties.sha]
+      schemaOf('verify').writerScope.items.properties.sha, schemaOf('roast').snapshotSha]
     const full = { type: 'string', pattern: '^(?:[0-9a-f]{40}|[0-9a-f]{64})$' }
     for (const field of fields) expect(field).toEqual(full)
     const accepts = sha => new RegExp(fields[0].pattern).test(sha)

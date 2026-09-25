@@ -222,7 +222,7 @@ const ALTERNATIVES = { type: 'object', additionalProperties: false,
       required: ['shape', 'collapses', 'cost', 'invariants'],
       properties: { shape: { type: 'string' }, collapses: { type: 'string' }, cost: { type: 'string' }, invariants: { type: 'string' } } } } } }
 const ROAST = { type: 'object', additionalProperties: false, required: ['limitations', 'coverage', 'findings', 'snapshotSha'],
-  properties: { limitations: LIMITATIONS, coverage: COVERAGE, findings: FINDINGS, snapshotSha: { type: 'string' } } }
+  properties: { limitations: LIMITATIONS, coverage: COVERAGE, findings: FINDINGS, snapshotSha: COMMIT_ID } }
 
 // Writer schemas. The deliverable proof is files together with checks: an account of the work
 // with an empty files list behind a new snapshot fails the completeness check below.
