@@ -73,8 +73,10 @@ for a throwaway note, just use the sub-skills directly.
 ## Output format — one authored YAML spec
 
 Write the unit spec to `.cache/specs/<unit>.yaml`, ignored and untracked because it contains
-verbatim user words. The tracked document under `docs/` is generated from that YAML. Edit the YAML
-and regenerate after every amendment, keeping the source and its rendering together.
+verbatim user words. That path is where `workflow-skills:local-cache` puts private specs, and the
+private directive record lives where that skill puts private directive records. The tracked
+document under `docs/` is generated from that YAML. Edit the YAML and regenerate after every
+amendment, keeping the source and its rendering together.
 
 `<plugin root>/tools/check-spec.ts` defines the validation contract; the committed, synthetic example at
 `tests/fixtures/spec-provenance/valid.yaml` is exercised by the tests. The top-level mapping has
@@ -105,7 +107,9 @@ and its parents include the transcript item asking for it or the observation sho
 route failing. Trace ordinary derivations to existing decisions; new decisions remain the user's.
 
 Run `bun <plugin root>/tools/check-spec.ts .cache/specs/<unit>.yaml --transcripts <session-dir> --base <base-sha> --render docs/<unit>.md --json`.
-It validates references and renders technical content, omitting private quotations and evidence.
+The spec path in that command is the location `workflow-skills:local-cache` defines for private
+specs. The tool validates references and renders technical content, omitting private quotations
+and evidence.
 Keep each criterion as a criterion item: the tool numbers them from one in file order and supplies
 `{ ordinal, id }` plus `counts.kind.criterion` for the implementation workflow's integer ordinals and
 `args.criteriaCount`. Before either spec review or implementation, validation must pass. Before

@@ -65,7 +65,8 @@ Rules:
   inspect the staged diff, and create a new commit after checks. No broad add, amend, reset,
   rebase, merge, cherry-pick, branch switching or push. Never bypass commit hooks or signing,
   and follow the project's commit-message rules.
-- Keep scratch and local TODO.md out of commits; TODO tracking requires an explicit request.
+- Put scratch files where workflow-skills:local-cache says. Keep them and the local todo record
+  of workflow-skills:todo-md out of commits; tracking the todo record requires an explicit request.
   Do not turn an ignored artifact into a tracked file to satisfy clean status.
 - Self-check before done: run tests and build after your last write. Fix what you added that
   fails; if blocked, report the failure and never claim a clean tested snapshot. After

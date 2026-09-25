@@ -27,6 +27,13 @@ Then the skills appear in the skill list and each has a matching slash command (
 | `immaculate-spec-writing` | Research → find-gaps → verify convergence loop for a fully factual, complete spec. |
 | `resume-interrupted-run` | Recover a workflow run that was stopped while agents were mid-flight: hand each interrupted seat its own prior transcript, leave every completed prompt byte-identical, resume near-losslessly. |
 | `audit-loop` | Continuously audit a codebase through 8 lenses, append verified findings to `AUDIT.md` — plus a `Refuted` ledger of killed claims, so nothing is rediscovered every round. |
+| `local-cache` | Define the project cache, the ignored directory for files not meant for the repository, and what reading and writing stages may put there. |
+| `todo-md` | Keep the todo record, the untracked `TODO.md` that holds open work and where each item stands. |
+
+The plugin refers to these last two as `workflow-skills:local-cache` and `workflow-skills:todo-md`.
+When a session has a skill of the same name without the plugin prefix, such as a user's own
+`todo-md`, that skill is used and the plugin's is not. The plugin's skill is used only when it is
+the only one of that name available.
 
 ### Audit-lens subagents (read-only)
 `separation-of-concerns`, `abstraction-quality`, `code-smell`, `type-safety`, `code-cleanliness`,
@@ -67,9 +74,9 @@ The routing tests execute the three shipped workflow scripts under
 `skills/implement-review-verify/scripts/` with deterministic fake stage results, including the
 launch check and execution boundaries for every stage, and read the skill's Markdown with Bun's
 built-in parser for the prose and helper they check.
-The Git integration test creates scoped commits in a disposable repository under ignored
-`.cache/` and verifies pinned reads while HEAD changes. None of these tests makes model calls or
-launches workflows.
+The Git integration test creates scoped commits in a disposable repository under the project
+cache that `workflow-skills:local-cache` defines, and verifies pinned reads while HEAD changes.
+None of these tests makes model calls or launches workflows.
 
 The verification/consolidation contract is recorded in
 [`docs/workflow-finding-verification.md`](docs/workflow-finding-verification.md).

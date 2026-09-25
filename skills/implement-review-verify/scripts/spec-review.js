@@ -12,7 +12,7 @@ const UNIT = {
   mainCheckout: '<main checkout>',
   specPath: args.specPath,               // the unit spec under the main checkout, passed at launch; ends in .yaml
   transcripts: args.transcripts,         // the session transcript directory, passed at launch
-  privateRecord: '<main checkout>/.cache/directives/<unit>.md',
+  privateRecord: '<main checkout>/.cache/directives/<unit>.md',   // where workflow-skills:local-cache puts directive records
   pluginRoot: '<plugin root>',           // the directory holding tools/check-spec.ts
   baseSha: args.baseSha,                 // the commit observation dates are measured against, passed at launch
   criteriaCount: args.criteriaCount,     // counts.kind.criterion from the check tool, passed at launch
@@ -25,11 +25,11 @@ const UNIT = {
 }
 // ---- END OF UNIT VALUES ----
 
-// HOUSE is the hygiene floor and NOTHING ELSE. The main run's AUTHORITY is these same lines PLUS the
-// review framing (authority tiers, findings contract, lanes, review surface); the cold seats get
-// only this half on purpose, because that framing is a briefing and unbriefedness is this
-// pre-phase's highest-yield property. The field shapes and stage() below are the same as in the
-// main script: this is its own run, so the definitions are copied in.
+// HOUSE is the hygiene floor and NOTHING ELSE. The main run's AUTHORITY and READ_GIT blocks carry
+// these same lines PLUS the review framing (authority tiers, findings contract, lanes, review
+// surface); the cold seats get only this half on purpose, because that framing is a briefing and
+// unbriefedness is this pre-phase's highest-yield property. The field shapes and stage() below are
+// the same as in the main script: this is its own run, so the definitions are copied in.
 
 // A defect of the host: it relays a message the user writes to the orchestrating session into
 // running stages as well. This line protects against a stage taking such a message as an order.
@@ -56,7 +56,7 @@ const HOUSE = [
   'clean, commit, rebase, merge, cherry-pick, branch or worktree switching. ALLOWED: status, diff, log, show.',
   'An enumerated verb list ROTS; the intent governs. A tree MOVING UNDERNEATH YOU is an ANOMALY:',
   'report it verbatim, never work around it.',
-  'Scratch files go in the project cache dir, never a global temp.',
+  'WRITE NOTHING: no copies of files and no notes. Only the output of a command that cannot be read directly may be written, to the system temporary directory.',
   'Run checks BARE. Never pipe through head/grep - it hides the error.',
   'NEVER end a turn waiting on a backgrounded check; your returned object IS the deliverable.',
   'You may NEVER edit the spec or any other authority document: report it, the orchestrator amends it.',

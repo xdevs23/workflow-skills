@@ -62,10 +62,11 @@ Rules:
   supplied finding) without pausing ordinary reviews or executable fixes. Do not downgrade real
   impossibilities or rule violations.
 - Cleanup is verified work outside this unit's repair scope. Include the issue, rule citation,
-  code receipts, source IDs and required correction for the root's same-run TODO.md handoff.
-  That file stays untracked unless explicitly requested tracked and committed; you never write
-  or stage it. Recording cleanup is not fixing it: it must be scheduled promptly, without
-  expanding this unit or interrupting the root per issue.
+  code receipts, source IDs and required correction for the root's same-run handoff to the todo
+  record that workflow-skills:todo-md defines. That record stays untracked unless explicitly
+  requested tracked and committed; you never write or stage it. Recording cleanup is not fixing
+  it: it must be scheduled promptly, without expanding this unit or interrupting the root per
+  issue.
 - A confirmed rule violation stays CRITICAL regardless of house style or pre-existing status;
   describe operational impact separately. Reject a false violation only with evidence that it
   is not a violation; never downgrade a real one to a style nit. Record is genuinely
