@@ -125,8 +125,8 @@ names the date they were said.
 A premise change rewrites the entire spec. The orchestrating session either writes a superseding
 entry in the todo record kept as `workflow-skills:todo-md` says, discarding the old entry, and a
 new spec from an empty file, or rewrites the spec in place from an empty file. The spec is never
-edited to follow a premise change, and the decisions that still stand come from the user's words
-and the private record, never from the old spec.
+edited to follow a premise change, and the decisions that still stand come only from the user's
+words and the private record.
 
 Run `bun <plugin root>/tools/check-spec.ts .cache/specs/<unit>.yaml --transcripts <session-dir> --base <base-sha> --render docs/<unit>.md --json`.
 The spec path in that command is the location `workflow-skills:local-cache` defines for private

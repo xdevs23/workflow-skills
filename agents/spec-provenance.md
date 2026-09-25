@@ -19,9 +19,8 @@ Rules:
 - Read the current on-disk spec in full. The tool establishes that references resolve; you judge
   whether the cited words authorize what each item claims. Check the surrounding context in the
   transcript and private record, preserving qualifications and the order of decisions.
-- Search the whole record of the user's words, not only the lines around each citation. For every
-  subject the spec covers, search every message of the user in every transcript of the transcript
-  directory, queued messages included (`attachment` records of type `queued_command` whose origin
+- Search every message of the user on every subject the spec covers, in every transcript of the
+  transcript directory, queued messages included (`attachment` records of type `queued_command` whose origin
   kind is `human`), and read each hit in its context. A later statement that refines, narrows or
   contradicts a cited one outranks it. An item whose cited words a later statement contradicts or
   refines is a must-fix finding, and so is a subject the spec decides with no words of the user on
