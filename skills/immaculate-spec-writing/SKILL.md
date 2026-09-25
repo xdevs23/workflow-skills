@@ -72,11 +72,11 @@ for a throwaway note, just use the sub-skills directly.
 
 ## Output format — one authored YAML spec
 
-Write the unit spec to `.cache/specs/<unit>.yaml`, ignored and untracked because it contains
-verbatim user words. That path is where `workflow-skills:local-cache` puts private specs, and the
-private directive record lives where that skill puts private directive records. The tracked
-document under `docs/` is generated from that YAML. Edit the YAML and regenerate after every
-amendment, keeping the source and its rendering together.
+Write the unit spec, `<unit>.yaml` in the private-spec location that `workflow-skills:local-cache`
+defines, ignored and untracked because it contains verbatim user words. The private directive
+record lives where that skill puts private directive records. The tracked document under `docs/`
+is generated from that YAML. Edit the YAML and regenerate after every amendment, keeping the
+source and its rendering together.
 
 `<plugin root>/tools/check-spec.ts` defines the validation contract; the committed, synthetic example at
 `tests/fixtures/spec-provenance/valid.yaml` is exercised by the tests. The top-level mapping has
