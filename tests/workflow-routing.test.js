@@ -1051,7 +1051,8 @@ describe('spec provenance instructions and routing', () => {
 
   test('the workflow states source rules, both launch checks, regeneration and the generated denominator', () => {
     for (const phrase of [
-      '`.cache/specs/<unit>.yaml`, ignored and untracked', 'root writes the YAML before launching',
+      'the unit spec, `<unit>.yaml` in the private-spec location that `workflow-skills:local-cache` defines, ignored and untracked',
+      'root writes the YAML before launching',
       '`transcript`', '`rule`', '`observation`', '`derivation`',
       'asserting that a condition, failure mode or risk exists needs source transcript or observation',
       'hypothetical hazard stays a finding until an observation', 'simpler alternative it rules out',
@@ -1133,7 +1134,7 @@ describe('spec provenance instructions and routing', () => {
 
   test('spec writing emits the validated YAML format with source rules and regeneration', async () => {
     const prose = flat(await Bun.file(new URL('../skills/immaculate-spec-writing/SKILL.md', import.meta.url)).text())
-    for (const phrase of ['`.cache/specs/<unit>.yaml`', '`summary`', '<plugin root>/tools/check-spec.ts', 'valid.yaml', 'regenerate after every amendment',
+    for (const phrase of ['the unit spec, `<unit>.yaml` in the private-spec location that `workflow-skills:local-cache` defines', '`summary`', '<plugin root>/tools/check-spec.ts', 'valid.yaml', 'regenerate after every amendment',
       '**transcript:**', '**rule:**', '**observation:**', '**derivation:**', 'user_words', '`answers`', '{ command, exit, output, date }',
       'source transcript or observation', 'simpler alternative it rules out', 'parents include the transcript item',
       '{ ordinal, id }', 'args.criteriaCount', '--check-render']) expect(prose).toContain(phrase)
@@ -2211,6 +2212,8 @@ const markdownBlocks = text => {
   return blocks
 }
 const firstParagraph = text => markdownBlocks(text).find(block => block.kind === 'paragraph').text
+// A code span holding a command starts with a program name followed by its arguments.
+const command = span => /^[a-z][\w-]* /.test(span)
 const pluginFiles = () => [
   ...[...new Bun.Glob('*/SKILL.md').scanSync({ cwd: fileURLToPath(new URL('../skills/', import.meta.url)) })].map(f => 'skills/' + f),
   ...[...new Bun.Glob('*.md').scanSync({ cwd: fileURLToPath(new URL('../agents/', import.meta.url)) })].map(f => 'agents/' + f),
@@ -2271,11 +2274,16 @@ describe('the project cache, the todo record and scratch files by role', () => {
         }
         continue
       }
+      // In Markdown a cache path stands only inside a command, a code block or a code span that
+      // starts with a program name, and the block or the one after it marks the path as the
+      // location local-cache defines. Anywhere else, prose names the location by the skill.
       const blocks = markdownBlocks(text)
       blocks.forEach((block, i) => {
         if (!block.text.includes('.cache')) return
-        const marked = [block, blocks[i + 1]].some(b => b?.text.includes('workflow-skills:local-cache'))
-        expect([file, block.text, marked]).toEqual([file, block.text, true])
+        const outsideCommands = block.kind === 'code' ? ''
+          : block.spans.filter(command).reduce((rest, span) => rest.split('`' + span + '`').join(''), block.text)
+        const marked = [block, blocks[i + 1]].some(b => b?.text.includes('the location `workflow-skills:local-cache` defines'))
+        expect([file, block.text, outsideCommands.includes('.cache'), marked]).toEqual([file, block.text, false, true])
       })
     }
   })

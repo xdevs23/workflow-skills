@@ -73,8 +73,8 @@ receives can be triaged against anything. No criteria, no launch.
 
 ### Unit spec — YAML with per-item sources
 
-The root authors `.cache/specs/<unit>.yaml`, ignored and untracked because it quotes the user.
-That path is where `workflow-skills:local-cache` puts private specs.
+The root authors the unit spec, `<unit>.yaml` in the private-spec location that
+`workflow-skills:local-cache` defines, ignored and untracked because it quotes the user.
 Read that YAML spec from disk in full at each spec-consuming stage. Every stage receives the spec
 by its path under the main checkout, never a path relative to its worktree, because a worktree
 holds no untracked file. When a settled design arrives
