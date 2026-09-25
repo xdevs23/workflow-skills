@@ -1284,9 +1284,9 @@ describe('structured stage output', () => {
     expect(result.detail).toContain('a new snapshot needs commits and files')
   })
 
-  test('blocking limitations from every stage return their label; narrowing ones continue', async () => {
+  test('blocking limitations from every stage but the reading seats return their label; narrowing ones continue', async () => {
     const limitation = { what: 'a required resource is unavailable', effect: 'blocks' }
-    for (const label of ['impl', 'review:rules', 'verify', 'fix', 'roast']) {
+    for (const label of ['impl', 'verify', 'fix', 'roast']) {
       const { result, calls } = await simulate({
         implementation: label === 'impl' ? implemented({ limitations: [limitation] }) : undefined,
         reports: { [label]: { limitations: [limitation] } },
@@ -1296,26 +1296,34 @@ describe('structured stage output', () => {
       expect(result.exit).toBe('root-resolution')
       expect(result.remaining).toContainEqual({ kind: 'blocking-limitation', severity: 'CRITICAL', item: { ...limitation, label } })
       if (label === 'impl') expect(calls.map(c => c.label)).toEqual(['gate', 'impl'])
-      if (['review:rules', 'verify'].includes(label)) expect(calls.some(c => c.phase === 'Fix')).toBe(true)
+      if (label === 'verify') expect(calls.some(c => c.phase === 'Fix')).toBe(true)
     }
     const { result } = await simulate({ reports: { 'review:rules': { limitations: [{ ...limitation, effect: 'narrows' }] } } })
     expect(result.exit).toBe('clean')
   })
 
-  test('a reading seat\'s blocking limitation reaches the verifier and the fix stage, then the root', async () => {
+  test('a reading seat\'s blocking limitation reaches the verifier and the root only as the verifier\'s issue', async () => {
     const limitation = { what: 'the integration service is unreachable from this seat', effect: 'blocks' }
+    const issue = { kind: 'root-action', detail: 'Reach the integration service: ' + limitation.what }
     for (const seat of readers) {
       const label = 'review:' + seat
       const { result, calls } = await simulate({
         reports: { ...oneReport, [label]: { ...oneReport[label], limitations: [limitation] } },
-        verify: approveOne, fixes: { fix: fixed([disposition()]) },
+        verify: { verify: verification([decision([source('correctness')])], { issues: [issue] }) },
+        fixes: { fix: fixed([disposition()]) },
       })
       expect([result.exit, result.detail]).toEqual(['root-resolution', 'Review or verification left items for the root.'])
-      expect(result.remaining.map(r => r.kind)).toEqual(['blocking-limitation', 'unattested-fix'])
-      expect(result.remaining[0]).toEqual({ kind: 'blocking-limitation', severity: 'CRITICAL', item: { ...limitation, label } })
+      expect(result.remaining.map(r => r.kind)).toEqual(['verifier-issue', 'unattested-fix'])
+      expect(result.remaining[0]).toEqual({ kind: 'verifier-issue', severity: 'CRITICAL', item: issue })
       expect(calls.find(c => c.label === 'verify').prompt).toContain(limitation.what)
       expect(calls.filter(c => c.phase === 'Fix').map(c => c.label).sort()).toEqual(['fix', 'roast'])
     }
+    // A limitation the verifier discards leaves nothing for the root.
+    const { result } = await simulate({
+      reports: { ...oneReport, 'review:rules': { limitations: [limitation] } },
+      verify: approveOne, fixes: { fix: fixed([disposition()]) },
+    })
+    expect(result.remaining.map(r => r.kind)).toEqual(['unattested-fix'])
   })
 
   test('a writerScope entry reported out of scope or with a files mismatch ends the run for root resolution with a writer-scope item, without a retry', async () => {
@@ -1485,8 +1493,8 @@ describe('one-pass remaining-items handoff', () => {
     expect([result.exit, result.detail]).toEqual([
       'aborted', 'Hard flag from review:inverse: ' + abort.reason,
     ])
-    expect(result.remaining.map(r => r.kind)).toEqual(['blocking-limitation', 'abort'])
-    expect(result.remaining[1].item.abort).toEqual(abort)
+    expect(result.remaining.map(r => r.kind)).toEqual(['abort'])
+    expect(result.remaining[0].item.abort).toEqual(abort)
   })
 
   test('a fixer proof failure names the cause when the roaster aborts', async () => {

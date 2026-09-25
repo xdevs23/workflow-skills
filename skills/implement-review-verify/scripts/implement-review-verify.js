@@ -571,15 +571,14 @@ async function onePass() {
   phase('Review')
   const readers = await Promise.allSettled(SEATS.map(s => readSeat(s, snapshotSha)))
   const reports = []
-  // A reader's blocking limitation is recorded and the pass goes on: the verifier receives every
-  // seat object and judges its limitations, and the item reaches the root after the fix stage.
+  // A reader's limitation reaches the root only through the verifier, which receives every seat
+  // object and keeps each limitation as an unresolved issue or discards it.
   readers.forEach((r, i) => {
     const label = 'review:' + SEATS[i][1]
     try {
       if (r.status === 'rejected') throw r.reason
       const report = abortOnFlag(r.value, label)
       reports.push({ ...report, findings: sourceFindings(report.findings, report.seat, snapshotSha) })
-      recordBlocking(report, label)
     } catch (error) { failed(error, label) }
   })
   sources = reports.flatMap(r => r.findings)
@@ -613,7 +612,7 @@ async function onePass() {
   for (const w of outOfScope) add('writer-scope', w)
   if (outOfScope.length) { end('root-resolution', 'A writer commit left its scope.'); return }
   // Everything else the verifier leaves open goes to the root after the fix stage, not instead of
-  // it, and so do the readers' blocking limitations recorded above. A read-only stage can never
+  // it, and so does the verifier's own blocking limitation. A read-only stage can never
   // run a build, a test, a capture or a device, so stopping on every open item would end every run
   // before its approved fixes were applied.
   recordBlocking(verified, 'verify')
