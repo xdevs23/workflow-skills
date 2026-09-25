@@ -776,8 +776,9 @@ alive. What it reads is the run's journal and the per-agent transcript files in 
 The signal it looks for is an agent whose transcript has not grown and whose stage has produced no
 journal line for the whole interval, which is what a stuck or looping agent looks like from
 outside. The response is to read that agent's transcript, and then either stop the run and record
-why it was stopped, or record why the agent is still progressing. Recording the second case is what
-makes the next inspection able to tell slow work from a stall.
+why it was stopped, or record why the agent is still progressing, in both cases in the todo record
+that `workflow-skills:todo-md` defines. Recording the second case is what makes the next inspection
+able to tell slow work from a stall.
 
 The inspection is a recurring task the root registers with `CronCreate` when it launches a run and
 no such task is registered yet. At the first inspection that finds no run alive, the root deletes
@@ -1504,9 +1505,10 @@ Two rules that come with it:
 - **Never run two tree-mutating workflows in one repo at once.** They interleave writes and neither
   run's gate result means anything afterwards. Worktree-isolate one of them.
 - **When the user says stop, stop AT A PHASE BOUNDARY** — let the in-flight fix record, then stop —
-  so the tree is left landable rather than half-edited. Then record what never ran as an **explicit
-  unknown** ("the roast did not run; its findings are unknown"), never by silently omitting it. An
-  absence presented as a completed run is a lie the next reader cannot detect.
+  so the tree is left landable rather than half-edited. Then record what never ran in the todo
+  record that `workflow-skills:todo-md` defines, as an **explicit unknown** ("the roast did not
+  run; its findings are unknown"), never by silently omitting it. An absence presented as a
+  completed run is a lie the next reader cannot detect.
 
 ## Authoring notes
 
