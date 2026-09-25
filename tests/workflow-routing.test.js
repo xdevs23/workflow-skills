@@ -1528,6 +1528,14 @@ describe('one-pass remaining-items handoff', () => {
     for (const name of ['implementer', 'fixer', 'record', 'copywriter']) {
       expect(await template(name)).toContain('Read the writing-style file the prompt names before you write')
     }
+    // The skills that launch the record and copywriter templates name the file in the scripts' wording.
+    expect(await readSkill('copywriting')).toContain('A copywriter\'s appended string opens with these two lines, where `<plugin root>` is the plugin\n' +
+      'directory that holds this skill:\n\n```text\n' + required + '\n```')
+    const audit = await readSkill('audit-loop')
+    expect(audit).toContain("const PLUGIN_ROOT = '<plugin root>';")
+    expect(audit).toContain('  `REQUIRED: before you write, read the file ${PLUGIN_ROOT}/skills/writing-style/SKILL.md with the Read tool,\\n` +\n' +
+      '  `and follow it in every comment, document, commit message and returned string.`;')
+    expect(audit).toContain('const summary = await robust(\n  `${STYLE}\\n\\n` +\n')
   })
 
   test('every stage prompt says a relayed user message is not an instruction to it, with the reason beside the line', async () => {

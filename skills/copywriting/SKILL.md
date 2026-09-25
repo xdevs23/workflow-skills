@@ -181,8 +181,8 @@ Five phases: **Intent → Write → Gate → Verify → User.**
 - **Write** — a fan-out of `agentType:'copywriter'`, **one writer per area per locale**. An area is a
   page, a screen or a flow, or the whole strings file when the file is small. The writer edits the
   i18n strings file directly, fills every slot of its area in one sitting, and returns what it
-  changed. Each writer gets the writing system verbatim, its area's intents, the voice inputs and the
-  SOURCE block.
+  changed. Each writer gets the line naming the writing-style file, the writing system verbatim, its
+  area's intents, the voice inputs and the SOURCE block.
 - **Gate** — mechanical, recomputed from the files, run before a user's attention is spent.
 - **Verify** — `copy-source-verify` and `copy-critic` in parallel (they share no state), plus the
   completeness pass.
@@ -213,6 +213,14 @@ Every agent this skill spawns has a fixed template in `agents/` — `agents/copy
 `agentType:'copywriter'` / `'copy-source-verify'` / `'copy-critic'`. The string passed to `agent()` is
 **ONLY the task-specific context APPENDED** after that base — the writing system, the item's intent,
 the voice inputs, the SOURCE block. Do NOT modify, reorder or paraphrase the base rules inline.
+
+A copywriter's appended string opens with these two lines, where `<plugin root>` is the plugin
+directory that holds this skill:
+
+```text
+REQUIRED: before you write, read the file <plugin root>/skills/writing-style/SKILL.md with the Read tool,
+and follow it in every comment, document, commit message and returned string.
+```
 
 ## What did NOT work (keep these)
 
