@@ -390,7 +390,7 @@ describe('fix list validation', () => {
     ['an empty finding', l => { l.entries[0].finding = ' ' }, 'return-error.finding: expected a non-empty string'],
     ['a duplicate id', l => { l.entries[1].id = 'return-error' }, 'return-error.id: duplicate id return-error'],
     ['an id that is not kebab-case', l => { l.entries[0].id = 'Return error' }, 'expected a kebab-case id'],
-    ['a malformed source', l => { l.entries[0].source = 'correctness-1' }, 'return-error.source: expected <reader>:<index>'],
+    ['a malformed source', l => { l.entries[0].source = 'correctness-1' }, 'return-error.source: expected <seat>:<index>'],
     ['a field for user words', l => { l.entries[0].user_words = 'Fix all findings.' }, 'return-error.user_words: unknown key'],
   ])('%s fails shape validation', (name, edit, message) => invalid(changedList(edit), message))
 
