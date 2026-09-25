@@ -1,0 +1,4 @@
+# Synthetic parent unit spec: a fix list only needs it to exist.
+unit: example-parent
+summary: A synthetic unit whose run left findings behind.
+items: []
