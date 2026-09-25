@@ -1,5 +1,6 @@
 unit: invalid-example
 summary: A synthetic spec that carries one violation class.
+record: tests/fixtures/spec-provenance/record.md
 items:
   - id: sample
     kind: criterion

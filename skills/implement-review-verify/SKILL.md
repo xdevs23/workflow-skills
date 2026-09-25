@@ -81,9 +81,17 @@ holds no untracked file. When a settled design arrives
 as prose, the root writes the YAML before launching. `tools/check-spec.ts` defines the validation
 contract; `tests/fixtures/spec-provenance/valid.yaml` is its exercised format example.
 
+The spec's top-level `record` key holds the absolute path of the private directive record the spec
+was written from. The tool fails a spec whose record file does not exist, or whose record does not
+contain every `user_words` of the spec once whitespace is collapsed, and the generated document never
+shows the path. The tool reads a relative path from the directory it runs in, as the test fixtures
+do, but a unit spec holds the absolute path: each script's launch check compares it with the
+absolute path in its marked block.
+
 Each item states one requirement or decision with an id, kind, content and one of four sources:
 `transcript` cites session records and verbatim user_words, where an answer through the question
-dialog counts and no other tool result does; `rule` cites a file, line and quote;
+dialog counts, a message the user sent while the session was working counts, and no other tool
+result or queued command does; `rule` cites a file, line and quote;
 `observation` records command, exit, output and date; `derivation` names parent item ids. An item
 asserting that a condition, failure mode or risk exists needs source transcript or observation.
 A reviewer's hypothetical hazard stays a finding until an observation establishes the condition here.
@@ -662,7 +670,9 @@ The root passes the tool's `entries` and `parentSpec` output as `args.entries` a
 unit's private record into the block. The launch check runs the same command in the worktree with
 `--expect` and the JSON of those two launch values, which the script builds and quotes for the
 shell. The tool fails when they differ from the fix list, so the corrections the fixer receives are
-the ones the tool checked.
+the ones the tool checked. The command also carries `--record` with the record path from the block,
+and the tool fails when that path differs from the parent spec's `record`, so the fixer reads the
+record the parent spec was written from.
 
 The read-only scope check runs before any edit and classes every entry as corrective or as a new
 choice, each with a reason and receipts. A new choice is not fixed: it returns as a `new-choice`
@@ -1199,10 +1209,12 @@ changes to the tree the run works on, the worktree from the marked block for the
 fix run and the main checkout for the pre-phase, so the generated document and the cited rule files
 resolve there.
 It then runs `<plugin root>/tools/check-spec.ts` with `--json`, the spec path from `args.specPath`, the
-transcript directory from `args.transcripts`, `--base` with the base commit, and for the main run `--check-render` with the
-generated document. The sentence tells the stage to run that exact command once with the Bash
-tool and return its exit code, stdout, stderr and the proof string printed on success, with no
-interpretation, retry or fix. Its schema requires `exitCode`, `stdout`, `stderr` and `proof`.
+transcript directory from `args.transcripts`, `--base` with the base commit, `--record` with the
+private record from the marked block, and for the main run `--check-render` with the generated
+document. The tool fails when that record path differs from the spec's `record`. The sentence
+tells the stage to run that exact command once with the Bash tool and return its exit code,
+stdout, stderr and the proof string printed on success, with no interpretation, retry or fix. Its
+schema requires `exitCode`, `stdout`, `stderr` and `proof`.
 The script continues when `exitCode` is zero and `proof` is a non-empty string; otherwise the
 stage helper retries up to three times and then throws, quoting stderr. The script refuses at
 once when `args.specPath` does not end in `.yaml`. The script parses nothing from stdout and
@@ -1210,10 +1222,11 @@ inlines no check: the tool's own random string proves the tool ran on the one sp
 prompt names, and the script does nothing else with it.
 
 The fix run's launch check runs the tool's fix-list mode in place of the spec check:
-`--fix-list` with the fix list from `args.fixList`, the transcript directory, `--json`, and
-`--expect` with the entries and the parent spec from the launch values as one JSON argument. The
-script refuses at once when `args.fixList` does not end in `.yaml`, and the tool fails when the
-launch values differ from the list.
+`--fix-list` with the fix list from `args.fixList`, the transcript directory, `--json`, `--record`
+with the parent unit's private record from the marked block, and `--expect` with the entries and
+the parent spec from the launch values as one JSON argument. The script refuses at once when
+`args.fixList` does not end in `.yaml`, and the tool fails when the launch values differ from the
+list or the record path differs from the parent spec's `record`.
 
 ### The pre-phase script
 

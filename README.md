@@ -52,10 +52,14 @@ workflows, and used by `audit-loop`.
   criterion ordinals, `--render <path>` to generate its tracked design document, or
   `--check-render <path>` to check that document before implementation. A passing run
   prints a random `proof` that the workflow scripts' launch check returns to prove the tool ran.
+  A spec names its private directive record in the `record` key, and the tool fails when that
+  file is missing or lacks any quoted `user_words` of the spec. Add `--record <path>` to fail
+  when the record path a script received at launch differs from the spec's `record`.
   Its fix-list mode, `--fix-list <file> --transcripts <session-dir>` in place of the spec, checks
   the fix list of a fix run: it resolves every entry against the parent run's journal and prints
   the same proof. Add `--expect <json>` to fail when the entries and parent spec a fix script
-  received at launch differ from the list.
+  received at launch differ from the list, and `--record <path>` to fail when the record path
+  differs from the parent spec's `record`.
 - **Explicit model selection.** Agent templates carry no model defaults. The orchestrator must
   select an explicit model and effort for every stage at launch, following the applicable project
   policy. Do not rely on template defaults or implicit inheritance.

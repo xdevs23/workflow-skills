@@ -480,15 +480,17 @@ async function fixRun() {
 }
 
 // The launch check, as in the other scripts: the spec tool runs on the fix list in the worktree,
-// resolving every entry against the parent run and comparing the launch values with the list, and
-// the script continues only on a filled proof.
+// resolving every entry against the parent run, comparing the launch values with the list and the
+// private record of the marked block with the parent spec's record, and the script continues only
+// on a filled proof.
 const GATE = { type: 'object', required: ['exitCode', 'stdout', 'stderr', 'proof'], additionalProperties: false,
   properties: { exitCode: { type: 'integer' }, stdout: { type: 'string' }, stderr: { type: 'string' }, proof: { type: 'string' } } }
 // One shell word in single quotes. Each quote inside ends the quoted text, adds an escaped quote
 // and starts it again, so no character of the value reaches the shell unquoted.
 const shellWord = value => "'" + value.replaceAll("'", "'\\''") + "'"
 const GATE_COMMAND = 'cd ' + UNIT.worktree + ' && bun ' + UNIT.pluginRoot + '/tools/check-spec.ts --fix-list ' + UNIT.fixList +
-  ' --transcripts ' + UNIT.transcripts + ' --json --expect ' + shellWord(JSON.stringify({ entries, parentSpec: UNIT.parentSpec }))
+  ' --transcripts ' + UNIT.transcripts + ' --json --record ' + UNIT.privateRecord +
+  ' --expect ' + shellWord(JSON.stringify({ entries, parentSpec: UNIT.parentSpec }))
 const checkGate = r => {
   if (r.exitCode !== 0 || typeof r.proof !== 'string' || !r.proof.trim()) {
     throw new Error('the fix list check did not pass: exit ' + r.exitCode + ', proof ' + JSON.stringify(r.proof) + ', stderr: ' + r.stderr)

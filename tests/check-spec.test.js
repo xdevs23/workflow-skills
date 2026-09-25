@@ -41,7 +41,7 @@ describe('structured unit spec validation', () => {
         source: { transcript: 1, rule: 1, observation: 1, derivation: 2 } },
       criteria: [{ ordinal: 1, id: 'row-order' }, { ordinal: 2, id: 'stream-result' }],
       sha256: createHash('sha256').update(new Uint8Array(bytes)).digest('hex'),
-      nonBlankLines: 40,
+      nonBlankLines: 41,
       proof: expect.stringMatching(/^[0-9a-f]{32}$/),
       spec: join(fixtures, 'valid.yaml'),
     })
@@ -49,7 +49,7 @@ describe('structured unit spec validation', () => {
     expect(plain.exit).toBe(0)
     expect(plain.err).toBe('')
     expect(plain.out.trim().split('\n')).toHaveLength(1)
-    for (const value of ['kind=', 'source=', 'criteria=', 'sha256=', 'nonBlankLines=40', 'proof=', `spec=${join(fixtures, 'valid.yaml')}`]) expect(plain.out).toContain(value)
+    for (const value of ['kind=', 'source=', 'criteria=', 'sha256=', 'nonBlankLines=41', 'proof=', `spec=${join(fixtures, 'valid.yaml')}`]) expect(plain.out).toContain(value)
   })
 
   test('a passing run prints a fresh 32-character hexadecimal proof in both output forms, a failing run none', () => {
@@ -122,6 +122,55 @@ describe('structured unit spec validation', () => {
     invalid(cite(11, 'dialog-answer', 'Stream, in input order', 'Interface'), 'export-request.answers: not found')
   })
 
+  test('a message queued by the user while the session worked counts as user words, a queued command of any other origin never', () => {
+    const cite = (line, uuid, words, answers) => changed(s => {
+      s.items[0].evidence = [{ file: 'session.jsonl', line, uuid }]
+      s.items[0].user_words = words
+      if (answers !== undefined) s.items[0].answers = answers
+    })
+    expect(cite(20, 'queued-human', 'Skip the empty rows.').exit).toBe(0)
+    invalid(cite(20, 'queued-human', 'queued reminder'), 'export-request.user_words: not found in any resolved user message')
+    invalid(cite(20, 'queued-task', 'Skip the empty rows.'), 'export-request.evidence entry 1: transcript reference failed: expected a queued message with the cited uuid')
+    invalid(cite(21, 'queued-task', 'Skip the empty rows.'), 'transcript reference failed: a queued command of origin "task-notification" is not the user\'s words')
+    invalid(cite(22, 'queued-no-origin', 'Skip the empty rows.'), 'transcript reference failed: a queued command of origin null is not the user\'s words')
+    invalid(cite(23, 'other-attachment', 'Skip the empty rows.'), 'transcript reference failed: expected a user record with the cited uuid')
+    // The assistant records after the previous user turn and before the queued message are the ones it replies to.
+    expect(cite(20, 'queued-human', 'Skip the empty rows.', 'Should the export skip empty rows?').exit).toBe(0)
+    invalid(cite(20, 'queued-human', 'Skip the empty rows.', 'Two shapes: (a) stream the rows'),
+      'export-request.answers: not found in the assistant messages the cited words reply to')
+  })
+
+  test('a spec names its private record, which must exist and hold every user_words after collapsing whitespace', () => {
+    invalid(changed(s => { delete s.record }), 'spec.record: missing field')
+    invalid(changed(s => { s.record = ' ' }), 'spec.record: expected a non-empty string')
+    const absent = join(scratch, 'absent-record.md')
+    invalid(changed(s => { s.record = absent }), `spec.record: does not name an existing file: ${absent}`)
+    invalid(changed(s => { s.record = scratch }), `spec.record: does not name an existing file: ${scratch}`)
+    const thin = join(scratch, 'thin-record.md')
+    writeFileSync(thin, '# Record\n\n> Stream the rows.\n')
+    const lacking = changed(s => { s.record = thin })
+    invalid(lacking, 'export-request.user_words: not found in the private record')
+    expect(lacking.err.trim().split('\n')).toHaveLength(1)
+    const wrapped = join(scratch, 'wrapped-record.md')
+    writeFileSync(wrapped, '# Record\n\n> Export the\n  selected   rows.\n')
+    expect(changed(s => { s.record = wrapped }).exit).toBe(0)
+    // Every transcript item is checked, not only the first one that matches.
+    invalid(changed(s => {
+      s.record = wrapped
+      s.items.push({ ...structuredClone(s.items[0]), id: 'stream-request', evidence: [{ file: 'session.jsonl', line: 9, uuid: 'answer' }], user_words: 'Stream the rows.' })
+    }), 'stream-request.user_words: not found in the private record')
+  })
+
+  test('a launch record path that differs from the spec\'s record fails, and an equal one passes', () => {
+    const declared = valid.record
+    expect(fixture('valid', ['--json', '--record', declared]).exit).toBe(0)
+    const other = join(root, declared)
+    const result = fixture('valid', ['--json', '--record', other])
+    invalid(result, `spec.record: differs from the launch record path ${other}`)
+    expect(result.err).not.toContain('proof')
+    invalid(fixture('valid', ['--record', '']), 'Usage')
+  })
+
   test.each([
     ['shape', 'unknown key'], ['transcript', 'expected a user record with the cited uuid'],
     ['rule', 'quote does not match'], ['observation', 'output: missing field'],
@@ -151,6 +200,7 @@ describe('structured unit spec validation', () => {
     ['empty unit', s => { s.unit = ' ' }, 'spec.unit: expected a non-empty string'],
     ['wrong unit type', s => { s.unit = 3 }, 'spec.unit: expected a non-empty string'],
     ['missing summary', s => { delete s.summary }, 'spec.summary: missing field'],
+    ['wrong record type', s => { s.record = [] }, 'spec.record: expected a non-empty string'],
     ['empty summary', s => { s.summary = ' ' }, 'spec.summary: expected a non-empty string'],
     ['wrong summary type', s => { s.summary = [] }, 'spec.summary: expected a non-empty string'],
     ['empty items', s => { s.items = [] }, 'items: expected a non-empty list'],
@@ -265,7 +315,7 @@ describe('structured unit spec validation', () => {
       'Reason: The installed example reports that interface as unavailable.\n\n' +
       '## Acceptance criteria\n\n1. **row-order**: Exported rows retain their input order.\n' +
       '2. **stream-result**: Export uses the stream interface in place of the unavailable batch interface.\n')
-    for (const privateValue of ['session.jsonl', 'request-string', 'user_words', 'evidence', 'batch unavailable', 'rules.txt', 'parents', 'printf']) {
+    for (const privateValue of ['session.jsonl', 'request-string', 'user_words', 'evidence', 'batch unavailable', 'rules.txt', 'parents', 'printf', 'record']) {
       expect(rendered).not.toContain(privateValue)
     }
     const partial = join(scratch, 'partial.md')
@@ -302,7 +352,7 @@ describe('structured unit spec validation', () => {
       const plain = fixture('valid', [option, path])
       expect(plain.exit).toBe(0)
       expect(plain.out).toBe('')
-      for (const value of ['kind=', 'source=', 'criteria=', 'sha256=', 'nonBlankLines=40']) expect(plain.err).toContain(value)
+      for (const value of ['kind=', 'source=', 'criteria=', 'sha256=', 'nonBlankLines=41']) expect(plain.err).toContain(value)
       const json = fixture('valid', [option, path, '--json'])
       expect(json.exit).toBe(0)
       expect(json.err).toBe('')
@@ -440,6 +490,25 @@ describe('fix list validation', () => {
     test('malformed launch values fail', () => {
       invalid(checkList(path, ['--expect', '{"entries": [']), 'launch values: malformed JSON')
       invalid(checkList(path, ['--expect', '[]']), 'launch values: expected a mapping')
+    })
+
+    test('a launch record path must equal the record of the parent spec', () => {
+      const declared = Bun.YAML.parse(readFileSync(parentSpec, 'utf8')).record
+      const passing = checkList(path, ['--json', ...launch(), '--record', declared])
+      expect([passing.exit, passing.err]).toEqual([0, ''])
+      const other = join(root, declared)
+      const result = checkList(path, [...launch(), '--record', other])
+      for (const id of ['return-error', 'close-handle']) {
+        invalid(result, `${id}.parentSpec: the record of the parent spec differs from the launch record path ${other}`)
+      }
+      expect(result.err).not.toContain('proof')
+      const bare = join(scratch, 'parent-without-record.yaml')
+      writeFileSync(bare, 'unit: example-parent\nsummary: A synthetic unit.\nitems: []\n')
+      invalid(changedList(l => { l.parentSpec = bare }, ['--record', declared]), 'return-error.parentSpec: the record of the parent spec differs')
+      const broken = join(scratch, 'parent-malformed.yaml')
+      writeFileSync(broken, 'unit: [unterminated\n')
+      invalid(changedList(l => { l.parentSpec = broken }, ['--record', declared]), 'return-error.parentSpec: unreadable or malformed parent spec')
+      invalid(checkList(path, ['--record', '']), 'Usage')
     })
 
     test('launch values beside a spec argument are a usage error', () => {

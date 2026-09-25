@@ -44,6 +44,7 @@ const dialogText = (input: unknown) => {
     ...(Array.isArray(question.options) ? question.options : []).filter(mapping).flatMap(option => [option.label, option.description])])
     .filter(value => typeof value === 'string').join(' ')
 }
+const withoutReminders = (message: string) => message.replace(/<system-reminder>[\s\S]*?<\/system-reminder>/g, '')
 // The text of a transcript record: a string body, or its text blocks joined, with reminders removed.
 // A tool result block adds nothing.
 const textOf = (record: Mapping) => {
@@ -52,7 +53,19 @@ const textOf = (record: Mapping) => {
   if (typeof content === 'string') message = content
   else if (Array.isArray(content)) message = textBlocks(content)
   else throw new Error('message.content must be a string or block array')
-  return message.replace(/<system-reminder>[\s\S]*?<\/system-reminder>/g, '')
+  return withoutReminders(message)
+}
+// A message sent while the session was working is recorded as an attachment of type
+// queued_command. Commands of other origins are queued the same way, so only the origin kind
+// human marks the user's words.
+const queuedCommand = (record: Mapping): record is Mapping & { attachment: Mapping } =>
+  record.type === 'attachment' && mapping(record.attachment) && record.attachment.type === 'queued_command'
+const queuedText = (record: Mapping & { attachment: Mapping }) => {
+  const { origin, prompt } = record.attachment
+  const kind = mapping(origin) ? origin.kind : undefined
+  if (kind !== 'human') throw new Error(`a queued command of origin ${JSON.stringify(kind ?? null)} is not the user's words`)
+  if (typeof prompt !== 'string') throw new Error('attachment.prompt must be a string')
+  return withoutReminders(prompt)
 }
 // The answers the user chose in the question dialog: the values of the record's structured
 // `toolUseResult.answers` mapping, when `answered` holds the id of a question-dialog call the
@@ -117,20 +130,23 @@ function validator(file: string) {
 }
 
 const usage = 'Usage: bun tools/check-spec.ts <spec.yaml> --transcripts <dir> ' +
-  '[--render <path> | --check-render <path>] [--json] [--base <commit>], ' +
-  'or bun tools/check-spec.ts --fix-list <file> --transcripts <dir> [--json] [--expect <json>]'
+  '[--render <path> | --check-render <path>] [--json] [--base <commit>] [--record <path>], ' +
+  'or bun tools/check-spec.ts --fix-list <file> --transcripts <dir> [--json] [--expect <json>] [--record <path>]'
 
 async function main() {
   if (!Bun.YAML?.parse) throw new Error(`Bun ${minimumBun} or newer is required: Bun.YAML is unavailable`)
   const { values, positionals } = parseArgs({ args: Bun.argv.slice(2), allowPositionals: true,
     options: { transcripts: { type: 'string' }, render: { type: 'string' },
       'check-render': { type: 'string' }, json: { type: 'boolean' }, base: { type: 'string' },
-      'fix-list': { type: 'string' }, expect: { type: 'string' } } })
+      'fix-list': { type: 'string' }, expect: { type: 'string' }, record: { type: 'string' } } })
+  // The private record path a script's launch check passes from its marked block.
+  const launchRecord = values.record
+  if (launchRecord === '') throw new Error(usage)
   if (values['fix-list'] !== undefined) {
     if (positionals.length || !values['fix-list'] || !values.transcripts || values.render || values['check-render'] || values.base) {
       throw new Error(usage)
     }
-    return checkFixList(values['fix-list'], values.transcripts, values.json === true, values.expect)
+    return checkFixList(values['fix-list'], values.transcripts, values.json === true, values.expect, launchRecord)
   }
   if (positionals.length !== 1 || !values.transcripts || (values.render && values['check-render']) || values.expect !== undefined) {
     throw new Error(usage)
@@ -166,9 +182,22 @@ async function main() {
     fail(-1, 'spec', `unreadable or malformed YAML: ${messageOf(error)}`)
   }
   const items: Mapping[] = []
-  if (parsed && shape(spec, ['unit', 'summary', 'items'], -1, 'spec')) {
+  // The text of the private directive record the spec names, once it has been read.
+  let record: string | undefined
+  if (parsed && shape(spec, ['unit', 'summary', 'record', 'items'], -1, 'spec')) {
     stringField(spec, 'unit', -1, 'spec')
     stringField(spec, 'summary', -1, 'spec')
+    if (stringField(spec, 'record', -1, 'spec')) {
+      const path = spec.record as string
+      if (!await isFile(path)) fail(-1, 'spec.record', `does not name an existing file: ${path}`)
+      else {
+        try { record = await readFile(path, 'utf8') }
+        catch (error) { fail(-1, 'spec.record', `unreadable private record: ${messageOf(error)}`) }
+      }
+      if (launchRecord !== undefined && launchRecord !== path) {
+        fail(-1, 'spec.record', `differs from the launch record path ${launchRecord}`)
+      }
+    }
     if (list(spec.items, -1, 'items')) {
       for (const [index, value] of spec.items.entries()) {
         const path = mapping(value) && text(value.id) ? value.id : `item ${index + 1}`
@@ -198,14 +227,14 @@ async function main() {
               try {
                 const input = createReadStream(resolve(values.transcripts!, evidence.file as string), { encoding: 'utf8' })
                 const reader = createInterface({ input, crlfDelay: Infinity })
-                let record: unknown, found = false, current = 0
+                let cited: unknown, found = false, current = 0
                 // The assistant records since the last user record that opened a turn.
                 let replies: Mapping[] = []
                 // The ids of the question-dialog calls in assistant records before the cited one.
                 const asked = new Set<string>()
                 try {
                   for await (const line of reader) {
-                    if (++current === evidence.line) { record = JSON.parse(line); found = true; break }
+                    if (++current === evidence.line) { cited = JSON.parse(line); found = true; break }
                     if (!answersOK && !line.includes(dialogTool)) continue
                     const earlier = parseRecord(line)
                     if (!earlier) continue
@@ -216,11 +245,19 @@ async function main() {
                   }
                 } finally { reader.close(); input.destroy() }
                 if (!found) throw new Error('line is outside the transcript')
-                if (!mapping(record) || record.type !== 'user' || !text(record.uuid) || record.uuid !== evidence.uuid) {
-                  throw new Error('expected a user record with the cited uuid')
+                if (!mapping(cited)) throw new Error('expected a user record with the cited uuid')
+                let said: string[]
+                let dialog = new Set<string>()
+                if (queuedCommand(cited)) {
+                  if (!text(cited.uuid) || cited.uuid !== evidence.uuid) throw new Error('expected a queued message with the cited uuid')
+                  said = [queuedText(cited)]
+                } else {
+                  if (cited.type !== 'user' || !text(cited.uuid) || cited.uuid !== evidence.uuid) {
+                    throw new Error('expected a user record with the cited uuid')
+                  }
+                  dialog = new Set(resultIds(cited).filter(id => asked.has(id)))
+                  said = [textOf(cited), ...dialogAnswers(cited, dialog)]
                 }
-                const dialog = new Set(resultIds(record).filter(id => asked.has(id)))
-                const said = [textOf(record), ...dialogAnswers(record, dialog)]
                 if (wordsOK && said.some(words => words.includes(value.user_words as string))) matched = true
                 if (answersOK) {
                   const quote = normalize(value.answers as string)
@@ -233,6 +270,9 @@ async function main() {
             }
             if (wordsOK && !matched) fail(index, `${path}.user_words`, 'not found in any resolved user message')
             if (answersOK && !answered) fail(index, `${path}.answers`, 'not found in the assistant messages the cited words reply to')
+          }
+          if (wordsOK && record !== undefined && !normalize(record).includes(normalize(value.user_words as string))) {
+            fail(index, `${path}.user_words`, 'not found in the private record')
           }
         } else if (value.source === 'rule') {
           const refOK = reference(value.rule, ['file', 'line'], index, `${path}.rule`)
@@ -374,7 +414,7 @@ async function lastResults(journal: string): Promise<Map<string, unknown>> {
   return new Map([...started].map(([label, key]) => [label, results.get(key)]))
 }
 
-async function checkFixList(file: string, transcripts: string, json: boolean, expected?: string) {
+async function checkFixList(file: string, transcripts: string, json: boolean, expected?: string, launchRecord?: string) {
   const { fail, shape, stringField, list, report } = validator(file)
   let bytes: Buffer | undefined
   let fixList: unknown
@@ -418,6 +458,15 @@ async function checkFixList(file: string, transcripts: string, json: boolean, ex
       eachEntry('parentSpec', `expected an absolute path: ${fixList.parentSpec}`)
     } else if (parentOK && !await isFile(fixList.parentSpec as string)) {
       eachEntry('parentSpec', `does not name an existing file: ${fixList.parentSpec}`)
+    } else if (parentOK && launchRecord !== undefined) {
+      // The fixer reads the parent unit's private record, so the record path the fix script passes
+      // at launch must be the one the parent spec declares.
+      try {
+        const parent: unknown = Bun.YAML.parse(await readFile(fixList.parentSpec as string, 'utf8'))
+        if (!mapping(parent) || parent.record !== launchRecord) {
+          eachEntry('parentSpec', `the record of the parent spec differs from the launch record path ${launchRecord}`)
+        }
+      } catch (error) { eachEntry('parentSpec', `unreadable or malformed parent spec: ${messageOf(error)}`) }
     }
     // The launch values a fix script received: its entries and parentSpec. Each must equal the
     // list's, so the corrections the script hands on are the ones this check resolved.
