@@ -105,7 +105,8 @@ The Record phase uses `agentType:'record'` (`agents/record.md`).
 
 **Agent prompt templates (verbatim base, append-only):** each `agentType` above has its rules in
 `agents/<role>.md`, used VERBATIM as the start of the agent's prompt. The string passed to `agent()`
-is ONLY the task context APPENDED after that base (the tree to audit, the findings to record). Do NOT
+is ONLY the task context APPENDED after that base (the tree to audit, the findings to record, and
+for the record agent the writing-style file it reads, named in the `STYLE` block below). Do NOT
 modify the base rules inline — append only. (A lens verifies its OWN findings in the Verify phase, so
 the verifier reuses the lens `agentType`.)
 
@@ -132,6 +133,11 @@ const LENSES = [
 // Resolve before the run; agents can't compute the current date (see Record below).
 const AUDIT_PATH = './.claude/workflow-skills/AUDIT.md'; // project-local default
 const ROUND_DATE = args?.date ?? 'undated'; // pass today's date in via Workflow args
+const PLUGIN_ROOT = '<plugin root>'; // the plugin directory that holds this skill
+// The record template reads the writing-style file this block names before it writes.
+const STYLE =
+  `REQUIRED: before you write, read the file ${PLUGIN_ROOT}/skills/writing-style/SKILL.md with the Read tool,\n` +
+  `and follow it in every comment, document, commit message and returned string.`;
 
 const FINDINGS_SCHEMA = { /* { findings: [{ lens, file, line, claim, evidence, severity }] } */ };
 const VERDICT_SCHEMA  = { /* { real: boolean, reason, evidence } */ };
@@ -186,9 +192,11 @@ const refuted  = judged.filter(f => !f.verdict.real)
 
 // Phase 3: ONE record agent (agentType:'record') owns AUDIT.md. Its append-only /
 // dedupe / never-rewrite RULES live VERBATIM in agents/record.md; the string below
-// is ONLY the appended task context (the path, the round heading, the findings).
+// is ONLY the appended task context (the writing-style file, the path, the round
+// heading, the findings).
 // The root agent never touches AUDIT.md, never sees findings.
 const summary = await robust(
+  `${STYLE}\n\n` +
   `Audit log path: \`${AUDIT_PATH}\` (relative to the project root — NEVER ~/.claude); ` +
   `create it with an "# Audit Log" header plus an empty "## Refuted" section, making parent ` +
   `dirs, if absent.\n` +
