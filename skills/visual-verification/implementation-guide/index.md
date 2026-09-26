@@ -48,6 +48,12 @@ Determinism comes before tolerance. The window size, pixel density, locale, time
 setting and build values are fixed, and two clean runs of the same scene give zero changed pixels.
 Tolerances are never raised to make a run pass, and nothing is masked.
 
+The comparison stays the strict automatic verdict, even for a change that alters a compatibility
+input on purpose, such as a translation, a fixture, the scene module or a dependency lock. Such a
+change says so in its criterion. When the comparison refuses its pair, the refusal is returned
+together with an evidence sheet of the same two captures, and the reviewers judge the outcome by
+reading the sheet, the two receipts and the after capture's measured checks.
+
 Readiness is observed and never slept. A capture waits for named observations: the screen settled
 with the expected content, every required response delivered, fonts loaded and checked, images
 decoded and the target's geometry stable across consecutive frames. No fixed delay and no global
@@ -131,14 +137,13 @@ Every file is read in full, in this order, before any harness code is written.
    on parsed data, drift checks and consistency of referenced identifiers.
 9. `09-receipts-and-fingerprints.md` covers every field a capture records, the fingerprints before
    and after a run and what a receipt never contains.
-10. `10-comparison-and-reports.md` covers the compatibility check, the field-by-field receipt
-    difference of a declared input change, checkpoint matching, the zero changed-pixel rule, fixed
-    comparison options and self-contained reports.
+10. `10-comparison-and-reports.md` covers the compatibility check, the review of an input changed
+    on purpose through its evidence sheet, receipts and measured checks, checkpoint matching, the
+    zero changed-pixel rule, fixed comparison options and self-contained reports.
 11. `11-diff-coloring.md` covers the local contrast recoloring of the change mask with its numbers,
     colors, legend, known limits and acceptance rules.
 12. `12-evidence-sheet.md` covers the layout, grouping, output and refusal rules of the evidence
-    sheet for a pull request, and the per-variant sheets with their structured results files for a
-    declared input change.
+    sheet for a pull request, and the sheet that the review of an input changed on purpose reads.
 13. `13-optional-real-samples.md` covers the explicit, allowlisted and projected refresh of real
     data samples and their privacy rules.
 14. `14-self-test-suite.md` covers every category of test the harness's own suite has and how the
