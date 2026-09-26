@@ -7,59 +7,63 @@ not run; "not run" is never "pass".
 
 ## The criteria
 
-1. One command and actual paint. From a source tree with committed locks, the documented command
-   starts the application locally with the locked engine and produces nonempty PNGs of real
-   application content and a local HTML report. No backend and no credentials are required. A
-   second clean rendering context yields zero changed pixels for the same synthetic scene and
-   settings.
+1. The harness runs from one command and paints real content. From a source tree with committed
+   locks, the documented command starts the application locally with the locked engine and
+   produces nonempty PNGs of real application content and a local HTML report. No backend and no
+   credentials are required. A second clean rendering context yields zero changed pixels for the
+   same synthetic scene and settings.
 
-2. Component and page fidelity. The first component scene renders each of its modes with the real
-   styling, locale and shipped font faces. The first page scene uses the real entry, route
-   protection, state store, screen, section components and shell. The evidence includes the loaded
-   font checks, the route, visible fixture text and contextual screenshots, with no module or store
-   doubles and no copied presentation.
+2. Component and page scenes render with full fidelity. The first component scene renders each of
+   its modes with the real styling, locale and shipped font faces. The first page scene uses the
+   real entry, route protection, state store, screen, section components and shell. The evidence
+   includes the loaded font checks, the route, visible fixture text and contextual screenshots, with
+   no module or store doubles and no copied presentation.
 
-3. Known regression detected. The regression proof below holds.
+3. The harness detects a known regression. The regression proof below holds.
 
-4. Initial scope present. Every initial scene and every one of its named checkpoints executes. A
-   diagnostic scene uses the application's real display model and screen context, and its clipping
-   and overlap measurements are reported as observed, without fixing the product and without calling
-   an observed defect acceptable.
+4. The initial scope is present. Every initial scene and every one of its named checkpoints
+   executes. A diagnostic scene uses the application's real display model and screen context, and
+   its clipping and overlap measurements are reported as observed, without fixing the product and
+   without calling an observed defect acceptable.
 
-5. Interactions proven. Component interactions such as adding, editing and removing rows produce
-   exactly the expected model values, with existing content unchanged as a side effect. Page actions
-   exercise the real unsaved, save and discard behavior, send exactly the intercepted narrow patch,
-   and reload from the scripted saved response. Scenes with fixture variants, such as an absent and
-   a stored value, show exactly the expected selected choices. No save reaches a service.
+5. Interactions are proven. Component interactions such as adding, editing and removing rows
+   produce exactly the expected model values, with existing content unchanged as a side effect.
+   Page actions exercise the real unsaved, save and discard behavior, send exactly the intercepted
+   narrow patch, and reload from the scripted saved response. A discard is checked to return the
+   screen to its state before the edit. Scenes with fixture variants, such as an absent and a stored
+   value, show exactly the expected selected choices: with an absent value no choice is selected
+   and no default appears, and selecting one choice leaves exactly that choice selected. No save
+   reaches a service.
 
 6. Readiness is explicit. Captures wait for response consumption, the correct interface state,
    fonts, image decoding where applicable and stable geometry. A long-held subscription is
    deliberately held and listed as held. No arbitrary sleep and no swallowed readiness timeout
    produces a passing capture.
 
-7. Missing-response failure. Removing the main record's response, and independently a shell
-   response and a required help text entry, each fails with the precise missing response or fixture
-   key, even when the application normally catches the request error. No screenshot of such a run is
-   labeled successful. A local scene that serves a page without one of its shell responses fails at
-   its first checkpoint naming that request, although the application swallows the read error.
+7. A missing response fails the run. Removing the main record's response, and independently a
+   shell response and a required help text entry, each fails with the precise missing response or
+   fixture key, even when the application normally catches the request error. No screenshot of such
+   a run is labeled successful. A local scene that serves a page without one of its shell responses
+   fails at its first checkpoint naming that request, although the application swallows the read
+   error.
    Omitted sample files fail before navigation, and incomplete refresh output cannot be selected.
 
-8. No external escape. Negative probes attempt an external image, a data request, a navigation, a
-   frame and a socket, an unexpected local data request and a service worker registration or the
-   platform's equivalent background worker. External traffic and background workers cannot run,
-   and every attempted unexpected network use fails visibly. The verification checks that no
-   request was forwarded and no service connection happened. Synthetic rendering succeeds with an
-   empty credential environment.
+8. Nothing escapes to an external system. Negative probes attempt an external image, a data
+   request, a navigation, a frame and a socket, an unexpected local data request and a service
+   worker registration or the platform's equivalent background worker. External traffic and
+   background workers cannot run, and every attempted unexpected network use fails visibly. The
+   verification checks that no request was forwarded and no service connection happened. Synthetic
+   rendering succeeds with an empty credential environment.
 
 9. Fixture and schema drift fails. Wrong envelopes or types, a missing consumed field, inconsistent
    identifiers, an outdated projection version and an extra request each fail. Static fixture checks
    use the application's real types. Validation reports keep offline compatibility apart from
    unverified live compatibility.
 
-10. Frozen dependencies. Receipts identify both locks, the runtime, the engine and the loaded fonts.
-    A lock mismatch refuses execution without rewriting any file or downloading a different engine.
-    Runs of the regression proof use the same engine, dependencies and fonts, and incompatible
-    receipts fail the comparison explicitly.
+10. The dependencies are frozen. Receipts identify both locks, the runtime, the engine and the
+    loaded fonts. A lock mismatch refuses execution without rewriting any file or downloading a
+    different engine. Runs of the regression proof use the same engine, dependencies and fonts, and
+    incompatible receipts fail the comparison explicitly.
 
 11. Comparison is useful and strict. Named matching checkpoints produce side-by-side PNGs,
     difference PNGs, changed-pixel counts and independent geometry and behavior verdicts. Missing
@@ -67,7 +71,7 @@ not run; "not run" is never "pass".
     visible nonzero results. No automatic approval, overwrite, silent tolerance increase or external
     report resource exists.
 
-12. Artifact and source hygiene. Every generated artifact, temporary source export and engine
+12. Artifact and source hygiene holds. Every generated artifact, temporary source export and engine
     profile is in the harness directory inside the project cache, the location
     `workflow-skills:local-cache` defines, and synthetic fixtures alone are tracked. Receipts
     include fingerprints of dirty and untracked relevant inputs, without machine paths or secrets. A
@@ -77,10 +81,10 @@ not run; "not run" is never "pass".
     leave version control references, the index and application files unchanged, including
     translation files and existing tests.
 
-13. Production behavior preserved. Harness entries, fixtures and the engine and image libraries are
-    absent from the production import graph and the production output. Production routes, start-up,
-    styles and data behavior are unchanged. The verification runs the project's full check bare and
-    inspects the production artifact for harness inclusion.
+13. Production behavior is preserved. Harness entries, fixtures and the engine and image libraries
+    are absent from the production import graph and the production output. Production routes,
+    start-up, styles and data behavior are unchanged. The verification runs the project's full
+    check bare and inspects the production artifact for harness inclusion.
 
 14. Optional real samples are honest and safe. Without credentials or a selection, the refresh fails
     with actionable instructions and captures never invoke it. With separately authorized run-time
