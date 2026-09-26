@@ -33,7 +33,9 @@ extra query parameter, a different method and a write body with an extra field e
 
 The compatibility tests check that a different scene, a different compatibility group such as a
 different lock, and an empty checkpoint set each fail the compatibility check, while a different
-source revision is accepted.
+source revision is accepted. They also check that a missing checkpoint, one present in one capture
+and absent from the other, fails the comparison, next to the incompatible inputs and the different
+dimensions of the zero tolerance tests.
 
 The zero tolerance tests check that comparing an image with itself gives zero changed pixels, one
 changed pixel gives a count of one, and images of different dimensions fail with a dimensions

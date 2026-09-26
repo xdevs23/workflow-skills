@@ -84,7 +84,8 @@ one muted line. The sheet ends with the legend of part 11.
 
 The sheet is rendered as an HTML page with a fixed width, fixed colors and a locked font, opened in
 the locked rendering engine at a pixel density of one, and captured as one full-page screenshot.
-Every image is embedded; nothing external loads.
+Every image is embedded; nothing external loads. A successful run prints the written sheet's path
+relative to the working directory.
 
 ## Numbers and their reasons
 

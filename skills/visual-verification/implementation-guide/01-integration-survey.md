@@ -101,6 +101,11 @@ adaptation points from that list. Where a later part finds a consumer or fact th
 survey is corrected first and the part continues from the corrected table; no consumer is hidden to
 keep the table short.
 
+The list of responses the survey derives from reading the code, for the shell and for each surface,
+is stated in the contract as a manifest to verify during implementation. It is never claimed as a
+request trace observed in the rendering engine, since no scene has run when the survey is written,
+and start-up can still reveal a consumer the reading missed, as part 5 describes.
+
 The table is the survey's only tracked output. Notes and exploratory reads made while filling it in
 stay in the harness directory inside the project cache, the location `workflow-skills:local-cache`
 defines.
