@@ -29,6 +29,20 @@ const invalid = (result, message) => {
   expect(result.out).toBe('')
   expect(result.err).toContain(message)
 }
+const validRecord = Bun.YAML.parse(await Bun.file(join(fixtures, 'record.yaml')).text())
+const entryOf = (record, id) => structuredClone(record.entries.find(entry => entry.id === id))
+// A record written to the scratch directory, as YAML or, given a string, as that text.
+const recordFile = record => {
+  const path = join(scratch, `${serial++}-record.yaml`)
+  writeFileSync(path, typeof record === 'string' ? record : Bun.YAML.stringify(record))
+  return path
+}
+// The valid spec checked against an edited copy of the valid record.
+const withRecord = edit => {
+  const record = structuredClone(validRecord)
+  edit(record, id => record.entries.find(entry => entry.id === id))
+  return changed(s => { s.record = recordFile(record) })
+}
 
 describe('structured unit spec validation', () => {
   test('valid example covers every kind and source, with ordered integer ordinals and byte hash', async () => {
@@ -140,25 +154,41 @@ describe('structured unit spec validation', () => {
       'export-request.answers: not found in the assistant messages the cited words reply to')
   })
 
-  test('a spec names its private record, which must exist and hold every user_words after collapsing whitespace', () => {
+  test('a spec names its private record, which must exist and hold every user_words in the words of an entry after collapsing whitespace', () => {
     invalid(changed(s => { delete s.record }), 'spec.record: missing field')
     invalid(changed(s => { s.record = ' ' }), 'spec.record: expected a non-empty string')
-    const absent = join(scratch, 'absent-record.md')
+    const absent = join(scratch, 'absent-record.yaml')
     invalid(changed(s => { s.record = absent }), `spec.record: does not name an existing file: ${absent}`)
     invalid(changed(s => { s.record = scratch }), `spec.record: does not name an existing file: ${scratch}`)
-    const thin = join(scratch, 'thin-record.md')
-    writeFileSync(thin, '# Record\n\n> Stream the rows.\n')
-    const lacking = changed(s => { s.record = thin })
-    invalid(lacking, 'export-request.user_words: not found in the private record')
+    const thin = { unit: 'example-export', entries: [entryOf(validRecord, 'stream-choice')] }
+    const lacking = changed(s => { s.record = recordFile(thin) })
+    invalid(lacking, 'export-request.user_words: not found in the words of any private record entry')
     expect(lacking.err.trim().split('\n')).toHaveLength(1)
-    const wrapped = join(scratch, 'wrapped-record.md')
-    writeFileSync(wrapped, '# Record\n\n> Export the\n  selected   rows.\n')
-    expect(changed(s => { s.record = wrapped }).exit).toBe(0)
+    const wrapped = { unit: 'example-export', entries: [{ ...entryOf(validRecord, 'export-request'), words: 'Export the\n  selected   rows.' }] }
+    expect(changed(s => { s.record = recordFile(wrapped) }).exit).toBe(0)
     // Every transcript item is checked.
     invalid(changed(s => {
-      s.record = wrapped
+      s.record = recordFile(wrapped)
       s.items.push({ ...structuredClone(s.items[0]), id: 'stream-request', evidence: [{ file: 'session.jsonl', line: 9, uuid: 'answer' }], user_words: 'Stream the rows.' })
-    }), 'stream-request.user_words: not found in the private record')
+    }), 'stream-request.user_words: not found in the words of any private record entry')
+  })
+
+  test('user words and the reply window come only from messages the user wrote', () => {
+    const cite = (line, uuid, words, answers) => changed(s => {
+      s.items[0].evidence = [{ file: 'session.jsonl', line, uuid }]
+      s.items[0].user_words = words
+      if (answers !== undefined) s.items[0].answers = answers
+    })
+    const failed = 'export-request.evidence entry 1: transcript reference failed: '
+    invalid(cite(26, 'notification', 'Approved, go ahead.'), failed + 'a user record of origin "task-notification" is not the user\'s words')
+    invalid(cite(27, 'meta', 'Approved, go ahead.'), failed + 'an injected meta record is not the user\'s words')
+    invalid(cite(28, 'command-stdout', 'Approved, go ahead.'), failed + 'a user record of origin null is not the user\'s words')
+    invalid(cite(3, 'assistant-record', 'Export the selected rows.'), failed + 'expected a user record with the cited uuid')
+    // The notification, the meta record and the command output between the proposal and the
+    // approval open no turn, so the proposal is still what the approval replies to.
+    expect(cite(29, 'approval', 'Approved, go ahead.', 'group the rows by month').exit).toBe(0)
+    invalid(cite(29, 'approval', 'Approved, go ahead.', 'Two shapes: (a) stream the rows'),
+      'export-request.answers: not found in the assistant messages the cited words reply to')
   })
 
   test('a launch record path that differs from the spec\'s record fails, and an equal one passes', () => {
@@ -367,6 +397,112 @@ describe('structured unit spec validation', () => {
     expect(result.exitCode).not.toBe(0)
     expect(result.stderr.toString()).toContain('Bun 1.2.21 or newer is required: Bun.YAML is unavailable')
     expect(await Bun.file(join(root, 'README.md')).text()).toContain('Bun 1.2.21 or newer')
+  })
+})
+
+describe('private directive record validation', () => {
+  test('every fixture that names a record names a YAML record', async () => {
+    const named = []
+    for (const directory of ['tests/fixtures/spec-provenance', 'tests/fixtures/fix-list']) {
+      for (const file of new Bun.Glob('*.yaml').scanSync({ cwd: join(root, directory) })) {
+        // malformed.yaml is not YAML by design, so it is the one fixture read no further.
+        let parsed
+        try { parsed = Bun.YAML.parse(await Bun.file(join(root, directory, file)).text()) } catch { continue }
+        if (parsed?.record !== undefined) named.push([file, parsed.record])
+      }
+    }
+    expect(named.length).toBeGreaterThan(9)
+    for (const [file, record] of named) expect([file, record]).toEqual([file, 'tests/fixtures/spec-provenance/record.yaml'])
+  })
+
+  test('the valid record passes with context, answers and approved text in the replies and in a named file', () => {
+    const fields = validRecord.entries.flatMap(entry => Object.keys(entry))
+    for (const field of ['context', 'answers', 'approves']) expect(fields).toContain(field)
+    for (const entry of validRecord.entries) expect([entry.id, entry.context.length > 0]).toEqual([entry.id, true])
+    expect(validRecord.entries.some(entry => typeof entry.approves === 'string')).toBe(true)
+    expect(validRecord.entries.some(entry => entry.approves?.file)).toBe(true)
+    const result = withRecord(() => {})
+    expect([result.exit, result.err]).toEqual([0, ''])
+  })
+
+  test.each([
+    ['an unknown top-level key', r => { r.notes = 'The user prefers streaming.' }, 'record.notes: unknown key'],
+    ['an unknown entry key', (r, e) => { e('export-request').note = 'Said twice.' }, 'record.export-request.note: unknown key'],
+    ['an unknown approves key', (r, e) => { e('monthly-plan').approves.note = 'x' }, 'record.monthly-plan.approves.note: unknown key'],
+    ['an unknown context key', (r, e) => { e('stream-choice').context[0].note = 'x' }, 'record.stream-choice.context entry 1.note: unknown key'],
+    ['a missing unit', r => { delete r.unit }, 'record.unit: missing field'],
+    ['missing words', (r, e) => { delete e('export-request').words }, 'record.export-request.words: missing field'],
+    ['a missing uuid', (r, e) => { delete e('export-request').uuid }, 'record.export-request.uuid: missing field'],
+    ['a missing sha256', (r, e) => { delete e('monthly-plan').approves.sha256 }, 'record.monthly-plan.approves.sha256: missing field'],
+    ['a missing context quote', (r, e) => { delete e('stream-choice').context[0].quote }, 'record.stream-choice.context entry 1.quote: missing field'],
+    ['an entry without context', (r, e) => { delete e('export-request').context }, 'record.export-request.context: missing field'],
+    ['an entry with an empty context list', (r, e) => { e('export-request').context = [] }, 'record.export-request.context: expected a non-empty list'],
+    ['context that is not a list', (r, e) => { e('schedule').context = 'How often should the export run?' }, 'record.schedule.context: expected a non-empty list'],
+    ['empty entries', r => { r.entries = [] }, 'record.entries: expected a non-empty list'],
+    ['an id that is not kebab-case', (r, e) => { e('export-request').id = 'Export request' }, 'expected a kebab-case id'],
+    ['a duplicate id', (r, e) => { e('schedule').id = 'interface' }, 'record.interface.id: duplicate id interface'],
+    ['a line that is not a positive integer', (r, e) => { e('export-request').line = 0 }, 'record.export-request.line: expected a positive integer'],
+    ['a short sha256', (r, e) => { e('monthly-plan').approves.sha256 = 'c299a2f7' }, 'record.monthly-plan.approves.sha256: expected 64 lowercase hexadecimal digits'],
+    ['approves of another type', (r, e) => { e('stream-choice').approves = ['(a) stream the rows'] }, 'record.stream-choice.approves: expected the approved text, or a mapping of text, file and sha256'],
+  ])('%s fails the record shape', (name, edit, message) => invalid(withRecord(edit), message))
+
+  test('a record of the wrong top-level shape or in Markdown fails naming the format', () => {
+    const format = 'record: expected a YAML directive record: a mapping with exactly the keys unit and entries'
+    for (const content of [Bun.YAML.stringify(validRecord.entries), 'The user wants the selected rows exported.\n',
+      '# Private directive record\n\n## The request, line 1\n> Export the selected rows.\n\nThe user repeated this twice.\n']) {
+      const result = changed(s => { s.record = recordFile(content) })
+      invalid(result, format)
+      expect(result.err).not.toContain('user_words')
+    }
+    // A mapping with any other set of top-level keys names the format beside the key it concerns.
+    for (const [edit, detail] of [[r => { r.notes = 'The user prefers streaming.' }, 'record.notes: unknown key'],
+      [r => { delete r.entries }, 'record.entries: missing field']]) {
+      const result = withRecord(edit)
+      invalid(result, format)
+      expect(result.err).toContain(detail)
+    }
+  })
+
+  test('words must stand in the cited message, which the user wrote, typed or queued', () => {
+    invalid(withRecord((r, e) => { e('export-request').words = 'Export every row.' }), 'record.export-request.words: not found in the cited user message')
+    expect(withRecord((r, e) => { e('export-request').words = 'Export the\n selected rows.' }).exit).toBe(0)
+    const cite = (line, uuid) => withRecord((r, e) => { Object.assign(e('monthly-report'), { line, uuid }) })
+    const failed = 'record.monthly-report: transcript reference failed: '
+    invalid(cite(26, 'notification'), failed + 'a user record of origin "task-notification" is not the user\'s words')
+    invalid(cite(27, 'meta'), failed + 'an injected meta record is not the user\'s words')
+    invalid(cite(28, 'command-stdout'), failed + 'a user record of origin null is not the user\'s words')
+    invalid(cite(3, 'assistant-record'), failed + 'expected a user record with the cited uuid')
+    invalid(cite(21, 'queued-task'), failed + 'a queued command of origin "task-notification" is not the user\'s words')
+    invalid(cite(13, 'command-output'), 'record.monthly-report.words: not found in the cited user message')
+  })
+
+  test('each context quote must stand in the record it cites', () => {
+    invalid(withRecord((r, e) => { e('stream-choice').context[1].quote = 'Three shapes.' }),
+      'record.stream-choice.context entry 2.quote: not found in the cited record')
+    invalid(withRecord((r, e) => { e('stream-choice').context[1].uuid = 'answer' }),
+      'record.stream-choice.context entry 2: transcript reference failed: expected a record with the cited uuid')
+    // A context quote may come from any record, including the question text of a dialog call.
+    expect(withRecord((r, e) => { e('interface').context = [{ file: 'session.jsonl', line: 10, uuid: 'dialog-call', quote: 'Rows leave one at a time.' }] }).exit).toBe(0)
+  })
+
+  test('answers and approved text must stand in the assistant messages the words reply to', () => {
+    const unreplied = 'not found in the assistant messages the cited words reply to'
+    invalid(withRecord((r, e) => { e('stream-choice').answers = 'Should the export stream or batch?' }), 'record.stream-choice.answers: ' + unreplied)
+    invalid(withRecord((r, e) => { e('stream-choice').approves = '(b) batch them and stream nothing' }), 'record.stream-choice.approves: ' + unreplied)
+    invalid(withRecord((r, e) => { e('monthly-report').approves = 'Plan the monthly report.' }), 'record.monthly-report.approves: ' + unreplied)
+  })
+
+  test('approved text from a named file passes with a matching sha256 and fails with a mismatching one', () => {
+    const plan = 'tests/fixtures/spec-provenance/plan.html'
+    const digest = createHash('sha256').update(readFileSync(join(root, plan))).digest('hex')
+    expect(entryOf(validRecord, 'monthly-plan').approves.sha256).toBe(digest)
+    invalid(withRecord((r, e) => { e('monthly-plan').approves.sha256 = 'f'.repeat(64) }), `record.monthly-plan.approves.sha256: does not match the file ${plan}`)
+    invalid(withRecord((r, e) => { e('monthly-plan').approves.text = 'Total each quarter.' }), `record.monthly-plan.approves.text: not found in the file ${plan}`)
+    // The file must be one an assistant message the words reply to names.
+    const copy = join(scratch, 'plan-copy.html')
+    writeFileSync(copy, readFileSync(join(root, plan)))
+    invalid(withRecord((r, e) => { e('monthly-plan').approves.file = copy }), 'record.monthly-plan.approves.file: not named in the assistant messages the cited words reply to')
+    invalid(withRecord((r, e) => { e('monthly-plan').approves.file = join(scratch, 'absent-plan.html') }), 'record.monthly-plan.approves.file: unreadable')
   })
 })
 

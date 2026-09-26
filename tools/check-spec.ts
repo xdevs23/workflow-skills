@@ -76,20 +76,85 @@ const dialogAnswers = (record: Mapping, answered: Set<string>): string[] => {
   const { answers } = record.toolUseResult
   return mapping(answers) ? Object.values(answers).filter(text) : []
 }
-// A user record that carries a text block and is not a tool result opens a turn: the assistant
-// records after it and before the cited user record are the ones the cited words reply to.
-const opensTurn = (record: Mapping) => {
-  const content = mapping(record.message) ? record.message.content : undefined
-  if (typeof content === 'string') return true
-  return Array.isArray(content) && content.some(block => mapping(block) && block.type === 'text') &&
-    !content.some(block => mapping(block) && block.type === 'tool_result')
-}
+const toolResult = (record: Mapping) => blocksOf(record).some(block => mapping(block) && block.type === 'tool_result')
+const humanOrigin = (value: unknown) => mapping(value) && value.kind === 'human'
+// A message the user wrote: a typed user record, or a queued command, of origin human. A task
+// notification, an injected meta record, command output and a tool result are none. Such a message
+// opens a turn: the assistant records after it and before a cited record are the ones the cited
+// words reply to.
+const writtenByUser = (record: Mapping) => queuedCommand(record) ? humanOrigin(record.attachment.origin)
+  : record.type === 'user' && record.isMeta !== true && humanOrigin(record.origin) && !toolResult(record)
 const parseRecord = (line: string): Mapping | undefined => {
   try { const record = JSON.parse(line); return mapping(record) ? record : undefined } catch { return undefined }
 }
 const kebabCase = /^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$/
 // The random string only a passing run prints, so a stage that returns it has run this tool.
 const freshProof = () => Buffer.from(crypto.getRandomValues(new Uint8Array(16))).toString('hex')
+const sha256Of = (bytes: Buffer) => createHash('sha256').update(bytes).digest('hex')
+
+// The record at a line of a transcript, with what came before it: the ids of the question-dialog
+// calls asked earlier and, when withReplies is set, the assistant records since the last message
+// the user wrote.
+async function readCited(transcripts: string, reference: Mapping, withReplies: boolean) {
+  const input = createReadStream(resolve(transcripts, reference.file as string), { encoding: 'utf8' })
+  const reader = createInterface({ input, crlfDelay: Infinity })
+  let cited: unknown, found = false, current = 0
+  let replies: Mapping[] = []
+  const asked = new Set<string>()
+  try {
+    for await (const line of reader) {
+      if (++current === reference.line) { cited = JSON.parse(line); found = true; break }
+      if (!withReplies && !line.includes(dialogTool)) continue
+      const earlier = parseRecord(line)
+      if (!earlier) continue
+      if (earlier.type === 'assistant') {
+        for (const call of dialogCalls(earlier)) asked.add(call.id as string)
+        replies.push(earlier)
+      } else if (writtenByUser(earlier)) replies = []
+    }
+  } finally { reader.close(); input.destroy() }
+  if (!found) throw new Error('line is outside the transcript')
+  return { cited, replies, asked }
+}
+
+// The words of the user a cited record holds, and the ids of the question-dialog calls it answers.
+// A tool result holds them only as the answers to a dialog call asked before it; a record that is
+// not a message the user wrote throws.
+function userWords(cited: unknown, uuid: string, asked: Set<string>) {
+  if (!mapping(cited)) throw new Error('expected a user record with the cited uuid')
+  if (queuedCommand(cited)) {
+    if (!text(cited.uuid) || cited.uuid !== uuid) throw new Error('expected a queued message with the cited uuid')
+    return { said: [queuedText(cited)], dialog: new Set<string>() }
+  }
+  if (cited.type !== 'user' || !text(cited.uuid) || cited.uuid !== uuid) {
+    throw new Error('expected a user record with the cited uuid')
+  }
+  if (toolResult(cited)) {
+    const dialog = new Set(resultIds(cited).filter(id => asked.has(id)))
+    return { said: dialogAnswers(cited, dialog), dialog }
+  }
+  if (cited.isMeta === true) throw new Error("an injected meta record is not the user's words")
+  if (!humanOrigin(cited.origin)) {
+    const kind = mapping(cited.origin) ? cited.origin.kind : undefined
+    throw new Error(`a user record of origin ${JSON.stringify(kind ?? null)} is not the user's words`)
+  }
+  return { said: [textOf(cited)], dialog: new Set<string>() }
+}
+
+// The whitespace-collapsed text of each assistant record the cited words reply to, with the question
+// text of the dialog calls the cited record answers.
+const replyTexts = (replies: Mapping[], dialog: Set<string>) => replies.map(reply => {
+  try {
+    return normalize([textOf(reply),
+      ...dialogCalls(reply).filter(call => dialog.has(call.id as string)).map(call => dialogText(call.input))].join(' '))
+  } catch { return '' }
+})
+
+// The text a context quote is checked against: a message's text with the question text of its
+// dialog calls, or the prompt of a queued command.
+const recordText = (record: Mapping) => queuedCommand(record)
+  ? (typeof record.attachment.prompt === 'string' ? withoutReminders(record.attachment.prompt) : '')
+  : [textOf(record), ...dialogCalls(record).map(call => dialogText(call.input))].join(' ')
 
 // The shape checks a spec and a fix list share. Each failure is recorded with the position of the
 // item it concerns, so the report keeps file order, and with a path that names the item.
@@ -120,13 +185,109 @@ function validator(file: string) {
     }
     return true
   }
+  // A mapping's file and line, as a transcript or rule reference holds them.
+  const located = (value: Mapping, item: number, path: string) => {
+    const fileOK = stringField(value, 'file', item, path)
+    if (Object.hasOwn(value, 'line') && !lineNumber(value.line)) {
+      fail(item, `${path}.line`, 'expected a positive integer')
+    }
+    return fileOK && lineNumber(value.line)
+  }
+  const reference = (value: unknown, fields: string[], item: number, path: string): value is Mapping =>
+    shape(value, fields, item, path) && located(value, item, path)
   // Prints every violation in item order and fails the run; returns whether there were any.
   const report = () => {
     for (const violation of violations.sort((a, b) => a.item - b.item)) console.error(violation.message.replace(/[\r\n]+/g, ' '))
     if (violations.length) process.exitCode = 1
     return violations.length > 0
   }
-  return { fail, shape, stringField, list, report }
+  return { fail, shape, stringField, list, located, reference, report }
+}
+
+// A private directive record holds the user's words and quoted context and nothing else, so every
+// key is fixed and every quote is checked against the transcript record it cites.
+const recordFormat = 'expected a YAML directive record: a mapping with exactly the keys unit and entries'
+const recordKeys = ['unit', 'entries']
+const entryRequired = ['id', 'file', 'line', 'uuid', 'words', 'context']
+const entryOptional = ['answers', 'approves']
+const approvalFields = ['text', 'file', 'sha256']
+const sha256Hex = /^[0-9a-f]{64}$/
+
+// Checks the private directive record a spec names and returns the words of its entries, or
+// nothing when the record is not of that format. Its violations come before those of any item.
+async function checkRecord(content: string, transcripts: string, { fail, shape, stringField, list, located, reference }: ReturnType<typeof validator>) {
+  let record: unknown
+  try { record = Bun.YAML.parse(content) } catch (error) { fail(-1, 'record', `${recordFormat}: ${messageOf(error)}`); return }
+  if (!mapping(record)) { fail(-1, 'record', recordFormat); return }
+  const keys = Object.keys(record)
+  if (keys.length !== recordKeys.length || !recordKeys.every(key => keys.includes(key))) fail(-1, 'record', recordFormat)
+  shape(record, recordKeys, -1, 'record')
+  stringField(record, 'unit', -1, 'record')
+  if (!list(record.entries, -1, 'record.entries')) return
+  const words: string[] = [], ids = new Set<string>()
+  for (const [index, entry] of record.entries.entries()) {
+    const path = `record.${mapping(entry) && text(entry.id) ? entry.id : `entry ${index + 1}`}`
+    if (!shape(entry, entryRequired, -1, path, entryOptional)) continue
+    if (stringField(entry, 'id', -1, path)) {
+      if (!kebabCase.test(entry.id as string)) fail(-1, `${path}.id`, 'expected a kebab-case id')
+      if (ids.has(entry.id as string)) fail(-1, `${path}.id`, `duplicate id ${entry.id}`)
+      ids.add(entry.id as string)
+    }
+    const refOK = located(entry, -1, path)
+    const uuidOK = stringField(entry, 'uuid', -1, path)
+    const wordsOK = stringField(entry, 'words', -1, path)
+    if (wordsOK) words.push(entry.words as string)
+    const answersOK = Object.hasOwn(entry, 'answers') && stringField(entry, 'answers', -1, path)
+    // The approved plan text: a string standing in the assistant messages the words reply to, or a
+    // mapping of the text with a file one of those messages names and that file's sha256.
+    let approves: Mapping | undefined
+    if (Object.hasOwn(entry, 'approves')) {
+      const at = `${path}.approves`, value = entry.approves
+      if (typeof value === 'string') {
+        if (stringField(entry, 'approves', -1, path)) approves = { text: value }
+      } else if (!mapping(value)) fail(-1, at, 'expected the approved text, or a mapping of text, file and sha256')
+      else if (shape(value, approvalFields, -1, at) && approvalFields.every(field => stringField(value, field, -1, at))) {
+        if (sha256Hex.test(value.sha256 as string)) approves = value
+        else fail(-1, `${at}.sha256`, 'expected 64 lowercase hexadecimal digits')
+      }
+    }
+    if (Object.hasOwn(entry, 'context') && list(entry.context, -1, `${path}.context`)) {
+      for (const [position, quote] of entry.context.entries()) {
+        const at = `${path}.context entry ${position + 1}`
+        if (!reference(quote, ['file', 'line', 'uuid', 'quote'], -1, at)) continue
+        if (!stringField(quote, 'uuid', -1, at) || !stringField(quote, 'quote', -1, at)) continue
+        try {
+          const { cited } = await readCited(transcripts, quote, false)
+          if (!mapping(cited) || cited.uuid !== quote.uuid) throw new Error('expected a record with the cited uuid')
+          if (!normalize(recordText(cited)).includes(normalize(quote.quote as string))) fail(-1, `${at}.quote`, 'not found in the cited record')
+        } catch (error) { fail(-1, at, `transcript reference failed: ${messageOf(error)}`) }
+      }
+    }
+    if (!refOK || !uuidOK) continue
+    try {
+      const { cited, replies, asked } = await readCited(transcripts, entry, answersOK || approves !== undefined)
+      const { said, dialog } = userWords(cited, entry.uuid as string, asked)
+      if (wordsOK && !said.some(message => normalize(message).includes(normalize(entry.words as string)))) {
+        fail(-1, `${path}.words`, 'not found in the cited user message')
+      }
+      const texts = replyTexts(replies, dialog)
+      const replied = (quote: string) => texts.some(reply => reply.includes(normalize(quote)))
+      const unreplied = 'not found in the assistant messages the cited words reply to'
+      if (answersOK && !replied(entry.answers as string)) fail(-1, `${path}.answers`, unreplied)
+      if (approves && approves.file === undefined && !replied(approves.text as string)) fail(-1, `${path}.approves`, unreplied)
+      else if (approves && approves.file !== undefined) {
+        const plan = approves.file as string
+        if (!replied(plan)) fail(-1, `${path}.approves.file`, 'not named in the assistant messages the cited words reply to')
+        let bytes: Buffer | undefined
+        try { bytes = await readFile(plan) } catch (error) { fail(-1, `${path}.approves.file`, `unreadable: ${messageOf(error)}`) }
+        if (bytes && sha256Of(bytes) !== approves.sha256) fail(-1, `${path}.approves.sha256`, `does not match the file ${plan}`)
+        else if (bytes && !normalize(bytes.toString('utf8')).includes(normalize(approves.text as string))) {
+          fail(-1, `${path}.approves.text`, `not found in the file ${plan}`)
+        }
+      }
+    } catch (error) { fail(-1, path, `transcript reference failed: ${messageOf(error)}`) }
+  }
+  return words
 }
 
 const usage = 'Usage: bun tools/check-spec.ts <spec.yaml> --transcripts <dir> ' +
@@ -162,15 +323,8 @@ async function main() {
     return readFile(file, 'utf8')
   }
   const specPath = positionals[0]
-  const { fail, shape, stringField, list, report } = validator(specPath)
-  const reference = (value: unknown, fields: string[], item: number, path: string): value is Mapping => {
-    if (!shape(value, fields, item, path)) return false
-    const fileOK = stringField(value, 'file', item, path)
-    if (Object.hasOwn(value, 'line') && !lineNumber(value.line)) {
-      fail(item, `${path}.line`, 'expected a positive integer')
-    }
-    return fileOK && lineNumber(value.line)
-  }
+  const check = validator(specPath)
+  const { fail, shape, stringField, list, reference, report } = check
   let bytes: Buffer | undefined
   let spec: unknown
   let parsed = false
@@ -182,8 +336,9 @@ async function main() {
     fail(-1, 'spec', `unreadable or malformed YAML: ${messageOf(error)}`)
   }
   const items: Mapping[] = []
-  // The text of the private directive record the spec names, once it has been read.
-  let record: string | undefined
+  // The words of the entries of the private directive record the spec names, once it has been
+  // checked and found to be of the record format.
+  let recordWords: string[] | undefined
   if (parsed && shape(spec, ['unit', 'summary', 'record', 'items'], -1, 'spec')) {
     stringField(spec, 'unit', -1, 'spec')
     stringField(spec, 'summary', -1, 'spec')
@@ -191,8 +346,10 @@ async function main() {
       const path = spec.record as string
       if (!await isFile(path)) fail(-1, 'spec.record', `does not name an existing file: ${path}`)
       else {
-        try { record = await readFile(path, 'utf8') }
+        let content: string | undefined
+        try { content = await readFile(path, 'utf8') }
         catch (error) { fail(-1, 'spec.record', `unreadable private record: ${messageOf(error)}`) }
+        if (content !== undefined) recordWords = await checkRecord(content, values.transcripts!, check)
       }
       if (launchRecord !== undefined && launchRecord !== path) {
         fail(-1, 'spec.record', `differs from the launch record path ${launchRecord}`)
@@ -225,54 +382,19 @@ async function main() {
               const uuidOK = mapping(evidence) && stringField(evidence, 'uuid', index, at)
               if (!refOK || !uuidOK) continue
               try {
-                const input = createReadStream(resolve(values.transcripts!, evidence.file as string), { encoding: 'utf8' })
-                const reader = createInterface({ input, crlfDelay: Infinity })
-                let cited: unknown, found = false, current = 0
-                // The assistant records since the last user record that opened a turn.
-                let replies: Mapping[] = []
-                // The ids of the question-dialog calls in assistant records before the cited one.
-                const asked = new Set<string>()
-                try {
-                  for await (const line of reader) {
-                    if (++current === evidence.line) { cited = JSON.parse(line); found = true; break }
-                    if (!answersOK && !line.includes(dialogTool)) continue
-                    const earlier = parseRecord(line)
-                    if (!earlier) continue
-                    if (earlier.type === 'assistant') {
-                      for (const call of dialogCalls(earlier)) asked.add(call.id as string)
-                      replies.push(earlier)
-                    } else if (earlier.type === 'user' && opensTurn(earlier)) replies = []
-                  }
-                } finally { reader.close(); input.destroy() }
-                if (!found) throw new Error('line is outside the transcript')
-                if (!mapping(cited)) throw new Error('expected a user record with the cited uuid')
-                let said: string[]
-                let dialog = new Set<string>()
-                if (queuedCommand(cited)) {
-                  if (!text(cited.uuid) || cited.uuid !== evidence.uuid) throw new Error('expected a queued message with the cited uuid')
-                  said = [queuedText(cited)]
-                } else {
-                  if (cited.type !== 'user' || !text(cited.uuid) || cited.uuid !== evidence.uuid) {
-                    throw new Error('expected a user record with the cited uuid')
-                  }
-                  dialog = new Set(resultIds(cited).filter(id => asked.has(id)))
-                  said = [textOf(cited), ...dialogAnswers(cited, dialog)]
-                }
+                const { cited, replies, asked } = await readCited(values.transcripts!, evidence, answersOK)
+                const { said, dialog } = userWords(cited, evidence.uuid as string, asked)
                 if (wordsOK && said.some(words => words.includes(value.user_words as string))) matched = true
-                if (answersOK) {
-                  const quote = normalize(value.answers as string)
-                  // A reply's text includes the question text of the dialog calls the cited record answers.
-                  const replyText = (reply: Mapping) => [textOf(reply),
-                    ...dialogCalls(reply).filter(call => dialog.has(call.id as string)).map(call => dialogText(call.input))].join(' ')
-                  if (replies.some(reply => { try { return normalize(replyText(reply)).includes(quote) } catch { return false } })) answered = true
-                }
+                const quote = answersOK ? normalize(value.answers as string) : ''
+                if (answersOK && replyTexts(replies, dialog).some(reply => reply.includes(quote))) answered = true
               } catch (error) { fail(index, at, `transcript reference failed: ${messageOf(error)}`) }
             }
             if (wordsOK && !matched) fail(index, `${path}.user_words`, 'not found in any resolved user message')
             if (answersOK && !answered) fail(index, `${path}.answers`, 'not found in the assistant messages the cited words reply to')
           }
-          if (wordsOK && record !== undefined && !normalize(record).includes(normalize(value.user_words as string))) {
-            fail(index, `${path}.user_words`, 'not found in the private record')
+          const recorded = (words: string) => normalize(words).includes(normalize(value.user_words as string))
+          if (wordsOK && recordWords !== undefined && !recordWords.some(recorded)) {
+            fail(index, `${path}.user_words`, 'not found in the words of any private record entry')
           }
         } else if (value.source === 'rule') {
           const refOK = reference(value.rule, ['file', 'line'], index, `${path}.rule`)
@@ -359,7 +481,7 @@ async function main() {
       source: Object.fromEntries(sources.map(source => [source, items.filter(item => item.source === source).length])),
     },
     criteria: items.filter(item => item.kind === 'criterion').map((item, index) => ({ ordinal: index + 1, id: item.id })),
-    sha256: createHash('sha256').update(bytes!).digest('hex'),
+    sha256: sha256Of(bytes!),
     nonBlankLines: nonBlankLines(bytes!.toString('utf8')),
     proof: freshProof(),
     spec: specPath,
@@ -525,7 +647,7 @@ async function checkFixList(file: string, transcripts: string, json: boolean, ex
     entries: entries.map(({ value }) => Object.fromEntries(entryFields.map(field => [field, value[field]]))),
     run,
     parentSpec,
-    sha256: createHash('sha256').update(bytes!).digest('hex'),
+    sha256: sha256Of(bytes!),
     proof: freshProof(),
     fixList: file,
   }
