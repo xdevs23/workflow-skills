@@ -205,7 +205,8 @@ function validator(file: string) {
     if (violations.length) process.exitCode = 1
     return violations.length > 0
   }
-  return { fail, shape, stringField, list, located, reference, report }
+  const count = () => violations.length
+  return { fail, shape, stringField, list, located, reference, report, count }
 }
 
 // A private directive record holds the user's words and quoted context and nothing else, so every
@@ -217,9 +218,13 @@ const entryOptional = ['answers', 'approves']
 const approvalFields = ['text', 'file', 'sha256']
 const sha256Hex = /^[0-9a-f]{64}$/
 
-// Checks the private directive record a spec names and returns the words of its entries, or
-// nothing when the record is not of that format. Its violations come before those of any item.
-async function checkRecord(content: string, transcripts: string, { fail, shape, stringField, list, located, reference }: ReturnType<typeof validator>) {
+// Text the user approved in the transcript record that holds the approval.
+type Approval = { file: string, line: number, uuid: string, text: string }
+
+// Checks the private directive record a spec names and returns the words of its entries, with the
+// approved text of every entry that passed each check, or nothing when the record is not of that
+// format. Its violations come before those of any item.
+async function checkRecord(content: string, transcripts: string, { fail, shape, stringField, list, located, reference, count }: ReturnType<typeof validator>) {
   let record: unknown
   try { record = Bun.YAML.parse(content) } catch (error) { fail(-1, 'record', `${recordFormat}: ${messageOf(error)}`); return }
   if (!mapping(record)) { fail(-1, 'record', recordFormat); return }
@@ -228,8 +233,9 @@ async function checkRecord(content: string, transcripts: string, { fail, shape, 
   shape(record, recordKeys, -1, 'record')
   stringField(record, 'unit', -1, 'record')
   if (!list(record.entries, -1, 'record.entries')) return
-  const words: string[] = [], ids = new Set<string>()
+  const words: string[] = [], ids = new Set<string>(), approvals: Approval[] = []
   for (const [index, entry] of record.entries.entries()) {
+    const failures = count()
     const path = `record.${mapping(entry) && text(entry.id) ? entry.id : `entry ${index + 1}`}`
     if (!shape(entry, entryRequired, -1, path, entryOptional)) continue
     if (stringField(entry, 'id', -1, path)) {
@@ -290,8 +296,11 @@ async function checkRecord(content: string, transcripts: string, { fail, shape, 
         }
       }
     } catch (error) { fail(-1, path, `transcript reference failed: ${messageOf(error)}`) }
+    if (approves && count() === failures) {
+      approvals.push({ file: entry.file as string, line: entry.line as number, uuid: entry.uuid as string, text: approves.text as string })
+    }
   }
-  return words
+  return { words, approvals }
 }
 
 const usage = 'Usage: bun tools/check-spec.ts <spec.yaml> --transcripts <dir> ' +
@@ -341,8 +350,9 @@ async function main() {
   }
   const items: Mapping[] = []
   // The words of the entries of the private directive record the spec names, once it has been
-  // checked and found to be of the record format.
+  // checked and found to be of the record format, and the approved text of its verified entries.
   let recordWords: string[] | undefined
+  let approvals: Approval[] = []
   if (parsed && shape(spec, ['unit', 'summary', 'record', 'items'], -1, 'spec')) {
     stringField(spec, 'unit', -1, 'spec')
     stringField(spec, 'summary', -1, 'spec')
@@ -353,7 +363,8 @@ async function main() {
         let content: string | undefined
         try { content = await readFile(path, 'utf8') }
         catch (error) { fail(-1, 'spec.record', `unreadable private record: ${messageOf(error)}`) }
-        if (content !== undefined) recordWords = await checkRecord(content, values.transcripts!, check)
+        const checked = content === undefined ? undefined : await checkRecord(content, values.transcripts!, check)
+        if (checked) ({ words: recordWords, approvals } = checked)
       }
       if (launchRecord !== undefined && launchRecord !== path) {
         fail(-1, 'spec.record', `differs from the launch record path ${launchRecord}`)
@@ -391,6 +402,11 @@ async function main() {
                 if (wordsOK && said.some(words => words.includes(value.user_words as string))) matched = true
                 const quote = answersOK ? normalize(value.answers as string) : ''
                 if (answersOK && replyTexts(replies, dialog).some(reply => reply.includes(quote))) answered = true
+                // Approved text from a file stands in no reply, so it counts once the record entry
+                // that cites the same transcript record has verified it.
+                const approvedHere = (approval: Approval) => approval.uuid === evidence.uuid && approval.line === evidence.line &&
+                  resolve(values.transcripts!, approval.file) === resolve(values.transcripts!, evidence.file as string)
+                if (answersOK && approvals.some(approval => approvedHere(approval) && normalize(approval.text).includes(quote))) answered = true
               } catch (error) { fail(index, at, `transcript reference failed: ${messageOf(error)}`) }
             }
             if (wordsOK && !matched) fail(index, `${path}.user_words`, 'not found in any resolved user message')
