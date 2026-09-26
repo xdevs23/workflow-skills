@@ -67,14 +67,27 @@ const queuedText = (record: Mapping & { attachment: Mapping }) => {
   if (typeof prompt !== 'string') throw new Error('attachment.prompt must be a string')
   return withoutReminders(prompt)
 }
-// The answers the user chose in the question dialog: the values of the record's structured
-// `toolUseResult.answers` mapping, when `answered` holds the id of a question-dialog call the
-// record's tool result answers. The tool result's content holds the question text and the host's
-// own wording around the answers, so it never counts as the user's words.
+// The host's placeholder in `answers` for a question the user answered with a typed note alone.
+const notesOnly = '(notes only)'
+// The words the user gave in the question dialog, when `answered` holds the id of a
+// question-dialog call the record's tool result answers: the values of the record's structured
+// `toolUseResult.answers` mapping and the `notes` of each entry of its `annotations` mapping, which
+// is keyed by the question. The answer to a question whose annotation carries notes is the host's
+// placeholder when it reads `(notes only)`, so that value is dropped. The `preview` of an annotation
+// is the option's preview text. The tool result's content holds the question text and the host's
+// own wording around the answers. Neither counts as the user's words.
 const dialogAnswers = (record: Mapping, answered: Set<string>): string[] => {
   if (!answered.size || !mapping(record.toolUseResult)) return []
-  const { answers } = record.toolUseResult
-  return mapping(answers) ? Object.values(answers).filter(text) : []
+  const { answers, annotations } = record.toolUseResult
+  const annotated: Mapping = mapping(annotations) ? annotations : {}
+  const noted = (question: string) => {
+    const annotation = Object.hasOwn(annotated, question) ? annotated[question] : undefined
+    return mapping(annotation) && text(annotation.notes)
+  }
+  const chosen = mapping(answers) ? Object.entries(answers)
+    .filter(([question, answer]) => !(answer === notesOnly && noted(question))).map(([, answer]) => answer) : []
+  const typed = Object.values(annotated).filter(mapping).map(annotation => annotation.notes)
+  return [...chosen, ...typed].filter(text)
 }
 const toolResult = (record: Mapping) => blocksOf(record).some(block => mapping(block) && block.type === 'tool_result')
 const humanOrigin = (value: unknown) => mapping(value) && value.kind === 'human'

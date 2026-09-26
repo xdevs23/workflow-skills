@@ -136,6 +136,25 @@ describe('structured unit spec validation', () => {
     invalid(cite(11, 'dialog-answer', 'Stream, in input order', 'Interface'), 'export-request.answers: not found')
   })
 
+  test('a note typed on a dialog answer counts as user words, and the host placeholder and an option preview never do', () => {
+    const cite = (line, uuid, words, answers) => changed(s => {
+      s.items[0].evidence = [{ file: 'session.jsonl', line, uuid }]
+      s.items[0].user_words = words
+      if (answers !== undefined) s.items[0].answers = answers
+    })
+    const unmatched = 'export-request.user_words: not found in any resolved user message'
+    const failed = 'export-request.evidence entry 1: transcript reference failed: '
+    expect(cite(34, 'note-answer', 'Keep the ids, drop the audit columns').exit).toBe(0)
+    expect(cite(34, 'note-answer', 'Keep the ids, drop the audit columns', 'Which columns should the export keep?').exit).toBe(0)
+    invalid(cite(34, 'note-answer', '(notes only)'), unmatched)
+    invalid(cite(34, 'note-answer', 'A stray annotation'), unmatched)
+    invalid(cite(36, 'preview-answer', '1,Ada'), unmatched)
+    // A note counts only where an answer would.
+    invalid(cite(37, 'early-note', 'A note before its question'), unmatched)
+    invalid(cite(39, 'meta-note', 'A note in a meta record'), failed + 'an injected meta record is not the user\'s words')
+    invalid(cite(40, 'notification-note', 'A note in a notification'), failed + 'a user record of origin "task-notification" is not the user\'s words')
+  })
+
   test('a message queued by the user while the session worked counts as user words, a queued command of any other origin never', () => {
     const cite = (line, uuid, words, answers) => changed(s => {
       s.items[0].evidence = [{ file: 'session.jsonl', line, uuid }]
@@ -490,6 +509,23 @@ describe('private directive record validation', () => {
     // The genuine dialog answers carry no origin and still pass.
     expect(withRecord(() => {}).exit).toBe(0)
     expect(withRecord((r, e) => { e('schedule').words = 'Nightly' }).exit).toBe(0)
+  })
+
+  test('a note typed on a dialog answer backs a record entry, and the host placeholder and an option preview never do', () => {
+    const cite = (line, uuid, words, answers) => withRecord((r, e) => {
+      const entry = Object.assign(e('columns'), { line, uuid, words, answers })
+      if (answers === undefined) delete entry.answers
+    })
+    const unfound = 'record.columns.words: not found in the cited user message'
+    const failed = 'record.columns: transcript reference failed: '
+    expect(cite(34, 'note-answer', 'Keep the ids', 'Which columns should the export keep?').exit).toBe(0)
+    expect(cite(36, 'preview-answer', 'Quote every field', 'Which format should the export write?').exit).toBe(0)
+    expect(cite(36, 'preview-answer', 'CSV').exit).toBe(0)
+    invalid(cite(34, 'note-answer', '(notes only)'), unfound)
+    invalid(cite(36, 'preview-answer', '1,Ada'), unfound)
+    invalid(cite(37, 'early-note', 'A note before its question'), unfound)
+    invalid(cite(39, 'meta-note', 'A note in a meta record'), failed + 'an injected meta record is not the user\'s words')
+    invalid(cite(40, 'notification-note', 'A note in a notification'), failed + 'a user record of origin "task-notification" is not the user\'s words')
   })
 
   test('each context quote must stand in the record it cites', () => {

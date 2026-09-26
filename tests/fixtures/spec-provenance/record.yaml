@@ -32,6 +32,14 @@ entries:
     words: Nightly, after the backup
     context:
       - { file: session.jsonl, line: 14, uuid: dialog-call-blocks, quote: How often should the export run? }
+  - id: columns
+    file: session.jsonl
+    line: 34
+    uuid: note-answer
+    words: Keep the ids, drop the audit columns
+    context:
+      - { file: session.jsonl, line: 33, uuid: columns-call, quote: Which columns should the export keep? }
+    answers: Which columns should the export keep?
   - id: skip-empty
     file: session.jsonl
     line: 20
