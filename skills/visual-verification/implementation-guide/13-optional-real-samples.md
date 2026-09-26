@@ -86,9 +86,9 @@ never records credentials, and neither does any receipt.
 
 ## Using a sample
 
-A capture selects a sample by label. The refresh is a separate process, and the only one that is
-allowed to use the network: the scene verb, the compare verb and a cache miss never invoke it, so a
-missing sample never triggers a refresh. The reader checks
+A capture selects a sample by label. The refresh is a separate process that is explicitly allowed to
+use the network: the scene verb, the compare verb and a cache miss never invoke it, so a missing
+sample never triggers a refresh. The reader checks
 the label, the manifest's version, that the sample is complete, that the response set's hash matches
 the manifest, the validation against the scene's expected set with the sample's main record
 substituted, and the mixed provenance. The flow is: supply the origin and the credential, run the
