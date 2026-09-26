@@ -97,13 +97,12 @@ with `file`, `line`, `uuid` and `quote`), and optionally `answers` (the question
 the words reply to) and `approves` (the plan text the user approved: a string when it stands in the
 assistant messages the words reply to, or a mapping of `text`, `file` and `sha256` when it stands
 in a file one of those messages names). The tool verifies every quote against the record it cites. `words` must come from a message the user
-wrote, typed or queued, or a question-dialog answer, a note the user typed on the answer included,
-never a task notification, an injected meta
-record, command output or another tool result, and a named file's sha256 must match. The tool fails
-on an unknown key, on a record that is not YAML of this shape, a Markdown record included, and on
-a spec holding a `user_words` that no entry's `words` contain once whitespace is collapsed. Text the
-user approved counts as the user's verbatim directive, and a spec item built on an approval quotes
-the approved text in its `answers` field.
+wrote, typed or queued, or a question-dialog answer, including a note the user typed on it, never a
+task notification, an injected meta record, command output or another tool result, and a named
+file's sha256 must match. The tool fails on an unknown key, on a record that is not YAML of this
+shape, a Markdown record included, and on a spec holding a `user_words` that no entry's `words`
+contain once whitespace is collapsed. Text the user approved counts as the user's verbatim
+directive, and a spec item built on an approval quotes the approved text in its `answers` field.
 
 Each item has a unique kebab-case `id`, a `kind` (requirement, criterion, rejected or boundary),
 non-empty Markdown `content` stating one decision or requirement, and `source`. A rejected item
@@ -117,12 +116,11 @@ also has `reason`. Use exactly the fields of its source kind:
   (`AskUserQuestion`) can be cited: its record is the tool result that answers the dialog call, and
   `answers` can quote the question, an option label or an option description of that call. A note
   the user typed on the answer can be cited from the same record. The host's placeholder
-  `(notes only)`, which stands in for the answer when only a note was given, and the preview of an
-  option cannot be cited. A
-  message the user sent while the session was working can be cited too: its record is an
-  `attachment` whose `attachment.type` is `queued_command` and whose `attachment.origin.kind` is
-  `human`, with the text in `attachment.prompt`, and `answers` resolves before it as before a user
-  record. A queued command of any other origin is refused. No other
+  `(notes only)`, which stands in for the answer when the user gave only a note, and the preview of
+  an option cannot be cited. A message the user sent while the session was working can be cited too:
+  its record is an `attachment` whose `attachment.type` is `queued_command` and whose
+  `attachment.origin.kind` is `human`, with the text in `attachment.prompt`, and `answers` resolves
+  before it as before a user record. A queued command of any other origin is refused. No other
   tool result can be cited, because its content is output of a command or a program. A task
   notification, an injected meta record and command output cannot be cited either: a typed
   message counts only with origin `human`, and `answers` resolves in the assistant records since
