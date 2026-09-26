@@ -27,6 +27,7 @@ Then the skills appear in the skill list and each has a matching slash command (
 | `immaculate-spec-writing` | Research → find-gaps → verify convergence loop for a fully factual, complete spec. |
 | `resume-interrupted-run` | Recover a workflow run that was stopped while agents were mid-flight: hand each interrupted seat its own prior transcript, leave every completed prompt byte-identical, resume near-losslessly. |
 | `audit-loop` | Continuously audit a codebase through 8 lenses, append verified findings to `AUDIT.md` — plus a `Refuted` ledger of killed claims, so nothing is rediscovered every round. |
+| `visual-verification` | Check a change to any rendered user interface, in a browser, a native mobile or desktop toolkit or a terminal, with a reproducible visual harness: real screenshots, controlled data, measured checks and strict before and after comparisons. A project without a harness adopts one from the implementation guide bundled with the skill. |
 | `local-cache` | Define the project cache, the ignored directory for files not meant for the repository, and what reading and writing stages may put there. |
 | `todo-md` | Keep the todo record, the untracked `TODO.md` that holds open work and where each item stands. |
 
