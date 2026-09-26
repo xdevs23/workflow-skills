@@ -53,9 +53,15 @@ workflows, and used by `audit-loop`.
   criterion ordinals, `--render <path>` to generate its tracked design document, or
   `--check-render <path>` to check that document before implementation. A passing run
   prints a random `proof` that the workflow scripts' launch check returns to prove the tool ran.
-  A spec names its private directive record in the `record` key, and the tool fails when that
-  file is missing or lacks any quoted `user_words` of the spec. Add `--record <path>` to fail
-  when the record path a script received at launch differs from the spec's `record`.
+  A spec names its private directive record in the `record` key. The record is a YAML file of
+  `unit` and `entries`, each entry quoting the user's `words` with the transcript `file`, `line`
+  and `uuid` they stand at and a non-empty list of quoted `context` from the surrounding
+  conversation, and optionally the `answers` they reply to and the plan text they approve in
+  `approves`. The tool fails when that file is missing, is not of that format, holds a quote the
+  cited transcript record or plan file does not bear out, cites words from a record the user did
+  not write, or lacks any quoted `user_words` of the spec in the words of an entry. Add
+  `--record <path>` to fail when the record path a script received at launch differs from the
+  spec's `record`.
   Its fix-list mode, `--fix-list <file> --transcripts <session-dir>` in place of the spec, checks
   the fix list of a fix run: it resolves every entry against the parent run's journal and prints
   the same proof. Add `--expect <json>` to fail when the entries and parent spec a fix script

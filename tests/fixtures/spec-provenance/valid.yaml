@@ -4,7 +4,7 @@ summary: |
   A synthetic unit that exports selected rows.
 
   It exercises every kind and every source.
-record: tests/fixtures/spec-provenance/record.md
+record: tests/fixtures/spec-provenance/record.yaml
 items:
   - id: export-request
     kind: requirement

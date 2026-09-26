@@ -1,12 +1,12 @@
-{"type":"user","uuid":"request-string","message":{"content":"<system-reminder>private reminder text</system-reminder>Export the selected rows."}}
-{"type":"user","uuid":"request-blocks","message":{"content":[{"type":"text","text":"Export the "},{"type":"image","text":"ignored image text"},{"type":"text","text":"selected rows.<system-reminder>second reminder</system-reminder>"}]}}
+{"type":"user","uuid":"request-string","message":{"content":"<system-reminder>private reminder text</system-reminder>Export the selected rows."},"origin":{"kind":"human"}}
+{"type":"user","uuid":"request-blocks","message":{"content":[{"type":"text","text":"Export the "},{"type":"image","text":"ignored image text"},{"type":"text","text":"selected rows.<system-reminder>second reminder</system-reminder>"}]},"origin":{"kind":"human"}}
 {"type":"assistant","uuid":"assistant-record","message":{"content":"Export the selected rows."}}
 {"type":"user","message":{"content":"Export the selected rows."}}
 not json
-{"type":"user","uuid":"question-turn","message":{"content":"Should the export stream or batch?"}}
+{"type":"user","uuid":"question-turn","message":{"content":"Should the export stream or batch?"},"origin":{"kind":"human"}}
 {"type":"user","uuid":"tool-turn","message":{"content":[{"type":"tool_result","tool_use_id":"t1","content":"ok"}]}}
 {"type":"assistant","uuid":"offer","message":{"content":[{"type":"text","text":"Two shapes: (a) stream the rows, (b) batch them."},{"type":"text","text":" Which one?"}]}}
-{"type":"user","uuid":"answer","message":{"content":"Stream the rows."}}
+{"type":"user","uuid":"answer","message":{"content":"Stream the rows."},"origin":{"kind":"human"}}
 {"type":"assistant","uuid":"dialog-call","message":{"content":[{"type":"text","text":"One question."},{"type":"tool_use","id":"ask-1","name":"AskUserQuestion","input":{"questions":[{"question":"Which interface should the export use?","header":"Interface","multiSelect":false,"options":[{"label":"Stream","description":"Rows leave one at a time."},{"label":"Batch","description":"Rows leave together."}]}]}}]}}
 {"type":"user","uuid":"dialog-answer","message":{"content":[{"type":"tool_result","tool_use_id":"ask-1","content":"The user answered: \"Which interface should the export use?\"=\"Stream, in input order\""}]},"toolUseResult":{"questions":[{"question":"Which interface should the export use?","header":"Interface","options":[{"label":"Stream","description":"Rows leave one at a time."},{"label":"Batch","description":"Rows leave together."}],"multiSelect":false}],"answers":{"Which interface should the export use?":"Stream, in input order"},"annotations":{}}}
 {"type":"assistant","uuid":"command-call","message":{"content":[{"type":"tool_use","id":"run-1","name":"Bash","input":{"command":"printf 'Stream, in input order'"}}]}}
@@ -15,9 +15,15 @@ not json
 {"type":"user","uuid":"dialog-answer-blocks","message":{"content":[{"type":"tool_result","tool_use_id":"ask-2","content":[{"type":"text","text":"The user answered: \"How often should the export run?\"=\"Nightly, after the backup\""}]}]},"toolUseResult":{"questions":[{"question":"How often should the export run?","header":"Schedule","options":[{"label":"Nightly","description":"Once after midnight."}],"multiSelect":false}],"answers":{"How often should the export run?":"Nightly, after the backup"},"annotations":{}}}
 {"type":"user","uuid":"early-answer","message":{"content":[{"type":"tool_result","tool_use_id":"ask-3","content":"The user answered: \"Asked too late?\"=\"An answer before its question\""}]},"toolUseResult":{"questions":[{"question":"Asked too late?","header":"Late","options":[],"multiSelect":false}],"answers":{"Asked too late?":"An answer before its question"},"annotations":{}}}
 {"type":"assistant","uuid":"late-call","message":{"content":[{"type":"tool_use","id":"ask-3","name":"AskUserQuestion","input":{"questions":[{"question":"Asked too late?","header":"Late","multiSelect":false,"options":[]}]}}]}}
-{"type":"user","uuid":"queue-turn","message":{"content":"Start the export."}}
+{"type":"user","uuid":"queue-turn","message":{"content":"Start the export."},"origin":{"kind":"human"}}
 {"type":"assistant","uuid":"queue-offer","message":{"content":[{"type":"text","text":"Should the export skip empty rows?"}]}}
 {"type":"attachment","uuid":"queued-human","attachment":{"type":"queued_command","prompt":"<system-reminder>queued reminder</system-reminder>Skip the empty rows.","origin":{"kind":"human"}}}
 {"type":"attachment","uuid":"queued-task","attachment":{"type":"queued_command","prompt":"Skip the empty rows.","origin":{"kind":"task-notification"}}}
 {"type":"attachment","uuid":"queued-no-origin","attachment":{"type":"queued_command","prompt":"Skip the empty rows."}}
 {"type":"attachment","uuid":"other-attachment","attachment":{"type":"file","prompt":"Skip the empty rows.","origin":{"kind":"human"}}}
+{"type":"user","uuid":"report-turn","origin":{"kind":"human"},"message":{"content":"Plan the monthly report."}}
+{"type":"assistant","uuid":"report-offer","message":{"content":[{"type":"text","text":"Proposal: group the rows by month and total each month. The whole plan is in tests/fixtures/spec-provenance/plan.html. Shall I go ahead?"}]}}
+{"type":"user","uuid":"notification","origin":{"kind":"task-notification"},"message":{"content":"<task-notification><summary>Approved, go ahead.</summary></task-notification>"}}
+{"type":"user","uuid":"meta","isMeta":true,"message":{"content":[{"type":"text","text":"Approved, go ahead."}]}}
+{"type":"user","uuid":"command-stdout","message":{"content":"<local-command-stdout>Approved, go ahead.</local-command-stdout>"}}
+{"type":"user","uuid":"approval","origin":{"kind":"human"},"message":{"content":"Approved, go ahead."}}
