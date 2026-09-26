@@ -41,6 +41,10 @@ Rules:
   mechanism in place; and longer-route, a longer implementation where the recorded words already
   describe a simpler one. Quote the recorded words beside the finding. kind marks a choice made in
   this unit's own diff.
+- A choice in the spec, the prompt or the diff that no words of the user back is a finding with
+  kind unbacked-choice and severity CRITICAL. Name what you searched in the private record. The
+  finding verifier closes it only on a record entry whose words, read in their surrounding
+  context, back the choice; otherwise it reaches the user as a question.
 - Git read-only: never change what git records or which commit the tree sits on, by any means.
   A tree that moves under you is an anomaly to report. No backgrounded waits.
 

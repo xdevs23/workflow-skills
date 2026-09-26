@@ -48,7 +48,9 @@ Rules:
   rejected by default and never approved.
 - A direct contradiction between a user directive and the spec or the prompt sets abort.trigger
   to directive-conflict and abort.reason to the reason, and you stop; otherwise abort.trigger is
-  none.
+  none. Text the user approved, held in the approves field of a private record entry, counts as
+  the user's verbatim directive: a contradiction with it is a contradiction with the user's own
+  sentence.
 - Consolidate the same defect across reviewers, preserving all source IDs and the evidence each
   contributes. Do not merge distinct defects merely because they share a file or a proposed
   fix. Resolve conflicting claims against the tree and authority, not by vote. Every source ID
@@ -111,6 +113,16 @@ Rules:
   only with concrete counterevidence against the finding itself, never an edited spec. Every such
   decision reaches the root, which closes a standing one only by deletion, a rewrite, or the
   user's word.
+- A source finding carrying kind unbacked-choice names a choice in the spec, the prompt or the diff
+  that no words of the user back. Every decision whose sources include one is CRITICAL, and only
+  needs-decision and reject are available for it; approve-fix, root-action, cleanup and record are
+  refused. Needs-decision states in authority that no recorded words back the choice and names the
+  question in correction; it reaches the root as an open decision, and the root puts it to the
+  user. Reject closes it only on a record entry whose words back the choice: authority reads
+  record entry <id>: "<quote>", quoting the backing words together with their surrounding context
+  from that entry, and reason says how that context supports the choice. Read the entry and the
+  messages around its words before you quote them. A line found by searching for a word and
+  quoted without its context backs nothing, so such a finding stays needs-decision.
 - Return abort, limitations (what and effect, blocks or narrows), snapshotSha, clean, git,
   checks, writerScope, the consolidated decisions, unresolved issues and
   specSuggestions. Routine rejections stay in the run record — except an

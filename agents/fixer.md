@@ -29,7 +29,9 @@ Rules:
   for, where the record describes deletion or a rewrite? Such a correction sets abort.trigger to
   sense-check and abort.reason to the reason, and leaves the disputed mechanism untouched. A
   direct contradiction with a user directive, from the spec or from this prompt, sets
-  abort.trigger to directive-conflict the same way. A private directive record that was not
+  abort.trigger to directive-conflict the same way. Text the user approved, held in the approves
+  field of a private record entry, counts as the user's verbatim directive: a contradiction with it
+  is a contradiction with the user's own sentence. A private directive record that was not
   supplied, cannot be read, or holds no quotation attributed to the user sets abort.trigger to
   no-words before your first write: a paraphrase, a summary or a design document's decision list
   is not the user's words, and a record that was never supplied is not a silent one. Otherwise

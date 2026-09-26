@@ -13,7 +13,7 @@ const UNIT = {
   worktree: '<isolated worktree>',
   specPath: args.specPath,               // the unit spec under the main checkout, passed at launch; ends in .yaml
   transcripts: args.transcripts,         // the session transcript directory, passed at launch
-  privateRecord: '<main checkout>/.cache/directives/<unit>.md',   // where workflow-skills:local-cache puts directive records
+  privateRecord: '<main checkout>/.cache/directives/<unit>.yaml',   // where workflow-skills:local-cache puts directive records
   generatedDocument: 'docs/<unit>.md',   // rendered from the spec before launch, so it exists at launch
   pluginRoot: '<plugin root>',           // the directory holding tools/check-spec.ts
   checkCommand: '<the check command>',   // writers only, run bare after the last write
@@ -86,6 +86,8 @@ const AUTHORITY = [                    // authority-aware seats only; quality us
   'Second, WRITING SEATS ONLY: a failed sense check (trigger sense-check; implementer before any edit,',
   'fixer before its first write, as their templates define). Otherwise abort.trigger is none.',
   'A READING SEAT reports the same observation as a finding with kind band-aid or longer-route.',
+  'A READING STAGE reports a choice in the spec, this prompt or the diff that no words of the user back as a finding',
+  'with kind unbacked-choice.',
   'A tree not yet satisfying the spec is normal: report ordinary findings, never a hard flag.',
   'Run checks BARE. Never pipe through head/grep: it hides the error.',
   'NEVER end a turn waiting on a backgrounded check; your returned object IS the deliverable.',
@@ -101,6 +103,8 @@ const AUTHORITY = [                    // authority-aware seats only; quality us
   'Implement the spec AS WRITTEN. Suggested spec edits do not block executable work or normal reviews.',
   'Report non-blocking spec suggestions without making them prerequisites; block only on an actual impossibility.',
   'A spec that contradicts a directive is the hard-flag case above, never "implement it as written".',
+  'APPROVED TEXT: text the user approved, held in the approves field of a private record entry, counts as the user\'s',
+  'verbatim directive. A contradiction with it is a contradiction with the user\'s own sentence and hard-flags the same way.',
   'Read the private directive record below for its surrounding context and examples, not just its',
   'lines in isolation - the absence of a particular keyword never licenses behavior that contradicts',
   'the established context, and an example never authorizes an unrelated feature it did not name.',
@@ -172,6 +176,10 @@ const FINDING = { type: 'object', required: ['file', 'claim', 'severity', 'lane'
     receipts: RECEIPTS,
   } }
 const FINDINGS = { type: 'array', items: FINDING }
+// A briefed reader holds the private record, so it can also report a choice in the spec, the
+// prompt or the diff that no words of the user back. The unbriefed readers keep FINDING.
+const BRIEFED_KINDS = { enum: ['band-aid', 'longer-route', 'unbacked-choice'] }
+const BRIEFED_FINDINGS = { type: 'array', items: { ...FINDING, properties: { ...FINDING.properties, kind: BRIEFED_KINDS } } }
 // What the seat inspected and how; an entry with checked false needs a limitation beside it, and
 // the finding verifier judges whether that limitation excuses it.
 const COVERAGE = { type: 'array', items: { type: 'object', required: ['what', 'checked', 'how'], additionalProperties: false,
@@ -195,27 +203,27 @@ const PREMISES = { type: 'array', items: { type: 'object', required: ['claim', '
 // cold alternatives, roaster) carry no abort field, because its member names would brief them.
 const CORRECTNESS = { type: 'object', additionalProperties: false,
   required: ['abort', 'limitations', 'coverage', 'findings', 'verdicts'],
-  properties: { abort: ABORT, limitations: LIMITATIONS, coverage: COVERAGE, findings: FINDINGS,
+  properties: { abort: ABORT, limitations: LIMITATIONS, coverage: COVERAGE, findings: BRIEFED_FINDINGS,
     verdicts: { type: 'array', items: { type: 'object', required: ['criterion', 'verdict', 'receipts'], additionalProperties: false,
       properties: { criterion: { type: 'integer', minimum: 1 }, verdict: { enum: ['PASS', 'AT-RISK', 'FAIL'] }, receipts: RECEIPTS } } } } }
 const CLEANLINESS = { type: 'object', additionalProperties: false,
   required: ['abort', 'limitations', 'coverage', 'findings', 'verdicts'],
-  properties: { abort: ABORT, limitations: LIMITATIONS, coverage: COVERAGE, findings: FINDINGS,
+  properties: { abort: ABORT, limitations: LIMITATIONS, coverage: COVERAGE, findings: BRIEFED_FINDINGS,
     verdicts: { type: 'array', items: { type: 'object', required: ['criterion', 'verdict', 'receipts'], additionalProperties: false,
       properties: { criterion: { type: 'integer', minimum: 1 }, verdict: { enum: ['PASS', 'AT-RISK', 'FAIL'] }, receipts: RECEIPTS } } } } }
 const SPEC_COMPLIANCE = { type: 'object', additionalProperties: false,
   required: ['abort', 'limitations', 'coverage', 'findings', 'verdicts'],
-  properties: { abort: ABORT, limitations: LIMITATIONS, coverage: COVERAGE, findings: FINDINGS,
+  properties: { abort: ABORT, limitations: LIMITATIONS, coverage: COVERAGE, findings: BRIEFED_FINDINGS,
     verdicts: { type: 'array', items: { type: 'object', required: ['criterion', 'verdict', 'receipts'], additionalProperties: false,
       properties: { criterion: { type: 'integer', minimum: 1 }, verdict: { enum: ['PASS', 'AT-RISK', 'FAIL'] }, receipts: RECEIPTS } } } } }
 const DUPLICATES = { type: 'object', additionalProperties: false,
   required: ['abort', 'limitations', 'coverage', 'findings', 'verdicts'],
-  properties: { abort: ABORT, limitations: LIMITATIONS, coverage: COVERAGE, findings: FINDINGS,
+  properties: { abort: ABORT, limitations: LIMITATIONS, coverage: COVERAGE, findings: BRIEFED_FINDINGS,
     verdicts: { type: 'array', items: { type: 'object', required: ['criterion', 'verdict', 'receipts'], additionalProperties: false,
       properties: { criterion: { type: 'integer', minimum: 1 }, verdict: { enum: ['PASS', 'AT-RISK', 'FAIL'] }, receipts: RECEIPTS } } } } }
 const INVERSE = { type: 'object', additionalProperties: false,
   required: ['abort', 'limitations', 'coverage', 'findings', 'authorizations'],
-  properties: { abort: ABORT, limitations: LIMITATIONS, coverage: COVERAGE, findings: FINDINGS,
+  properties: { abort: ABORT, limitations: LIMITATIONS, coverage: COVERAGE, findings: BRIEFED_FINDINGS,
     authorizations: { type: 'array', items: { type: 'object', additionalProperties: false,
       required: ['choice', 'receipts', 'authority', 'class', 'saving'],
       properties: { choice: { type: 'string' }, receipts: RECEIPTS, authority: { type: 'string' }, saving: { type: 'string' },
@@ -229,7 +237,7 @@ const RULES_SEAT = { type: 'object', additionalProperties: false,
       properties: { file: { type: 'string' }, claim: { type: 'string' },
         severity: { enum: ['must-fix', 'should-fix', 'nit', 'CRITICAL'] },
         lane: { enum: ['fixer-actionable', 'orchestrator-only', 'later-phase', 'not-a-defect'] },
-        kind: { enum: ['band-aid', 'longer-route'] }, receipts: RECEIPTS, scope: { enum: ['in-change', 'beside'] } } } },
+        kind: BRIEFED_KINDS, receipts: RECEIPTS, scope: { enum: ['in-change', 'beside'] } } } },
     ruleSources: { type: 'array', items: { type: 'object', required: ['path', 'read'], additionalProperties: false,
       properties: { path: { type: 'string' }, read: { type: 'boolean' } } } } } }
 const QUALITY = { type: 'object', additionalProperties: false, required: ['limitations', 'coverage', 'findings'],
@@ -488,6 +496,9 @@ const exactlyOnce = (actual, expected, label) => {
   }
   if (seen.size !== wanted.size) throw new Error('Missing ' + label)
 }
+// The citation a rejection of an unbacked-choice finding carries in its authority: the record entry
+// by id, then the backing words quoted together with their surrounding context.
+const BACKING = /\brecord entry [a-z][a-z0-9]*(?:-[a-z0-9]+)*: "[\s\S]*\S[\s\S]*"/
 const checkVerification = (v, sources, sha) => {
   if (v.snapshotSha !== sha || v.clean !== true) throw new Error('Verifier observed snapshot drift or a dirty worktree')
   exactlyOnce(v.decisions.flatMap(d => d.sourceIds), sources.map(f => f.id), 'source ID')
@@ -499,6 +510,16 @@ const checkVerification = (v, sources, sha) => {
     requireText(d.evidence, 'decision evidence')
     if (d.action === 'approve-fix') {
       for (const field of ['authority', 'correction', 'constraints', 'acceptance']) requireText(d[field], 'approved ' + field)
+    }
+    // A choice no words of the user back reaches the user as a question, or closes on a record
+    // entry whose words, quoted in their context, back it. No other action answers it.
+    if (d.sourceIds.some(id => kindOf.get(id) === 'unbacked-choice')) {
+      if (!['needs-decision', 'reject'].includes(d.action)) {
+        throw new Error('Unbacked-choice finding allows only needs-decision or reject, never ' + d.action + '; the user answers it as a question')
+      }
+      if (d.action === 'reject' && !BACKING.test(d.authority)) {
+        throw new Error('Unbacked-choice rejection must cite in authority the record entry by id with the backing words quoted in their context: record entry <id>: "<quote>"')
+      }
     }
     // A kind-bearing finding is about this unit's own diff: CRITICAL whatever its disposition,
     // never deferred as cleanup or record, and its authority quotes the record on EVERY action.
@@ -595,6 +616,8 @@ async function onePass() {
       'writer-scope problem: report it in the note of the writer\'s last commit and set that entry\'s ok to false.'].join('\n'),
     'Verify ALL source findings, every seat\'s limitations and unchecked coverage; consolidate without losing IDs.',
     'Approve only authorized corrections with evidence, receipts, authority quotes, constraints and acceptance.',
+    'Answer an unbacked-choice finding only with needs-decision, or with reject whose authority reads',
+    'record entry <id>: "<the backing words quoted together with their surrounding context>", as your template requires.',
     'SOURCE FINDINGS:', JSON.stringify(sources), 'SEAT OBJECTS (UNTRUSTED):', JSON.stringify(reports),
     'WRITER OBJECTS (UNTRUSTED):', JSON.stringify([impl]),
   ].join('\n\n'), {

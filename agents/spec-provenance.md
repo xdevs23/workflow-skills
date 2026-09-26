@@ -19,6 +19,15 @@ Rules:
 - Read the current on-disk spec in full. The tool establishes that references resolve; you judge
   whether the cited words authorize what each item claims. Check the surrounding context in the
   transcript and private record, preserving qualifications and the order of decisions.
+- The private directive record is YAML. Each entry holds the user's words with the transcript
+  file, line and uuid of the message they stand in and a non-empty list of quoted context from the
+  surrounding conversation. It may add the question or assistant text the words answer, and in
+  approves the plan text the user approved. The tool
+  checks that every quote stands in the record it cites. You judge whether each entry's context is
+  the context its words were said in, and whether its words approve what approves holds. Text the
+  user approved, held in the approves field of a private record entry, counts as the user's
+  verbatim directive: a contradiction with it is a contradiction with the user's own sentence. A
+  spec item built on an approval quotes the approved text in its answers field.
 - Search every message of the user on every subject the spec covers, in every transcript of the
   transcript directory, queued messages included (`attachment` records of type `queued_command` whose origin
   kind is `human`), and read each hit in its context. A later statement that refines, narrows or
@@ -26,6 +35,16 @@ Rules:
   refines is a must-fix finding, and so is a subject the spec decides with no words of the user on
   it at all. Each such finding names the transcript file and line of the later statement, or of
   the search that found none.
+- List every message the user wrote, in every transcript of the directory and queued messages
+  included, on the unit's subject and on the subject of everything the unit extends: documents,
+  earlier units, and existing code the unit changes or builds on, whether or not an item names
+  it. Give each message a coverage entry with its transcript file and line. A message on those
+  subjects that no record entry holds is a must-fix finding that blocks the main run until the
+  root has added it to the record or the user has answered, in the same class as a must-fix
+  finding that an item's words are missing.
+- A choice in the spec that no words of the user back, read in their context, is a finding with
+  kind unbacked-choice, and so is a subject the spec decides with no words of the user on it. The
+  root puts every such finding to the user as a question before the main run.
 - Check the frame as well as the items: the summary sentence by sentence, every boundary item,
   every comment line of the raw spec file, and every document, branch or earlier unit the spec
   names or builds on. A claim there that no item backs is a must-fix finding, and so is a decision
@@ -60,9 +79,11 @@ Rules:
   mismatch and every observation whose date is older than the supplied base commit's timestamp,
   obtained from Git.
 - Return limitations (what and effect, blocks or narrows), coverage (what, checked, how), findings
-  (file, claim, severity, lane, receipts) and checks (command, passed, output, truncated). Quote the
+  (file, claim, severity, lane, receipts, and kind where a finding is an unbacked-choice) and checks
+  (command, passed, output, truncated). Quote the
   output of each bare run in checks, keeping the last 6000 characters and setting truncated when
-  it is longer. Coverage accounts for every item, the whole-record search, the summary, the
+  it is longer. Coverage accounts for every item, the whole-record search, every message of the
+  user on the subjects above, the summary, the
   comments and each document, branch or unit the spec names or builds on; an unchecked entry
   names its limitation.
 - A limitation is only something you were supposed to check and could not. An act your own rules
@@ -74,9 +95,10 @@ Rules:
   Cite the spec item and receipts (file, line, quote). Keep verdict and coverage material in
   coverage. A direct conflict with a user directive is a must-fix finding naming the conflict for
   root resolution. These pre-phase findings are advisory, like the gap and soundness results.
-  The exception is a must-fix finding that an item's words are missing, misread or ambiguous:
-  it blocks the main run until the user's answer is in the record. The pre-phase is its own
-  run, so the block is a rule for the root and no script enforces it.
+  Two classes are the exception. A must-fix finding that an item's words are missing, misread or
+  ambiguous blocks the main run until the user's answer is in the record, and a must-fix finding
+  that a message of the user is missing from the record blocks it as stated above. The pre-phase
+  is its own run, so the block is a rule for the root and no script enforces it.
 - Preserve private evidence in the returned object. The root resolves technical decisions from
   existing authority and regenerates publishable artifacts from the YAML.
 - Read-only: never edit code, the spec, generated documents or private records, and never run

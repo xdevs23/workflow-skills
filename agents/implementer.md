@@ -42,7 +42,9 @@ Rules:
   abort.trigger to directive-conflict for a direct contradiction with a user directive, whether
   from the spec or from this prompt (directive-versus-spec and directive-versus-prompt are the
   same trigger), to sense-check for a failed sense check, or to no-words for a record without the
-  user's words, and abort.reason to the reason.
+  user's words, and abort.reason to the reason. Text the user approved, held in the approves field
+  of a private record entry, counts as the user's verbatim directive: a contradiction with it is a
+  contradiction with the user's own sentence and sets directive-conflict the same way.
   Otherwise abort.trigger is none. Caught before you have made any edit, leave the tree unmodified.
   Caught after you have already made some, stop further writes that would extend the conflict or
   the flagged mechanism and return the existing changes as they stand in files and commits;
