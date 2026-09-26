@@ -110,11 +110,10 @@ do, but a unit spec holds the absolute path: each script's launch check compares
 absolute path in its marked block.
 
 Each item states one requirement or decision with an id, kind, content and one of four sources:
-`transcript` cites session records and verbatim user_words, where an answer through the question
-dialog counts, a message the user sent while the session was working counts, and no other tool
-result or queued command does. A task notification, an injected meta record and command output
-never count either: only a message the user wrote, typed or queued with origin `human`, or a
-question-dialog answer holds the user's words. The assistant text `answers` quotes is resolved in
+`transcript` cites session records and verbatim user_words. Only a message the user wrote, typed or
+queued with origin `human`, or a question-dialog answer holds the user's words. A task
+notification, an injected meta record, command output, any other tool result and a queued command
+of any other origin never do. The assistant text `answers` quotes is resolved in
 the assistant records since the last message the user wrote, so a notification in between does
 not cut the reply off from its question. A spec item built on an approval quotes the approved
 text in its `answers` field; `rule` cites a file, line and quote;
@@ -269,8 +268,7 @@ keys `unit` and `entries`. Each entry has exactly `id` (unique, kebab-case), the
 message), `context`, and optionally `answers` and `approves`. The directives themselves go in
 `words`, and the qualifications, surrounding context and examples that give them meaning go in
 `context`, a non-empty list of quotes, each with the `file`, `line` and `uuid` of the record it
-stands in and the `quote`. An entry without context fails the tool, because words read without
-the conversation around them can back a choice they were never about. Each entry names its source,
+stands in and the `quote`. An entry without context fails the tool. Each entry names its source,
 so later statements can be told from earlier ones.
 `answers` quotes the question or assistant text the words reply to. `approves` holds the plan text
 the user approved: a string when the text stands in the assistant messages the words reply to, or a
@@ -531,7 +529,7 @@ reports a pre-existing band-aid beside the diff without a kind, so the cleanup l
 **A choice without the user's words is its own finding kind.** A briefed reader reports a choice
 in the spec, the prompt or the diff that no words of the user back as a finding with kind
 **`unbacked-choice`**, CRITICAL like the two kinds above, and the inverse-spec reviewer's
-missing-decision findings carry it. The unbriefed readers (quality, cold alternatives, the roaster)
+missing-decision findings carry it. The unbriefed readers (quality, `cold-alternatives`, the roaster)
 never see the private record, so their schemas do not carry that kind. The provenance reader
 reports the same kind in the pre-phase.
 
