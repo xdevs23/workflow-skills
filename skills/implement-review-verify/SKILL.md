@@ -144,7 +144,7 @@ below uses `<plugin root>/tools/check-spec.ts`, and the shipped scripts take the
 their marked block. An installed plugin older than this tool prints no proof, so its launch check
 fails and no run launches on it until the plugin is updated; that is the intended effect.
 
-The tracked design document, `docs/<unit>.md`, is generated from the final YAML after the
+The tracked design document is generated from the final YAML after the
 implementation so it records what was built, with private quotations and evidence references
 omitted, and it is never edited by hand. Rendering it is the writers' completion step. The
 implementer, once its implementation is done, runs the validation command above with `--render
@@ -154,7 +154,7 @@ it commits the document as its own commit. The fixer, once its corrections are d
 again the same way as its last write before its checks, and commits it when the rendering
 changed. A fix run's fixer does the same for its parent spec's document. The writer prompts of the main and
 fix-run scripts carry the render command, built from the paths of the marked block: the document
-path is the spec's file name under `docs/`.
+takes its name from the spec's file name.
 
 With `--render` the tool's summary goes to stderr, and only `--json` puts
 anything on stdout. The root runs the tool before the spec pre-phase and again before the main run's implement stage,
