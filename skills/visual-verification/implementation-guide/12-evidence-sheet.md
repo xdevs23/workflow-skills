@@ -11,21 +11,14 @@ the scene fingerprint, which makes the two captures incompatible for the compari
 still shows what that edit did on screen. It uses the same pixel comparison and the same recoloring
 of part 11 for every checkpoint.
 
-## Sheets for a declared input change
+## The sheet for an intended input change
 
-A change that alters a compatibility input on purpose, as part 10 describes, is shown through
-evidence sheets once its field-by-field receipt difference matches its declared inputs. One sheet is
-rendered per variant, through the variant option, and each sheet gets an output name never used
-before, such as the capture names joined with the variant name.
-
-Every sheet also writes its per-checkpoint results into a structured file beside the image, with
-the same name and a `.json` extension in place of `.png`, created exclusively like the image. For
-each checkpoint of the sheet's variants the file records its name and its group, and for a changed
-checkpoint its changed-pixel count or the note that its dimensions changed. New checkpoints and
-checkpoints present only in the before capture are listed by name in their groups. The file also
-names every variant that only the before capture contains, since no sheet can show it. The
-changed-pixel counts of a declared input change are read from this file, and a checkpoint whose
-dimensions changed counts as changed, as the grouping below states.
+A change that alters a compatibility input on purpose, as part 10 describes, makes the comparison
+refuse its pair. The refusal is returned together with an evidence sheet of the same two captures,
+rendered under an output name never used before, and the outcome is judged by reading that sheet,
+the two receipts and the after capture's measured checks. The sheet still carries no verdict. A
+sheet larger than the size limit is split into several sheets through the variant option, each
+under its own new output name.
 
 ## Refusals
 
