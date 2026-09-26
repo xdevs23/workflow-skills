@@ -45,6 +45,14 @@ const withRecord = edit => {
 }
 
 describe('structured unit spec validation', () => {
+  // The valid spec with its transcript item citing `words` in the given session record, and quoting
+  // `answers` when they are given.
+  const citeSession = (line, uuid, words, answers) => changed(s => {
+    s.items[0].evidence = [{ file: 'session.jsonl', line, uuid }]
+    s.items[0].user_words = words
+    if (answers !== undefined) s.items[0].answers = answers
+  })
+
   test('valid example covers every kind and source, with ordered integer ordinals and byte hash', async () => {
     const result = fixture('valid', ['--json'])
     expect(result.err).toBe('')
@@ -110,66 +118,51 @@ describe('structured unit spec validation', () => {
   })
 
   test('user words match only the structured answers of the question dialog, and a result of any other tool never counts', () => {
-    const cite = (line, uuid, words, answers) => changed(s => {
-      s.items[0].evidence = [{ file: 'session.jsonl', line, uuid }]
-      s.items[0].user_words = words
-      if (answers !== undefined) s.items[0].answers = answers
-    })
     const unmatched = 'export-request.user_words: not found in any resolved user message'
-    expect(cite(11, 'dialog-answer', 'Stream, in input order').exit).toBe(0)
-    expect(cite(15, 'dialog-answer-blocks', 'Nightly, after the backup').exit).toBe(0)
+    expect(citeSession(11, 'dialog-answer', 'Stream, in input order').exit).toBe(0)
+    expect(citeSession(15, 'dialog-answer-blocks', 'Nightly, after the backup').exit).toBe(0)
     // The tool result's content carries the question text and the host's wording, never the user's words.
     for (const [line, uuid, words] of [[11, 'dialog-answer', 'Which interface should the export use?'],
       [11, 'dialog-answer', 'The user answered'], [15, 'dialog-answer-blocks', 'How often should the export run?'],
       [15, 'dialog-answer-blocks', 'The user answered']]) {
-      invalid(cite(line, uuid, words), unmatched)
+      invalid(citeSession(line, uuid, words), unmatched)
     }
-    invalid(cite(13, 'command-output', 'Stream, in input order'), unmatched)
-    invalid(cite(7, 'tool-turn', 'ok'), unmatched)
-    invalid(cite(16, 'early-answer', 'An answer before its question'), unmatched)
+    invalid(citeSession(13, 'command-output', 'Stream, in input order'), unmatched)
+    invalid(citeSession(7, 'tool-turn', 'ok'), unmatched)
+    invalid(citeSession(16, 'early-answer', 'An answer before its question'), unmatched)
     for (const question of ['Which interface should the export use?', 'Stream', 'Rows leave one at a time.', 'Batch Rows leave together.']) {
-      expect([question, cite(11, 'dialog-answer', 'Stream, in input order', question).exit]).toEqual([question, 0])
+      expect([question, citeSession(11, 'dialog-answer', 'Stream, in input order', question).exit]).toEqual([question, 0])
     }
-    expect(cite(15, 'dialog-answer-blocks', 'Nightly', 'How often should the export run? Nightly Once after midnight.').exit).toBe(0)
-    invalid(cite(15, 'dialog-answer-blocks', 'Nightly', 'Which interface should the export use?'),
+    expect(citeSession(15, 'dialog-answer-blocks', 'Nightly', 'How often should the export run? Nightly Once after midnight.').exit).toBe(0)
+    invalid(citeSession(15, 'dialog-answer-blocks', 'Nightly', 'Which interface should the export use?'),
       'export-request.answers: not found in the assistant messages the cited words reply to')
-    invalid(cite(11, 'dialog-answer', 'Stream, in input order', 'Interface'), 'export-request.answers: not found')
+    invalid(citeSession(11, 'dialog-answer', 'Stream, in input order', 'Interface'), 'export-request.answers: not found')
   })
 
   test('a note typed on a dialog answer counts as user words, and the host placeholder and an option preview never do', () => {
-    const cite = (line, uuid, words, answers) => changed(s => {
-      s.items[0].evidence = [{ file: 'session.jsonl', line, uuid }]
-      s.items[0].user_words = words
-      if (answers !== undefined) s.items[0].answers = answers
-    })
     const unmatched = 'export-request.user_words: not found in any resolved user message'
     const failed = 'export-request.evidence entry 1: transcript reference failed: '
-    expect(cite(34, 'note-answer', 'Keep the ids, drop the audit columns').exit).toBe(0)
-    expect(cite(34, 'note-answer', 'Keep the ids, drop the audit columns', 'Which columns should the export keep?').exit).toBe(0)
-    invalid(cite(34, 'note-answer', '(notes only)'), unmatched)
-    invalid(cite(34, 'note-answer', 'A stray annotation'), unmatched)
-    invalid(cite(36, 'preview-answer', '1,Ada'), unmatched)
+    expect(citeSession(34, 'note-answer', 'Keep the ids, drop the audit columns').exit).toBe(0)
+    expect(citeSession(34, 'note-answer', 'Keep the ids, drop the audit columns', 'Which columns should the export keep?').exit).toBe(0)
+    invalid(citeSession(34, 'note-answer', '(notes only)'), unmatched)
+    invalid(citeSession(34, 'note-answer', 'A stray annotation'), unmatched)
+    invalid(citeSession(36, 'preview-answer', '1,Ada'), unmatched)
     // A note counts only where an answer would.
-    invalid(cite(37, 'early-note', 'A note before its question'), unmatched)
-    invalid(cite(39, 'meta-note', 'A note in a meta record'), failed + 'an injected meta record is not the user\'s words')
-    invalid(cite(40, 'notification-note', 'A note in a notification'), failed + 'a user record of origin "task-notification" is not the user\'s words')
+    invalid(citeSession(37, 'early-note', 'A note before its question'), unmatched)
+    invalid(citeSession(39, 'meta-note', 'A note in a meta record'), failed + 'an injected meta record is not the user\'s words')
+    invalid(citeSession(40, 'notification-note', 'A note in a notification'), failed + 'a user record of origin "task-notification" is not the user\'s words')
   })
 
   test('a message queued by the user while the session worked counts as user words, a queued command of any other origin never', () => {
-    const cite = (line, uuid, words, answers) => changed(s => {
-      s.items[0].evidence = [{ file: 'session.jsonl', line, uuid }]
-      s.items[0].user_words = words
-      if (answers !== undefined) s.items[0].answers = answers
-    })
-    expect(cite(20, 'queued-human', 'Skip the empty rows.').exit).toBe(0)
-    invalid(cite(20, 'queued-human', 'queued reminder'), 'export-request.user_words: not found in any resolved user message')
-    invalid(cite(20, 'queued-task', 'Skip the empty rows.'), 'export-request.evidence entry 1: transcript reference failed: expected a queued message with the cited uuid')
-    invalid(cite(21, 'queued-task', 'Skip the empty rows.'), 'transcript reference failed: a queued command of origin "task-notification" is not the user\'s words')
-    invalid(cite(22, 'queued-no-origin', 'Skip the empty rows.'), 'transcript reference failed: a queued command of origin null is not the user\'s words')
-    invalid(cite(23, 'other-attachment', 'Skip the empty rows.'), 'transcript reference failed: expected a user record with the cited uuid')
+    expect(citeSession(20, 'queued-human', 'Skip the empty rows.').exit).toBe(0)
+    invalid(citeSession(20, 'queued-human', 'queued reminder'), 'export-request.user_words: not found in any resolved user message')
+    invalid(citeSession(20, 'queued-task', 'Skip the empty rows.'), 'export-request.evidence entry 1: transcript reference failed: expected a queued message with the cited uuid')
+    invalid(citeSession(21, 'queued-task', 'Skip the empty rows.'), 'transcript reference failed: a queued command of origin "task-notification" is not the user\'s words')
+    invalid(citeSession(22, 'queued-no-origin', 'Skip the empty rows.'), 'transcript reference failed: a queued command of origin null is not the user\'s words')
+    invalid(citeSession(23, 'other-attachment', 'Skip the empty rows.'), 'transcript reference failed: expected a user record with the cited uuid')
     // The assistant records after the previous user turn and before the queued message are the ones it replies to.
-    expect(cite(20, 'queued-human', 'Skip the empty rows.', 'Should the export skip empty rows?').exit).toBe(0)
-    invalid(cite(20, 'queued-human', 'Skip the empty rows.', 'Two shapes: (a) stream the rows'),
+    expect(citeSession(20, 'queued-human', 'Skip the empty rows.', 'Should the export skip empty rows?').exit).toBe(0)
+    invalid(citeSession(20, 'queued-human', 'Skip the empty rows.', 'Two shapes: (a) stream the rows'),
       'export-request.answers: not found in the assistant messages the cited words reply to')
   })
 
@@ -193,24 +186,19 @@ describe('structured unit spec validation', () => {
   })
 
   test('user words and the reply window come only from messages the user wrote', () => {
-    const cite = (line, uuid, words, answers) => changed(s => {
-      s.items[0].evidence = [{ file: 'session.jsonl', line, uuid }]
-      s.items[0].user_words = words
-      if (answers !== undefined) s.items[0].answers = answers
-    })
     const failed = 'export-request.evidence entry 1: transcript reference failed: '
-    invalid(cite(26, 'notification', 'Approved, go ahead.'), failed + 'a user record of origin "task-notification" is not the user\'s words')
-    invalid(cite(27, 'meta', 'Approved, go ahead.'), failed + 'an injected meta record is not the user\'s words')
-    invalid(cite(28, 'command-stdout', 'Approved, go ahead.'), failed + 'a user record of origin null is not the user\'s words')
-    invalid(cite(3, 'assistant-record', 'Export the selected rows.'), failed + 'expected a user record with the cited uuid')
+    invalid(citeSession(26, 'notification', 'Approved, go ahead.'), failed + 'a user record of origin "task-notification" is not the user\'s words')
+    invalid(citeSession(27, 'meta', 'Approved, go ahead.'), failed + 'an injected meta record is not the user\'s words')
+    invalid(citeSession(28, 'command-stdout', 'Approved, go ahead.'), failed + 'a user record of origin null is not the user\'s words')
+    invalid(citeSession(3, 'assistant-record', 'Export the selected rows.'), failed + 'expected a user record with the cited uuid')
     // A dialog answer counts only in a record that is neither injected nor of another origin.
-    invalid(cite(31, 'meta-answer', 'January, then every month'), failed + 'an injected meta record is not the user\'s words')
-    invalid(cite(32, 'notification-answer', 'January, then every month'), failed + 'a user record of origin "task-notification" is not the user\'s words')
-    expect(cite(11, 'dialog-answer', 'Stream, in input order').exit).toBe(0)
+    invalid(citeSession(31, 'meta-answer', 'January, then every month'), failed + 'an injected meta record is not the user\'s words')
+    invalid(citeSession(32, 'notification-answer', 'January, then every month'), failed + 'a user record of origin "task-notification" is not the user\'s words')
+    expect(citeSession(11, 'dialog-answer', 'Stream, in input order').exit).toBe(0)
     // The notification, the meta record and the command output between the proposal and the
     // approval open no turn, so the proposal is still what the approval replies to.
-    expect(cite(29, 'approval', 'Approved, go ahead.', 'group the rows by month').exit).toBe(0)
-    invalid(cite(29, 'approval', 'Approved, go ahead.', 'Two shapes: (a) stream the rows'),
+    expect(citeSession(29, 'approval', 'Approved, go ahead.', 'group the rows by month').exit).toBe(0)
+    invalid(citeSession(29, 'approval', 'Approved, go ahead.', 'Two shapes: (a) stream the rows'),
       'export-request.answers: not found in the assistant messages the cited words reply to')
   })
 
