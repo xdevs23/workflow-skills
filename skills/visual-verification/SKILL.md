@@ -150,9 +150,9 @@ The scratch directory of the harness lives in the worktree's project cache. When
 long for the rendering engine, or the worktree sits on a slow shared file system, the setup makes
 that directory reachable at a short path through a mount or share, such as a virtual machine's file
 share or a bind mount, and the orchestrating session provides that short path to the stages in the
-unit spec. Every run passes it through the launcher's scratch override and uses its own
-subdirectory below it. The system temporary directory is used only when no mount or share is
-possible, and then within the user's global rules.
+unit spec. Each run's launcher scratch override names that run's own private directory below the
+short path, never the shared short path itself. The system temporary directory is used only when no
+mount or share is possible, and then within the user's global rules.
 
 Each writing stage, after its last commit, captures the after state under a name never used before
 in that worktree, such as its stage label joined with the run identifier. It runs the comparison
@@ -192,9 +192,10 @@ socket under its scratch directory, and a socket path holds at most 107 bytes, s
 of a deep checkout or worktree can exceed the launcher's limit, and the launcher refuses it before
 the engine starts. The scratch directory still lives in the project cache. The setup makes it
 reachable at a short path through a mount or share, such as a virtual machine's file share or a
-bind mount, and the launcher's scratch override names that short path. Each run uses its own
-subdirectory below it, never shared with another run. The system temporary directory is used only
-when no mount or share is possible, and then within the user's global rules.
+bind mount. Each run's launcher scratch override names that run's own private directory below the
+short path, never the shared short path itself and never a directory of another run. The system
+temporary directory is used only when no mount or share is possible, and then within the user's
+global rules.
 
 A slow shared file system makes every capture slow. On a network or user-space mounted checkout,
 every page or screen load can take tens of seconds. The remedy is the same: the setup makes the

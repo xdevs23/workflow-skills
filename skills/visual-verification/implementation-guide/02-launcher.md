@@ -39,11 +39,11 @@ The scratch override variable names a private directory that one run uses alone,
 across runs. When the default path is too long for the rendering engine, or the checkout sits on a
 slow shared file system, the scratch directory still lives in the project cache: the setup makes it
 reachable at a short path through a mount or share, such as a virtual machine's file share or a bind
-mount, and the override names that short path, with each run using its own subdirectory below it.
-In a unit spec, the orchestrating session provides that short path to the stages. The system
-temporary directory is used only when no mount or share is possible, and then within the user's
-global rules. The override moves only the scratch directory; captures, reports and every other
-artifact stay in the harness directory.
+mount, and each run's override names that run's own directory below the short path, never the
+shared short path itself. In a unit spec, the orchestrating session provides that short path to the
+stages. The system temporary directory is used only when no mount or share is possible, and then
+within the user's global rules. The override moves only the scratch directory; captures, reports and
+every other artifact stay in the harness directory.
 
 The bootstrap that the launcher runs first imports no packages. It uses only the runtime's own
 standard library, so that installing dependencies cannot load application code or application
