@@ -22,10 +22,12 @@ runtime types the harness needs, so fixtures fail to compile when the applicatio
 ## Artifacts
 
 Every generated artifact lives in the harness directory: captures with their images, receipts and
-reports, comparisons, source exports, the lock-keyed dependency caches, the serving process's
-caches, the private home and scratch directories, downloads, samples and selections, local scenes,
-engine profiles, optional traces and logs, and the scratch directories of the self-test suite.
-Only scene modules, synthetic fixtures and harness code are tracked. Artifacts that carry sample
+reports, comparisons, evidence sheets, source exports, the lock-keyed dependency caches, the serving
+process's caches, the private home and scratch directories, downloads, samples and selections, local
+scenes, engine profiles, optional traces and logs, and the scratch directories of the self-test
+suite. The one exception is an evidence sheet prepared for a pull request, which part 12 lets the
+caller write to that pull request batch's prepared directory, also inside the project cache. Only
+scene modules, synthetic fixtures and harness code are tracked. Artifacts that carry sample
 data or screenshots are written with private permissions.
 
 Capture and comparison leave the version control state and the application files unchanged: no

@@ -16,7 +16,9 @@ of part 11 for every checkpoint.
 The sheet refuses to run without the launcher's variables, and names the launcher command.
 
 The output option is required, must name a file ending in `.png`, and is never overwritten. An
-existing output file fails with a message asking for a new output path.
+existing output file fails with a message asking for a new output path. The output path lies inside
+the project cache, the location `workflow-skills:local-cache` defines: in the harness directory, or
+in the prepared directory of a pull request batch that is kept inside the project cache as well.
 
 A capture that does not exist is refused by name, with the instruction to capture it first. A
 capture without a readable receipt is refused by name, with the instruction to capture the complete
