@@ -151,7 +151,8 @@ long for the rendering engine, or the worktree sits on a slow shared file system
 that directory reachable at a short path through a mount or share, such as a virtual machine's file
 share or a bind mount, and the orchestrating session provides that short path to the stages in the
 unit spec. Every run passes it through the launcher's scratch override and uses its own
-subdirectory below it.
+subdirectory below it. The system temporary directory is used only when no mount or share is
+possible, and then within the user's global rules.
 
 Each writing stage, after its last commit, captures the after state under a name never used before
 in that worktree, such as its stage label joined with the run identifier. It runs the comparison
