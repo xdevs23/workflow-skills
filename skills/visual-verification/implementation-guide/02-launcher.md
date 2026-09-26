@@ -30,12 +30,20 @@ setting, service credential or developer preference changes a capture. The runti
 load environment files from the repository, such as dotenv files.
 
 The launcher creates a private scratch directory. By default it lives inside the harness directory
-in the project cache, the location `workflow-skills:local-cache` defines, and an override variable
-lets the caller point it at a shorter private directory. The launcher checks the length of the
-scratch path against any limit the rendering engine imposes and refuses a longer path before the
-engine starts, with a message naming the override variable. The check counts encoded bytes, since a
-path limit is a byte limit. The override moves only the scratch directory; captures, reports and
-every other artifact stay in the harness directory.
+in the project cache, the location `workflow-skills:local-cache` defines. The launcher checks the
+length of the scratch path against any limit the rendering engine imposes and refuses a longer path
+before the engine starts, with a message naming the override variable. The check counts encoded
+bytes, since a path limit is a byte limit.
+
+The scratch override variable names a private directory that one run uses alone, never shared
+across runs. When the default path is too long for the rendering engine, or the checkout sits on a
+slow shared file system, the scratch directory still lives in the project cache: the setup makes it
+reachable at a short path through a mount or share, such as a virtual machine's file share or a bind
+mount, and the override names that short path, with each run using its own subdirectory below it.
+In a unit spec, the orchestrating session provides that short path to the stages. The system
+temporary directory is used only when no mount or share is possible, and then within the user's
+global rules. The override moves only the scratch directory; captures, reports and every other
+artifact stay in the harness directory.
 
 The bootstrap that the launcher runs first imports no packages. It uses only the runtime's own
 standard library, so that installing dependencies cannot load application code or application
