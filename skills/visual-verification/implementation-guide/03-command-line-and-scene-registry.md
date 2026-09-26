@@ -54,6 +54,11 @@ Tracked scenes are registered in an explicit list inside the command-line module
 a typed module. The registry is the only place a tracked scene name resolves. An unknown name fails
 with a message pointing to `list` and to curating a local scene.
 
+A tracked scene's module file is named after the scene name, with the project's scene file suffix,
+such as `<scene name>.scene.ts` in the reference. The command line locates that file from the name
+to compute the scene fingerprint, so a module whose file name differs from its scene name would be
+fingerprinted from the wrong file or from none.
+
 The command line validates a scene before running it: its kind is a page or a component scene, it
 declares at least one variant, and its projection version equals the version the harness currently
 expects. A scene that fails any of these fails as an invalid typed scene.
