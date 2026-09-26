@@ -18,8 +18,8 @@ container's content box.
 A geometry check fails when the set it measures is empty, or when a measured box or gap has zero
 size. A collapsed or missing element would otherwise pass a containment or non-overlap check
 trivially: an empty set has no member outside its container, and a box of zero width overlaps
-nothing. Every check therefore also requires at least one measured element and a positive width or
-height for each box it compares, and a check of a gap requires that gap to be positive.
+nothing. Every check therefore also requires at least one measured element and a positive width and
+a positive height for each box it compares, and a check of a gap requires that gap to be positive.
 
 ## Text line boxes
 

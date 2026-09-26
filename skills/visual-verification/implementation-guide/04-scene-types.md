@@ -103,7 +103,7 @@ A component scene draws the component in every real host it appears in, at that 
 width, height and background, including the narrowest host the application draws it in. A host is
 the box around the component on a real screen, such as a side panel, a popover, a dialog or a
 full-width phone view. The scene also draws the component in each state of the dependent reads it
-shows, such as ready, loading and error, so every state a person can meet is on the picture.
+shows, such as ready, loading and error.
 Adaptation point: the hosts of each component, with their sizes and backgrounds.
 
 A container-responsive component, whose own width switches it between layouts, is mounted in one
