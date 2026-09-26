@@ -72,12 +72,12 @@ location `workflow-skills:local-cache` defines, and only scene modules, syntheti
 harness code are tracked. The guide calls that location the harness directory throughout.
 
 The scratch directory of the rendering engine lives in the project cache as well. When its path is
-too long for the rendering engine, or the checkout sits on a slow shared file system, the setup makes
-the directory reachable at a short path through a mount or share, such as a virtual machine's file
-share or a bind mount, and the launcher's scratch override names that short path. Each run uses its
-own subdirectory below it. In a unit spec, the orchestrating session provides that short path to the
-stages. The system temporary directory is used only when no mount or share is possible, and then
-within the user's global rules.
+too long for the rendering engine, or the checkout sits on a slow shared file system, the setup
+makes the directory reachable at a short path through a mount or share, such as a virtual machine's
+file share or a bind mount, and the launcher's scratch override names that short path. Each run
+uses its own subdirectory below it. In a unit spec, the orchestrating session provides that short
+path to the stages. The system temporary directory is used only when no mount or share is possible,
+and then within the user's global rules.
 
 ## Components are examples
 
