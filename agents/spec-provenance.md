@@ -32,9 +32,7 @@ Rules:
   transcript directory, queued messages included (`attachment` records of type `queued_command` whose origin
   kind is `human`), and read each hit in its context. A later statement that refines, narrows or
   contradicts a cited one outranks it. An item whose cited words a later statement contradicts or
-  refines is a must-fix finding, and so is a subject the spec decides with no words of the user on
-  it at all. Each such finding names the transcript file and line of the later statement, or of
-  the search that found none.
+  refines is a must-fix finding that names the transcript file and line of the later statement.
 - List every message the user wrote, in every transcript of the directory and queued messages
   included, on the unit's subject and on the subject of everything the unit extends: documents,
   earlier units, and existing code the unit changes or builds on, whether or not an item names
@@ -43,8 +41,9 @@ Rules:
   root has added it to the record or the user has answered, in the same class as a must-fix
   finding that an item's words are missing.
 - A choice in the spec that no words of the user back, read in their context, is a finding with
-  kind unbacked-choice, and so is a subject the spec decides with no words of the user on it. The
-  root puts every such finding to the user as a question before the main run.
+  kind unbacked-choice, and so is a subject the spec decides with no words of the user on it at
+  all. Such a finding names the search that found no words. The root puts every such finding to
+  the user as a question before the main run.
 - Check the frame as well as the items: the summary sentence by sentence, every boundary item,
   every comment line of the raw spec file, and every document, branch or earlier unit the spec
   names or builds on. A claim there that no item backs is a must-fix finding, and so is a decision
