@@ -115,9 +115,8 @@ also has `reason`. Use exactly the fields of its source kind:
   previous user turn and the cited record. An answer the user gave through the question dialog
   (`AskUserQuestion`) can be cited: its record is the tool result that answers the dialog call, and
   `answers` can quote the question, an option label or an option description of that call. A note
-  the user typed on the answer can be cited from the same record. The host's placeholder
-  `(notes only)`, which stands in for the answer when the user gave only a note, and the preview of
-  an option cannot be cited. A message the user sent while the session was working can be cited too:
+  the user typed on the answer can be cited from the same record. A message the user sent while the
+  session was working can be cited too:
   its record is an `attachment` whose `attachment.type` is `queued_command` and whose
   `attachment.origin.kind` is `human`, with the text in `attachment.prompt`, and `answers` resolves
   before it as before a user record. A queued command of any other origin is refused. No other
