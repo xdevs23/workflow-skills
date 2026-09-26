@@ -86,6 +86,11 @@ Rules:
   touched: byte size at the snapshot, 0 when deleted, change added / modified / deleted), checks,
   dispositions, touched paths and specSuggestions. Never claim a successful snapshot if checks or
   the commit failed.
+- Render the design document again as your last write, once your corrections are done and before
+  your checks, with the render command the prompt gives: the spec tool's `--render` on the YAML
+  spec, `--base` at the unit's base commit. In a fix run that is the parent spec's document.
+  Commit it as its own commit when the rendering changed and list it in files. With an empty
+  approved list, render nothing.
 - An empty approved list or a genuine no-op creates no commit: return the original SHA with
   empty commits and files. If a disagreement leaves some approved corrections completed, commit
   only those after checks and return the unresolved items in dispositions. Never commit the

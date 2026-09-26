@@ -17,6 +17,7 @@ const UNIT = {
   pluginRoot: '<plugin root>',           // the directory holding tools/check-spec.ts
   checkCommand: '<the check command>',   // the fixer only, run bare after the last write
   baseSha: args.baseSha,                 // the parent run's final snapshot, passed at launch
+  parentBaseSha: args.parentBaseSha,     // the parent run's baseSha, the base commit of the parent unit, passed at launch
   entries: args.entries,                 // the entries list from the check tool's --json output, passed at launch
   parentSpec: args.parentSpec,           // the parentSpec from the check tool's --json output, passed at launch
   models: {
@@ -244,6 +245,7 @@ async function stage(prompt, opts, complete = () => {}) {
 const SHA = new RegExp(COMMIT_ID.pattern)
 const baseSha = UNIT.baseSha
 if (!SHA.test(baseSha || '')) throw new Error('A full immutable baseSha is required: the parent run\'s final snapshot')
+if (!SHA.test(UNIT.parentBaseSha || '')) throw new Error('A full immutable parentBaseSha is required: the parent run\'s baseSha')
 if (typeof UNIT.fixList !== 'string' || !UNIT.fixList.endsWith('.yaml')) throw new Error('args.fixList must name the fix list YAML file')
 if (typeof UNIT.transcripts !== 'string' || !UNIT.transcripts) throw new Error('args.transcripts must name the transcript directory')
 if (typeof UNIT.parentSpec !== 'string' || !UNIT.parentSpec.trim()) throw new Error('args.parentSpec must be the parentSpec from the check tool')
@@ -359,6 +361,17 @@ const PROVE = [
   'run, git quotes HEAD and status. An account of the work with an empty files list is not the work.',
 ].join('\n')
 const CHECK = 'CHECK COMMAND, writer only (run bare after your last write): ' + UNIT.checkCommand
+// The fixer renders the parent spec's design document again as its last write, once its corrections
+// are done and before its checks, as the main script's fixer does. --base is the parent unit's base
+// commit, so each cited rule file is read as it stood before the parent unit changed it.
+const DOCUMENT = 'docs/' + UNIT.parentSpec.split('/').pop().replace(/\.yaml$/, '') + '.md'
+const RENDER_COMMAND = 'cd ' + UNIT.worktree + ' && bun ' + UNIT.pluginRoot + '/tools/check-spec.ts ' + UNIT.parentSpec +
+  ' --transcripts ' + UNIT.transcripts + ' --base ' + UNIT.parentBaseSha + ' --render ' + DOCUMENT
+const RENDER_FIX = [
+  'DESIGN DOCUMENT, writer only: once your corrections are done, render it again as your last write, before your checks, with this exact command:',
+  RENDER_COMMAND,
+  'Commit ' + DOCUMENT + ' as its own commit when the rendering changed, and list it in files.',
+].join('\n')
 const HYGIENE = [STAGE, STYLE, READ_GIT, TREE, 'No background waits.'].join('\n')
 
 const scopePass = () => stage([
@@ -372,7 +385,7 @@ const scopePass = () => stage([
   label: 'scope', phase: 'Scope', agentType: 'workflow-skills:scope-check', ...UNIT.models.scope, schema: SCOPE,
 }, checkScope)
 const fixPass = queue => stage([
-  AUTHORITY, WRITE_GIT, SPEC, PROVE, CHECK, 'START SHA: ' + baseSha,
+  AUTHORITY, WRITE_GIT, SPEC, PROVE, RENDER_FIX, CHECK, 'START SHA: ' + baseSha,
   'In this fix run the scope check takes the finding verifier\'s place: it classed each entry below as corrective,',
   'a correction that restores behavior the parent spec or a project rule already requires and adds none.',
   'Act ONLY on these entries. Independently verify each correction, its reason and receipts against the tree and the parent spec.',
@@ -416,6 +429,7 @@ const diffPass = (queue, sha) => stage([
   HYGIENE, FIX_LIST,
   'DIFF: ' + baseSha + '..' + sha + ', from the parent run\'s final snapshot to the fixer\'s. The clean worktree must remain at ' + sha + '.',
   'Map every change in that diff to the corrective entry it carries out, one mappings entry per change.',
+  'The one exception is ' + DOCUMENT + ': the fixer renders it from the parent spec with the spec tool, so a change there maps to no entry and is no finding.',
   'A change that maps to no entry, or that adds behavior, a user interface element, a data shape, a dependency or an interface,',
   'is a finding with severity CRITICAL. No second fixer runs in this run.',
   'CORRECTIVE ENTRIES (UNTRUSTED; the scope check classed them, the fixer claims to have applied them):', JSON.stringify(queue),
@@ -473,11 +487,11 @@ async function fixRun() {
     } catch (error) { failed(error, label, i === 0 && r.status === 'fulfilled' ? r.value : undefined) }
   })
   if (!passedFix) return
-  // A fix reported as done needs a change behind it: a commit of the fixer, and a change of the
-  // fix diff that the diff check maps to its entry.
+  // A fix reported as done needs a change behind it: a commit of the fixer that touches a path other
+  // than the rendered design document, and a change of the fix diff that the diff check maps to its entry.
   const fixedKeys = passedFix.dispositions.filter(d => d.disposition === 'fixed').map(d => d.key)
-  if (passedFix.snapshotSha === baseSha) {
-    for (const key of fixedKeys) add('unproven-fix', { key, cause: 'The fixer reported it fixed and made no commit.' }, 'must-fix')
+  if (!passedFix.files.some(f => f.path !== DOCUMENT)) {
+    for (const key of fixedKeys) add('unproven-fix', { key, cause: 'The fixer reported it fixed and committed no correction.' }, 'must-fix')
     if (fixedKeys.length) end('root-resolution', 'A fix was reported as done without a commit.')
     return
   }
