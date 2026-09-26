@@ -145,6 +145,8 @@ describe('structured unit spec validation', () => {
     expect(citeSession(34, 'note-answer', 'Keep the ids, drop the audit columns').exit).toBe(0)
     expect(citeSession(34, 'note-answer', 'Keep the ids, drop the audit columns', 'Which columns should the export keep?').exit).toBe(0)
     invalid(citeSession(34, 'note-answer', '(notes only)'), unmatched)
+    // Without a note on its question, an answer that reads `(notes only)` is the user's own text.
+    expect(citeSession(42, 'typed-placeholder', '(notes only)').exit).toBe(0)
     invalid(citeSession(34, 'note-answer', 'A stray annotation'), unmatched)
     invalid(citeSession(36, 'preview-answer', '1,Ada'), unmatched)
     // A note counts only where an answer would.
