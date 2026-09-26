@@ -1600,7 +1600,7 @@ describe('one-pass remaining-items handoff', () => {
 
   test('every other skill requires loading the writing-style skill', async () => {
     const dir = new URL('../skills/', import.meta.url)
-    const names = ['audit-loop', 'copywriting', 'find-gaps', 'immaculate-spec-writing',
+    const names = ['audit-loop', 'babysit-pr', 'copywriting', 'find-gaps', 'immaculate-spec-writing',
       'implement-review-verify', 'pr-comment-replies', 'research-loop', 'resume-interrupted-run', 'verify-loop']
     for (const name of names) {
       const text = await Bun.file(new URL(`${name}/SKILL.md`, dir)).text()
