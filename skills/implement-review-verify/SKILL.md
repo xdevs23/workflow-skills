@@ -528,8 +528,8 @@ reports a pre-existing band-aid beside the diff without a kind, so the cleanup l
 
 **A choice without the user's words is its own finding kind.** A briefed reader reports a choice
 in the spec, the prompt or the diff that no words of the user back as a finding with kind
-**`unbacked-choice`**, CRITICAL like the two kinds above, and the inverse-spec reviewer's
-missing-decision findings carry it. The unbriefed readers (quality, `cold-alternatives`, the roaster)
+**`unbacked-choice`**, and the inverse-spec reviewer's missing-decision findings carry it. A
+decision on such a finding is CRITICAL. The unbriefed readers (quality, `cold-alternatives`, the roaster)
 never see the private record, so their schemas do not carry that kind. The provenance reader
 reports the same kind in the pre-phase.
 
