@@ -429,7 +429,9 @@ const diffPass = (queue, sha) => stage([
   HYGIENE, FIX_LIST,
   'DIFF: ' + baseSha + '..' + sha + ', from the parent run\'s final snapshot to the fixer\'s. The clean worktree must remain at ' + sha + '.',
   'Map every change in that diff to the corrective entry it carries out, one mappings entry per change.',
-  'The one exception is ' + DOCUMENT + ': the fixer renders it from the parent spec with the spec tool, so a change there maps to no entry and is no finding.',
+  DOCUMENT + ' is checked like any other file. The fixer renders it from the parent spec as it stands on disk, so a change there' +
+    ' maps to the corrective entry it carries out. A rendering that differs without a covering entry means the parent spec was changed' +
+    ' after the parent run, and that change belongs to a new unit.',
   'A change that maps to no entry, or that adds behavior, a user interface element, a data shape, a dependency or an interface,',
   'is a finding with severity CRITICAL. No second fixer runs in this run.',
   'CORRECTIVE ENTRIES (UNTRUSTED; the scope check classed them, the fixer claims to have applied them):', JSON.stringify(queue),
@@ -487,10 +489,10 @@ async function fixRun() {
     } catch (error) { failed(error, label, i === 0 && r.status === 'fulfilled' ? r.value : undefined) }
   })
   if (!passedFix) return
-  // A fix reported as done needs a change behind it: a commit of the fixer that touches a path other
-  // than the rendered design document, and a change of the fix diff that the diff check maps to its entry.
+  // A fix reported as done needs a change behind it: a commit of the fixer, whatever path it touches,
+  // and a change of the fix diff that the diff check maps to its entry.
   const fixedKeys = passedFix.dispositions.filter(d => d.disposition === 'fixed').map(d => d.key)
-  if (!passedFix.files.some(f => f.path !== DOCUMENT)) {
+  if (!passedFix.commits.length) {
     for (const key of fixedKeys) add('unproven-fix', { key, cause: 'The fixer reported it fixed and committed no correction.' }, 'must-fix')
     if (fixedKeys.length) end('root-resolution', 'A fix was reported as done without a commit.')
     return
