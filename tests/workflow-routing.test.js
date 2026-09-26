@@ -2372,21 +2372,37 @@ describe('the design document is rendered after implementation', () => {
       ' was changed after the parent run, and that change belongs to a new unit.\n\n')
     expect(prompt).not.toContain('The one exception is')
     const rendered = [{ path: PARENT_DOCUMENT, bytes: 80, change: 'modified' }]
+    const documentReceipt = { file: PARENT_DOCUMENT, line: 1, quote: '# <parent unit>' }
     // A document change no entry covers comes back from the diff check as a finding, and the run
     // returns it to the root as CRITICAL whatever severity the check gave it.
-    const stale = { ...finding, severity: 'should-fix', claim: PARENT_DOCUMENT + ' changed, and no corrective entry covers the change.' }
+    const stale = { file: PARENT_DOCUMENT, claim: PARENT_DOCUMENT + ' changed, and no corrective entry covers the change.',
+      severity: 'should-fix', lane: 'fixer-actionable', receipts: [documentReceipt] }
     const uncovered = await simulateFix({ fixes: fixed([disposition('return-error')], { files: rendered }), diff: { findings: [stale] } })
     expect(labels(uncovered.calls).at(-1)).toBe('diff')
     expect([uncovered.result.exit, uncovered.result.detail]).toEqual(['root-resolution', 'The diff check found a change that no corrective entry covers.'])
     expect(uncovered.result.remaining).toEqual([{ kind: 'diff-finding', severity: 'CRITICAL', item: { ...stale, severity: 'CRITICAL' } },
       unattested('return-error')])
     // A correction whose only change is the re-rendered document reaches the diff check, and its
-    // covering entry makes it an ordinary fix.
-    const covering = { change: PARENT_DOCUMENT + ': the stale rendering is replaced by the current one', entry: 'return-error', receipts: [receipt] }
-    const onlyDocument = await simulateFix({ fixes: fixed([disposition('return-error')], { files: rendered }), diff: { mappings: [covering] } })
+    // covering entry, which names the document, makes it an ordinary fix.
+    const render = entry('render-parent-document', { finding: PARENT_DOCUMENT + ' does not match the rendering of the parent spec.',
+      correction: 'Render ' + PARENT_DOCUMENT + ' again from the parent spec with the spec tool.' })
+    const renderClass = { id: render.id, class: 'corrective', reason: PARENT_DOCUMENT + ' differs from the rendering of the parent spec.',
+      receipts: [documentReceipt] }
+    const renderDisposition = { ...disposition(render.id), receipts: [documentReceipt] }
+    const renderCommits = [{ sha: FIXED, subject: 'docs: render the parent document again' }]
+    const covering = { change: PARENT_DOCUMENT + ': the stale rendering is replaced by the current one', entry: render.id,
+      receipts: [documentReceipt] }
+    const onlyDocument = await simulateFix({ args: fixArgs({ entries: [render] }),
+      scope: { limitations: [], coverage, classifications: [renderClass] },
+      fixes: fixed([renderDisposition], { touched: [PARENT_DOCUMENT], files: rendered, commits: renderCommits }),
+      diff: { mappings: [covering] } })
     expect(labels(onlyDocument.calls).at(-1)).toBe('diff')
-    expect([onlyDocument.result.exit, onlyDocument.result.remaining]).toEqual(['follow-up', [unattested('return-error')]])
-    expect(onlyDocument.result.mappings).toEqual([covering])
+    expect(onlyDocument.result.exit).toBe('follow-up')
+    expect(onlyDocument.result.remaining).toEqual([{ kind: 'unattested-fix', severity: 'must-fix', item: {
+      approved: { key: render.id, correction: render.correction, reason: renderClass.reason, receipts: [documentReceipt] },
+      disposition: renderDisposition, snapshotSha: FIXED, commits: renderCommits } }])
+    expect(onlyDocument.result.mappings).toEqual([{ change: covering.change, entry: 'render-parent-document', receipts: [documentReceipt] }])
+    expect(render.correction).toContain(PARENT_DOCUMENT)
     // A fix reported as done with no commit at all stays unproven, whatever the entry names.
     const uncommitted = await simulateFix({ fixes: fixed([disposition('return-error')], { touched: [] }) })
     expect(labels(uncommitted.calls)).not.toContain('diff')
