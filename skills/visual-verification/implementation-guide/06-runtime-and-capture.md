@@ -86,7 +86,9 @@ relative time label or a poll after its first read; the stability check of part 
 own steps advance it frame by frame, and only to named observable transitions.
 
 A synthetic session is seeded before any application code runs, together with the variant's locale
-and theme in the storage the application reads them from. The session carries a fixed identity,
+and theme in the storage the application reads them from. Nothing else is seeded: no cached data,
+no feature setting and no state of an earlier run, so every other value comes from the
+application's own start-up and the data boundary. The session carries a fixed identity,
 claims that agree with the stored role, a token that does not expire at the scene's fixed time and
 no refresh credential. The token is static, unsigned and not secret, and the application's real
 decoder reads its claims; the harness is no authentication server. The harness never reads a
@@ -116,8 +118,11 @@ Every checkpoint runs the same sequence, with the same settings for every captur
 7. The screenshot is taken with animations disabled and the text caret hidden, in layout pixels.
 
 A checkpoint of the shell captures the whole viewport, and any other checkpoint captures its target
-element. The receipt records for every checkpoint its name, its image, what was captured, the
-readiness record and the checks the scene recorded since the previous checkpoint.
+element. A targeted checkpoint encloses everything it is meant to show. A capture of a group of
+options includes every option with no clipped edge. Floating content that opens outside its card,
+such as a popover or menu, is captured on the enclosing host, since a capture of the card alone
+would cut it off. The receipt records for every checkpoint its name, its image, what was captured,
+the readiness record and the checks the scene recorded since the previous checkpoint.
 
 The real shell stays visible. Viewport captures preserve it, and targeted captures provide detail.
 The runtime scrolls the actual scrolling container to the target and records that position. A
@@ -165,7 +170,8 @@ The reference served the application with Vite, loading the project's own config
 export and merging it with the harness settings; because the merge dropped a null override, the
 watcher was switched off after merging. Chromium ran headless through Playwright, one browser
 context per variant, with the page clock installed and paused before navigation and an
-initialization script seeding local storage. Fonts were checked with the document's font loading
+initialization script seeding local storage with the session, the locale and the theme mode and
+nothing else. Fonts were checked with the document's font loading
 interface and images with their decode function. Page routes lived in the address fragment, and the
 component entry received the container width as a query parameter.
 
