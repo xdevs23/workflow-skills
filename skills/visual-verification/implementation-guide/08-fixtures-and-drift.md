@@ -40,9 +40,12 @@ as one under `.invalid`, and scenes never navigate to it.
 
 Fixture edge values are deliberate. A fixture carries short and long natural-language values,
 accented characters, one long unbroken value as a stress case, and a second language with longer
-words, because those are the values that break layouts. A record that lacks an optional
-translation shows the application's fallback, and an empty state comes from an empty model or an
-empty declared response, never from missing fixture data.
+words, because those are the values that break layouts. Fixture state is chosen for the tightest
+layout as well: the longest labels the controls draw, such as the longest name of a mode or
+setting, and the extra control that makes a row fullest, such as an optional button that only some
+states draw. A record that lacks an optional translation shows the application's fallback, and an
+empty state comes from an empty model or an empty declared response, never from missing fixture
+data.
 
 ## Runtime assertions on parsed data
 

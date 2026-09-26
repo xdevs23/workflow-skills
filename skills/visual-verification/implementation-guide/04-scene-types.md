@@ -97,6 +97,24 @@ with its real parameters and model updates inside the contextual container it is
 same start-up, styles, translations, theme and shipped fonts as the application, as part 6
 describes. A component scene may declare no responses at all, and then any request fails the scene.
 
+## Component hosts
+
+A component scene draws the component in every real host it appears in, at that host's literal
+width, height and background, including the narrowest host the application draws it in. A host is
+the box around the component on a real screen, such as a side panel, a popover, a dialog or a
+full-width phone view. The scene also draws the component in each state of the dependent reads it
+shows, such as ready, loading and error, so every state a person can meet is on the picture.
+Adaptation point: the hosts of each component, with their sizes and backgrounds.
+
+A container-responsive component, whose own width switches it between layouts, is mounted in one
+host per layout, at the literal widths of its real hosts. Every host renders in every named variant,
+so each layout is seen in every language and theme of the variant set.
+
+The container widths of a component scene characterize the component on its own and are no
+substitute for evidence from the page layout. The component's geometry checks are applied again in
+a page scene that draws the component inside its real screen, where the shell, the neighbouring
+sections and the real container decide the space it gets.
+
 ## Target selection
 
 Targets are found through the application's existing test hooks where present and through scoped
@@ -128,6 +146,11 @@ naming the element.
 A hover state is produced with a dispatched pointer event at computed coordinates, since the capture
 sequence moves the real pointer away and would end a real hover.
 
+A page save flow checks the concrete unsaved and saved states. After an edit, the save and discard
+actions are enabled and the application's real unsaved indication shows. The save happens once.
+After it, the actions of the saved state are disabled and the unsaved indication is gone. Each of
+these states is read from the screen, and none is set through the application's state store.
+
 A component whose state would need a visible control to change is switched through a channel that
 draws nothing, such as a fragment of the address or a parameter of the harness entry, so no harness
 control appears in the picture. A component that picks a random value, such as a rotating
@@ -154,7 +177,11 @@ operator against the scene union. Its targets were located with Playwright locat
 attributes and with role and accessible name queries scoped to a container. Popovers were opened
 with a dispatched click event, hover states with a dispatched pointer move, and transitions were
 advanced with the page clock's frame steps. Expected strings came from the application's JSON
-translation files, and expected numbers and dates from the browser's `Intl` formatters.
+translation files, and expected numbers and dates from the browser's `Intl` formatters. A component
+entry drew one host element per real host, with the host's width and height in CSS pixels and its
+background, and one more host per state of a dependent read. A container-responsive panel was
+mounted in a wide host for its wide layout and in two narrow hosts, one of them at the narrowest
+phone width, for its narrow layout.
 
 ## Native and terminal realizations
 
