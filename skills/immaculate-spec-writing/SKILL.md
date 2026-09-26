@@ -97,7 +97,8 @@ with `file`, `line`, `uuid` and `quote`), and optionally `answers` (the question
 the words reply to) and `approves` (the plan text the user approved: a string when it stands in the
 assistant messages the words reply to, or a mapping of `text`, `file` and `sha256` when it stands
 in a file one of those messages names). The tool verifies every quote against the record it cites. `words` must come from a message the user
-wrote, typed or queued, or a question-dialog answer, never a task notification, an injected meta
+wrote, typed or queued, or a question-dialog answer, a note the user typed on the answer included,
+never a task notification, an injected meta
 record, command output or another tool result, and a named file's sha256 must match. The tool fails
 on an unknown key, on a record that is not YAML of this shape, a Markdown record included, and on
 a spec holding a `user_words` that no entry's `words` contain once whitespace is collapsed. Text the
@@ -114,7 +115,10 @@ also has `reason`. Use exactly the fields of its source kind:
   the assistant text they reply to, which the tool resolves in an assistant record between the
   previous user turn and the cited record. An answer the user gave through the question dialog
   (`AskUserQuestion`) can be cited: its record is the tool result that answers the dialog call, and
-  `answers` can quote the question, an option label or an option description of that call. A
+  `answers` can quote the question, an option label or an option description of that call. A note
+  the user typed on the answer can be cited from the same record. The host's placeholder
+  `(notes only)`, which stands in for the answer when only a note was given, and the preview of an
+  option cannot be cited. A
   message the user sent while the session was working can be cited too: its record is an
   `attachment` whose `attachment.type` is `queued_command` and whose `attachment.origin.kind` is
   `human`, with the text in `attachment.prompt`, and `answers` resolves before it as before a user

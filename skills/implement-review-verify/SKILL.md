@@ -111,7 +111,8 @@ absolute path in its marked block.
 
 Each item states one requirement or decision with an id, kind, content and one of four sources:
 `transcript` cites session records and verbatim user_words. Only a message the user wrote, typed or
-queued with origin `human`, or a question-dialog answer holds the user's words. A task
+queued with origin `human`, or a question-dialog answer, a note the user typed on the answer
+included, holds the user's words. A task
 notification, an injected meta record, command output, any other tool result and a queued command
 of any other origin never do. The assistant text `answers` quotes is resolved in
 the assistant records since the last message the user wrote, so a notification in between does
@@ -285,7 +286,8 @@ so later statements can be told from earlier ones.
 the user approved: a string when the text stands in the assistant messages the words reply to, or a
 mapping of `text`, `file` and `sha256` when it stands in a file one of those messages names, such as
 a plan written as an HTML file. The tool verifies every entry: `words` against the cited record,
-which must be a message the user wrote, typed or queued, or a question-dialog answer, and never a
+which must be a message the user wrote, typed or queued, or a question-dialog answer, a note the
+user typed on the answer included, and never a
 task notification, an injected meta record, command output or another tool result; each `context`
 quote against the record it cites; `answers` and `approves` against the messages the words reply
 to, or against the named file, whose sha256 must match. Unknown keys fail, so the record holds
