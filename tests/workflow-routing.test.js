@@ -1161,6 +1161,14 @@ describe('spec provenance instructions and routing', () => {
     }
   })
 
+  test('the provenance template has the root amend the YAML, and no template has it generate a document before implementation', async () => {
+    expect(await template('spec-provenance')).toContain(
+      'The root resolves technical decisions from existing authority and amends the YAML. No design document exists before implementation.')
+    for (const file of new Bun.Glob('*.md').scanSync({ cwd: fileURLToPath(new URL('../agents/', import.meta.url)) })) {
+      expect([file, (await template(file.replace(/\.md$/, ''))).includes('publishable artifacts')]).toEqual([file, false])
+    }
+  })
+
   test('both skills state that authority lives only in items and that a premise change rewrites the spec', async () => {
     const specWriting = flat(await Bun.file(new URL('../skills/immaculate-spec-writing/SKILL.md', import.meta.url)).text())
     const shared = ['A document enters a spec only as an observation of the current state of the code or the documents, re-run and dated',

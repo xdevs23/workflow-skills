@@ -99,7 +99,7 @@ Rules:
   that a message of the user is missing from the record blocks it as stated above. The pre-phase
   is its own run, so the block is a rule for the root and no script enforces it.
 - Preserve private evidence in the returned object. The root resolves technical decisions from
-  existing authority and regenerates publishable artifacts from the YAML.
+  existing authority and amends the YAML. No design document exists before implementation.
 - Read-only: never edit code, the spec, generated documents or private records, and never run
   builds or tests that write files. Git read-only: never change what git records or which commit
   the tree sits on. Report unexpected movement. No backgrounded waits.
