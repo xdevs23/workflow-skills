@@ -32,12 +32,12 @@ lives in the system temporary directory. Only scene modules, synthetic fixtures 
 tracked. Artifacts that carry sample data or screenshots are written with private permissions.
 
 The scratch directory stays in the project cache even when its default path is too long for the
-rendering engine or the checkout sits on a slow shared file system. The setup then makes the
-directory reachable at a short path through a mount or share, such as a virtual machine's file share
-or a bind mount, and each run's launcher scratch override of part 2 names that run's own private
-directory below the short path, never the shared short path itself. In a unit spec, the
-orchestrating session provides that short path to the stages. The system temporary directory is
-used only when no mount or share is possible, and then within the user's global rules.
+rendering engine. The setup then makes the directory reachable at a short path through a mount or
+share, such as a virtual machine's file share or a bind mount, and each run's launcher scratch
+override of part 2 names that run's own private directory below the short path, never the shared
+short path itself. In a unit spec, the orchestrating session provides that short path to the
+stages. The system temporary directory is used only when no mount or share is possible, and then
+within the user's global rules.
 
 Capture and comparison leave the version control state and the application files unchanged: no
 reference, no index entry, no branch, no working tree file, including translation files and existing
