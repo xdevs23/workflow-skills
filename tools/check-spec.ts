@@ -119,7 +119,9 @@ async function readCited(transcripts: string, reference: Mapping, withReplies: b
 
 // The words of the user a cited record holds, and the ids of the question-dialog calls it answers.
 // A tool result holds them only as the answers to a dialog call asked before it; a record that is
-// not a message the user wrote throws.
+// not a message the user wrote throws. An injected meta record or a record of any origin other than
+// human throws before its tool result is read. A dialog answer carries no origin, so a tool result
+// without one is read.
 function userWords(cited: unknown, uuid: string, asked: Set<string>) {
   if (!mapping(cited)) throw new Error('expected a user record with the cited uuid')
   if (queuedCommand(cited)) {
@@ -129,15 +131,17 @@ function userWords(cited: unknown, uuid: string, asked: Set<string>) {
   if (cited.type !== 'user' || !text(cited.uuid) || cited.uuid !== uuid) {
     throw new Error('expected a user record with the cited uuid')
   }
+  if (cited.isMeta === true) throw new Error("an injected meta record is not the user's words")
+  const foreign = () => {
+    const kind = mapping(cited.origin) ? cited.origin.kind : undefined
+    return new Error(`a user record of origin ${JSON.stringify(kind ?? null)} is not the user's words`)
+  }
+  if (cited.origin !== undefined && !humanOrigin(cited.origin)) throw foreign()
   if (toolResult(cited)) {
     const dialog = new Set(resultIds(cited).filter(id => asked.has(id)))
     return { said: dialogAnswers(cited, dialog), dialog }
   }
-  if (cited.isMeta === true) throw new Error("an injected meta record is not the user's words")
-  if (!humanOrigin(cited.origin)) {
-    const kind = mapping(cited.origin) ? cited.origin.kind : undefined
-    throw new Error(`a user record of origin ${JSON.stringify(kind ?? null)} is not the user's words`)
-  }
+  if (!humanOrigin(cited.origin)) throw foreign()
   return { said: [textOf(cited)], dialog: new Set<string>() }
 }
 

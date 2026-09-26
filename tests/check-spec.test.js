@@ -184,6 +184,10 @@ describe('structured unit spec validation', () => {
     invalid(cite(27, 'meta', 'Approved, go ahead.'), failed + 'an injected meta record is not the user\'s words')
     invalid(cite(28, 'command-stdout', 'Approved, go ahead.'), failed + 'a user record of origin null is not the user\'s words')
     invalid(cite(3, 'assistant-record', 'Export the selected rows.'), failed + 'expected a user record with the cited uuid')
+    // A dialog answer counts only in a record that is neither injected nor of another origin.
+    invalid(cite(31, 'meta-answer', 'January, then every month'), failed + 'an injected meta record is not the user\'s words')
+    invalid(cite(32, 'notification-answer', 'January, then every month'), failed + 'a user record of origin "task-notification" is not the user\'s words')
+    expect(cite(11, 'dialog-answer', 'Stream, in input order').exit).toBe(0)
     // The notification, the meta record and the command output between the proposal and the
     // approval open no turn, so the proposal is still what the approval replies to.
     expect(cite(29, 'approval', 'Approved, go ahead.', 'group the rows by month').exit).toBe(0)
@@ -474,6 +478,18 @@ describe('private directive record validation', () => {
     invalid(cite(3, 'assistant-record'), failed + 'expected a user record with the cited uuid')
     invalid(cite(21, 'queued-task'), failed + 'a queued command of origin "task-notification" is not the user\'s words')
     invalid(cite(13, 'command-output'), 'record.monthly-report.words: not found in the cited user message')
+  })
+
+  test('a dialog answer in an injected meta record or a task notification is not the user\'s words', () => {
+    const cite = (line, uuid) => withRecord((r, e) => {
+      Object.assign(e('schedule'), { line, uuid, words: 'January, then every month' })
+    })
+    const failed = 'record.schedule: transcript reference failed: '
+    invalid(cite(31, 'meta-answer'), failed + 'an injected meta record is not the user\'s words')
+    invalid(cite(32, 'notification-answer'), failed + 'a user record of origin "task-notification" is not the user\'s words')
+    // The genuine dialog answers carry no origin and still pass.
+    expect(withRecord(() => {}).exit).toBe(0)
+    expect(withRecord((r, e) => { e('schedule').words = 'Nightly' }).exit).toBe(0)
   })
 
   test('each context quote must stand in the record it cites', () => {
