@@ -2356,22 +2356,45 @@ describe('the design document is rendered after implementation', () => {
     }
   })
 
-  test('the diff check leaves the rendered parent document out, and a fixer that committed only that document has no correction', async () => {
+  test('the diff check treats the rendered parent document like any other file, and a document-only correction with a covering entry is accepted', async () => {
     const { calls } = await simulateFix()
-    expect(calls.find(c => c.label === 'diff').prompt).toContain('The one exception is ' + PARENT_DOCUMENT +
-      ': the fixer renders it from the parent spec with the spec tool, so a change there maps to no entry and is no finding.')
+    const prompt = calls.find(c => c.label === 'diff').prompt
+    expect(prompt).toContain('\n\n' + PARENT_DOCUMENT + ' is checked like any other file. The fixer renders it from the parent spec as it stands on disk,' +
+      ' so a change there maps to the corrective entry it carries out. A rendering that differs without a covering entry means the parent spec' +
+      ' was changed after the parent run, and that change belongs to a new unit.\n\n')
+    expect(prompt).not.toContain('The one exception is')
     const rendered = [{ path: PARENT_DOCUMENT, bytes: 80, change: 'modified' }]
-    const onlyDocument = await simulateFix({ fixes: fixed([disposition('return-error')], { files: rendered }) })
-    expect(labels(onlyDocument.calls)).not.toContain('diff')
-    expect([onlyDocument.result.exit, onlyDocument.result.detail]).toEqual(['root-resolution', 'A fix was reported as done without a commit.'])
-    expect(onlyDocument.result.remaining.map(r => r.kind)).toEqual(['unproven-fix', 'unattested-fix'])
-    expect(onlyDocument.result.remaining[0].item).toEqual({ key: 'return-error', cause: 'The fixer reported it fixed and committed no correction.' })
-    const rejected = await simulateFix({ fixes: fixed([disposition('return-error', 'rejected')], { files: rendered }) })
-    expect(labels(rejected.calls)).not.toContain('diff')
-    expect([rejected.result.exit, rejected.result.remaining.map(r => r.kind)]).toEqual(['root-resolution', ['unfixed-approval']])
-    const both = await simulateFix({ fixes: fixed([disposition('return-error')], { files: [...rendered, { path: 'src/example.js', bytes: 120, change: 'modified' }] }) })
-    expect(labels(both.calls).at(-1)).toBe('diff')
-    expect(both.result.remaining).toEqual([unattested('return-error')])
+    // A document change no entry covers comes back from the diff check as a finding, and the run
+    // returns it to the root as CRITICAL whatever severity the check gave it.
+    const stale = { ...finding, severity: 'should-fix', claim: PARENT_DOCUMENT + ' changed, and no corrective entry covers the change.' }
+    const uncovered = await simulateFix({ fixes: fixed([disposition('return-error')], { files: rendered }), diff: { findings: [stale] } })
+    expect(labels(uncovered.calls).at(-1)).toBe('diff')
+    expect([uncovered.result.exit, uncovered.result.detail]).toEqual(['root-resolution', 'The diff check found a change that no corrective entry covers.'])
+    expect(uncovered.result.remaining).toEqual([{ kind: 'diff-finding', severity: 'CRITICAL', item: { ...stale, severity: 'CRITICAL' } },
+      unattested('return-error')])
+    // A correction whose only change is the re-rendered document reaches the diff check, and its
+    // covering entry makes it an ordinary fix.
+    const covering = { change: PARENT_DOCUMENT + ': the stale rendering is replaced by the current one', entry: 'return-error', receipts: [receipt] }
+    const onlyDocument = await simulateFix({ fixes: fixed([disposition('return-error')], { files: rendered }), diff: { mappings: [covering] } })
+    expect(labels(onlyDocument.calls).at(-1)).toBe('diff')
+    expect([onlyDocument.result.exit, onlyDocument.result.remaining]).toEqual(['follow-up', [unattested('return-error')]])
+    expect(onlyDocument.result.mappings).toEqual([covering])
+    // A fix reported as done with no commit at all stays unproven, whatever the entry names.
+    const uncommitted = await simulateFix({ fixes: fixed([disposition('return-error')], { touched: [] }) })
+    expect(labels(uncommitted.calls)).not.toContain('diff')
+    expect(uncommitted.result.remaining[0].item).toEqual({ key: 'return-error', cause: 'The fixer reported it fixed and committed no correction.' })
+  })
+
+  test('the skill states the uniform diff check of a fix run', () => {
+    const text = sectionText(skill, '### Remaining items and follow-up work')
+    for (const phrase of ["The parent spec's design document has no exception: a change to it maps to the corrective entry it carries out, or it is a CRITICAL finding.",
+      'A correction whose only change is the re-rendered document is accepted when its entry covers it',
+      'a fix reported as done needs a commit of the fixer whatever path it touches',
+      'as it stands on disk, so a rendering that differs without a covering entry means the parent spec was changed after the parent run.',
+      'That change belongs to a new unit, and the diff check reports it.']) {
+      expect([phrase, text.includes(phrase)]).toEqual([phrase, true])
+    }
+    for (const stale of ['which maps to no entry', 'touch that document alone']) expect([stale, text.includes(stale)]).toEqual([stale, false])
   })
 
   test('the writer templates and the README describe the render as the writers\' completion step', async () => {
