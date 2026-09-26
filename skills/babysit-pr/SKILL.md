@@ -17,8 +17,8 @@ dedicated skill prescribes. It does not say who pushes a change or how a push is
 The agent first handles every comment, review and failed check already on the pull request. It
 then watches the pull request, through the Monitor tool where the harness has it and by polling
 otherwise. The watch reports each new comment, review or reply in a review thread, each check or
-job that fails, and the pull request being closed or merged. The agent's own replies are not
-events. The agent posts nothing when nothing is new.
+job that fails, and the pull request being closed or merged. The agent posts nothing when nothing
+is new.
 
 When a watch ends while the pull request is still open, the agent starts it again. When the pull
 request is closed or merged, the agent stops.
@@ -29,9 +29,6 @@ The agent acts on its own on every comment and review, from bots and people alik
 commit it was made on. It checks a reported problem against the code before it edits anything,
 makes the change the comment needs or declines a finding the check disproves, and in both cases
 replies through the `pr-comment-replies` skill.
-
-The agent answers a comment once. Its own earlier reply carries the header of the
-`pr-comment-replies` skill, and that reply shows the comment is already answered.
 
 ## Failed checks
 
