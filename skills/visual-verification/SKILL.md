@@ -101,7 +101,8 @@ A scene is curated when no existing scene exposes the surface a change touches.
 1. Read the real surface: the screen or view, every component it draws, and every consumer of data
    on it, including the shell around it, such as navigation, status lines and background reads.
 2. Define the question the scene answers, the complete fixture that every consumer receives, the
-   interactions, the measured checks and the named checkpoints.
+   interactions, the measured checks and the named checkpoints. Verify every assumption the scene
+   rests on against the code, and agree on the observable checks before the product change starts.
 3. Run it until it passes for the right reasons, and look at every PNG it writes. A scene that
    passes because a fixture was left empty or a target matched the wrong element answers nothing.
 4. Add its entry to the project's scene documentation: the question, the fixture, the checkpoints

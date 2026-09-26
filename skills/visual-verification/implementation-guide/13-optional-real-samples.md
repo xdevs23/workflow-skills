@@ -23,6 +23,11 @@ explicitly names every remaining response key as synthetic. The refresh refuses 
 and any missing acknowledgement of a synthetic key, before making a request. It carries identifiers
 only, never credentials.
 
+The selected record identifier is percent-encoded when it is inserted into the path of the allowed
+operation, and the selection's operation list must match that exact encoded operation. An
+identifier with reserved characters therefore can never reach a different path than the one the
+selection names.
+
 ## Read-only operations
 
 Before a refresh operation is enabled, its semantics are verified to be read-only in the service's
@@ -37,7 +42,8 @@ context. The launcher of part 2 passes it only to the refresh verb. The service 
 explicitly and must be a bare encrypted origin: the secure scheme, no user information, no path
 beyond the root, no query and no fragment. The endpoint allowlist is exact.
 
-The refresh denies redirects and fails when a response was redirected, and forwards the credential
+The refresh denies redirects and fails on any response with a non-success status as well as on a
+redirected response; only a successful, non-redirected read is projected. It forwards the credential
 only to that origin. It does not inherit the general deployment environment, and never prints
 headers, bodies, tokens, query identifiers or raw service errors. A failed read reports that the
 refresh is incomplete, that raw service errors are deliberately not logged and that existing
@@ -68,8 +74,11 @@ Every response and every required manifest entry is validated before a sample is
 the same validation as part 8. The refresh writes into a fresh directory marked incomplete, first
 with a manifest that says so, and only after validation writes the responses and a complete
 manifest, then moves the directory to its label. The move fails when a sample with that label
-exists, so a complete sample is never overwritten in place. A failed or partial refresh stays in its
-incomplete directory, visibly unusable, and can never be selected.
+exists, so a complete sample is never overwritten in place. Publishing another profile under a label
+that already holds a complete sample requires a deliberate step first: retain the existing sample,
+or explicitly manage the local cache, such as by removing that sample by hand. The refresh takes
+neither step on its own. A failed or partial refresh stays in its incomplete directory, visibly
+unusable, and can never be selected.
 
 The manifest records the projection version, completeness, the provenance, the capture time, for
 each response key its provenance and a content hash, and the hash of the whole response set. It
@@ -77,7 +86,9 @@ never records credentials, and neither does any receipt.
 
 ## Using a sample
 
-A capture selects a sample by label. A missing sample never triggers a refresh. The reader checks
+A capture selects a sample by label. The refresh is a separate process, and the only one that is
+allowed to use the network: the scene verb, the compare verb and a cache miss never invoke it, so a
+missing sample never triggers a refresh. The reader checks
 the label, the manifest's version, that the sample is complete, that the response set's hash matches
 the manifest, the validation against the scene's expected set with the sample's main record
 substituted, and the mixed provenance. The flow is: supply the origin and the credential, run the
@@ -115,6 +126,9 @@ displayed name map and short descriptions, used local aliases for identity and r
 removed external media, and retained synthetic background text and shell responses. The refresh
 took the transport as a parameter, defaulting to the platform's fetch function, so the self-test
 suite could pass a synthetic one. It authenticated with a bearer token header and asked for JSON.
+It inserted the selected identifier into the read path with the standard URI component encoding,
+requested with redirects set to fail, and accepted only a response whose status was a success and
+which had not been redirected.
 
 ## Native and terminal realizations
 
