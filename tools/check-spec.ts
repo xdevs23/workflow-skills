@@ -73,20 +73,19 @@ const notesOnly = '(notes only)'
 // question-dialog call the record's tool result answers: the values of the record's structured
 // `toolUseResult.answers` mapping and the `notes` of each entry of its `annotations` mapping, which
 // is keyed by the question. The answer to a question whose annotation carries notes is the host's
-// placeholder when it reads `(notes only)`, so that value is dropped. The `preview` of an annotation
-// is the option's preview text. The tool result's content holds the question text and the host's
-// own wording around the answers. Neither counts as the user's words.
+// placeholder when it reads `(notes only)`, and the function drops that value. The `preview` of an
+// annotation is the option's preview text. The tool result's content holds the question text and
+// the host's own wording around the answers. Neither counts as the user's words.
 const dialogAnswers = (record: Mapping, answered: Set<string>): string[] => {
   if (!answered.size || !mapping(record.toolUseResult)) return []
   const { answers, annotations } = record.toolUseResult
   const annotated: Mapping = mapping(annotations) ? annotations : {}
-  const noted = (question: string) => {
-    const annotation = Object.hasOwn(annotated, question) ? annotated[question] : undefined
-    return mapping(annotation) && text(annotation.notes)
-  }
-  const chosen = mapping(answers) ? Object.entries(answers)
-    .filter(([question, answer]) => !(answer === notesOnly && noted(question))).map(([, answer]) => answer) : []
-  const typed = Object.values(annotated).filter(mapping).map(annotation => annotation.notes)
+  const noteOf = (annotation: unknown) => mapping(annotation) && text(annotation.notes) ? annotation.notes : undefined
+  const placeholder = ([question, answer]: [string, unknown]) =>
+    answer === notesOnly && Object.hasOwn(annotated, question) && noteOf(annotated[question]) !== undefined
+  const pairs = mapping(answers) ? Object.entries(answers) : []
+  const chosen = pairs.filter(pair => !placeholder(pair)).map(([, answer]) => answer)
+  const typed = Object.values(annotated).map(noteOf)
   return [...chosen, ...typed].filter(text)
 }
 const toolResult = (record: Mapping) => blocksOf(record).some(block => mapping(block) && block.type === 'tool_result')
