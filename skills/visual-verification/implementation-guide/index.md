@@ -71,6 +71,14 @@ dependency caches and scratch files live in the harness directory inside the pro
 location `workflow-skills:local-cache` defines, and only scene modules, synthetic fixtures and the
 harness code are tracked. The guide calls that location the harness directory throughout.
 
+The scratch directory of the rendering engine lives in the project cache as well. When its path is
+too long for the rendering engine, or the checkout sits on a slow shared file system, the setup makes
+the directory reachable at a short path through a mount or share, such as a virtual machine's file
+share or a bind mount, and the launcher's scratch override names that short path. Each run uses its
+own subdirectory below it. In a unit spec, the orchestrating session provides that short path to the
+stages. The system temporary directory is used only when no mount or share is possible, and then
+within the user's global rules.
+
 ## Components are examples
 
 Each part states what a component has to do. The components and libraries the reference used are
@@ -121,12 +129,14 @@ Every file is read in full, in this order, before any harness code is written.
    on parsed data, drift checks and consistency of referenced identifiers.
 9. `09-receipts-and-fingerprints.md` covers every field a capture records, the fingerprints before
    and after a run and what a receipt never contains.
-10. `10-comparison-and-reports.md` covers the compatibility check, checkpoint matching, the zero
-    changed-pixel rule, fixed comparison options and self-contained reports.
+10. `10-comparison-and-reports.md` covers the compatibility check, the field-by-field receipt
+    difference of a declared input change, checkpoint matching, the zero changed-pixel rule, fixed
+    comparison options and self-contained reports.
 11. `11-diff-coloring.md` covers the local contrast recoloring of the change mask with its numbers,
     colors, legend, known limits and acceptance rules.
 12. `12-evidence-sheet.md` covers the layout, grouping, output and refusal rules of the evidence
-    sheet for a pull request.
+    sheet for a pull request, and the per-variant sheets with their structured results files for a
+    declared input change.
 13. `13-optional-real-samples.md` covers the explicit, allowlisted and projected refresh of real
     data samples and their privacy rules.
 14. `14-self-test-suite.md` covers every category of test the harness's own suite has and how the

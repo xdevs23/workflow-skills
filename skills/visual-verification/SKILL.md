@@ -77,12 +77,22 @@ the same data and settings.
 7. A change that must not alter the look shows zero changed pixels on every checkpoint. A change
    that alters the look shows changes only in the checkpoints it is expected to change, with every
    measured check passing.
-8. Report product findings apart from harness failures. A product finding is something the scene
+8. A change that alters a compatibility input on purpose, such as a translation, a fixture, the
+   scene module or a dependency lock, declares those inputs before it starts. The comparison
+   refuses such a pair and stays strict. Compare the two receipts field by field and list the
+   fields that differ. The pair is judged only when those fields are exactly the declared inputs;
+   any other difference fails it. Then render one evidence sheet per variant, each under an output
+   name never used before. Take the changed-pixel counts from each sheet's structured results
+   file, where a checkpoint whose dimensions changed counts as changed, and take the measured
+   checks from the after capture's own receipt and report.
+9. Report product findings apart from harness failures. A product finding is something the scene
    shows to be wrong in the product; a harness failure is a scene that could not run or check what
    it declares. Ask for a product decision when the required outcome is genuinely unresolved.
 
 The comparison exits nonzero for every difference, including an intended one. An intended change is
-still a difference for a person to review, and no baseline is ever approved automatically.
+still a difference for a person to review, and no baseline is ever approved automatically. The
+comparison is never loosened for declared inputs either, since a comparison that accepts some
+changed inputs is no longer the strict verdict.
 
 ## Curating a scene
 
@@ -125,12 +135,22 @@ The `implement-review-verify` skill stays unchanged for visual work. The orchest
 expresses the visual part of a unit in the unit spec, and the stages act on it as the spec states.
 
 A criterion for a visual change names the scene, the checkpoints and the expected comparison
-outcome. The outcome is one of two forms: zero changed pixels on every checkpoint, or changes only
-in the named checkpoints with every measured check passing.
+outcome. The outcome is one of three forms: zero changed pixels on every checkpoint; changes only
+in the named checkpoints with every measured check passing; or, for a change that alters
+compatibility inputs on purpose, the declared input change. A criterion of the third form declares
+in advance which compatibility inputs its change alters, such as a translation, a fixture, the
+scene module or a dependency lock, and names the checkpoints expected to change.
 
 The orchestrating session captures the before state once, in the worktree the stages use, from the
 base commit, before the implement stage starts, and writes the capture name into the unit spec. No
 stage captures the before state again.
+
+The scratch directory of the harness lives in the worktree's project cache. When its path is too
+long for the rendering engine, or the worktree sits on a slow shared file system, the setup makes
+that directory reachable at a short path through a mount or share, such as a virtual machine's file
+share or a bind mount, and the orchestrating session provides that short path to the stages in the
+unit spec. Every run passes it through the launcher's scratch override and uses its own
+subdirectory below it.
 
 Each writing stage, after its last commit, captures the after state under a name never used before
 in that worktree, such as its stage label joined with the run identifier. It runs the comparison
@@ -139,27 +159,45 @@ The stage's pass or fail proof stays the project's check command, because the co
 nonzero for every intended change. The outcome is judged from the changed-pixel count of each
 checkpoint against the checkpoints the criterion names.
 
+For a criterion of the third form, the comparison refuses the pair and stays strict. The writing
+stage compares the before and after receipts field by field and returns the fields that differ.
+The pair is judged only when the differing fields are exactly the declared inputs, and any other
+difference fails the outcome. The stage then renders one evidence sheet per variant under output
+names never used before, and returns the sheets with their structured results files. The
+changed-pixel counts come from those files, a checkpoint whose dimensions changed counts as
+changed, and the measured checks come from the after capture's own receipt and report. The
+comparison is never loosened for the declared inputs, since that would weaken the strict verdict.
+
 Reading stages that receive the spec open the PNGs, the receipts and the comparison reports in the
 harness's directory inside that worktree's project cache, the location `workflow-skills:local-cache`
-defines. Each checks that the after capture's receipt carries the snapshot under review as its
-source revision, and that the before capture's receipt carries the base commit the unit spec names;
-an after capture of another commit is no evidence for this one. A point that needs a new capture
-goes to the fixer, since reading stages write nothing. Stages that receive no spec by design, such
-as the fresh-context quality and alternatives reviews and the roaster, get nothing added.
+defines. For a criterion of the third form they also open the evidence sheets, their structured
+results files and the field-by-field receipt difference. Each reading stage checks that the after
+capture's receipt carries the snapshot under review as its source revision, and that the before
+capture's receipt carries the base commit the unit spec names; an after capture of another commit
+is no evidence for this one. A point that needs a new capture goes to the fixer, since reading
+stages write nothing. Stages that receive no spec by design, such as the fresh-context quality and
+alternatives reviews and the roaster, get nothing added.
 
 A fix run's fix-list entry for a visual defect states, in its correction, the scene, the
-checkpoints, the expected outcome and the name of the before capture.
+checkpoints, the expected outcome and the name of the before capture. For a change of the third
+form, the entry also names the declared inputs, the evidence sheets, their structured results files
+and the field-by-field receipt difference.
 
 ## Known pitfalls
 
 The rendering engine's scratch directory can exceed a path limit. A browser engine binds a local
-socket under its scratch directory, and a socket path holds at most 107 bytes, so a deep checkout
-or worktree needs a shorter private scratch directory. The launcher refuses a path over its limit
-before the engine starts, and the fix is the launcher's scratch override pointing at a short
-private directory.
+socket under its scratch directory, and a socket path holds at most 107 bytes, so the scratch path
+of a deep checkout or worktree can exceed the launcher's limit, and the launcher refuses it before
+the engine starts. The scratch directory still lives in the project cache. The setup makes it
+reachable at a short path through a mount or share, such as a virtual machine's file share or a
+bind mount, and the launcher's scratch override names that short path. Each run uses its own
+subdirectory below it, never shared with another run. The system temporary directory is used only
+when no mount or share is possible, and then within the user's global rules.
 
 A slow shared file system makes every capture slow. On a network or user-space mounted checkout,
-every page or screen load can take tens of seconds unless the scratch directory is on a local disk.
+every page or screen load can take tens of seconds. The remedy is the same: the setup makes the
+scratch directory in the project cache reachable at a short path through a mount or share, and the
+scratch override names that path.
 
 Capture names cannot be reused. A second run under an existing name fails, so every stage and every
 repeated attempt needs its own name.

@@ -30,6 +30,14 @@ caller write to that pull request batch's prepared directory, also inside the pr
 scene modules, synthetic fixtures and harness code are tracked. Artifacts that carry sample
 data or screenshots are written with private permissions.
 
+The scratch directory stays in the project cache even when its default path is too long for the
+rendering engine or the checkout sits on a slow shared file system. The setup then makes the
+directory reachable at a short path through a mount or share, such as a virtual machine's file share
+or a bind mount, and the launcher's scratch override of part 2 names that short path. Each run uses
+its own subdirectory below it. In a unit spec, the orchestrating session provides that short path to
+the stages. The system temporary directory is used only when no mount or share is possible, and then
+within the user's global rules.
+
 Capture and comparison leave the version control state and the application files unchanged: no
 reference, no index entry, no branch, no working tree file, including translation files and existing
 tests that a scene reads. The acceptance criteria of part 17 check this against the starting

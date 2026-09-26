@@ -22,6 +22,27 @@ The two captures must hold the same set of checkpoint names, with no duplicates 
 checkpoint. A missing or extra checkpoint fails with a message asking for the complete scene to be
 run.
 
+## Declared input changes
+
+A change can alter a compatibility input on purpose, such as a translation, a fixture, the scene
+module or a dependency lock. Such a change declares the inputs it alters before it starts, and the
+comparison refuses its pair like any other incompatible pair. The comparison is never loosened for
+declared inputs, since a check that accepts some changed inputs is no longer the strict verdict.
+
+The pair is judged through the field-by-field receipt difference instead. Both receipts are read
+with a standard JSON library, and every field of their compatibility groups and scene names is
+compared by its path in the receipt, such as the scene fingerprint, the fixture digest or the hash
+of one lock. The difference lists every path whose value differs, with the value on each side. The
+pair is judged only when the differing fields are exactly the declared inputs; any other differing
+field fails the change, however small its pixel effect. A declared input is matched through the
+receipt fields that cover it: a fixture or translation file the scene imports changes the scene
+fingerprint and, for a fixture, the fixture digest, and a dependency lock changes that lock's hash.
+
+After the difference matches, the evidence sheets of part 12 show what the change did, one sheet
+per variant, each with its structured results file. The changed-pixel counts come from those files,
+and the measured checks come from the after capture's own receipt and report, since the refused
+comparison checks nothing.
+
 ## Checkpoint comparison
 
 Checkpoints are matched by name, never by file order. Each pair of images is decoded with a PNG
