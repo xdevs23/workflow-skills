@@ -40,6 +40,14 @@ entries:
     context:
       - { file: session.jsonl, line: 33, uuid: columns-call, quote: Which columns should the export keep? }
     answers: Which columns should the export keep?
+  - id: empty-cells
+    file: session.jsonl
+    line: 42
+    uuid: typed-placeholder
+    words: '(notes only)'
+    context:
+      - { file: session.jsonl, line: 41, uuid: fill-call, quote: What should an empty cell hold? }
+    answers: What should an empty cell hold?
   - id: skip-empty
     file: session.jsonl
     line: 20
