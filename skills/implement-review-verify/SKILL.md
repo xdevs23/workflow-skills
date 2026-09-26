@@ -797,9 +797,8 @@ entry. The parent spec's design document has no exception: a change to it maps t
 entry it carries out, or it is a CRITICAL finding. A correction whose only change is the
 re-rendered document is accepted when its entry covers it, and a fix reported as done needs a
 commit of the fixer whatever path it touches. The fixer renders the document from the parent spec
-as it stands on disk, so a rendering that differs without a covering entry means the parent spec
-was changed after the parent run. That change belongs to a new unit, and the diff check reports
-it. Each of its findings returns as a CRITICAL `diff-finding` and starts no further fixer.
+as it stands on disk. Each finding of the diff check returns as a CRITICAL `diff-finding` and
+starts no further fixer.
 Every entry the fixer reports fixed returns as an `unattested-fix` for the root to attest, as in
 the main run, and the run then ends `follow-up`, as it also does when only must-fix or CRITICAL
 roast findings remain. It ends `root-resolution` when an entry was refused, a fix was not applied,

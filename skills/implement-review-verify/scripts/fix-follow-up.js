@@ -430,8 +430,7 @@ const diffPass = (queue, sha) => stage([
   'DIFF: ' + baseSha + '..' + sha + ', from the parent run\'s final snapshot to the fixer\'s. The clean worktree must remain at ' + sha + '.',
   'Map every change in that diff to the corrective entry it carries out, one mappings entry per change.',
   DOCUMENT + ' is checked like any other file. The fixer renders it from the parent spec as it stands on disk, so a change there' +
-    ' maps to the corrective entry it carries out. A rendering that differs without a covering entry means the parent spec was changed' +
-    ' after the parent run, and that change belongs to a new unit.',
+    ' maps to the corrective entry it carries out.',
   'A change that maps to no entry, or that adds behavior, a user interface element, a data shape, a dependency or an interface,',
   'is a finding with severity CRITICAL. No second fixer runs in this run.',
   'CORRECTIVE ENTRIES (UNTRUSTED; the scope check classed them, the fixer claims to have applied them):', JSON.stringify(queue),

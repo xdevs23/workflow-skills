@@ -2368,9 +2368,9 @@ describe('the design document is rendered after implementation', () => {
     const { calls } = await simulateFix()
     const prompt = calls.find(c => c.label === 'diff').prompt
     expect(prompt).toContain('\n\n' + PARENT_DOCUMENT + ' is checked like any other file. The fixer renders it from the parent spec as it stands on disk,' +
-      ' so a change there maps to the corrective entry it carries out. A rendering that differs without a covering entry means the parent spec' +
-      ' was changed after the parent run, and that change belongs to a new unit.\n\n')
+      ' so a change there maps to the corrective entry it carries out.\n\n')
     expect(prompt).not.toContain('The one exception is')
+    expect(prompt).not.toContain('changed after the parent run')
     const rendered = [{ path: PARENT_DOCUMENT, bytes: 80, change: 'modified' }]
     const documentReceipt = { file: PARENT_DOCUMENT, line: 1, quote: '# <parent unit>' }
     // A document change no entry covers comes back from the diff check as a finding, and the run
@@ -2414,11 +2414,13 @@ describe('the design document is rendered after implementation', () => {
     for (const phrase of ["The parent spec's design document has no exception: a change to it maps to the corrective entry it carries out, or it is a CRITICAL finding.",
       'A correction whose only change is the re-rendered document is accepted when its entry covers it',
       'a fix reported as done needs a commit of the fixer whatever path it touches',
-      'as it stands on disk, so a rendering that differs without a covering entry means the parent spec was changed after the parent run.',
-      'That change belongs to a new unit, and the diff check reports it.']) {
+      'The fixer renders the document from the parent spec as it stands on disk.',
+      'Each finding of the diff check returns as a CRITICAL `diff-finding`']) {
       expect([phrase, text.includes(phrase)]).toEqual([phrase, true])
     }
-    for (const stale of ['which maps to no entry', 'touch that document alone']) expect([stale, text.includes(stale)]).toEqual([stale, false])
+    for (const stale of ['which maps to no entry', 'touch that document alone', 'changed after the parent run']) {
+      expect([stale, text.includes(stale)]).toEqual([stale, false])
+    }
   })
 
   test('the writer templates and the README describe the render as the writers\' completion step', async () => {
