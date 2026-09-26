@@ -13,7 +13,7 @@ const UNIT = {
   worktree: '<isolated worktree>',
   fixList: args.fixList,                 // the fix list in the main checkout's project cache (workflow-skills:local-cache), passed at launch; ends in .yaml
   transcripts: args.transcripts,         // the session transcript directory, passed at launch
-  privateRecord: '<main checkout>/.cache/directives/<parent unit>.md',   // the parent unit's record, where workflow-skills:local-cache puts directive records
+  privateRecord: '<main checkout>/.cache/directives/<parent unit>.yaml',   // the parent unit's record, where workflow-skills:local-cache puts directive records
   pluginRoot: '<plugin root>',           // the directory holding tools/check-spec.ts
   checkCommand: '<the check command>',   // the fixer only, run bare after the last write
   baseSha: args.baseSha,                 // the parent run's final snapshot, passed at launch
@@ -86,6 +86,8 @@ const AUTHORITY = [                    // the fixer only; the two checks and the
   'Second, WRITING SEATS ONLY: a failed sense check (trigger sense-check; implementer before any edit,',
   'fixer before its first write, as their templates define). Otherwise abort.trigger is none.',
   'A READING SEAT reports the same observation as a finding with kind band-aid or longer-route.',
+  'A READING STAGE reports a choice in the spec, this prompt or the diff that no words of the user back as a finding',
+  'with kind unbacked-choice.',
   'A tree not yet satisfying the spec is normal: report ordinary findings, never a hard flag.',
   'Run checks BARE. Never pipe through head/grep: it hides the error.',
   'NEVER end a turn waiting on a backgrounded check; your returned object IS the deliverable.',
@@ -101,6 +103,8 @@ const AUTHORITY = [                    // the fixer only; the two checks and the
   'Implement the spec AS WRITTEN. Suggested spec edits do not block executable work or normal reviews.',
   'Report non-blocking spec suggestions without making them prerequisites; block only on an actual impossibility.',
   'A spec that contradicts a directive is the hard-flag case above, never "implement it as written".',
+  'APPROVED TEXT: text the user approved, held in the approves field of a private record entry, counts as the user\'s',
+  'verbatim directive. A contradiction with it is a contradiction with the user\'s own sentence and hard-flags the same way.',
   'Read the private directive record below for its surrounding context and examples, not just its',
   'lines in isolation - the absence of a particular keyword never licenses behavior that contradicts',
   'the established context, and an example never authorizes an unrelated feature it did not name.',

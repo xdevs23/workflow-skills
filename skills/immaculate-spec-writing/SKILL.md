@@ -51,7 +51,9 @@ for a throwaway note, just use the sub-skills directly.
 
 - **The question/goal** and the **output doc path** (research-loop's inputs).
 - **The private directive record** — the user's verbatim decisions the spec must describe, with
-  their surrounding qualifications and context, since those give a directive its meaning. Point
+  their surrounding qualifications and context, since those give a directive its meaning, and the
+  plan text the user approved, which counts as the user's verbatim directive. It is the YAML file
+  the output format below describes. Point
   the loop at it the same way ground truth is pointed at; never copy it into the tracked artifact.
   A necessary directive cannot be omitted from that record because it seems minor; keep factual
   research findings distinct from the decisions the record actually establishes. It vetoes the
@@ -82,8 +84,23 @@ source and its rendering together.
 `tests/fixtures/spec-provenance/valid.yaml` is exercised by the tests. The top-level mapping has
 `unit`, `summary` (Markdown, the preamble of the generated document), `record` and a non-empty
 `items` list. `record` is the absolute path of the private directive record the spec was written
-from; the tool fails when that file does not exist or does not contain every `user_words` of the
-spec once whitespace is collapsed, and the generated document never shows the path.
+from, and the generated document never shows the path.
+
+The private directive record is a YAML file with exactly the keys `unit` and `entries`, and it
+holds quotations and nothing else. Each entry has exactly `id` (unique, kebab-case), the `file`,
+`line` and `uuid` of the transcript record the user's message stands in, `words` (a verbatim quote
+of that message), `context` (a non-empty list of quotes from the surrounding conversation, each
+with `file`, `line`, `uuid` and `quote`), and optionally `answers` (the question or assistant text
+the words reply to) and `approves` (the plan text the user approved: a string when it stands in the
+assistant messages the words reply to, or a mapping of `text`, `file` and `sha256` when it stands
+in a file one of those messages names). The tool verifies every quote against the record it cites. `words` must come from a message the user
+wrote, typed or queued, or a question-dialog answer, never a task notification, an injected meta
+record, command output or another tool result, and a named file's sha256 must match. The tool fails
+on an unknown key, on a record that is not YAML of this shape, a Markdown record included, and on
+a spec holding a `user_words` that no entry's `words` contain once whitespace is collapsed. Text the
+user approved counts as the user's verbatim directive, and a spec item built on an approval quotes
+the approved text in its `answers` field.
+
 Each item has a unique kebab-case `id`, a `kind` (requirement, criterion, rejected or boundary),
 non-empty Markdown `content` stating one decision or requirement, and `source`. A rejected item
 also has `reason`. Use exactly the fields of its source kind:
@@ -99,7 +116,10 @@ also has `reason`. Use exactly the fields of its source kind:
   `attachment` whose `attachment.type` is `queued_command` and whose `attachment.origin.kind` is
   `human`, with the text in `attachment.prompt`, and `answers` resolves before it as before a user
   record. A queued command of any other origin is refused. No other
-  tool result can be cited, because its content is output of a command or a program. At least one
+  tool result can be cited, because its content is output of a command or a program. A task
+  notification, an injected meta record and command output cannot be cited either: a typed
+  message counts only with origin `human`, and `answers` resolves in the assistant records since
+  the last message the user wrote. At least one
   item has this source: a spec with none of the user's words fails, and so does a requirement
   derived from observations alone.
 - **rule:** `rule: { file, line }` and `quote`, matching the rule's words across hard-wrapped lines.

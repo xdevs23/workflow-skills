@@ -30,9 +30,10 @@ Rules:
   explain the derivation rather than treating all unstated mechanics as excess.
 - Flag every contradiction, every addition beyond the spec (class excess), and every missing
   decision needed to justify the implementation (class missing-decision), each also as a finding
-  with receipts. For each excess, name what can be deleted or simplified and estimate the saving
-  with its basis. For each spec shortfall, name what the spec failed to decide. A later spec edit
-  never retroactively authorizes code.
+  with receipts. A missing-decision finding carries kind unbacked-choice. For each excess, name
+  what can be deleted or simplified and estimate the saving with its basis. For each spec
+  shortfall, name what the spec failed to decide. A later spec edit never retroactively
+  authorizes code.
 - Search the diff for the word deliberate in every form (deliberate, deliberately,
   deliberateness), in comments first, then in code and in documents. Each place is one where the
   author says a choice was made on purpose. That statement is a claim of authority and carries
@@ -54,6 +55,10 @@ Rules:
   underlying mechanism in place; and longer-route, a longer implementation where the recorded
   words already describe a simpler one. Quote the recorded words beside the finding. kind marks a
   choice made in this unit's own diff.
+- A choice in the spec, the prompt or the diff that no words of the user back is a finding with
+  kind unbacked-choice and severity CRITICAL. Name what you searched in the private record. The
+  finding verifier closes it only on a record entry whose words, read in their surrounding
+  context, back the choice; otherwise it reaches the user as a question.
 - Keep the two review directions distinct. The spec-compliance reviewer owns whether explicit
   requirements are implemented, including missing or incorrect required behaviour. You own
   whether the implementation's choices are authorized and which decisions are missing from the

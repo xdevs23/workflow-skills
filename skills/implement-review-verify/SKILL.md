@@ -102,16 +102,22 @@ as prose, the root writes the YAML before launching. `tools/check-spec.ts` defin
 contract; `tests/fixtures/spec-provenance/valid.yaml` is its exercised format example.
 
 The spec's top-level `record` key holds the absolute path of the private directive record the spec
-was written from. The tool fails a spec whose record file does not exist, or whose record does not
-contain every `user_words` of the spec once whitespace is collapsed, and the generated document never
-shows the path. The tool reads a relative path from the directory it runs in, as the test fixtures
+was written from, the YAML file described under the private source record below. The tool fails a
+spec whose record file does not exist, whose record is not of that format, whose record holds a
+quote the transcripts do not bear out, or whose record entries do not hold every `user_words` of
+the spec in their `words` once whitespace is collapsed. The generated document never shows the path. The tool reads a relative path from the directory it runs in, as the test fixtures
 do, but a unit spec holds the absolute path: each script's launch check compares it with the
 absolute path in its marked block.
 
 Each item states one requirement or decision with an id, kind, content and one of four sources:
 `transcript` cites session records and verbatim user_words, where an answer through the question
 dialog counts, a message the user sent while the session was working counts, and no other tool
-result or queued command does; `rule` cites a file, line and quote;
+result or queued command does. A task notification, an injected meta record and command output
+never count either: only a message the user wrote, typed or queued with origin `human`, or a
+question-dialog answer holds the user's words. The assistant text `answers` quotes is resolved in
+the assistant records since the last message the user wrote, so a notification in between does
+not cut the reply off from its question. A spec item built on an approval quotes the approved
+text in its `answers` field; `rule` cites a file, line and quote;
 `observation` records command, exit, output and date; `derivation` names parent item ids. An item
 asserting that a condition, failure mode or risk exists needs source transcript or observation.
 A reviewer's hypothetical hazard stays a finding until an observation establishes the condition here.
@@ -212,12 +218,27 @@ summary sentence by sentence, every boundary item, every comment line of the raw
 every document, branch or earlier unit the spec names or builds on. A claim there that no item
 backs, and a decision found only in a comment, are must-fix findings; comments carry provenance
 notes only. It re-runs each read-only observation command and reports output or exit
-mismatches and observations older than the base commit. Its findings advise the root alongside
-the two unbriefed seats, whose inputs remain the spec and hygiene floor. The spec-provenance
-findings carry the same must-fix, should-fix and nit severity the gap-finder uses. One class of
-them is not advisory: a must-fix finding that an item's words are missing, misread or ambiguous
-blocks the main run until the user's answer is in the record. The pre-phase is its own run, so
-that block is a rule for the root and no script enforces it.
+mismatches and observations older than the base commit.
+
+The provenance reader lists every message the user wrote, in every transcript of the directory
+and queued messages included, on the unit's subject and on the subject of everything the unit
+extends: documents, earlier units, and existing code the unit changes or builds on, whether or not
+an item names it. A message on those subjects that no record entry holds is a must-fix finding
+that blocks the main run until the root has added it to the record or the user has answered, in
+the same class as a must-fix finding that an item's words are missing. It reports a choice in the
+spec that no words of the user back as a finding with kind `unbacked-choice`, and the root puts
+every such finding to the user as a question before the main run. The rule that approved text
+counts as the user's words reaches the pre-phase through the spec-provenance template, because
+the pre-phase script gives its unbriefed stages the hygiene floor only and carries no authority
+block.
+
+Its findings advise the root alongside the two unbriefed seats, whose inputs remain the spec and
+hygiene floor. The spec-provenance findings carry the same must-fix, should-fix and nit severity
+the gap-finder uses. Two classes of them are not advisory: a must-fix finding that an item's words
+are missing, misread or ambiguous blocks the main run until the user's answer is in the record,
+and a must-fix finding that a message of the user is missing from the record blocks it until the
+root has added the message or the user has answered. The pre-phase is its own run, so those
+blocks are a rule for the root and no script enforces them.
 
 Their output is **advisory to the orchestrator**, who triages it against the recorded rulings and
 amends the YAML spec, then regenerates the tracked document. Amend the YAML — never patch the
@@ -242,14 +263,38 @@ tracked docs, tests, code or commit messages. A broad commit instruction does no
 including private records. Keep workflow scripts containing private text untracked too. The
 private record lives where `workflow-skills:local-cache` puts private directive records.
 
-The root builds that private record from the actual conversation: the directives themselves plus
-the qualifications, surrounding context and examples that give them meaning, each with its source
-and order so later statements can be told from earlier ones. Label a summary or an applicable
-project requirement as such — neither substitutes for available verbatim evidence, and neither is
-relabeled as a user quotation. Never selectively omit, truncate or rewrite the original evidence to
-make a spec or implementation pass; only a later, actual user decision may supersede an earlier one,
-and only with its provenance recorded — an assistant's own spec edit never does. The record is fixed
-for the duration of a review cycle; a new directive invalidates the reviews and approvals it affects.
+The root builds that private record from the actual conversation, as a YAML file with exactly the
+keys `unit` and `entries`. Each entry has exactly `id` (unique, kebab-case), the `file`, `line` and
+`uuid` of the transcript record the user's message stands in, `words` (a verbatim quote of that
+message), `context`, and optionally `answers` and `approves`. The directives themselves go in
+`words`, and the qualifications, surrounding context and examples that give them meaning go in
+`context`, a non-empty list of quotes, each with the `file`, `line` and `uuid` of the record it
+stands in and the `quote`. An entry without context fails the tool, because words read without
+the conversation around them can back a choice they were never about. Each entry names its source,
+so later statements can be told from earlier ones.
+`answers` quotes the question or assistant text the words reply to. `approves` holds the plan text
+the user approved: a string when the text stands in the assistant messages the words reply to, or a
+mapping of `text`, `file` and `sha256` when it stands in a file one of those messages names, such as
+a plan written as an HTML file. The tool verifies every entry: `words` against the cited record,
+which must be a message the user wrote, typed or queued, or a question-dialog answer, and never a
+task notification, an injected meta record, command output or another tool result; each `context`
+quote against the record it cites; `answers` and `approves` against the messages the words reply
+to, or against the named file, whose sha256 must match. Unknown keys fail, so the record holds
+quotations and nothing else: a summary, an explanation or an applicable project requirement never
+enters it, and nothing in it is relabeled as a user quotation. A record that is not YAML of this
+shape, a Markdown record included, fails the tool with a message naming the format.
+
+**Approved text counts as the user's words.** Text the user approved, held in the approves field
+of a private record entry, counts as the user's verbatim directive: a contradiction with it is a
+contradiction with the user's own sentence. Law 8's hierarchy and the directive-conflict hard flag
+of law 10 treat it that way, and a spec item built on an approval quotes the approved text in its
+`answers` field. The tool checks that the approved text stands where the entry says it does; the
+provenance reader judges whether the entry's words approve it.
+
+Never selectively omit, truncate or rewrite the original evidence to make a spec or implementation
+pass; only a later, actual user decision may supersede an earlier one, and only
+with its provenance recorded — an assistant's own spec edit never does. The record is fixed for
+the duration of a review cycle; a new directive invalidates the reviews and approvals it affects.
 
 A necessary part of the record being unavailable or incomplete blocks the launch. The root writes
 no spec and starts no run on it. It searches the session transcripts for the words, and where it
@@ -483,6 +528,13 @@ cold-alternatives finding, and a roaster finding returns to the root in remainin
 checks it against the tree and the recorded words. The rule reader
 reports a pre-existing band-aid beside the diff without a kind, so the cleanup lane stays available.
 
+**A choice without the user's words is its own finding kind.** A briefed reader reports a choice
+in the spec, the prompt or the diff that no words of the user back as a finding with kind
+**`unbacked-choice`**, CRITICAL like the two kinds above, and the inverse-spec reviewer's
+missing-decision findings carry it. The unbriefed readers (quality, cold alternatives, the roaster)
+never see the private record, so their schemas do not carry that kind. The provenance reader
+reports the same kind in the pre-phase.
+
 ### Phase 3 — Verify and consolidate (1 read-only `agentType:'finding-verifier'`)
 
 The verifier receives every Review seat object serialized, including quality and cold alternatives,
@@ -529,6 +581,15 @@ and `approve-fix` is unavailable because the record describes no deletion or rew
 `approve-fix` only for the deletion or rewrite the record describes; `reject` only with
 counterevidence against the finding itself. Every such decision reaches the root in
 `projectBenefitDecisions`.
+
+A decision on an `unbacked-choice` finding is CRITICAL the same way, and only two actions answer
+it. `needs-decision` states in `authority` that no recorded words back the choice and reaches the
+root in `remaining` as an open decision. `reject` closes it only on a record entry whose words back
+the choice: its `authority` reads `record entry <id>: "<quote>"`, quoting the backing words together
+with their surrounding context from that entry, and its `reason` says how that context supports the
+choice. A line found by searching for a word and quoted without its context backs nothing. The
+script's decision checks refuse `approve-fix`, `root-action`, `cleanup` and `record` for such a
+finding, and a rejection whose `authority` lacks that citation.
 
 Reviewer lanes and severity are claims to verify, not queue permissions. Every source ID
 must belong to exactly one decision group. The SCRIPT checks coverage, unknown IDs, duplicate
@@ -785,6 +846,13 @@ first: is this item in fact a rule violation or an architecture problem that ano
 recorded words would close? An item the screen closes is decided by the root there and then. The
 boundary above is unchanged by the screen: a choice the recorded words settle is never asked, and a
 choice the record genuinely leaves open still reaches the user once the screen has passed it.
+
+**A choice without the user's words is a question.** The root puts every open `unbacked-choice`
+decision to the user as a question; it is the one kind of item the screen above never closes. The
+root accepts a rejected one only after reading the cited record entry and checking that the quoted
+words, read in their surrounding context, back the choice. A quote that does not match its context
+leaves the choice open, and it goes to the user the same way. A pre-phase `unbacked-choice` finding
+from the provenance reader goes to the user the same way before the main run launches.
 
 **A reported problem carries two literal quotations.** A problem reported to the user quotes the
 observed symptom and the line that causes it, each with its file and line or the command that
@@ -1098,6 +1166,9 @@ Non-negotiable across every run of this skill.
    rather than the hard flag of law 10 — **but the user veto still reaches the prompt.** A prompt
    that directly contradicts a directive is the same hard-flag class as a spec that does: being
    untrusted RELATIVE TO THE SPEC does not exempt the prompt from the directive ranked above both.
+   Text the user approved, held in the approves field of a private record entry, counts as the
+   user's verbatim directive: this hierarchy and the directive-conflict hard flag of law 10 treat a
+   contradiction with it like a contradiction with the user's own sentence.
    Anything the orchestrator adds beyond the spec is labelled **"ORCHESTRATOR SCOPING — this added
    scope loses to the spec on conflict"**, which makes it structurally attackable by every seat; the
    spec itself never outranks a directive, including a spec the orchestrator amended. This
@@ -1156,7 +1227,7 @@ Non-negotiable across every run of this skill.
     (`fixer-actionable` / `orchestrator-only` / `later-phase` / `not-a-defect`) and the **disposition**
     (`fixed` / `rejected` / `blocked`), verifier action (`approve-fix` / `reject` /
     `needs-decision` / `root-action` / `cleanup` / `record`),
-    the project-benefit finding `kind` (`band-aid` / `longer-route`), the abort `trigger`
+    the finding `kind` (`band-aid` / `longer-route` / `unbacked-choice`), the abort `trigger`
     (`none` / `directive-conflict` / `sense-check` / `no-words`), the verdict (`PASS` / `AT-RISK` / `FAIL`),
     the limitation `effect` (`blocks` / `narrows`), the authorization `class`, the rule reader's
     finding `scope` (`in-change` / `beside`), the file `change` (`added` / `modified` / `deleted`)
@@ -1461,6 +1532,12 @@ For the other seats:
   as the first two and say plainly that the prompt is not one, or the next bullet has no boundary
   — but the directive still reaches the prompt directly (a spec gains no decision authority merely
   by being written, and neither does a prompt that overrides a directive it disagrees with).
+- **Approved text** (law 8) — text the user approved, held in the approves field of a private
+  record entry, counts as the user's verbatim directive, and a contradiction with it is a
+  contradiction with the user's own sentence, hard-flagged the same way. The main script's and
+  the fix script's `AUTHORITY` blocks say so. The pre-phase script has no authority block, since
+  its unbriefed stages get the hygiene floor only by design; the spec-provenance template carries
+  the rule for the pre-phase.
 - **Hard-flag semantics** (law 10) — the one `abort` field and its three triggers: a contradiction
   with a user directive on at least one side, spec or prompt (`directive-conflict`), a
   writing seat's failed sense check (`sense-check`), and a writing seat's private directive record
@@ -1499,7 +1576,8 @@ For the other seats:
   who can close it using their actionability lanes. The verifier checks every source finding,
   limitation and unchecked coverage entry, then consolidates; only its approved corrections enter
   the fixer queue. Source IDs, not file-name heuristics, bind the handoff. Every inverse-spec
-  source finding is CRITICAL unconditionally, whatever label it arrived with.
+  source finding is CRITICAL unconditionally, whatever label it arrived with. A reading stage
+  reports a choice that no words of the user back as a finding with kind `unbacked-choice`.
 - **Bound detection and repair separately.** Ordinary verdicts cover the change; the rule reader
   reads full changed files and separates unrelated cleanup. No seat turns cleanup into in-unit scope.
 - **No seat edits an authority document** (law 15). Implement the spec as written unless it

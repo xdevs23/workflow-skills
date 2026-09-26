@@ -12,7 +12,7 @@ const UNIT = {
   mainCheckout: '<main checkout>',
   specPath: args.specPath,               // the unit spec under the main checkout, passed at launch; ends in .yaml
   transcripts: args.transcripts,         // the session transcript directory, passed at launch
-  privateRecord: '<main checkout>/.cache/directives/<unit>.md',   // where workflow-skills:local-cache puts directive records
+  privateRecord: '<main checkout>/.cache/directives/<unit>.yaml',   // where workflow-skills:local-cache puts directive records
   pluginRoot: '<plugin root>',           // the directory holding tools/check-spec.ts
   baseSha: args.baseSha,                 // the commit observation dates are measured against, passed at launch
   criteriaCount: args.criteriaCount,     // counts.kind.criterion from the check tool, passed at launch
@@ -126,9 +126,11 @@ const PROVENANCE = { type: 'object', required: ['limitations', 'coverage', 'find
   properties: { limitations: LIMITATIONS,
     coverage: { type: 'array', items: { type: 'object', required: ['what', 'checked', 'how'], additionalProperties: false,
       properties: { what: { type: 'string' }, checked: { type: 'boolean' }, how: { type: 'string' } } } },
+    // kind marks a choice in the spec that no words of the user back; the root puts it to the user.
     findings: { type: 'array', items: { type: 'object', required: ['file', 'claim', 'severity', 'lane', 'receipts'], additionalProperties: false,
       properties: { file: { type: 'string' }, claim: { type: 'string' },
-        severity: { enum: ['must-fix', 'should-fix', 'nit'] }, lane: { enum: ['orchestrator-only'] }, receipts: RECEIPTS } } },
+        severity: { enum: ['must-fix', 'should-fix', 'nit'] }, lane: { enum: ['orchestrator-only'] },
+        kind: { enum: ['unbacked-choice'] }, receipts: RECEIPTS } } },
     checks: { type: 'array', items: { type: 'object', required: ['command', 'passed', 'output', 'truncated'], additionalProperties: false,
       properties: { command: { type: 'string' }, passed: { type: 'boolean' },
         output: { type: 'string', maxLength: 6000 }, truncated: { type: 'boolean' } } } } } }
@@ -188,7 +190,7 @@ return await Promise.all([
   stage([HOUSE, 'Read the current on-disk spec at ' + UNIT.specPath + ' in full.',
     'TRANSCRIPTS: ' + UNIT.transcripts + '. PRIVATE DIRECTIVES: ' + UNIT.privateRecord + '.',
     'BASE COMMIT: ' + UNIT.baseSha,
-    'Judge each item and re-run read-only observations as your template requires; return advisory findings.',
+    'Judge each item, list the messages of the user and re-run read-only observations as your template requires; return your findings.',
   ].join('\n\n'),
     { label: 'spec:provenance', phase: 'Spec review', agentType: 'workflow-skills:spec-provenance', ...UNIT.models.provenance, schema: PROVENANCE },
     r => {

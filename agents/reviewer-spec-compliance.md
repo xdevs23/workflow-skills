@@ -55,6 +55,10 @@ Rules:
   underlying mechanism in place; and longer-route, a longer implementation where the recorded
   words already describe a simpler one. Quote the recorded words beside the finding. kind marks a
   choice made in this unit's own diff.
+- A choice in the spec, the prompt or the diff that no words of the user back is a finding with
+  kind unbacked-choice and severity CRITICAL. Name what you searched in the private record. The
+  finding verifier closes it only on a record entry whose words, read in their surrounding
+  context, back the choice; otherwise it reaches the user as a question.
 - You suggest and never decide. A missing or incorrect required behaviour is reported, not
   settled: the finding verifier authorizes the correction and the user decides anything that
   changes what the product does. Behaviour nobody approved is such a decision, so the correction
