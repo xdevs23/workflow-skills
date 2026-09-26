@@ -141,10 +141,11 @@ checkpoint against the checkpoints the criterion names.
 
 Reading stages that receive the spec open the PNGs, the receipts and the comparison reports in the
 harness's directory inside that worktree's project cache, the location `workflow-skills:local-cache`
-defines. Each checks that every receipt's source revision is the snapshot under review; a capture
-of another commit is no evidence for this one. A point that needs a new capture goes to the fixer,
-since reading stages write nothing. Stages that receive no spec by design, such as the fresh-context
-quality and alternatives reviews and the roaster, get nothing added.
+defines. Each checks that the after capture's receipt carries the snapshot under review as its
+source revision, and that the before capture's receipt carries the base commit the unit spec names;
+an after capture of another commit is no evidence for this one. A point that needs a new capture
+goes to the fixer, since reading stages write nothing. Stages that receive no spec by design, such
+as the fresh-context quality and alternatives reviews and the roaster, get nothing added.
 
 A fix run's fix-list entry for a visual defect states, in its correction, the scene, the
 checkpoints, the expected outcome and the name of the before capture.
