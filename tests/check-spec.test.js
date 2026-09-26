@@ -520,6 +520,29 @@ describe('private directive record validation', () => {
     invalid(withRecord((r, e) => { e('monthly-plan').approves.file = copy }), 'record.monthly-plan.approves.file: not named in the assistant messages the cited words reply to')
     invalid(withRecord((r, e) => { e('monthly-plan').approves.file = join(scratch, 'absent-plan.html') }), 'record.monthly-plan.approves.file: unreadable')
   })
+
+  test('an item built on an approval from a named file quotes text a verified entry approves in the same record', () => {
+    const approval = { file: 'session.jsonl', line: 29, uuid: 'approval' }
+    const item = (answers, evidence = approval, words = 'Approved, go ahead.', edit = () => {}) => {
+      const record = structuredClone(validRecord)
+      edit(record.entries.find(entry => entry.id === 'monthly-plan'))
+      return changed(s => {
+        s.record = recordFile(record)
+        Object.assign(s.items[0], { evidence: [evidence], user_words: words, answers })
+      })
+    }
+    const unanswered = 'export-request.answers: not found in the assistant messages the cited words reply to'
+    expect(item('Leave rows without a date out of every total.').exit).toBe(0)
+    expect(item('Leave rows   without a date').exit).toBe(0)
+    expect(item('group the rows by month and total each month').exit).toBe(0)
+    invalid(item('Total each quarter.'), unanswered)
+    // The approved text counts only for an item citing the record the approval stands in.
+    invalid(item('Leave rows without a date out of every total.', { file: 'session.jsonl', line: 9, uuid: 'answer' }, 'Stream the rows.'), unanswered)
+    // An entry that fails its checks approves nothing.
+    const mismatched = item('Leave rows without a date out of every total.', approval, 'Approved, go ahead.', entry => { entry.approves.sha256 = 'f'.repeat(64) })
+    invalid(mismatched, 'record.monthly-plan.approves.sha256: does not match the file')
+    invalid(mismatched, unanswered)
+  })
 })
 
 const fixLists = join(root, 'tests/fixtures/fix-list')
