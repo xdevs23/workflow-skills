@@ -76,9 +76,12 @@ for a throwaway note, just use the sub-skills directly.
 
 Write the unit spec, `<unit>.yaml` in the private-spec location that `workflow-skills:local-cache`
 defines, ignored and untracked because it contains verbatim user words. The private directive
-record lives where that skill puts private directive records. The tracked document under `docs/`
-is generated from that YAML. Edit the YAML and regenerate after every amendment, keeping the
-source and its rendering together.
+record lives where that skill puts private directive records. The YAML holds everything, and it
+is the only form of the spec before and during implementation. Edit the YAML and validate it
+again after every amendment. The tracked document under `docs/` is generated from the final YAML
+after the implementation, so it records what was built: the implementer renders it as its last
+write once its implementation is done, runs its checks after that write and commits it, and the
+fixer renders it again as its last write after its corrections, before its checks.
 
 `<plugin root>/tools/check-spec.ts` defines the validation contract; the committed, synthetic example at
 `tests/fixtures/spec-provenance/valid.yaml` is exercised by the tests. The top-level mapping has
@@ -148,15 +151,16 @@ new spec from an empty file, or rewrites the spec in place from an empty file. T
 edited to follow a premise change, and the decisions that still stand come only from the user's
 words and the private record.
 
-Run `bun <plugin root>/tools/check-spec.ts .cache/specs/<unit>.yaml --transcripts <session-dir> --base <base-sha> --render docs/<unit>.md --json`.
+Run `bun <plugin root>/tools/check-spec.ts .cache/specs/<unit>.yaml --transcripts <session-dir> --base <base-sha> --json`.
 The spec path in that command is the location `workflow-skills:local-cache` defines for private
-specs. The tool validates references and renders technical content, omitting private quotations
-and evidence.
+specs. The tool validates references, and with `--render docs/<unit>.md`, which only the writers
+pass after the implementation, it renders technical content, omitting private quotations and
+evidence.
 Keep each criterion as a criterion item: the tool numbers them from one in file order and supplies
 `{ ordinal, id }` plus `counts.kind.criterion` for the implementation workflow's integer ordinals and
-`args.criteriaCount`. Before either spec review or implementation, validation must pass. Before
-implementation use `--check-render docs/<unit>.md` to fail on a stale rendering. The provenance reader
-judges whether the sources authorize the items before implementation.
+`args.criteriaCount`. Before either spec review or implementation, validation must pass. Nothing
+renders the document or checks one with `--check-render` before implementation, since none exists
+yet. The provenance reader judges whether the sources authorize the items before implementation.
 
 ## The convergence loop
 

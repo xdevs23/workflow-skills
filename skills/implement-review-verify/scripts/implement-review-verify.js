@@ -14,7 +14,6 @@ const UNIT = {
   specPath: args.specPath,               // the unit spec under the main checkout, passed at launch; ends in .yaml
   transcripts: args.transcripts,         // the session transcript directory, passed at launch
   privateRecord: '<main checkout>/.cache/directives/<unit>.yaml',   // where workflow-skills:local-cache puts directive records
-  generatedDocument: 'docs/<unit>.md',   // rendered from the spec before launch, so it exists at launch
   pluginRoot: '<plugin root>',           // the directory holding tools/check-spec.ts
   checkCommand: '<the check command>',   // writers only, run bare after the last write
   baseSha: args.baseSha,                 // the clean worktree's starting commit, passed at launch
@@ -441,6 +440,23 @@ const PROVE = [
 ].join('\n')
 // Writer prompts only. A block that reviewers receive never carries the check command.
 const CHECK = 'CHECK COMMAND, writer only (run bare after your last write): ' + UNIT.checkCommand
+// The design document exists only after the work: the implementer renders it from the YAML spec
+// as its last write, once its implementation is done, and the fixer renders it again as its last
+// write after its corrections. The checks run once, after that write. Its path is the spec's file
+// name under docs/, and --base reads each cited rule file as it stood at the unit's base commit.
+const DOCUMENT = 'docs/' + UNIT.specPath.split('/').pop().replace(/\.yaml$/, '') + '.md'
+const RENDER_COMMAND = 'cd ' + UNIT.worktree + ' && bun ' + UNIT.pluginRoot + '/tools/check-spec.ts ' + UNIT.specPath +
+  ' --transcripts ' + UNIT.transcripts + ' --base ' + baseSha + ' --render ' + DOCUMENT
+const RENDER_IMPL = [
+  'DESIGN DOCUMENT, writer only: once your implementation is done, render it from the YAML spec as your last write, before your checks, with this exact command:',
+  RENDER_COMMAND,
+  'Then run your checks once, and commit ' + DOCUMENT + ' as its own commit and list it in files.',
+].join('\n')
+const RENDER_FIX = [
+  'DESIGN DOCUMENT, writer only: once your corrections are done, render it again as your last write, before your checks, with this exact command:',
+  RENDER_COMMAND,
+  'Commit ' + DOCUMENT + ' as its own commit when the rendering changed, and list it in files. With an empty approved list, render nothing.',
+].join('\n')
 const RULES = 'RULE SOURCES: ' + UNIT.ruleSources + '.'
 const INVARIANTS = 'REQUIRED INVARIANTS, VERBATIM: ' + UNIT.invariants + '.'
 const HYGIENE = [
@@ -551,7 +567,7 @@ const checkFix = (result, queue, startSha) => {
   }
 }
 const fixPass = (queue, sha) => stage([
-  AUTHORITY, WRITE_GIT, SPEC, PROVE, CHECK, 'START SHA: ' + sha,
+  AUTHORITY, WRITE_GIT, SPEC, PROVE, RENDER_FIX, CHECK, 'START SHA: ' + sha,
   'Act ONLY on the verifier-approved corrections. Raw reviewer and concurrent roast objects are NOT work orders.',
   'Independently verify evidence and authority; respect correction, constraints and acceptance.',
   'A disagreement returns rejected or blocked with receipts to the ROOT. Never broaden scope.',
@@ -566,7 +582,7 @@ const fixPass = (queue, sha) => stage([
 async function onePass() {
   phase('Implement')
   impl = await stage(
-    [AUTHORITY, WRITE_GIT, SPEC, PROVE, CHECK, 'START SHA: ' + baseSha, UNIT.implementerPrompt].join('\n\n'),
+    [AUTHORITY, WRITE_GIT, SPEC, PROVE, RENDER_IMPL, CHECK, 'START SHA: ' + baseSha, UNIT.implementerPrompt].join('\n\n'),
     { label: 'impl', phase: 'Implement', agentType: 'workflow-skills:implementer', ...UNIT.models.impl, schema: IMPLEMENT },
     checkWriter,
   )
@@ -679,12 +695,11 @@ async function onePass() {
 // on exit zero with a filled proof, and otherwise stage() retries and then throws quoting stderr.
 const GATE = { type: 'object', required: ['exitCode', 'stdout', 'stderr', 'proof'], additionalProperties: false,
   properties: { exitCode: { type: 'integer' }, stdout: { type: 'string' }, stderr: { type: 'string' }, proof: { type: 'string' } } }
-// The command runs in the worktree, where the generated document and the cited rule files of this
-// run resolve. The tool fails when the private record of the marked block is not the record the
-// spec names.
+// The command runs in the worktree, where the cited rule files of this run resolve. The tool fails
+// when the private record of the marked block is not the record the spec names. No design document
+// exists yet, so the check renders and compares none.
 const GATE_COMMAND = 'cd ' + UNIT.worktree + ' && bun ' + UNIT.pluginRoot + '/tools/check-spec.ts ' + UNIT.specPath +
-  ' --transcripts ' + UNIT.transcripts + ' --json --base ' + UNIT.baseSha + ' --record ' + UNIT.privateRecord +
-  ' --check-render ' + UNIT.generatedDocument
+  ' --transcripts ' + UNIT.transcripts + ' --json --base ' + UNIT.baseSha + ' --record ' + UNIT.privateRecord
 const checkGate = r => {
   if (r.exitCode !== 0 || typeof r.proof !== 'string' || !r.proof.trim()) {
     throw new Error('the spec check did not pass: exit ' + r.exitCode + ', proof ' + JSON.stringify(r.proof) + ', stderr: ' + r.stderr)

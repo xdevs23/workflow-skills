@@ -128,11 +128,12 @@ A derivation mandating a mechanism names in content the simpler alternative it r
 parents include the transcript item asking for it or the observation showing the simpler route
 failing. The provenance reader judges these claims against the cited words and observed facts.
 
-The tracked design document under `docs/` is generated from the YAML with private quotations and
-evidence references omitted, and is never edited by hand. Author the YAML once and regenerate the document after every amendment:
+The YAML spec holds everything a unit needs, and it is the only form of the spec that exists
+before and during implementation: every stage reads it from its path. No Markdown design document
+is rendered, committed or checked before implementation. Validate the YAML after every amendment:
 
 ```sh
-bun <plugin root>/tools/check-spec.ts .cache/specs/<unit>.yaml --transcripts <session-dir> --base <base-sha> --render docs/<unit>.md --json
+bun <plugin root>/tools/check-spec.ts .cache/specs/<unit>.yaml --transcripts <session-dir> --base <base-sha> --json
 ```
 
 The spec path in that command is the location `workflow-skills:local-cache` defines for private
@@ -143,15 +144,25 @@ below uses `<plugin root>/tools/check-spec.ts`, and the shipped scripts take the
 their marked block. An installed plugin older than this tool prints no proof, so its launch check
 fails and no run launches on it until the plugin is updated; that is the intended effect.
 
-With `--render` or `--check-render` the tool's summary goes to stderr, and only `--json` puts
+The tracked design document, `docs/<unit>.md`, is generated from the final YAML after the
+implementation so it records what was built, with private quotations and evidence references
+omitted, and it is never edited by hand. Rendering it is the writers' completion step. The
+implementer, once its implementation is done, runs the validation command above with `--render
+docs/<unit>.md` in place of `--json`, with `--base` at the unit's base commit so cited rule files
+are read as they stood there, as its last write. Its checks then run once, after that write, and
+it commits the document as its own commit. The fixer, once its corrections are done, renders it
+again the same way as its last write before its checks, and commits it when the rendering
+changed. A fix run's fixer does the same for its parent spec's document. The writer prompts of the main and
+fix-run scripts carry the render command, built from the paths of the marked block: the document
+path is the spec's file name under `docs/`.
+
+With `--render` the tool's summary goes to stderr, and only `--json` puts
 anything on stdout. The root runs the tool before the spec pre-phase and again before the main run's implement stage,
 and each run's first stage runs it once more and returns the `proof` the tool prints only when the
 spec passes. A spec with no item of source `transcript` fails, as does a `requirement` derived
 from observations alone: the tool refuses a spec that carries none of the user's words.
-A failing spec launches neither run. For the pre-implement check, use `--check-render docs/<unit>.md`
-in place of `--render`: the tool fails if the generated document differs from the one in the tree,
-leaving that file intact. Resolve the mismatch by regenerating before launching, so that the
-generated document exists in the worktree when the main run's launch check runs.
+A failing spec launches neither run. None of these checks renders the document or compares one
+with `--check-render`, since the document does not exist before implementation.
 
 Use the tool's `counts.kind.criterion` for `args.criteriaCount`, never a hand count. Its
 ordered `criteria` list of `{ ordinal, id }` assigns integer ordinals from one in YAML file order;
@@ -240,7 +251,7 @@ root has added the message or the user has answered. The pre-phase is its own ru
 blocks are a rule for the root and no script enforces them.
 
 Their output is **advisory to the orchestrator**, who triages it against the recorded rulings and
-amends the YAML spec, then regenerates the tracked document. Amend the YAML — never patch the
+amends the YAML spec, then validates it again. Amend the YAML — never patch the
 finding into a prompt, or the spec and the prompts immediately disagree.
 
 **Run the pre-phase as its OWN short run, and let it end there.** A running script cannot pause
@@ -381,7 +392,10 @@ private record; the root chooses the continuation from the coder's object and th
 rule for scope: touch only what the task needs, and flag anything beyond the ruled scope as an
 invention rather than building it.
 
-It commits only its own scoped changes after checks, then returns `files` (every path a commit of
+Its last write is the design document it renders from the YAML spec once its implementation is
+done, as the unit spec section above describes, and its checks run once after that write. It
+commits only its own scoped changes after checks, with the design document as its own commit. It
+then returns `files` (every path a commit of
 the stage touched, with its byte size at the snapshot), `checks` (each bare run with its quoted
 output), `commits`, the full immutable snapshot SHA, `clean` and `git` (the quoted HEAD and
 status). A failed check or commit is an incomplete stage, never a fabricated successful snapshot.
@@ -644,7 +658,9 @@ authority and boundaries. Raw seat objects are not extra work orders. It:
   spec or other authority document to make the correction legal after the fact;
 - returns disagreements with counterevidence to the ROOT, not automatically to the user
   and not to another automatic fix attempt. A blocked mechanism stays untouched;
-- runs full checks BARE AFTER ITS LAST WRITE, commits completed scoped corrections, then
+- renders the design document again as its last write once its corrections are done, runs full
+  checks BARE AFTER THAT LAST WRITE, commits completed scoped corrections and the document when
+  the rendering changed, then
   returns the clean snapshot SHA, `git`, `commits`, `files`, `checks` with the quoted output and
   `proofPassed`; the root attests each claimed fix against its approved correction and checks.
 
@@ -762,7 +778,8 @@ change to make, in plain words). The list holds no user words and no field for t
 `<plugin root>/tools/check-spec.ts --fix-list <file> --transcripts <dir> --json`, which resolves
 every entry against the parent run's journal and prints the proof only when every entry resolves.
 The root passes the tool's `entries` and `parentSpec` output as `args.entries` and
-`args.parentSpec` and the parent run's final snapshot as `args.baseSha`, and fills the parent
+`args.parentSpec`, the parent run's final snapshot as `args.baseSha` and the parent run's own
+`baseSha` as `args.parentBaseSha`, which the fixer's render command uses, and fills the parent
 unit's private record into the block. The launch check runs the same command in the worktree with
 `--expect` and the JSON of those two launch values, which the script builds and quotes for the
 shell. The tool fails when they differ from the fix list, so the corrections the fixer receives are
@@ -776,7 +793,9 @@ remaining item with its reason, and when no entry is corrective the run ends the
 `root-resolution` and no fixer runs. The fixer receives only the corrective entries, one key per
 entry ID with the correction, the scope check's reason and its receipts, while the roaster reads
 the same list. The read-only diff check then maps every change of the fix diff to a corrective
-entry. Each of its findings returns as a CRITICAL `diff-finding` and starts no further fixer.
+entry, except the parent spec's design document, which the fixer renders with the spec tool and
+which maps to no entry. A fixer whose commits touch that document alone has no commit for a fix.
+Each of its findings returns as a CRITICAL `diff-finding` and starts no further fixer.
 Every entry the fixer reports fixed returns as an `unattested-fix` for the root to attest, as in
 the main run, and the run then ends `follow-up`, as it also does when only must-fix or CRITICAL
 roast findings remain. It ends `root-resolution` when an entry was refused, a fix was not applied,
@@ -942,13 +961,14 @@ proof. Apply improvements within authorized scope and report any broader follow-
 ### Size report and the 20:1 acceptance gate
 
 Measure the final candidate against its unit spec before integration, using immutable inputs:
-record the merge-base SHA, candidate SHA, generated document path and its blob ID. Read the
+record the merge-base SHA, candidate SHA, generated document path and its blob ID. The writers
+commit the generated document after the implementation, so the candidate commit holds it. Read the
 tracked generated document at that candidate, not a moving working file. For bundle/patch delivery
 the comparison base is the project's declared reconstruction base; do not silently substitute a
 convenient newer base.
 
-- **Spec lines:** count non-blank lines in the tracked generated document at the candidate commit.
-  This is the denominator of the code-to-spec ratio; the private YAML holds quoted words and its
+- **Spec lines:** count non-blank lines in the tracked generated document at the candidate commit
+  that holds it. This is the denominator of the code-to-spec ratio; the private YAML holds quoted words and its
   line count belongs only to the tool summary.
 - **Code added/deleted:** sum the added and deleted line counts from
   `git diff --no-ext-diff --no-textconv --no-renames --numstat BASE_SHA CANDIDATE_SHA --`
@@ -1292,10 +1312,12 @@ pre-phase, `scripts/implement-review-verify.js` for the main run and `scripts/fi
 for a fix run. Copy the shipped script, edit only the marked block, and never copy a previous
 unit's copy. The block sits at the top of each file between two comment lines and holds
 everything a unit sets: the paths (main checkout, worktree, spec, transcripts, private record,
-generated document, plugin root), the check command, the base or start SHA, `criteriaCount`, the
+plugin root), the check command, the base or start SHA, `criteriaCount`, the
 unit prompt text for the implementer, the scoping, the rule sources, the invariants and the model
-and effort per stage. The fix run's block holds the fix list path, the entries and the parent
-spec in place of the spec, `criteriaCount` and the implementer's prompt. Everything below the block
+and effort per stage. The block holds no generated document: the scripts derive its path from the
+spec path. The fix run's block holds the fix list path, the entries, the parent spec and the
+parent run's `baseSha` as `parentBaseSha` in place of the spec, `criteriaCount` and the
+implementer's prompt. Everything below the block
 is the reviewed script and is not edited per unit. Never copy a previous unit's script and edit
 it, and never generalize one that already ran into a runner several units share.
 
@@ -1325,12 +1347,11 @@ same act. The main script keeps it in `CHECK`, which only the implementer and fi
 All three scripts begin with a launch check, before any other agent: a small stage on
 `claude-haiku-4-5` at low effort whose prompt is one command line and one sentence. The command
 changes to the tree the run works on, the worktree from the marked block for the main run and the
-fix run and the main checkout for the pre-phase, so the generated document and the cited rule files
-resolve there.
+fix run and the main checkout for the pre-phase, so the cited rule files resolve there.
 It then runs `<plugin root>/tools/check-spec.ts` with `--json`, the spec path from `args.specPath`, the
-transcript directory from `args.transcripts`, `--base` with the base commit, `--record` with the
-private record from the marked block, and for the main run `--check-render` with the generated
-document. The tool fails when that record path differs from the spec's `record`. The sentence
+transcript directory from `args.transcripts`, `--base` with the base commit and `--record` with the
+private record from the marked block. It carries no `--check-render`, because no design document
+exists before implementation. The tool fails when that record path differs from the spec's `record`. The sentence
 tells the stage to run that exact command once with the Bash tool and return its exit code,
 stdout, stderr and the proof string printed on success, with no interpretation, retry or fix. Its
 schema requires `exitCode`, `stdout`, `stderr` and `proof`.
@@ -1350,8 +1371,8 @@ list or the record path differs from the parent spec's `record`.
 ### The pre-phase script
 
 `scripts/spec-review.js` is its own tiny run and it ENDS at the return. A script cannot pause
-while a person edits a document, so the orchestrator triages this output, amends the YAML and
-regenerates the tracked document, then launches the main run after the tool passes again. Stages
+while a person edits a document, so the orchestrator triages this output and amends the YAML,
+then launches the main run after the tool passes again. Stages
 read the amended YAML from disk with no prompt rewritten (law 9). `HOUSE` is the hygiene floor
 and nothing else: the two unbriefed seats get only that half on purpose, because the review
 framing is a briefing and unbriefedness is the pre-phase's highest-yield property. The field

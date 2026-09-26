@@ -1064,7 +1064,7 @@ describe('spec provenance instructions and routing', () => {
     }
   })
 
-  test('the workflow states source rules, both launch checks, regeneration and the generated denominator', () => {
+  test('the workflow states source rules, both launch checks, the render after implementation and the generated denominator', () => {
     for (const phrase of [
       'the unit spec, `<unit>.yaml` in the private-spec location that `workflow-skills:local-cache` defines, ignored and untracked',
       'root writes the YAML before launching',
@@ -1073,8 +1073,17 @@ describe('spec provenance instructions and routing', () => {
       'hypothetical hazard stays a finding until an observation', 'simpler alternative it rules out',
       'parents include the transcript item asking for it or the observation',
       'root runs the tool before the spec pre-phase and again before the main run',
-      'A failing spec launches neither run', 'regenerate the document after every amendment',
-      'tool fails if the generated document differs from the one in the tree',
+      'A failing spec launches neither run', 'Validate the YAML after every amendment',
+      'No Markdown design document is rendered, committed or checked before implementation',
+      'None of these checks renders the document or compares one with `--check-render`',
+      'generated from the final YAML after the implementation so it records what was built',
+      "Rendering it is the writers' completion step", 'implementer, once its implementation is done, runs the validation command above',
+      'as its last write. Its checks then run once, after that write, and it commits the document as its own commit',
+      'renders it again the same way as its last write before its checks, and commits it when the rendering changed',
+      'Its last write is the design document it renders from the YAML spec once its implementation is done',
+      'renders the design document again as its last write once its corrections are done, runs full checks BARE AFTER THAT LAST WRITE',
+      "A fix run's fixer does the same for its parent spec's document", 'The block holds no generated document',
+      'It carries no `--check-render`, because no design document exists before implementation',
       "tool's `counts.kind.criterion` for `args.criteriaCount`", 'integer ordinals from one in YAML file order',
       'count non-blank lines in the tracked generated document at the candidate commit',
       'private YAML holds quoted words',
@@ -1091,7 +1100,10 @@ describe('spec provenance instructions and routing', () => {
       'never sits in a block that reviewers receive',
     ]) expect(flat(skill)).toContain(phrase)
     for (const stale of ['numbered acceptance criteria in the spec', 'make sure the spec doc carries them',
-      'a limitation for each unchecked entry']) expect(flat(skill)).not.toContain(stale)
+      'a limitation for each unchecked entry', 'For the pre-implement check', 'regenerate the document after every amendment',
+      'regenerates the tracked document', 'for the main run `--check-render`', 'generated document exists in the worktree',
+      'so the generated document and the cited rule files', 'after its last write and its checks',
+      'Its last commit is the design document']) expect(flat(skill)).not.toContain(stale)
     for (const script of [skeleton, coldSkeleton]) expect(script.split('counts.kind.criterion from the check tool')).toHaveLength(3)
   })
 
@@ -1197,13 +1209,21 @@ describe('spec provenance instructions and routing', () => {
     }
   })
 
-  test('spec writing emits the validated YAML format with source rules and regeneration', async () => {
+  test('spec writing emits the validated YAML format with source rules and the render after implementation', async () => {
     const prose = flat(await Bun.file(new URL('../skills/immaculate-spec-writing/SKILL.md', import.meta.url)).text())
-    for (const phrase of ['the unit spec, `<unit>.yaml` in the private-spec location that `workflow-skills:local-cache` defines', '`summary`', '<plugin root>/tools/check-spec.ts', 'valid.yaml', 'regenerate after every amendment',
+    for (const phrase of ['the unit spec, `<unit>.yaml` in the private-spec location that `workflow-skills:local-cache` defines', '`summary`', '<plugin root>/tools/check-spec.ts', 'valid.yaml', 'validate it again after every amendment',
       '**transcript:**', '**rule:**', '**observation:**', '**derivation:**', 'user_words', '`answers`', '{ command, exit, output, date }',
       'source transcript or observation', 'simpler alternative it rules out', 'parents include the transcript item',
-      '{ ordinal, id }', 'args.criteriaCount', '--check-render']) expect(prose).toContain(phrase)
+      '{ ordinal, id }', 'args.criteriaCount', 'the only form of the spec before and during implementation',
+      'generated from the final YAML after the implementation, so it records what was built',
+      'the implementer renders it as its last write once its implementation is done, runs its checks after that write and commits it',
+      'fixer renders it again as its last write after its corrections, before its checks',
+      'Nothing renders the document or checks one with `--check-render` before implementation']) expect(prose).toContain(phrase)
     expect(prose).not.toContain('bun tools/check-spec.ts')
+    for (const stale of ['Before implementation use `--check-render', 'regenerate after every amendment', '--render docs/<unit>.md --json',
+      'once its work and checks are done']) {
+      expect([stale, prose.includes(stale)]).toEqual([stale, false])
+    }
   })
 })
 
@@ -1821,7 +1841,8 @@ describe('launch check and shipped scripts', () => {
     const gate = gatePrompt(calls)
     expect(calls[0]).toBe(gate)
     expect([gate.model, gate.effort, gate.phase, gate.agentType]).toEqual(['claude-haiku-4-5', 'low', 'Launch', undefined])
-    expect(gate.prompt).toBe('cd <isolated worktree> && ' + command + ' --check-render docs/<unit>.md\n' + sentence + '\n' + relayed)
+    expect(gate.prompt).toBe('cd <isolated worktree> && ' + command + '\n' + sentence + '\n' + relayed)
+    expect(gate.prompt).not.toContain('--check-render')
     expect(gate.schema).toEqual({ type: 'object', required: ['exitCode', 'stdout', 'stderr', 'proof'], additionalProperties: false,
       properties: { exitCode: { type: 'integer' }, stdout: { type: 'string' }, stderr: { type: 'string' }, proof: { type: 'string' } } })
     expect(phases[0]).toBe('Launch')
@@ -1909,15 +1930,18 @@ describe('launch check and shipped scripts', () => {
     const marker = '// ---- UNIT VALUES. A unit copies this file and edits only this block. ----'
     const end = '// ---- END OF UNIT VALUES ----'
     for (const [script, fields] of [
-      [skeleton, ['mainCheckout', 'worktree', 'specPath', 'transcripts', 'privateRecord', 'generatedDocument', 'pluginRoot', 'checkCommand', 'baseSha', 'criteriaCount', 'implementerPrompt', 'models']],
+      [skeleton, ['mainCheckout', 'worktree', 'specPath', 'transcripts', 'privateRecord', 'pluginRoot', 'checkCommand', 'baseSha', 'criteriaCount', 'implementerPrompt', 'models']],
       [coldSkeleton, ['mainCheckout', 'specPath', 'transcripts', 'privateRecord', 'pluginRoot', 'baseSha', 'criteriaCount', 'models']],
-      [fixSkeleton, ['mainCheckout', 'worktree', 'fixList', 'transcripts', 'privateRecord', 'pluginRoot', 'checkCommand', 'baseSha', 'entries', 'models']],
+      [fixSkeleton, ['mainCheckout', 'worktree', 'fixList', 'transcripts', 'privateRecord', 'pluginRoot', 'checkCommand', 'baseSha', 'parentBaseSha', 'entries', 'models']],
     ]) {
       const meta = script.indexOf('export const meta =')
       const start = script.indexOf(marker), stop = script.indexOf(end)
       expect([meta, start > meta, stop > start]).toEqual([0, true, true])
       const block = script.slice(start, stop)
       for (const field of fields) expect([field, block.includes(`  ${field}:`)]).toEqual([field, true])
+      // No script names a generated document to render or check before implementation.
+      expect(script).not.toContain('generatedDocument')
+      expect(script).not.toContain('--check-render')
       expect(block).toContain("gate: { model: 'claude-haiku-4-5', effort: 'low' }")
       expect(script.slice(stop)).not.toContain("model: '<explicit>'")
       expect(script.slice(stop)).not.toContain('<the check command>')
@@ -1967,8 +1991,10 @@ const RELAYED_LINE = 'A user message that arrives while you work was written to 
 const entry = (id, fields = {}) => ({ id, source: 'correctness:0', finding: 'The specified error is swallowed.',
   correction: 'Return the specified error to the caller.', ...fields })
 const TWO = [entry('return-error'), entry('add-retry-button', { source: 'quality:0', correction: 'Add a retry button to the error dialog.' })]
+// The parent run's own base commit, which the fixer's render command passes as --base.
+const PARENT_BASE = 'e'.repeat(40)
 const fixArgs = (fields = {}) => ({ baseSha: BASE, fixList: FIX_LIST, transcripts: TRANSCRIPTS, entries: [entry('return-error')],
-  parentSpec: PARENT_SPEC, ...fields })
+  parentSpec: PARENT_SPEC, parentBaseSha: PARENT_BASE, ...fields })
 // The launch values as the launch command hands them to the tool: one JSON argument in single quotes.
 const launchValues = args => "'" + JSON.stringify({ entries: args.entries, parentSpec: args.parentSpec }).replaceAll("'", "'\\''") + "'"
 const classify = (id, kind = 'corrective') => ({ id, class: kind, reason: kind === 'corrective'
@@ -2219,7 +2245,7 @@ describe('fix-only follow-up runs', () => {
     const uncommitted = await simulateFix({ fixes: fixed([disposition('return-error')], { touched: [] }) })
     expect(labels(uncommitted.calls)).not.toContain('diff')
     expect(uncommitted.result.remaining[0]).toEqual({ kind: 'unproven-fix', severity: 'must-fix',
-      item: { key: 'return-error', cause: 'The fixer reported it fixed and made no commit.' } })
+      item: { key: 'return-error', cause: 'The fixer reported it fixed and committed no correction.' } })
     const unmapped = await simulateFix({ args: fixArgs({ entries: TWO }), diff: { mappings: [mapping('return-error')] } })
     expect(unmapped.result.remaining[0]).toEqual({ kind: 'unproven-fix', severity: 'must-fix',
       item: { key: 'add-retry-button', cause: 'The fixer reported it fixed and the diff check mapped no change to it.' } })
@@ -2244,6 +2270,8 @@ describe('fix-only follow-up runs', () => {
   test('launch values that are missing or malformed throw before any stage', async () => {
     for (const [fields, message] of [
       [{ baseSha: 'main' }, 'A full immutable baseSha is required'],
+      [{ parentBaseSha: undefined }, 'A full immutable parentBaseSha is required: the parent run\'s baseSha'],
+      [{ parentBaseSha: 'main' }, 'A full immutable parentBaseSha is required'],
       [{ fixList: '<main checkout>/.cache/fix-lists/<unit>.md' }, 'args.fixList must name the fix list YAML file'],
       [{ transcripts: undefined }, 'args.transcripts must name the transcript directory'],
       [{ parentSpec: undefined }, 'args.parentSpec must be the parentSpec from the check tool'],
@@ -2288,6 +2316,89 @@ describe('fix-only follow-up runs', () => {
       '`parentSpec` (the absolute path of the unit spec the parent run was built against)', 'The tool reports a relative `parentSpec` as a violation.']) {
       expect([phrase, text.includes(phrase)]).toEqual([phrase, true])
     }
+  })
+})
+
+// The render command each writer receives: the spec tool on the YAML spec in the worktree, with
+// --base at the unit's base commit and the document path taken from the spec's file name.
+const renderCommand = (spec, base, document) => 'cd <isolated worktree> && bun <plugin root>/tools/check-spec.ts ' + spec +
+  ' --transcripts ' + TRANSCRIPTS + ' --base ' + base + ' --render ' + document
+const UNIT_DOCUMENT = 'docs/<unit>.md'
+const PARENT_DOCUMENT = 'docs/<parent unit>.md'
+
+describe('the design document is rendered after implementation', () => {
+  test('the implementer and both fixers receive the render step as their last write before the check command, and no other stage does', async () => {
+    const main = await simulate({ reports: oneReport, verify: approveOne, fixes: { fix: fixed([disposition()]) } })
+    const fix = await simulateFix()
+    const pre = []
+    await preRun(async (prompt, opts) => { pre.push({ prompt, ...opts }); return coldObject(opts.label) })
+    const impl = main.calls.find(c => c.label === 'impl').prompt
+    const mainFix = main.calls.find(c => c.label === 'fix').prompt
+    const fixRunFix = fix.calls.find(c => c.label === 'fix').prompt
+    expect(impl).toContain('DESIGN DOCUMENT, writer only: once your implementation is done, render it from the YAML spec as your last write, before your checks, with this exact command:\n' +
+      renderCommand(SPEC_PATH, BASE, UNIT_DOCUMENT) + '\nThen run your checks once, and commit ' + UNIT_DOCUMENT + ' as its own commit and list it in files.')
+    const fixStep = 'DESIGN DOCUMENT, writer only: once your corrections are done, render it again as your last write, before your checks, with this exact command:\n'
+    expect(mainFix).toContain(fixStep + renderCommand(SPEC_PATH, BASE, UNIT_DOCUMENT) + '\nCommit ' + UNIT_DOCUMENT +
+      ' as its own commit when the rendering changed, and list it in files. With an empty approved list, render nothing.')
+    expect(fixRunFix).toContain(fixStep + renderCommand(PARENT_SPEC, PARENT_BASE, PARENT_DOCUMENT) + '\nCommit ' + PARENT_DOCUMENT +
+      ' as its own commit when the rendering changed, and list it in files.')
+    // The prompt reads in the order of the work: the render comes first, the check command after it.
+    for (const prompt of [impl, mainFix, fixRunFix]) {
+      expect(prompt.indexOf('DESIGN DOCUMENT')).toBeGreaterThan(-1)
+      expect(prompt.indexOf('DESIGN DOCUMENT')).toBeLessThan(prompt.indexOf('CHECK COMMAND'))
+    }
+    const writers = new Set(['main:impl', 'main:fix', 'fix:fix'])
+    for (const [run, calls] of [['main', main.calls], ['fix', fix.calls], ['spec', pre]]) {
+      for (const call of calls) {
+        const key = run + ':' + call.label
+        expect([key, call.prompt.includes('--render ')]).toEqual([key, writers.has(key)])
+      }
+    }
+  })
+
+  test('the diff check leaves the rendered parent document out, and a fixer that committed only that document has no correction', async () => {
+    const { calls } = await simulateFix()
+    expect(calls.find(c => c.label === 'diff').prompt).toContain('The one exception is ' + PARENT_DOCUMENT +
+      ': the fixer renders it from the parent spec with the spec tool, so a change there maps to no entry and is no finding.')
+    const rendered = [{ path: PARENT_DOCUMENT, bytes: 80, change: 'modified' }]
+    const onlyDocument = await simulateFix({ fixes: fixed([disposition('return-error')], { files: rendered }) })
+    expect(labels(onlyDocument.calls)).not.toContain('diff')
+    expect([onlyDocument.result.exit, onlyDocument.result.detail]).toEqual(['root-resolution', 'A fix was reported as done without a commit.'])
+    expect(onlyDocument.result.remaining.map(r => r.kind)).toEqual(['unproven-fix', 'unattested-fix'])
+    expect(onlyDocument.result.remaining[0].item).toEqual({ key: 'return-error', cause: 'The fixer reported it fixed and committed no correction.' })
+    const rejected = await simulateFix({ fixes: fixed([disposition('return-error', 'rejected')], { files: rendered }) })
+    expect(labels(rejected.calls)).not.toContain('diff')
+    expect([rejected.result.exit, rejected.result.remaining.map(r => r.kind)]).toEqual(['root-resolution', ['unfixed-approval']])
+    const both = await simulateFix({ fixes: fixed([disposition('return-error')], { files: [...rendered, { path: 'src/example.js', bytes: 120, change: 'modified' }] }) })
+    expect(labels(both.calls).at(-1)).toBe('diff')
+    expect(both.result.remaining).toEqual([unattested('return-error')])
+  })
+
+  test('the writer templates and the README describe the render as the writers\' completion step', async () => {
+    const implementer = await template('implementer')
+    for (const phrase of ['Render the design document as your last write.',
+      'Once your implementation is done, render it from the YAML spec with the spec tool\'s `--render`',
+      '`--base` is the unit\'s base commit so cited rule files are read as they stood there',
+      'Your checks then run once, after that write.', 'Commit the document as its own commit',
+      'No design document is rendered, committed or checked before implementation']) {
+      expect([phrase, implementer.includes(phrase)]).toEqual([phrase, true])
+    }
+    const fixer = await template('fixer')
+    for (const phrase of ['Render the design document again as your last write, once your corrections are done and before your checks',
+      'In a fix run that is the parent spec\'s document.', 'Commit it as its own commit when the rendering changed',
+      'With an empty approved list, render nothing.']) {
+      expect([phrase, fixer.includes(phrase)]).toEqual([phrase, true])
+    }
+    for (const stale of ['after your last write and your checks', 'after your corrections and checks']) {
+      expect([stale, implementer.includes(stale) || fixer.includes(stale)]).toEqual([stale, false])
+    }
+    const readme = flat(await Bun.file(new URL('../README.md', import.meta.url)).text())
+    for (const phrase of ['The YAML spec is the only form of the spec before and during implementation.',
+      'the implementer adds `--render <path>` to generate the tracked design document from the final spec as its last write, before its checks, and commits it',
+      'the fixer renders it again as its last write after its corrections', 'plays no part before implementation']) {
+      expect([phrase, readme.includes(phrase)]).toEqual([phrase, true])
+    }
+    expect(readme).not.toContain('to check that document before implementation')
   })
 })
 

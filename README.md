@@ -50,8 +50,12 @@ workflows, and used by `audit-loop`.
   where the plugin root is this repository or the installed plugin's directory under the plugin cache.
   Add `--base <commit>` so a cited rule file tracked at that commit is read there and not from
   the working tree, while an untracked file reads from disk. Add `--json` for counts and
-  criterion ordinals, `--render <path>` to generate its tracked design document, or
-  `--check-render <path>` to check that document before implementation. A passing run
+  criterion ordinals. The YAML spec is the only form of the spec before and during
+  implementation. After the implementation, the implementer adds `--render <path>` to generate
+  the tracked design document from the final spec as its last write, before its checks, and
+  commits it, and the fixer renders it again as its last write after its corrections.
+  `--check-render <path>` checks an existing document against the spec
+  and plays no part before implementation. A passing run
   prints a random `proof` that the workflow scripts' launch check returns to prove the tool ran.
   A spec names its private directive record in the `record` key. The record is a YAML file of
   `unit` and `entries`, each entry quoting the user's `words` with the transcript `file`, `line`
