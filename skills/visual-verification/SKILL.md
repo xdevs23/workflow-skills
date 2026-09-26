@@ -144,12 +144,12 @@ base commit, before the implement stage starts, and writes the capture name into
 stage captures the before state again.
 
 The scratch directory of the harness lives in the worktree's project cache. When its path is too
-long for the rendering engine, or the worktree sits on a slow shared file system, the setup makes
-that directory reachable at a short path through a mount or share, such as a virtual machine's file
-share or a bind mount, and the orchestrating session provides that short path to the stages in the
-unit spec. Each run's launcher scratch override names that run's own private directory below the
-short path, never the shared short path itself. The system temporary directory is used only when no
-mount or share is possible, and then within the user's global rules.
+long for the rendering engine, the setup makes that directory reachable at a short path through a
+mount or share, such as a virtual machine's file share or a bind mount, and the orchestrating
+session provides that short path to the stages in the unit spec. Each run's launcher scratch
+override names that run's own private directory below the short path, never the shared short path
+itself. The system temporary directory is used only when no mount or share is possible, and then
+within the user's global rules.
 
 Each writing stage, after its last commit, captures the after state under a name never used before
 in that worktree, such as its stage label joined with the run identifier. It runs the comparison
@@ -191,9 +191,8 @@ temporary directory is used only when no mount or share is possible, and then wi
 global rules.
 
 A slow shared file system makes every capture slow. On a network or user-space mounted checkout,
-every page or screen load can take tens of seconds. The remedy is the same: the setup makes the
-scratch directory in the project cache reachable at a short path through a mount or share, and the
-scratch override names that path.
+every page or screen load can take tens of seconds. A short path that a mount gives the same
+storage leaves it as slow as before.
 
 Capture names cannot be reused. A second run under an existing name fails, so every stage and every
 repeated attempt needs its own name.
