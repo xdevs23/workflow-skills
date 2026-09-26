@@ -55,16 +55,22 @@ dependency cache directory named by that hash inside the harness directory, and 
 manager's frozen installation there with install scripts disabled. An installation that fails, or a
 lock that differs after installation from the one the bootstrap copied, stops the run with a message
 telling the user to update the project lock deliberately. The cache is keyed by lock content; the
-mere presence of an installed dependency directory never counts as a valid cache. Locks are never
-rewritten silently.
+mere presence of an installed dependency directory never counts as a valid cache. A missing lock
+fails the run, as does a mismatched one. Locks are never rewritten silently.
 
 Refresh credentials are passed only to the refresh command. The bootstrap reads the refresh
 variables, removes them from its own environment, and hands them to the child process only when the
 verb is the refresh verb. Every other verb runs without them.
 
-The bootstrap then runs the requested verb with the dependency cache and the repository root passed
-as variables. The self-test verb runs the harness's own test suite through the runtime's test
-runner, and every other verb runs the command line of part 3.
+The bootstrap then copies the harness code into the lock-keyed dependency cache and runs the
+requested verb from that copy, with the dependency cache and the repository root passed as
+variables and the runtime's automatic installation of packages disabled. The self-test verb runs the
+harness's own test suite through the runtime's test runner, and every other verb runs the command
+line of part 3. Harness modules therefore resolve packages only from the frozen cache, never from
+the project's own installed dependency directory, whose content no lock check has confirmed.
+
+The bootstrap exits with the child process's exit status. A child that ends without a status, such
+as one killed by a signal, counts as a failure, so an interrupted capture never reports success.
 
 Dependency acquisition may use the network, and it happens before any rendering. The rendering run
 itself never uses the network, and a missing dependency during rendering is a failure; it never
@@ -77,6 +83,11 @@ lock locks the application, its framework and its shipped font packages, and aft
 locks the automation and image libraries of the harness. The environment lock locks the runtime, the
 rendering engine, the font configuration and the fallback fonts. The receipt of part 9 records the
 hash of both.
+
+The automation library and the rendering engine are locked together, as a combination verified to
+work together during implementation: the library's version in the dependency lock and the engine's
+version in the environment lock. The project's harness contract names only versions that were
+verified that way, and claims no version that was not.
 
 ## Numbers and their reasons
 
@@ -94,7 +105,11 @@ core utilities and fontconfig with two fallback font families, and was locked fo
 types. The shell script checked the root, set the creation mask, checked the scratch path, and ran
 the bootstrap under `env -i` with the allowlisted variables. The bootstrap was a TypeScript module
 using only the runtime's built-in modules, and it ran the package manager's frozen installation with
-scripts ignored.
+scripts ignored. It then copied the harness directory into the dependency cache, started the
+runtime there with its automatic installation and its environment file loading switched off, and
+exited with the child's status, or with one when the child ended without a status. The browser
+automation library in the dependency lock and the Chromium in the flake were chosen as a compatible
+pair, since each release of that library supports a specific range of browser versions.
 
 ## Native and terminal realizations
 
@@ -104,7 +119,11 @@ fixes screen size and density, and the build tool's dependency locking and verif
 libraries. For iOS, the development toolchain version and the simulator runtime are recorded and a
 mismatch refuses the run, since they cannot be installed from a lock file in the same way. An
 in-process renderer, such as a JVM-side renderer of Android views or a widget test renderer, locks
-its toolkit through the project's own dependency lock.
+its toolkit through the project's own dependency lock. The user interface test framework and the
+emulator, simulator or renderer it controls are locked as one verified combination, the same way as
+a browser automation library and its engine. The harness runs from the dependencies the lock
+resolved, with the build tool's offline mode or its equivalent, so no run fetches or resolves a
+package on its own.
 
 A desktop harness locks the toolkit and runs the application on a virtual display with a fixed
 resolution, such as a virtual framebuffer server or the toolkit's own offscreen platform, inside a
