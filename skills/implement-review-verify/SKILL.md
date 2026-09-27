@@ -57,6 +57,8 @@ Reach for this when at least one is true:
 
 Do NOT use it for one-off mechanical edits, a rename, or pure research — the overhead (multiple
 agents reading the codebase) isn't worth it. For those, just do the edit, or use a single agent.
+A simple, direct change whose outcome is very unlikely to change meaningfully, and which has no
+meaningful impact on the overall product, is done directly, without a workflow.
 
 ## Before phase 1 — settle the design AND pin acceptance criteria
 
