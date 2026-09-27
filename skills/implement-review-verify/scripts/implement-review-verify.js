@@ -10,7 +10,7 @@ export const meta = {
 // in the workflow list under its own unit. kebab-name and one line are the values a unit
 // replaces. The phases and every other line outside the marked block stay as shipped.
 
-// ---- UNIT VALUES. A unit copies this file and edits only this block. ----
+// ---- UNIT VALUES. A unit copies this file and sets the values of this block. ----
 // Everything below the closing line is the reviewed script and is not edited per unit.
 const UNIT = {
   mainCheckout: '<main checkout>',

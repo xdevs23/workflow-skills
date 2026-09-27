@@ -1935,7 +1935,7 @@ describe('launch check and shipped scripts', () => {
   })
 
   test('each script opens with the marked block holding every per-unit value, and the skill keeps no skeleton code block', async () => {
-    const marker = '// ---- UNIT VALUES. A unit copies this file and edits only this block. ----'
+    const marker = '// ---- UNIT VALUES. A unit copies this file and sets the values of this block. ----'
     const end = '// ---- END OF UNIT VALUES ----'
     for (const [script, fields] of [
       [skeleton, ['mainCheckout', 'worktree', 'specPath', 'transcripts', 'privateRecord', 'pluginRoot', 'checkCommand', 'baseSha', 'criteriaCount', 'implementerPrompt', 'models']],
