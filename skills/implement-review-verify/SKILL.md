@@ -769,8 +769,9 @@ a decision, an open decision, and anything the scope check refused go to the use
 full unit with a spec. The root never uses the fix run for work it wants done beyond a finding.
 
 The fix run is `scripts/fix-follow-up.js`, copied and filled in its marked block like the other two
-scripts. It takes no spec and no quotation. Its input is a fix list, a YAML file in the main
-checkout's project cache, which `workflow-skills:local-cache` defines, with the keys `parentSpec`
+scripts. Its `meta` stays as shipped, because only a copy of the main script also sets the `name`
+and the `description` of its `meta`. It takes no spec and no quotation. Its input is a fix list,
+a YAML file in the main checkout's project cache, which `workflow-skills:local-cache` defines, with the keys `parentSpec`
 (the absolute path of the unit spec the parent run was built against), `run` (the parent run's
 ID) and `entries`. The tool reports a relative `parentSpec` as a violation. Each entry has
 exactly `id`, `source` (the finding's source ID in the parent run, `<seat>:<index>` or
@@ -1314,7 +1315,12 @@ The phase shape only holds up if the script is written to hold it up.
 The skill ships three complete scripts under `scripts/`: `scripts/spec-review.js` for the
 pre-phase, `scripts/implement-review-verify.js` for the main run and `scripts/fix-follow-up.js`
 for a fix run. Copy the shipped script, edit only the marked block, and never copy a previous
-unit's copy. The block sits at the top of each file between two comment lines and holds
+unit's copy. The one exception is the `meta` of the main script: a copy of it also sets the
+`name` and the `description` there. The name is a kebab-case name of the unit, and the description
+is one line saying what the run implements. The shipped main script carries `kebab-name` and
+`one line` as the values a unit replaces, and its phases and every other line outside the marked
+block stay as shipped. A copy that keeps them shows every main run in the workflow list under the
+same placeholder. The marked block sits at the top of each file between two comment lines and holds
 everything a unit sets: the paths (main checkout, worktree, spec, transcripts, private record,
 plugin root), the check command, the base or start SHA, `criteriaCount`, the
 unit prompt text for the implementer, the scoping, the rule sources, the invariants and the model
@@ -1386,7 +1392,10 @@ shapes and the `stage()` helper are the main script's, copied in because this is
 
 `scripts/implement-review-verify.js` runs the launch check, then Implement, Review, Verify and
 Fix, and returns the run record. Its `meta` is a pure literal whose phase titles match the
-`phase()` calls exactly. `AUTHORITY` rides every authority-aware seat, `HYGIENE` the unbriefed
+`phase()` calls exactly. Its shipped `name` is `kebab-name` and its shipped `description` is
+`one line`, and every copy replaces them with a kebab-case name of the unit and one line saying
+what the run implements, so each main run appears in the workflow list under its own unit.
+`AUTHORITY` rides every authority-aware seat, `HYGIENE` the unbriefed
 ones, `WRITE_GIT` the two writers and `READ_GIT` the readers. The field shapes are declared once
 and reused inside nine review seat schemas and the writer, verifier and launch check schemas,
 each a closed object declared in full. `stage()` is the one acceptance helper, `abortOnFlag()`

@@ -1965,6 +1965,17 @@ describe('launch check and shipped scripts', () => {
     expect(text).not.toContain('bun tools/check-spec.ts')
   })
 
+  test('the shipped main script carries the placeholder name and description, and the copy rule names them as values a unit sets', async () => {
+    // Evaluating the meta literal returns the object the workflow list reads.
+    const meta = await new AsyncFunction(skeleton.replace('export const meta =', 'return'))()
+    expect([meta.name, meta.description]).toEqual(['kebab-name', 'one line'])
+    const text = flat(skill)
+    for (const phrase of [
+      "Copy the shipped script, edit only the marked block, and never copy a previous unit's copy. The one exception is the `meta` of the main script: a copy of it also sets the `name` and the `description` there.",
+      'The shipped main script carries `kebab-name` and `one line` as the values a unit replaces',
+    ]) expect([phrase, text.includes(phrase)]).toEqual([phrase, true])
+  })
+
   test('the skill lists the fix script, its two templates and its launch check, and the README the fix-list mode', async () => {
     const text = flat(skill)
     for (const phrase of ['The skill ships three complete scripts under `scripts/`', '`scripts/fix-follow-up.js` for a fix run',
