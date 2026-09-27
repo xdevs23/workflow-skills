@@ -1314,17 +1314,18 @@ The phase shape only holds up if the script is written to hold it up.
 
 The skill ships three complete scripts under `scripts/`: `scripts/spec-review.js` for the
 pre-phase, `scripts/implement-review-verify.js` for the main run and `scripts/fix-follow-up.js`
-for a fix run. Copy the shipped script, edit only the marked block, and never copy a previous
-unit's copy. The one exception is the `meta` of the main script: a copy of it also sets the
-`name` and the `description` there. The name is a kebab-case name of the unit, and the description
-is one line saying what the run implements. The shipped main script carries `kebab-name` and
-`one line` as the values a unit replaces, and its phases and every other line outside the marked
-block stay as shipped. A copy that keeps them shows every main run in the workflow list under the
-same placeholder. The marked block sits at the top of each file between two comment lines and holds
-everything a unit sets: the paths (main checkout, worktree, spec, transcripts, private record,
-plugin root), the check command, the base or start SHA, `criteriaCount`, the
-unit prompt text for the implementer, the scoping, the rule sources, the invariants and the model
-and effort per stage. The block holds no generated document: the scripts derive its path from the
+for a fix run. Copy the shipped script, and never copy a previous unit's copy. A copy of the
+pre-phase or the fix-run script edits only its marked block. A copy of the main script edits its
+marked block and sets exactly two values outside it, `meta.name` and `meta.description`: the name
+is a kebab-case name of the unit, and the description is one line saying what the run implements.
+The shipped main script carries `kebab-name` and `one line` as the values a unit replaces, and its
+phases and every other line outside the marked block stay as shipped. A copy that keeps the
+placeholders shows every main run in the workflow list under the same name and description. The
+marked block sits at the top of each file between two comment lines and holds every value a unit
+sets apart from `meta.name` and `meta.description` of the main script: the paths (main checkout,
+worktree, spec, transcripts, private record, plugin root), the check command, the base or start
+SHA, `criteriaCount`, the unit prompt text for the implementer, the scoping, the rule sources,
+the invariants and the model and effort per stage. The block holds no generated document: the scripts derive its path from the
 spec path. The fix run's block holds the fix list path, the entries, the parent spec and the
 parent run's `baseSha` as `parentBaseSha` in place of the spec, `criteriaCount` and the
 implementer's prompt. Everything below the block

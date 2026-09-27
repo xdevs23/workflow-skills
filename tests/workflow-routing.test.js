@@ -1957,7 +1957,7 @@ describe('launch check and shipped scripts', () => {
     expect(blocks.some(code => code.includes("name: 'kebab-name'") || code.includes("name: 'spec-cold-review'"))).toBe(false)
     expect(blocks.some(code => code.includes('const assessSize ='))).toBe(true)
     const text = flat(skill)
-    for (const phrase of ['`scripts/spec-review.js`', '`scripts/implement-review-verify.js`', 'edit only the marked block',
+    for (const phrase of ['`scripts/spec-review.js`', '`scripts/implement-review-verify.js`', 'edits only its marked block',
       "never copy a previous unit's copy", '`<plugin root>/tools/check-spec.ts`', '`.claude-plugin/plugin.json`',
       'Never copy a previous unit\'s script and edit it']) expect(text).toContain(phrase)
     expect(text).not.toContain('Skeleton')
@@ -1969,11 +1969,13 @@ describe('launch check and shipped scripts', () => {
     // Evaluating the meta literal returns the object the workflow list reads.
     const meta = await new AsyncFunction(skeleton.replace('export const meta =', 'return'))()
     expect([meta.name, meta.description]).toEqual(['kebab-name', 'one line'])
-    const text = flat(skill)
-    for (const phrase of [
-      "Copy the shipped script, edit only the marked block, and never copy a previous unit's copy. The one exception is the `meta` of the main script: a copy of it also sets the `name` and the `description` there.",
+    const rule = sectionText(skill, "### Every unit's script is a copy of the shipped one, edited in one block")
+    for (const phrase of ['A copy of the pre-phase or the fix-run script edits only its marked block',
+      'A copy of the main script', '`meta.name`', '`meta.description`',
       'The shipped main script carries `kebab-name` and `one line` as the values a unit replaces',
-    ]) expect([phrase, text.includes(phrase)]).toEqual([phrase, true])
+    ]) expect([phrase, rule.includes(phrase)]).toEqual([phrase, true])
+    // The marked block does not claim to hold the two values a main-script copy sets above it.
+    expect(rule).not.toContain('holds everything a unit sets')
   })
 
   test('the skill lists the fix script, its two templates and its launch check, and the README the fix-list mode', async () => {
