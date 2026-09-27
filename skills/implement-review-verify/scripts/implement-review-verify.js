@@ -5,6 +5,10 @@ export const meta = {
 }
 // meta must be a PURE LITERAL: no variables, no interpolation. Phase titles here must
 // match the phase() calls EXACTLY or the progress grouping silently degrades.
+// A unit's copy also sets name and description: name becomes a kebab-case name of the
+// unit and description one line saying what the run implements, so each main run shows
+// in the workflow list under its own unit. kebab-name and one line are the values a unit
+// replaces. The phases and every other line outside the marked block stay as shipped.
 
 // ---- UNIT VALUES. A unit copies this file and edits only this block. ----
 // Everything below the closing line is the reviewed script and is not edited per unit.
