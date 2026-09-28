@@ -280,11 +280,11 @@ describe('workflow verification and consolidation', () => {
     expect(flat(specWriting)).toContain('keep factual research findings distinct from the decisions')
   })
 
-  test('the workflow skill wires a root question-premise check ahead of any decision request', () => {
-    expect(skill).toContain('### Root question-premise check')
+  test('the workflow skill wires a question-premise check ahead of any decision request', () => {
+    expect(skill).toContain('### Question-premise check')
     expect(skill).toMatch(/is found\s+and read before the reply that relies on it is written/)
-    expect(skill).toContain('No reply opens')
-    expect(skill).toContain('checks its premises first')
+    expect(flat(skill)).toContain('No reply opens')
+    expect(flat(skill)).toContain('check its premises first')
     expect(skill).toContain('inverseSpecDecisions')
     expect(skill).toContain('it cannot prove a future model actually performed the')
   })
@@ -1074,7 +1074,7 @@ const FAILED = 'HOW YOUR PREVIOUS ATTEMPT FAILED, plainly: '
 describe('spec provenance instructions and routing', () => {
   test('the workflow states source rules, the launch check, the written document after implementation and the generated denominator', () => {
     for (const phrase of [
-      '`transcript`', 'The root runs the tool before it launches the main run, and the run\'s first stage runs it once more',
+      '`transcript`', 'Run the tool before you launch the main run.', 'The run\'s first stage runs it once more',
       'A failing spec launches no run',
       'The tool prints its summary on stdout, as JSON with `--json`.',
       'The tracked design document is written by hand from the code after the implementation, so it records what was built.',
@@ -1086,7 +1086,7 @@ describe('spec provenance instructions and routing', () => {
       "Writing it is the writers' completion step", 'The implementer, once its implementation is done, writes `docs/<unit>.md` as its last write.',
       'Its focused checks then run once, after that write, and it commits the document as its own commit',
       'updates the document by hand where a correction changed what it describes, as its last write before its checks, and commits it when it changed',
-      'Its last write is the design document it writes by hand from the code once its implementation is done',
+      'It writes the document by hand from the code once its implementation is done',
       'updates the design document by hand as its last write once its corrections are done, where a correction changed what it describes,' +
         ' runs full checks BARE AFTER THAT LAST WRITE',
       "A fix run's fixer does the same for the parent unit's document", 'The documents directory is relative to the tree root',
@@ -1097,7 +1097,7 @@ describe('spec provenance instructions and routing', () => {
       'That `sha256` equals the one the launch check of the run that produced the candidate printed,' +
         ' so the counted spec is the one the writers and reviewers read.', 'The gate reads no design document.',
       'The tool\'s `nonBlankLines` counts the whole YAML file, quoted words, evidence and keys included, and belongs only to the tool summary.',
-      'code added / spec lines, displayed to one decimal', 'The root obtains the counts from Git and the spec tool',
+      'code added / spec lines, displayed to one decimal', 'Obtain the counts from Git and the spec tool',
       'A problem reported to the user quotes the observed symptom and the line that causes it',
       'each with its file and line or the command that produced it',
       'A characterization is not a quotation', 'never substitutes a plausible cause',
@@ -1201,7 +1201,7 @@ describe('spec provenance instructions and routing', () => {
       'settled or decided on your own authority', 'quotes the user\'s words and names the date they were said']
     for (const phrase of shared) expect([phrase, flat(specWriting).includes(phrase)]).toEqual([phrase, true])
     // The workflow skill points to spec-writing and no longer states the rules itself.
-    expect(flat(skill)).toContain('The root writes the unit spec as `workflow-skills:spec-writing` says, validates it with the spec tool and launches the main run on it.')
+    expect(flat(skill)).toContain('Write the unit spec as `workflow-skills:spec-writing` says, validate it with the spec tool and launch the main run on it.')
     for (const phrase of shared.slice(0, 2)) expect([phrase, flat(skill).includes(phrase)]).toEqual([phrase, false])
   })
 
@@ -1211,14 +1211,14 @@ describe('spec provenance instructions and routing', () => {
       expect([phrase, flat(specWriting).includes(phrase)]).toEqual([phrase, true])
     }
     const text = flat(skill)
-    for (const phrase of ['the root redesigns before any unit continues and shows the redesign to the user, beginning with what the user sees and then the data model',
-      'The root never adds a limit to a decision of the user. A limit that seems needed is asked as its own question.',
+    for (const phrase of ['redesign before any unit continues and show the redesign to the user, beginning with what the user sees and then the data model',
+      'Never add a limit to a decision of the user. A limit that seems needed is asked as its own question.',
       'every edit that touches that premise stops until the question is answered',
       'A title, module or heading that contradicts a decision of the user is renamed in the same change']) {
       expect([phrase, text.includes(phrase)]).toEqual([phrase, true])
     }
-    // Each rule is a paragraph of the question-premise section that opens with its bold sentence.
-    const premise = sectionBlocks(skill, 'Root question-premise check').filter(block => block.kind === 'paragraph')
+    // Each rule is a bullet of the question-premise section that opens with its bold sentence.
+    const premise = sectionBlocks(skill, 'Question-premise check').filter(block => block.kind === 'item')
     for (const opener of ['A decision that changes what a thing is triggers a redesign.', 'A limit is never attached to a decision.',
       'A question about a premise stops every edit to it.', 'Names follow decisions.']) {
       const found = premise.some(block => block.strong[0] === opener && block.text.startsWith(opener))
@@ -1582,7 +1582,7 @@ describe('one-pass remaining-items handoff', () => {
 
   test('root follow-up instructions require evidence, fresh prompts and every stage of the main run', () => {
     const text = flat(skill)
-    for (const phrase of ['records every remaining item', 'every remaining item in the todo record that `workflow-skills:todo-md` defines',
+    for (const phrase of ['record every remaining item', 'every remaining item in the todo record that `workflow-skills:todo-md` defines',
       'Check each `roast-finding` and `roast-limitation` against the tree',
       'Attest each `unattested-fix` by reading its commits', 'running the checks yourself',
       'one criterion item per confirmed defect with its sources', 'previous run’s snapshot',
@@ -1705,11 +1705,11 @@ const lawText = (text, number) => {
 }
 
 describe('work execution rules', () => {
-  test('the root question-premise section screens a finding before it reaches the user', () => {
-    const text = sectionText(skill, '### Root question-premise check')
-    expect(text).toContain('**The root is the judge and acts on its own conclusion.**')
+  test('the question-premise section screens a finding before it reaches the user', () => {
+    const text = sectionText(skill, '### Question-premise check')
+    expect(text).toContain('**You are the judge and act on your own conclusion.**')
     expect(text).toContain('a claim, not an instruction and not a question to relay')
-    expect(text).toContain('fixes it or rejects it with a stated reason')
+    expect(text).toContain('fix it or reject it with a stated reason')
     expect(text).toContain('is this item in fact a rule violation or an architecture problem that another read of the recorded words would close?')
     expect(text).toContain('choice the record genuinely leaves open still reaches the user once the screen has passed it')
   })
@@ -1759,7 +1759,7 @@ describe('work execution rules', () => {
   })
 
   test('the decide-or-ask material states the ask shape, literal approval and the forbidden construction', () => {
-    const text = sectionText(skill, '### Root question-premise check')
+    const text = sectionText(skill, '### Question-premise check')
     expect(text).toContain('**An ask is one short sentence, and the question stands alone on its own line.**')
     expect(text).toContain('An answer approves only what it literally names')
     expect(text).toContain('spends the previous yes and needs a new one')
@@ -1770,7 +1770,7 @@ describe('work execution rules', () => {
     const order = headings(skill)
     expect(order[order.indexOf('### While a run is in flight') + 1]).toBe('### Post-run timing review')
     const text = flat(skill)
-    expect(text).toContain('inspects every active run at least once every thirty minutes')
+    expect(text).toContain('Inspect every active run at least once every thirty minutes')
     expect(text).toContain("the run's journal and the per-agent transcript files in the run directory")
     expect(text).toContain('an agent whose transcript has not grown and whose stage has produced no journal line for the whole interval')
     expect(text).toContain("read that agent's transcript, and then either stop the run and record why it was stopped, or record why the agent is still progressing")
@@ -2338,10 +2338,10 @@ describe('fix-only follow-up runs', () => {
       "one named run of a unit whose spec carries the user's words, where the fix needs no decision of the user",
       'A general instruction to fix findings does not authorize a particular fix, because the user may not agree with the finding',
       'A finding that needs a decision, an open decision, and anything the scope check refused go to the user and then to a full unit with a spec.',
-      'The root never uses the fix run for work it wants done beyond a finding.', '`scripts/fix-follow-up.js`',
+      'Never use the fix run for work you want done beyond a finding.', '`scripts/fix-follow-up.js`',
       'The list holds no user words and no field for them.', '`<plugin root>/tools/check-spec.ts --fix-list <file> --transcripts <dir> --json`',
       '`args.parentSpec`', 'The tool fails when they differ from the fix list, so the corrections the fixer receives are the ones the tool checked.',
-      'Every entry the fixer reports fixed returns as an `unattested-fix` for the root to attest', 'the run then ends `follow-up`',
+      'Every entry the fixer reports fixed returns as an `unattested-fix` for you to attest', 'the run then ends `follow-up`',
       'a fix reported as done has no commit or maps to no change in the diff check (an `unproven-fix`)',
       'It ends `clean` only when nothing at all remains',
       '`parentSpec` (the absolute path of the unit spec the parent run was built against)', 'The tool reports a relative `parentSpec` as a violation.']) {
@@ -2624,9 +2624,9 @@ describe('the project cache, the todo record and scratch files by role', () => {
 
   test('every instruction to record work names workflow-skills:todo-md, and the README states the precedence rule once', async () => {
     const text = flat(skill)
-    for (const phrase of ['records every remaining item in the todo record that `workflow-skills:todo-md` defines',
-      'records this consolidated handoff in the todo record that `workflow-skills:todo-md` defines',
-      'records the list in the todo record that `workflow-skills:todo-md` defines',
+    for (const phrase of ['record every remaining item in the todo record that `workflow-skills:todo-md` defines',
+      'Record this consolidated handoff in the todo record that `workflow-skills:todo-md` defines',
+      'Record the list in the todo record that `workflow-skills:todo-md` defines',
       'update the todo record of `workflow-skills:todo-md` without staging or committing it']) {
       expect([phrase, text.includes(phrase)]).toEqual([phrase, true])
     }
@@ -2782,8 +2782,8 @@ describe('the user\'s words reach every stage', () => {
       'the inverse-spec reviewer\'s missing-decision findings carry it', '(`band-aid` / `longer-route` / `unbacked-choice`)']) {
       expect([phrase, flat(skill).includes(phrase)]).toEqual([phrase, true])
     }
-    const premise = sectionText(skill, '### Root question-premise check')
-    for (const phrase of ['The root puts every open `unbacked-choice` decision to the user as a question',
+    const premise = sectionText(skill, '### Question-premise check')
+    for (const phrase of ['Put every open `unbacked-choice` decision to the user as a question',
       'checking that the quoted words, read in their surrounding context, back the choice']) {
       expect([phrase, premise.includes(phrase)]).toEqual([phrase, true])
     }
@@ -2901,30 +2901,30 @@ describe('no loops in the workflow skills', () => {
 
   test('the workflow skill records remaining items and moves on, and never reruns a finished unit', () => {
     const text = sectionText(skill, '### Remaining items and follow-up work')
-    for (const phrase of ['When a run ends, the root records every remaining item in the todo record',
-      'each as its own unit, and moves on to the next work',
-      "the root never starts a run on the same spec again, never edits a finished run's spec, and never hands a new run the previous run's findings as its next round",
+    for (const phrase of ['When a run ends, record every remaining item in the todo record',
+      'each as its own unit, and move on to the next work',
+      "never start a run on the same spec again, never edit a finished run's spec, and never hand a new run the previous run's findings as its next round",
       'A new run starts only for a recorded item that is supposed to be fixed: a confirmed must-fix or CRITICAL defect in code the unit wrote',
       'whose fix list names findings of the parent run', 'Every other such item goes to a new implement-review-verify unit with its own spec',
       'never the findings its own review raises; those are recorded the same way',
       'Every other item stays in the todo record as a separate unit, done later.',
-      'A run interrupted mid-flight is resumed through `resume-interrupted-run`, as law 3 says, and that skill is only for a run' +
+      'A run interrupted mid-flight is resumed through `workflow-skills:resume-interrupted-run`, as law 3 says, and that skill is only for a run' +
         ' that was actually interrupted, never a way around these rules.',
       'A run that ended any other way, before or after its review, has its items recorded like every run, ' +
-        'and the root never starts a run on the same spec again.',
+        'and you never start a run on the same spec again.',
       '**Two relocations mean the cause is untouched.**']) {
       expect([phrase, text.includes(phrase)]).toEqual([phrase, true])
     }
     const whole = flat(skill)
-    for (const phrase of ['A completed run never runs again: the root records its remaining items in the todo record and moves on',
+    for (const phrase of ['A completed run never runs again: you record its remaining items in the todo record and move on',
       'Each cleanup entry is recorded as a separate unit, done later',
-      'The root does not edit a spec or its record while a run on it is in flight.',
-      'The root writes the spec as `workflow-skills:spec-writing` says, validates it with the spec tool and launches the main run ' +
+      'Do not edit a spec or its record while a run on it is in flight.',
+      'Write the spec as `workflow-skills:spec-writing` says, validate it with the spec tool and launch the main run ' +
         'on it, and the stages of that run report what they find in the spec.',
       "A change after the main run started is work for a new unit and never repeats the finished run's reviews.",
       'A new run that changes the code is measured against the size bar on its own candidate.',
       "recording in the todo record that the user's recorded words back the code's choice",
-      'The root attests fixed keys by reading their commits and running the checks.']) {
+      'You attest fixed keys by reading their commits and running the checks.']) {
       expect([phrase, whole.includes(phrase)]).toEqual([phrase, true])
     }
     for (const stale of ["Each follow-up starts from the previous pass", 'Findings raised by its review become new entries',
@@ -3121,8 +3121,8 @@ describe('fixed review seats and a model for every agent', () => {
   test('the skill states the fixed seats, the rule against rewriting them, the model entries and where a note for the implementer goes', () => {
     const review = sectionText(skill, '### Phase 2 — Review (N agents, parallel VERDICT seats, split BY CONCERN)')
     for (const phrase of ['**The review stage has fifteen fixed, mandatory seats.** Every run runs all of them, whatever the size of the change',
-      'No root leaves a review seat out, rewrites a seat\'s template or the prompt text the script gives a seat, or removes anything from either.',
-      'The one exception is the note `resume-interrupted-run` appends to the prompt of an interrupted agent of a run being resumed, which adds and removes nothing else.',
+      'Never leave a review seat out, rewrite a seat\'s template or the prompt text the script gives a seat, or remove anything from either.',
+      'The one exception is the note `workflow-skills:resume-interrupted-run` appends to the prompt of an interrupted agent of a run being resumed, which adds and removes nothing else.',
       'it stops before its first agent when the seat list holds any other set']) {
       expect([phrase, review.includes(phrase)]).toEqual([phrase, true])
     }
@@ -3135,7 +3135,7 @@ describe('fixed review seats and a model for every agent', () => {
     expect(fan).toContain('No review seat is droppable, whatever the size of the change')
     expect(fan).not.toContain('Droppable on a tightly-scoped change')
     const models = sectionText(skill, '## Model assignment')
-    for (const phrase of ['one model entry, a model and an effort, for every agent the script starts, and the root sets every one of them, the launch check included',
+    for (const phrase of ['one model entry, a model and an effort, for every agent the script starts, and you set every one of them, the launch check included',
       'no shipped script names a model, and no agent template names one either', '`models.review` holds one entry per review seat, keyed by the seat\'s label',
       'The script stops before its first agent when an entry is missing, is still a placeholder, or names an agent or seat the script does not have.',
       'A seat that reads whole files, such as the rule reader, may need a model with a larger context']) {
@@ -3295,7 +3295,7 @@ describe('the implementer checks the spec, and every stage reads only words said
         'never approves a fix that builds an item left unbuilt, as phase 3 describes.',
         'A finding that asks to build an item the implementer left unbuilt is never `approve-fix`.',
         'A source finding that asks to build, complete or change an item left unbuilt is decided `needs-decision`',
-        'the decision reaches the root in `remaining` as an open decision',
+        'the decision reaches you in `remaining` as an open decision',
         'into `remaining` as a `spec-finding` item, CRITICAL for `unbacked-item` and must-fix otherwise',
         'the spec finding `class` (`joint-impossibility` / `missing-contract` / `reality-drift` / `unbacked-item`)']],
     ]) for (const phrase of phrases) expect([name, phrase, text.includes(phrase)]).toEqual([name, phrase, true])
