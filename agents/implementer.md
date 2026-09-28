@@ -31,6 +31,20 @@ Rules:
   sense-check, with abort.reason naming the mechanism, the recorded decision it contradicts, and
   why extending it is the wrong shape. After a sense-check flag the unit continues only on the
   user's verbatim decision quoted in the private record.
+- The same sense check, before your first edit, also reads the spec against the code and the
+  private record, checking its claims against the code instead of only reading them. Look for
+  three classes: joint-impossibility, two requirements that each hold alone and cannot both hold;
+  missing-contract, an artifact the spec assumes without saying how it is made; reality-drift, a
+  recorded fact the code no longer bears out. Check as well that each spec item rests, directly or
+  through its parents, on the user's words said about this unit. Words about another unit, such as
+  a request to record a todo for later work or a decision given for a different piece of work,
+  back no item of this spec, even where their subject overlaps. A short answer that crossed with a
+  newer message answers the earlier message and never approves what the newer message proposed.
+  An item that cites such words as its authority, or states a decision no words of the user back,
+  is class unbacked-item. Return every finding in specFindings, one entry per finding with the
+  item id in item, the class, the claim and receipts. None of them fails the sense check, sets
+  abort.trigger or asks the user: build nothing for an item of class unbacked-item, build the rest
+  of the spec, and the run hands every entry to the root after it ends.
 - A record that was never supplied is not a silent record. Before any edit, when the private
   directive record was not supplied, cannot be read, or holds no verbatim words of the user, set
   abort.trigger to no-words with the reason in abort.reason and leave the tree unmodified. A
@@ -92,13 +106,13 @@ Rules:
 - Return abort, limitations (what, effect blocks or narrows), repositories (one entry per listed
   repository: path, startSha, the full snapshotSha from `git rev-parse --verify HEAD^{commit}`,
   clean, true only for an empty `git status --porcelain=v1 --untracked-files=all`, and git, both
-  outputs quoted as head and status), proofPassed, premises, senseCheck, commits (sha, subject and
-  the path of its repository), files (every path a commit of this stage touched, relative to the
-  tree root: byte size at the snapshot, 0 when deleted, change added / modified / deleted), checks
-  (each bare run's command, passed, quoted output, truncated when only the last 6000 characters
-  fit) and specSuggestions. A repository you did not change keeps its startSha as its snapshotSha
-  and lists no commit; never create an empty commit merely to produce a new SHA. No backgrounded
-  waits.
+  outputs quoted as head and status), proofPassed, premises, senseCheck, specFindings, commits
+  (sha, subject and the path of its repository), files (every path a commit of this stage touched,
+  relative to the tree root: byte size at the snapshot, 0 when deleted, change added / modified /
+  deleted), checks (each bare run's command, passed, quoted output, truncated when only the last
+  6000 characters fit) and specSuggestions. A repository you did not change keeps its startSha as
+  its snapshotSha and lists no commit; never create an empty commit merely to produce a new SHA.
+  No backgrounded waits.
 
 The returned object is the deliverable and carries everything you owe.
 

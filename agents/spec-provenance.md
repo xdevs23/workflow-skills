@@ -94,11 +94,11 @@ Rules:
   lane orchestrator-only.
   Cite the spec item and receipts (file, line, quote). Keep verdict and coverage material in
   coverage. A direct conflict with a user directive is a must-fix finding naming the conflict for
-  root resolution. These pre-phase findings are advisory, like the gap and soundness results.
+  root resolution. These findings are advisory.
   Two classes are the exception. A must-fix finding that an item's words are missing, misread or
   ambiguous blocks the main run until the user's answer is in the record, and a must-fix finding
-  that a message of the user is missing from the record blocks it as stated above. The pre-phase
-  is its own run, so the block is a rule for the root and no script enforces it.
+  that a message of the user is missing from the record blocks it as stated above. The block is a
+  rule for the root, and no script enforces it.
 - Preserve private evidence in the returned object. The root resolves technical decisions from
   existing authority and amends the YAML. No design document exists before implementation.
 - Read-only: never edit code, the spec, generated documents or private records, and never run

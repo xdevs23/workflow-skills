@@ -16,7 +16,7 @@ scope. If the design isn't settled, stop and settle it with the user first.
 **Authority lives only in the items.** A design is settled only by the user's words held as spec
 items. A document enters a spec only as an observation of the current state of the code or the
 documents, re-run and dated, or as a design document the tool generated from a spec that passed
-the tool and the provenance review. A hand-written design document is never cited as the design:
+the tool. A hand-written design document is never cited as the design:
 its decisions become items with the user's words, or they do not count. The summary, the boundary
 items and the comments of a spec state nothing that no item backs, and a comment carries
 provenance notes only. A prompt to any agent never calls a design settled or decided on the
@@ -24,10 +24,10 @@ orchestrating session's own authority; a prompt that states a decision quotes th
 names the date they were said.
 
 **Inherited work is listed before it is built on.** A unit that builds on a branch, a design
-document or earlier units made without a spec that passed the tool and the provenance review
-starts by listing the decisions it inherits as items with the user's words. A decision that cannot
-be backed that way goes to the user before building continues. The provenance review's frame check
-covers that list.
+document or earlier units made without a spec that passed the tool starts by listing the decisions
+it inherits as items with the user's words. A decision that cannot be backed that way goes to the
+user before building continues. The implementer's sense check reads that list like every other
+item of the spec.
 
 **What the tree already says about the work** is five answers established before any drafting
 starts: whether the thing is already implemented; what already exists that the work can build on;
@@ -96,15 +96,16 @@ of a private record entry, counts as the user's verbatim directive: a contradict
 contradiction with the user's own sentence. The hierarchy of law 8 and the directive-conflict hard
 flag of law 10 in `workflow-skills:implement-review-verify` treat it that way, and a spec item
 built on an approval quotes the approved text in its `answers` field. The tool checks that the
-approved text stands where the entry says it does; the provenance reader judges whether the entry's
-words approve it.
+approved text stands where the entry says it does; the implementer's sense check judges, before
+code is written, whether the entry's words approve it.
 
 Never selectively omit, truncate or rewrite the original evidence to make a spec or implementation
 pass; only a later, actual user decision may supersede an earlier one, and only
 with its provenance recorded — an assistant's own spec edit never does. The root does not edit a
-spec or its record while a run on it is in flight. The spec review before the main run is the one
-run after which the root amends the spec, once, before it launches the main run on it. A change
-after the main run started is work for a new unit and never repeats the finished run's reviews.
+spec or its record while a run on it is in flight. The root writes the spec as this skill says,
+validates it with the spec tool and launches the main run on it, and the stages of that run report
+what they find in the spec. A change after the main run started is work for a new unit and never
+repeats the finished run's reviews.
 
 A necessary part of the record being unavailable or incomplete blocks the launch. The root writes
 no spec and starts no run on it. It searches the session transcripts for the words, and where it
@@ -160,7 +161,8 @@ also has `reason`. Use exactly the fields of its source kind:
   derived from observations alone.
 - **rule:** `rule: { file, line }` and `quote`, matching the rule's words across hard-wrapped lines.
 - **observation:** `observation: { command, exit, output, date }`, recording a fact observed here.
-  Use a read-only command that the provenance reader can repeat and compare against output and exit.
+  Use a read-only command that the implementer's sense check can repeat and compare against output
+  and exit.
 - **derivation:** `parents`, a non-empty list of item ids whose chains reach a sourced item.
 
 An item asserting that a condition, failure mode or risk exists needs source transcript or
@@ -171,8 +173,8 @@ observed. The root observes a recorded condition again before it justifies an it
 becomes a question to the user. The todo record is never cited as a source. A derivation mandating
 a mechanism names in content the simpler alternative it rules out; its parents include the
 transcript item asking for it or the observation showing the simpler route failing. Trace ordinary
-derivations to existing decisions; new decisions remain the user's. The provenance reader judges
-these claims against the cited words and observed facts.
+derivations to existing decisions; new decisions remain the user's. The implementer's sense check
+judges these claims against the cited words and observed facts.
 
 The prose of a spec is wrapped at 120 characters, and the tool fails a spec that breaks the width
 rule. The prose is `unit`, `summary` and each item's `content`, `user_words`, `answers`, `quote`,

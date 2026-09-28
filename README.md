@@ -20,7 +20,7 @@ Then the skills appear in the skill list and each has a matching slash command (
 | Skill | What it does |
 |---|---|
 | `spec-writing` | Write a unit spec and its private directive record: the YAML format, the sources every item carries, the directive veto and the validation with the spec tool. |
-| `implement-review-verify` | Cold-review the spec, implement and commit a clean snapshot, then review and independently consolidate findings. The fixer commits only approved corrections while a mandatory roaster reads the pre-fix Git snapshot and approved list. Roast findings are verified against the resulting snapshot before completion. Only unresolved decisions, disagreements and non-convergence need root resolution. |
+| `implement-review-verify` | Implement against the unit spec and commit a clean snapshot, with the implementer's sense check reporting what it finds in the spec, then review and independently consolidate findings. The fixer commits only approved corrections while a mandatory roaster reads the pre-fix Git snapshot and approved list. Roast findings are verified against the resulting snapshot before completion. Only unresolved decisions, disagreements and non-convergence need root resolution. |
 | `copywriting` | Write an increment's user-visible strings BEFORE implementation: intent catalog + writing system, one agent per item, mechanical gate + source-verify + fresh-context critic, human ships the load-bearing lines. |
 | `resume-interrupted-run` | Recover a workflow run that was stopped while agents were mid-flight: hand each interrupted seat its own prior transcript, leave every completed prompt byte-identical, resume near-losslessly. |
 | `visual-verification` | Check a change to any rendered user interface, in a browser, a native mobile or desktop toolkit or a terminal, with a reproducible visual harness: real screenshots, controlled data, measured checks and strict before and after comparisons. A project without a harness adopts one from the implementation guide bundled with the skill. |
@@ -105,7 +105,7 @@ directly as `agentType`s in your own workflows.
 bun test tests/workflow-routing.test.js tests/git-snapshot.test.js tests/check-spec.test.js
 ```
 
-The routing tests execute the three shipped workflow scripts under
+The routing tests execute the two shipped workflow scripts under
 `skills/implement-review-verify/scripts/` with deterministic fake stage results, including the
 launch check and execution boundaries for every stage, and read the skill's Markdown with Bun's
 built-in parser for the prose and helper they check.

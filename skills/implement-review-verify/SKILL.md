@@ -25,9 +25,9 @@ launches, barriers, retries and final completion checks are orchestrator respons
 An instruction to use this workflow does not require each stage to launch another copy.
 
 **A stage owns only its assignment.** Implement, review, verify or fix as assigned, then return
-its result to the enclosing workflow. Never launch workflows or subagents, invoke another
-process indirectly through a skill or shell command, or repeat the pre-phase. The enclosing
-workflow owns the remaining stages; their checks are not already passed just because it exists.
+its result to the enclosing workflow. Never launch workflows or subagents, or invoke another
+process indirectly through a skill or shell command. The enclosing workflow owns the remaining
+stages; their checks are not already passed just because it exists.
 
 Load a matching skill for instructions when required and available, but apply only the
 stage-relevant instructions. Orchestration sections address the caller. Before launch, the
@@ -44,9 +44,9 @@ work and must be reported honestly. This role boundary does not override higher-
 instructions. Scope inherited project/global workflow mandates to orchestrators at their
 source; a child prompt is not a workaround for an explicitly conflicting instruction.
 
-Include the stage boundary in every prompt, including template-less cold spec review and the
-Git-object-only roaster. Keep orchestration tools unavailable to stages; loading instructions
-is not permission to recursively execute the process they describe.
+Include the stage boundary in every prompt, including the Git-object-only roaster. Keep
+orchestration tools unavailable to stages; loading instructions is not permission to recursively
+execute the process they describe.
 
 ## When to use it
 
@@ -68,8 +68,10 @@ whether they want a git repository.
 
 ## Before phase 1 — the unit spec
 
-The root writes and validates the unit spec as `workflow-skills:spec-writing` says before either
-run starts.
+The root writes the unit spec as `workflow-skills:spec-writing` says, validates it with the spec
+tool and launches the main run on it. The stages of that run report what they find in the spec:
+the implementer's sense check before its first edit, the review stages and the finding verifier
+after the code exists.
 
 Every command below uses `<plugin root>/tools/check-spec.ts`, with the plugin root that
 `workflow-skills:spec-writing` names, and the shipped scripts take the plugin root in their marked
@@ -77,11 +79,11 @@ block. An installed plugin older than this tool prints no proof, so its launch c
 run launches on it until the plugin is updated; that is the intended effect.
 
 A tree too large to list, such as a ROM tree of a thousand repositories worked on in place, sets
-`partialBase` to true in the marked block of the main and spec review scripts. The base list then
-names only the repositories the unit changes, the launch check adds `--partial-base`, and the tool
-checks the listed repositories and their commits and skips the search for the ones the list leaves
-out. Nothing then checks that a writer left the other repositories of the tree alone, so a tree
-that can be listed in full never sets it.
+`partialBase` to true in the marked block of the main script. The base list then names only the
+repositories the unit changes, the launch check adds `--partial-base`, and the tool checks the
+listed repositories and their commits and skips the search for the ones the list leaves out.
+Nothing then checks that a writer left the other repositories of the tree alone, so a tree that can
+be listed in full never sets it.
 
 The tracked design document is written by hand from the code after the implementation, so it
 records what was built. It describes the change as the code at the writer's final commit
@@ -99,115 +101,22 @@ for the parent unit's document. The writer prompts of the main and fix-run scrip
 with the document path built from the spec path of the marked block: the document takes its name
 from the spec's file name.
 
-The tool prints its summary on stdout, as JSON with `--json`. The root runs the tool before the spec
-pre-phase and again before the main run's implement stage, and each run's first stage runs it once
-more and returns the `proof` the tool prints only when the spec passes. A spec with no item of
-source `transcript` fails, as does a `requirement` derived from observations alone: the tool refuses
-a spec that carries none of the user's words. A failing spec launches neither run.
+The tool prints its summary on stdout, as JSON with `--json`. The root runs the tool before it
+launches the main run, and the run's first stage runs it once more and returns the `proof` the tool
+prints only when the spec passes. A spec with no item of source `transcript` fails, as does a
+`requirement` derived from observations alone: the tool refuses a spec that carries none of the
+user's words. A failing spec launches no run.
 
 Use the tool's `counts.kind.criterion` for `args.criteriaCount`, never a hand count. Its
 ordered `criteria` list of `{ ordinal, id }` assigns integer ordinals from one in YAML file order;
 verdicts keep that integer in `criterion`. Authority mappings name the item id: an inverse-spec
 entry's authority names the authorizing id or explicitly reports that no item does. The tool proves
-references resolve; the provenance reader judges authorization before code, and spec compliance,
-inverse-spec and finding verification judge it after code.
-
-### Pre-phase — two unbriefed spec seats and the provenance reader, BEFORE any implementation
-
-Since a settled spec is already the precondition for launching, review the SPEC before reviewing
-the code. Two seats, from **DIFFERENT model families**, each given only *"review the spec at
-`<path>`"* plus repo access and the run's **hygiene floor** (git safety, what
-`workflow-skills:local-cache` lets a reading stage write, run checks bare, no background waits,
-and that no seat edits an authority document),
-with **no briefing, no framing, no orchestrator summary**, because the
-absence of briefing is what makes them see what the author stopped seeing. The hygiene floor is not a
-briefing: it says nothing about the spec, the review taxonomy or what the author meant. The main run's
-shared `AUTHORITY` block is *not* handed to these seats, because its authority tiers and findings contract
-are exactly that framing:
-
-- a **gap-finder** (`agentType:'gap-finder'`) — what the spec fails to say: unhandled cases,
-  undefined behaviour, assumptions stated nowhere. Its usual scope fence comes from the artifact
-  itself here: **the spec's own stated scope is the fence**, taken from the doc rather than handed
-  over by you, which is what keeps the seat unbriefed;
-- a **soundness reviewer** — a plain unbriefed strong seat on the other family, asked whether the
-  spec's requirements are mutually satisfiable and whether each acceptance criterion is actually
-  checkable as written. This seat is deliberately **template-less**: any fixed role prompt would be
-  a briefing.
-
-**These seats must PROBE, not just read.** Most of the yield comes from rendering, recomputing,
-fetching and measuring the spec's claims against reality — a read-only adversarial pass catches
-roughly a **third** of what a probing pass catches. Say so in both prompts, and name the artifacts
-they may exercise. A duty to probe is **not** a briefing and does not break the rule above: it says
-nothing about what the spec contains or what the author meant. Rank the three yield factors honestly,
-because the ranking decides what you protect when you trim:
-1. **Unbriefedness matters most.** A briefing smuggles in the author's frame; an unbriefed seat reads
-   what the spec SAYS — which is exactly what the implementing agents will read.
-2. **Empirical duty second.** A seat told to verify against the artifact finds what no amount of
-   careful reading finds.
-3. **Vendor diversity third** — cheap insurance that mainly widens *minor*-finding coverage, with one
-   specific exception that earns it: it catches the orchestrator glossing the same ruling two
-   contradictory ways.
-
-Typical yield is around **three blockers per spec**, of exactly the class that is catastrophic to
-discover mid-implementation. Name the three classes in the prompts, because naming them makes them
-findable:
-1. **JOINT IMPOSSIBILITY** — two constraints, each satisfiable alone, unsatisfiable together.
-   Authors check constraints pairwise; nobody checks the conjunction. This class is found by
-   **COMPUTATION**, not by reading.
-2. **MISSING PRODUCTION CONTRACT** — the spec assumes an artifact exists without saying how it is
-   produced, sized, or kept in sync.
-3. **REALITY DRIFT** — the world moved under a recorded assumption.
-
-Discovered here they cost an edit; discovered in phase 4 they cost the run.
-
-A third reader, **spec-provenance** (`agents/spec-provenance.md`), receives the YAML spec,
-transcript directory, private record and base commits. Item by item it judges authorization,
-asserted conditions and mandated mechanisms. For every subject the spec covers it searches every
-message of the user in every transcript of that directory, queued messages included, and a later
-statement that refines, narrows or contradicts a cited one outranks it. It also checks the frame
-around the items: the summary sentence by sentence, every boundary item, every comment line of the
-raw spec file, and every document, branch or earlier unit the spec names or builds on. A claim there
-that no item backs, and a decision found only in a comment, are must-fix findings; comments carry
-provenance notes only. It re-runs each read-only observation command and reports output or exit
-mismatches and observations older than the newest base commit.
-
-The provenance reader lists every message the user wrote, in every transcript of the directory
-and queued messages included, on the unit's subject and on the subject of everything the unit
-extends: documents, earlier units, and existing code the unit changes or builds on, whether or not
-an item names it. A message on those subjects that no record entry holds is a must-fix finding
-that blocks the main run until the root has added it to the record or the user has answered, in
-the same class as a must-fix finding that an item's words are missing. It reports a choice in the
-spec that no words of the user back as a finding with kind `unbacked-choice`, and the root puts
-every such finding to the user as a question before the main run. The rule that approved text
-counts as the user's words reaches the pre-phase through the spec-provenance template, because
-the pre-phase script gives its unbriefed stages the hygiene floor only and carries no authority
-block.
-
-Its findings advise the root alongside the two unbriefed seats, whose inputs remain the spec and
-hygiene floor. The spec-provenance findings carry the same must-fix, should-fix and nit severity
-the gap-finder uses. Two classes of them are not advisory: a must-fix finding that an item's words
-are missing, misread or ambiguous blocks the main run until the user's answer is in the record,
-and a must-fix finding that a message of the user is missing from the record blocks it until the
-root has added the message or the user has answered. The pre-phase is its own run, so those
-blocks are a rule for the root and no script enforces them.
-
-Their output is **advisory to the orchestrator**, who triages it against the recorded rulings and
-amends the YAML spec, then validates it again. Amend the YAML — never patch the
-finding into a prompt, or the spec and the prompts immediately disagree.
-
-**Run the pre-phase as its OWN short run, and let it end there.** A running script cannot pause
-while a person edits a document, so a pre-phase bolted onto the front of the main script launches
-the implementer against the *unamended* spec and the whole yield is advisory to nobody. Two runs:
-one that returns the two unbriefed seats and the provenance reader, then triage-and-amend, then the main workflow
-against the amended YAML — which the seats below read from disk (law 9), so no prompt needs rewriting.
-
-**Spec discipline: trivial work gets no spec, and *having* a spec is exactly what makes the two cold
-seats worth it.** Do not manufacture a spec to justify the seats, and do not skip the seats when a
-spec exists.
+references resolve; the implementer's sense check judges authorization before code, and spec
+compliance, inverse-spec and finding verification judge it after code.
 
 ## The shape
 
-Four phases: **Implement → Review → Verify → Fix** — after the cold spec review above.
+Four phases: **Implement → Review → Verify → Fix**.
 Cold alternatives joins Review. The mandatory roaster overlaps Fix on the pre-fix commit plus approved fix list; its findings return to the root in `remaining`.
 
 ### Phase 1 — Implement (1 agent, sequential — `agentType:'implementer'`)
@@ -236,6 +145,24 @@ out? A record that says nothing about the mechanism rules nothing out: the check
 the code and rebuilds it to the spec instead of growing it. A failed check sets `abort.trigger` to
 `sense-check` with the reason in `abort.reason`: the mechanism, the recorded decision it
 contradicts, why extending it is the wrong shape.
+
+**The sense check also reads the spec.** Before its first edit the implementer reads the spec
+against the code and the private directive record, checking its claims against the code instead of
+only reading them, and looks for three classes: `joint-impossibility`, two requirements that each
+hold alone and cannot both hold; `missing-contract`, an artifact the spec assumes without saying
+how it is made; and `reality-drift`, a recorded fact the code no longer bears out. It checks as
+well that each spec item rests, directly or through its parents, on the user's words said about
+this unit. Words about another unit, such as a request to record a todo for later work or a
+decision given for a different piece of work, back no item of this spec, and a short answer that
+crossed with a newer message answers the earlier message and never approves what the newer
+message proposed. An item that cites such words as its authority, or states a decision no words of
+the user back, is class `unbacked-item`. The implementer returns each finding in `specFindings`,
+one entry per finding with the item id in `item`, the `class`, the `claim` and `receipts`. None of
+them fails the sense check, sets the abort or asks the user during the run: the implementer builds
+nothing for an `unbacked-item` item and builds the rest of the spec. The script puts every entry
+into `remaining` as a `spec-finding` item, CRITICAL for `unbacked-item` and must-fix otherwise, so
+the root reads each one after the run and records it. The finding verifier receives the entries
+with the implementer's object.
 
 **A record that was never supplied is not a silent record.** Before any edit, the implementer sets
 `abort.trigger` to `no-words` and leaves the tree unmodified when the private directive record was
@@ -292,7 +219,7 @@ commits only its own scoped changes after checks, with the design document as it
 then returns `files` (every path a commit of
 the stage touched, with its byte size at the snapshot), `checks` (each bare run with its quoted
 output), `commits`, the full immutable snapshot SHA, `clean` and `git` (the quoted HEAD and
-status). A failed check or commit is an incomplete stage, never a fabricated successful snapshot.
+status), and `specFindings`. A failed check or commit is an incomplete stage, never a fabricated successful snapshot.
 
 #### Writer commits are snapshots, not integration permission
 
@@ -403,7 +330,7 @@ every limitation and unchecked coverage entry.
 stage's own rules forbid, such as running tests, builds or the spec tool as a reading stage, and
 input the stage is not given by design, such as the private spec for an unbriefed stage, are never
 limitations and are not reported. They get no unchecked coverage entry either. The shared reader
-blocks of the three scripts and every reading-stage template state this, and the finding verifier
+blocks of both scripts and every reading-stage template state this, and the finding verifier
 discards such an entry without a decision.
 
 **A reviewer suggests and never decides.** A review seat proposes, the finding verifier authorizes,
@@ -465,8 +392,7 @@ in the spec, the prompt or the diff that no words of the user back as a finding 
 **`unbacked-choice`**, and the inverse-spec reviewer's missing-decision findings carry it. A
 decision on such a finding is CRITICAL. The unbriefed readers (quality, the eight audit seats,
 `cold-alternatives`, the roaster) never see the private record, so their schemas do not carry that
-kind. The provenance reader
-reports the same kind in the pre-phase.
+kind.
 
 ### Phase 3 — Verify and consolidate (1 read-only `agentType:'finding-verifier'`)
 
@@ -609,8 +535,8 @@ checks. Stage labels are `review:<seat>`, `verify`, `fix` and `roast`.
 
 **Every ending returns remaining items.** The run's single handoff is `remaining`, one
 `{ kind, severity, item }` per open decision, verifier issue, writer-scope violation, blocking
-limitation, unfixed approval, failed proof, roast finding or limitation, unattested fix, abort or
-stage failure. Every fixed key carries its disposition, approved correction, snapshot and commits.
+limitation, unfixed approval, failed proof, roast finding or limitation, unattested fix, spec
+finding, abort or stage failure. Every fixed key carries its disposition, approved correction, snapshot and commits.
 The roast's findings retain their source IDs and snapshot; its limitations and unchecked coverage
 also return for the root to inspect. The root records the list in the todo record that
 `workflow-skills:todo-md` defines and checks its claims as the remaining items section below says.
@@ -684,7 +610,7 @@ to a new implement-review-verify unit with its own spec, and such a finding may 
 when the user's words cover its fix. The root writes that unit's YAML spec like any unit spec: one
 criterion item per confirmed defect with its sources, the settled decision for a decided item, the
 previous run's snapshot as the base, and the tool's count of criterion items as `criteriaCount`.
-The cold spec review and every other stage apply unchanged. Every new run uses new prompts and a
+Every stage of the main run applies unchanged. Every new run uses new prompts and a
 new run ID. A new run takes as its work the recorded items it was started for, never the findings
 its own review raises; those are recorded the same way. Every other item stays in the todo record
 as a separate unit, done later.
@@ -807,8 +733,7 @@ choice the record genuinely leaves open still reaches the user once the screen h
 decision to the user as a question; it is the one kind of item the screen above never closes. The
 root accepts a rejected one only after reading the cited record entry and checking that the quoted
 words, read in their surrounding context, back the choice. A quote that does not match its context
-leaves the choice open, and it goes to the user the same way. A pre-phase `unbacked-choice` finding
-from the provenance reader goes to the user the same way before the main run launches.
+leaves the choice open, and it goes to the user the same way.
 
 **A reported problem carries two literal quotations.** A problem reported to the user quotes the
 observed symptom and the line that causes it, each with its file and line or the command that
@@ -1121,9 +1046,9 @@ Non-negotiable across every run of this skill.
    the private, ignored/untracked directive record and the current spec path (law 9). Preserve
    exact source wording in that private record, never in commit-bound artifacts without explicit
    permission. Technical specs record decisions and constraints, not conversational appendices.
-8. **AUTHORITY ARCHITECTURE — state the hierarchy in authority-aware prompts.** Quality and
-   cold spec reviewers receive only their hygiene/diff inputs; cold alternatives gets invariants,
-   not the shared authority briefing. For other seats the three tiers are: **user verbatim directives > the spec > this prompt**, with the prompt
+8. **AUTHORITY ARCHITECTURE — state the hierarchy in authority-aware prompts.** Quality
+   receives only its hygiene and diff inputs; cold alternatives gets invariants, not the shared
+   authority briefing. For other seats the three tiers are: **user verbatim directives > the spec > this prompt**, with the prompt
    explicitly labelled **UNTRUSTED** relative to both, and *"a prompt-vs-spec conflict is itself a
    must-fix finding"*. **The AUTHORITY DOCUMENTS are the top two tiers only — the directives and the
    spec. The prompt is not one**, which is what makes a prompt-vs-spec conflict an ordinary finding
@@ -1149,10 +1074,10 @@ Non-negotiable across every run of this skill.
    *"read the current on-disk revision in full; it is the authority, not this prompt's description of
    it."* Never cite a revision number, never restate the spec's content in the prompt. This is what
    prevents drift between a prompt's stale summary and the doc. The root does not edit a spec or
-   its record while a run on it is in flight. The spec review before the main run is the one run
-   after which the root amends the spec, once, before it launches the main run on it. A change
-   after the main run started is work for a new unit and never repeats the finished run's
-   reviews. **Corollary:
+   its record while a run on it is in flight. The root writes the spec as
+   `workflow-skills:spec-writing` says, validates it with the spec tool and launches the main run
+   on it, and the stages of that run report what they find in the spec. A change after the main
+   run started is work for a new unit and never repeats the finished run's reviews. **Corollary:
    authority documents RETRACT a contradicted sentence in place.** Never append an acknowledgement
    beside a sentence it contradicts: layered addenda manufacture diverging premises, and seats then
    flag the contradiction forever, correctly.
@@ -1197,7 +1122,8 @@ Non-negotiable across every run of this skill.
     (`none` / `directive-conflict` / `sense-check` / `no-words`), the verdict (`PASS` / `AT-RISK` / `FAIL`),
     the limitation `effect` (`blocks` / `narrows`), the authorization `class`, the rule reader's
     finding `scope` (`in-change` / `beside`), the file `change` (`added` / `modified` / `deleted`)
-    and the gap severity.
+    and the spec finding `class` (`joint-impossibility` / `missing-contract` / `reality-drift` /
+    `unbacked-item`).
     A seat emitting one word against a check testing for another
     **silently disables the phase and the run reports success** — the worst possible failure mode,
     because it looks like a green run.
@@ -1255,25 +1181,25 @@ The phase shape only holds up if the script is written to hold it up.
 
 ### Every unit's script is a copy of the shipped one, edited in one block
 
-The skill ships three complete scripts under `scripts/`: `scripts/spec-review.js` for the pre-phase,
-`scripts/implement-review-verify.js` for the main run and `scripts/fix-follow-up.js` for a fix run.
-Copy the shipped script, and never copy a previous unit's copy. A copy of any of the three scripts
-changes only its marked block and two values outside it, `meta.name` and `meta.description`: the
-name is a kebab-case name of the unit, or of the fix run, and the description is one line saying
-what the run does. Each shipped script carries `kebab-name` and `one line` as the values a copy
-replaces, and its phases and every other line outside the marked block stay as shipped. A copy
-that keeps the placeholders shows every run of that script in the workflow list under the same
-name and description. The marked block sits at the top of each file between two comment lines and
-holds every value a unit sets apart from `meta.name` and `meta.description`: the paths (main
-checkout, worktree, spec, transcripts, private record, plugin root), the documents directory, the
-check command, the `base` list, `criteriaCount`, the unit prompt text for the implementer, the
-scoping, the rule sources, the invariants and one model entry per agent. The documents directory
-is relative to the tree root and lies inside one repository of the list, `docs` for a tree that is
-one repository; the scripts join it with the spec's file name to name the design document, which
-the writers commit in that repository. The fix run's block holds the fix list path, the entries
-and the parent spec in place of the spec, `criteriaCount` and the implementer's prompt. Everything
-below the block is the reviewed script and is not edited per unit. Never copy a previous unit's
-script and edit it, and never generalize one that already ran into a runner several units share.
+The skill ships two complete scripts under `scripts/`: `scripts/implement-review-verify.js` for the
+main run and `scripts/fix-follow-up.js` for a fix run. Copy the shipped script, and never copy a
+previous unit's copy. A copy of either script changes only its marked block and two values outside
+it, `meta.name` and `meta.description`: the name is a kebab-case name of the unit, or of the fix
+run, and the description is one line saying what the run does. Each shipped script carries
+`kebab-name` and `one line` as the values a copy replaces, and its phases and every other line
+outside the marked block stay as shipped. A copy that keeps the placeholders shows every run of
+that script in the workflow list under the same name and description. The marked block sits at the
+top of each file between two comment lines and holds every value a unit sets apart from
+`meta.name` and `meta.description`: the paths (main checkout, worktree, spec, transcripts, private
+record, plugin root), the documents directory, the check command, the `base` list, `criteriaCount`,
+the unit prompt text for the implementer, the scoping, the rule sources, the invariants and one
+model entry per agent. The documents directory is relative to the tree root and lies inside one
+repository of the list, `docs` for a tree that is one repository; the scripts join it with the
+spec's file name to name the design document, which the writers commit in that repository. The fix
+run's block holds the fix list path, the entries and the parent spec in place of the spec,
+`criteriaCount` and the implementer's prompt. Everything below the block is the reviewed script and
+is not edited per unit. Never copy a previous unit's script and edit it, and never generalize one
+that already ran into a runner several units share.
 
 A note for the implementer, such as the transcript of an earlier attempt it can read, goes into
 the marked block's `implementerPrompt`, and nothing below the block changes for it. The implementer
@@ -1304,8 +1230,8 @@ joins `FOCUSED` in its place, the order to run only the checks that cover what i
 
 ### The launch check
 
-All three scripts begin with a launch check, before any other agent: a small stage on the model
-the root sets in the `gate` entry of the marked block, shipped at low effort, whose prompt is one
+Both scripts begin with a launch check, before any other agent: a small stage on the model the
+root sets in the `gate` entry of the marked block, shipped at low effort, whose prompt is one
 command line and one sentence. The command
 changes to the tree the run works on, the worktree from the marked block, so the cited rule files
 resolve there and the tool finds the repositories of that tree alone. The main checkout of a
@@ -1330,16 +1256,6 @@ with the parent unit's private record from the marked block, and `--expect` with
 the parent spec from the launch values as one JSON argument. The script refuses at once when
 `args.fixList` does not end in `.yaml`, and the tool fails when the launch values differ from the
 list or the record path differs from the parent spec's `record`.
-
-### The pre-phase script
-
-`scripts/spec-review.js` is its own tiny run and it ENDS at the return. A script cannot pause
-while a person edits a document, so the orchestrator triages this output and amends the YAML,
-then launches the main run after the tool passes again. Stages
-read the amended YAML from disk with no prompt rewritten (law 9). `HOUSE` is the hygiene floor
-and nothing else: the two unbriefed seats get only that half on purpose, because the review
-framing is a briefing and unbriefedness is the pre-phase's highest-yield property. The field
-shapes and the `stage()` helper are the main script's, copied in because this is its own run.
 
 ### The main script
 
@@ -1393,10 +1309,7 @@ The completeness checks, by stage kind:
   snapshot needs empty `files`; the fixer answers every key once;
 - **finding verifier**: the source-coverage and decision guards, one `repositories` entry per
   repository whose quoted `git.head` equals its `snapshotSha`, and one `writerScope` entry per
-  implementer commit and repository;
-- **pre-phase seats**: `categories` non-empty and every gap with a receipt; `criteria` with
-  exactly one entry per criterion from 1 to `args.criteriaCount`; provenance with non-empty
-  coverage, receipts on findings and a non-empty `limitations` list when any entry is unchecked.
+  implementer commit and repository.
 
 A `blocks` limitation on any accepted stage other than the fifteen reading seats and the verifier
 ends the run after that stage: the script records a `blocking-limitation` item with its stage label
@@ -1514,9 +1427,8 @@ An unfamiliar word must fail validation, not silently skip a phase and produce s
 
 ### The AUTHORITY constant
 
-This content rides authority-aware seats, verbatim, not paraphrased. Quality, the eight audit
-seats and cold spec readers get the hygiene floor only; cold alternatives gets that floor plus
-invariants.
+This content rides authority-aware seats, verbatim, not paraphrased. Quality and the eight audit
+seats get the hygiene floor only; cold alternatives gets that floor plus invariants.
 Do not defeat an unbriefed seat by appending instructions to read the spec or project docs.
 For the other seats:
 - **The authority hierarchy** (law 8) — user verbatim directives > the spec, named by PATH and read
@@ -1527,9 +1439,7 @@ For the other seats:
 - **Approved text** (law 8) — text the user approved, held in the approves field of a private
   record entry, counts as the user's verbatim directive, and a contradiction with it is a
   contradiction with the user's own sentence, hard-flagged the same way. The main script's and
-  the fix script's `AUTHORITY` blocks say so. The pre-phase script has no authority block, since
-  its unbriefed stages get the hygiene floor only by design; the spec-provenance template carries
-  the rule for the pre-phase.
+  the fix script's `AUTHORITY` blocks say so.
 - **Hard-flag semantics** (law 10) — the one `abort` field and its three triggers: a contradiction
   with a user directive on at least one side, spec or prompt (`directive-conflict`), a
   writing seat's failed sense check (`sense-check`), and a writing seat's private directive record
@@ -1602,17 +1512,15 @@ Every NAMED role this skill spawns has a fixed prompt template in `agents/` — 
 `agents/quality.md`, `agents/reviewer-inverse-spec.md`, `agents/project-rule-reader.md`, the eight
 audit templates `separation-of-concerns`, `abstraction-quality`, `code-smell`, `type-safety`,
 `code-cleanliness`, `missing-gaps`, `domain-leakage` and `type-smearing`,
-`agents/finding-verifier.md`, `agents/fixer.md`, plus
-`agents/gap-finder.md` and `agents/spec-provenance.md` for the spec-review
-pre-phase and `agents/scope-check.md` and `agents/diff-check.md` for the fix run. That file's body is the agent's **authoritative
+`agents/finding-verifier.md`, `agents/fixer.md`, plus `agents/scope-check.md` and
+`agents/diff-check.md` for the fix run. That file's body is the agent's **authoritative
 rules** and is used **VERBATIM** as the start of its prompt — invoke the agent via
 `agentType:'<role>'`. The string you pass to `agent()` is **ONLY the task-specific context
 APPENDED** after that base (the design, the diff, the acceptance criteria, the test command).
 **Do NOT modify, reorder, or paraphrase the base rules inline — append only.**
 
-The one deliberate exception is the pre-phase **soundness seat**, which has no template and no
-`agentType` on purpose: a role template is a briefing, and an unbriefed seat is the entire mechanism.
-An exception that states its reason is a rule; a template quietly missing is a defect.
+No script of this skill starts the `gap-finder` and `spec-provenance` templates. Both stay in
+`agents/` for use as an `agentType` in other workflows.
 
 ## Model assignment
 

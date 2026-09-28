@@ -281,16 +281,23 @@ const ALTERNATIVES = { type: 'object', additionalProperties: false,
 const ROAST = { type: 'object', additionalProperties: false, required: ['limitations', 'coverage', 'findings', 'snapshots'],
   properties: { limitations: LIMITATIONS, coverage: COVERAGE, findings: FINDINGS, snapshots: SNAPSHOTS } }
 
+// What the implementer's sense check finds in the spec before its first edit, one entry per finding:
+// the item id, the class and the claim with receipts. The script branches on class to set the
+// severity of the remaining item, so the class is enum-locked (law 11).
+const SPEC_FINDINGS = { type: 'array', items: { type: 'object', required: ['item', 'class', 'claim', 'receipts'], additionalProperties: false,
+  properties: { item: { type: 'string' }, class: { enum: ['joint-impossibility', 'missing-contract', 'reality-drift', 'unbacked-item'] },
+    claim: { type: 'string' }, receipts: RECEIPTS } } }
+
 // Writer schemas. The deliverable proof is files together with checks: an account of the work
 // with an empty files list behind a new snapshot fails the completeness check below.
 const IMPLEMENT = { type: 'object', additionalProperties: false,
   required: ['abort', 'limitations', 'repositories', 'proofPassed', 'premises',
-    'senseCheck', 'commits', 'files', 'checks', 'specSuggestions'],
+    'senseCheck', 'specFindings', 'commits', 'files', 'checks', 'specSuggestions'],
   properties: { abort: ABORT, limitations: LIMITATIONS, repositories: REPOSITORIES, proofPassed: { type: 'boolean' },
     premises: PREMISES,
     senseCheck: { type: 'object', required: ['passed', 'recordSilent', 'note'], additionalProperties: false,
       properties: { passed: { type: 'boolean' }, recordSilent: { type: 'boolean' }, note: { type: 'string' } } },
-    commits: COMMITS, files: FILES, checks: CHECKS, specSuggestions: STRINGS } }
+    specFindings: SPEC_FINDINGS, commits: COMMITS, files: FILES, checks: CHECKS, specSuggestions: STRINGS } }
 const FIX = { type: 'object', additionalProperties: false,
   required: ['abort', 'limitations', 'repositories', 'proofPassed', 'premises', 'commits',
     'files', 'checks', 'specSuggestions', 'dispositions', 'touched'],
@@ -492,7 +499,7 @@ const blocking = r => r.limitations.filter(l => l.effect === 'blocks')
 const EXIT = ['clean', 'follow-up', 'root-resolution', 'aborted', 'failed']
 const REMAINING = ['open-decision', 'verifier-issue', 'writer-scope', 'blocking-limitation',
   'unfixed-approval', 'failed-proof', 'roast-finding', 'roast-limitation', 'unattested-fix',
-  'abort', 'stage-failure']
+  'spec-finding', 'abort', 'stage-failure']
 const remaining = []
 let snapshots = null, impl = null, verified = null
 let sources = [], queue = []
@@ -864,6 +871,10 @@ await stage([GATE_COMMAND,
 ].join('\n'), { label: 'gate', phase: 'Launch', ...UNIT.models.gate, schema: GATE }, checkGate)
 
 try { await onePass() } catch (error) { failed(error, activeLabel) }
+// What the implementer's sense check found in the spec reaches the root after the run, whatever
+// its ending. None of it stops the run: the implementer built the rest of the spec, and an item
+// with no words of the user said about this unit is CRITICAL.
+for (const finding of impl?.specFindings ?? []) add('spec-finding', finding, finding.class === 'unbacked-item' ? 'CRITICAL' : 'must-fix')
 for (const approved of queue) {
   const response = reportedFix?.dispositions?.find(d => d.key === approved.key)
   if (response?.disposition === 'fixed') {
