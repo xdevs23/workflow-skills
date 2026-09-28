@@ -668,7 +668,8 @@ new run ID. A new run takes as its work the recorded items it was started for, n
 its own review raises; those are recorded the same way. Every other item stays in the todo record
 as a separate unit, done later.
 
-A run interrupted mid-flight is resumed through `resume-interrupted-run`, as law 5 says. A run
+A run interrupted mid-flight is resumed through `resume-interrupted-run`, as law 5 says, and that
+skill is only for a run that was actually interrupted, never a way around these rules. A run
 that ended any other way, before or after its review, has its items recorded like every run, and
 the root never starts a run on the same spec again.
 
