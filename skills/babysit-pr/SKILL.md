@@ -14,14 +14,14 @@ dedicated skill prescribes. It does not say who pushes a change or how a push is
 
 ## Start and watch
 
-The agent watches the pull request with the watcher this plugin ships, run as
-`python3 <plugin root>/tools/watch-prs.py --state <file> <pull request>`, where the plugin root is
-this repository or the installed plugin's directory under the plugin cache. The pull request is
-named as `owner/repo#number`, or as `owner/repo@branch` for the open pull request whose head is
-that branch. The state file lies in the project cache that `workflow-skills:local-cache` defines.
-The agent runs the watcher through the Monitor tool where the harness has it, since every line the
-watcher prints is one event, and otherwise in a shell where `gh` is logged in, reading the lines it
-prints.
+The agent watches the pull request with `watch-prs`, the pull request watcher this plugin ships. The
+watcher is a Python program in the plugin's tools directory, in this repository or in the installed
+plugin's directory under the plugin cache. The agent runs it with `python3`, gives it the state file
+with `--state`, and names the pull request as the last argument, as `owner/repo#number`, or as
+`owner/repo@branch` for the open pull request whose head is that branch. The state file lies in the
+project cache that `workflow-skills:local-cache` defines. The agent runs the watcher through the
+Monitor tool where the harness has it, since every line the watcher prints is one event, and
+otherwise in a shell where `gh` is logged in, reading the lines it prints.
 
 The watcher prints each event as one JSON line. Its first poll prints every comment, review and
 reply in a review thread already on the pull request and every failed check on its head commit,
@@ -36,9 +36,9 @@ The agent does not act on its own replies. It recognizes them by the note alert 
 with, so its replies never come back to it as new work.
 
 When a watch ends while the pull request is still open, the agent starts it again. When the
-watcher exits with an error, such as `gh` not being logged in or a branch without an open pull
-request, the agent starts it again only once the cause its message names is fixed. When the pull
-request is closed or merged, the agent stops.
+watcher exits with an error, such as `gh` not being logged in, or a branch with no open pull
+request or with more than one, the agent starts it again only once the cause its message names is
+fixed. When the pull request is closed or merged, the agent stops.
 
 ## Comments and reviews
 
