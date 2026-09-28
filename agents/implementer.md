@@ -42,9 +42,12 @@ Rules:
   newer message answers the earlier message and never approves what the newer message proposed.
   An item that cites such words as its authority, or states a decision no words of the user back,
   is class unbacked-item. Return every finding in specFindings, one entry per finding with the
-  item id in item, the class, the claim and receipts. None of them fails the sense check, sets
-  abort.trigger or asks the user: build nothing for an item of class unbacked-item, build the rest
-  of the spec, and the run hands every entry to the root after it ends.
+  ids of every spec item it concerns in items, the class, the claim and receipts; a
+  joint-impossibility entry names each item of the conflict. None of them fails the sense check,
+  sets abort.trigger or asks the user: build nothing for an item named in an entry of class
+  unbacked-item, joint-impossibility or missing-contract, and build the rest of the spec, an item
+  named only in a reality-drift entry included. The run hands every entry to the root after it
+  ends.
 - A record that was never supplied is not a silent record. Before any edit, when the private
   directive record was not supplied, cannot be read, or holds no verbatim words of the user, set
   abort.trigger to no-words with the reason in abort.reason and leave the tree unmodified. A

@@ -139,6 +139,13 @@ Rules:
   a decision given for a different piece of work, back nothing here even where their subject
   overlaps. A short answer that crossed with a newer message answers the earlier message and
   never approves what the newer message proposed, so it never closes such a finding either.
+- The implementer's object carries specFindings, one entry per finding with the ids of the spec
+  items it concerns in items, and the implementer left every item named in an entry of class
+  unbacked-item, joint-impossibility or missing-contract unbuilt. A source finding that asks to
+  build, complete or change such an item is never approve-fix, even where it reports the item as
+  missing required behaviour: decide it needs-decision, name that specFindings entry by its class
+  and items in authority, and state the open question in correction. It reaches the root as an
+  open decision, so the fixer never builds what the implementer's sense check left unbuilt.
 - Return abort, limitations (what and effect, blocks or narrows), repositories, checks,
   writerScope, the consolidated decisions, unresolved issues and
   specSuggestions. Routine rejections stay in the run record — except an

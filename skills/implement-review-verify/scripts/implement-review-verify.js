@@ -284,10 +284,12 @@ const ROAST = { type: 'object', additionalProperties: false, required: ['limitat
   properties: { limitations: LIMITATIONS, coverage: COVERAGE, findings: FINDINGS, snapshots: SNAPSHOTS } }
 
 // What the implementer's sense check finds in the spec before its first edit, one entry per finding:
-// the item id, the class and the claim with receipts. The script branches on class to set the
-// severity of the remaining item, so the class is enum-locked (law 9).
-const SPEC_FINDINGS = { type: 'array', items: { type: 'object', required: ['item', 'class', 'claim', 'receipts'], additionalProperties: false,
-  properties: { item: { type: 'string' }, class: { enum: ['joint-impossibility', 'missing-contract', 'reality-drift', 'unbacked-item'] },
+// the ids of every spec item it concerns, so a joint-impossibility names each item of the conflict,
+// the class and the claim with receipts. The script branches on class to set the severity of the
+// remaining item, so the class is enum-locked (law 9).
+const SPEC_FINDINGS = { type: 'array', items: { type: 'object', required: ['items', 'class', 'claim', 'receipts'], additionalProperties: false,
+  properties: { items: { type: 'array', minItems: 1, items: { type: 'string' } },
+    class: { enum: ['joint-impossibility', 'missing-contract', 'reality-drift', 'unbacked-item'] },
     claim: { type: 'string' }, receipts: RECEIPTS } } }
 
 // Writer schemas. The deliverable proof is files together with checks: an account of the work
@@ -875,8 +877,9 @@ await stage([GATE_COMMAND,
 
 try { await onePass() } catch (error) { failed(error, activeLabel) }
 // What the implementer's sense check found in the spec reaches the root after the run, whatever
-// its ending. None of it stops the run: the implementer built the rest of the spec, and an item
-// with no words of the user said about this unit is CRITICAL.
+// its ending. None of it stops the run: the implementer left the items of every unbacked-item,
+// joint-impossibility and missing-contract entry unbuilt and built the rest of the spec, and an
+// item with no words of the user said about this unit is CRITICAL.
 for (const finding of impl?.specFindings ?? []) add('spec-finding', finding, finding.class === 'unbacked-item' ? 'CRITICAL' : 'must-fix')
 for (const approved of queue) {
   const response = reportedFix?.dispositions?.find(d => d.key === approved.key)
