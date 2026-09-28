@@ -29,10 +29,29 @@ const UNIT = {
   ruleSources: '<applicable project, directory and global rule paths>',
   invariants: '<only the constraints alternatives must preserve>',
   fileSizeCap: '<the per-file size cap>',
+  // One model and effort per agent the script starts, each set by the root. The script stops before
+  // its first agent on an entry that is missing, still a placeholder in angle brackets, or named for
+  // no agent of the script.
   models: {
-    gate: { model: 'claude-haiku-4-5', effort: 'low' },
+    gate: { model: '<explicit>', effort: 'low' },
     impl: { model: '<explicit>', effort: 'high' },
-    review: { model: '<explicit>', effort: 'high' },
+    review: {                            // one entry per review seat, keyed by the seat's label
+      correctness: { model: '<explicit>', effort: 'high' },
+      spec: { model: '<explicit>', effort: 'high' },
+      dupes: { model: '<explicit>', effort: 'high' },
+      quality: { model: '<explicit>', effort: 'high' },
+      inverse: { model: '<explicit>', effort: 'high' },
+      rules: { model: '<explicit>', effort: 'high' },
+      alternatives: { model: '<explicit>', effort: 'high' },
+      'separation-of-concerns': { model: '<explicit>', effort: 'high' },
+      'abstraction-quality': { model: '<explicit>', effort: 'high' },
+      'code-smell': { model: '<explicit>', effort: 'high' },
+      'type-safety': { model: '<explicit>', effort: 'high' },
+      'code-cleanliness': { model: '<explicit>', effort: 'high' },
+      'missing-gaps': { model: '<explicit>', effort: 'high' },
+      'domain-leakage': { model: '<explicit>', effort: 'high' },
+      'type-smearing': { model: '<explicit>', effort: 'high' },
+    },
     verify: { model: '<explicit>', effort: 'high' },
     fix: { model: '<explicit>', effort: 'high' },
     roast: { model: '<explicit>', effort: 'high' },
@@ -212,15 +231,12 @@ const STRINGS = { type: 'array', items: { type: 'string' } }
 const PREMISES = { type: 'array', items: { type: 'object', required: ['claim', 'holds', 'note'], additionalProperties: false,
   properties: { claim: { type: 'string' }, holds: { type: 'boolean' }, note: { type: 'string' } } } }
 
-// Nine review seat schemas, one per seat, each declared in full. Every reader owes limitations,
-// coverage and findings; the briefed seats also owe abort (law 10). The cold seats (quality,
-// cold alternatives, roaster) carry no abort field, because its member names would brief them.
+// Eight reader schemas, each declared in full: one per briefed seat, one for quality, which the
+// eight audit seats share because they return the object quality returns, one for cold
+// alternatives and one for the roaster. Every reader owes limitations, coverage and findings; the
+// briefed seats also owe abort (law 10). The cold seats (quality, the audit seats, cold
+// alternatives, roaster) carry no abort field, because its member names would brief them.
 const CORRECTNESS = { type: 'object', additionalProperties: false,
-  required: ['abort', 'limitations', 'coverage', 'findings', 'verdicts'],
-  properties: { abort: ABORT, limitations: LIMITATIONS, coverage: COVERAGE, findings: BRIEFED_FINDINGS,
-    verdicts: { type: 'array', items: { type: 'object', required: ['criterion', 'verdict', 'receipts'], additionalProperties: false,
-      properties: { criterion: { type: 'integer', minimum: 1 }, verdict: { enum: ['PASS', 'AT-RISK', 'FAIL'] }, receipts: RECEIPTS } } } } }
-const CLEANLINESS = { type: 'object', additionalProperties: false,
   required: ['abort', 'limitations', 'coverage', 'findings', 'verdicts'],
   properties: { abort: ABORT, limitations: LIMITATIONS, coverage: COVERAGE, findings: BRIEFED_FINDINGS,
     verdicts: { type: 'array', items: { type: 'object', required: ['criterion', 'verdict', 'receipts'], additionalProperties: false,
@@ -366,6 +382,20 @@ const checkRepositories = (list, name) => {
     if (paths.has(entry.path)) throw new Error(name + ' names the path ' + entry.path + ' twice')
     paths.add(entry.path)
     if (!SHA.test(entry.sha || '')) throw new Error(name + ' carries no full immutable commit ID for ' + entry.path)
+  }
+}
+// The root sets the model and the effort of every agent in the marked block. names lists the agents
+// an entry of models may stand for; a value in angle brackets is the shipped placeholder.
+const checkModels = (models, names, path) => {
+  for (const name of Object.keys(models ?? {})) if (!names.includes(name)) throw new Error(path + '.' + name + ' names no agent of this script')
+  for (const name of names) {
+    const entry = models?.[name]
+    for (const field of ['model', 'effort']) {
+      const value = entry?.[field]
+      if (typeof value !== 'string' || !value.trim() || /^<.*>$/.test(value.trim())) {
+        throw new Error(path + '.' + name + '.' + field + ' must be set by the root, not ' + JSON.stringify(value))
+      }
+    }
   }
 }
 const base = UNIT.base
@@ -540,6 +570,40 @@ const INVARIANTS = 'REQUIRED INVARIANTS, VERBATIM: ' + UNIT.invariants + '.'
 const HYGIENE = [
   STAGE, STYLE, READ_GIT, TREE, 'No background waits.',
 ].join('\n')
+// The fifteen seats of the review stage. Every run runs each of them, whatever the size of the
+// change, and the marked block keys one model entry to each label.
+const REVIEW_SEATS = ['correctness', 'spec', 'dupes', 'quality', 'inverse', 'rules', 'alternatives',
+  'separation-of-concerns', 'abstraction-quality', 'code-smell', 'type-safety', 'code-cleanliness',
+  'missing-gaps', 'domain-leakage', 'type-smearing']
+// The seat list: the template, label, prompt blocks, schema and completeness check of each seat.
+// Only the two briefed code-lens readers receive the implementer's object, as claims. The eight
+// audit seats receive what quality receives, the hygiene floor and the diff, and return its object.
+const seatList = claims => [
+  ['reviewer-correctness', 'correctness', [AUTHORITY, READ_GIT, SPEC, CRITERIA, ...claims], CORRECTNESS, checkVerdicts],
+  ['reviewer-spec-compliance', 'spec', [AUTHORITY, READ_GIT, SPEC, CRITERIA], SPEC_COMPLIANCE, checkVerdicts],
+  ['duplicate-checker', 'dupes', [AUTHORITY, READ_GIT, SPEC, CRITERIA, ...claims], DUPLICATES, checkVerdicts],
+  ['quality', 'quality', [HYGIENE], QUALITY, checkReader],
+  ['reviewer-inverse-spec', 'inverse', [AUTHORITY, READ_GIT, SPEC], INVERSE, checkInverse],
+  ['project-rule-reader', 'rules', [AUTHORITY, READ_GIT, SPEC, RULES], RULES_SEAT, checkReader],
+  ['cold-alternatives', 'alternatives', [HYGIENE, INVARIANTS], ALTERNATIVES, checkAlternatives],
+  ['separation-of-concerns', 'separation-of-concerns', [HYGIENE], QUALITY, checkReader],
+  ['abstraction-quality', 'abstraction-quality', [HYGIENE], QUALITY, checkReader],
+  ['code-smell', 'code-smell', [HYGIENE], QUALITY, checkReader],
+  ['type-safety', 'type-safety', [HYGIENE], QUALITY, checkReader],
+  ['code-cleanliness', 'code-cleanliness', [HYGIENE], QUALITY, checkReader],
+  ['missing-gaps', 'missing-gaps', [HYGIENE], QUALITY, checkReader],
+  ['domain-leakage', 'domain-leakage', [HYGIENE], QUALITY, checkReader],
+  ['type-smearing', 'type-smearing', [HYGIENE], QUALITY, checkReader],
+]
+// A seat list that leaves a seat out, adds one or names one twice stops the run before its first agent.
+const seatLabels = seatList([]).map(seat => seat[1])
+if (JSON.stringify([...seatLabels].sort()) !== JSON.stringify([...REVIEW_SEATS].sort())) {
+  throw new Error('The review stage runs exactly the fifteen seats ' + REVIEW_SEATS.join(', ') +
+    ', and the seat list holds ' + seatLabels.join(', '))
+}
+const { review: seatModels, ...stageModels } = UNIT.models ?? {}
+checkModels(stageModels, ['gate', 'impl', 'verify', 'fix', 'roast'], 'UNIT.models')
+checkModels(seatModels, REVIEW_SEATS, 'UNIT.models.review')
 // One diff range per repository whose snapshot moved from base, each read in its own repository.
 const diffInput = snaps => {
   const start = shaByPath(base), moved = snaps.filter(s => s.sha !== start.get(s.path))
@@ -556,7 +620,7 @@ const sourceFindings = (findings, seat, snaps) => findings.map((f, i) => {
 const readSeat = async ([type, label, inputs, schema, complete], snaps) => {
   const stageLabel = 'review:' + label
   const result = await stage([...inputs, diffInput(snaps)].join('\n\n'), {
-    label: stageLabel, phase: 'Review', agentType: 'workflow-skills:' + type, ...UNIT.models.review, schema,
+    label: stageLabel, phase: 'Review', agentType: 'workflow-skills:' + type, ...UNIT.models.review[label], schema,
   }, complete)
   return { ...result, seat: label, snapshots: snaps,
     label: stageLabel }
@@ -684,18 +748,7 @@ async function onePass() {
   proof(impl, 'impl')
   if (exit) return
 
-  // Only the three briefed code-lens readers receive the implementer's object as claims.
-  const CLAIMS = ['UNTRUSTED implementer claims (its returned object):', JSON.stringify(impl)]
-  const SEATS = [
-    ['reviewer-correctness', 'correctness', [AUTHORITY, READ_GIT, SPEC, CRITERIA, ...CLAIMS], CORRECTNESS, checkVerdicts],
-    ['reviewer-cleanliness', 'cleanliness', [AUTHORITY, READ_GIT, SPEC, CRITERIA, ...CLAIMS], CLEANLINESS, checkVerdicts],
-    ['reviewer-spec-compliance', 'spec', [AUTHORITY, READ_GIT, SPEC, CRITERIA], SPEC_COMPLIANCE, checkVerdicts],
-    ['duplicate-checker', 'dupes', [AUTHORITY, READ_GIT, SPEC, CRITERIA, ...CLAIMS], DUPLICATES, checkVerdicts],
-    ['quality', 'quality', [HYGIENE], QUALITY, checkReader],
-    ['reviewer-inverse-spec', 'inverse', [AUTHORITY, READ_GIT, SPEC], INVERSE, checkInverse],
-    ['project-rule-reader', 'rules', [AUTHORITY, READ_GIT, SPEC, RULES], RULES_SEAT, checkReader],
-    ['cold-alternatives', 'alternatives', [HYGIENE, INVARIANTS], ALTERNATIVES, checkAlternatives],
-  ]
+  const SEATS = seatList(['UNTRUSTED implementer claims (its returned object):', JSON.stringify(impl)])
   phase('Review')
   const readers = await Promise.allSettled(SEATS.map(s => readSeat(s, snapshots)))
   const reports = []

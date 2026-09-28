@@ -1,10 +1,14 @@
 export const meta = {
-  name: 'spec-cold-review',
-  description: 'two unbriefed seats and the provenance reader review the spec before code exists',
+  name: 'kebab-name',
+  description: 'one line',
   phases: [{ title: 'Launch' }, { title: 'Spec review' }],
 }
 // meta must be a PURE LITERAL: no variables, no interpolation. Phase titles here must
 // match the phase() calls EXACTLY or the progress grouping silently degrades.
+// A copy also sets name and description: name becomes a kebab-case name of the unit and
+// description one line saying which spec the run reviews, so each spec review shows in the
+// workflow list under its own unit. kebab-name and one line are the values a copy replaces.
+// The phases and every other line outside the marked block stay as shipped.
 
 // ---- UNIT VALUES. A unit copies this file and sets the values of this block. ----
 // Everything below the closing line is the reviewed script and is not edited per unit.
@@ -18,8 +22,11 @@ const UNIT = {
   base: args.base,                       // one { path, sha } per git repository of the tree, whose commits observation dates are measured against, passed at launch
   partialBase: false,                    // true only in a tree too large to list, where base names just the repositories the unit changes
   criteriaCount: args.criteriaCount,     // counts.kind.criterion from the check tool, passed at launch
+  // One model and effort per agent the script starts, each set by the root. The script stops before
+  // its first agent on an entry that is missing, still a placeholder in angle brackets, or named for
+  // no agent of the script.
   models: {
-    gate: { model: 'claude-haiku-4-5', effort: 'low' },
+    gate: { model: '<explicit>', effort: 'low' },
     gaps: { model: '<explicit>', effort: 'high' },
     soundness: { model: '<explicit, other family>', effort: 'high' },
     provenance: { model: '<explicit>', effort: 'high' },
@@ -155,11 +162,26 @@ const checkRepositories = (list, name) => {
     if (!/^(?:[0-9a-f]{40}|[0-9a-f]{64})$/.test(entry.sha || '')) throw new Error(name + ' carries no full immutable commit ID for ' + entry.path)
   }
 }
+// The root sets the model and the effort of every agent in the marked block. names lists the agents
+// an entry of models may stand for; a value in angle brackets is the shipped placeholder.
+const checkModels = (models, names, path) => {
+  for (const name of Object.keys(models ?? {})) if (!names.includes(name)) throw new Error(path + '.' + name + ' names no agent of this script')
+  for (const name of names) {
+    const entry = models?.[name]
+    for (const field of ['model', 'effort']) {
+      const value = entry?.[field]
+      if (typeof value !== 'string' || !value.trim() || /^<.*>$/.test(value.trim())) {
+        throw new Error(path + '.' + name + '.' + field + ' must be set by the root, not ' + JSON.stringify(value))
+      }
+    }
+  }
+}
 checkRepositories(UNIT.base, 'args.base, which observation dates are measured against,')
 if (typeof UNIT.specPath !== 'string' || !UNIT.specPath.endsWith('.yaml')) {
   throw new Error('args.specPath must name the unit spec YAML file')
 }
 if (typeof UNIT.transcripts !== 'string' || !UNIT.transcripts) throw new Error('args.transcripts must name the transcript directory')
+checkModels(UNIT.models, ['gate', 'gaps', 'soundness', 'provenance'], 'UNIT.models')
 
 // The launch check. One small stage runs the spec tool on the unit's spec file and returns the
 // proof the tool prints only when the spec passes; a stage that never ran it has no proof to
