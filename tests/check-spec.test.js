@@ -64,6 +64,8 @@ describe('structured unit spec validation', () => {
       criteria: [{ ordinal: 1, id: 'row-order' }, { ordinal: 2, id: 'stream-result' }],
       sha256: createHash('sha256').update(new Uint8Array(bytes)).digest('hex'),
       nonBlankLines: 41,
+      specLines: 15,
+      unbreakable: [],
       proof: expect.stringMatching(/^[0-9a-f]{32}$/),
       spec: join(fixtures, 'valid.yaml'),
     })
@@ -71,7 +73,7 @@ describe('structured unit spec validation', () => {
     expect(plain.exit).toBe(0)
     expect(plain.err).toBe('')
     expect(plain.out.trim().split('\n')).toHaveLength(1)
-    for (const value of ['kind=', 'source=', 'criteria=', 'sha256=', 'nonBlankLines=41', 'proof=', `spec=${join(fixtures, 'valid.yaml')}`]) expect(plain.out).toContain(value)
+    for (const value of ['kind=', 'source=', 'criteria=', 'sha256=', 'nonBlankLines=41', 'specLines=15', 'unbreakable=[]', 'proof=', `spec=${join(fixtures, 'valid.yaml')}`]) expect(plain.out).toContain(value)
   })
 
   test('a passing run prints a fresh 32-character hexadecimal proof in both output forms, a failing run none', () => {
@@ -303,7 +305,7 @@ describe('structured unit spec validation', () => {
   })
 
   test('rule windows normalize whitespace, stop at blank lines and include at most forty lines', () => {
-    expect(changed(s => { s.items[1].quote = 'Retain  the\ninput order across\t every exported row.' }).exit).toBe(0)
+    expect(changed(s => { s.items[1].quote = 'Retain  the input order across\t every exported row.' }).exit).toBe(0)
     invalid(changed(s => { s.items[1].quote = 'A different paragraph' }), 'quote does not match')
     invalid(changed(s => { s.items[1].rule.line = 99 }), 'line is outside')
     invalid(changed(s => { s.items[1].rule.line = 0 }), 'expected a positive integer')
@@ -346,65 +348,118 @@ describe('structured unit spec validation', () => {
     expect(await Bun.file(marker).exists()).toBe(false)
   })
 
-  test('rendering groups items by kind under the summary and omits provenance', async () => {
-    const path = join(scratch, 'generated.md')
-    expect(fixture('valid', ['--render', path]).exit).toBe(0)
-    const rendered = await Bun.file(path).text()
-    expect(rendered).toBe('# example-export\n\n' +
-      'A synthetic unit that exports selected rows.\n\nIt exercises every kind and every source.\n\n' +
-      '## Requirements\n\n**export-request**: Export the selected rows.\n\n' +
-      '## Boundaries\n\n**export-only**: The unit covers export of selected rows.\n\n' +
-      '## Rejected alternatives\n\n**batch-unavailable**: Use the batch interface.\n' +
-      'Reason: The installed example reports that interface as unavailable.\n\n' +
-      '## Acceptance criteria\n\n1. **row-order**: Exported rows retain their input order.\n' +
-      '2. **stream-result**: Export uses the stream interface in place of the unavailable batch interface.\n')
-    for (const privateValue of ['session.jsonl', 'request-string', 'user_words', 'evidence', 'batch unavailable', 'rules.txt', 'parents', 'printf', 'record']) {
-      expect(rendered).not.toContain(privateValue)
-    }
-    const partial = join(scratch, 'partial.md')
-    const result = changed(s => {
-      s.items = s.items.slice(0, 2)
-      s.items[1].content = 'Exported rows retain\ntheir input order.\n'
-    }, ['--render', partial])
-    expect(result.exit).toBe(0)
-    expect(await Bun.file(partial).text()).toBe('# example-export\n\n' +
-      'A synthetic unit that exports selected rows.\n\nIt exercises every kind and every source.\n\n' +
-      '## Requirements\n\n**export-request**: Export the selected rows.\n\n' +
-      '## Acceptance criteria\n\n1. **row-order**: Exported rows retain\n   their input order.\n')
-  })
-
-  test('a stale or unreadable document fails the render check, which writes nothing', async () => {
-    const path = join(scratch, 'checked.md')
-    expect(fixture('valid', ['--render', path]).exit).toBe(0)
-    expect(fixture('valid', ['--check-render', path]).exit).toBe(0)
-    writeFileSync(path, 'stale\n')
-    invalid(fixture('valid', ['--check-render', path]), 'generated document differs')
-    expect(await Bun.file(path).text()).toBe('stale\n')
-    invalid(fixture('several', ['--render', path]), 'unknown kind')
-    expect(await Bun.file(path).text()).toBe('stale\n')
-    const missing = join(scratch, 'missing.md')
-    invalid(fixture('valid', ['--check-render', missing]), 'generated document is unreadable')
-    expect(await Bun.file(missing).exists()).toBe(false)
-    invalid(fixture('valid', ['--render', join(scratch, 'missing/parent.md')]), 'ENOENT')
-    invalid(fixture('valid', ['--render', path, '--check-render', path]), 'Usage')
-  })
-
-  test('the summary leaves stdout to the caller when a document is rendered or checked', () => {
-    const path = join(scratch, 'streams.md')
+  test('the tool neither renders nor checks a design document: both options are refused and nothing is written', async () => {
     for (const option of ['--render', '--check-render']) {
-      const plain = fixture('valid', [option, path])
-      expect(plain.exit).toBe(0)
-      expect(plain.out).toBe('')
-      for (const value of ['kind=', 'source=', 'criteria=', 'sha256=', 'nonBlankLines=41']) expect(plain.err).toContain(value)
-      const json = fixture('valid', [option, path, '--json'])
-      expect(json.exit).toBe(0)
-      expect(json.err).toBe('')
-      expect(JSON.parse(json.out).criteria).toEqual([{ ordinal: 1, id: 'row-order' }, { ordinal: 2, id: 'stream-result' }])
+      const path = join(scratch, `refused${option}.md`)
+      invalid(fixture('valid', [option, path]), `Unknown option '${option}'`)
+      expect(await Bun.file(path).exists()).toBe(false)
+      const list = Bun.spawnSync([process.execPath, tool, '--fix-list', join(root, 'tests/fixtures/fix-list/list.yaml'),
+        '--transcripts', fixtures, option, path], { cwd: root })
+      expect([list.exitCode, list.stderr.toString().includes(`Unknown option '${option}'`)]).toEqual([1, true])
     }
+  })
+
+  test('specLines counts the non-blank lines of the prose and one line per distinct parent, and nothing else', () => {
+    const count = edit => JSON.parse(changed(edit, ['--json']).out).specLines
+    // The unit 1, the summary 2, the contents 5, the quoted words 1, the rule quote 1, the reason 1, the
+    // observation output 1, and three distinct parents.
+    expect(count(() => {})).toBe(15)
+    // A code block counts its lines: four non-blank lines replace the first item's one.
+    expect(count(s => { s.items[0].content = 'Export the selected rows.\n\n```sh\nexport\n```\n' })).toBe(18)
+    // A parent named by two items counts once, and a parent no item named before adds a line.
+    expect(count(s => { s.items[4].parents = ['stream-result', 'export-request'] })).toBe(15)
+    expect(count(s => { s.items[4].parents = ['stream-result', 'row-order'] })).toBe(16)
+    // Evidence, the observation command and the ids are not prose and add nothing.
+    expect(count(s => {
+      s.items[0].evidence.push({ file: 'session.jsonl', line: 1, uuid: 'request-string' })
+      s.items[3].observation.command = "printf 'batch'\nprintf ' unavailable\\n'"
+    })).toBe(15)
+    expect(changed(() => {}).out).toContain(' specLines=15 ')
+  })
+
+  describe('the width rule', () => {
+    // Words of four letters, so n of them joined by spaces are 5n - 1 characters wide.
+    const words = n => Array(n).fill('word').join(' ')
+    const withContent = (content, options = []) => changed(s => { s.items[0].content = content }, options)
+    const failsWith = (content, message) => invalid(withContent(content), `export-request.content: ${message}`)
+    const url = 'https://example.com/' + 'a'.repeat(110)
+
+    test('a correctly wrapped paragraph, bullet list, nested list, ordered list and code block pass', () => {
+      const content = [words(24), words(3) + '.', '',
+        '- ' + words(23), '  ' + words(23), '  end.', '  - ' + words(23), '    tail.', '- second', '',
+        '1. ' + words(23), '   end.', '2. two', '',
+        '```js', 'const short = 1', '', 'const next = 2', '```', ''].join('\n')
+      const result = withContent(content, ['--json'])
+      expect([result.exit, result.err]).toEqual([0, ''])
+      expect(JSON.parse(result.out).unbreakable).toEqual([])
+    })
+
+    test('a line over 120 characters fails, counted with its indentation and bullet marker', () => {
+      failsWith(words(25), 'line 1 is 124 characters, over 120')
+      failsWith('- ' + words(23) + '\n  ' + words(24), 'line 2 is 121 characters, over 120')
+    })
+
+    test('a line left short before the last line of a paragraph or a bullet fails', () => {
+      failsWith(words(3) + '\n' + words(3) + '.', 'line 1 is not full: the first word of line 2 fits on it')
+      failsWith(words(24) + '\n' + words(3) + '\n' + words(3) + '.', 'line 2 is not full: the first word of line 3 fits on it')
+      failsWith('- ' + words(2) + '\n  ' + words(2) + '.\n- next', 'line 1 is not full: the first word of line 2 fits on it')
+      // A paragraph's or a bullet's last line may be short, and a new bullet starts a new block.
+      expect(withContent('Intro:\n- ' + words(2) + '\n- ' + words(2)).exit).toBe(0)
+    })
+
+    test('a paragraph in a block quote is held to the fill rule like any other', () => {
+      failsWith('> ' + words(3) + '\n> ' + words(3) + '.', 'line 1 is not full: the first word of line 2 fits on it')
+      expect(withContent('> ' + words(23) + '\n> ' + words(3) + '.').exit).toBe(0)
+    })
+
+    test('a list item whose first line is empty holds the text below it to the fill rule', () => {
+      failsWith('-\n  ' + words(3) + '\n  ' + words(3) + '.', 'line 2 is not full: the first word of line 3 fits on it')
+      expect(withContent('-\n  ' + words(23) + '\n  end.').exit).toBe(0)
+    })
+
+    test('every prose field of a spec is held to the rule, not the content alone', () => {
+      invalid(changed(s => { s.summary = words(25) }), 'spec.summary: line 1 is 124 characters, over 120')
+      invalid(changed(s => { s.items[3].reason = words(3) + '\n' + words(3) + '.' }), 'batch-unavailable.reason: line 1 is not full')
+      invalid(changed(s => { s.items[3].observation.output = words(25) }), 'batch-unavailable.observation.output: line 1 is 124 characters, over 120')
+      // Quoted words wrap like any other prose: only their words and punctuation are held verbatim.
+      expect(changed(s => { s.items[0].user_words = 'Export the  selected\trows.' }).exit).toBe(0)
+    })
+
+    test('a code line over 120 characters fails, and short code lines are never held to the fill rule', () => {
+      failsWith('```\n' + words(25) + '\n```', 'line 2 is 124 characters, over 120')
+      expect(withContent('```\nshort\nlines\n```').exit).toBe(0)
+      // A row of spaces is measured whole, and holds no word that could excuse it.
+      failsWith('```\n' + ' '.repeat(121) + '\n```', 'line 2 is 121 characters, over 120')
+    })
+
+    test('a line holding one word that does not fit passes and is named in the summary', () => {
+      const content = 'See\n' + url + '\nfor details.'
+      const json = withContent(content, ['--json'])
+      expect(json.exit).toBe(0)
+      expect(JSON.parse(json.out).unbreakable).toEqual([{ field: 'export-request.content', line: 2 }])
+      expect(withContent('- ' + url).exit).toBe(0)
+      expect(withContent(content).out).toContain(' unbreakable=[{"field":"export-request.content","line":2}] ')
+      // A long word beside other words is no exception: the line breaks before the word.
+      failsWith('See ' + url, 'line 1 is 134 characters, over 120')
+      // A word that fits within the width is no exception, however far it is indented.
+      failsWith('- ' + ' '.repeat(10) + 'x'.repeat(110), 'line 1 is 122 characters, over 120')
+    })
+
+    test('a folded scalar is checked as the lines it folds into', async () => {
+      const text = await Bun.file(join(fixtures, 'valid.yaml')).text()
+      const folded = (lines) => {
+        const path = join(scratch, `${serial++}-folded.yaml`)
+        writeFileSync(path, text.replace('    content: Export the selected rows.\n',
+          '    content: >\n' + lines.map(line => '      ' + line + '\n').join('')))
+        return run(path)
+      }
+      expect(folded(['Export the selected', 'rows.']).exit).toBe(0)
+      invalid(folded([words(20), words(20)]), 'export-request.content: line 1 is 199 characters, over 120')
+    })
   })
 
   test('unavailable YAML support names the same runtime minimum as the README', async () => {
-    const preload = join(scratch, 'without-yaml.js')
+    const preload = join(scratch, 'without-YAML.js')
     writeFileSync(preload, 'Bun.YAML = undefined\n')
     const result = Bun.spawnSync([process.execPath, '--preload', preload, tool], { cwd: root })
     expect(result.exitCode).not.toBe(0)
@@ -720,7 +775,7 @@ describe('fix list validation', () => {
 
   test('a spec argument or a spec option beside --fix-list is a usage error', () => {
     const path = validPath
-    for (const options of [[join(fixtures, 'valid.yaml')], ['--base', 'HEAD'], ['--render', join(scratch, 'list.md')], ['--check-render', path]]) {
+    for (const options of [[join(fixtures, 'valid.yaml')], ['--base', 'HEAD']]) {
       invalid(checkList(path, options), 'Usage')
     }
     const bare = Bun.spawnSync([process.execPath, tool, '--fix-list', path], { cwd: root })

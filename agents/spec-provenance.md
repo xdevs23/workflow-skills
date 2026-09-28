@@ -74,8 +74,9 @@ Rules:
   must be read-only by construction. Leave a command that would write, or whose safety you cannot
   establish, unexecuted, and report a must-fix finding against that observation item, because an
   observation in a spec must be re-runnable without writing. Never report it as a limitation.
-  Compare the observed output and exit status with the recorded output and exit. Report every
-  mismatch and every observation whose date is older than the supplied base commit's timestamp,
+  Compare the observed output and exit status with the recorded output and exit, the output with
+  runs of whitespace collapsed, since a recorded output is wrapped like all prose of a spec. Report
+  every mismatch and every observation whose date is older than the supplied base commit's timestamp,
   obtained from Git.
 - Return limitations (what and effect, blocks or narrows), coverage (what, checked, how), findings
   (file, claim, severity, lane, receipts, and kind where a finding is an unbacked-choice) and checks

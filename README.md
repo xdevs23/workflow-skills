@@ -47,18 +47,26 @@ workflows, and used by `audit-loop`.
 
 - **The Workflow tool / multi-agent fan-out.** Every skill orchestrates subagents via Workflow. A
   harness or plan that doesn't expose Workflow can't run these.
-- **Bun 1.2.21 or newer** for `tools/check-spec.ts`, which uses the built-in `Bun.YAML.parse`.
+- **Bun 1.2.21 or newer** for `tools/check-spec.ts`, which uses the built-in `Bun.YAML.parse`
+  and the Markdown parser `mdast-util-from-markdown`, whose version 2.0.3 its import names and Bun
+  fetches on the tool's first run.
   Validate a private unit spec with `bun <plugin root>/tools/check-spec.ts <spec.yaml> --transcripts <session-dir>`,
   where the plugin root is this repository or the installed plugin's directory under the plugin cache.
   Add `--base <commit>` so a cited rule file tracked at that commit is read there and not from
   the working tree, while an untracked file reads from disk. Add `--json` for counts and
-  criterion ordinals. The YAML spec is the only form of the spec before and during
-  implementation. After the implementation, the implementer adds `--render <path>` to generate
-  the tracked design document from the final spec as its last write, before its checks, and
-  commits it, and the fixer renders it again as its last write after its corrections.
-  `--check-render <path>` checks an existing document against the spec
-  and plays no part before implementation. A passing run
-  prints a random `proof` that the workflow scripts' launch check returns to prove the tool ran.
+  criterion ordinals. Both output forms carry `specLines`, which the 20:1 size gate divides by:
+  the non-blank lines of the spec's prose, which is `unit`, `summary` and each item's `content`,
+  `user_words`, `answers`, `quote`, `observation.output` and `reason`, plus one line for each
+  distinct item id named as a parent. The tool fails a spec whose prose breaks the width rule: a
+  line, counted with its indentation and markers, holds at most 120 characters, and every line of
+  a paragraph but its last is full. A line of a fenced code block holds at most 120 characters
+  and is never held to the fill rule. A line whose own text is one word too long for the width,
+  such as a long URL, passes and is named in the summary's `unbreakable` list. The YAML spec
+  is the only form of the spec before and during implementation. After the implementation, the
+  implementer writes the tracked design document by hand from the code as its last write, before
+  its checks, and commits it, and the fixer updates it as its last write after its corrections.
+  The tool neither renders nor checks that document. A passing run prints a random `proof` that
+  the workflow scripts' launch check returns to prove the tool ran.
   A spec names its private directive record in the `record` key. The record is a YAML file of
   `unit` and `entries`, each entry quoting the user's `words` with the transcript `file`, `line`
   and `uuid` they stand at and a non-empty list of quoted `context` from the surrounding
