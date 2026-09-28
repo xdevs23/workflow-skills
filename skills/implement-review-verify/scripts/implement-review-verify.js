@@ -150,8 +150,8 @@ const WRITE_GIT = [
   'Never bypass signing or hooks. Follow project commit style. Recheck proof if hooks change content.',
   WRITE_SCRATCH,
   'Keep scratch files and the local todo record of workflow-skills:todo-md out of commits unless explicitly requested.',
-  'Return repositories, one entry per repository of the list with path, startSha, full snapshotSha, clean and git (quoted head and',
-  'status), commits (each with sha, subject and the path of its repository), files (paths relative to the tree root) and checks;',
+  'Return repositories, one entry per repository of the list with path, startSha, full snapshotSha, clean and git (head, the commit ID alone,',
+  'and status, the output of git status), commits (each with sha, subject and the path of its repository), files (paths relative to the tree root) and checks;',
   'never an empty commit for a no-op: a repository you left unchanged keeps its startSha as its snapshotSha and lists no commit.',
   'After committing, run git -C <tree>/<path> rev-parse --verify HEAD^{commit} and git status --porcelain=v1 --untracked-files=all in every repository.',
 ].join('\n')
@@ -185,10 +185,12 @@ const CHECKS = { type: 'array', items: { type: 'object', additionalProperties: f
   required: ['command', 'passed', 'output', 'truncated'],
   properties: { command: { type: 'string' }, passed: { type: 'boolean' },
     output: { type: 'string', maxLength: 6000 }, truncated: { type: 'boolean' } } } }
-// head and status quote git rev-parse --verify HEAD^{commit} and git status --porcelain=v1
-// --untracked-files=all; status is the empty string on a clean tree.
 const GIT = { type: 'object', required: ['head', 'status'], additionalProperties: false,
-  properties: { head: { type: 'string' }, status: { type: 'string' } } }
+  properties: {
+    head: { type: 'string', description: 'The commit ID that git rev-parse --verify HEAD^{commit} printed, and nothing else: no command line, no label.' },
+    status: { type: 'string', description: 'What git status --porcelain=v1 --untracked-files=all printed, and nothing else; the empty string on a clean tree.' } } }
+// A repository is named by its path in the base list, never by where it sits on disk.
+const REPOSITORY_PATH = { type: 'string', description: 'The path of the repository exactly as the base list names it, such as ., never an absolute path.' }
 // A finding is a defect with at least one receipt. Project-benefit kinds mark a choice made in
 // THIS unit's diff; a finding without kind is ordinary, which keeps the cleanup lane open for a
 // band-aid that already existed beside it.
@@ -215,10 +217,10 @@ const COMMIT_ID = { type: 'string', pattern: '^(?:[0-9a-f]{40}|[0-9a-f]{64})$' }
 const COMMITS = { type: 'array', items: { type: 'object', required: ['sha', 'subject', 'repository'], additionalProperties: false,
   properties: { sha: COMMIT_ID, subject: { type: 'string' }, repository: { type: 'string' } } } }
 // One entry per repository of the base list: where the writer started it, where it left it, and the
-// quoted head and status there.
+// head and status git reports there.
 const REPOSITORIES = { type: 'array', minItems: 1, items: { type: 'object', additionalProperties: false,
   required: ['path', 'startSha', 'snapshotSha', 'clean', 'git'],
-  properties: { path: { type: 'string' }, startSha: { type: 'string' }, snapshotSha: { type: 'string' }, clean: { type: 'boolean' }, git: GIT } } }
+  properties: { path: REPOSITORY_PATH, startSha: { type: 'string' }, snapshotSha: { type: 'string' }, clean: { type: 'boolean' }, git: GIT } } }
 // A snapshot of the tree: one full commit ID per repository.
 const SNAPSHOTS = { type: 'array', minItems: 1, items: { type: 'object', required: ['path', 'sha'], additionalProperties: false,
   properties: { path: { type: 'string' }, sha: COMMIT_ID } } }
@@ -312,10 +314,10 @@ const VERIFY = { type: 'object', additionalProperties: false,
   required: ['abort', 'limitations', 'repositories', 'checks', 'writerScope', 'decisions',
     'issues', 'specSuggestions'],
   properties: { abort: ABORT, limitations: LIMITATIONS, checks: CHECKS,
-    // One entry per repository of the list, with the quoted head and status observed there.
+    // One entry per repository of the list, with the head and status git reports there.
     repositories: { type: 'array', minItems: 1, items: { type: 'object', required: ['path', 'snapshotSha', 'clean', 'git'],
       additionalProperties: false,
-      properties: { path: { type: 'string' }, snapshotSha: { type: 'string' }, clean: { type: 'boolean' }, git: GIT } } },
+      properties: { path: REPOSITORY_PATH, snapshotSha: { type: 'string' }, clean: { type: 'boolean' }, git: GIT } } },
     // One entry per implementer commit, inspected against its start in its repository. The writer's
     // files list names the paths of all its commits together, relative to the tree root, so
     // filesMatch is true when every path the commit touched, under its repository's path, appears in
@@ -684,8 +686,9 @@ const exactlyOnce = (actual, expected, label) => {
 const BACKING = /\brecord entry [a-z][a-z0-9]*(?:-[a-z0-9]+)*: "[\s\S]*\S[\s\S]*"/
 const checkVerification = (v, sources, snaps) => {
   const expected = shaByPath(snaps)
-  exactlyOnce(v.repositories.map(r => r.path), snaps.map(s => s.path), 'repository in repositories')
-  for (const { path, snapshotSha, clean, git } of v.repositories) {
+  const repositories = reported(v.repositories)
+  exactlyOnce(repositories.map(r => r.path), snaps.map(s => s.path), 'repository in repositories')
+  for (const { path, snapshotSha, clean, git } of repositories) {
     if (snapshotSha !== expected.get(path) || clean !== true) throw new Error('Verifier observed snapshot drift or a dirty worktree in ' + path)
     if (git.head.trim() !== snapshotSha) throw new Error('git.head ' + JSON.stringify(git.head) + ' of ' + path + ' differs from snapshotSha ' + JSON.stringify(snapshotSha))
   }
@@ -786,7 +789,7 @@ async function onePass() {
   const result = await stage([
     AUTHORITY, READ_GIT, SPEC, RULES, diffInput(snapshots),
     'In every repository of the list, independently run git -C ' + UNIT.worktree + '/<path> rev-parse --verify HEAD^{commit} and git status --porcelain=v1 --untracked-files=all.',
-    'Confirm each immutable commit exists and each clean tree matches it; return repositories with path, snapshotSha, clean and git with the quoted output of each.',
+    'Confirm each immutable commit exists and each clean tree matches it; return repositories with path as the list names it, snapshotSha, clean, and git with head, the commit ID alone, and status, the output of git status.',
     'Inspect each writer commit against its start SHA in its repository for unrelated changes or history rewriting:',
     ['one writerScope entry per commit, naming its repository, filesMatch true when every path the commit touched, under its repository\'s path, appears in the writer\'s files list.',
       'The files list covers all commits of the writer together. A path in it that no commit of the writer touched is a',
