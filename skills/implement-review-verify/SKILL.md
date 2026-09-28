@@ -161,19 +161,32 @@ the user back, is class `unbacked-item`.
 - The implementer returns each finding in `specFindings`, one entry per finding with the ids of
   every spec item it concerns in `items`, a list of at least one id, together with the `class`,
   the `claim` and `receipts`, so a `joint-impossibility` entry names each item of the conflict.
-- No spec finding fails the sense check, sets the abort or asks the user during the run.
-- The implementer builds nothing for an item named in an entry of class `unbacked-item`,
-  `joint-impossibility` or `missing-contract`, and builds the rest of the spec, an item named only
-  in a `reality-drift` entry included.
+- No spec finding fails the sense check, sets the abort or asks the user.
+- An entry of class `joint-impossibility` or `missing-contract` blocks the run. The implementer
+  returns it with a limitation of effect `blocks` that names the entry, and edits and commits
+  nothing, so every repository's snapshot is its start SHA. A spec with such an entry has nothing
+  built, whatever other entries it has.
+- The script ends the run after the implement stage with exit `root-resolution` and a
+  `blocking-limitation` item, as it does for every blocking limitation of the implementer, and no
+  review stage starts.
+- An entry of class `unbacked-item` does not block. The implementer builds nothing for the items it
+  names and builds the rest of the spec.
+- An item that cannot be built without an item of an `unbacked-item` entry rests on the same
+  missing words, so the entry names it in `items` too and it stays unbuilt.
+- An item named only in a `reality-drift` entry is built.
 - The script puts every entry into `remaining` as a `spec-finding` item, CRITICAL for
-  `unbacked-item` and must-fix otherwise, so the root reads each one after the run and records it.
+  `unbacked-item` and must-fix otherwise, so the root reads each one after the run, however the
+  run ended, and records it.
 - The finding verifier receives the entries with the implementer's object and never approves a fix
   that builds an item left unbuilt, as phase 3 describes.
 
-The items of a `joint-impossibility` or `missing-contract` entry stay unbuilt because building one
-half of two requirements that cannot both hold, or an item whose contract nobody defined, would
-leave a proof that reads as complete, while law 13 has such work report the impossibility and
-block.
+A `joint-impossibility` or `missing-contract` entry blocks because law 13 has work that genuinely
+cannot satisfy the applicable requirements report the concrete impossibility and block. Building
+the rest of the spec around it would build one half of two requirements that cannot both hold, or
+build around an item whose contract nobody defined, and leave a proof that reads as complete. An
+`unbacked-item` entry says only that no words of the user back its items. The rest of the spec can
+still be built, so the run builds what the user's words back and the root reads the finding after
+the run.
 
 **A record that was never supplied is not a silent record.** Before any edit, the implementer sets
 `abort.trigger` to `no-words` and leaves the tree unmodified when the private directive record was
@@ -465,8 +478,10 @@ that citation.
 
 The spec-compliance reviewer never sees the implementer's object, so it reports an item the
 implementer left unbuilt as missing required behaviour. The implementer's `specFindings` entry
-names its spec items in `items`, and every item named in an entry of class `unbacked-item`,
-`joint-impossibility` or `missing-contract` stays unbuilt.
+names its spec items in `items`. A `joint-impossibility` or `missing-contract` entry ends the run
+after the implement stage, so in a run that reaches review the items left unbuilt are the items
+named in an entry of class `unbacked-item`, which names every item that cannot be built without
+one of its items as well.
 
 - A finding that asks to build an item the implementer left unbuilt is never `approve-fix`.
 - A source finding that asks to build, complete or change an item left unbuilt is decided

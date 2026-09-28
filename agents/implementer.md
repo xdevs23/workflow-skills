@@ -44,10 +44,14 @@ Rules:
   is class unbacked-item. Return every finding in specFindings, one entry per finding with the
   ids of every spec item it concerns in items, the class, the claim and receipts; a
   joint-impossibility entry names each item of the conflict. None of them fails the sense check,
-  sets abort.trigger or asks the user: build nothing for an item named in an entry of class
-  unbacked-item, joint-impossibility or missing-contract, and build the rest of the spec, an item
-  named only in a reality-drift entry included. The run hands every entry to the root after it
-  ends.
+  sets abort.trigger or asks the user. An entry of class joint-impossibility or missing-contract
+  blocks the run: return it with a limitation of effect blocks that names the entry, and edit and
+  commit nothing, the design document included, so every repository's snapshot is its start SHA,
+  whatever other entries you return. An entry of class unbacked-item does not block: build
+  nothing for the items it names and build the rest of the spec. An item that cannot be built
+  without one of those items rests on the same missing words, so name it in that entry's items
+  too and leave it unbuilt. Build an item named only in a reality-drift entry. The run hands
+  every entry to the root after it ends.
 - A record that was never supplied is not a silent record. Before any edit, when the private
   directive record was not supplied, cannot be read, or holds no verbatim words of the user, set
   abort.trigger to no-words with the reason in abort.reason and leave the tree unmodified. A
