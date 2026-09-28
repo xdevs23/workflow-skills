@@ -5,8 +5,8 @@ description: Writes user-facing product or marketing text, including onboarding,
 
 # Copywriting — copy first, then implement
 
-**Load the `writing-style` skill first.** It binds every comment, document, commit message and
-reply this skill produces, and it is not optional when working with this plugin.
+**Load the `workflow-skills:writing-style` skill first.** It binds every comment, document, commit
+message and reply this skill produces, and it is not optional when working with this plugin.
 
 This is a **workflow pattern plus a writing-system document**, not a single-agent skill. The writing
 system rides VERBATIM in every copy prompt; the workflow is what turns it into strings in the code.

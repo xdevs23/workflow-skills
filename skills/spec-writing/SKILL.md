@@ -5,8 +5,8 @@ description: Applies whenever a unit spec or its private directive record is wri
 
 # Writing a unit spec
 
-**Load the `writing-style` skill first.** It binds every comment, document, commit message and
-reply this skill produces, and it is not optional when working with this plugin.
+**Load the `workflow-skills:writing-style` skill first.** It binds every comment, document, commit
+message and reply this skill produces, and it is not optional when working with this plugin.
 
 ## Before the spec is written
 

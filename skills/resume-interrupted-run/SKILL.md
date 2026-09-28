@@ -5,8 +5,8 @@ description: Resumes a workflow run interrupted after agents did substantial wor
 
 # Resume an Interrupted Run — hand each mid-flight seat its own transcript back
 
-**Load the `writing-style` skill first.** It binds every comment, document, commit message and
-reply this skill produces, and it is not optional when working with this plugin.
+**Load the `workflow-skills:writing-style` skill first.** It binds every comment, document, commit
+message and reply this skill produces, and it is not optional when working with this plugin.
 
 A run's journal caches results keyed by the *completed* `agent()` call. A resume replays every
 completed key instantly and re-runs everything else — and "everything else" is the whole problem. An

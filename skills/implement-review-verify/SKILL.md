@@ -1,12 +1,12 @@
 ---
 name: implement-review-verify
-description: Implements code changes involving shared infrastructure or subtle invariants, or changes requested through a workflow with reviewers.
+description: Implements features, larger units, well-specified change requests, cross-sectional work and changes with subtle invariants.
 ---
 
 # Implement → Review → Verify → Fix — a workflow for code changes
 
-**Load the `writing-style` skill first.** It binds every comment, document, commit message and
-reply this skill produces, and it is not optional when working with this plugin.
+**Load the `workflow-skills:writing-style` skill first.** It binds every comment, document, commit
+message and reply this skill produces, and it is not optional when working with this plugin.
 
 A reusable, project-agnostic shape for landing a non-trivial CODE change with confidence. It
 *builds* against a settled design and adversarially checks the result before it is accepted.

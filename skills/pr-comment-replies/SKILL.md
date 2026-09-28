@@ -5,8 +5,8 @@ description: Covers writing and posting replies on pull requests and issues, fro
 
 # Replies on pull requests and issues
 
-**Load the `writing-style` skill first.** It binds every comment, document, commit message and
-reply this skill produces, and it is not optional when working with this plugin.
+**Load the `workflow-skills:writing-style` skill first.** It binds every comment, document, commit
+message and reply this skill produces, and it is not optional when working with this plugin.
 
 This skill states how an agent writes and posts a reply on a pull request or an issue. The user's
 own rules for comments posted on the user's behalf win wherever they differ from this skill,

@@ -5,8 +5,8 @@ description: Applies to changes to the rendered output of any user interface, wh
 
 # Visual verification
 
-**Load the `writing-style` skill first.** It binds every comment, document, commit message and
-reply this skill produces, and it is not optional when working with this plugin.
+**Load the `workflow-skills:writing-style` skill first.** It binds every comment, document, commit
+message and reply this skill produces, and it is not optional when working with this plugin.
 
 A visual harness answers one specific question about a user interface with the real rendered
 interface, controlled data and repeatable interactions. A run of one scene produces real screenshots
