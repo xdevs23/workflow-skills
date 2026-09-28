@@ -217,4 +217,6 @@ tree, the path relative to the tree root and a single dot for a tree that is one
 tool, run at the tree root, fails a list whose path is no repository's top level, whose commit that
 repository does not hold, or which leaves out a repository it finds under the tree root. It reads a
 cited rule file at the commit of the repository that holds it, reads a file no listed repository
-tracks from disk, and fails on any other git error.
+tracks from disk, and fails on any other git error. With `--partial-base`, in a tree too large to
+list, the list names only the repositories the unit changes and the tool skips the search for the
+others; implement-review-verify says when a run does that.
