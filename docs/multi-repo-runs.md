@@ -15,8 +15,8 @@ without them.
 
 ## The base list
 
-The launch value `base` replaces the single `baseSha` in all three shipped scripts. It is a list
-with one `{ path, sha }` for every git repository of the tree, changed or not: the path of the
+The launch value `base` of all three shipped scripts is a list with one `{ path, sha }` for every
+git repository of the tree, changed or not: the path of the
 repository relative to the tree root and its full starting commit. A tree that is one repository is
 a list of one entry whose path is a single dot, and the worktree in the marked block is the tree
 root. Each script refuses at once an empty list, a path named twice, a commit ID that is not a
@@ -39,9 +39,8 @@ The script accepts a writer only when every repository of the list appears exact
 expected start, each quoted head equals that repository's snapshot, each `clean` agrees with an
 empty status, a repository whose snapshot moved has commits in it and an unchanged one none, and a
 new snapshot anywhere lists files with a check whose `passed` equals `proofPassed`. A repository a
-writer left unchanged keeps its start as its snapshot. The shipped main script keeps its one
-implementer stage, and the skill's rule that parallel implementers are allowed only across
-genuinely disjoint repositories stays as it was.
+writer left unchanged keeps its start as its snapshot. The shipped main script has one implementer
+stage, and the skill allows parallel implementers only across genuinely disjoint repositories.
 
 ## Readers, the verifier and the roaster
 
@@ -55,7 +54,7 @@ The finding verifier runs head and status in every repository of the list and re
 differs from the snapshot in any of them. Each `writerScope` entry names the repository of its
 commit, and a commit's paths are compared with the writer's files list under the repository's path.
 
-The roaster still runs beside the fixer. It receives the base and snapshot commit of every
+The roaster runs beside the fixer. It receives the base and snapshot commit of every
 repository, reads only Git objects of each repository at those commits, and returns `snapshots`,
 the commit it read per repository, which must equal the ones it was given.
 
@@ -97,11 +96,11 @@ newest of those commits.
 - The size report records the merge-base and candidate commit of every repository and sums its
   code counts over them, and integration and its evidence go per repository, with the route still
   the project's choice.
-- How a project creates its tree stays the project's own. The plugin requires only that the tree
+- How a project creates its tree is the project's own. The plugin requires only that the tree
   holds every repository of the list.
 
 ## Rejected alternative
 
 Supporting projects without git was rejected, whether by a copy of the project that reviewers read
 as it changes or any other way. Git, or a tree of git repositories, is a precondition of the
-workflow, and an earlier choice of such a copy no longer stands.
+workflow.

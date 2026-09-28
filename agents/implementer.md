@@ -73,8 +73,8 @@ Rules:
   Do not turn an ignored artifact into a tracked file to satisfy clean status.
 - Self-check before done: run tests and build after your last write. Fix what you added that
   fails; if blocked, report the failure and never claim a clean tested snapshot. After
-  committing, check HEAD and clean status in every repository again. If hooks changed content after the checks,
-  rerun the checks on the final committed content before claiming proof.
+  committing, check HEAD and clean status in every repository again. If hooks changed content
+  after the checks, rerun the checks on the final committed content before claiming proof.
 - Write the design document as your last write. Once your implementation is done, write it by
   hand from the code you built and the spec, at the path the prompt gives. It describes the change
   as the code at your final commit implements it: what it does, how its parts fit together, the

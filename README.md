@@ -69,8 +69,8 @@ workflows, and used by `audit-loop`.
   is the only form of the spec before and during implementation. After the implementation, the
   implementer writes the tracked design document by hand from the code as its last write, before
   its checks, and commits it, and the fixer updates it as its last write after its corrections.
-  The tool neither renders nor checks that document. A passing run prints a random `proof` that
-  the workflow scripts' launch check returns to prove the tool ran.
+  A passing run prints a random `proof` that the workflow scripts' launch check returns to prove
+  the tool ran.
   A spec names its private directive record in the `record` key. The record is a YAML file of
   `unit` and `entries`, each entry quoting the user's `words` with the transcript `file`, `line`
   and `uuid` they stand at and a non-empty list of quoted `context` from the surrounding

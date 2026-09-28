@@ -110,10 +110,11 @@ contract; `tests/fixtures/spec-provenance/valid.yaml` is its exercised format ex
 The spec's top-level `record` key holds the absolute path of the private directive record the spec
 was written from, the YAML file described under the private source record below. The tool fails a
 spec whose record file does not exist, whose record is not of that format, whose record holds a
-quote the transcripts do not bear out, or whose record entries do not hold every `user_words` of
-the spec in their `words` once whitespace is collapsed. The design document never shows the path. The tool reads a relative path from the directory it runs in, as the test fixtures
-do, but a unit spec holds the absolute path: each script's launch check compares it with the
-absolute path in its marked block.
+quote the transcripts do not bear out, or whose record entries do not hold every `user_words` of the
+spec in their `words` once whitespace is collapsed. The design document never shows the path. The
+tool reads a relative path from the directory it runs in, as the test fixtures do, but a unit spec
+holds the absolute path: each script's launch check compares it with the absolute path in its marked
+block.
 
 Each item states one requirement or decision with an id, kind, content and one of four sources:
 `transcript` cites session records and verbatim user_words. Only a message the user wrote, typed or
@@ -173,11 +174,11 @@ parent unit's document. The writer prompts of the main and fix-run scripts carry
 the document path built from the spec path of the marked block: the document takes its name from
 the spec's file name.
 
-The tool prints its summary on stdout, as JSON with `--json`. The root runs the tool before the
-spec pre-phase and again before the main run's implement stage, and each run's first stage runs it once more and returns the `proof` the tool prints only when the
-spec passes. A spec with no item of source `transcript` fails, as does a `requirement` derived
-from observations alone: the tool refuses a spec that carries none of the user's words.
-A failing spec launches neither run. The tool neither renders nor checks a design document.
+The tool prints its summary on stdout, as JSON with `--json`. The root runs the tool before the spec
+pre-phase and again before the main run's implement stage, and each run's first stage runs it once
+more and returns the `proof` the tool prints only when the spec passes. A spec with no item of
+source `transcript` fails, as does a `requirement` derived from observations alone: the tool refuses
+a spec that carries none of the user's words. A failing spec launches neither run.
 
 Use the tool's `counts.kind.criterion` for `args.criteriaCount`, never a hand count. Its
 ordered `criteria` list of `{ ordinal, id }` assigns integer ordinals from one in YAML file order;
@@ -234,15 +235,15 @@ findable:
 
 Discovered here they cost an edit; discovered in phase 4 they cost the run.
 
-A third reader, **spec-provenance** (`agents/spec-provenance.md`), receives the YAML spec, transcript
-directory, private record and base commits. Item by item it judges authorization, asserted conditions
-and mandated mechanisms. For every subject the spec covers it searches every message of the user in
-every transcript of that directory, queued messages included, and a later statement that refines,
-narrows or contradicts a cited one outranks it. It also checks the frame around the items: the
-summary sentence by sentence, every boundary item, every comment line of the raw spec file, and
-every document, branch or earlier unit the spec names or builds on. A claim there that no item
-backs, and a decision found only in a comment, are must-fix findings; comments carry provenance
-notes only. It re-runs each read-only observation command and reports output or exit
+A third reader, **spec-provenance** (`agents/spec-provenance.md`), receives the YAML spec,
+transcript directory, private record and base commits. Item by item it judges authorization,
+asserted conditions and mandated mechanisms. For every subject the spec covers it searches every
+message of the user in every transcript of that directory, queued messages included, and a later
+statement that refines, narrows or contradicts a cited one outranks it. It also checks the frame
+around the items: the summary sentence by sentence, every boundary item, every comment line of the
+raw spec file, and every document, branch or earlier unit the spec names or builds on. A claim there
+that no item backs, and a decision found only in a comment, are must-fix findings; comments carry
+provenance notes only. It re-runs each read-only observation command and reports output or exit
 mismatches and observations older than the newest base commit.
 
 The provenance reader lists every message the user wrote, in every transcript of the directory
@@ -825,8 +826,8 @@ the same list. The read-only diff check then maps every change of the fix diff t
 entry. The parent unit's design document has no exception: a change to it maps to the corrective
 entry it carries out, or it is a CRITICAL finding. A correction whose only change is the document
 is accepted when its entry names the document, and a fix reported as done needs a commit of the
-fixer whatever path it touches. The fixer updates the document by hand from the code. Each finding of the diff check returns as a CRITICAL `diff-finding` and
-starts no further fixer.
+fixer whatever path it touches. The fixer updates the document by hand from the code. Each finding
+of the diff check returns as a CRITICAL `diff-finding` and starts no further fixer.
 Every entry the fixer reports fixed returns as an `unattested-fix` for the root to attest, as in
 the main run, and the run then ends `follow-up`, as it also does when only must-fix or CRITICAL
 roast findings remain. It ends `root-resolution` when an entry was refused, a fix was not applied,
@@ -992,20 +993,22 @@ proof. Apply improvements within authorized scope and report any broader follow-
 ### Size report and the 20:1 acceptance gate
 
 Measure the final candidate against its unit spec before integration, using immutable inputs:
-record, for every repository of the tree, the merge-base SHA and the candidate SHA, and the
-`sha256` of the final spec that the spec tool prints. That `sha256` equals the one the launch check of the run that produced the candidate
-printed, so the counted spec is the one the writers and reviewers read. The gate reads no design
-document. For bundle/patch delivery the comparison base is the project's declared reconstruction
-base; do not silently substitute a convenient newer base.
+record, for every repository of the tree, the merge-base SHA and the candidate SHA, and the `sha256`
+of the final spec that the spec tool prints. That `sha256` equals the one the launch check of the
+run that produced the candidate printed, so the counted spec is the one the writers and reviewers
+read. The gate reads no design document. For bundle/patch delivery the comparison base is the
+project's declared reconstruction base; do not silently substitute a convenient newer base.
 
 - **Spec lines:** the `specLines` count the spec tool reports for the final spec: the non-blank
   lines of its prose (`unit`, `summary` and each item's `content`, `user_words`, `answers`,
   `quote`, `observation.output` and `reason`), wrapped by the width rule the tool checks, plus
-  one line for each distinct item id named as a parent. This is the denominator of the code-to-spec ratio. The tool's `nonBlankLines` counts the whole
-  YAML file, quoted words, evidence and keys included, and belongs only to the tool summary.
+  one line for each distinct item id named as a parent. This is the denominator of the
+  code-to-spec ratio. The tool's `nonBlankLines` counts the whole YAML file, quoted words,
+  evidence and keys included, and belongs only to the tool summary.
 - **Code added/deleted:** sum the added and deleted line counts from
   `git diff --no-ext-diff --no-textconv --no-renames --numstat BASE_SHA CANDIDATE_SHA --`
-  over implementation files, run in each repository and summed over all of them. Use added lines as the numerator, never net added-minus-deleted.
+  over implementation files, run in each repository and summed over all of them. Use added lines
+  as the numerator, never net added-minus-deleted.
 - **Test added/deleted:** report separately for paths containing `tests/`, `test/`, `.test.`
   or `_test.`. Treat the repository root as a path boundary so root-level test directories count.
 - Exclude documentation (`*.md`), lockfiles, generated files and binaries from implementation
@@ -1341,26 +1344,26 @@ The phase shape only holds up if the script is written to hold it up.
 
 ### Every unit's script is a copy of the shipped one, edited in one block
 
-The skill ships three complete scripts under `scripts/`: `scripts/spec-review.js` for the
-pre-phase, `scripts/implement-review-verify.js` for the main run and `scripts/fix-follow-up.js`
-for a fix run. Copy the shipped script, and never copy a previous unit's copy. A copy of the
-pre-phase or the fix-run script edits only its marked block. A copy of the main script edits its
-marked block and sets exactly two values outside it, `meta.name` and `meta.description`: the name
-is a kebab-case name of the unit, and the description is one line saying what the run implements.
-The shipped main script carries `kebab-name` and `one line` as the values a unit replaces, and its
-phases and every other line outside the marked block stay as shipped. A copy that keeps the
-placeholders shows every main run in the workflow list under the same name and description. The
-marked block sits at the top of each file between two comment lines and holds every value a unit
-sets apart from `meta.name` and `meta.description` of the main script: the paths (main checkout,
-worktree, spec, transcripts, private record, plugin root), the documents directory, the check
-command, the `base` list, `criteriaCount`, the unit prompt text for the implementer, the scoping, the rule sources,
-the invariants and the model and effort per stage. The documents directory is relative to the tree
-root and lies inside one repository of the list, `docs` for a tree that is one repository; the
-scripts join it with the spec's file name to name the design document, which the writers commit in
-that repository. The fix run's block holds the fix list path, the entries and
-the parent spec in place of the spec, `criteriaCount` and the implementer's prompt. Everything below the block
-is the reviewed script and is not edited per unit. Never copy a previous unit's script and edit
-it, and never generalize one that already ran into a runner several units share.
+The skill ships three complete scripts under `scripts/`: `scripts/spec-review.js` for the pre-phase,
+`scripts/implement-review-verify.js` for the main run and `scripts/fix-follow-up.js` for a fix run.
+Copy the shipped script, and never copy a previous unit's copy. A copy of the pre-phase or the
+fix-run script edits only its marked block. A copy of the main script edits its marked block and
+sets exactly two values outside it, `meta.name` and `meta.description`: the name is a kebab-case
+name of the unit, and the description is one line saying what the run implements. The shipped main
+script carries `kebab-name` and `one line` as the values a unit replaces, and its phases and every
+other line outside the marked block stay as shipped. A copy that keeps the placeholders shows every
+main run in the workflow list under the same name and description. The marked block sits at the top
+of each file between two comment lines and holds every value a unit sets apart from `meta.name` and
+`meta.description` of the main script: the paths (main checkout, worktree, spec, transcripts,
+private record, plugin root), the documents directory, the check command, the `base` list,
+`criteriaCount`, the unit prompt text for the implementer, the scoping, the rule sources, the
+invariants and the model and effort per stage. The documents directory is relative to the tree root
+and lies inside one repository of the list, `docs` for a tree that is one repository; the scripts
+join it with the spec's file name to name the design document, which the writers commit in that
+repository. The fix run's block holds the fix list path, the entries and the parent spec in place of
+the spec, `criteriaCount` and the implementer's prompt. Everything below the block is the reviewed
+script and is not edited per unit. Never copy a previous unit's script and edit it, and never
+generalize one that already ran into a runner several units share.
 
 A script is not neutral plumbing: most of it is prompt text, and every line of that text is
 authority to the stage that receives it. A copied script carries the previous unit's authority —
@@ -1389,12 +1392,13 @@ All three scripts begin with a launch check, before any other agent: a small sta
 `claude-haiku-4-5` at low effort whose prompt is one command line and one sentence. The command
 changes to the tree the run works on, the worktree from the marked block for the main run and the
 fix run and the main checkout for the pre-phase, so the cited rule files resolve there.
-It then runs `<plugin root>/tools/check-spec.ts` with `--json`, the spec path from `args.specPath`, the
-transcript directory from `args.transcripts`, `--base` with the base list as JSON in single quotes and `--record` with the
-private record from the marked block. The tool fails when that record path differs from the spec's `record`. The sentence
-tells the stage to run that exact command once with the Bash tool and return its exit code,
-stdout, stderr and the proof string printed on success, with no interpretation, retry or fix. Its
-schema requires `exitCode`, `stdout`, `stderr` and `proof`.
+It then runs `<plugin root>/tools/check-spec.ts` with `--json`, the spec path from
+`args.specPath`, the transcript directory from `args.transcripts`, `--base` with the base list as
+JSON in single quotes and `--record` with the private record from the marked block. The tool fails
+when that record path differs from the spec's `record`. The sentence tells the stage to run that
+exact command once with the Bash tool and return its exit code, stdout, stderr and the proof string
+printed on success, with no interpretation, retry or fix. Its schema requires `exitCode`,
+`stdout`, `stderr` and `proof`.
 The script continues when `exitCode` is zero and `proof` is a non-empty string; otherwise the
 stage helper retries up to three times and then throws, quoting stderr. The script refuses at
 once when `args.specPath` does not end in `.yaml`. The script parses nothing from stdout and
@@ -1575,7 +1579,7 @@ quality seat's schema, like the other cold seats', names field shapes only and c
 The reviewer, verification and fixer objects carry enum-locked machine fields and typed evidence:
 the script checks source coverage, branches on verifier action and on the fixer's per-key
 disposition to build remaining items, and reads receipts (`file`, `line`, `quote`),
-`coverage`, `limitations` and quoted `checks` output where a user used to read prose. The findings
+`coverage`, `limitations` and quoted `checks` output, none of them free prose. The findings
 array is **defects only**: verdict rows go in `verdicts`, what was inspected in `coverage`, what
 was run in `checks`.
 

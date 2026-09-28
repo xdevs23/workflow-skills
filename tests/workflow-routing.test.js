@@ -1117,7 +1117,7 @@ describe('spec provenance instructions and routing', () => {
       'root runs the tool before the spec pre-phase and again before the main run',
       'A failing spec launches neither run', 'Validate the YAML after every amendment',
       'No Markdown design document is written, committed or checked before implementation',
-      'The tool neither renders nor checks a design document.', 'The tool prints its summary on stdout, as JSON with `--json`.',
+      'The tool prints its summary on stdout, as JSON with `--json`.',
       'The tracked design document is written by hand from the code after the implementation, so it records what was built.',
       'It describes the change as the code at the writer\'s final commit implements it: what it does, how its parts fit together,' +
         ' the decisions with their reasons, and the alternatives the user rejected with their reasons.',
@@ -1286,7 +1286,7 @@ describe('spec provenance instructions and routing', () => {
       'The writer checks every statement about behaviour against that code.',
       'It carries no words of the user, no local absolute paths and no account of the conversation, and it follows the repository\'s prose rules',
       '`summary` (Markdown, the spec\'s own summary)', 'the design document never shows the path',
-      'The tool validates references and neither renders nor checks a design document.']) expect(prose).toContain(phrase)
+      'The tool validates references.']) expect(prose).toContain(phrase)
     expect(prose).not.toContain('bun tools/check-spec.ts')
     for (const stale of ['Before implementation use `--check-render', 'regenerate after every amendment', '--render docs/<unit>.md --json',
       'once its work and checks are done', 'generated from the final YAML', 'the preamble of the generated document',
@@ -2545,7 +2545,6 @@ describe('the design document is written from the code after implementation', ()
     }
     expect(readme).not.toContain('to check that document before implementation')
     expect(readme).not.toContain('to generate the tracked design document')
-    expect(readme).toContain('The tool neither renders nor checks that document.')
     for (const option of ['--render', '--check-render']) expect([option, readme.includes(option)]).toEqual([option, false])
   })
 })
