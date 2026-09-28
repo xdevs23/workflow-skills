@@ -1,0 +1,34 @@
+#!/usr/bin/env python3
+"""A stand-in for the GitHub CLI that answers from fixture JSON.
+
+GH_STANDIN_FIXTURE names a JSON file with `loggedIn`, a boolean, and `api`, which maps each path
+given to `gh api --paginate --slurp` to a list of answers, one per call, the last repeated once
+the list runs out. An answer is `{"json": <printed output>}` or `{"fail": <stderr text>}`.
+GH_STANDIN_LOG names a file that receives every call as one JSON line.
+"""
+
+import json
+import os
+import sys
+
+args = sys.argv[1:]
+fixture = json.loads(open(os.environ["GH_STANDIN_FIXTURE"]).read())
+log = os.environ["GH_STANDIN_LOG"]
+calls = [json.loads(line) for line in open(log)] if os.path.exists(log) else []
+with open(log, "a") as out:
+    out.write(json.dumps(args) + "\n")
+
+if args == ["auth", "status"]:
+    if fixture["loggedIn"]:
+        sys.exit(0)
+    sys.exit("You are not logged into any GitHub hosts. To log in, run: gh auth login")
+
+if args[:3] != ["api", "--paginate", "--slurp"] or len(args) != 4:
+    sys.exit(f"stand-in gh: unexpected call {args}")
+answers = fixture["api"].get(args[3])
+if not answers:
+    sys.exit(f"stand-in gh: no answer for {args[3]}")
+answer = answers[min(calls.count(args), len(answers) - 1)]
+if "fail" in answer:
+    sys.exit(answer["fail"])
+print(json.dumps(answer["json"]))
