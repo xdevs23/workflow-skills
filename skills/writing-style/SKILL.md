@@ -13,59 +13,51 @@ over this file.
 
 ## Code and comments
 
-A comment describes what code can't express.
-
-Names are plain words. Invented metaphors are out.
-
-Nothing internal reaches a tracked file. No absolute paths, no facts about a session, no model
-names, no details of a local setup.
-
-A string addressed to a model addresses the model, and carries no repository paths.
-
-An i18n key gets a comment at its reference site stating the intent of the string.
+- Describe in a comment what the code can't express.
+- Name things with plain words, and invent no metaphors.
+- Let nothing internal reach a tracked file: no absolute paths, no facts about a session, no model
+  names, no details of a local setup.
+- Address a string meant for a model to the model, and put no repository paths in it.
+- Give an i18n key a comment at its reference site stating the intent of the string.
 
 ## Commits
 
-The body is written from zero, for a reader with no memory of the session, in simple language, without mannered speech.
-
-Process vocabulary, actor words such as owner, founder and admin as well as the word "ruled" stay out of the body.
-
-A commit never carries the name of any model unless the commit is specifically about a model.
+- Write the body from zero, for a reader with no memory of the session, in simple language, without
+  mannered speech.
+- Keep process vocabulary, actor words such as owner, founder and admin, and the word "ruled" out of
+  the body.
+- Never put the name of any model in a commit unless the commit is specifically about a model.
 
 ## Documents
 
-A document names components by their names. It carries no file paths and no file trees.
-
-Scoped-out work, project decisions, shortcuts and broken rules are never written as limitations.
-They are decisions, or they are defects. A shortfall nobody has decided on is marked OPEN and
-surfaced, never given a date that makes it look settled.
-
-A document that states a rule is neutral engineering law. The motive behind the rule stays out.
+- Name components by their names, and put no file paths and no file trees in a document.
+- Never write scoped-out work, project decisions, shortcuts or broken rules as limitations. They are
+  decisions, or they are defects.
+- Mark a shortfall nobody has decided on OPEN and surface it, and never give it a date that makes it
+  look settled.
+- State a rule as neutral engineering law, and keep the motive behind the rule out.
 
 ## Messages
 
-Paths, commands and identifiers are written in monospace.
-
-A message stands on its own and never depends on an earlier one to be understood.
-
-No jargon, no filler, no hedging, and no restating of the question.
-
-No preamble, no passage explaining why the thing matters, and no offer or next-step commentary at
-the end.
-
-No walls of text. No mannered speech.
+- Write paths, commands and identifiers in monospace.
+- Make every message stand on its own, so it never depends on an earlier one to be understood.
+- Use no jargon, no filler and no hedging, and do not restate the question.
+- Write no preamble, no passage explaining why the thing matters, and no offer or next-step
+  commentary at the end.
+- Write no walls of text.
+- Write no mannered speech.
 
 ## Words to avoid
 
-The list below is banned in code, comments, documents, commit messages and chat alike, whole word,
-any casing.
+Avoid the words of this list in code, comments, documents, commit messages and chat alike, whole
+word, any casing:
 
 rather than (as a phrase), worth, twist, caveat, seat, lane, leg, drive, doctrine, ruling, gate,
 landed, cold, belt-and-suspenders, load-bearing, guessing, ground, wrinkle, guard, pin, owner,
 masthead, flagging, the "X, not Y" shape.
 
-The list is not absolute. A use can stand when the situation justifies it, and the justification
-has to be real. The default is the plain replacement.
+- Use the plain replacement by default. The list is not absolute: a use can stand when the
+  situation justifies it, and the justification has to be real.
 
 | Instead of | Write |
 |---|---|
@@ -79,55 +71,47 @@ has to be real. The default is the plain replacement.
 | owner, for the person this machine answers to | user |
 | masthead | page header |
 
-The word pin has no single replacement, because it has meant three different things in one day,
-which is the proof that it means nothing. Say the actual thing: locked to a revision, asserted
-exactly by a test, written into the spec. A repository-internal document or an agent prompt may
-keep pinned as working vocabulary for a locked dependency.
-
-Settle and settled are allowed inside a repository as domain vocabulary and
-avoided in prose addressed to a person. Ruled and ruling are avoided everywhere, in favour of
-decided.
-
-An identifier that already contains one of these words is exempt.
+- Say the actual thing in place of pin: locked to a revision, asserted exactly by a test, written
+  into the spec. The word has no single replacement, because it has meant three different things in
+  one day, which is the proof that it means nothing. A repository-internal document or an agent
+  prompt may keep pinned as working vocabulary for a locked dependency.
+- Use settle and settled inside a repository as domain vocabulary, and avoid them in prose addressed
+  to a person.
+- Avoid ruled and ruling everywhere, in favour of decided.
+- Leave an identifier that already contains one of these words as it is: it is exempt.
 
 ## Patterns to avoid
 
-Announcement preambles. An opener whose only job is to introduce what follows gets deleted whole,
-including its colon, and the sentence begins at what came after it. "One thing to note:", "The
-honest answer:", "To be clear:", "Two things I could not decide for you.", "Five things:". If the
-sentence after the colon always stands without it, don't write it.
-
-Forced triads, such as fast, reliable and scalable, and the same idea cycled through synonyms
-across consecutive sentences.
-
-Roundabout constructions: serves as, acts as, plays a role in. Say what the thing does.
-
-Superficial gerund clauses, such as an ending that highlights the importance of something. Write a
-real sentence instead.
-
-Gratuitous boldface, formulaic headers, decorative emoji, and title case in a heading that is prose.
-
-Pleasantries, hedging filler, and a generic conclusion that restates what was already said.
-
-Impressionistic wording where a concrete mechanism fits. Name the file, the number, the cause.
-
-A weak verb propped up by an adverb where a strong verb exists. The passive voice where the actor
-is known.
+- Delete announcement preambles. An opener whose only job is to introduce what follows gets deleted
+  whole, including its colon, and the sentence begins at what came after it. "One thing to note:",
+  "The honest answer:", "To be clear:", "Two things I could not decide for you.", "Five things:". If
+  the sentence after the colon always stands without it, don't write it.
+- Avoid forced triads, such as fast, reliable and scalable, and the same idea cycled through
+  synonyms across consecutive sentences.
+- Avoid roundabout constructions: serves as, acts as, plays a role in. Say what the thing does.
+- Replace a superficial gerund clause, such as an ending that highlights the importance of
+  something, with a real sentence.
+- Avoid gratuitous boldface, formulaic headers, decorative emoji, and title case in a heading that
+  is prose.
+- Avoid pleasantries, hedging filler, and a generic conclusion that restates what was already said.
+- Name the file, the number, the cause where a concrete mechanism fits, in place of impressionistic
+  wording.
+- Use a strong verb where one exists, in place of a weak verb propped up by an adverb, and the
+  active voice where the actor is known.
 
 ## Em dashes
 
-Reduced, not banned. The default is a comma, a colon, or two sentences, and every em dash kept has
-to earn its place. A file that states rules carries none.
+- Use a comma, a colon, or two sentences by default. Em dashes are reduced, not banned, and every em
+  dash you keep has to earn its place.
+- Put no em dash in a file that states rules.
 
 ## Umbrella rule
 
-No filler jargon anywhere, and simple language everywhere.
-
-Messages to a person come first. They carry no process vocabulary, and every term of art is said in
-plain words a reader outside the project would understand.
+- Use no filler jargon anywhere, and simple language everywhere.
+- Put messages to a person first. Keep process vocabulary out of them, and say every term of art in
+  plain words a reader outside the project would understand.
 
 ## Text written before this file
 
-Existing text is not rewritten in passing. It goes into the project's own clean-up unit, or it is
-corrected where a piece of work touches it anyway.
-
+- Do not rewrite existing text in passing. Put it into the project's own clean-up unit, or correct
+  it where a piece of work touches it anyway.

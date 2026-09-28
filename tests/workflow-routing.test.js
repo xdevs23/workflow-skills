@@ -1599,12 +1599,12 @@ describe('one-pass remaining-items handoff', () => {
     for (const word of ['seat', 'lane', 'gate', 'landed', 'cold', 'load-bearing', 'guard', 'pin', 'owner']) {
       expect(style).toContain(word)
     }
-    expect(style).toContain('Announcement preambles')
-    expect(style).toContain('A comment describes what code can\'t express')
-    expect(style).toContain('never written as limitations')
-    expect(style).toContain('Existing text is not rewritten in passing')
-    expect(style).toContain('Paths, commands and identifiers are written in monospace')
-    expect(style).toContain('No walls of text')
+    expect(style).toContain('Delete announcement preambles')
+    expect(style).toContain('Describe in a comment what the code can\'t express')
+    expect(flat(style)).toContain('Never write scoped-out work, project decisions, shortcuts or broken rules as limitations')
+    expect(style).toContain('Do not rewrite existing text in passing')
+    expect(style).toContain('Write paths, commands and identifiers in monospace')
+    expect(style).toContain('Write no walls of text')
   })
 
   test('every other skill requires loading the writing-style skill', async () => {
