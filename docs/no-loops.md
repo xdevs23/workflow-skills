@@ -39,8 +39,10 @@ Where both skills stated the same rule, such as the record format, the authority
 premise-change rule and the criterion ordinals, spec-writing states it once, with the facts only one
 of the two carried joined in. Otherwise the moved text keeps its wording. The exceptions are the
 pointers to the deleted skills and their loops, which are dropped, the references to the laws of
-implement-review-verify, which now name that skill, and the sentence on a record changing during a
-review cycle, which the section on specs during a run below replaces.
+implement-review-verify, which now name that skill, the sentence on a record changing during a
+review cycle, which the section on specs during a run below replaces, and the sentence on what the
+technical decision record holds, which names the tracked design document where it said committed
+spec, since the YAML spec stays private and untracked.
 
 Two rules in spec-writing say what the root may do to a spec on its own. An edit the root makes on
 its own is an ordinary derivation from an existing decision, never a new product, architecture,
@@ -74,11 +76,9 @@ review are recorded in the todo record like any other remaining item. Every othe
 todo record as a separate unit, done later. The cleanup entries the rule reader and the finding
 verifier hand over are recorded the same way, as separate units.
 
-A run that ended before its review stage returned, with exit `failed` or `aborted` or a blocking
-limitation of the implement stage, built no reviewed result. The root resumes it through
-resume-interrupted-run where the harness allows, and otherwise starts it once more on the same spec
-after the cause is fixed and recorded. An abort that puts a question to the user waits for the
-answer first.
+A run interrupted mid-flight is resumed through resume-interrupted-run. A run that ended any other
+way, before or after its review, has its items recorded like every run, and the root never starts a
+run on the same spec again.
 
 Law 5 of implement-review-verify, its rationale line on attesting fixes and its resume corollaries
 say the same. The rule that a defect moved twice gets its cause fixed stays in the remaining items
@@ -87,30 +87,35 @@ counts as broken. The run record's exit value `follow-up` keeps its name.
 
 ## A spec does not change under a run
 
-The root does not edit a spec or its record while a run on it is in flight. A change after the run
-started is work for a new unit and never repeats the finished run's reviews. Law 9 and law 15 of
-implement-review-verify and the evidence paragraph of spec-writing say so, in place of the earlier
-instructions to invalidate and repeat reviews, approvals and verification after an edit.
+The root does not edit a spec or its record while a run on it is in flight. The spec review before
+the main run is the one run after which the root amends the spec, once, before it launches the main
+run on it. A change after the main run started is work for a new unit and never repeats the
+finished run's reviews. Law 9 and law 15 of implement-review-verify and the evidence paragraph of
+spec-writing say so, in place of the earlier instructions to invalidate and repeat reviews,
+approvals and verification after an edit.
 
 An inverse-spec decision is resolved by recording in the todo record that the user's recorded words
 back the code's choice, or by asking the user. A code change it needs is a new run under the
-remaining items rules. The finding verification phase, the root's question-premise check, law 15 and
-the comment on `inverseSpecDecisions` in the main workflow script all say this. A new run that
-changes the code is measured against the 20:1 size check on its own candidate, and excess code or
-missing spec detail found by that check is work for a new run or a new unit.
+remaining items rules. The finding verification phase, the root's question-premise check and law 15
+say this, and so do the finding verifier template, which adds that the root never corrects the spec
+of the run, and the main workflow script, in its comment on `inverseSpecDecisions` and in the error
+it raises when an inverse-spec finding is dispositioned as cleanup. A new run that changes the
+code is measured against the 20:1 size check on its own candidate, and excess code or missing spec
+detail found by that check is work for a new run or a new unit.
 
 ## Agent templates and the other skills
 
 The finding verifier, fixer, project rule reader and roaster templates change only in the lines
-that had the root schedule cleanup promptly or that spoke of a follow-up as the next pass of the
-same work. Cleanup is recorded as separate units, the fixer's claims are attested by the root, and
-the roaster's findings are checked against the resulting tree and recorded in the todo record.
+that had the root schedule cleanup promptly, that spoke of a follow-up as the next pass of the same
+work, or that had the root correct the spec for an inverse-spec finding. Cleanup is recorded as
+separate units, the fixer's claims are attested by the root, and the roaster's findings are checked
+against the resulting tree and recorded in the todo record.
 
 resume-interrupted-run no longer describes a re-verification round after a fix pass.
 visual-verification tells the session to run a curated scene and look at every image it writes,
 counting the scene only when it passes for the right reasons, and says that adopting a harness is
-never made part of a product change. No workflow script changes apart from the one comment, and no
-reviewer of the main script changes.
+never made part of a product change. No workflow script changes apart from that comment and that
+error message, and no reviewer of the main script changes.
 
 ## Tests and version
 
@@ -123,13 +128,13 @@ no agent template schedules cleanup promptly or speaks of a follow-up, that no s
 until it passes or folds work into other work, and that the README and both manifests list
 spec-writing and describe no loop.
 
-The plugin version stays 0.27.0, because the published version is still 0.26.0 and the raise to
-0.27.0 is not published yet.
+The plugin version stays 0.27.0.
 
 ## Decisions and their reasons
 
-- The five skills are deleted, not restricted, because each of them existed to repeat a pass until
-  it came back clean, and a restriction would have kept the repetition in the plugin.
+- The five skills are deleted. immaculate-spec-writing repeated find-gaps and verify-loop until one
+  pass came back clean on both, and audit-loop is not in use. research-loop and verify-loop are
+  deleted with them.
 - Every spec rule lives in spec-writing, because rules split across a workflow skill and a loop
   skill were stated twice and loaded only with a skill that did more than write a spec.
 - The description of spec-writing names only when it applies, because a description explains when
@@ -139,8 +144,6 @@ The plugin version stays 0.27.0, because the published version is still 0.26.0 a
   new run has its own reason in the todo record.
 - A spec stays fixed while a run on it is in flight, because an edit during a run is what made
   reviews and approvals stale and asked for them to be repeated.
-- A run that ended before its review stage returned may start once more, because it has no reviewed
-  result, so starting it again finishes the unit and repeats nothing.
 - No number of runs is set as a limit, because the relocation rule already points to an untouched
   cause by counting how often one defect moved.
 - The word fold, for merging one piece of work into another, is replaced by plain words, because it
