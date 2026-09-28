@@ -143,7 +143,7 @@ Skip this section entirely for a single-locale product.
 
 ## Verification — what makes this a workflow
 
-Verify in four stages, in this order: a tool, two agents, a person.
+- Verify in four stages, in this order: a tool, two agents, a person.
 
 1. **Mechanical gate — a committed ONE-COMMAND TOOL, not a seat.** It RECOMPUTES everything from the
    files: key parity across locales, slot budgets, syntax law, the forbidden-literals grep, and a
@@ -153,24 +153,24 @@ Verify in four stages, in this order: a tool, two agents, a person.
    cost with a disagreement risk attached. It has no prompt template because it has no judgment to
    template. **It never trusts a writer's self-report** — a self-report is only a truncation and
    dishonesty detector, never evidence.
-2. **Source-verify seat** (`agentType:'workflow-skills:copy-source-verify'`) — a **detail-strong
+2. **Source-verify seat** (`agentType:'workflow-skills:copy-source-verify'`): a **detail-strong
    model, never the smallest**. Every factual claim against the facts doc *and* the live artifact.
    Register discipline in every language, including the ones nobody on the team reads (wording that
    implies a temporary state where a permanent one is promised is the standing example).
    Superlatives need grounding. **Observed, not recalled:** agents will confidently misremember the
    wording of real-world artifacts, so fetch and transcribe, label such data "observed", and never
    let an agent cite an authority it did not check.
-3. **Fresh-context critic** (`agentType:'workflow-skills:copy-critic'`) — a seat that never saw the
+3. **Fresh-context critic** (`agentType:'workflow-skills:copy-critic'`): a seat that never saw the
    writing happen. Models audit far better than they compose. It names each sentence's source line,
    lists every sentence lacking a subject and a finite verb, and counts the tell markers. It audits;
    it never rewrites.
 4. **A user reads the load-bearing strings before ship.** Non-negotiable, and cheap: it is a handful
    of sentences.
 
-Run the **completeness pass** alongside stages 2 and 3, inside Verify and always **before** the
-user: "which item is missing entirely?" Per-item checks structurally cannot see an absent item, and
-absences are the worst defect class to ship, so the question gets asked once, explicitly, of the
-whole work-list.
+- Run the **completeness pass** alongside stages 2 and 3, inside Verify and always **before** the
+  user: "which item is missing entirely?" Per-item checks structurally cannot see an absent item,
+  and absences are the worst defect class to ship, so the question gets asked once, explicitly, of
+  the whole work-list.
 
 ## The forbidden-literals manifest
 
