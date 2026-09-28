@@ -166,13 +166,13 @@ items of kind `rejected`, and the writer adds none of its own. The writer checks
 about behaviour against that code. The document carries no words of the user, no local absolute
 paths and no account of the conversation, and it follows the repository's prose rules and
 `workflow-skills:writing-style`. Writing it is the writers' completion step. The implementer, once
-its implementation is done, writes `docs/<unit>.md` as its last write. Its checks then run once,
-after that write, and it commits the document as its own commit. The fixer, once its corrections
-are done, updates the document by hand where a correction changed what it describes, as its last
-write before its checks, and commits it when it changed. A fix run's fixer does the same for the
-parent unit's document. The writer prompts of the main and fix-run scripts carry this step, with
-the document path built from the spec path of the marked block: the document takes its name from
-the spec's file name.
+its implementation is done, writes `docs/<unit>.md` as its last write. Its focused checks then run
+once, after that write, and it commits the document as its own commit. The fixer, once its
+corrections are done, updates the document by hand where a correction changed what it describes, as
+its last write before its checks, and commits it when it changed. A fix run's fixer does the same
+for the parent unit's document. The writer prompts of the main and fix-run scripts carry this step,
+with the document path built from the spec path of the marked block: the document takes its name
+from the spec's file name.
 
 The tool prints its summary on stdout, as JSON with `--json`. The root runs the tool before the spec
 pre-phase and again before the main run's implement stage, and each run's first stage runs it once
@@ -348,7 +348,10 @@ reviews can be one barrier covering both. Brief it with:
 - the **spec**, meaning its items read from the spec path, plus the acceptance criteria. A decision
   the prompt states quotes the user's words and names the date they were said;
 - the **invariants** in plain language (the ordering rule, the idempotency rule, …);
-- a **self-check**: run the relevant test subset before reporting done, and FIX what it added that fails.
+- a **self-check**: the focused checks that cover what it changed, its tests and its type check or
+  build, run once before reporting done, and FIX what it added that fails. The implementer never
+  runs the full check command: the fixer changes code after it, so a full run in the implement
+  stage goes stale, and the fixer's run after the last write of the run is the one full check.
 
 **Sense check before any edit.** The implementer reads the private directive record and the spec
 and asks two questions: does any recorded decision rule out the mechanism the request changes, or
@@ -1382,9 +1385,10 @@ What carries across units is the shipped scripts and the template constants they
 reviewed text, versioned in one place, changed once. What does not carry across is a file from a
 previous run. Reuse the shipped file, fill the block for the unit.
 
-The check command is prompt text for the writing stages only. It never sits in a block that
-reviewers receive: a reviewer may not run it, so a shared block carrying it orders and forbids the
-same act. The main script keeps it in `CHECK`, which only the implementer and fixer prompts join.
+The check command is prompt text for the fixer only. It never sits in a block that reviewers
+receive: a reviewer may not run it, so a shared block carrying it orders and forbids the same act.
+The main script keeps it in `CHECK`, which only the fixer's prompt joins. The implementer's prompt
+joins `FOCUSED` in its place, the order to run only the checks that cover what it changed.
 
 ### The launch check
 

@@ -75,8 +75,10 @@ Rules:
   record of workflow-skills:todo-md untracked and out of commits unless explicitly requested
   otherwise. The concurrent roaster reads immutable Git objects only; the snapshot it was given
   must not change when your commit advances HEAD.
-- Prove it: run the full suite and build after your last write and quote each run in checks
-  (command, passed, quoted output, truncated when only the last 6000 characters fit). After
+- Prove it: run the full check command bare after your last write, also in a proof-only pass.
+  It is the run's one full check: the implementer ran only focused checks, because your changes
+  would have made its full run stale. Quote each run in checks (command, passed, quoted output,
+  truncated when only the last 6000 characters fit). After
   committing, check clean status and the final SHA of every repository again. If hooks changed
   content, rerun the checks against the committed content. No backgrounded waits. Return abort,
   limitations (what, effect blocks or narrows), repositories (one entry per listed repository:

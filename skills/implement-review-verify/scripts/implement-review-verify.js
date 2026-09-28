@@ -19,11 +19,11 @@ const UNIT = {
   transcripts: args.transcripts,         // the session transcript directory, passed at launch
   privateRecord: '<main checkout>/.cache/directives/<unit>.yaml',   // where workflow-skills:local-cache puts directive records
   pluginRoot: '<plugin root>',           // the directory holding tools/check-spec.ts
-  checkCommand: '<the check command>',   // writers only, run bare after the last write
+  checkCommand: '<the check command>',   // the fixer only, run bare after its last write
   base: args.base,                       // one { path, sha } per git repository of the tree: its path under the tree root and starting commit, passed at launch
   documents: '<documents directory>',    // design documents, relative to the tree root and inside one repository of base; docs for a one-repository tree
   criteriaCount: args.criteriaCount,     // counts.kind.criterion from the check tool, passed at launch
-  implementerPrompt: 'Implement, check, and commit only scoped changes.',
+  implementerPrompt: 'Implement, run focused checks, and commit only scoped changes.',
   scoping: '<orchestrator scoping, or none>',
   ruleSources: '<applicable project, directory and global rule paths>',
   invariants: '<only the constraints alternatives must preserve>',
@@ -493,8 +493,15 @@ const PROVE = [
   'output ceiling and leaves a TRUNCATED file rather than an error. The layout of CODE is decided',
   'by the spec and not by this rule: decomposition governs the DELIVERABLE, never the design.',
 ].join('\n')
-// Writer prompts only. A block that reviewers receive never carries the check command.
-const CHECK = 'CHECK COMMAND, writer only (run bare after your last write): ' + UNIT.checkCommand
+// Fixer prompts only. Neither a block that reviewers receive nor the implementer's prompt carries
+// the check command: the fixer changes code after the implementer, so a full check in the implementer
+// stage goes stale, and the fixer's run after the last write of the run is the one full check.
+const CHECK = 'CHECK COMMAND, fixer only (run bare after your last write): ' + UNIT.checkCommand
+const FOCUSED = [
+  'FOCUSED CHECKS, implementer only: after your last write, run only the checks that cover what you changed,',
+  'bare and once: its tests, and its type check or build where the project has one. Never run the full check:',
+  'the fixer runs it once after its corrections, and a full run here goes stale when the fixer changes a file.',
+].join('\n')
 // The design document exists only after the work: the implementer writes it by hand from the code
 // it built as its last write, once its implementation is done, and the fixer brings it up to date
 // as its last write after its corrections. The checks run once, after that write. Its path is the
@@ -509,9 +516,9 @@ const DOCUMENT_CONTENT = [
   'conversation, and it follows the repository\'s prose rules and the writing-style skill.',
 ].join('\n')
 const DOCUMENT_IMPL = [
-  'DESIGN DOCUMENT, writer only: once your implementation is done, write ' + DOCUMENT + ' by hand from the code you built and the spec, as your last write, before your checks.',
+  'DESIGN DOCUMENT, writer only: once your implementation is done, write ' + DOCUMENT + ' by hand from the code you built and the spec, as your last write, before your focused checks.',
   DOCUMENT_CONTENT,
-  'Then run your checks once, and commit ' + DOCUMENT + ' as its own commit in the repository that holds it and list it in files.',
+  'Then run your focused checks once, and commit ' + DOCUMENT + ' as its own commit in the repository that holds it and list it in files.',
 ].join('\n')
 const DOCUMENT_FIX = [
   'DESIGN DOCUMENT, writer only: once your corrections are done, update ' + DOCUMENT + ' by hand where a correction changed what it describes, as your last write, before your checks.',
@@ -656,7 +663,7 @@ const fixPass = (queue, starts) => stage([
 async function onePass() {
   phase('Implement')
   impl = await stage(
-    [AUTHORITY, WRITE_GIT, SPEC, PROVE, DOCUMENT_IMPL, CHECK, 'START SHAS, per repository: ' + listed(base), UNIT.implementerPrompt].join('\n\n'),
+    [AUTHORITY, WRITE_GIT, SPEC, PROVE, DOCUMENT_IMPL, FOCUSED, 'START SHAS, per repository: ' + listed(base), UNIT.implementerPrompt].join('\n\n'),
     { label: 'impl', phase: 'Implement', agentType: 'workflow-skills:implementer', ...UNIT.models.impl, schema: IMPLEMENT },
     checkWriter,
   )

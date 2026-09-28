@@ -77,17 +77,17 @@ for a throwaway note, just use the sub-skills directly.
 Write the unit spec, `<unit>.yaml` in the private-spec location that `workflow-skills:local-cache`
 defines, ignored and untracked because it contains verbatim user words. The private directive
 record lives where that skill puts private directive records. The YAML holds everything, and it
-is the only form of the spec before and during implementation. Edit the YAML and validate it
-again after every amendment. The tracked design document under `docs/` is written by hand from
-the code after the implementation, so it records what was built: the implementer writes it as its
-last write once its implementation is done, runs its checks after that write and commits it, and
-the fixer updates it as its last write after its corrections, before its checks. It describes the
-change as the code at the writer's final commit implements it: what it does, how its parts fit
-together, the decisions with their reasons, and the alternatives the user rejected with their
-reasons, taken from the items of kind `rejected`, to which the writer adds none of its own. The
-writer checks every statement about behaviour against that code. It carries no words of the user,
-no local absolute paths and no account of the conversation, and it follows the repository's prose
-rules and `workflow-skills:writing-style`.
+is the only form of the spec before and during implementation. Edit the YAML and validate it again
+after every amendment. The tracked design document under `docs/` is written by hand from the code
+after the implementation, so it records what was built: the implementer writes it as its last write
+once its implementation is done, runs its focused checks after that write and commits it, and the
+fixer updates it as its last write after its corrections, before its checks. It describes the change
+as the code at the writer's final commit implements it: what it does, how its parts fit together,
+the decisions with their reasons, and the alternatives the user rejected with their reasons, taken
+from the items of kind `rejected`, to which the writer adds none of its own. The writer checks every
+statement about behaviour against that code. It carries no words of the user, no local absolute
+paths and no account of the conversation, and it follows the repository's prose rules and
+`workflow-skills:writing-style`.
 
 `<plugin root>/tools/check-spec.ts` defines the validation contract; the committed, synthetic example at
 `tests/fixtures/spec-provenance/valid.yaml` is exercised by the tests. The top-level mapping has
