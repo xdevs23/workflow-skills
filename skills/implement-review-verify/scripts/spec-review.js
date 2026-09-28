@@ -10,6 +10,7 @@ export const meta = {
 // Everything below the closing line is the reviewed script and is not edited per unit.
 const UNIT = {
   mainCheckout: '<main checkout>',
+  worktree: '<isolated worktree>',       // the tree the unit is built in; the launch check runs there
   specPath: args.specPath,               // the unit spec under the main checkout, passed at launch; ends in .yaml
   transcripts: args.transcripts,         // the session transcript directory, passed at launch
   privateRecord: '<main checkout>/.cache/directives/<unit>.yaml',   // where workflow-skills:local-cache puts directive records
@@ -167,7 +168,7 @@ const GATE = { type: 'object', required: ['exitCode', 'stdout', 'stderr', 'proof
   properties: { exitCode: { type: 'integer' }, stdout: { type: 'string' }, stderr: { type: 'string' }, proof: { type: 'string' } } }
 // The command runs in the main checkout, where the cited rule files resolve. The tool fails when the
 // private record of the marked block is not the record the spec names.
-const GATE_COMMAND = 'cd ' + UNIT.mainCheckout + ' && bun ' + UNIT.pluginRoot + '/tools/check-spec.ts ' + UNIT.specPath +
+const GATE_COMMAND = 'cd ' + UNIT.worktree + ' && bun ' + UNIT.pluginRoot + '/tools/check-spec.ts ' + UNIT.specPath +
   ' --transcripts ' + UNIT.transcripts + ' --json --base \'' + JSON.stringify(UNIT.base) + '\' --record ' + UNIT.privateRecord
 const checkGate = r => {
   if (r.exitCode !== 0 || typeof r.proof !== 'string' || !r.proof.trim()) {
