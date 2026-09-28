@@ -272,6 +272,15 @@ const shaByPath = list => new Map(list.map(entry => [entry.path, entry.sha]))
 const listed = list => list.map(entry => entry.path + ' ' + entry.sha).join(', ')
 const snapshotsOf = writer => writer.repositories.map(r => ({ path: r.path, sha: r.snapshotSha }))
 const sameSnapshots = (a, b) => a.length === b.length && a.every(entry => shaByPath(b).get(entry.path) === entry.sha)
+// A reader may name a repository by its path inside the worktree instead of the list's path under the
+// tree root; both name the same repository.
+const listPath = path => {
+  const root = UNIT.worktree.replace(/\/+$/, ''), trimmed = path.replace(/\/+$/, '')
+  if (trimmed === root) return '.'
+  const inside = trimmed.startsWith(root + '/') ? trimmed.slice(root.length + 1) : trimmed
+  return inside.replace(/^\.\//, '') || '.'
+}
+const reported = list => list.map(entry => ({ ...entry, path: listPath(entry.path) }))
 if (typeof UNIT.fixList !== 'string' || !UNIT.fixList.endsWith('.yaml')) throw new Error('args.fixList must name the fix list YAML file')
 if (typeof UNIT.transcripts !== 'string' || !UNIT.transcripts) throw new Error('args.transcripts must name the transcript directory')
 if (typeof UNIT.parentSpec !== 'string' || !UNIT.parentSpec.trim()) throw new Error('args.parentSpec must be the parentSpec from the check tool')
@@ -463,13 +472,13 @@ const roastPass = async queue => {
     'No filesystem Read/Grep/Glob, working-tree scripts, builds, external diff helpers or Git mutations.',
     WRITE_NOTHING,
     LIMITS,
-    'Cite the repository path, its snapshot SHA and the snapshot file:line in receipts. Return snapshots (the path and sha of each repository you read), limitations, coverage and findings.',
+    'Cite the repository path, its snapshot SHA and the snapshot file:line in receipts. Return snapshots (the path of each repository you read, exactly as the list above writes it, and its sha), limitations, coverage and findings.',
     'APPROVED FIX LIST (planned; the fixer has not applied it yet):', JSON.stringify(queue),
     'Do not repeat assigned defects; do flag inadequate corrections, interactions and uncovered weaknesses.',
   ].join('\n\n'), {
     label: 'roast', phase: 'Fix', agentType: 'workflow-skills:roaster', ...UNIT.models.roast, schema: ROAST,
   }, checkReader)
-  if (!sameSnapshots(result.snapshots, base)) throw new Error('Roaster reviewed the wrong snapshot')
+  if (!sameSnapshots(reported(result.snapshots), base)) throw new Error('Roaster reviewed the wrong snapshot')
   return { ...result, findings: sourceFindings(result.findings, 'roaster', base) }
 }
 const diffPass = (queue, snaps) => stage([
