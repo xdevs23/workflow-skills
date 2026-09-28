@@ -1864,7 +1864,7 @@ describe('work execution rules', () => {
     expect(text).toContain("separate from the twenty-minute soft ceiling on one agent's task below, which is measured after the fact and is unchanged")
   })
 
-  test('the four briefed review templates state that a reviewer suggests and never decides', async () => {
+  test('the three briefed review templates state that a reviewer suggests and never decides', async () => {
     for (const name of ['reviewer-correctness', 'reviewer-spec-compliance', 'reviewer-inverse-spec']) {
       const text = await template(name)
       expect(text).toContain('You suggest and never decide.')
