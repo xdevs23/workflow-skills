@@ -3238,6 +3238,23 @@ describe('the implementer checks the spec, and every stage reads only words said
     }
   })
 
+  test('a joint-impossibility or missing-contract entry without a blocking limitation, or with moved snapshots, is refused', async () => {
+    const limitation = { what: 'The spec cannot be built as written.', effect: 'blocks' }
+    for (const kind of ['joint-impossibility', 'missing-contract']) {
+      const entry = specFinding(['item-0', 'item-1'], kind)
+      const unpaired = await simulate({ implementation: implemented({ snapshotSha: BASE, specFindings: [entry] }) })
+      expect([kind, unpaired.result.exit, unpaired.result.detail])
+        .toEqual([kind, 'failed', expect.stringContaining('a ' + kind + ' spec finding needs a limitation of effect blocks')])
+      expect([kind, unpaired.calls.some(c => c.phase === 'Review')]).toEqual([kind, false])
+      const moved = await simulate({ implementation: implemented({ limitations: [limitation], specFindings: [entry] }) })
+      expect([kind, moved.result.exit, moved.result.detail])
+        .toEqual([kind, 'failed', expect.stringContaining('a ' + kind + ' spec finding leaves every repository at its start SHA, but moved: .')])
+    }
+    // An unbacked-item or reality-drift entry lets the run go on, with or without a limitation.
+    const { result } = await simulate({ implementation: implemented({ specFindings: [specFinding(['item-0'], 'unbacked-item'), specFinding(['item-1'], 'reality-drift')] }) })
+    expect(result.exit).toBe('follow-up')
+  })
+
   test('spec-writing, the implementer, the inverse-spec reviewer, the finding verifier and the skill state the rules', async () => {
     const other = 'Words about another unit, such as a request to record a todo for later work or a decision given for a different piece of work'
     const crossed = 'A short answer that crossed with a newer message answers the earlier message and never approves what the newer message proposed.'
