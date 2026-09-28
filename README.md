@@ -82,6 +82,17 @@ workflows.
   the same proof. Add `--expect <json>` to fail when the entries and parent spec a fix script
   received at launch differ from the list, and `--record <path>` to fail when the record path
   differs from the parent spec's `record`.
+- **Python 3 and the GitHub CLI `gh`, logged in**, for `tools/watch-prs.py`, the pull request
+  watcher that `babysit-pr` runs. Run it as
+  `python3 <plugin root>/tools/watch-prs.py --state <file> [--interval <seconds>] <pull request>...`,
+  naming each pull request as `owner/repo#number`, or as `owner/repo@branch` for the open pull
+  request whose head is that branch. It polls every 60 seconds unless `--interval` gives another
+  number, reads GitHub only through `gh api --paginate --slurp`, and prints one JSON line per
+  event: `watching` at start, `comment`, `review`, `review-comment` and `check-failed` for each
+  one not printed before, `merged` or `closed` when a pull request ends, `poll-error` when a poll
+  fails, and `done` when every pull request is closed or merged. The state file keeps the ids of
+  the events already printed, so a restarted watch prints only what is new. The watcher exits with
+  an error when `gh` is missing or not logged in, or when a branch has no open pull request.
 - **Explicit model selection.** Agent templates carry no model defaults. The orchestrator must
   select an explicit model and effort for every stage at launch, following the applicable project
   policy. Do not rely on template defaults or implicit inheritance.
