@@ -12,6 +12,9 @@ A reusable, project-agnostic shape for landing a non-trivial CODE change with co
 *builds* against a settled design and adversarially checks the result before it is accepted.
 Scoped commits provide immutable review snapshots, not approval to merge or push.
 
+This skill is only meant for the orchestrator – that is, the root agent the user is talking to.
+Subagents and workflow agents never invoke this skill and must reject any attempt to do so.
+
 The orchestrator runs it as a `Workflow()` (deterministic fan-out/sequence). The phases are
 fixed; the breadth inside each scales to the change.
 
