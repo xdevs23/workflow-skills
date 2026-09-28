@@ -12,7 +12,7 @@ over this file wherever the two differ.
 
 ## The directory
 
-- The project cache is the `.cache/` directory at the project root, ignored and untracked.
+- Use the `.cache/` directory at the project root as the project cache, ignored and untracked.
 - Make sure the project's ignore rules cover it before you write anything there.
 - Never commit anything in it.
 
