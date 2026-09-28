@@ -54,9 +54,9 @@ The implementer returns each finding in `specFindings`, a field its output schem
 entry per finding with the ids of every spec item it concerns in `items`, a list of at least one
 id, the `class`, the `claim` and `receipts` with at least one receipt. A `joint-impossibility`
 entry names each item of the conflict. The class is an enum of the four names above. No finding
-fails the sense check, sets the abort or asks the user. Which findings block the run, and which
-items the implementer builds when a finding does not block it, is described in
-[items the implementer leaves unbuilt](unbuilt-items.md).
+fails the sense check, sets the abort or asks the user. The design document on the items the
+implementer leaves unbuilt describes which findings block the run, and which items the implementer
+builds when a finding does not block it.
 
 ## How the findings reach the root
 
@@ -67,10 +67,14 @@ approvals and unattested fixes. When the implementer aborts, its findings still 
 beside the abort. When the implement stage fails without ever returning a complete object, there
 is nothing to hand over.
 
-Because every spec finding is must-fix or CRITICAL, a pass that ends with one and nothing else
-exits `follow-up`. The script sets no exit and skips no stage because of a spec finding. Where a
-finding stops the run before review, the implementer's blocking limitation stops it, as
-[items the implementer leaves unbuilt](unbuilt-items.md) describes. The finding verifier receives
+The script sets no exit and skips no stage because of a spec finding. Because every spec finding is
+must-fix or CRITICAL, a pass that reaches its normal end, with no other exit set before it, and
+whose only remaining items are spec findings exits `follow-up`. The implementer returns a
+`joint-impossibility` or `missing-contract` entry together with a limitation of effect `blocks`,
+and the script's handling of every blocking limitation of the implementer ends that run after the
+implement stage with exit `root-resolution`, before any review, so the pass never reaches its
+normal end. The design document on the items the implementer leaves unbuilt describes this block.
+The finding verifier receives
 the findings inside the implementer's object, which the script hands it as a writer object, and
 the three code-lens readers see them in the same object they receive as claims.
 
