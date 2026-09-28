@@ -365,27 +365,28 @@ async function checkRecord(content: string, transcripts: string, { fail, shape, 
 }
 
 const usage = 'Usage: bun tools/check-spec.ts <spec.yaml> --transcripts <dir> ' +
-  '[--json] [--base <JSON list of { path, sha }>] [--record <path>], ' +
+  '[--json] [--base <JSON list of { path, sha }> [--partial-base]] [--record <path>], ' +
   'or bun tools/check-spec.ts --fix-list <file> --transcripts <dir> [--json] [--expect <json>] [--record <path>]'
 
 async function main() {
   if (!Bun.YAML?.parse) throw new Error(`Bun ${minimumBun} or newer is required: Bun.YAML is unavailable`)
   const { values, positionals } = parseArgs({ args: Bun.argv.slice(2), allowPositionals: true,
-    options: { transcripts: { type: 'string' }, json: { type: 'boolean' }, base: { type: 'string' },
+    options: { transcripts: { type: 'string' }, json: { type: 'boolean' }, base: { type: 'string' }, 'partial-base': { type: 'boolean' },
       'fix-list': { type: 'string' }, expect: { type: 'string' }, record: { type: 'string' } } })
   // The private record path a script's launch check passes from its marked block.
   const launchRecord = values.record
   if (launchRecord === '') throw new Error(usage)
   if (values['fix-list'] !== undefined) {
-    if (positionals.length || !values['fix-list'] || !values.transcripts || values.base) {
+    if (positionals.length || !values['fix-list'] || !values.transcripts || values.base || values['partial-base']) {
       throw new Error(usage)
     }
     return checkFixList(values['fix-list'], values.transcripts, values.json === true, values.expect, launchRecord)
   }
-  if (positionals.length !== 1 || !values.transcripts || values.expect !== undefined) {
+  if (positionals.length !== 1 || !values.transcripts || values.expect !== undefined ||
+    (values['partial-base'] && values.base === undefined)) {
     throw new Error(usage)
   }
-  const repositories = values.base === undefined ? [] : await baseRepositories(values.base)
+  const repositories = values.base === undefined ? [] : await baseRepositories(values.base, values['partial-base'] === true)
   // A cited rule file is read at the base commit of the repository whose path is the longest one
   // containing it, so a unit that rewrites the very line its spec quotes still passes after the change.
   // A file no listed repository contains, and a file its repository does not track at that commit,
@@ -623,7 +624,9 @@ const repositoryPath = (path: unknown) => typeof path === 'string' && (path === 
 // level of a git repository by a path of the list form, with a full commit ID that repository holds.
 // A walk from the tree root, which descends until it meets the top level of a repository and goes no
 // deeper there, finds no repository the list leaves out, so no repository of the tree goes unread.
-async function baseRepositories(value: string): Promise<Repository[]> {
+// A partial list names only the repositories a unit changes, in a tree too large to list, and skips
+// the walk: nothing then checks the repositories it leaves out.
+async function baseRepositories(value: string, partial: boolean): Promise<Repository[]> {
   let list: unknown
   try { list = JSON.parse(value) } catch (error) { throw new Error(`--base expects a JSON list of { path, sha }: ${messageOf(error)}`) }
   if (!Array.isArray(list) || !list.length) throw new Error('--base expects a non-empty JSON list of { path, sha }, one per git repository of the tree')
@@ -646,6 +649,7 @@ async function baseRepositories(value: string): Promise<Repository[]> {
       throw new Error(`--base commit ${entry.sha} is not in the repository at ${path}`)
     }
   }
+  if (partial) return list as Repository[]
   const found: string[] = []
   const walk = async (directory: string) => {
     if (await exists(join(directory, '.git'))) { found.push(directory); return }

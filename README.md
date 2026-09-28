@@ -56,7 +56,8 @@ workflows, and used by `audit-loop`.
   tree it runs at, so a cited rule file tracked at its repository's commit is read there and not
   from the working tree, while an untracked file reads from disk. The tool fails a list that
   names no repository's top level, a commit its repository does not hold, or leaves a repository
-  of the tree out. implement-review-verify runs only in a git repository or a tree of several,
+  of the tree out; `--partial-base` accepts a list of only the repositories a unit changes, for a
+  tree too large to list. implement-review-verify runs only in a git repository or a tree of several,
   such as a repo-tool client. Add `--json` for counts and
   criterion ordinals. Both output forms carry `specLines`, which the 20:1 size gate divides by:
   the non-blank lines of the spec's prose, which is `unit`, `summary` and each item's `content`,

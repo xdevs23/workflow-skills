@@ -2009,8 +2009,8 @@ describe('launch check and shipped scripts', () => {
     const marker = '// ---- UNIT VALUES. A unit copies this file and sets the values of this block. ----'
     const end = '// ---- END OF UNIT VALUES ----'
     for (const [script, fields] of [
-      [skeleton, ['mainCheckout', 'worktree', 'specPath', 'transcripts', 'privateRecord', 'pluginRoot', 'checkCommand', 'base', 'documents', 'criteriaCount', 'implementerPrompt', 'models']],
-      [coldSkeleton, ['mainCheckout', 'worktree', 'specPath', 'transcripts', 'privateRecord', 'pluginRoot', 'base', 'criteriaCount', 'models']],
+      [skeleton, ['mainCheckout', 'worktree', 'specPath', 'transcripts', 'privateRecord', 'pluginRoot', 'checkCommand', 'base', 'partialBase', 'documents', 'criteriaCount', 'implementerPrompt', 'models']],
+      [coldSkeleton, ['mainCheckout', 'worktree', 'specPath', 'transcripts', 'privateRecord', 'pluginRoot', 'base', 'partialBase', 'criteriaCount', 'models']],
       [fixSkeleton, ['mainCheckout', 'worktree', 'fixList', 'transcripts', 'privateRecord', 'pluginRoot', 'checkCommand', 'base', 'documents', 'entries', 'models']],
     ]) {
       const meta = script.indexOf('export const meta =')
@@ -2197,6 +2197,23 @@ describe('fix-only follow-up runs', () => {
     expect([fix.includes(FIX_LIST), fix.includes('FIX LIST')]).toEqual([false, false])
     expect(fix).toContain('CHECK COMMAND, fixer only')
     for (const label of ['scope', 'roast', 'diff']) expect(calls.find(c => c.label === label).prompt).not.toContain('CHECK COMMAND')
+  })
+
+  test('a partial base list adds --partial-base to the launch check of the main and spec review scripts', async () => {
+    // Each script runs only its launch check, with partialBase switched on in its marked block.
+    const gateOf = async (source, args) => {
+      const partial = source.replace('  partialBase: false,', '  partialBase: true,')
+      expect(partial).not.toBe(source)
+      const prompts = []
+      await new AsyncFunction('agent', 'phase', 'log', 'args', partial.replace('export const meta =', 'const meta ='))(
+        async prompt => { prompts.push(prompt); throw new Error('stop after the launch check') }, () => {}, () => {}, args)
+        .catch(() => {})
+      return prompts[0]
+    }
+    for (const [source, args] of [[skeleton, launchArgs()], [coldSkeleton, launchArgs()]]) {
+      expect(await gateOf(source, args)).toContain('\' --partial-base --record ')
+      expect(source).toContain("  partialBase: false,")
+    }
   })
 
   test('each helper the fix script copies from the main script has the same source text', async () => {

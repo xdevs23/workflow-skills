@@ -16,6 +16,7 @@ const UNIT = {
   privateRecord: '<main checkout>/.cache/directives/<unit>.yaml',   // where workflow-skills:local-cache puts directive records
   pluginRoot: '<plugin root>',           // the directory holding tools/check-spec.ts
   base: args.base,                       // one { path, sha } per git repository of the tree, whose commits observation dates are measured against, passed at launch
+  partialBase: false,                    // true only in a tree too large to list, where base names just the repositories the unit changes
   criteriaCount: args.criteriaCount,     // counts.kind.criterion from the check tool, passed at launch
   models: {
     gate: { model: 'claude-haiku-4-5', effort: 'low' },
@@ -169,7 +170,7 @@ const GATE = { type: 'object', required: ['exitCode', 'stdout', 'stderr', 'proof
 // The command runs in the main checkout, where the cited rule files resolve. The tool fails when the
 // private record of the marked block is not the record the spec names.
 const GATE_COMMAND = 'cd ' + UNIT.worktree + ' && bun ' + UNIT.pluginRoot + '/tools/check-spec.ts ' + UNIT.specPath +
-  ' --transcripts ' + UNIT.transcripts + ' --json --base \'' + JSON.stringify(UNIT.base) + '\' --record ' + UNIT.privateRecord
+  ' --transcripts ' + UNIT.transcripts + ' --json --base \'' + JSON.stringify(UNIT.base) + '\'' + (UNIT.partialBase ? ' --partial-base' : '') + ' --record ' + UNIT.privateRecord
 const checkGate = r => {
   if (r.exitCode !== 0 || typeof r.proof !== 'string' || !r.proof.trim()) {
     throw new Error('the spec check did not pass: exit ' + r.exitCode + ', proof ' + JSON.stringify(r.proof) + ', stderr: ' + r.stderr)

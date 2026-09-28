@@ -158,6 +158,13 @@ repository does not hold, or which leaves out a repository it finds under the tr
 cited rule file at the commit of the repository that holds it, reads a file no listed repository
 tracks from disk, and fails on any other git error.
 
+A tree too large to list, such as a ROM tree of a thousand repositories worked on in place, sets
+`partialBase` to true in the marked block of the main and spec review scripts. The base list then
+names only the repositories the unit changes, the launch check adds `--partial-base`, and the tool
+checks the listed repositories and their commits and skips the search for the ones the list leaves
+out. Nothing then checks that a writer left the other repositories of the tree alone, so a tree
+that can be listed in full never sets it.
+
 The tracked design document is written by hand from the code after the implementation, so it
 records what was built. It describes the change as the code at the writer's final commit
 implements it: what it does, how its parts fit together, the decisions with their reasons, and the
