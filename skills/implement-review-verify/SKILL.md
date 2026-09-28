@@ -444,8 +444,8 @@ counterevidence against the finding itself. Every such decision reaches the root
 
 A decision on an `unbacked-choice` finding is CRITICAL the same way, and only two actions answer
 it. `needs-decision` states in `authority` that no recorded words back the choice and reaches the
-root in `remaining` as an open decision. `reject` closes it only on a record entry whose words back
-the choice: its `authority` reads `record entry <id>: "<quote>"`, quoting the backing words together
+root in `remaining` as an open decision. `reject` closes it only on a record entry whose words,
+said about this unit, back the choice: its `authority` reads `record entry <id>: "<quote>"`, quoting the backing words together
 with their surrounding context from that entry, and its `reason` says how that context supports the
 choice. A line found by searching for a word and quoted without its context backs nothing. The
 script's decision checks refuse `approve-fix`, `root-action`, `cleanup` and `record` for such a

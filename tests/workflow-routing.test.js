@@ -3201,10 +3201,13 @@ describe('the implementer checks the spec, and every stage reads only words said
       .toEqual(['aborted', [['abort', 'CRITICAL'], ['spec-finding', 'CRITICAL']]])
   })
 
-  test('the implementer template and the skill state the spec checks of the sense check', async () => {
+  test('spec-writing, the implementer, the inverse-spec reviewer, the finding verifier and the skill state the rules', async () => {
     const other = 'Words about another unit, such as a request to record a todo for later work or a decision given for a different piece of work'
     const crossed = 'A short answer that crossed with a newer message answers the earlier message and never approves what the newer message proposed.'
     for (const [name, text, phrases] of [
+      ['spec-writing', flat(specWriting), ['An item cites only words the user said about the unit the spec describes.',
+        other + ', never authorize an item of this spec, even where their subject overlaps.',
+        'is cited for what its content answers, the earlier message, and never as approval of what the newer message proposed.']],
       ['implementer', await template('implementer'), ['also reads the spec against the code and the private record',
         'joint-impossibility, two requirements that each hold alone and cannot both hold',
         'missing-contract, an artifact the spec assumes without saying how it is made', 'reality-drift, a recorded fact the code no longer bears out',
@@ -3212,6 +3215,10 @@ describe('the implementer checks the spec, and every stage reads only words said
         'is class unbacked-item', 'Return every finding in specFindings, one entry per finding with the item id in item, the class, the claim and receipts.',
         'None of them fails the sense check, sets abort.trigger or asks the user',
         'build nothing for an item of class unbacked-item, build the rest of the spec']],
+      ['reviewer-inverse-spec', await template('reviewer-inverse-spec'), ['Only words the user said about this unit authorize a choice.', other, crossed,
+        'A choice whose cited authority is such words lacks authority: report it as a finding with kind unbacked-choice.']],
+      ['finding-verifier', await template('finding-verifier'), ['Reject closes it only on a record entry whose words were said about this unit and back the choice',
+        other + ', back nothing here even where their subject overlaps.', 'so it never closes such a finding either']],
       ['skill', flat(skill), ['**The sense check also reads the spec.**', 'is class `unbacked-item`',
         'into `remaining` as a `spec-finding` item, CRITICAL for `unbacked-item` and must-fix otherwise',
         'the spec finding `class` (`joint-impossibility` / `missing-contract` / `reality-drift` / `unbacked-item`)']],
