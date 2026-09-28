@@ -26,8 +26,11 @@ the stage judging a spec before code now name the implementer's sense check. The
 setting belongs to the main script alone.
 
 The gap-finder and spec-provenance templates stay in the agents directory, and no script starts
-them. The skill says so where it lists the templates. The spec-provenance template loses only the
-words that described it as part of the removed run.
+them. The skill says so where it lists the templates. The spec-provenance template keeps its checks
+and loses the words that tied it to the removed run: the timing before implementation, the two
+classes of finding that held the main run until the user answered, and the instruction to put every
+unbacked choice to the user as a question before the main run. All of its findings are advisory,
+and none of them holds up a run.
 
 ## What the sense check now reads
 
@@ -123,8 +126,9 @@ yet, so this change is part of it.
 
 The routing tests check that only the main and fix-run scripts ship, that no skill, template, README
 passage or test sends the root to a review of the spec before the main run, and that no script
-starts the gap-finder or spec-provenance template while both files remain. They check the
-implementer schema's `specFindings` field with its entry shape and class enum, that each finding
+starts the gap-finder or spec-provenance template while both files remain. They check that the
+spec-provenance template calls its findings advisory and has none of them hold up a run. They check
+the implementer schema's `specFindings` field with its entry shape and class enum, that each finding
 becomes a `spec-finding` item of its severity while every stage still runs, and that the findings
 reach the root beside an implementer abort. They check that spec-writing, the implementer, the
 inverse-spec reviewer and the finding verifier templates, and the skill state the rules above. The
