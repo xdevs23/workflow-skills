@@ -92,7 +92,7 @@ This is load-bearing, not hygiene. The journal key is the prompt plus its option
 replays its result instantly, and **any** edit — a word, a space — changes the key, so that call
 re-runs live and so does everything after it. One stray edit to a settled prompt can re-execute most
 of the run you were trying to salvage. Never reach a single seat by editing a shared constant either —
-see `implement-review-verify`, law 5(a).
+see `implement-review-verify`, law 3(a).
 
 ### 5. Re-invoke
 
@@ -163,6 +163,6 @@ An interrupted run and a poisoned result are two different failures with two dif
   and will replay verbatim on resume, so fixing the underlying cause and re-invoking changes nothing.
   The fix is a deliberate cache-bust of that single stage.
 
-The cache-bust case is already covered — see `implement-review-verify`, law 5 (*Cache-busting on
+The cache-bust case is already covered — see `implement-review-verify`, law 3 (*Cache-busting on
 resume*) and its *Resume corollaries*. Do not re-derive it here; the two paths share only the journal
 mechanism, and each decision is recorded once.

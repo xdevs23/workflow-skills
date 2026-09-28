@@ -80,7 +80,7 @@ A run interrupted mid-flight is resumed through resume-interrupted-run. A run th
 way, before or after its review, has its items recorded like every run, and the root never starts a
 run on the same spec again.
 
-Law 5 of implement-review-verify, its rationale line on attesting fixes and its resume corollaries
+Law 3 of implement-review-verify, its rationale line on attesting fixes and its resume corollaries
 say the same. The rule that a defect moved twice gets its cause fixed stays in the remaining items
 section: it counts relocations of one defect, and no skill sets a number of runs after which work
 counts as broken. The run record's exit value `follow-up` keeps its name.
@@ -90,13 +90,13 @@ counts as broken. The run record's exit value `follow-up` keeps its name.
 The root does not edit a spec or its record while a run on it is in flight. The spec review before
 the main run is the one run after which the root amends the spec, once, before it launches the main
 run on it. A change after the main run started is work for a new unit and never repeats the
-finished run's reviews. Law 9 and law 15 of implement-review-verify and the evidence paragraph of
+finished run's reviews. Law 7 and law 13 of implement-review-verify and the evidence paragraph of
 spec-writing say so, in place of the earlier instructions to invalidate and repeat reviews,
 approvals and verification after an edit.
 
 An inverse-spec decision is resolved by recording in the todo record that the user's recorded words
 back the code's choice, or by asking the user. A code change it needs is a new run under the
-remaining items rules. The finding verification phase, the root's question-premise check and law 15
+remaining items rules. The finding verification phase, the root's question-premise check and law 13
 say this, and so do the finding verifier template, which adds that the root never corrects the spec
 of the run, and the main workflow script, in its comment on `inverseSpecDecisions` and in the error
 it raises when an inverse-spec finding is dispositioned as cleanup. A new run that changes the

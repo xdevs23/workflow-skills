@@ -37,7 +37,7 @@ This document builds on [directive authority](directive-authority.md) and
    the record describes deletion or a rewrite, hard-flags with the reason and leaves the
    disputed mechanism untouched. The fixer does not repeat the request-level check; reviewers
    and the verifier have already judged the finished code.
-4. **Two triggers, one abort field, one disposition.** Law 10, the phase 1 abort paragraph and
+4. **Two triggers, one abort field, one disposition.** Law 8, the phase 1 abort paragraph and
    the shared authority constant in the skeleton state two triggers (directive contradiction,
    coder sense-check failure), the single abort field and the single disposition. The second trigger
    belongs to the writing seats; a reading seat that makes the same observation reports it as a
@@ -81,7 +81,7 @@ This document builds on [directive authority](directive-authority.md) and
   judged should not exist.
 * **Giving cold seats the directive record so they can quote it.** Unbriefedness is what makes
   those seats useful; the verifier supplies the quote for their findings.
-* **A prose prefix in the claim instead of an enum field.** Law 11: the script branches only on
+* **A prose prefix in the claim instead of an enum field.** Law 9: the script branches only on
   enum-locked vocabulary.
 
 ## Boundaries
@@ -96,7 +96,7 @@ by the root at the time, from the coder's report and the user's recorded decisio
 
 1. The implementer template and the skill's phase 1 state decisions 1 and 2, and the three
    existing non-trigger cases stay non-triggers.
-2. Law 10, the phase 1 abort paragraph, the shared authority constant and the implementer
+2. Law 8, the phase 1 abort paragraph, the shared authority constant and the implementer
    template state decision 4; no text still calls the directive contradiction the only trigger.
 3. The fixer template and the skill's phase 4 state decision 3.
 4. Each of the nine seat templates and the skill's phase 2 state decision 5.
@@ -108,7 +108,7 @@ by the root at the time, from the coder's report and the user's recorded decisio
    findings; an implementer abort with a sense-check reason aborting before review with the
    object preserved in the remaining items; a fixer abort in a valid `FIX` object aborting the run
    with the structured result preserved; whitespace-tolerant wording checks for the seat
-   bullets, the coder bullets and law 10. `bun test tests/` passes.
+   bullets, the coder bullets and law 8. `bun test tests/` passes.
 8. The plugin version is bumped, and each of the two related design documents carries one
    cross-reference line to this document.
 9. Existing behavior is preserved: inverse-spec handling, unbriefed input boundaries, scoped

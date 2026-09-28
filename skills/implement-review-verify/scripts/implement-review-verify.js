@@ -156,9 +156,9 @@ const WRITE_GIT = [
   'After committing, run git -C <tree>/<path> rev-parse --verify HEAD^{commit} and git status --porcelain=v1 --untracked-files=all in every repository.',
 ].join('\n')
 // The spec rides as a PATH. The criteria live IN the doc and ride as a POINTER, never as a
-// copy: an embedded copy goes stale the instant the spec is amended, which is the drift law 9
-// exists to kill. Private directives also ride as a PATH (law 7), never as inline conversation
-// in a commit-bound script. Orchestrator-only additions are labelled for scrutiny (law 8).
+// copy: an embedded copy goes stale the instant the spec is amended, which is the drift law 7
+// exists to kill. Private directives also ride as a PATH (law 5), never as inline conversation
+// in a commit-bound script. Orchestrator-only additions are labelled for scrutiny (law 6).
 // The check command never sits here: reviewers receive this block and may not run it.
 // The unbriefed seats receive the tree line alone, through HYGIENE below.
 const TREE = 'ASSIGNED TREE: ' + UNIT.worktree + '.'
@@ -226,7 +226,7 @@ const SNAPSHOTS = { type: 'array', minItems: 1, items: { type: 'object', require
 const FILES = { type: 'array', items: { type: 'object', required: ['path', 'bytes', 'change'], additionalProperties: false,
   properties: { path: { type: 'string' }, bytes: { type: 'integer', minimum: 0 }, change: { enum: ['added', 'modified', 'deleted'] } } } }
 const STRINGS = { type: 'array', items: { type: 'string' } }
-// Every factual claim the prompt made about the tree, checked against the tree (law 8); a false
+// Every factual claim the prompt made about the tree, checked against the tree (law 6); a false
 // premise or a prompt-versus-spec conflict is recorded here by both writers.
 const PREMISES = { type: 'array', items: { type: 'object', required: ['claim', 'holds', 'note'], additionalProperties: false,
   properties: { claim: { type: 'string' }, holds: { type: 'boolean' }, note: { type: 'string' } } } }
@@ -234,7 +234,7 @@ const PREMISES = { type: 'array', items: { type: 'object', required: ['claim', '
 // Eight reader schemas, each declared in full: one per briefed seat, one for quality, which the
 // eight audit seats share because they return the object quality returns, one for cold
 // alternatives and one for the roaster. Every reader owes limitations, coverage and findings; the
-// briefed seats also owe abort (law 10). The cold seats (quality, the audit seats, cold
+// briefed seats also owe abort (law 8). The cold seats (quality, the audit seats, cold
 // alternatives, roaster) carry no abort field, because its member names would brief them.
 const CORRECTNESS = { type: 'object', additionalProperties: false,
   required: ['abort', 'limitations', 'coverage', 'findings', 'verdicts'],
@@ -283,7 +283,7 @@ const ROAST = { type: 'object', additionalProperties: false, required: ['limitat
 
 // What the implementer's sense check finds in the spec before its first edit, one entry per finding:
 // the item id, the class and the claim with receipts. The script branches on class to set the
-// severity of the remaining item, so the class is enum-locked (law 11).
+// severity of the remaining item, so the class is enum-locked (law 9).
 const SPEC_FINDINGS = { type: 'array', items: { type: 'object', required: ['item', 'class', 'claim', 'receipts'], additionalProperties: false,
   properties: { item: { type: 'string' }, class: { enum: ['joint-impossibility', 'missing-contract', 'reality-drift', 'unbacked-item'] },
     claim: { type: 'string' }, receipts: RECEIPTS } } }
@@ -319,7 +319,7 @@ const VERIFY = { type: 'object', additionalProperties: false,
     // One entry per implementer commit, inspected against its start in its repository. The writer's
     // files list names the paths of all its commits together, relative to the tree root, so
     // filesMatch is true when every path the commit touched, under its repository's path, appears in
-    // that list (law 12).
+    // that list (law 10).
     writerScope: { type: 'array', items: { type: 'object', required: ['repository', 'sha', 'ok', 'filesMatch', 'note'],
       additionalProperties: false,
       properties: { repository: { type: 'string' }, sha: COMMIT_ID, ok: { type: 'boolean' }, filesMatch: { type: 'boolean' },
@@ -340,7 +340,7 @@ const VERIFY = { type: 'object', additionalProperties: false,
       properties: { kind: { enum: ['needs-decision', 'root-action'] }, detail: { type: 'string' } } } },
     specSuggestions: STRINGS } }
 
-// The hard flag is the abort field (law 10): a trigger other than none. Cold seats carry no abort
+// The hard flag is the abort field (law 8): a trigger other than none. Cold seats carry no abort
 // field, and an absent field is no abort. The thrown error carries the WHOLE aborting object, so
 // its reason survives in remaining items, including an implement-stage abort.
 const hasHardFlag = r => r?.abort != null && r.abort.trigger !== 'none'
@@ -349,7 +349,7 @@ const abortOnFlag = (r, label) => {
     { exit: 'aborted', result: r, label })
   return r
 }
-// ONE acceptance helper for every stage (law 4): a stage is accepted on the completeness of its
+// ONE acceptance helper for every stage (law 2): a stage is accepted on the completeness of its
 // object, never on the length of a text. The schema validates shapes and enums; complete() checks
 // the cross-field contracts named in the acceptance section. An abort with a reason returns at
 // once. A null result or a failed check retries the SAME agent with the failure named plainly,
@@ -373,7 +373,7 @@ async function stage(prompt, opts, complete = () => {}) {
 
 // The root supplies base, one entry per git repository of the run's tree with its starting commit as
 // an immutable ID, and args.criteriaCount from the check tool's counts.kind.criterion. A tree that is
-// one repository is a list of one entry whose path is a single dot. Law 9 keeps the YAML fixed for the
+// one repository is a list of one entry whose path is a single dot. Law 7 keeps the YAML fixed for the
 // run; the tool assigns criterion ordinals in file order.
 const SHA = new RegExp(COMMIT_ID.pattern)
 // A repository path is a single dot, or segments of letters, digits, dots, underscores and hyphens
@@ -534,7 +534,7 @@ const proof = (writer, label) => {
   }
 }
 // The deliverable of a writer is FILES ON DISK, proved by files and checks in its object: an
-// account of the work is not the work (law 12). The retry in stage() names the actual failure.
+// account of the work is not the work (law 10). The retry in stage() names the actual failure.
 const PROVE = [
   'Your deliverable is FILES ON DISK, proved by your returned object: files lists every path a commit',
   'of this stage touched with its byte size at the snapshot, checks quotes the output of every bare',
@@ -716,7 +716,7 @@ const checkVerification = (v, sources, snaps) => {
     if (fromKind && ['cleanup', 'record'].includes(d.action)) throw new Error('Project-benefit finding cannot be dispositioned as cleanup or record; the root closes it')
     if (fromKind) requireText(d.authority, 'project-benefit authority (the recorded words)')
     if (d.action === 'record' && ['must-fix', 'CRITICAL'].includes(d.severity)) throw new Error('Blocking defect cannot be recorded as advisory')
-    // Every inverse-spec finding is CRITICAL unconditionally (law 15): ignore whatever severity
+    // Every inverse-spec finding is CRITICAL unconditionally (law 13): ignore whatever severity
     // a reviewer supplied, and never let a mixed consolidated group launder it to a lower tier.
     const fromInverse = d.sourceIds.some(id => seatOf.get(id) === 'inverse')
     if (fromInverse && d.severity !== 'CRITICAL') {
@@ -889,7 +889,7 @@ const decisions = verified?.decisions ?? []
 const sourceOf = new Map(sources.map(s => [s.id, s]))
 // Every inverse-spec decision stays visible to the root by SOURCE IDENTITY, not by aggregate count,
 // whatever it resolved to (approve-fix, reject, needs-decision, root-action): a completed run or a later
-// spec edit never retires one on its own (law 15).
+// spec edit never retires one on its own (law 13).
 const inverseSpecDecisions = decisions.filter(d => d.sourceIds.some(id => sourceOf.get(id)?.seat === 'inverse'))
 // Every kind-bearing decision, with its kind-bearing source findings attached.
 const projectBenefitDecisions = decisions.filter(d => d.sourceIds.some(id => sourceOf.get(id)?.kind))

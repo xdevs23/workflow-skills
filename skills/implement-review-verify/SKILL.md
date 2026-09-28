@@ -181,7 +181,7 @@ verbatim directive directly contradicted by either authority document or by this
 directive-versus-spec and directive-versus-prompt are the same trigger — **a failed sense
 check** as defined above, and **a record without the user's words** (`no-words`) as defined
 above. The AUTHORITY DOCUMENTS are the user's verbatim directives and the
-spec; the prompt is UNTRUSTED relative to the spec (law 8), but that ranking does not exempt the
+spec; the prompt is UNTRUSTED relative to the spec (law 6), but that ranking does not exempt the
 prompt from the directive ranked above both. Then everything else falls out:
 - **prompt vs spec, with no directive on either side** → an ordinary MUST-FIX finding, not an
   abort. The prompt loses, the seat proceeds against the spec, and it reports the conflict rather
@@ -194,7 +194,7 @@ prompt from the directive ranked above both. Then everything else falls out:
   `premises` (claim, holds, note). It is not a contradiction with a directive, so it must not set
   the abort;
 - **a tree that does not yet satisfy the spec** → the NORMAL starting condition. Treating it as a
-  contradiction deadlocks the run (law 10).
+  contradiction deadlocks the run (law 8).
 
 None of those three sets the abort. Only a contradiction with a user directive on at least one
 side (`abort.trigger` `directive-conflict`), a failed sense check (`sense-check`), or a record
@@ -278,7 +278,7 @@ acceptance criterion.
 - **Correctness** (`agents/reviewer-correctness.md`) — bugs, races, broken invariants, the failure
   modes the change introduces. It hunts the hazards visible in its assigned change, and its
   template forbids invented issues and accepts an empty findings list. This seat
-  also owns **ASSERTION GRANULARITY** (law 16): it READS the assertions and checks that each
+  also owns **ASSERTION GRANULARITY** (law 14): it READS the assertions and checks that each
   invariant is pinned at the granularity the rule binds at, never aggregated over the artifact —
   a class the gate structurally cannot catch, because the aggregate assertion is green.
   When the work must PRESERVE AN INVENTORY — every fact, row, entry or capability carried from a
@@ -428,7 +428,7 @@ necessary choice cannot proceed merely because a reviewer or verifier prefers it
   to dispose of a confirmed must-fix or CRITICAL violation.
 
 Every inverse-spec source finding carries CRITICAL severity unconditionally, regardless of the
-label it arrived with (law 15): `record` and `cleanup` are never available for one — an inverse-spec
+label it arrived with (law 13): `record` and `cleanup` are never available for one — an inverse-spec
 finding is about a choice made IN this unit's own diff, never work outside its repair scope — and
 `reject` still needs concrete counterevidence against the finding itself, never against an edited spec.
 
@@ -616,7 +616,7 @@ new run ID. A new run takes as its work the recorded items it was started for, n
 its own review raises; those are recorded the same way. Every other item stays in the todo record
 as a separate unit, done later.
 
-A run interrupted mid-flight is resumed through `resume-interrupted-run`, as law 5 says, and that
+A run interrupted mid-flight is resumed through `resume-interrupted-run`, as law 3 says, and that
 skill is only for a run that was actually interrupted, never a way around these rules. A run
 that ended any other way, before or after its review, has its items recorded like every run, and
 the root never starts a run on the same spec again.
@@ -937,9 +937,9 @@ given check is, because only two of them stop the run:
   conflict-marker sweep. These are **exit-code gates** — they pass or they fail and nobody
   adjudicates the result.
 - **BLOCKING — SCRIPT-LEVEL contract checks.** The orchestrator SCRIPT throws on a protocol
-  violation: the stage helper's completeness checks (law 4) in the acceptance section below. These
+  violation: the stage helper's completeness checks (law 2) in the acceptance section below. These
   stop the run deliberately, and **the decision lives in the script** — never delegated to a
-  downstream agent to rediscover, for the same reason the structural abort does not (law 10).
+  downstream agent to rediscover, for the same reason the structural abort does not (law 8).
 - **RECORDING — SEATS.** The review seats emit findings for independent verification,
   not directly into a fix queue. Their judgments are claims, not exit-code gates. A missing
   required report or a verified unresolved decision still prevents the next stage.
@@ -1019,13 +1019,7 @@ Non-negotiable across every run of this skill.
 1. **EXPLICIT model AND effort on every stage — never inherited.** Two silent-downgrade paths: a
    custom `agentType` resolving its own default, and a cached resume. Either can quietly land a
    stage on the cheapest tier while the run looks healthy.
-2. **Cross-family review.** Prefer a reviewer from a DIFFERENT model family/vendor than the
-   implementer. A same-family reviewer shares the author's blind spots and will nod at exactly the
-   assumption you needed challenged. (Vendor-neutral rule; pick per the project's own model policy.)
-3. **Effort policy.** High for implementation, fixing, and code review. Low/medium for mechanical or
-   repetitive stages (list-checking, formatting sweeps). Reserve the top efforts for genuinely hard
-   reasoning — they overthink routine work and cost wall-clock for nothing.
-4. **FAIL-FAST.** An agent returning null or an incomplete object retries the SAME agent (3 attempts
+2. **FAIL-FAST.** An agent returning null or an incomplete object retries the SAME agent (3 attempts
    total) with the failure named, then the helper throws naming the last failure and no downstream
    stage runs. The main run records the failure and remaining items; it
    never treats a failure as an empty review. Completeness is structural: the schema validates
@@ -1034,30 +1028,30 @@ Non-negotiable across every run of this skill.
    files and checks behind a new snapshot, a reason behind an abort; see the acceptance section).
    The law guards EVERY required reader, including adversaries: the verifier consumes them all.
    A missing object is incomplete verification, never a harmless gap in a finished fix.
-5. **Resume interrupted runs only.** A run stopped mid-flight is resumed through the
+3. **Resume interrupted runs only.** A run stopped mid-flight is resumed through the
    resume-interrupted-run skill. Completed stages replay their journaled results, and unfinished
    stages re-run. A completed run never runs again: the root records its remaining items in the
    todo record and moves on, and a new run starts only for an item that is supposed to be fixed,
    as the remaining items section says.
-6. **Barrier discipline.** Review readers run concurrently on a stable clean snapshot, then
+4. **Barrier discipline.** Review readers run concurrently on a stable clean snapshot, then
    Verify consolidates their results. Fix awaits that approval. Only the Git-object-only roaster
    overlaps the fixer, reading the captured pre-fix SHA and approved list. Await both tasks;
    return the roast to the root in remaining items. These are data dependencies.
-7. **Premise drift — read the authority, not a relayed gloss.** Point authority-aware stages at
-   the private, ignored/untracked directive record and the current spec path (law 9). Preserve
+5. **Premise drift — read the authority, not a relayed gloss.** Point authority-aware stages at
+   the private, ignored/untracked directive record and the current spec path (law 7). Preserve
    exact source wording in that private record, never in commit-bound artifacts without explicit
    permission. Technical specs record decisions and constraints, not conversational appendices.
-8. **AUTHORITY ARCHITECTURE — state the hierarchy in authority-aware prompts.** Quality
+6. **AUTHORITY ARCHITECTURE — state the hierarchy in authority-aware prompts.** Quality
    receives only its hygiene and diff inputs; cold alternatives gets invariants, not the shared
    authority briefing. For other seats the three tiers are: **user verbatim directives > the spec > this prompt**, with the prompt
    explicitly labelled **UNTRUSTED** relative to both, and *"a prompt-vs-spec conflict is itself a
    must-fix finding"*. **The AUTHORITY DOCUMENTS are the top two tiers only — the directives and the
    spec. The prompt is not one**, which is what makes a prompt-vs-spec conflict an ordinary finding
-   rather than the hard flag of law 10 — **but the user veto still reaches the prompt.** A prompt
+   rather than the hard flag of law 8 — **but the user veto still reaches the prompt.** A prompt
    that directly contradicts a directive is the same hard-flag class as a spec that does: being
    untrusted RELATIVE TO THE SPEC does not exempt the prompt from the directive ranked above both.
    Text the user approved, held in the approves field of a private record entry, counts as the
-   user's verbatim directive: this hierarchy and the directive-conflict hard flag of law 10 treat a
+   user's verbatim directive: this hierarchy and the directive-conflict hard flag of law 8 treat a
    contradiction with it like a contradiction with the user's own sentence.
    Anything the orchestrator adds beyond the spec is labelled **"ORCHESTRATOR SCOPING — this added
    scope loses to the spec on conflict"**, which makes it structurally attackable by every seat; the
@@ -1070,8 +1064,8 @@ Non-negotiable across every run of this skill.
    directive faithfully, never used to authorize a new one. **Untrusted means
    VERIFIED, not ignored:** every factual claim the prompt makes about the tree is checked against
    the tree, and a FALSE one is **verified-and-reported** — build to the true state, flag the
-   premise as a must-fix — which beats both trusting it and stopping on it (law 10).
-9. **SPECS ARE LIVING DOCUMENTS, READ FROM DISK.** Every spec-consuming prompt names it by PATH and instructs:
+   premise as a must-fix — which beats both trusting it and stopping on it (law 8).
+7. **SPECS ARE LIVING DOCUMENTS, READ FROM DISK.** Every spec-consuming prompt names it by PATH and instructs:
    *"read the current on-disk revision in full; it is the authority, not this prompt's description of
    it."* Never cite a revision number, never restate the spec's content in the prompt. This is what
    prevents drift between a prompt's stale summary and the doc. The root does not edit a spec or
@@ -1082,53 +1076,53 @@ Non-negotiable across every run of this skill.
    authority documents RETRACT a contradicted sentence in place.** Never append an acknowledgement
    beside a sentence it contradicts: layered addenda manufacture diverging premises, and seats then
    flag the contradiction forever, correctly.
-10. **HARD-FLAG SEMANTICS.** A hard flag (agent stops, script aborts) has exactly three triggers.
-    The first is a contradiction that puts a user verbatim directive on at least one side —
-    **directive-vs-spec, or directive-vs-this-prompt** — two texts that cannot both be true (law
-    8). The prompt being UNTRUSTED relative to the spec does not exempt it from the directive
-    ranked above both: an assignment overriding a directive is the same conflict class as a spec
-    that does, hard-flagged the same way. The second is a **coder sense-check failure**, and it
-    belongs to the writing seats: the implementer finds, before any edit, that the request extends
-    a mechanism the recorded words rule out, or the fixer finds that an approved correction is
-    itself a band-aid where the record describes deletion or a rewrite (phases 1 and 4). A reading
-    seat reports the same observation as a kind-bearing finding, never as a flag. The third is a
-    **record without the user's words**, also the writing seats': the implementer finds, before
-    any edit, that the private directive record was not supplied, cannot be read, or holds no
-    quotation attributed to the user, or the fixer finds the same before its first write (phase
-    1). A record that was never supplied is not a silent one. All three triggers
-    share one disposition: caught before any edit, the tree stays unmodified; caught after edits
-    landed, further writes stop and the coder reports the edits as they stand, committing nothing
-    and reverting nothing. A tree that does not yet satisfy a coherent spec is the NORMAL
-    precondition of review-and-fix and yields ordinary findings; so does an untrusted prompt that
-    merely conflicts with the SPEC with no directive on either side, or one asserting a false
-    premise about the tree — those are verified-and-reported, built to the truth (law 8), never an
-    abort. Getting this wrong deadlocks the run: the fixer that would resolve the finding can never
-    run, because the flag aborts before it. **Three triggers, one field, one disposition** — the
-    `abort` field's `trigger` enum names all three (`directive-conflict`, `sense-check`,
-    `no-words`) beside `none`,
-    with the reason in `abort.reason`; an abort class with no trigger of its own is undetectable,
-    and a trigger with more than one disposition is the deadlock in another costume. The cold
-    seats carry no `abort` field, because its member names would brief them, and an absent field
-    is no abort. And the structural abort lives in the **SCRIPT**, which checks **every consumed
-    stage result** for a trigger other than `none` and throws with the whole object — never
-    delegated to a downstream agent to rediscover. Every required object is consumed by
-    verification; a failed or hard-flagged reader stops the cycle before fixing.
-11. **ENUM-LOCK ANY VOCABULARY THE SCRIPT BRANCHES ON.** If control flow keys off severity, lock it in
-    the output schema as an enum (`must-fix` / `should-fix` / `nit`) with validation-retry — and the
-    same for every other vocabulary the script switches on: the actionability **lane**
-    (`fixer-actionable` / `orchestrator-only` / `later-phase` / `not-a-defect`) and the **disposition**
-    (`fixed` / `rejected` / `blocked`), verifier action (`approve-fix` / `reject` /
-    `needs-decision` / `root-action` / `cleanup` / `record`),
-    the finding `kind` (`band-aid` / `longer-route` / `unbacked-choice`), the abort `trigger`
-    (`none` / `directive-conflict` / `sense-check` / `no-words`), the verdict (`PASS` / `AT-RISK` / `FAIL`),
-    the limitation `effect` (`blocks` / `narrows`), the authorization `class`, the rule reader's
-    finding `scope` (`in-change` / `beside`), the file `change` (`added` / `modified` / `deleted`)
-    and the spec finding `class` (`joint-impossibility` / `missing-contract` / `reality-drift` /
-    `unbacked-item`).
-    A seat emitting one word against a check testing for another
-    **silently disables the phase and the run reports success** — the worst possible failure mode,
-    because it looks like a green run.
-12. **GROUNDED MEANS OBSERVED.** Code-reading that concludes "it should work" loses to empirical
+8. **HARD-FLAG SEMANTICS.** A hard flag (agent stops, script aborts) has exactly three triggers.
+   The first is a contradiction that puts a user verbatim directive on at least one side —
+   **directive-vs-spec, or directive-vs-this-prompt** — two texts that cannot both be true (law
+   6). The prompt being UNTRUSTED relative to the spec does not exempt it from the directive
+   ranked above both: an assignment overriding a directive is the same conflict class as a spec
+   that does, hard-flagged the same way. The second is a **coder sense-check failure**, and it
+   belongs to the writing seats: the implementer finds, before any edit, that the request extends
+   a mechanism the recorded words rule out, or the fixer finds that an approved correction is
+   itself a band-aid where the record describes deletion or a rewrite (phases 1 and 4). A reading
+   seat reports the same observation as a kind-bearing finding, never as a flag. The third is a
+   **record without the user's words**, also the writing seats': the implementer finds, before
+   any edit, that the private directive record was not supplied, cannot be read, or holds no
+   quotation attributed to the user, or the fixer finds the same before its first write (phase
+   1). A record that was never supplied is not a silent one. All three triggers
+   share one disposition: caught before any edit, the tree stays unmodified; caught after edits
+   landed, further writes stop and the coder reports the edits as they stand, committing nothing
+   and reverting nothing. A tree that does not yet satisfy a coherent spec is the NORMAL
+   precondition of review-and-fix and yields ordinary findings; so does an untrusted prompt that
+   merely conflicts with the SPEC with no directive on either side, or one asserting a false
+   premise about the tree — those are verified-and-reported, built to the truth (law 6), never an
+   abort. Getting this wrong deadlocks the run: the fixer that would resolve the finding can never
+   run, because the flag aborts before it. **Three triggers, one field, one disposition** — the
+   `abort` field's `trigger` enum names all three (`directive-conflict`, `sense-check`,
+   `no-words`) beside `none`,
+   with the reason in `abort.reason`; an abort class with no trigger of its own is undetectable,
+   and a trigger with more than one disposition is the deadlock in another costume. The cold
+   seats carry no `abort` field, because its member names would brief them, and an absent field
+   is no abort. And the structural abort lives in the **SCRIPT**, which checks **every consumed
+   stage result** for a trigger other than `none` and throws with the whole object — never
+   delegated to a downstream agent to rediscover. Every required object is consumed by
+   verification; a failed or hard-flagged reader stops the cycle before fixing.
+9. **ENUM-LOCK ANY VOCABULARY THE SCRIPT BRANCHES ON.** If control flow keys off severity, lock it in
+   the output schema as an enum (`must-fix` / `should-fix` / `nit`) with validation-retry — and the
+   same for every other vocabulary the script switches on: the actionability **lane**
+   (`fixer-actionable` / `orchestrator-only` / `later-phase` / `not-a-defect`) and the **disposition**
+   (`fixed` / `rejected` / `blocked`), verifier action (`approve-fix` / `reject` /
+   `needs-decision` / `root-action` / `cleanup` / `record`),
+   the finding `kind` (`band-aid` / `longer-route` / `unbacked-choice`), the abort `trigger`
+   (`none` / `directive-conflict` / `sense-check` / `no-words`), the verdict (`PASS` / `AT-RISK` / `FAIL`),
+   the limitation `effect` (`blocks` / `narrows`), the authorization `class`, the rule reader's
+   finding `scope` (`in-change` / `beside`), the file `change` (`added` / `modified` / `deleted`)
+   and the spec finding `class` (`joint-impossibility` / `missing-contract` / `reality-drift` /
+   `unbacked-item`).
+   A seat emitting one word against a check testing for another
+   **silently disables the phase and the run reports success** — the worst possible failure mode,
+   because it looks like a green run.
+10. **GROUNDED MEANS OBSERVED.** Code-reading that concludes "it should work" loses to empirical
     observation every time. Verify against real output: real builds, real requests, real rendered
     results. Mechanical gates **RECOMPUTE from the artifacts**; an item's self-report is only a
     truncation-and-dishonesty detector, never evidence. **No claim about an external system without
@@ -1136,17 +1130,17 @@ Non-negotiable across every run of this skill.
     of that system misbehaving, quoted where the claim is made. A symptom is evidence that something
     happened and never evidence of which component caused it, so an attribution drawn from a symptom
     is a hypothesis and is written down as one.
-13. **END-OF-RUN COMPLETENESS PASS.** Per-item checks structurally CANNOT see a missing item. Every
+11. **END-OF-RUN COMPLETENESS PASS.** Per-item checks structurally CANNOT see a missing item. Every
     fan-out over a work-list ends with one pass whose only question is *"which item is missing
     entirely?"*. Absences are the worst defect class to ship, and they are invisible to exactly the
     checks that look most thorough.
-14. **HARNESS TOOLS BEAT PER-AGENT IMPROVISATION.** When several seats each hand-roll the same
+12. **HARNESS TOOLS BEAT PER-AGENT IMPROVISATION.** When several seats each hand-roll the same
     invocation (gate runs, server boots, probe walks), commit a **one-command tool** and put the exact
     invocation in every prompt with hand-rolling **forbidden**. Measured effect: seat turn-counts
     roughly halved. Extra rule for models **without prompt caching**, which re-pay their full input
     every turn: point them at tool DUMPS and keep their exploration short-context, since long ad-hoc
     exploration is disproportionately expensive exactly there.
-15. **IMPLEMENT THE SPEC AS WRITTEN; only the ORCHESTRATOR edits it.** A suggested spec change
+13. **IMPLEMENT THE SPEC AS WRITTEN; only the ORCHESTRATOR edits it.** A suggested spec change
     does not block implementation, fixing or the normal reviewer cycle. Report the suggestion
     and its evidence to the root without changing the spec or making its amendment a prerequisite.
     Non-blocking suggestions belong in `specSuggestions`, or `record` when dispositioning a
@@ -1156,7 +1150,7 @@ Non-negotiable across every run of this skill.
     between authority documents retain the existing law-10 hard flag; the spec-versus-instructions
     pre-check already exists and does not need another gate. Reviewers retain their usual checks.
     **ONLY THE ORCHESTRATOR MAY EDIT A SPEC OR OTHER AUTHORITY DOCUMENT.** If the root amends one,
-    record the technical rationale and retract contradicted text in place (law 9), never while a
+    record the technical rationale and retract contradicted text in place (law 7), never while a
     run on it is in flight. Never retroactively authorize unsupported implementation.
     **Every inverse-spec finding is CRITICAL regardless of the severity or lane it arrived with; the
     finding verifier, the fixer and the root all ignore that supplied categorization and must
@@ -1166,7 +1160,7 @@ Non-negotiable across every run of this skill.
     against the recorded directives; a code change it needs is a new run under the remaining items
     rules. Amending the spec does not resolve the finding, and the original verbatim directives are
     never erased, rewritten or selectively omitted to make it disappear.
-16. **ASSERT AT THE GRANULARITY AT WHICH THE RULE BINDS** — per row, per section, per item — and
+14. **ASSERT AT THE GRANULARITY AT WHICH THE RULE BINDS** — per row, per section, per item — and
     **never aggregated over the whole artifact**. An aggregate assertion lets a fully DEGENERATE
     part pass on the strength of its neighbours: the property holds across the sample while the
     subsection that matters violates it outright. That is why this class **ships defects THROUGH a
@@ -1287,11 +1281,11 @@ Every stage returns one structured object and nothing else, and the script accep
 completeness of that object, never on the length of a text. One helper, `stage(prompt, opts,
 complete)`, accepts every stage: the schema validates shapes and enums, `complete` checks the
 cross-field contracts, and the helper returns at once an object whose `abort.trigger` is not `none`
-with a non-empty `abort.reason` (law 10). A null result or a failed check retries the SAME agent up
+with a non-empty `abort.reason` (law 8). A null result or a failed check retries the SAME agent up
 to three times, each retry stating plainly HOW the previous attempt failed; the third miss throws
 with the last failure named, so a stale input such as `args.criteriaCount` is visible as the cause.
 `args.criteriaCount` is a required integer of at least 1, taken from the tool's count of criterion
-items at the YAML revision the root launches, fixed for the run by law 9.
+items at the YAML revision the root launches, fixed for the run by law 7.
 
 The completeness checks, by stage kind:
 - **every briefed stage**: `abort.reason` non-empty when the trigger is not `none`;
@@ -1322,7 +1316,7 @@ and the diff check itself.
 
 **ARTIFACT-PRODUCING STAGES PROVE THE ARTIFACT IN `files` AND `checks`.** A stage can produce a
 long, immaculate ANALYSIS of the work and never create the file; an empty `files` list behind a
-new snapshot fails the check above, and the finding verifier recomputes from the artifact (law 12)
+new snapshot fails the check above, and the finding verifier recomputes from the artifact (law 10)
 by checking `files` against the paths the commit touched. The stage's own account of itself is a
 truncation-and-dishonesty detector, never evidence. The second line of defense is downstream:
 **COLD seats refuse to fabricate a review against an artifact that is not there**, and say so in
@@ -1420,10 +1414,10 @@ disposition to build remaining items, and reads receipts (`file`, `line`, `quote
 array is **defects only**: verdict rows go in `verdicts`, what was inspected in `coverage`, what
 was run in `checks`.
 
-**And ENUM-LOCK the vocabulary the script branches on (law 11).** Fixing is authorized by
+**And ENUM-LOCK the vocabulary the script branches on (law 9).** Fixing is authorized by
 `approve-fix`, not a reviewer's free-form lane or severity. Lock verifier actions, severities
 (including `CRITICAL` for rule violations and, unconditionally, every inverse-spec finding —
-law 15) and fixer dispositions in the schema.
+law 13) and fixer dispositions in the schema.
 An unfamiliar word must fail validation, not silently skip a phase and produce success.
 
 ### The AUTHORITY constant
@@ -1432,16 +1426,16 @@ This content rides authority-aware seats, verbatim, not paraphrased. Quality and
 seats get the hygiene floor only; cold alternatives gets that floor plus invariants.
 Do not defeat an unbriefed seat by appending instructions to read the spec or project docs.
 For the other seats:
-- **The authority hierarchy** (law 8) — user verbatim directives > the spec, named by PATH and read
+- **The authority hierarchy** (law 6) — user verbatim directives > the spec, named by PATH and read
   from disk > this prompt, explicitly UNTRUSTED relative to the spec. Name the AUTHORITY DOCUMENTS
   as the first two and say plainly that the prompt is not one, or the next bullet has no boundary
   — but the directive still reaches the prompt directly (a spec gains no decision authority merely
   by being written, and neither does a prompt that overrides a directive it disagrees with).
-- **Approved text** (law 8) — text the user approved, held in the approves field of a private
+- **Approved text** (law 6) — text the user approved, held in the approves field of a private
   record entry, counts as the user's verbatim directive, and a contradiction with it is a
   contradiction with the user's own sentence, hard-flagged the same way. The main script's and
   the fix script's `AUTHORITY` blocks say so.
-- **Hard-flag semantics** (law 10) — the one `abort` field and its three triggers: a contradiction
+- **Hard-flag semantics** (law 8) — the one `abort` field and its three triggers: a contradiction
   with a user directive on at least one side, spec or prompt (`directive-conflict`), a
   writing seat's failed sense check (`sense-check`), and a writing seat's private directive record
   that was not supplied, cannot be read, or holds no quotation attributed to the user
@@ -1450,7 +1444,7 @@ For the other seats:
   counter-case too, since it is the common one: a tree that does not yet satisfy the spec, or a
   prompt that merely conflicts with the spec with no directive on either side, yields ordinary
   must-fix findings, never a flag.
-- **Premise verification** (law 8) — every factual claim the prompt makes about the tree is
+- **Premise verification** (law 6) — every factual claim the prompt makes about the tree is
   **VERIFIED against the tree** before anything is built on it, and a false one is
   **VERIFIED-AND-REPORTED**: build to the true state, flag the premise as a must-fix. Say this
   explicitly, or "untrusted" degrades into "ignored" and the seat builds against nothing at all.
@@ -1472,7 +1466,7 @@ For the other seats:
   wordless record, with the reason in `abort.reason`; it is
   `none` otherwise. Everything else (the prompt losing to the spec with no directive on either
   side, a false prompt premise verified and reported, a tree that does not yet satisfy the spec)
-  is an ordinary must-fix finding and the seat proceeds; see law 10.
+  is an ordinary must-fix finding and the seat proceeds; see law 8.
 - **The findings contract** — a source finding is a DEFECT, cites a **repo-relative** FILE and
   carries at least one receipt (`file`, `line`, `quote`); verdicts go in `verdicts`, what was
   inspected in `coverage`, what could not be checked in `limitations`. Concern reviewers suggest
@@ -1483,8 +1477,8 @@ For the other seats:
   reports a choice that no words of the user back as a finding with kind `unbacked-choice`.
 - **Bound detection and repair separately.** Ordinary verdicts cover the change; the rule reader
   reads full changed files and separates unrelated cleanup. No seat turns cleanup into in-unit scope.
-- **No seat edits an authority document** (law 15). Implement the spec as written unless it
-  contradicts a directive (law 10); report suggestions without blocking executable work or normal
+- **No seat edits an authority document** (law 13). Implement the spec as written unless it
+  contradicts a directive (law 8); report suggestions without blocking executable work or normal
   reviews. Only an actual impossibility warrants blocking on the requirements. Only the
   orchestrator edits a spec, and only to state an existing decision, never to invent one.
 
@@ -1525,9 +1519,9 @@ No script of this skill starts the `gap-finder` and `spec-provenance` templates.
 
 ## Model assignment
 
-Set an EXPLICIT model AND effort on EVERY agent/stage — never inherit or default (see law 1).
 The marked block of each shipped script holds one model entry, a model and an effort, for every
-agent the script starts, and the root sets every one of them, the launch check included. Every
+agent the script starts, and the root sets every one of them, the launch check included, as law 1
+requires. Every
 entry ships with a placeholder in angle brackets as its model, such as `<explicit>`, so no shipped
 script names a model, and no agent template names one either. In the main script, `models.review`
 holds one entry per review seat, keyed by the seat's label, so each of the fifteen seats can run on
@@ -1536,11 +1530,19 @@ placeholder, or names an agent or seat the script does not have. It stops as wel
 holds any field besides the model and the effort, because the stage options take the entry whole
 and such a field would replace the agent's template or another option. A seat that reads whole
 files, such as the rule reader, may need a model with a larger context than the others.
-General rule unless a project overrides it: **implementation and fixing → the strongest available
-coding model at high effort; review → a strong model from a DIFFERENT family than the implementer,
-high effort; mechanical stages → a mid tier at low/medium effort; never the cheapest tier.** The
-roaster wants whichever model is most willing to be blunt, at high effort. Match the project's own
-stated model policy if it has one.
+
+Which model and effort each stage runs on is a choice of the user and the project, and a model
+policy either of them states decides it. Where neither states one, these are recommendations:
+
+- **Implementation and fixing:** the strongest available coding model at high effort.
+- **Review:** a strong model at high effort, from a different model family or vendor than the
+  implementer. A reviewer of the implementer's family shares its blind spots and tends to accept
+  exactly the assumption that needed a challenge.
+- **Mechanical or repetitive stages**, such as list checks and formatting sweeps: a mid tier at low
+  or medium effort, never the cheapest tier.
+- **The roaster:** whichever model is most willing to be blunt, at high effort.
+- **Top efforts:** genuinely hard reasoning only. On routine work they overthink and cost
+  wall-clock time for nothing.
 
 ## Don't over-fan
 

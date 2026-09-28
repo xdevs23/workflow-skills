@@ -18,7 +18,7 @@ on the completeness of its object, never on the length of a text. This builds on
    * `abort`: `{ trigger, reason }`, `trigger` an enum of `none`, `directive-conflict` and
      `sense-check`, required on every briefed stage object (implementer, fixer, finding
      verifier, correctness, cleanliness, spec compliance, duplicate checker, inverse-spec,
-     project rule reader). A trigger other than `none` is the hard flag of law 10: the script
+     project rule reader). A trigger other than `none` is the hard flag of law 8: the script
      stops the run with the whole object in its remaining items. The cold seats (quality, cold
      alternatives, roaster, the two pre-phase seats) carry no `abort` field, because its member
      names would brief them; `hasHardFlag` treats an absent field as no abort. The marker string
@@ -90,7 +90,7 @@ on the completeness of its object, never on the length of a text. This builds on
    `none` and whose `reason` is non-empty, retries up to three times on a null result or a
    failed completeness check, and throws after the third attempt with the last failure named.
    `args.criteriaCount` is a required integer of at least 1; the root counts the numbered items
-   under the spec's acceptance-criteria heading at the revision it launches, and law 9 keeps
+   under the spec's acceptance-criteria heading at the revision it launches, and law 7 keeps
    that revision fixed for the run. The completeness checks:
    * every briefed stage: `abort.reason` non-empty when the trigger is not `none`;
    * verdict seats: exactly one verdict per criterion from 1 to `args.criteriaCount`, every
@@ -124,8 +124,8 @@ on the completeness of its object, never on the length of a text. This builds on
    task-context paragraph: the returned object is the deliverable and carries everything the
    seat owes. The templates say nothing about narration.
 8. **Skill prose.** The section on accepting a stage result, the decomposable-deliverables
-   section, the schema-versus-plain-text section, law 4, the marker sentences of law 10, the
-   vocabulary list of law 11, the hard-flag lines of the shared authority constant and its
+   section, the schema-versus-plain-text section, law 2, the marker sentences of law 8, the
+   vocabulary list of law 9, the hard-flag lines of the shared authority constant and its
    prose section, the phase 1 abort paragraph, the phase 4 fixer paragraph, the phase 2 and
    phase 3 sentences on reports, and the finding verifier's rule to read every report in full
    are rewritten to the fields and the completeness checks. The rule that a finding is a defect
@@ -143,12 +143,12 @@ on the completeness of its object, never on the length of a text. This builds on
 
 * **A capped summary string beside the fields.** Any free-text field becomes the place the
   content drifts back into, and the length floor would return with it.
-* **Booleans instead of quoted output.** The observed-output rule (law 12) would lose its
+* **Booleans instead of quoted output.** The observed-output rule (law 10) would lose its
   evidence trail; the verifier would have to re-run every command to know what a writer saw.
 * **One reader schema with every seat block optional.** Validation would no longer say which
   seat omitted what; each seat's contract validates on its own.
 * **One abort field per trigger.** Two fields give one event two dispositions; one enum keeps
-  law 10's single disposition.
+  law 8's single disposition.
 * **An abort field on the cold seats with only `none` allowed.** A field that can hold one value
   carries nothing, and its enum's member names are the briefing the seats must not receive.
 * **A per-criterion status field on the fixer.** Nobody consumed the prose version; the fresh

@@ -40,7 +40,7 @@ is a judgment a reader applies, so each one is prose in the file whose reader ap
 6. **No claim about an external system without observation.** A statement that an external system
    misbehaved requires an observation of that system misbehaving, quoted. A symptom is evidence
    that something happened, never evidence of which component caused it, so an attribution drawn
-   from a symptom is a hypothesis and is labelled one. It extends law 12, which already states that
+   from a symptom is a hypothesis and is labelled one. It extends law 10, which already states that
    code-reading loses to observation.
 7. **The shape of a decision request.** An ask is one short sentence with the question alone on its
    own line. An answer approves only what it literally names, so a change of scope or shape spends
@@ -93,7 +93,7 @@ is a judgment a reader applies, so each one is prose in the file whose reader ap
   workflow governs reviews, fixes and escalation; the spec skill governs spec preparation; the
   copywriting skill governs strings. A thirteenth skill would split each subject across two files.
 * **A new numbered law for the external-system rule.** The laws are cross-referenced by number and
-  asserted by the suite, and law 12 already states the observation principle the rule extends. A
+  asserted by the suite, and law 10 already states the observation principle the rule extends. A
   seventeenth law would restate a law instead of adding one.
 * **Repeating one decision recorded once in the quality bar.** The duplicate checker already owns
   it, and repeating it would break the bar's own third item on its first reading.
@@ -118,7 +118,7 @@ destinations, the contradiction is reported instead of resolved by rewriting unr
    four items of rule 3 and naming the duplicate checker as the place the fifth lives.
 4. The same section states rule 4.
 5. The remaining-items and follow-up section states rule 5, written against the work record entry.
-6. Law 12 states rule 6.
+6. Law 10 states rule 6.
 7. The decide-or-ask material states rule 7.
 8. An in-flight subsection sits immediately before the post-run timing review and states the
    observation, the signal, the response and the distinction from the twenty-minute per-agent

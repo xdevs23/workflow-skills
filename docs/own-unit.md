@@ -20,7 +20,7 @@ check.
 Every passage that sent the root to that review now says that the root writes the spec, validates
 it with the spec tool and launches the main run on it, and that the stages of that run report what
 they find in the spec. This holds for the implement-review-verify skill, including its opening
-section on the unit spec and law 9, for the spec-writing skill, for the README row of
+section on the unit spec and law 7, for the spec-writing skill, for the README row of
 implement-review-verify and for the routing tests. The passages that named the provenance reader as
 the stage judging a spec before code now name the implementer's sense check. The partial base
 setting belongs to the main script alone.
@@ -73,7 +73,7 @@ writer object, and the three code-lens readers see them in the same object they 
 
 The skill describes all of this in phase 1, lists `specFindings` among what the implementer
 returns, names the spec finding among the kinds of remaining items, and adds the class to the
-vocabularies law 11 requires the schemas to lock.
+vocabularies law 9 requires the schemas to lock.
 
 ## Only words said about this unit count
 

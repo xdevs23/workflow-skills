@@ -89,7 +89,7 @@ no loop. This builds on [finding verification](workflow-finding-verification.md)
    `record` stays recorded. A follow-up's review may raise new items, which are new entries;
    each follow-up's list is the previous pass's list. The root never reports a fix as verified
    on the fixer's claim.
-7. **Resuming.** Law 5 applies to an interrupted run only: a run stopped mid-flight is
+7. **Resuming.** Law 3 applies to an interrupted run only: a run stopped mid-flight is
    resumed through the resume-interrupted-run skill with its unfinished stages re-run; a
    completed run is never resumed to run more stages. The law and the resume corollaries
    section are rewritten to say that, and the cache-busting rules for re-running a review
