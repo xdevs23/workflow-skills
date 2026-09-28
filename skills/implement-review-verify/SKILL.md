@@ -88,7 +88,7 @@ the user's words and the private record.
 
 **ACCEPTANCE CRITERIA ARE MANDATORY.** Before you launch, write each one as a `criterion` item
 in the YAML spec: checkable, one per behaviour that must hold. The tool numbers them from one in
-file order, and the generated document lists them under those numbers.
+file order.
 The concern reviewers return verdicts *per criterion*; the additional seats retain their distinct contracts. Without pinned
 criteria, "review" degrades to vibes, each seat invents its own bar, and nothing the fixer
 receives can be triaged against anything. No criteria, no launch.
@@ -107,7 +107,7 @@ The spec's top-level `record` key holds the absolute path of the private directi
 was written from, the YAML file described under the private source record below. The tool fails a
 spec whose record file does not exist, whose record is not of that format, whose record holds a
 quote the transcripts do not bear out, or whose record entries do not hold every `user_words` of
-the spec in their `words` once whitespace is collapsed. The generated document never shows the path. The tool reads a relative path from the directory it runs in, as the test fixtures
+the spec in their `words` once whitespace is collapsed. The design document never shows the path. The tool reads a relative path from the directory it runs in, as the test fixtures
 do, but a unit spec holds the absolute path: each script's launch check compares it with the
 absolute path in its marked block.
 
@@ -132,7 +132,7 @@ failing. The provenance reader judges these claims against the cited words and o
 
 The YAML spec holds everything a unit needs, and it is the only form of the spec that exists
 before and during implementation: every stage reads it from its path. No Markdown design document
-is rendered, committed or checked before implementation. Validate the YAML after every amendment:
+is written, committed or checked before implementation. Validate the YAML after every amendment:
 
 ```sh
 bun <plugin root>/tools/check-spec.ts .cache/specs/<unit>.yaml --transcripts <session-dir> --base <base-sha> --json
@@ -146,25 +146,27 @@ below uses `<plugin root>/tools/check-spec.ts`, and the shipped scripts take the
 their marked block. An installed plugin older than this tool prints no proof, so its launch check
 fails and no run launches on it until the plugin is updated; that is the intended effect.
 
-The tracked design document is generated from the final YAML after the
-implementation so it records what was built, with private quotations and evidence references
-omitted, and it is never edited by hand. Rendering it is the writers' completion step. The
-implementer, once its implementation is done, runs the validation command above with `--render
-docs/<unit>.md` in place of `--json`, with `--base` at the unit's base commit so cited rule files
-are read as they stood there, as its last write. Its checks then run once, after that write, and
-it commits the document as its own commit. The fixer, once its corrections are done, renders it
-again the same way as its last write before its checks, and commits it when the rendering
-changed. A fix run's fixer does the same for its parent spec's document. The writer prompts of the main and
-fix-run scripts carry the render command, built from the paths of the marked block: the document
-takes its name from the spec's file name.
+The tracked design document is written by hand from the code after the implementation, so it
+records what was built. It describes the change as the code at the writer's final commit
+implements it: what it does, how its parts fit together, the decisions with their reasons, and the
+alternatives the user rejected with their reasons. The rejected alternatives come from the spec's
+items of kind `rejected`, and the writer adds none of its own. The writer checks every statement
+about behaviour against that code. The document carries no words of the user, no local absolute
+paths and no account of the conversation, and it follows the repository's prose rules and
+`workflow-skills:writing-style`. Writing it is the writers' completion step. The implementer, once
+its implementation is done, writes `docs/<unit>.md` as its last write. Its checks then run once,
+after that write, and it commits the document as its own commit. The fixer, once its corrections
+are done, updates the document by hand where a correction changed what it describes, as its last
+write before its checks, and commits it when it changed. A fix run's fixer does the same for the
+parent unit's document. The writer prompts of the main and fix-run scripts carry this step, with
+the document path built from the spec path of the marked block: the document takes its name from
+the spec's file name.
 
-With `--render` the tool's summary goes to stderr, and only `--json` puts
-anything on stdout. The root runs the tool before the spec pre-phase and again before the main run's implement stage,
-and each run's first stage runs it once more and returns the `proof` the tool prints only when the
+The tool prints its summary on stdout, as JSON with `--json`. The root runs the tool before the
+spec pre-phase and again before the main run's implement stage, and each run's first stage runs it once more and returns the `proof` the tool prints only when the
 spec passes. A spec with no item of source `transcript` fails, as does a `requirement` derived
 from observations alone: the tool refuses a spec that carries none of the user's words.
-A failing spec launches neither run. None of these checks renders the document or compares one
-with `--check-render`, since the document does not exist before implementation.
+A failing spec launches neither run. The tool neither renders nor checks a design document.
 
 Use the tool's `counts.kind.criterion` for `args.criteriaCount`, never a hand count. Its
 ordered `criteria` list of `{ ordinal, id }` assigns integer ordinals from one in YAML file order;
@@ -395,7 +397,7 @@ private record; the root chooses the continuation from the coder's object and th
 rule for scope: touch only what the task needs, and flag anything beyond the ruled scope as an
 invention rather than building it.
 
-Its last write is the design document it renders from the YAML spec once its implementation is
+Its last write is the design document it writes by hand from the code once its implementation is
 done, as the unit spec section above describes, and its checks run once after that write. It
 commits only its own scoped changes after checks, with the design document as its own commit. It
 then returns `files` (every path a commit of
@@ -661,9 +663,9 @@ authority and boundaries. Raw seat objects are not extra work orders. It:
   spec or other authority document to make the correction legal after the fact;
 - returns disagreements with counterevidence to the ROOT, not automatically to the user
   and not to another automatic fix attempt. A blocked mechanism stays untouched;
-- renders the design document again as its last write once its corrections are done, runs full
-  checks BARE AFTER THAT LAST WRITE, commits completed scoped corrections and the document when
-  the rendering changed, then
+- updates the design document by hand as its last write once its corrections are done, where a
+  correction changed what it describes, runs full checks BARE AFTER THAT LAST WRITE, commits
+  completed scoped corrections and the document when it changed, then
   returns the clean snapshot SHA, `git`, `commits`, `files`, `checks` with the quoted output and
   `proofPassed`; the root attests each claimed fix against its approved correction and checks.
 
@@ -782,8 +784,7 @@ change to make, in plain words). The list holds no user words and no field for t
 `<plugin root>/tools/check-spec.ts --fix-list <file> --transcripts <dir> --json`, which resolves
 every entry against the parent run's journal and prints the proof only when every entry resolves.
 The root passes the tool's `entries` and `parentSpec` output as `args.entries` and
-`args.parentSpec`, the parent run's final snapshot as `args.baseSha` and the parent run's own
-`baseSha` as `args.parentBaseSha`, which the fixer's render command uses, and fills the parent
+`args.parentSpec` and the parent run's final snapshot as `args.baseSha`, and fills the parent
 unit's private record into the block. The launch check runs the same command in the worktree with
 `--expect` and the JSON of those two launch values, which the script builds and quotes for the
 shell. The tool fails when they differ from the fix list, so the corrections the fixer receives are
@@ -797,11 +798,10 @@ remaining item with its reason, and when no entry is corrective the run ends the
 `root-resolution` and no fixer runs. The fixer receives only the corrective entries, one key per
 entry ID with the correction, the scope check's reason and its receipts, while the roaster reads
 the same list. The read-only diff check then maps every change of the fix diff to a corrective
-entry. The parent spec's design document has no exception: a change to it maps to the corrective
-entry it carries out, or it is a CRITICAL finding. A correction whose only change is the
-re-rendered document is accepted when its entry covers it, and a fix reported as done needs a
-commit of the fixer whatever path it touches. The fixer renders the document from the parent spec
-as it stands on disk. Each finding of the diff check returns as a CRITICAL `diff-finding` and
+entry. The parent unit's design document has no exception: a change to it maps to the corrective
+entry it carries out, or it is a CRITICAL finding. A correction whose only change is the document
+is accepted when its entry names the document, and a fix reported as done needs a commit of the
+fixer whatever path it touches. The fixer updates the document by hand from the code. Each finding of the diff check returns as a CRITICAL `diff-finding` and
 starts no further fixer.
 Every entry the fixer reports fixed returns as an `unattested-fix` for the root to attest, as in
 the main run, and the run then ends `follow-up`, as it also does when only must-fix or CRITICAL
@@ -968,15 +968,17 @@ proof. Apply improvements within authorized scope and report any broader follow-
 ### Size report and the 20:1 acceptance gate
 
 Measure the final candidate against its unit spec before integration, using immutable inputs:
-record the merge-base SHA, candidate SHA, generated document path and its blob ID. The writers
-commit the generated document after the implementation, so the candidate commit holds it. Read the
-tracked generated document at that candidate, not a moving working file. For bundle/patch delivery
-the comparison base is the project's declared reconstruction base; do not silently substitute a
-convenient newer base.
+record the merge-base SHA, the candidate SHA and the `sha256` of the final spec that the spec tool
+prints. That `sha256` equals the one the launch check of the run that produced the candidate
+printed, so the counted spec is the one the writers and reviewers read. The gate reads no design
+document. For bundle/patch delivery the comparison base is the project's declared reconstruction
+base; do not silently substitute a convenient newer base.
 
-- **Spec lines:** count non-blank lines in the tracked generated document at the candidate commit
-  that holds it. This is the denominator of the code-to-spec ratio; the private YAML holds quoted words and its
-  line count belongs only to the tool summary.
+- **Spec lines:** the `specLines` count the spec tool reports for the final spec: the non-blank
+  lines of its prose (`unit`, `summary` and each item's `content`, `user_words`, `answers`,
+  `quote`, `observation.output` and `reason`), wrapped by the width rule the tool checks, plus
+  one line for each distinct item id named as a parent. This is the denominator of the code-to-spec ratio. The tool's `nonBlankLines` counts the whole
+  YAML file, quoted words, evidence and keys included, and belongs only to the tool summary.
 - **Code added/deleted:** sum the added and deleted line counts from
   `git diff --no-ext-diff --no-textconv --no-renames --numstat BASE_SHA CANDIDATE_SHA --`
   over implementation files. Use added lines as the numerator, never net added-minus-deleted.
@@ -989,11 +991,11 @@ convenient newer base.
   classification and rename setting on every measurement; report deleted totals and test totals
   alongside the ratio. Disabling rename detection makes accounting reproducible (a moved file
   counts as delete/add); explain large moves rather than silently changing the measurement.
-- **Ratio:** code added / non-blank spec lines, displayed to one decimal. Compare unrounded
+- **Ratio:** code added / spec lines, displayed to one decimal. Compare unrounded
   counts: **above 20:1 blocks acceptance/merge**; exactly 20:1 does not breach the size gate.
   The size gate passing is not proof of correctness or permission to skip another check.
 
-The root obtains the counts from Git and the pinned spec, retaining receipts. Use established
+The root obtains the counts from Git and the spec tool, retaining receipts. Use established
 libraries/tools for machine-readable Git data, not a hand-written diff or Markdown parser.
 Missing measurements or an empty required spec leave acceptance incomplete, never a zero ratio.
 For the separate no-spec targeted-patch path, report the ratio as not applicable and the code/test
@@ -1327,10 +1329,9 @@ marked block sits at the top of each file between two comment lines and holds ev
 sets apart from `meta.name` and `meta.description` of the main script: the paths (main checkout,
 worktree, spec, transcripts, private record, plugin root), the check command, the base or start
 SHA, `criteriaCount`, the unit prompt text for the implementer, the scoping, the rule sources,
-the invariants and the model and effort per stage. The block holds no generated document: the scripts derive its path from the
-spec path. The fix run's block holds the fix list path, the entries, the parent spec and the
-parent run's `baseSha` as `parentBaseSha` in place of the spec, `criteriaCount` and the
-implementer's prompt. Everything below the block
+the invariants and the model and effort per stage. The block holds no design document path: the
+scripts derive it from the spec path. The fix run's block holds the fix list path, the entries and
+the parent spec in place of the spec, `criteriaCount` and the implementer's prompt. Everything below the block
 is the reviewed script and is not edited per unit. Never copy a previous unit's script and edit
 it, and never generalize one that already ran into a runner several units share.
 
@@ -1363,8 +1364,7 @@ changes to the tree the run works on, the worktree from the marked block for the
 fix run and the main checkout for the pre-phase, so the cited rule files resolve there.
 It then runs `<plugin root>/tools/check-spec.ts` with `--json`, the spec path from `args.specPath`, the
 transcript directory from `args.transcripts`, `--base` with the base commit and `--record` with the
-private record from the marked block. It carries no `--check-render`, because no design document
-exists before implementation. The tool fails when that record path differs from the spec's `record`. The sentence
+private record from the marked block. The tool fails when that record path differs from the spec's `record`. The sentence
 tells the stage to run that exact command once with the Bash tool and return its exit code,
 stdout, stderr and the proof string printed on success, with no interpretation, retry or fix. Its
 schema requires `exitCode`, `stdout`, `stderr` and `proof`.

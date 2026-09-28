@@ -1,9 +1,10 @@
 import { createHash } from 'node:crypto'
 import { createReadStream } from 'node:fs'
-import { readdir, readFile, stat, writeFile } from 'node:fs/promises'
+import { readdir, readFile, stat } from 'node:fs/promises'
 import { isAbsolute, join, resolve } from 'node:path'
 import { createInterface } from 'node:readline'
 import { parseArgs } from 'node:util'
+import { fromMarkdown } from 'mdast-util-from-markdown@2.0.3'
 
 const minimumBun = '1.2.21'
 const kinds = ['requirement', 'criterion', 'rejected', 'boundary'] as const
@@ -172,6 +173,49 @@ const recordText = (record: Mapping) => queuedCommand(record)
   ? (typeof record.attachment.prompt === 'string' ? withoutReminders(record.attachment.prompt) : '')
   : [textOf(record), ...dialogCalls(record).map(call => dialogText(call.input))].join(' ')
 
+// A line of a spec's prose, counted with its indentation and markers, holds at most this many
+// characters.
+const width = 120
+const characters = (line: string) => [...line].length
+type Point = { line: number, column: number }
+type MarkdownNode = { type: string, position?: { start: Point, end: Point }, children?: MarkdownNode[] }
+const paragraphs = (node: MarkdownNode): MarkdownNode[] =>
+  node.type === 'paragraph' ? [node] : (node.children ?? []).flatMap(paragraphs)
+
+// Checks one prose field against the width rule and returns a message for every line that breaks it.
+// No line is longer than the width, and every line of a paragraph but its last is full: the first
+// word of the next line would not fit on it. A line over the width passes only when its whole text is
+// one word longer than the width, and its number is returned in unbreakable. The parser gives the
+// paragraphs, and its prefix tokens give the column where each line's own text starts after the
+// indentation, list markers and quote markers in front of it.
+function widthViolations(prose: string) {
+  const rows = lines(prose)
+  const textStart = new Map<number, number>()
+  const prefix = (token: { end: Point }) => {
+    textStart.set(token.end.line, Math.max(textStart.get(token.end.line) ?? 1, token.end.column))
+  }
+  const tree: MarkdownNode = fromMarkdown(prose, { mdastExtensions: [{ enter: {
+    linePrefix: prefix, blockQuotePrefix: prefix, listItemPrefix: prefix, listItemIndent: prefix } }] })
+  const problems: string[] = [], unbreakable: number[] = []
+  // The words of a line, without the indentation and markers in front of its own text.
+  const words = (line: number) => rows[line - 1].slice((textStart.get(line) ?? 1) - 1).trim().split(/\s+/)
+  rows.forEach((row, index) => {
+    if (characters(row) <= width) return
+    const own = words(index + 1)
+    if (own.length === 1 && characters(own[0]) > width) unbreakable.push(index + 1)
+    else problems.push(`line ${index + 1} is ${characters(row)} characters, over ${width}`)
+  })
+  for (const { position } of paragraphs(tree)) {
+    for (let line = position!.start.line; line < position!.end.line; line++) {
+      const next = words(line + 1)[0]
+      if (characters(rows[line - 1].trimEnd()) + 1 + characters(next) <= width) {
+        problems.push(`line ${line} is not full: the first word of line ${line + 1} fits on it`)
+      }
+    }
+  }
+  return { problems, unbreakable }
+}
+
 // The shape checks a spec and a fix list share. Each failure is recorded with the position of the
 // item it concerns, so the report keeps file order, and with a path that names the item.
 function validator(file: string) {
@@ -316,25 +360,24 @@ async function checkRecord(content: string, transcripts: string, { fail, shape, 
 }
 
 const usage = 'Usage: bun tools/check-spec.ts <spec.yaml> --transcripts <dir> ' +
-  '[--render <path> | --check-render <path>] [--json] [--base <commit>] [--record <path>], ' +
+  '[--json] [--base <commit>] [--record <path>], ' +
   'or bun tools/check-spec.ts --fix-list <file> --transcripts <dir> [--json] [--expect <json>] [--record <path>]'
 
 async function main() {
   if (!Bun.YAML?.parse) throw new Error(`Bun ${minimumBun} or newer is required: Bun.YAML is unavailable`)
   const { values, positionals } = parseArgs({ args: Bun.argv.slice(2), allowPositionals: true,
-    options: { transcripts: { type: 'string' }, render: { type: 'string' },
-      'check-render': { type: 'string' }, json: { type: 'boolean' }, base: { type: 'string' },
+    options: { transcripts: { type: 'string' }, json: { type: 'boolean' }, base: { type: 'string' },
       'fix-list': { type: 'string' }, expect: { type: 'string' }, record: { type: 'string' } } })
   // The private record path a script's launch check passes from its marked block.
   const launchRecord = values.record
   if (launchRecord === '') throw new Error(usage)
   if (values['fix-list'] !== undefined) {
-    if (positionals.length || !values['fix-list'] || !values.transcripts || values.render || values['check-render'] || values.base) {
+    if (positionals.length || !values['fix-list'] || !values.transcripts || values.base) {
       throw new Error(usage)
     }
     return checkFixList(values['fix-list'], values.transcripts, values.json === true, values.expect, launchRecord)
   }
-  if (positionals.length !== 1 || !values.transcripts || (values.render && values['check-render']) || values.expect !== undefined) {
+  if (positionals.length !== 1 || !values.transcripts || values.expect !== undefined) {
     throw new Error(usage)
   }
   // A cited rule file is read as it stood at the base commit when it is tracked there, so a unit
@@ -365,9 +408,20 @@ async function main() {
   // checked and found to be of the record format, and the approved text of its verified entries.
   let recordWords: string[] | undefined
   let approvals: Approval[] = []
+  // The spec's prose: every field the width rule checks and whose non-blank lines the size gate counts.
+  // unbreakableLines holds the lines over the width that pass because their one word cannot be broken.
+  const unbreakableLines: { field: string, line: number }[] = []
+  let proseLines = 0
+  const prose = (value: unknown, index: number, field: string) => {
+    if (typeof value !== 'string') return
+    proseLines += nonBlankLines(value)
+    const { problems, unbreakable } = widthViolations(value)
+    for (const problem of problems) fail(index, field, problem)
+    unbreakableLines.push(...unbreakable.map(line => ({ field, line })))
+  }
   if (parsed && shape(spec, ['unit', 'summary', 'record', 'items'], -1, 'spec')) {
-    stringField(spec, 'unit', -1, 'spec')
-    stringField(spec, 'summary', -1, 'spec')
+    if (stringField(spec, 'unit', -1, 'spec')) prose(spec.unit, -1, 'spec.unit')
+    if (stringField(spec, 'summary', -1, 'spec')) prose(spec.summary, -1, 'spec.summary')
     if (stringField(spec, 'record', -1, 'spec')) {
       const path = spec.record as string
       if (!await isFile(path)) fail(-1, 'spec.record', `does not name an existing file: ${path}`)
@@ -397,6 +451,8 @@ async function main() {
         if (!kinds.includes(value.kind as typeof kinds[number])) fail(index, `${path}.kind`, 'unknown kind')
         if (!sources.includes(value.source as typeof sources[number])) fail(index, `${path}.source`, 'unknown source')
         stringField(value, 'content', index, path)
+        for (const field of ['content', 'user_words', 'answers', 'quote', 'reason']) prose(value[field], index, `${path}.${field}`)
+        if (mapping(value.observation)) prose(value.observation.output, index, `${path}.observation.output`)
         if (value.kind === 'rejected') stringField(value, 'reason', index, path)
         if (value.source === 'transcript') {
           const wordsOK = stringField(value, 'user_words', index, path)
@@ -411,7 +467,7 @@ async function main() {
               try {
                 const { cited, replies, asked } = await readCited(values.transcripts!, evidence, answersOK)
                 const { said, dialog } = userWords(cited, evidence.uuid as string, asked)
-                if (wordsOK && said.some(words => words.includes(value.user_words as string))) matched = true
+                if (wordsOK && said.some(words => normalize(words).includes(normalize(value.user_words as string)))) matched = true
                 const quote = answersOK ? normalize(value.answers as string) : ''
                 if (answersOK && replyTexts(replies, dialog).some(reply => reply.includes(quote))) answered = true
                 // Approved text from a file stands in no reply, so it counts once the record entry
@@ -499,14 +555,6 @@ async function main() {
     if (cycle) fail(index, path, 'cycle among parents')
   })
   if (report()) return
-  const document = render(spec as Mapping, items)
-  if (values['check-render']) {
-    let current: string
-    try { current = await readFile(values['check-render'], 'utf8') }
-    catch (error) { throw new Error(`generated document is unreadable: ${messageOf(error)}`) }
-    if (current !== document) throw new Error('generated document differs from the one in the tree; regenerate it with --render')
-  }
-  if (values.render) await writeFile(values.render, document)
   const summary = {
     counts: {
       kind: Object.fromEntries(kinds.map(kind => [kind, items.filter(item => item.kind === kind).length])),
@@ -515,15 +563,20 @@ async function main() {
     criteria: items.filter(item => item.kind === 'criterion').map((item, index) => ({ ordinal: index + 1, id: item.id })),
     sha256: sha256Of(bytes!),
     nonBlankLines: nonBlankLines(bytes!.toString('utf8')),
+    // The spec lines the size gate divides by: the non-blank lines of the spec's prose, and one line
+    // for each distinct item id that some item names as a parent.
+    specLines: proseLines + new Set(items.flatMap(item => Array.isArray(item.parents) ? item.parents : [])).size,
+    unbreakable: unbreakableLines,
     proof: freshProof(),
     spec: specPath,
   }
   const line = values.json ? JSON.stringify(summary) :
     `kind=${JSON.stringify(summary.counts.kind)} source=${JSON.stringify(summary.counts.source)} ` +
     `criteria=${JSON.stringify(summary.criteria)} sha256=${summary.sha256} nonBlankLines=${summary.nonBlankLines} ` +
+    `specLines=${summary.specLines} ` +
+    `unbreakable=${JSON.stringify(summary.unbreakable)} ` +
     `proof=${summary.proof} spec=${summary.spec}`
-  if (values.json || !(values.render || values['check-render'])) console.log(line)
-  else console.error(line)
+  console.log(line)
 }
 
 // A fix list names findings of one earlier run and the correction each needs. It holds no words of
@@ -685,23 +738,6 @@ async function checkFixList(file: string, transcripts: string, json: boolean, ex
   }
   console.log(json ? JSON.stringify(summary) :
     `entries=${summary.entries.length} run=${summary.run} sha256=${summary.sha256} proof=${summary.proof} fixList=${summary.fixList}`)
-}
-
-function render(spec: Mapping, items: Mapping[]): string {
-  const body = (item: Mapping) => `**${item.id}**: ${(item.content as string).trim()}`
-  const paragraphs = (kind: string, tail = (_: Mapping) => '') =>
-    items.filter(item => item.kind === kind).map(item => body(item) + tail(item)).join('\n\n')
-  const criteria = items.filter(item => item.kind === 'criterion').map((item, index) => {
-    const marker = `${index + 1}. `
-    return marker + body(item).replace(/\n(?=.)/g, '\n' + ' '.repeat(marker.length))
-  }).join('\n')
-  const groups = [
-    ['Requirements', paragraphs('requirement')], ['Boundaries', paragraphs('boundary')],
-    ['Rejected alternatives', paragraphs('rejected', item => `\nReason: ${(item.reason as string).trim()}`)],
-    ['Acceptance criteria', criteria],
-  ]
-  return [`# ${spec.unit}`, (spec.summary as string).trim(),
-    ...groups.filter(([, content]) => content).map(([heading, content]) => `## ${heading}\n\n${content}`)].join('\n\n') + '\n'
 }
 
 main().catch(error => { console.error(messageOf(error).replace(/[\r\n]+/g, ' ')); process.exitCode = 1 })

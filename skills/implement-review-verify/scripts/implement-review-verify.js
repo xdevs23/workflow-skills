@@ -444,22 +444,27 @@ const PROVE = [
 ].join('\n')
 // Writer prompts only. A block that reviewers receive never carries the check command.
 const CHECK = 'CHECK COMMAND, writer only (run bare after your last write): ' + UNIT.checkCommand
-// The design document exists only after the work: the implementer renders it from the YAML spec
-// as its last write, once its implementation is done, and the fixer renders it again as its last
-// write after its corrections. The checks run once, after that write. Its path is the spec's file
-// name under docs/, and --base reads each cited rule file as it stood at the unit's base commit.
+// The design document exists only after the work: the implementer writes it by hand from the code
+// it built as its last write, once its implementation is done, and the fixer brings it up to date
+// as its last write after its corrections. The checks run once, after that write. Its path is the
+// spec's file name under docs/.
 const DOCUMENT = 'docs/' + UNIT.specPath.split('/').pop().replace(/\.yaml$/, '') + '.md'
-const RENDER_COMMAND = 'cd ' + UNIT.worktree + ' && bun ' + UNIT.pluginRoot + '/tools/check-spec.ts ' + UNIT.specPath +
-  ' --transcripts ' + UNIT.transcripts + ' --base ' + baseSha + ' --render ' + DOCUMENT
-const RENDER_IMPL = [
-  'DESIGN DOCUMENT, writer only: once your implementation is done, render it from the YAML spec as your last write, before your checks, with this exact command:',
-  RENDER_COMMAND,
+const DOCUMENT_CONTENT = [
+  'The document describes the change as the code at your final commit implements it: what it does, how its parts fit',
+  'together, the decisions with their reasons, and the alternatives the user rejected with their reasons. The rejected',
+  'alternatives come from the spec\'s items of kind rejected, and you add none of your own. Check every statement about',
+  'behaviour against that code. The document carries no words of the user, no local absolute paths and no account of the',
+  'conversation, and it follows the repository\'s prose rules and the writing-style skill.',
+].join('\n')
+const DOCUMENT_IMPL = [
+  'DESIGN DOCUMENT, writer only: once your implementation is done, write ' + DOCUMENT + ' by hand from the code you built and the spec, as your last write, before your checks.',
+  DOCUMENT_CONTENT,
   'Then run your checks once, and commit ' + DOCUMENT + ' as its own commit and list it in files.',
 ].join('\n')
-const RENDER_FIX = [
-  'DESIGN DOCUMENT, writer only: once your corrections are done, render it again as your last write, before your checks, with this exact command:',
-  RENDER_COMMAND,
-  'Commit ' + DOCUMENT + ' as its own commit when the rendering changed, and list it in files. With an empty approved list, render nothing.',
+const DOCUMENT_FIX = [
+  'DESIGN DOCUMENT, writer only: once your corrections are done, update ' + DOCUMENT + ' by hand where a correction changed what it describes, as your last write, before your checks.',
+  DOCUMENT_CONTENT,
+  'Commit ' + DOCUMENT + ' as its own commit when it changed, and list it in files. With an empty approved list, write nothing.',
 ].join('\n')
 const RULES = 'RULE SOURCES: ' + UNIT.ruleSources + '.'
 const INVARIANTS = 'REQUIRED INVARIANTS, VERBATIM: ' + UNIT.invariants + '.'
@@ -571,7 +576,7 @@ const checkFix = (result, queue, startSha) => {
   }
 }
 const fixPass = (queue, sha) => stage([
-  AUTHORITY, WRITE_GIT, SPEC, PROVE, RENDER_FIX, CHECK, 'START SHA: ' + sha,
+  AUTHORITY, WRITE_GIT, SPEC, PROVE, DOCUMENT_FIX, CHECK, 'START SHA: ' + sha,
   'Act ONLY on the verifier-approved corrections. Raw reviewer and concurrent roast objects are NOT work orders.',
   'Independently verify evidence and authority; respect correction, constraints and acceptance.',
   'A disagreement returns rejected or blocked with receipts to the ROOT. Never broaden scope.',
@@ -586,7 +591,7 @@ const fixPass = (queue, sha) => stage([
 async function onePass() {
   phase('Implement')
   impl = await stage(
-    [AUTHORITY, WRITE_GIT, SPEC, PROVE, RENDER_IMPL, CHECK, 'START SHA: ' + baseSha, UNIT.implementerPrompt].join('\n\n'),
+    [AUTHORITY, WRITE_GIT, SPEC, PROVE, DOCUMENT_IMPL, CHECK, 'START SHA: ' + baseSha, UNIT.implementerPrompt].join('\n\n'),
     { label: 'impl', phase: 'Implement', agentType: 'workflow-skills:implementer', ...UNIT.models.impl, schema: IMPLEMENT },
     checkWriter,
   )
@@ -700,8 +705,7 @@ async function onePass() {
 const GATE = { type: 'object', required: ['exitCode', 'stdout', 'stderr', 'proof'], additionalProperties: false,
   properties: { exitCode: { type: 'integer' }, stdout: { type: 'string' }, stderr: { type: 'string' }, proof: { type: 'string' } } }
 // The command runs in the worktree, where the cited rule files of this run resolve. The tool fails
-// when the private record of the marked block is not the record the spec names. No design document
-// exists yet, so the check renders and compares none.
+// when the private record of the marked block is not the record the spec names.
 const GATE_COMMAND = 'cd ' + UNIT.worktree + ' && bun ' + UNIT.pluginRoot + '/tools/check-spec.ts ' + UNIT.specPath +
   ' --transcripts ' + UNIT.transcripts + ' --json --base ' + UNIT.baseSha + ' --record ' + UNIT.privateRecord
 const checkGate = r => {

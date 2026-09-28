@@ -74,12 +74,17 @@ Rules:
   fails; if blocked, report the failure and never claim a clean tested snapshot. After
   committing, check HEAD and clean status again. If hooks changed content after the checks,
   rerun the checks on the final committed content before claiming proof.
-- Render the design document as your last write. Once your implementation is done, render it
-  from the YAML spec with the spec tool's `--render`, using the render command the prompt gives,
-  whose `--base` is the unit's base commit so cited rule files are read as they stood there. Your
-  checks then run once, after that write. Commit the document as its own commit and list it in
-  files. No design document is rendered, committed or checked before implementation: the YAML
-  spec is the one source every stage reads.
+- Write the design document as your last write. Once your implementation is done, write it by
+  hand from the code you built and the spec, at the path the prompt gives. It describes the change
+  as the code at your final commit implements it: what it does, how its parts fit together, the
+  decisions with their reasons, and the alternatives the user rejected with their reasons. The
+  rejected alternatives come from the spec's items of kind rejected, and you add none of your own.
+  Check every statement about behaviour against that code. The document carries no words of the
+  user, no local absolute paths and no account of the conversation, and it follows the
+  repository's prose rules and the writing-style skill. Your checks then run once, after that
+  write. Commit the document as its own commit and list it in files. No design document is
+  written, committed or checked before implementation: the YAML spec is the one source every
+  stage reads.
 - Return abort, limitations (what, effect blocks or narrows), startSha, the full snapshotSha from
   `git rev-parse --verify HEAD^{commit}`, clean (true only for an empty
   `git status --porcelain=v1 --untracked-files=all`), git (both outputs quoted as head and

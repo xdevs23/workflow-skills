@@ -78,16 +78,22 @@ Write the unit spec, `<unit>.yaml` in the private-spec location that `workflow-s
 defines, ignored and untracked because it contains verbatim user words. The private directive
 record lives where that skill puts private directive records. The YAML holds everything, and it
 is the only form of the spec before and during implementation. Edit the YAML and validate it
-again after every amendment. The tracked document under `docs/` is generated from the final YAML
-after the implementation, so it records what was built: the implementer renders it as its last
-write once its implementation is done, runs its checks after that write and commits it, and the
-fixer renders it again as its last write after its corrections, before its checks.
+again after every amendment. The tracked design document under `docs/` is written by hand from
+the code after the implementation, so it records what was built: the implementer writes it as its
+last write once its implementation is done, runs its checks after that write and commits it, and
+the fixer updates it as its last write after its corrections, before its checks. It describes the
+change as the code at the writer's final commit implements it: what it does, how its parts fit
+together, the decisions with their reasons, and the alternatives the user rejected with their
+reasons, taken from the items of kind `rejected`, to which the writer adds none of its own. The
+writer checks every statement about behaviour against that code. It carries no words of the user,
+no local absolute paths and no account of the conversation, and it follows the repository's prose
+rules and `workflow-skills:writing-style`.
 
 `<plugin root>/tools/check-spec.ts` defines the validation contract; the committed, synthetic example at
 `tests/fixtures/spec-provenance/valid.yaml` is exercised by the tests. The top-level mapping has
-`unit`, `summary` (Markdown, the preamble of the generated document), `record` and a non-empty
-`items` list. `record` is the absolute path of the private directive record the spec was written
-from, and the generated document never shows the path.
+`unit`, `summary` (Markdown, the spec's own summary), `record` and a non-empty `items` list.
+`record` is the absolute path of the private directive record the spec was written from, and the
+design document never shows the path.
 
 The private directive record is a YAML file with exactly the keys `unit` and `entries`, and it
 holds quotations and nothing else. Each entry has exactly `id` (unique, kebab-case), the `file`,
@@ -131,6 +137,19 @@ also has `reason`. Use exactly the fields of its source kind:
   Use a read-only command that the provenance reader can repeat and compare against output and exit.
 - **derivation:** `parents`, a non-empty list of item ids whose chains reach a sourced item.
 
+The prose of a spec is wrapped at 120 characters, and the tool fails a spec that breaks the width
+rule. The prose is `unit`, `summary` and each item's `content`, `user_words`, `answers`, `quote`,
+`observation.output` and `reason`. A line, counted with its indentation and markers, holds at most
+120 characters, and every line of a paragraph but its last is full: the line, a space and the first
+word of the next line together would pass 120. A line of a fenced code block holds at most 120
+characters and is never held to the fill rule. The one exception is a line whose own text is a
+single word too long to fit, such as a long URL, which passes and which the tool names in the
+`unbreakable` list of its summary. Quoted words keep their words, punctuation and order verbatim,
+while where their lines break is free, so they wrap like the rest, and the tool matches them
+against the message with whitespace collapsed. The tool reads each field as the YAML parser returns
+it, so a folded scalar (`>`) is checked as the lines it folds into, one long line per paragraph, and
+wrapped prose is written as a literal block (`|`).
+
 An assertion that a condition, failure mode or risk exists needs source transcript or observation.
 A hypothetical hazard stays a finding until an observation establishes it in this environment.
 A derivation that mandates a mechanism states the simpler alternative it rules out in content,
@@ -154,14 +173,11 @@ words and the private record.
 
 Run `bun <plugin root>/tools/check-spec.ts .cache/specs/<unit>.yaml --transcripts <session-dir> --base <base-sha> --json`.
 The spec path in that command is the location `workflow-skills:local-cache` defines for private
-specs. The tool validates references, and with `--render docs/<unit>.md`, which only the writers
-pass after the implementation, it renders technical content, omitting private quotations and
-evidence.
+specs. The tool validates references and neither renders nor checks a design document.
 Keep each criterion as a criterion item: the tool numbers them from one in file order and supplies
 `{ ordinal, id }` plus `counts.kind.criterion` for the implementation workflow's integer ordinals and
-`args.criteriaCount`. Before either spec review or implementation, validation must pass. Nothing
-renders the document or checks one with `--check-render` before implementation, since none exists
-yet. The provenance reader judges whether the sources authorize the items before implementation.
+`args.criteriaCount`. Before either spec review or implementation, validation must pass. The
+provenance reader judges whether the sources authorize the items before implementation.
 
 ## The convergence loop
 
