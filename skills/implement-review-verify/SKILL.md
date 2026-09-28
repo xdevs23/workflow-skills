@@ -343,10 +343,11 @@ seat list, and it stops before its first agent when the seat list holds any othe
 label another template; the finding verifier's template names the fifteen seats and reports a seat
 whose object is missing as an issue for the root.
 
-The seats that give per-criterion verdicts:
+Correctness, spec compliance and the duplicate checker are the three seats that give a verdict per
+acceptance criterion.
 - **Correctness** (`agents/reviewer-correctness.md`) — bugs, races, broken invariants, the failure
-  modes the change introduces. Name the hazards in the prompt: "check the guard semantics around X"
-  beats "find bugs". Tell it to say plainly "I found nothing" rather than invent issues. This seat
+  modes the change introduces. It hunts the hazards visible in its assigned change, and its
+  template forbids invented issues and accepts an empty findings list. This seat
   also owns **ASSERTION GRANULARITY** (law 16): it READS the assertions and checks that each
   invariant is pinned at the granularity the rule binds at, never aggregated over the artifact —
   a class the gate structurally cannot catch, because the aggregate assertion is green.
@@ -428,9 +429,8 @@ by a reviewer does not authorize a fix; only the verifier's checked, consolidate
 - **Cold alternatives** (`agents/cold-alternatives.md`) — only the diff, surrounding code
   and required invariants, never the implementer's object. Returns `candidates` (at most two
   materially simpler shapes) or `currentShapeRight`.
-- **The eight audit seats** (`agents/separation-of-concerns.md`, `agents/abstraction-quality.md`,
-  `agents/code-smell.md`, `agents/type-safety.md`, `agents/code-cleanliness.md`,
-  `agents/missing-gaps.md`, `agents/domain-leakage.md`, `agents/type-smearing.md`) — each judges
+- **The eight audit seats** (`separation-of-concerns`, `abstraction-quality`, `code-smell`,
+  `type-safety`, `code-cleanliness`, `missing-gaps`, `domain-leakage`, `type-smearing`) — each judges
   the code through its one lens. Each receives what quality receives, the hygiene floor and the
   diff of every repository that moved, and returns what quality returns: `limitations`, `coverage`
   and `findings`, accepted by the same completeness check. Their templates ask for nothing about
@@ -1597,9 +1597,8 @@ Every NAMED role this skill spawns has a fixed prompt template in `agents/` — 
 `agents/reviewer-correctness.md`, `agents/reviewer-spec-compliance.md`,
 `agents/duplicate-checker.md`, `agents/roaster.md`, `agents/cold-alternatives.md`,
 `agents/quality.md`, `agents/reviewer-inverse-spec.md`, `agents/project-rule-reader.md`, the eight
-audit templates `agents/separation-of-concerns.md`, `agents/abstraction-quality.md`,
-`agents/code-smell.md`, `agents/type-safety.md`, `agents/code-cleanliness.md`,
-`agents/missing-gaps.md`, `agents/domain-leakage.md` and `agents/type-smearing.md`,
+audit templates `separation-of-concerns`, `abstraction-quality`, `code-smell`, `type-safety`,
+`code-cleanliness`, `missing-gaps`, `domain-leakage` and `type-smearing`,
 `agents/finding-verifier.md`, `agents/fixer.md`, plus
 `agents/gap-finder.md` and `agents/spec-provenance.md` for the spec-review
 pre-phase and `agents/scope-check.md` and `agents/diff-check.md` for the fix run. That file's body is the agent's **authoritative
