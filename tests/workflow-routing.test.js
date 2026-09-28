@@ -407,6 +407,13 @@ describe('workflow verification and consolidation', () => {
     expect(diff).toContain('api: ' + API + '..' + API_NEW)
     expect(diff).not.toContain('web: ' + BASE + '..')
     expect(diff).toContain('Every repository must remain clean at its snapshot: api ' + API_NEW + ', web ' + BASE + '.')
+    // A roaster may name a repository by its path inside the worktree; a path of another repository is refused.
+    const roastedAt = async snapshots => (await simulate({ args: launchArgs({ base }), implementation, fixes: { fix: fixed([], { repositories: unmoved }) },
+      verify: { verify: verification([], { repositories: repositories.map(({ path, snapshotSha, clean, git }) => ({ path, snapshotSha, clean, git })) }) },
+      reports: { roast: { snapshots } } })).result
+    expect((await roastedAt([{ path: '<isolated worktree>/api/', sha: API_NEW }, { path: './web', sha: BASE }])).exit).toBe('clean')
+    expect((await roastedAt([{ path: '<isolated worktree>/other', sha: API_NEW }, { path: 'web', sha: BASE }])).remaining
+      .some(r => r.kind === 'stage-failure' && /wrong snapshot/.test(r.item.message))).toBe(true)
     // A writer that leaves a repository out, or moves one without a commit in it, is refused.
     const apiCommit = [{ sha: API_NEW, subject: 'implement the change', repository: 'api' }]
     for (const [fields, message] of [[{ repositories: repositories.slice(0, 1), commits: apiCommit }, 'exactly one entry per repository of the list'],
@@ -2218,7 +2225,8 @@ describe('fix-only follow-up runs', () => {
 
   test('each helper the fix script copies from the main script has the same source text', async () => {
     const copied = ['stage', 'hasHardFlag', 'abortOnFlag', 'checkWriterSnapshot', 'checkWriter', 'withReceipts', 'requireText',
-      'exactlyOnce', 'add', 'end', 'failed', 'proof', 'limited', 'recordBlocking', 'blocking', 'sourceFindings']
+      'exactlyOnce', 'add', 'end', 'failed', 'proof', 'limited', 'recordBlocking', 'blocking', 'sourceFindings', 'sameSnapshots',
+      'listPath', 'reported']
     // Each script runs up to its launch check and returns the helpers it has defined by then.
     const helpers = (source, args) => {
       const launch = "\nphase('Launch')\n"
