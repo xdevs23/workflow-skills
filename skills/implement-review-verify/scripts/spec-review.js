@@ -23,8 +23,8 @@ const UNIT = {
   partialBase: false,                    // true only in a tree too large to list, where base names just the repositories the unit changes
   criteriaCount: args.criteriaCount,     // counts.kind.criterion from the check tool, passed at launch
   // One model and effort per agent the script starts, each set by the root. The script stops before
-  // its first agent on an entry that is missing, still a placeholder in angle brackets, or named for
-  // no agent of the script.
+  // its first agent on an entry that is missing, still a placeholder in angle brackets, named for no
+  // agent of the script, or holding any field besides model and effort.
   models: {
     gate: { model: '<explicit>', effort: 'low' },
     gaps: { model: '<explicit>', effort: 'high' },
@@ -163,7 +163,9 @@ const checkRepositories = (list, name) => {
   }
 }
 // The root sets the model and the effort of every agent in the marked block. names lists the agents
-// an entry of models may stand for; a value in angle brackets is the shipped placeholder.
+// an entry of models may stand for; a value in angle brackets is the shipped placeholder. An entry
+// holds nothing else: the stage options spread it, so another field would replace the agent's
+// template or another option of its stage.
 const checkModels = (models, names, path) => {
   for (const name of Object.keys(models ?? {})) if (!names.includes(name)) throw new Error(path + '.' + name + ' names no agent of this script')
   for (const name of names) {
@@ -174,6 +176,8 @@ const checkModels = (models, names, path) => {
         throw new Error(path + '.' + name + '.' + field + ' must be set by the root, not ' + JSON.stringify(value))
       }
     }
+    const extra = Object.keys(entry).filter(field => field !== 'model' && field !== 'effort')
+    if (extra.length) throw new Error(path + '.' + name + ' holds ' + extra.join(', ') + ', and an entry holds only a model and an effort')
   }
 }
 checkRepositories(UNIT.base, 'args.base, which observation dates are measured against,')

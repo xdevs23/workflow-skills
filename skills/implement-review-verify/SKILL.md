@@ -338,9 +338,10 @@ type smearing), each loading the agent template of its name. No root leaves a re
 rewrites a seat's template or the prompt text the script gives a seat, or removes anything from
 either. The one exception is the note `resume-interrupted-run` appends to the prompt of an
 interrupted agent of a run being resumed, which adds and removes nothing else. The main script
-keeps the list of the fifteen required seat labels apart from its seat list, and it stops before
-its first agent when the seat list holds any other set; the finding verifier's template names the
-fifteen seats and reports a seat whose object is missing as an issue for the root.
+keeps the list of the fifteen required seat labels, each with the template it loads, apart from its
+seat list, and it stops before its first agent when the seat list holds any other set or gives a
+label another template; the finding verifier's template names the fifteen seats and reports a seat
+whose object is missing as an issue for the root.
 
 The seats that give per-criterion verdicts:
 - **Correctness** (`agents/reviewer-correctness.md`) — bugs, races, broken invariants, the failure
@@ -1620,8 +1621,10 @@ entry ships with a placeholder in angle brackets as its model, such as `<explici
 script names a model, and no agent template names one either. In the main script, `models.review`
 holds one entry per review seat, keyed by the seat's label, so each of the fifteen seats can run on
 its own model. The script stops before its first agent when an entry is missing, is still a
-placeholder, or names an agent or seat the script does not have. A seat that reads whole files,
-such as the rule reader, may need a model with a larger context than the others.
+placeholder, or names an agent or seat the script does not have. It stops as well on an entry that
+holds any field besides the model and the effort, because the stage options take the entry whole
+and such a field would replace the agent's template or another option. A seat that reads whole
+files, such as the rule reader, may need a model with a larger context than the others.
 General rule unless a project overrides it: **implementation and fixing → the strongest available
 coding model at high effort; review → a strong model from a DIFFERENT family than the implementer,
 high effort; mechanical stages → a mid tier at low/medium effort; never the cheapest tier.** The
