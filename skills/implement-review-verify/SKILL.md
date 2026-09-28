@@ -8,10 +8,9 @@ description: Implements code changes involving shared infrastructure or subtle i
 **Load the `writing-style` skill first.** It binds every comment, document, commit message and
 reply this skill produces, and it is not optional when working with this plugin.
 
-A reusable, project-agnostic shape for landing a non-trivial CODE change with confidence. It is
-the code-implementation counterpart to the document-oriented loops (`verify-loop`, `find-gaps`,
-`research-loop`): those prove a spec; this *builds* against a settled design and adversarially
-checks the result before it is accepted. Scoped commits provide immutable review snapshots, not approval to merge or push.
+A reusable, project-agnostic shape for landing a non-trivial CODE change with confidence. It
+*builds* against a settled design and adversarially checks the result before it is accepted.
+Scoped commits provide immutable review snapshots, not approval to merge or push.
 
 The orchestrator runs it as a `Workflow()` (deterministic fan-out/sequence). The phases are
 fixed; the breadth inside each scales to the change.
@@ -64,99 +63,15 @@ The workflow needs git: the project is one git repository, or a tree of several 
 such as a repo-tool client. In a project without git no run starts, and the root may ask the user
 whether they want a git repository.
 
-## Before phase 1 — settle the design AND pin acceptance criteria
+## Before phase 1 — the unit spec
 
-**Settle the design first.** The implementer builds against a decided design; it does not invent
-scope. If the design isn't settled, stop and settle it with the user (or run a design/research
-loop) first.
+The root writes and validates the unit spec as `workflow-skills:spec-writing` says before either
+run starts.
 
-**Authority lives only in the items.** A design is settled only by the user's words held as spec
-items. A document enters a spec only as an observation of the current
-state of the code or the documents, re-run and dated, or as a design document the tool generated
-from a spec that passed the tool and the provenance review. A hand-written design document is never
-cited as the design: its decisions become items with the user's words, or they do not count. The
-summary, the boundary items and the comments of a spec state nothing that no item backs, and a
-comment carries provenance notes only.
-
-**Inherited work is listed before it is built on.** A unit that builds on a branch, a design
-document or earlier units made without a spec that passed the tool and the provenance review
-starts by listing the decisions it inherits as items with the user's words. A decision that cannot
-be backed that way goes to the user before building continues. The provenance review's frame check
-covers that list.
-
-**A premise change rewrites the entire spec.** When a premise of a spec changes, the root either
-writes a superseding entry in the todo record kept as `workflow-skills:todo-md` says, discarding
-the old entry, and a new spec from an empty file, or rewrites the spec in place from an empty file.
-The spec is never edited to follow a premise change. The decisions that still stand come only from
-the user's words and the private record.
-
-**ACCEPTANCE CRITERIA ARE MANDATORY.** Before you launch, write each one as a `criterion` item
-in the YAML spec: checkable, one per behaviour that must hold. The tool numbers them from one in
-file order.
-The concern reviewers return verdicts *per criterion*; the additional seats retain their distinct contracts. Without pinned
-criteria, "review" degrades to vibes, each seat invents its own bar, and nothing the fixer
-receives can be triaged against anything. No criteria, no launch.
-
-### Unit spec — YAML with per-item sources
-
-The root authors the unit spec, `<unit>.yaml` in the private-spec location that
-`workflow-skills:local-cache` defines, ignored and untracked because it quotes the user.
-Read that YAML spec from disk in full at each spec-consuming stage. Every stage receives the spec
-by its path under the main checkout, never a path relative to its worktree, because a worktree
-holds no untracked file. When a settled design arrives
-as prose, the root writes the YAML before launching. `tools/check-spec.ts` defines the validation
-contract; `tests/fixtures/spec-provenance/valid.yaml` is its exercised format example.
-
-The spec's top-level `record` key holds the absolute path of the private directive record the spec
-was written from, the YAML file described under the private source record below. The tool fails a
-spec whose record file does not exist, whose record is not of that format, whose record holds a
-quote the transcripts do not bear out, or whose record entries do not hold every `user_words` of the
-spec in their `words` once whitespace is collapsed. The design document never shows the path. The
-tool reads a relative path from the directory it runs in, as the test fixtures do, but a unit spec
-holds the absolute path: each script's launch check compares it with the absolute path in its marked
-block.
-
-Each item states one requirement or decision with an id, kind, content and one of four sources:
-`transcript` cites session records and verbatim user_words. Only a message the user wrote, typed or
-queued with origin `human`, or a question-dialog answer, including a note the user typed on it,
-holds the user's words. A task notification, an injected meta record, command output, any other tool
-result and a queued command of any other origin never do. The assistant text `answers` quotes is
-resolved in the assistant records since the last message the user wrote, so a notification in
-between does not cut the reply off from its question. A spec item built on an approval quotes the
-approved text in its `answers` field; `rule` cites a file, line and quote;
-`observation` records command, exit, output and date; `derivation` names parent item ids. An item
-asserting that a condition, failure mode or risk exists needs source transcript or observation.
-A reviewer's hypothetical hazard stays a finding until an observation establishes the condition here.
-A claim in the todo record that `workflow-skills:todo-md` defines has the same status as a
-reviewer's claim: having been written down in an earlier pass does not make it observed. The root
-observes a recorded condition again before it justifies an item and before it becomes a question
-to the user. The todo record is never cited as a source.
-A derivation mandating a mechanism names in content the simpler alternative it rules out; its
-parents include the transcript item asking for it or the observation showing the simpler route
-failing. The provenance reader judges these claims against the cited words and observed facts.
-
-The YAML spec holds everything a unit needs, and it is the only form of the spec that exists
-before and during implementation: every stage reads it from its path. No Markdown design document
-is written, committed or checked before implementation. Validate the YAML after every amendment:
-
-```sh
-bun <plugin root>/tools/check-spec.ts .cache/specs/<unit>.yaml --transcripts <session-dir> --base '<base list>' --json
-```
-
-The spec path in that command is the location `workflow-skills:local-cache` defines for private
-specs. The tool lives at `tools/check-spec.ts` under the plugin root. The plugin root is this
-repository when the work is on the plugin itself, and otherwise the installed plugin's directory
-under the plugin cache, the one whose `.claude-plugin/plugin.json` carries the loaded version. Every command
-below uses `<plugin root>/tools/check-spec.ts`, and the shipped scripts take the plugin root in
-their marked block. An installed plugin older than this tool prints no proof, so its launch check
-fails and no run launches on it until the plugin is updated; that is the intended effect.
-
-`--base` takes the run's base list as JSON: one `{ path, sha }` for every git repository of the
-tree, the path relative to the tree root and a single dot for a tree that is one repository. The
-tool, run at the tree root, fails a list whose path is no repository's top level, whose commit that
-repository does not hold, or which leaves out a repository it finds under the tree root. It reads a
-cited rule file at the commit of the repository that holds it, reads a file no listed repository
-tracks from disk, and fails on any other git error.
+Every command below uses `<plugin root>/tools/check-spec.ts`, with the plugin root that
+`workflow-skills:spec-writing` names, and the shipped scripts take the plugin root in their marked
+block. An installed plugin older than this tool prints no proof, so its launch check fails and no
+run launches on it until the plugin is updated; that is the intended effect.
 
 A tree too large to list, such as a ROM tree of a thousand repositories worked on in place, sets
 `partialBase` to true in the marked block of the main and spec review scripts. The base list then
@@ -286,57 +201,6 @@ against the amended YAML — which the seats below read from disk (law 9), so no
 **Spec discipline: trivial work gets no spec, and *having* a spec is exactly what makes the two cold
 seats worth it.** Do not manufacture a spec to justify the seats, and do not skip the seats when a
 spec exists.
-
-**Anti-re-litigation needs a technical decision record and a PRIVATE source record.**
-The committed spec records decisions, constraints and rejected alternatives with their reasons,
-never conversational quotations. Treat user messages as confidential: verbatim directives may
-be kept only in untracked, ignored artifacts unless committing them is explicitly authorized.
-Point authority-aware seats at that private record to verify fidelity without copying it into
-tracked docs, tests, code or commit messages. A broad commit instruction does not authorize
-including private records. Keep workflow scripts containing private text untracked too. The
-private record lives where `workflow-skills:local-cache` puts private directive records.
-
-The root builds that private record from the actual conversation, as a YAML file with exactly the
-keys `unit` and `entries`. Each entry has exactly `id` (unique, kebab-case), the `file`, `line` and
-`uuid` of the transcript record the user's message stands in, `words` (a verbatim quote of that
-message), `context`, and optionally `answers` and `approves`. The directives themselves go in
-`words`, and the qualifications, surrounding context and examples that give them meaning go in
-`context`, a non-empty list of quotes, each with the `file`, `line` and `uuid` of the record it
-stands in and the `quote`. An entry without context fails the tool. Each entry names its source,
-so later statements can be told from earlier ones.
-`answers` quotes the question or assistant text the words reply to. `approves` holds the plan text
-the user approved: a string when the text stands in the assistant messages the words reply to, or a
-mapping of `text`, `file` and `sha256` when it stands in a file one of those messages names, such as
-a plan written as an HTML file. The tool verifies every entry: `words` against the cited record,
-which must be a message the user wrote, typed or queued, or a question-dialog answer, including a
-note the user typed on it, and never a task notification, an injected meta record, command output or
-another tool result; each `context` quote against the record it cites; `answers` and `approves`
-against the messages the words reply to, or against the named file, whose sha256 must match. Unknown
-keys fail, so the record holds quotations and nothing else: a summary, an explanation or an
-applicable project requirement never enters it, and nothing in it is relabeled as a user quotation.
-A record that is not YAML of this shape, a Markdown record included, fails the tool with a message
-naming the format.
-
-**Approved text counts as the user's words.** Text the user approved, held in the approves field
-of a private record entry, counts as the user's verbatim directive: a contradiction with it is a
-contradiction with the user's own sentence. Law 8's hierarchy and the directive-conflict hard flag
-of law 10 treat it that way, and a spec item built on an approval quotes the approved text in its
-`answers` field. The tool checks that the approved text stands where the entry says it does; the
-provenance reader judges whether the entry's words approve it.
-
-Never selectively omit, truncate or rewrite the original evidence to make a spec or implementation
-pass; only a later, actual user decision may supersede an earlier one, and only
-with its provenance recorded — an assistant's own spec edit never does. The record is fixed for
-the duration of a review cycle; a new directive invalidates the reviews and approvals it affects.
-
-A necessary part of the record being unavailable or incomplete blocks the launch. The root writes
-no spec and starts no run on it. It searches the session transcripts for the words, and where it
-finds none it tells the user which decision it has no words for and waits. Writing the gap into
-the record as a limitation and continuing is the failure this sentence exists to stop: a record
-without the user's words authorizes nothing, and trusting the spec in its place is not a fallback.
-A contradiction between a design and the code, or between two statements of the user, is a
-question for the user with both sides quoted, which no agent resolves and no spec is written on
-top of.
 
 ## The shape
 
@@ -512,7 +376,7 @@ it never saw the claim.
 AUTHORITY DOCUMENT must not be handed the implementer's account of what it did — its whole job is
 the spec versus the tree, and an account of the work is precisely the framing that makes a missing
 requirement look answered. One briefed verifier plus one cold judge beats both all-briefed and
-all-cold. This rule governs WHICH INPUT a seat gets, including in a follow-up workflow.
+all-cold. This rule governs WHICH INPUT a seat gets, including in a fix run or a new unit's run.
 
 **And a FINDING IS A DEFECT — nothing else.** Verdict rows go in `verdicts`, what the seat
 inspected and how in `coverage`, what it could not check in `limitations`, never in the findings
@@ -659,9 +523,9 @@ hard flag or a writer commit outside its scope keeps the fixer from running. Rou
 and final summary; they do not interrupt the root one by one. Every decision on an inverse-spec
 source finding, however it resolves, stays visible to the root in that summary: an `approve-fix`
 or a well-evidenced `reject` does not need to interrupt the cycle, but the root still owes each one
-an explicit resolution — correcting the spec to state an existing decision faithfully, or asking
-the user about a genuinely unsettled one — and neither a later spec edit nor a completed run
-closes it on its own.
+an explicit resolution — recording in the todo record that the user's recorded words back the
+code's choice, or asking the user about a genuinely unsettled one — and neither a later spec edit
+nor a completed run closes it on its own.
 
 ### Phase 4 — Fix and roast concurrently
 
@@ -708,7 +572,7 @@ commit. It returns the original SHA. A failing check is reported for independent
 not permission to invent a repair. The concurrent roast is still mandatory and must be
 returned with the remaining items; the root checks its claims against the tree.
 
-#### One pass, then a follow-up
+#### One pass per run
 
 **Each stage runs once.** Implement, the eight parallel Review seats, Verify, then Fix with its
 concurrent roast. A stage failure, a hard flag or a blocking limitation ends the run after that
@@ -728,7 +592,7 @@ limitation, unfixed approval, failed proof, roast finding or limitation, unattes
 stage failure. Every fixed key carries its disposition, approved correction, snapshot and commits.
 The roast's findings retain their source IDs and snapshot; its limitations and unchecked coverage
 also return for the root to inspect. The root records the list in the todo record that
-`workflow-skills:todo-md` defines and checks its claims before writing a follow-up spec.
+`workflow-skills:todo-md` defines and checks its claims as the remaining items section below says.
 
 The run returns `exit` and a one-sentence `detail`: `clean` for a completed pass with neither a
 must-fix/CRITICAL remaining item nor an unattested fix; `follow-up` for a completed pass with such
@@ -752,9 +616,9 @@ violations become concrete cleanup entries: issue, rule citation, code receipts,
 finding IDs and the required correction. Existing entries are updated rather than duplicated.
 The root records this consolidated handoff in the todo record that `workflow-skills:todo-md`
 defines, in the SAME RUN, before reporting the task finished, including when the workflow exits
-with unresolved work. Schedule
-those cleanup units promptly; recording an issue is not fixing it or permission to defer it
-indefinitely. Do not force unrelated cleanup into the current fix pass or interrupt the root
+with unresolved work. Each
+cleanup entry is recorded as a separate unit, done later; recording an issue is not fixing it.
+Do not force unrelated cleanup into the current fix pass or interrupt the root
 for each entry separately. If recording is blocked, report the incomplete handoff explicitly.
 
 **The todo record stays UNTRACKED by default. Unstaged is not enough.** Creating or updating a local
@@ -782,21 +646,33 @@ seats or a second implementer pre-check.
 
 ### Remaining items and follow-up work
 
-The root records every remaining item in the todo record that `workflow-skills:todo-md` defines.
+When a run ends, the root records every remaining item in the todo record that
+`workflow-skills:todo-md` defines, each as its own unit, and moves on to the next work. The run and
+its unit are finished: the root never starts a run on the same spec again, never edits a finished
+run's spec, and never hands a new run the previous run's findings as its next round.
 Remaining items are claims until the root reads them. Check
 each `roast-finding` and `roast-limitation` against the tree. Attest each `unattested-fix` by
 reading its commits against the approved correction and running the checks yourself. Never
 report a fix as verified on the fixer's claim.
 
-A confirmed must-fix or CRITICAL item, an unfixed approval, a failed proof, and an open decision
-once the user has decided it are fixed in a follow-up. A finding whose fix needs no decision of the
-user may go to a fix run, described below. Every other item goes to a follow-up
-implement-review-verify workflow, and such a finding may go there as well when the user's words
-cover its fix. The root writes that workflow's YAML spec like any unit spec: one criterion
-item per confirmed defect with its sources, the settled decision for a decided item, the previous
-run's snapshot as the base, and the tool's count of criterion items as `criteriaCount`. The cold
-spec review and every other stage apply unchanged. Every follow-up uses new prompts and a new run
-ID.
+A new run starts only for a recorded item that is supposed to be fixed: a confirmed must-fix or
+CRITICAL defect in code the unit wrote, an unfixed approval, a failed proof, or an open decision
+once the user has decided it. A finding whose fix needs no decision of the user may go to a fix
+run, described below, whose fix list names findings of the parent run. Every other such item goes
+to a new implement-review-verify unit with its own spec, and such a finding may go there as well
+when the user's words cover its fix. The root writes that unit's YAML spec like any unit spec: one
+criterion item per confirmed defect with its sources, the settled decision for a decided item, the
+previous run's snapshot as the base, and the tool's count of criterion items as `criteriaCount`.
+The cold spec review and every other stage apply unchanged. Every new run uses new prompts and a
+new run ID. A new run takes as its work the recorded items it was started for, never the findings
+its own review raises; those are recorded the same way. Every other item stays in the todo record
+as a separate unit, done later.
+
+A run that ended before its review stage returned, with exit `failed` or `aborted` or a blocking
+limitation of the implement stage, built no reviewed result. The root resumes it through
+`resume-interrupted-run` where the harness allows, and otherwise starts it once more on the same
+spec after the cause is fixed and recorded; an abort that puts a question to the user waits for
+the answer first.
 
 **A fix run fixes findings that need no decision of the user.** The root uses it for findings of
 one named run of a unit whose spec carries the user's words, where the fix needs no decision of the
@@ -853,8 +729,7 @@ reappears, never duplicated, since a duplicated entry hides the second move behi
 fresh-looking first one.
 
 Record a disproved item with its counterevidence; a nit or record stays recorded in the todo record
-of `workflow-skills:todo-md`. Each follow-up starts from the previous pass's list. Findings raised by its review
-become new entries.
+of `workflow-skills:todo-md`.
 
 ### Root question-premise check
 
@@ -867,8 +742,9 @@ report a discovered implementation deviation from the requested result plainly �
 consequence of an invented mechanism as though it were a new choice the user must make. A choice
 the record already settles is never asked again; only a choice it leaves genuinely unresolved is
 presented as a decision request. Every entry the run returns in `inverseSpecDecisions` gets this
-treatment: the root either corrects the spec to state the existing decision faithfully or, after
-this check, asks the user about the part that is genuinely unsettled.
+treatment: the root either records in the todo record that the user's recorded words back the
+code's choice or, after this check, asks the user about the part that is genuinely unsettled. A
+code change the decision needs is a new run under the remaining items rules above.
 
 **A decision that changes what a thing is triggers a redesign.** When a decision of the user
 changes what a thing is, the root redesigns before any unit continues and shows the redesign to the
@@ -925,7 +801,7 @@ referent produces work that is internally consistent and answers the wrong quest
 with noted, recorded or done before the thing it claims has been verified.
 
 **Asking means waiting.** A question the root does present stops the work that rests on its
-answer. The root never launches a stage, a fix pass or a follow-up run in the same turn as the
+answer. The root never launches a stage, a fix pass or a new run in the same turn as the
 question that work would answer: pairing them makes the question decorative, because what it
 asked about has already happened by the time an answer can arrive. Either the root is confident
 enough to proceed without asking, or it waits. Work that does not depend on the answer continues
@@ -1057,13 +933,14 @@ const assessSize = ({ specLines, codeAdded }) => {
 A breach is first a **root diagnosis**, not an automatic request for permission or a fixer retry.
 Read the inverse-spec review and the candidate against the existing requirements. Identify
 unnecessary mechanisms, duplication and concrete deletion/simplification savings; also identify
-real missing spec detail or a prerequisite foundation. Correct excess code through the normal
-approved-fix/review path. Only the root may clarify genuinely missing spec detail, consistent
-with existing authority; new scope still needs authorization. Never pad the spec to lower the
-ratio, or use a later amendment to retroactively authorize unsupported code. A spec suggestion
-alone does not stop the implementation/reviewer cycle; this gate applies to the finished unit.
+real missing spec detail or a prerequisite foundation. Excess code is corrected by a new run under
+the remaining items rules above. Genuinely missing spec detail is work for a new unit with its own
+spec, consistent with existing authority; new scope still needs authorization. Never pad the spec
+to lower the ratio, or use a later amendment to retroactively authorize unsupported code. A spec
+suggestion alone does not stop the implementation/reviewer cycle; this gate applies to the
+finished unit.
 
-After any code/spec change, repeat affected verification and measure the new pinned candidate.
+A new run that changes the code is measured against the size bar on its own candidate.
 If the justified implementation still exceeds 20:1, keep acceptance blocked unless the user
 explicitly approves that remaining size. Before asking once, present the ratio, inverse-spec
 conclusions, savings already taken or rejected with reasons, real spec gaps and the remaining
@@ -1185,7 +1062,7 @@ recorded in [work execution rules](../../docs/work-execution-rules.md).
   plausible-but-broken implementation that tests written by the implementer won't.
 - **Verification precedes mutation.** One read-only verifier checks and consolidates every
   source; the separate fixer rechecks approved corrections and returns disagreements to the root.
-  The root attests fixed keys, and follow-up reviews judge their resulting tree.
+  The root attests fixed keys by reading their commits and running the checks.
 - **The biggest wall-clock win is killing redundant stages, not parallelizing bad ones.**
 
 ## Laws
@@ -1212,8 +1089,9 @@ Non-negotiable across every run of this skill.
    A missing object is incomplete verification, never a harmless gap in a finished fix.
 5. **Resume interrupted runs only.** A run stopped mid-flight is resumed through the
    resume-interrupted-run skill. Completed stages replay their journaled results, and unfinished
-   stages re-run. A completed run's remaining work goes to a new follow-up workflow with new
-   prompts and a new run ID.
+   stages re-run. A completed run never runs again: the root records its remaining items in the
+   todo record and moves on, and a new run starts only for an item that is supposed to be fixed,
+   as the remaining items section says.
 6. **Barrier discipline.** Review readers run concurrently on a stable clean snapshot, then
    Verify consolidates their results. Fix awaits that approval. Only the Git-object-only roaster
    overlaps the fixer, reading the captured pre-fix SHA and approved list. Await both tasks;
@@ -1249,9 +1127,9 @@ Non-negotiable across every run of this skill.
 9. **SPECS ARE LIVING DOCUMENTS, READ FROM DISK.** Every spec-consuming prompt names it by PATH and instructs:
    *"read the current on-disk revision in full; it is the authority, not this prompt's description of
    it."* Never cite a revision number, never restate the spec's content in the prompt. This is what
-   prevents drift between a prompt's stale summary and the doc. Do not change authority during
-   a review/fix cycle; return for the authority edit and invalidate affected review/approval calls
-   before continuing. An amendment cannot make a cached approval current. **Corollary:
+   prevents drift between a prompt's stale summary and the doc. The root does not edit a spec or
+   its record while a run on it is in flight. A change after the run started is work for a new
+   unit and never repeats the finished run's reviews. **Corollary:
    authority documents RETRACT a contradicted sentence in place.** Never append an acknowledgement
    beside a sentence it contradicts: layered addenda manufacture diverging premises, and seats then
    flag the contradiction forever, correctly.
@@ -1328,15 +1206,15 @@ Non-negotiable across every run of this skill.
     between authority documents retain the existing law-10 hard flag; the spec-versus-instructions
     pre-check already exists and does not need another gate. Reviewers retain their usual checks.
     **ONLY THE ORCHESTRATOR MAY EDIT A SPEC OR OTHER AUTHORITY DOCUMENT.** If the root amends one,
-    record the technical rationale, retract contradicted text in place (law 9), and invalidate
-    affected cached reviews and approvals. Never retroactively authorize unsupported implementation.
+    record the technical rationale and retract contradicted text in place (law 9), never while a
+    run on it is in flight. Never retroactively authorize unsupported implementation.
     **Every inverse-spec finding is CRITICAL regardless of the severity or lane it arrived with; the
     finding verifier, the fixer and the root all ignore that supplied categorization and must
     dispose of it explicitly — never leave it implicitly closed.** The root resolves it by
-    correcting the spec to state an existing user decision faithfully, or by asking the user
-    about a genuinely unsettled choice after checking the question's premises against the recorded
-    directives. Amending the spec does not itself resolve the finding: it is re-checked
-    against the original directives in the follow-up, and the original verbatim directives are
+    recording in the todo record that the user's recorded words back the code's choice, or by
+    asking the user about a genuinely unsettled choice after checking the question's premises
+    against the recorded directives; a code change it needs is a new run under the remaining items
+    rules. Amending the spec does not resolve the finding, and the original verbatim directives are
     never erased, rewritten or selectively omitted to make it disappear.
 16. **ASSERT AT THE GRANULARITY AT WHICH THE RULE BINDS** — per row, per section, per item — and
     **never aggregated over the whole artifact**. An aggregate assertion lets a fully DEGENERATE
@@ -1565,7 +1443,8 @@ failed run means reading raw transcripts to work out who was who.
 Every completed `agent()` is journaled keyed by (prompt, opts). For an interrupted run, matching
 keys replay instantly and unfinished stages re-run. Read the journal to distinguish a completed
 stage from one that never returned. Recover mid-flight work through **resume-interrupted-run**.
-A completed run ends permanently; its remaining work uses the follow-up rule above.
+A completed run ends permanently; its remaining items are recorded and handled as the remaining
+items section above says.
 
 ### Determinism
 

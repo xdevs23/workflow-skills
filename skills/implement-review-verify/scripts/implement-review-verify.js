@@ -831,7 +831,7 @@ return {
     rejected: decisions.filter(d => d.action === 'reject').length,
     recorded: decisions.filter(d => d.action === 'record').length },
   cleanup: decisions.filter(d => d.action === 'cleanup'),
-  inverseSpecDecisions, // the root's unconditional handoff: amend the spec, or ask the user.
+  inverseSpecDecisions, // the root's unconditional handoff: record the backing words, or ask the user.
   projectBenefitDecisions, // closed only by deletion, a rewrite, or the user's recorded word.
 }
 

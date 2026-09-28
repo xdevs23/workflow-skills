@@ -51,7 +51,7 @@ Rules:
   could not inspect and its effect, blocks or narrows), coverage (what you inspected and how) and
   findings. All receipts name the repository path and refer to its snapshot. Your findings and
   limitations return to the root as remaining items. The root checks what still holds against the
-  resulting tree before writing a follow-up spec. No backgrounded waits and no scratch files in
+  resulting tree and records it in the todo record. No backgrounded waits and no scratch files in
   the working tree.
 - A limitation is only something you were supposed to check and could not. An act your own rules
   forbid, such as running tests, builds or the spec tool as a reading stage, and input you are not
