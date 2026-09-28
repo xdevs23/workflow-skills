@@ -71,22 +71,24 @@ Rules:
 - Put scratch files where workflow-skills:local-cache says. Keep them and the local todo record
   of workflow-skills:todo-md out of commits; tracking the todo record requires an explicit request.
   Do not turn an ignored artifact into a tracked file to satisfy clean status.
-- Self-check before done: run tests and build after your last write. Fix what you added that
-  fails; if blocked, report the failure and never claim a clean tested snapshot. After
-  committing, check HEAD and clean status in every repository again. If hooks changed content
-  after the checks, rerun the checks on the final committed content before claiming proof.
-- Write the design document as your last write. Once your implementation is done, write it by
-  hand from the code you built and the spec, at the path the prompt gives. It describes the change
-  as the code at your final commit implements it: what it does, how its parts fit together, the
+- Self-check before done: after your last write, run only the focused checks that cover what you
+  changed, bare and once: its tests, and its type check or build where the project has one. Never
+  run the project's full check. The fixer runs it once after its corrections, and a full run here
+  goes stale as soon as the fixer changes a file. Fix what you added that fails; if blocked,
+  report the failure and never claim a clean tested snapshot. After committing, check HEAD and
+  clean status in every repository again. If hooks changed content after the checks, rerun the
+  checks on the final committed content before claiming proof.
+- Write the design document as your last write. Once your implementation is done, write it by hand
+  from the code you built and the spec, at the path the prompt gives. It describes the change as
+  the code at your final commit implements it: what it does, how its parts fit together, the
   decisions with their reasons, and the alternatives the user rejected with their reasons. The
   rejected alternatives come from the spec's items of kind rejected, and you add none of your own.
   Check every statement about behaviour against that code. The document carries no words of the
   user, no local absolute paths and no account of the conversation, and it follows the
-  repository's prose rules and the writing-style skill. Your checks then run once, after that
-  write. Commit the document as its own commit in the repository that holds it and list it in
-  files. No design document is
-  written, committed or checked before implementation: the YAML spec is the one source every
-  stage reads.
+  repository's prose rules and the writing-style skill. Your focused checks then run once, after
+  that write. Commit the document as its own commit in the repository that holds it and list it in
+  files. No design document is written, committed or checked before implementation: the YAML spec
+  is the one source every stage reads.
 - Return abort, limitations (what, effect blocks or narrows), repositories (one entry per listed
   repository: path, startSha, the full snapshotSha from `git rev-parse --verify HEAD^{commit}`,
   clean, true only for an empty `git status --porcelain=v1 --untracked-files=all`, and git, both

@@ -1125,7 +1125,7 @@ describe('spec provenance instructions and routing', () => {
       'The writer checks every statement about behaviour against that code.',
       'The document carries no words of the user, no local absolute paths and no account of the conversation',
       "Writing it is the writers' completion step", 'The implementer, once its implementation is done, writes `docs/<unit>.md` as its last write.',
-      'Its checks then run once, after that write, and it commits the document as its own commit',
+      'Its focused checks then run once, after that write, and it commits the document as its own commit',
       'updates the document by hand where a correction changed what it describes, as its last write before its checks, and commits it when it changed',
       'Its last write is the design document it writes by hand from the code once its implementation is done',
       'updates the design document by hand as its last write once its corrections are done, where a correction changed what it describes,' +
@@ -1148,7 +1148,10 @@ describe('spec provenance instructions and routing', () => {
       'A problem reported to the user quotes the observed symptom and the line that causes it',
       'each with its file and line or the command that produced it',
       'A characterization is not a quotation', 'never substitutes a plausible cause',
-      'check command is prompt text for the writing stages only',
+      'check command is prompt text for the fixer only',
+      'The implementer\'s prompt joins `FOCUSED` in its place, the order to run only the checks that cover what it changed.',
+      'The implementer never runs the full check command: the fixer changes code after it, so a full run in the implement' +
+        ' stage goes stale, and the fixer\'s run after the last write of the run is the one full check.',
       'never sits in a block that reviewers receive',
     ]) expect(flat(skill)).toContain(phrase)
     for (const stale of ['numbered acceptance criteria in the spec', 'make sure the spec doc carries them',
@@ -1161,13 +1164,20 @@ describe('spec provenance instructions and routing', () => {
     for (const script of [skeleton, coldSkeleton]) expect(script.split('counts.kind.criterion from the check tool')).toHaveLength(3)
   })
 
-  test('only the writing stages receive the check command', async () => {
+  test('only the fixer receives the check command, and the implementer runs focused checks', async () => {
     const { calls } = await simulate()
-    const writers = calls.filter(c => ['implementer', 'fixer'].includes(c.agentType))
-    expect(writers.length).toBeGreaterThan(0)
+    const fixers = calls.filter(c => c.agentType === 'fixer')
+    expect(fixers.length).toBeGreaterThan(0)
     for (const call of calls) {
-      expect([call.label, call.prompt.includes('CHECK COMMAND')]).toEqual([call.label, writers.includes(call)])
+      expect([call.label, call.prompt.includes('CHECK COMMAND')]).toEqual([call.label, fixers.includes(call)])
+      expect([call.label, call.prompt.includes('<the check command>')]).toEqual([call.label, fixers.includes(call)])
+      expect([call.label, call.prompt.includes('FOCUSED CHECKS')]).toEqual([call.label, call.label === 'impl'])
     }
+    const impl = flat(calls.find(c => c.label === 'impl').prompt)
+    expect(impl).toContain('FOCUSED CHECKS, implementer only: after your last write, run only the checks that cover what you changed,' +
+      ' bare and once: its tests, and its type check or build where the project has one. Never run the full check:' +
+      ' the fixer runs it once after its corrections, and a full run here goes stale when the fixer changes a file.')
+    expect(flat(fixers[0].prompt)).toContain('CHECK COMMAND, fixer only (run bare after your last write): <the check command>')
     const preCalls = []
     await preRun(async (prompt, opts) => { preCalls.push(prompt); return coldObject(opts.label) })
     expect(preCalls).toHaveLength(4)
@@ -1278,7 +1288,7 @@ describe('spec provenance instructions and routing', () => {
       'source transcript or observation', 'simpler alternative it rules out', 'parents include the transcript item',
       '{ ordinal, id }', 'args.criteriaCount', 'the only form of the spec before and during implementation',
       'The tracked design document under `docs/` is written by hand from the code after the implementation, so it records what was built',
-      'the implementer writes it as its last write once its implementation is done, runs its checks after that write and commits it',
+      'the implementer writes it as its last write once its implementation is done, runs its focused checks after that write and commits it',
       'the fixer updates it as its last write after its corrections, before its checks',
       'It describes the change as the code at the writer\'s final commit implements it: what it does, how its parts fit together,' +
         ' the decisions with their reasons, and the alternatives the user rejected with their reasons, taken from the items of kind' +
@@ -2185,7 +2195,7 @@ describe('fix-only follow-up runs', () => {
     expect(fix).toContain('PRIVATE DIRECTIVES: <main checkout>/.cache/directives/<parent unit>.yaml.')
     expect(fix).toContain('SPEC (authority): ' + PARENT_SPEC + ', the parent unit spec')
     expect([fix.includes(FIX_LIST), fix.includes('FIX LIST')]).toEqual([false, false])
-    expect(fix).toContain('CHECK COMMAND, writer only')
+    expect(fix).toContain('CHECK COMMAND, fixer only')
     for (const label of ['scope', 'roast', 'diff']) expect(calls.find(c => c.label === label).prompt).not.toContain('CHECK COMMAND')
   })
 
@@ -2409,7 +2419,7 @@ const DOCUMENT_CONTENT = ['The document describes the change as the code at your
   ' and it follows the repository\'s prose rules and the writing-style skill.']
 
 describe('the design document is written from the code after implementation', () => {
-  test('the implementer and both fixers receive the writing step before the check command, and no stage prompt carries a render command', async () => {
+  test('the implementer and both fixers receive the writing step before their checks, and no stage prompt carries a render command', async () => {
     const main = await simulate({ reports: oneReport, verify: approveOne, fixes: { fix: fixed([disposition()]) } })
     const fix = await simulateFix()
     const pre = []
@@ -2418,8 +2428,8 @@ describe('the design document is written from the code after implementation', ()
     const mainFix = main.calls.find(c => c.label === 'fix').prompt
     const fixRunFix = fix.calls.find(c => c.label === 'fix').prompt
     expect(impl).toContain('DESIGN DOCUMENT, writer only: once your implementation is done, write ' + UNIT_DOCUMENT +
-      ' by hand from the code you built and the spec, as your last write, before your checks.\n')
-    expect(impl).toContain('\nThen run your checks once, and commit ' + UNIT_DOCUMENT + ' as its own commit in the repository that holds it and list it in files.')
+      ' by hand from the code you built and the spec, as your last write, before your focused checks.\n')
+    expect(impl).toContain('\nThen run your focused checks once, and commit ' + UNIT_DOCUMENT + ' as its own commit in the repository that holds it and list it in files.')
     expect(mainFix).toContain('DESIGN DOCUMENT, writer only: once your corrections are done, update ' + UNIT_DOCUMENT +
       ' by hand where a correction changed what it describes, as your last write, before your checks.\n')
     expect(mainFix).toContain('\nCommit ' + UNIT_DOCUMENT + ' as its own commit in the repository that holds it when it changed, and list it in files.' +
@@ -2429,9 +2439,9 @@ describe('the design document is written from the code after implementation', ()
     expect(fixRunFix).toContain('\nCommit ' + PARENT_DOCUMENT + ' as its own commit in the repository that holds it when it changed, and list it in files.')
     for (const prompt of [impl, mainFix, fixRunFix]) {
       for (const phrase of DOCUMENT_CONTENT) expect([phrase, flat(prompt).includes(phrase)]).toEqual([phrase, true])
-      // The prompt reads in the order of the work: the document comes first, the check command after it.
+      // The prompt reads in the order of the work: the document comes first, the checks after it.
       expect(prompt.indexOf('DESIGN DOCUMENT')).toBeGreaterThan(-1)
-      expect(prompt.indexOf('DESIGN DOCUMENT')).toBeLessThan(prompt.indexOf('CHECK COMMAND'))
+      expect(prompt.indexOf('DESIGN DOCUMENT')).toBeLessThan(prompt.indexOf(prompt === impl ? 'FOCUSED CHECKS' : 'CHECK COMMAND'))
     }
     const writers = new Set(['main:impl', 'main:fix', 'fix:fix'])
     for (const [run, calls] of [['main', main.calls], ['fix', fix.calls], ['spec', pre]]) {
@@ -2519,7 +2529,7 @@ describe('the design document is written from the code after implementation', ()
       'The rejected alternatives come from the spec\'s items of kind rejected, and you add none of your own.',
       'Check every statement about behaviour against that code.',
       'The document carries no words of the user, no local absolute paths and no account of the conversation',
-      'Your checks then run once, after that write.', 'Commit the document as its own commit',
+      'Your focused checks then run once, after that write.', 'Commit the document as its own commit',
       'No design document is written, committed or checked before implementation']) {
       expect([phrase, implementer.includes(phrase)]).toEqual([phrase, true])
     }

@@ -402,7 +402,7 @@ const PROVE = [
   'of this stage touched with its byte size at the snapshot, checks quotes the output of every bare',
   'run, git quotes HEAD and status. An account of the work with an empty files list is not the work.',
 ].join('\n')
-const CHECK = 'CHECK COMMAND, writer only (run bare after your last write): ' + UNIT.checkCommand
+const CHECK = 'CHECK COMMAND, fixer only (run bare after your last write): ' + UNIT.checkCommand
 // The fixer brings the parent unit's design document up to date by hand as its last write, once its
 // corrections are done and before its checks, as the main script's fixer does, and commits it in the
 // repository that holds the documents directory.
