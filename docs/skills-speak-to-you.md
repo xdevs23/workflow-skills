@@ -1,10 +1,6 @@
 # Skills speak to their reader
 
-Every skill of the plugin now addresses the assistant that reads it as "you". A skill writes its
-instructions as imperative sentences, lists its steps and rules as bullets, and names other skills
-and agent types by their qualified names. The agents a skill starts keep their own names, the
-strings the shipped scripts send to their stages keep their exact form, and no rule changes its
-meaning. The babysit-pr skill was already written this way and served as the model for the others.
+The babysit-pr skill was the first skill written in this form, and the other skills follow it.
 
 ## The reader is "you"
 
@@ -62,9 +58,6 @@ sit under their own subheading after the list of additional seats, and the decis
 finding verifier are a nested list under the rule that it takes one decision per consolidated
 group.
 
-Paragraphs that were rewritten are wrapped at 100 characters, the width the skills use. Lines the
-change did not touch keep their wrap.
-
 ## Qualified names
 
 A skill or an agent type named in a skill's text or example code carries the plugin prefix. The
@@ -78,21 +71,10 @@ babysit-pr, resume-interrupted-run, spec-writing and visual-verification skills 
 refer to the same way.
 
 A name that is not a skill or an agent type stays as it is. The file names of the agent templates
-stay file names, the seat name `roaster` in a source ID stays a label, and the precedence rules of
-the local-cache and todo-md skills keep naming the skill without the prefix, because those rules
-are about a skill of that name that has no prefix.
+stay file names, and the seat name `roaster` in a source ID stays a label.
 
-## Meaning and tests
+## Meaning
 
 Every rule, requirement, number, name, field, command and example the skills stated before is
 still there with the same meaning, and no rule is added. The rewrite changes how the text addresses
 its reader and how it is laid out.
-
-The routing tests that read the skills assert the same rules in the new wording. No assertion was
-dropped. An assertion whose phrase now wraps across two lines compares the text with whitespace
-collapsed, and the assertion on the four rules of the question-premise check reads them as bullets
-that open with their bold sentence, where it used to read them as paragraphs.
-
-The change touches the skills, the tests that read them and this document. The agent templates, the
-shipped scripts, the tools, the README and the other design documents stay as they are, and the
-plugin version is not raised, because the version the tree carries has not been published yet.
