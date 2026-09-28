@@ -1,6 +1,6 @@
 ---
 name: writing-style
-description: The writing style and vocabulary every piece of text produced with this plugin follows, covering code comments, documents, commit messages and replies a person reads. Load it before writing any prose or committing.
+description: The writing style and vocabulary every piece of text produced follows, covering code comments, documents, commit messages and replies a person reads. Load it before writing any prose or committing.
 ---
 
 # Writing style and vocabulary
@@ -53,7 +53,7 @@ No jargon, no filler, no hedging, and no restating of the question.
 No preamble, no passage explaining why the thing matters, and no offer or next-step commentary at
 the end.
 
-No walls of text.
+No walls of text. No mannered speech.
 
 ## Words to avoid
 
@@ -93,9 +93,9 @@ An identifier that already contains one of these words is exempt.
 ## Patterns to avoid
 
 Announcement preambles. An opener whose only job is to introduce what follows gets deleted whole,
-including its colon, and the sentence begins at what came after it. "Worth saying plainly:", "One
-thing to note:", "The honest answer:", "To be clear:", "Two things I could not decide for you.", "Five things:".
-If the sentence after the colon always stands without it, don't write it.
+including its colon, and the sentence begins at what came after it. "One thing to note:", "The
+honest answer:", "To be clear:", "Two things I could not decide for you.", "Five things:". If the
+sentence after the colon always stands without it, don't write it.
 
 Forced triads, such as fast, reliable and scalable, and the same idea cycled through synonyms
 across consecutive sentences.
