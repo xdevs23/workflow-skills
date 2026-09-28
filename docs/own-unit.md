@@ -3,8 +3,8 @@
 A unit of implement-review-verify no longer goes through a separate review of its spec before the
 main run. The root writes the spec as the spec-writing skill says, validates it with the spec tool
 and launches the main run on it. The implementer's sense check reads the spec before the first edit
-and reports what it finds, the run goes on, and the root reads the findings with every other open
-item after the run. Every stage that judges the user's words for a spec, the implementer, the
+and reports what it finds, and the root reads the findings with every other open item after the
+run. Every stage that judges the user's words for a spec, the implementer, the
 inverse-spec reviewer and the finding verifier, now accepts only words said about the unit at hand.
 
 ## What the change removes
@@ -54,9 +54,9 @@ The implementer returns each finding in `specFindings`, a field its output schem
 entry per finding with the ids of every spec item it concerns in `items`, a list of at least one
 id, the `class`, the `claim` and `receipts` with at least one receipt. A `joint-impossibility`
 entry names each item of the conflict. The class is an enum of the four names above. No finding
-fails the sense check, sets the abort or asks the user. The implementer builds nothing for an item
-named in an entry of class `unbacked-item`, `joint-impossibility` or `missing-contract`, and builds
-the rest of the spec, an item named only in a `reality-drift` entry included.
+fails the sense check, sets the abort or asks the user. Which findings block the run, and which
+items the implementer builds when a finding does not block it, is described in
+[items the implementer leaves unbuilt](unbuilt-items.md).
 
 ## How the findings reach the root
 
@@ -68,10 +68,11 @@ beside the abort. When the implement stage fails without ever returning a comple
 is nothing to hand over.
 
 Because every spec finding is must-fix or CRITICAL, a pass that ends with one and nothing else
-exits `follow-up`. A spec finding never makes the run end `root-resolution` and never keeps a later
-stage from running: the review, verify and fix stages run as they would without it. The finding
-verifier receives the findings inside the implementer's object, which the script hands it as a
-writer object, and the three code-lens readers see them in the same object they receive as claims.
+exits `follow-up`. The script sets no exit and skips no stage because of a spec finding. Where a
+finding stops the run before review, the implementer's blocking limitation stops it, as
+[items the implementer leaves unbuilt](unbuilt-items.md) describes. The finding verifier receives
+the findings inside the implementer's object, which the script hands it as a writer object, and
+the three code-lens readers see them in the same object they receive as claims.
 
 The skill describes all of this in phase 1, lists `specFindings` among what the implementer
 returns, names the spec finding among the kinds of remaining items, and adds the class to the
@@ -104,14 +105,12 @@ answer before work could start. The three defect classes and the provenance of e
 part of its yield that mattered, and the implementer reads the spec and the code anyway before its
 first edit.
 
-The agents of the run report problems with the spec, and the run does not stop for them. A spec
-that passed the tool is launched as written, and what the implementer finds reaches the root in the
-same handoff as every other open item, after the run.
+The agents of the run report problems with the spec. A spec that passed the tool is launched as
+written, and what the implementer finds reaches the root in the same handoff as every other open
+item, after the run.
 
-An item with no words of the user behind it is not built, and its finding is CRITICAL. The items
-of a `joint-impossibility` or `missing-contract` finding are not built either, and those findings
-are must-fix like a `reality-drift` finding, because the implementer still builds the rest of the
-spec around them.
+A finding of class `unbacked-item` is CRITICAL, because no words of the user back its items, and
+every other class is must-fix.
 
 The script branches on the class to set the severity, so the class is locked in the schema as an
 enum, like every other vocabulary the scripts branch on.
@@ -129,9 +128,9 @@ The routing tests check that only the main and fix-run scripts ship, that no ski
 passage or test sends the root to a review of the spec before the main run, and that no script
 starts the gap-finder or spec-provenance template while both files remain. They check that the
 spec-provenance template calls its findings advisory and has none of them hold up a run. They check
-the implementer schema's `specFindings` field with its entry shape and class enum, that each finding
-becomes a `spec-finding` item of its severity while every stage still runs, and that the findings
-reach the root beside an implementer abort. They check that spec-writing, the implementer, the
+the implementer schema's `specFindings` field with its entry shape and class enum, that an
+`unbacked-item` or `reality-drift` finding becomes a `spec-finding` item of its severity while
+every stage still runs, and that the findings reach the root beside an implementer abort. They check that spec-writing, the implementer, the
 inverse-spec reviewer and the finding verifier templates, and the skill state the rules above. The
 tests that ran the removed script are deleted, and the others no longer read it.
 
