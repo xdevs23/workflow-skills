@@ -1694,7 +1694,7 @@ describe('one-pass remaining-items handoff', () => {
       'resume-interrupted-run', 'spec-writing']
     for (const name of names) {
       const text = await Bun.file(new URL(`${name}/SKILL.md`, dir)).text()
-      expect(text).toContain('Load the `writing-style` skill first.')
+      expect(text).toContain('Load the `workflow-skills:writing-style` skill first.')
       expect(text).toContain('not optional when working with this plugin')
     }
   })
