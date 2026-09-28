@@ -644,7 +644,7 @@ const checkVerification = (v, sources, snaps) => {
     // cleanup is for work OUTSIDE this unit's repair scope; an inverse-spec finding is about a
     // choice made INSIDE this unit's own diff, so it can never be deferred there or as record.
     if (fromInverse && d.action === 'cleanup') {
-      throw new Error('Inverse-spec finding cannot be dispositioned as cleanup; the root must correct the spec or ask the user')
+      throw new Error('Inverse-spec finding cannot be dispositioned as cleanup; the root must record the words that back the choice, or ask the user')
     }
     if (['needs-decision', 'root-action', 'cleanup'].includes(d.action)) requireText(d.correction, 'next action or question')
   }

@@ -668,11 +668,9 @@ new run ID. A new run takes as its work the recorded items it was started for, n
 its own review raises; those are recorded the same way. Every other item stays in the todo record
 as a separate unit, done later.
 
-A run that ended before its review stage returned, with exit `failed` or `aborted` or a blocking
-limitation of the implement stage, built no reviewed result. The root resumes it through
-`resume-interrupted-run` where the harness allows, and otherwise starts it once more on the same
-spec after the cause is fixed and recorded; an abort that puts a question to the user waits for
-the answer first.
+A run interrupted mid-flight is resumed through `resume-interrupted-run`, as law 5 says. A run
+that ended any other way, before or after its review, has its items recorded like every run, and
+the root never starts a run on the same spec again.
 
 **A fix run fixes findings that need no decision of the user.** The root uses it for findings of
 one named run of a unit whose spec carries the user's words, where the fix needs no decision of the
@@ -1128,8 +1126,10 @@ Non-negotiable across every run of this skill.
    *"read the current on-disk revision in full; it is the authority, not this prompt's description of
    it."* Never cite a revision number, never restate the spec's content in the prompt. This is what
    prevents drift between a prompt's stale summary and the doc. The root does not edit a spec or
-   its record while a run on it is in flight. A change after the run started is work for a new
-   unit and never repeats the finished run's reviews. **Corollary:
+   its record while a run on it is in flight. The spec review before the main run is the one run
+   after which the root amends the spec, once, before it launches the main run on it. A change
+   after the main run started is work for a new unit and never repeats the finished run's
+   reviews. **Corollary:
    authority documents RETRACT a contradicted sentence in place.** Never append an acknowledgement
    beside a sentence it contradicts: layered addenda manufacture diverging premises, and seats then
    flag the contradiction forever, correctly.
