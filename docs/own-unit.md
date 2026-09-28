@@ -119,9 +119,6 @@ The rule on words about another unit and on crossed short answers is stated in t
 writes specs and in each stage that judges authority, so the root that writes a spec and the stages
 that check it read the same rule.
 
-The plugin version stays at 0.30.0. The released version is 0.29.0, and 0.30.0 is not released
-yet, so this change is part of it.
-
 ## Tests
 
 The routing tests check that only the main and fix-run scripts ship, that no skill, template, README
