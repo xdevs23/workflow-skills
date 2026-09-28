@@ -1172,8 +1172,7 @@ describe('spec provenance instructions and routing', () => {
       'output and exit status', 'older than the newest timestamp of the', 'findings are advisory',
       'read the assistant message the cited words reply to', 'answer a list, a label or a yes/no question, the item must carry answers',
       'a missing one is a must-fix finding', 'against question and answer together', 'admit two readings, the finding is must-fix and names both readings',
-      'only by asking the user that one question', 'blocks the main run until the user\'s answer is in the record',
-      'The block is a rule for the root, and no script enforces it.']) {
+      'only by asking the user that one question', 'These findings are advisory, and none of them holds up a run.']) {
       expect(prose).toContain(phrase)
     }
   })
@@ -2815,14 +2814,16 @@ describe('the user\'s words reach every stage', () => {
     }
   })
 
-  test('the provenance template states the search for every message of the user and its blocking effect', async () => {
+  test('the provenance template states the search for every message of the user, and none of its findings holds up a run', async () => {
     const search = "every message the user wrote, in every transcript of the directory and queued messages included, on the unit's subject and on the subject of everything the unit extends: documents, earlier units, and existing code the unit changes or builds on, whether or not an item names it"
-    const block = "A message on those subjects that no record entry holds is a must-fix finding that blocks the main run until the root has added it to the record or the user has answered, in the same class as a must-fix finding that an item's words are missing."
+    const missing = "A message on those subjects that no record entry holds is a must-fix finding, in the same class as a must-fix finding that an item's words are missing."
     const provenance = await template('spec-provenance')
-    expect([provenance.includes(search), provenance.includes(block), lower(provenance).includes('the root puts every such finding to the user as a question before the main run')])
-      .toEqual([true, true, true])
-    expect(provenance).toContain('Two classes are the exception.')
-    expect(provenance).toContain('a must-fix finding that a message of the user is missing from the record blocks it as stated above')
+    expect([provenance.includes(search), provenance.includes(missing)]).toEqual([true, true])
+    expect(provenance).toContain('These findings are advisory, and none of them holds up a run.')
+    // No finding delays a run or sends a question to the user before it.
+    for (const pattern of [/blocks? (the (main )?run|it as stated)/i, /before (the main run|code is written)/i, /question before/i, /the block is a rule/i]) {
+      expect([String(pattern), pattern.test(provenance)]).toEqual([String(pattern), false])
+    }
   })
 
   test('the README and the spec-writing skill describe the YAML record', async () => {
