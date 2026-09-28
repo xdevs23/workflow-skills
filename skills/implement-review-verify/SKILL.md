@@ -164,7 +164,8 @@ collisions and consistency drift.
 - Expect an entry of class `joint-impossibility` or `missing-contract` to block the run. The
   implementer returns it with a limitation of effect `blocks` that names the entry, and edits and
   commits nothing, so every repository's snapshot is its start SHA. A spec with such an entry has
-  nothing built, whatever other entries it has.
+  nothing built, whatever other entries it has. The script refuses an implementer result that
+  carries such an entry without a blocking limitation or with a repository that moved.
 - The script ends the run after the implement stage with exit `root-resolution` and a
   `blocking-limitation` item, as it does for every blocking limitation of the implementer, and no
   review stage starts. A `joint-impossibility` or `missing-contract` entry blocks because law 13

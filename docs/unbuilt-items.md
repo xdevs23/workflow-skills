@@ -62,10 +62,12 @@ states the same rule where it lists the verifier's decisions.
 ## What stays as it was
 
 The main script's handling of spec findings and of blocking limitations is unchanged. Its comment
-beside the handoff of spec findings now says that a `joint-impossibility` or `missing-contract`
-entry comes with a blocking limitation that has already ended the run. The script does not check
-that the two come together: returning the limitation with the entry is the implementer's part. The
-script's decision checks, the severities, the spec-compliance reviewer and the fixer's input stay
+beside the handoff of spec findings says that a `joint-impossibility` or `missing-contract` entry
+comes with a blocking limitation that has already ended the run, and the implementer's completeness
+check makes sure of it: a result that carries such an entry without a limitation of effect
+`blocks`, or with a repository whose snapshot moved, is refused and retried with the reason named,
+so an implementer that forgets the limitation can never send the run on to review. The script's
+decision checks, the severities, the spec-compliance reviewer and the fixer's input stay
 as they were. The design document of the implementer's spec checks refers to this document where
 it says which findings block the run and which items are built.
 
