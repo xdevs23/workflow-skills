@@ -3207,23 +3207,35 @@ describe('the implementer checks the spec, and every stage reads only words said
     for (const call of calls.filter(c => c.label !== 'impl')) expect([call.label, 'specFindings' in call.schema.properties]).toEqual([call.label, false])
   })
 
-  test('each spec finding reaches remaining as a spec-finding of its severity, and none stops the run', async () => {
-    // A joint-impossibility entry names both items of the conflict.
-    const specFindings = SPEC_FINDING_CLASSES.map((kind, i) => specFinding(kind === 'joint-impossibility' ? ['item-' + i, 'item-' + i + 'b'] : ['item-' + i], kind))
+  test('an unbacked-item or reality-drift entry reaches remaining as a spec-finding of its severity while every stage runs', async () => {
+    // The unbacked-item entry names the item that cannot be built without its item as well.
+    const specFindings = [specFinding(['item-0', 'item-0-dependent'], 'unbacked-item'), specFinding(['item-1'], 'reality-drift')]
     const implementation = implemented({ specFindings })
     const { result, calls } = await simulate({ implementation })
     expect(calls.map(c => c.label)).toEqual(['gate', 'impl', ...readers.map(s => 'review:' + s), 'verify', 'fix', 'roast'])
     expect([result.exit, result.detail]).toEqual(['follow-up', 'The pass completed with items requiring follow-up.'])
-    expect(result.remaining).toEqual(specFindings.map(f => ({ kind: 'spec-finding',
-      severity: f.class === 'unbacked-item' ? 'CRITICAL' : 'must-fix', item: f })))
-    expect(result.remaining.map(r => r.item.items)).toEqual([['item-0', 'item-0b'], ['item-1'], ['item-2'], ['item-3']])
+    expect(result.remaining).toEqual([{ kind: 'spec-finding', severity: 'CRITICAL', item: specFindings[0] },
+      { kind: 'spec-finding', severity: 'must-fix', item: specFindings[1] }])
+    expect(result.remaining.map(r => r.item.items)).toEqual([['item-0', 'item-0-dependent'], ['item-1']])
     // The finding verifier receives them with the implementer's object.
     expect(calls.find(c => c.label === 'verify').prompt).toContain('WRITER OBJECTS (UNTRUSTED):\n\n[' + JSON.stringify(implementation) + ']')
     // They also reach the root when the run ends early.
     const abort = { trigger: 'directive-conflict', reason: 'the spec contradicts a recorded directive.' }
-    const aborted = await simulate({ implementation: implemented({ snapshotSha: BASE, proofPassed: false, abort, specFindings: specFindings.slice(3) }) })
+    const aborted = await simulate({ implementation: implemented({ snapshotSha: BASE, proofPassed: false, abort, specFindings: specFindings.slice(0, 1) }) })
     expect([aborted.result.exit, aborted.result.remaining.map(r => [r.kind, r.severity])])
       .toEqual(['aborted', [['abort', 'CRITICAL'], ['spec-finding', 'CRITICAL']]])
+  })
+
+  test('a joint-impossibility or missing-contract entry with a blocking limitation and unmoved snapshots ends the run after the implement stage', async () => {
+    for (const [kind, items] of [['joint-impossibility', ['item-0', 'item-1']], ['missing-contract', ['item-2']]]) {
+      const entry = specFinding(items, kind)
+      const limitation = { what: 'The ' + kind + ' entry on ' + items.join(', ') + ' leaves the spec unbuildable as written.', effect: 'blocks' }
+      const { result, calls } = await simulate({ implementation: implemented({ snapshotSha: BASE, limitations: [limitation], specFindings: [entry] }) })
+      expect([kind, calls.map(c => c.label), calls.some(c => c.phase === 'Review')]).toEqual([kind, ['gate', 'impl'], false])
+      expect([kind, result.exit, result.detail]).toEqual([kind, 'root-resolution', 'Blocking limitation from impl.'])
+      expect([kind, result.remaining]).toEqual([kind, [{ kind: 'blocking-limitation', severity: 'CRITICAL', item: { ...limitation, label: 'impl' } },
+        { kind: 'spec-finding', severity: 'must-fix', item: entry }]])
+    }
   })
 
   test('spec-writing, the implementer, the inverse-spec reviewer, the finding verifier and the skill state the rules', async () => {
@@ -3238,20 +3250,31 @@ describe('the implementer checks the spec, and every stage reads only words said
         'missing-contract, an artifact the spec assumes without saying how it is made', 'reality-drift, a recorded fact the code no longer bears out',
         "each spec item rests, directly or through its parents, on the user's words said about this unit", other, crossed,
         'is class unbacked-item', 'Return every finding in specFindings, one entry per finding with the ids of every spec item it concerns in items, the class, the claim and receipts;',
-        'a joint-impossibility entry names each item of the conflict.', 'None of them fails the sense check, sets abort.trigger or asks the user',
-        'build nothing for an item named in an entry of class unbacked-item, joint-impossibility or missing-contract, and build the rest of the spec, an item named only in a reality-drift entry included.']],
+        'a joint-impossibility entry names each item of the conflict.', 'None of them fails the sense check, sets abort.trigger or asks the user.',
+        'An entry of class joint-impossibility or missing-contract blocks the run: return it with a limitation of effect blocks that names the entry, and edit and commit nothing',
+        "so every repository's snapshot is its start SHA, whatever other entries you return.",
+        'An entry of class unbacked-item does not block: build nothing for the items it names and build the rest of the spec.',
+        "An item that cannot be built without one of those items rests on the same missing words, so name it in that entry's items too and leave it unbuilt.",
+        'Build an item named only in a reality-drift entry.']],
       ['reviewer-inverse-spec', await template('reviewer-inverse-spec'), ['Only words the user said about this unit authorize a choice.', other, crossed,
         'A choice whose cited authority is such words lacks authority: report it as a finding with kind unbacked-choice.']],
       ['finding-verifier', await template('finding-verifier'), ['Reject closes it only on a record entry whose words were said about this unit and back the choice',
         other + ', back nothing here even where their subject overlaps.', 'so it never closes such a finding either',
-        'the implementer left every item named in an entry of class unbacked-item, joint-impossibility or missing-contract unbuilt.',
+        'A joint-impossibility or missing-contract entry ends the run before any review, so in a run that reaches you the items left unbuilt are the items named in an entry of class unbacked-item',
+        'which names every item that cannot be built without one of its items as well.',
         'A source finding that asks to build, complete or change such an item is never approve-fix',
         'decide it needs-decision, name that specFindings entry by its class and items in authority, and state the open question in correction.',
         'It reaches the root as an open decision']],
       ['skill', flat(skill), ['**The sense check also reads the spec.**', 'is class `unbacked-item`',
         'one entry per finding with the ids of every spec item it concerns in `items`, a list of at least one id',
         'so a `joint-impossibility` entry names each item of the conflict',
-        'The implementer builds nothing for an item named in an entry of class `unbacked-item`, `joint-impossibility` or `missing-contract`, and builds the rest of the spec',
+        'An entry of class `joint-impossibility` or `missing-contract` blocks the run.',
+        'returns it with a limitation of effect `blocks` that names the entry, and edits and commits nothing',
+        'The script ends the run after the implement stage with exit `root-resolution` and a `blocking-limitation` item',
+        'An entry of class `unbacked-item` does not block. The implementer builds nothing for the items it names and builds the rest of the spec.',
+        'An item that cannot be built without an item of an `unbacked-item` entry rests on the same missing words, so the entry names it in `items` too and it stays unbuilt.',
+        'A `joint-impossibility` or `missing-contract` entry blocks because law 13 has work that genuinely cannot satisfy the applicable requirements report the concrete impossibility and block.',
+        'so in a run that reaches review the items left unbuilt are the items named in an entry of class `unbacked-item`',
         'never approves a fix that builds an item left unbuilt, as phase 3 describes.',
         'A finding that asks to build an item the implementer left unbuilt is never `approve-fix`.',
         'A source finding that asks to build, complete or change an item left unbuilt is decided `needs-decision`',

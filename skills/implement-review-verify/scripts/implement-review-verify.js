@@ -877,9 +877,10 @@ await stage([GATE_COMMAND,
 
 try { await onePass() } catch (error) { failed(error, activeLabel) }
 // What the implementer's sense check found in the spec reaches the root after the run, whatever
-// its ending. None of it stops the run: the implementer left the items of every unbacked-item,
-// joint-impossibility and missing-contract entry unbuilt and built the rest of the spec, and an
-// item with no words of the user said about this unit is CRITICAL.
+// its ending. A joint-impossibility or missing-contract entry comes with the implementer's blocking
+// limitation, which has already ended the run after the implement stage. An unbacked-item entry
+// lets the run go on without its items, and it is CRITICAL because no words of the user said about
+// this unit back them.
 for (const finding of impl?.specFindings ?? []) add('spec-finding', finding, finding.class === 'unbacked-item' ? 'CRITICAL' : 'must-fix')
 for (const approved of queue) {
   const response = reportedFix?.dispositions?.find(d => d.key === approved.key)
