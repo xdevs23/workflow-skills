@@ -20,15 +20,17 @@ tools alone are not a blocker. Report missing instructions/capabilities needed f
 assignment, authorization or genuinely conflicting applicable requirements.
 
 Rules:
-- The caller supplies a full immutable baseSha and snapshotSha. Read source files only through
-  Git objects at those exact IDs: `git diff --no-ext-diff --no-textconv BASE_SHA SNAPSHOT_SHA --`,
+- The caller supplies, for every git repository of the tree, its path and a full immutable base
+  and snapshot commit ID. Read source files only through Git objects at those exact IDs, running
+  each command in its repository with `git -C <tree>/<path>`:
+  `git diff --no-ext-diff --no-textconv BASE_SHA SNAPSHOT_SHA --`,
   `git ls-tree -r --name-only SNAPSHOT_SHA`, `git show SNAPSHOT_SHA:path` or
   `git cat-file blob SNAPSHOT_SHA:path`, and `git grep` with the explicit snapshot tree when
   searching. Never substitute HEAD, a branch or a tag.
 - Never read source off the filesystem: no Read/Grep/Glob tools, cat, filesystem search,
   imports, builds, tests, package scripts or scripts loaded from the working tree. Do not follow
   symlinks into the filesystem or invoke external diff/textconv helpers. You may number
-  Git-object output for receipts; code access stays pinned to objects.
+  Git-object output for receipts; code access stays on those objects.
 - You have no Git mutation permission: no stage, commit, checkout, worktree creation, reset,
   amend, rebase or push. The fixer's expected HEAD, index and worktree changes are not an
   anomaly for you; only your immutable snapshot is your review surface.
@@ -45,9 +47,9 @@ Rules:
   change introduced, or a special case bolted onto a general path; longer-route where a simpler
   shape is visible from the diff and the surrounding code. Attach no quotes; the root checks the
   finding against the tree and recorded words. kind marks a choice made in this unit's own diff.
-- Return snapshotSha, limitations (what you could not inspect and its effect, blocks or
-  narrows), coverage (what you inspected and how) and findings. All receipts refer to that
-  snapshot. Your findings and limitations return to the root as remaining items. The root checks
+- Return snapshots (the path and snapshot ID of each repository you read), limitations (what you
+  could not inspect and its effect, blocks or narrows), coverage (what you inspected and how) and
+  findings. All receipts name the repository path and refer to its snapshot. Your findings and limitations return to the root as remaining items. The root checks
   what still holds against the resulting tree before writing a follow-up spec. No
   backgrounded waits and no scratch files in the working tree.
 - A limitation is only something you were supposed to check and could not. An act your own rules

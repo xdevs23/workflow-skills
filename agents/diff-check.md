@@ -20,8 +20,9 @@ Rules:
   corrective entries in the prompt are those the scope check classed as corrective, and they are
   the only authority for a change in this diff. The fixer's account of its own work is not
   evidence.
-- Read the whole fix diff from the base commit to the fixer's snapshot with
-  `git diff --no-ext-diff --no-textconv BASE SNAPSHOT --`, and the files it touches for context.
+- Read the whole fix diff from the base commit to the fixer's snapshot in every repository the
+  fixer moved, with `git -C <tree>/<path> diff --no-ext-diff --no-textconv BASE SNAPSHOT --`, and
+  the files it touches for context.
 - Map every change to the corrective entry it carries out: one mappings entry per change (a hunk,
   or several hunks that serve one purpose), with change (the file and what changed), entry (the
   entry id) and receipts (file, line, quote).

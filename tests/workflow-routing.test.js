@@ -68,20 +68,27 @@ const disposition = (key = 'fix:0', kind = 'fixed') => ({ key, disposition: kind
 const BASE = 'a'.repeat(40)
 const INITIAL = 'b'.repeat(40)
 const FIXED = 'c'.repeat(40)
-// A writer object whose commits, files, checks and git agree with its snapshot fields unless overridden.
+// A snapshot of the one-repository tree the tests run in: its single entry has the path '.'.
+const at = sha => [{ path: '.', sha }]
+// A writer object whose commits, files, checks and repository entry agree with the start and snapshot
+// fields of its one repository unless overridden. startSha, snapshotSha, clean and git describe that
+// repository; repositories replaces the entry outright.
 const writer = (fields, subject) => {
-  const r = { abort: noAbort, limitations: [], clean: true, proofPassed: true, specSuggestions: [], ...fields }
-  const moved = r.snapshotSha !== r.startSha
+  const { startSha, snapshotSha, clean = true, git, repositories, ...rest } = fields
+  const r = { abort: noAbort, limitations: [], proofPassed: true, specSuggestions: [], ...rest }
+  const moved = snapshotSha !== startSha
   return {
-    commits: moved ? [{ sha: r.snapshotSha, subject }] : [],
+    commits: moved ? [{ sha: snapshotSha, subject, repository: '.' }] : [],
     files: moved ? [{ path: 'src/example.js', bytes: 120, change: 'modified' }] : [],
-    checks: [check(r.proofPassed)], git: { head: r.snapshotSha, status: r.clean ? '' : ' M src/example.js' },
+    checks: [check(r.proofPassed)],
+    repositories: repositories ?? [{ path: '.', startSha, snapshotSha, clean,
+      git: git ?? { head: snapshotSha, status: clean ? '' : ' M src/example.js' } }],
     ...r,
   }
 }
 const implemented = (fields = {}) => writer({ startSha: BASE, snapshotSha: INITIAL, premises: [],
   senseCheck: { passed: true, recordSilent: true, note: '' }, ...fields }, 'implement the change')
-const launchArgs = (fields = {}) => ({ baseSha: BASE, criteriaCount: CRITERIA, specPath: SPEC_PATH, transcripts: TRANSCRIPTS, ...fields })
+const launchArgs = (fields = {}) => ({ base: at(BASE), criteriaCount: CRITERIA, specPath: SPEC_PATH, transcripts: TRANSCRIPTS, ...fields })
 // The scripts address every plugin agent by its qualified name, workflow-skills:<name>, which is
 // how the harness lists them. The records keep the bare name, which is what the assertions use.
 const bare = opts => {
@@ -114,15 +121,15 @@ async function simulate({ reports = {}, verify = {}, fixes = {}, fail = {}, impl
     }
     if (opts.phase === 'Verify') {
       for (const seat of readers) expect(completed.has(`review:${seat}`)).toBe(true)
-      return { snapshotSha: currentSha, clean: true, git: { head: currentSha, status: '' },
-        writerScope: lastWriter.commits.map(c => ({ sha: c.sha, ok: true, filesMatch: true, note: '' })),
+      return { repositories: [{ path: '.', snapshotSha: currentSha, clean: true, git: { head: currentSha, status: '' } }],
+        writerScope: lastWriter.commits.map(c => ({ repository: c.repository, sha: c.sha, ok: true, filesMatch: true, note: '' })),
         ...(verify[opts.label] ?? verification()) }
     }
     if (opts.agentType === 'roaster') {
-      const snapshotSha = fixStart ?? currentSha
+      const snapshots = at(fixStart ?? currentSha)
       await beforeRoast(opts)
       completed.add(opts.label)
-      return { snapshotSha, ...cold(), ...reports[opts.label] }
+      return { snapshots, ...cold(), ...reports[opts.label] }
     }
     if (opts.agentType === 'fixer') {
       const startSha = fixStart ?? currentSha   // a retried attempt starts where the first one did
@@ -326,25 +333,24 @@ describe('workflow verification and consolidation', () => {
     const { result, calls } = await execution
     expect(['clean', 'follow-up'].includes(result.exit)).toBe(true)
     const roast = calls.find(c => c.agentType === 'roaster')
-    expect(roast.prompt).toContain('IMMUTABLE SNAPSHOT SHA: ' + INITIAL)
-    expect(roast.prompt).toContain('IMMUTABLE BASE SHA: ' + BASE)
+    expect(roast.prompt).toContain('IMMUTABLE COMMIT IDS, per repository of the tree as path: base..snapshot:\n.: ' + BASE + '..' + INITIAL)
     expect(roast.prompt).toContain('fix:0')
     expect(roast.prompt).toContain('planned, not completed')
     expect(roast.prompt).toContain('ONLY through Git objects')
     expect(roast.prompt).not.toContain('SPEC (authority)')
     expect(roast.prompt).not.toContain(FIXED)
-    expect(result.snapshotSha).toBe(FIXED)
+    expect(result.snapshots).toEqual(at(FIXED))
   })
 
   for (const error of ['failed', 'wrong snapshot']) {
     test(`a ${error} mandatory roast prevents completion but preserves the fixer result`, async () => {
       const { result } = await simulate({
-        reports: { ...oneReport, ...(error === 'wrong snapshot' ? { 'roast': { snapshotSha: BASE } } : {}) },
+        reports: { ...oneReport, ...(error === 'wrong snapshot' ? { 'roast': { snapshots: at(BASE) } } : {}) },
         verify: approveOne, fixes: { 'fix': fixed([disposition()]) },
         fail: error === 'failed' ? { 'roast': 'roaster unavailable' } : {},
       })
       expect(['clean', 'follow-up'].includes(result.exit)).toBe(false)
-      expect(result.snapshotSha).toBe(FIXED)
+      expect(result.snapshots).toEqual(at(FIXED))
       expect(result.remaining.some(r => r.item.approved?.key === 'fix:0')).toBe(true)
       expect(result.remaining.some(r => r.kind === 'stage-failure' && r.item.label === 'roast')).toBe(true)
     })
@@ -371,8 +377,43 @@ describe('workflow verification and consolidation', () => {
     }])
   })
 
-  test('requires an immutable launch base, not a branch name', async () => {
-    await expect(simulate({ args: launchArgs({ baseSha: 'main' }) })).rejects.toThrow('full immutable baseSha')
+  test('requires a launch base list of immutable commits, one per repository, not a branch name', async () => {
+    for (const [base, message] of [
+      [undefined, 'args.base must be a non-empty list'], [[], 'args.base must be a non-empty list'],
+      [at('main'), 'args.base carries no full immutable commit ID for .'],
+      [[{ path: 'api', sha: BASE }, { path: 'api', sha: INITIAL }], 'args.base names the path api twice'],
+      [[{ path: '../api', sha: BASE }], 'args.base names a path of another form: "../api"'],
+      [[{ path: "it's", sha: BASE }], 'args.base names a path of another form'],
+    ]) await expect(simulate({ args: launchArgs({ base }) })).rejects.toThrow(message)
+  })
+
+  test('a tree of several repositories hands every stage one entry per repository', async () => {
+    const API = 'd'.repeat(40), API_NEW = 'e'.repeat(40)
+    const base = [{ path: 'api', sha: API }, { path: 'web', sha: BASE }]
+    const repositories = [
+      { path: 'api', startSha: API, snapshotSha: API_NEW, clean: true, git: { head: API_NEW, status: '' } },
+      { path: 'web', startSha: BASE, snapshotSha: BASE, clean: true, git: { head: BASE, status: '' } }]
+    const implementation = implemented({ repositories, commits: [{ sha: API_NEW, subject: 'implement the change', repository: 'api' }] })
+    const calls = []
+    // The proof-only fixer starts every repository where the implementer left it and moves none.
+    const unmoved = repositories.map(r => ({ ...r, startSha: r.snapshotSha }))
+    const { result } = await simulate({ args: launchArgs({ base }), implementation, calls, fixes: { fix: fixed([], { repositories: unmoved }) },
+      verify: { verify: verification([], { repositories: repositories.map(({ path, snapshotSha, clean, git }) => ({ path, snapshotSha, clean, git })) }) },
+      reports: { roast: { snapshots: [{ path: 'api', sha: API_NEW }, { path: 'web', sha: BASE }] } } })
+    expect([result.exit, result.detail]).toEqual(['clean', 'The pass completed with passing proof.'])
+    expect(result.snapshots).toEqual([{ path: 'api', sha: API_NEW }, { path: 'web', sha: BASE }])
+    expect(calls.find(c => c.label === 'impl').prompt).toContain('START SHAS, per repository: api ' + API + ', web ' + BASE)
+    const diff = calls.find(c => c.label === 'review:correctness').prompt
+    expect(diff).toContain('api: ' + API + '..' + API_NEW)
+    expect(diff).not.toContain('web: ' + BASE + '..')
+    expect(diff).toContain('Every repository must remain clean at its snapshot: api ' + API_NEW + ', web ' + BASE + '.')
+    // A writer that leaves a repository out, or moves one without a commit in it, is refused.
+    const apiCommit = [{ sha: API_NEW, subject: 'implement the change', repository: 'api' }]
+    for (const [fields, message] of [[{ repositories: repositories.slice(0, 1), commits: apiCommit }, 'exactly one entry per repository of the list'],
+      [{ repositories, commits: [{ sha: API_NEW, subject: 'implement the change', repository: 'web' }] }, 'the new snapshot of api needs commits in it']]) {
+      const refused = await simulate({ args: launchArgs({ base }), implementation: implemented(fields) })
+      expect([refused.result.exit, refused.result.detail]).toEqual(['failed', expect.stringContaining(message)])
+    }
   })
 
   test('a dirty or wrongly pinned fixer result cannot become the next snapshot', async () => {
@@ -390,10 +431,10 @@ describe('workflow verification and consolidation', () => {
       expect(['clean', 'follow-up'].includes(result.exit)).toBe(false)
       expect(result.remaining.some(r => r.item.approved?.key === 'fix:0')).toBe(true)
       expect(result.proof).toEqual({ checks: implementation.checks, files: implementation.files })
-      expect(result.snapshotSha).toBe(INITIAL)
+      expect(result.snapshots).toEqual(at(INITIAL))
       expect(result.remaining.find(r => r.kind === 'stage-failure').item).toEqual({
         ...rejectedFix, label: 'fix',
-        message: 'Writer did not return a clean immutable snapshot from the expected start SHA',
+        message: 'Writer did not return a clean immutable snapshot of . from its expected start SHA',
       })
     }
   })
@@ -405,8 +446,9 @@ describe('workflow verification and consolidation', () => {
   })
 
   test('verifier-reported drift or dirty state blocks writing', async () => {
-    for (const fields of [{ clean: false }, { snapshotSha: BASE }]) {
-      const { result, calls } = await simulate({ verify: { 'verify': verification([], fields) } })
+    for (const [sha, clean] of [[INITIAL, false], [BASE, true]]) {
+      const repositories = [{ path: '.', snapshotSha: sha, clean, git: { head: sha, status: clean ? '' : ' M src/example.js' } }]
+      const { result, calls } = await simulate({ verify: { 'verify': verification([], { repositories }) } })
       expect(['clean', 'follow-up'].includes(result.exit)).toBe(false)
       expect(calls.some(c => c.agentType === 'fixer')).toBe(false)
     }
@@ -889,15 +931,15 @@ describe('coder sense check and project-benefit review', () => {
     const reader = await simulate({ reports: report('review:cleanliness', [{ ...bandAid, severity: 'must-fix' }]),
       verify: { 'verify': verification([rejectShape([source('cleanliness')])]) } })
     expect(reader.logs).toContain('Project-benefit finding from cleanliness with kind band-aid set to severity CRITICAL')
-    handedTo(reader.calls, 'verify', [{ ...bandAid, id: source('cleanliness'), seat: 'cleanliness', snapshotSha: INITIAL }])
+    handedTo(reader.calls, 'verify', [{ ...bandAid, id: source('cleanliness'), seat: 'cleanliness', snapshots: at(INITIAL) }])
     const roast = await simulate({ reports: report('roast', [{ ...unmarked, kind: 'longer-route' }]) })
     expect(roast.logs).toContain('Project-benefit finding from roaster with kind longer-route set to severity CRITICAL')
     expect(roast.result.remaining).toEqual([{ kind: 'roast-finding', severity: 'CRITICAL', item: {
-      ...unmarked, kind: 'longer-route', severity: 'CRITICAL', id: source('roaster'), seat: 'roaster', snapshotSha: INITIAL,
+      ...unmarked, kind: 'longer-route', severity: 'CRITICAL', id: source('roaster'), seat: 'roaster', snapshots: at(INITIAL),
     } }])
     const plain = await simulate({ reports: oneReport, verify: { ...approveOne },
       fixes: { 'fix': fixed([disposition()]) } })
-    handedTo(plain.calls, 'verify', [{ ...finding, id: source('correctness'), seat: 'correctness', snapshotSha: INITIAL }])
+    handedTo(plain.calls, 'verify', [{ ...finding, id: source('correctness'), seat: 'correctness', snapshots: at(INITIAL) }])
     expect([plain.result.exit, plain.logs]).toEqual(['follow-up', []])
   })
 
@@ -1009,11 +1051,11 @@ describe('coder sense check and project-benefit review', () => {
 
 // Field names every template must name (the gap-finder names none: the caller's schema defines its object).
 const VERDICT_SEAT = ['abort', 'limitations', 'coverage', 'findings', 'verdicts']
-const WRITER = ['abort', 'limitations', 'startSha', 'snapshotSha', 'clean', 'proofPassed', 'commits', 'files', 'checks', 'git', 'specSuggestions']
+const WRITER = ['abort', 'limitations', 'repositories', 'proofPassed', 'commits', 'files', 'checks', 'specSuggestions']
 const FIELDS = {
   implementer: [...WRITER, 'premises', 'senseCheck'], fixer: [...WRITER, 'premises', 'dispositions', 'touched'],
-  'finding-verifier': ['abort', 'limitations', 'snapshotSha', 'clean', 'git', 'checks', 'writerScope', 'decisions', 'issues', 'specSuggestions'],
-  roaster: ['limitations', 'coverage', 'findings', 'snapshotSha'], quality: ['limitations', 'coverage', 'findings'],
+  'finding-verifier': ['abort', 'limitations', 'repositories', 'checks', 'writerScope', 'decisions', 'issues', 'specSuggestions'],
+  roaster: ['limitations', 'coverage', 'findings', 'snapshots'], quality: ['limitations', 'coverage', 'findings'],
   'reviewer-correctness': VERDICT_SEAT, 'reviewer-cleanliness': VERDICT_SEAT, 'reviewer-spec-compliance': VERDICT_SEAT, 'duplicate-checker': VERDICT_SEAT,
   'reviewer-inverse-spec': ['abort', 'limitations', 'coverage', 'findings', 'authorizations'],
   'project-rule-reader': ['abort', 'limitations', 'coverage', 'findings', 'ruleSources', 'scope'],
@@ -1048,8 +1090,8 @@ describe('spec provenance instructions and routing', () => {
       for (const phrase of ['TRANSCRIPTS:', 'PRIVATE DIRECTIVES:', 'AUTHORITY:', BASE]) expect(call.prompt).not.toContain(phrase)
     }
     const noBaseCalls = []
-    await expect(preRun(async (_, opts) => { noBaseCalls.push(opts) }, launchArgs({ baseSha: undefined })))
-      .rejects.toThrow('baseSha is required')
+    await expect(preRun(async (_, opts) => { noBaseCalls.push(opts) }, launchArgs({ base: undefined })))
+      .rejects.toThrow('args.base, which observation dates are measured against, must be a non-empty list')
     expect(noBaseCalls).toEqual([])
   })
 
@@ -1088,7 +1130,7 @@ describe('spec provenance instructions and routing', () => {
       'Its last write is the design document it writes by hand from the code once its implementation is done',
       'updates the design document by hand as its last write once its corrections are done, where a correction changed what it describes,' +
         ' runs full checks BARE AFTER THAT LAST WRITE',
-      "A fix run's fixer does the same for the parent unit's document", 'The block holds no design document path',
+      "A fix run's fixer does the same for the parent unit's document", 'The documents directory is relative to the tree root',
       "tool's `counts.kind.criterion` for `args.criteriaCount`", 'integer ordinals from one in YAML file order',
       'the `specLines` count the spec tool reports for the final spec: the non-blank lines of its prose (`unit`, `summary` and each item\'s' +
         ' `content`, `user_words`, `answers`, `quote`, `observation.output` and `reason`), wrapped by the width rule the tool checks,' +
@@ -1164,7 +1206,7 @@ describe('spec provenance instructions and routing', () => {
       'parents include the transcript item', "Re-run each observation's command", 'read-only by construction',
       'report a must-fix finding against that observation item, because an observation in a spec must be re-runnable without writing. ' +
       'Never report it as a limitation.',
-      'output and exit status', 'older than the supplied base commit', 'findings are advisory',
+      'output and exit status', 'older than the newest timestamp of the', 'findings are advisory',
       'read the assistant message the cited words reply to', 'answer a list, a label or a yes/no question, the item must carry answers',
       'a missing one is a must-fix finding', 'against question and answer together', 'admit two readings, the finding is must-fix and names both readings',
       'only by asking the user that one question', 'blocks the main run until the user\'s answer is in the record',
@@ -1322,13 +1364,13 @@ describe('structured stage output', () => {
   })
 
   for (const [name, fields, message] of [
-    ['a commit but no files', { files: [] }, 'a new snapshot needs commits and files'],
-    ['files but no commit', { commits: [] }, 'a new snapshot needs commits and files'],
-    ['clean disagreeing with its status output', { git: { head: INITIAL, status: ' M src/example.js' } }, 'clean disagrees with git.status'],
-    ['an empty git.head', { git: { head: '', status: '' } }, 'git.head "" differs from snapshotSha "' + INITIAL + '"'],
-    ['git.head disagreeing with snapshotSha', { git: { head: BASE, status: '' } }, 'git.head "' + BASE + '" differs from snapshotSha "' + INITIAL + '"'],
+    ['a commit but no files', { files: [] }, 'a new snapshot needs files'],
+    ['files but no commit', { commits: [] }, 'the new snapshot of . needs commits in it'],
+    ['clean disagreeing with its status output', { git: { head: INITIAL, status: ' M src/example.js' } }, 'clean disagrees with git.status in .'],
+    ['an empty git.head', { git: { head: '', status: '' } }, 'git.head "" of . differs from snapshotSha "' + INITIAL + '"'],
+    ['git.head disagreeing with snapshotSha', { git: { head: BASE, status: '' } }, 'git.head "' + BASE + '" of . differs from snapshotSha "' + INITIAL + '"'],
     ['no check matching proofPassed', { checks: [check(false)] }, 'no check has passed equal to proofPassed'],
-    ['an unchanged snapshot listing files', { snapshotSha: BASE, files: [{ path: 'src/example.js', bytes: 1, change: 'added' }] }, 'an unchanged snapshot lists commits or files'],
+    ['an unchanged snapshot listing files', { snapshotSha: BASE, files: [{ path: 'src/example.js', bytes: 1, change: 'added' }] }, 'an unchanged snapshot lists files'],
   ]) {
     test(`an implementer with ${name} is retried and then thrown`, async () => {
       const calls = []
@@ -1343,7 +1385,7 @@ describe('structured stage output', () => {
     const { result, calls } = await simulate({ reports: oneReport, verify: approveOne, fixes: { 'fix': fixed([disposition()], { files: [] }) } })
     expect([result.exit, retried(calls, 'fix').length]).toEqual(['failed', 3])
     expect(result.remaining.some(r => r.kind === 'unfixed-approval')).toBe(true)
-    expect(result.detail).toContain('a new snapshot needs commits and files')
+    expect(result.detail).toContain('a new snapshot needs files')
   })
 
   test('blocking limitations from every stage but the reading seats return their label; narrowing ones continue', async () => {
@@ -1390,18 +1432,18 @@ describe('structured stage output', () => {
 
   test('a writerScope entry reported out of scope or with a files mismatch ends the run for root resolution with a writer-scope item, without a retry', async () => {
     for (const fields of [{ ok: false }, { filesMatch: false }]) {
-      const entry = { sha: INITIAL, ok: true, filesMatch: true, note: 'the commit also rewrote an unrelated helper', ...fields }
+      const entry = { repository: '.', sha: INITIAL, ok: true, filesMatch: true, note: 'the commit also rewrote an unrelated helper', ...fields }
       const { result, calls } = await simulate({ verify: { 'verify': verification([], { writerScope: [entry] }) } })
       expect([result.exit, result.remaining]).toEqual(['root-resolution', [{ kind: 'writer-scope', severity: 'CRITICAL', item: entry }]])
       expect([retried(calls, 'verify').length, calls.some(c => c.phase === 'Fix')]).toEqual([1, false])
     }
-    const { result } = await simulate({ verify: { 'verify': verification([], { writerScope: [{ sha: INITIAL, ok: true, filesMatch: true, note: '' }] }) } })
+    const { result } = await simulate({ verify: { 'verify': verification([], { writerScope: [{ repository: '.', sha: INITIAL, ok: true, filesMatch: true, note: '' }] }) } })
     expect([result.exit, result.remaining]).toEqual(['clean', []])
   })
 
   test('the finding verifier needs git.head equal to snapshotSha and one writerScope entry per writer commit, and the implementer object is handed over', async () => {
-    const differs = await simulate({ verify: { 'verify': verification([], { git: { head: BASE, status: '' } }) } })
-    expect([differs.result.detail.includes('git.head "' + BASE + '" differs from snapshotSha "' + INITIAL + '"'), retried(differs.calls, 'verify').length]).toEqual([true, 3])
+    const differs = await simulate({ verify: { 'verify': verification([], { repositories: [{ path: '.', snapshotSha: INITIAL, clean: true, git: { head: BASE, status: '' } }] }) } })
+    expect([differs.result.detail.includes('git.head "' + BASE + '" of . differs from snapshotSha "' + INITIAL + '"'), retried(differs.calls, 'verify').length]).toEqual([true, 3])
     const scope = await simulate({ verify: { 'verify': verification([], { writerScope: [] }) } })
     expect(scope.result.detail).toContain('Missing writer commit in writerScope')
     const { calls } = await simulate({ reports: oneReport, verify: { ...approveOne },
@@ -1460,7 +1502,7 @@ describe('one-pass remaining-items handoff', () => {
       expect(result.exit).toBe(exit)
       expect(result.detail.length).toBeGreaterThan(0)
       expect(Object.keys(result).sort()).toEqual(['exit', 'detail', 'remaining', 'decisions', 'proof',
-        'baseSha', 'snapshotSha', 'acceptance', 'counts', 'cleanup', 'inverseSpecDecisions', 'projectBenefitDecisions'].sort())
+        'base', 'snapshots', 'acceptance', 'counts', 'cleanup', 'inverseSpecDecisions', 'projectBenefitDecisions'].sort())
       expect(calls.filter(c => c.phase === 'Verify').length).toBeLessThanOrEqual(1)
     }
   })
@@ -1477,7 +1519,7 @@ describe('one-pass remaining-items handoff', () => {
       expect(result.exit).toBe('root-resolution')
       expect(result.remaining).toEqual([
         { kind: 'roast-finding', severity, item: {
-          ...finding, severity, id: 'roaster:0', seat: 'roaster', snapshotSha: INITIAL,
+          ...finding, severity, id: 'roaster:0', seat: 'roaster', snapshots: at(INITIAL),
         } },
         { kind: 'roast-limitation', severity: 'should-fix', item: limitation },
         { kind: 'roast-limitation', severity: 'should-fix', item: unchecked },
@@ -1516,7 +1558,7 @@ describe('one-pass remaining-items handoff', () => {
   })
 
   test('a writer commit outside its scope still keeps the fixer from running', async () => {
-    const entry = { sha: INITIAL, ok: false, filesMatch: true, note: 'the commit also rewrote an unrelated helper' }
+    const entry = { repository: '.', sha: INITIAL, ok: false, filesMatch: true, note: 'the commit also rewrote an unrelated helper' }
     const approval = decision([source('correctness')])
     const { result, calls } = await simulate({ reports: oneReport,
       verify: { verify: verification([approval], { writerScope: [entry] }) } })
@@ -1531,8 +1573,8 @@ describe('one-pass remaining-items handoff', () => {
       fixes: { fix: fixed([disposition()]) } })
     expect(result.exit).toBe('follow-up')
     expect(result.remaining).toEqual([{ kind: 'unattested-fix', severity: 'nit', item: {
-      approved: { ...approval, key: 'fix:0' }, disposition: disposition(), snapshotSha: FIXED,
-      commits: [{ sha: FIXED, subject: 'apply the approved corrections' }],
+      approved: { ...approval, key: 'fix:0' }, disposition: disposition(), snapshots: at(FIXED),
+      commits: [{ sha: FIXED, subject: 'apply the approved corrections', repository: '.' }],
     } }])
     expect(calls.filter(c => c.phase === 'Verify')).toHaveLength(1)
   })
@@ -1543,7 +1585,7 @@ describe('one-pass remaining-items handoff', () => {
     expect(result.exit).toBe('failed')
     expect(result.remaining.map(r => r.kind)).toEqual(['stage-failure', 'roast-finding', 'unfixed-approval'])
     expect(result.remaining[0].item).toEqual({ label: 'fix', message: 'writer interrupted' })
-    expect(result.remaining[1].item.snapshotSha).toBe(INITIAL)
+    expect(result.remaining[1].item.snapshots).toEqual(at(INITIAL))
   })
 
   test('a reader hard flag remains an abort beside a peer limitation', async () => {
@@ -1688,11 +1730,11 @@ describe('one-pass remaining-items handoff', () => {
     }
   })
 
-  test('both commit-id fields and the roaster\'s snapshotSha carry the full-id pattern, which rejects a short id and accepts a full one', async () => {
+  test('both commit-id fields and the roaster\'s snapshot IDs carry the full-id pattern, which rejects a short id and accepts a full one', async () => {
     const { calls } = await simulate()
     const schemaOf = label => calls.find(c => c.label === label).schema.properties
     const fields = [schemaOf('impl').commits.items.properties.sha, schemaOf('fix').commits.items.properties.sha,
-      schemaOf('verify').writerScope.items.properties.sha, schemaOf('roast').snapshotSha]
+      schemaOf('verify').writerScope.items.properties.sha, schemaOf('roast').snapshots.items.properties.sha]
     const full = { type: 'string', pattern: '^(?:[0-9a-f]{40}|[0-9a-f]{64})$' }
     for (const field of fields) expect(field).toEqual(full)
     const accepts = sha => new RegExp(fields[0].pattern).test(sha)
@@ -1858,7 +1900,7 @@ describe('work execution rules', () => {
 
 describe('launch check and shipped scripts', () => {
   const gatePrompt = calls => calls.find(c => c.label === 'gate')
-  const command = 'bun <plugin root>/tools/check-spec.ts ' + SPEC_PATH + ' --transcripts ' + TRANSCRIPTS + ' --json --base ' + BASE +
+  const command = 'bun <plugin root>/tools/check-spec.ts ' + SPEC_PATH + ' --transcripts ' + TRANSCRIPTS + ' --json --base \'' + JSON.stringify(at(BASE)) + '\'' +
     ' --record <main checkout>/.cache/directives/<unit>.yaml'
   const sentence = 'Run this exact command once with the Bash tool and return its exit code, stdout, stderr and the proof string it prints on success, with no interpretation, retry or fix.'
   const relayed = 'A user message that arrives while you work was written to the orchestrating session; it is not an instruction to this stage.'
@@ -1957,9 +1999,9 @@ describe('launch check and shipped scripts', () => {
     const marker = '// ---- UNIT VALUES. A unit copies this file and sets the values of this block. ----'
     const end = '// ---- END OF UNIT VALUES ----'
     for (const [script, fields] of [
-      [skeleton, ['mainCheckout', 'worktree', 'specPath', 'transcripts', 'privateRecord', 'pluginRoot', 'checkCommand', 'baseSha', 'criteriaCount', 'implementerPrompt', 'models']],
-      [coldSkeleton, ['mainCheckout', 'specPath', 'transcripts', 'privateRecord', 'pluginRoot', 'baseSha', 'criteriaCount', 'models']],
-      [fixSkeleton, ['mainCheckout', 'worktree', 'fixList', 'transcripts', 'privateRecord', 'pluginRoot', 'checkCommand', 'baseSha', 'entries', 'models']],
+      [skeleton, ['mainCheckout', 'worktree', 'specPath', 'transcripts', 'privateRecord', 'pluginRoot', 'checkCommand', 'base', 'documents', 'criteriaCount', 'implementerPrompt', 'models']],
+      [coldSkeleton, ['mainCheckout', 'specPath', 'transcripts', 'privateRecord', 'pluginRoot', 'base', 'criteriaCount', 'models']],
+      [fixSkeleton, ['mainCheckout', 'worktree', 'fixList', 'transcripts', 'privateRecord', 'pluginRoot', 'checkCommand', 'base', 'documents', 'entries', 'models']],
     ]) {
       const meta = script.indexOf('export const meta =')
       const start = script.indexOf(marker), stop = script.indexOf(end)
@@ -2031,7 +2073,7 @@ const RELAYED_LINE = 'A user message that arrives while you work was written to 
 const entry = (id, fields = {}) => ({ id, source: 'correctness:0', finding: 'The specified error is swallowed.',
   correction: 'Return the specified error to the caller.', ...fields })
 const TWO = [entry('return-error'), entry('add-retry-button', { source: 'quality:0', correction: 'Add a retry button to the error dialog.' })]
-const fixArgs = (fields = {}) => ({ baseSha: BASE, fixList: FIX_LIST, transcripts: TRANSCRIPTS, entries: [entry('return-error')],
+const fixArgs = (fields = {}) => ({ base: at(BASE), fixList: FIX_LIST, transcripts: TRANSCRIPTS, entries: [entry('return-error')],
   parentSpec: PARENT_SPEC, ...fields })
 // The launch values as the launch command hands them to the tool: one JSON argument in single quotes.
 const launchValues = args => "'" + JSON.stringify({ entries: args.entries, parentSpec: args.parentSpec }).replaceAll("'", "'\\''") + "'"
@@ -2056,7 +2098,7 @@ async function simulateFix({ args = fixArgs(), classes = {}, scope, fixes, diff 
       corrective = classifications.filter(c => c.class === 'corrective').map(c => c.id)
       return scope ?? { limitations: [], coverage, classifications }
     }
-    if (opts.label === 'roast') { await beforeRoast(); return { snapshotSha: BASE, ...cold(), ...roast } }
+    if (opts.label === 'roast') { await beforeRoast(); return { snapshots: at(BASE), ...cold(), ...roast } }
     if (opts.label === 'fix') {
       await beforeFix()
       const response = fixes ?? fixed(corrective.map(id => disposition(id)))
@@ -2073,7 +2115,7 @@ const labels = calls => calls.map(c => c.label)
 // The remaining item a fixed entry returns as: the corrective entry, the fixer's disposition and its commit.
 const approvedEntry = id => ({ key: id, correction: entry(id).correction, reason: classify(id).reason, receipts: [receipt] })
 const unattested = id => ({ kind: 'unattested-fix', severity: 'must-fix', item: { approved: approvedEntry(id), disposition: disposition(id),
-  snapshotSha: FIXED, commits: [{ sha: FIXED, subject: 'return the swallowed error' }] } })
+  snapshots: at(FIXED), commits: [{ sha: FIXED, subject: 'return the swallowed error', repository: '.' }] } })
 const handed = (calls, label) => {
   const prompt = calls.find(c => c.label === label).prompt
   return JSON.parse(prompt.slice(prompt.lastIndexOf('\n\n[') + 2).split('\n\nDo not repeat')[0])
@@ -2089,7 +2131,7 @@ describe('fix-only follow-up runs', () => {
       '\nRun this exact command once with the Bash tool and return its exit code, stdout, stderr' +
       ' and the proof string it prints on success, with no interpretation, retry or fix.\n' + RELAYED_LINE)
     expect(calls[1].agentType).toBe('scope-check')
-    expect(calls[1].prompt).toContain('COMMIT: ' + BASE)
+    expect(calls[1].prompt).toContain('COMMITS, per repository: . ' + BASE + ', the parent run\'s final snapshots.')
     expect(calls[1].prompt).toContain(JSON.stringify(fixArgs().entries))
     expect([result.exit, result.remaining]).toEqual(['follow-up', [unattested('return-error')]])
   })
@@ -2176,7 +2218,7 @@ describe('fix-only follow-up runs', () => {
     expect(labels(calls)).toEqual(['gate', 'scope'])
     expect([result.exit, result.detail]).toEqual(['root-resolution', 'No entry of the fix list is corrective, so no fixer ran.'])
     expect(result.remaining.map(r => r.kind)).toEqual(['new-choice'])
-    expect(result.snapshotSha).toBe(BASE)
+    expect(result.snapshots).toEqual(at(BASE))
   })
 
   test('a narrowing limitation and an unchecked coverage entry of the scope check reach remaining', async () => {
@@ -2198,7 +2240,7 @@ describe('fix-only follow-up runs', () => {
     expect([result.exit, result.detail]).toEqual(['root-resolution', 'Blocking limitation from scope.'])
     expect(result.remaining.map(r => r.kind)).toEqual(['blocking-limitation', 'unfixed-approval'])
     expect(result.remaining[0].item).toEqual({ ...limitation, label: 'scope' })
-    expect(result.snapshotSha).toBe(BASE)
+    expect(result.snapshots).toEqual(at(BASE))
   })
 
   for (const [name, classifications, message] of [
@@ -2231,17 +2273,18 @@ describe('fix-only follow-up runs', () => {
     expect(handed(calls, 'fix')).toEqual(approved)
     expect(handed(calls, 'roast')).toEqual(approved)
     const roast = calls.find(c => c.label === 'roast').prompt
-    expect([roast.includes('IMMUTABLE BASE SHA: ' + BASE), roast.includes('IMMUTABLE SNAPSHOT SHA: ' + BASE), roast.includes('SPEC (authority)')])
+    expect([roast.includes('.: ' + BASE + '..' + BASE), roast.includes('IMMUTABLE COMMIT IDS'), roast.includes('SPEC (authority)')])
       .toEqual([true, true, false])
-    expect(calls.find(c => c.label === 'fix').prompt).toContain('START SHA: ' + BASE)
+    expect(calls.find(c => c.label === 'fix').prompt).toContain('START SHAS, per repository: . ' + BASE)
   })
 
   test('the diff check receives the fix diff and the corrective entries, and maps only to corrective ids', async () => {
     const { calls } = await simulateFix()
     const diff = calls.find(c => c.label === 'diff')
     expect(diff.agentType).toBe('diff-check')
-    expect(diff.prompt).toContain('DIFF: ' + BASE + '..' + FIXED + ', from the parent run\'s final snapshot to the fixer\'s.')
-    expect(diff.prompt).toContain('The clean worktree must remain at ' + FIXED + '.')
+    expect(diff.prompt).toContain('DIFFS, from the parent run\'s final snapshot to the fixer\'s, one per repository the fixer moved')
+    expect(diff.prompt).toContain('\n.: ' + BASE + '..' + FIXED + '\n')
+    expect(diff.prompt).toContain('Every repository must remain clean at its snapshot: . ' + FIXED + '.')
     const unknown = await simulateFix({ diff: { mappings: [mapping('rename-helper')] } })
     expect(labels(unknown.calls).filter(l => l === 'diff')).toHaveLength(3)
     expect(unknown.result.detail).toContain('mapping to an entry that is not corrective: rename-helper')
@@ -2302,12 +2345,12 @@ describe('fix-only follow-up runs', () => {
     const { result } = await simulateFix()
     expect(result.remaining).toEqual([unattested('return-error')])
     expect(result.dispositions).toEqual([disposition('return-error')])
-    expect([result.snapshotSha, result.mappings]).toEqual([FIXED, [mapping('return-error')]])
+    expect([result.snapshots, result.mappings]).toEqual([at(FIXED), [mapping('return-error')]])
   })
 
   test('launch values that are missing or malformed throw before any stage', async () => {
     for (const [fields, message] of [
-      [{ baseSha: 'main' }, 'A full immutable baseSha is required'],
+      [{ base: at('main') }, 'carries no full immutable commit ID for .'],
       [{ fixList: '<main checkout>/.cache/fix-lists/<unit>.md' }, 'args.fixList must name the fix list YAML file'],
       [{ transcripts: undefined }, 'args.transcripts must name the transcript directory'],
       [{ parentSpec: undefined }, 'args.parentSpec must be the parentSpec from the check tool'],
@@ -2355,8 +2398,8 @@ describe('fix-only follow-up runs', () => {
   })
 })
 
-const UNIT_DOCUMENT = 'docs/<unit>.md'
-const PARENT_DOCUMENT = 'docs/<parent unit>.md'
+const UNIT_DOCUMENT = '<documents directory>/<unit>.md'
+const PARENT_DOCUMENT = '<documents directory>/<parent unit>.md'
 // What every writer prompt says the design document holds, whitespace collapsed.
 const DOCUMENT_CONTENT = ['The document describes the change as the code at your final commit implements it: what it does,' +
   ' how its parts fit together, the decisions with their reasons, and the alternatives the user rejected with their reasons.',
@@ -2376,14 +2419,14 @@ describe('the design document is written from the code after implementation', ()
     const fixRunFix = fix.calls.find(c => c.label === 'fix').prompt
     expect(impl).toContain('DESIGN DOCUMENT, writer only: once your implementation is done, write ' + UNIT_DOCUMENT +
       ' by hand from the code you built and the spec, as your last write, before your checks.\n')
-    expect(impl).toContain('\nThen run your checks once, and commit ' + UNIT_DOCUMENT + ' as its own commit and list it in files.')
+    expect(impl).toContain('\nThen run your checks once, and commit ' + UNIT_DOCUMENT + ' as its own commit in the repository that holds it and list it in files.')
     expect(mainFix).toContain('DESIGN DOCUMENT, writer only: once your corrections are done, update ' + UNIT_DOCUMENT +
       ' by hand where a correction changed what it describes, as your last write, before your checks.\n')
-    expect(mainFix).toContain('\nCommit ' + UNIT_DOCUMENT + ' as its own commit when it changed, and list it in files.' +
+    expect(mainFix).toContain('\nCommit ' + UNIT_DOCUMENT + ' as its own commit in the repository that holds it when it changed, and list it in files.' +
       ' With an empty approved list, write nothing.')
     expect(fixRunFix).toContain('DESIGN DOCUMENT, writer only: once your corrections are done, update ' + PARENT_DOCUMENT +
       ', the parent unit\'s design document, by hand where a correction changed what it describes, as your last write, before your checks.\n')
-    expect(fixRunFix).toContain('\nCommit ' + PARENT_DOCUMENT + ' as its own commit when it changed, and list it in files.')
+    expect(fixRunFix).toContain('\nCommit ' + PARENT_DOCUMENT + ' as its own commit in the repository that holds it when it changed, and list it in files.')
     for (const prompt of [impl, mainFix, fixRunFix]) {
       for (const phrase of DOCUMENT_CONTENT) expect([phrase, flat(prompt).includes(phrase)]).toEqual([phrase, true])
       // The prompt reads in the order of the work: the document comes first, the check command after it.
@@ -2432,7 +2475,7 @@ describe('the design document is written from the code after implementation', ()
     const updateClass = { id: update.id, class: 'corrective', reason: PARENT_DOCUMENT + ' no longer describes the code.',
       receipts: [documentReceipt] }
     const updateDisposition = { ...disposition(update.id), receipts: [documentReceipt] }
-    const updateCommits = [{ sha: FIXED, subject: 'docs: describe the return value the code has' }]
+    const updateCommits = [{ sha: FIXED, subject: 'docs: describe the return value the code has', repository: '.' }]
     const covering = { change: PARENT_DOCUMENT + ': the passage on the return value now describes the code', entry: update.id,
       receipts: [documentReceipt] }
     const onlyDocument = await simulateFix({ args: fixArgs({ entries: [update] }),
@@ -2443,7 +2486,7 @@ describe('the design document is written from the code after implementation', ()
     expect(onlyDocument.result.exit).toBe('follow-up')
     expect(onlyDocument.result.remaining).toEqual([{ kind: 'unattested-fix', severity: 'must-fix', item: {
       approved: { key: update.id, correction: update.correction, reason: updateClass.reason, receipts: [documentReceipt] },
-      disposition: updateDisposition, snapshotSha: FIXED, commits: updateCommits } }])
+      disposition: updateDisposition, snapshots: at(FIXED), commits: updateCommits } }])
     expect(onlyDocument.result.mappings).toEqual([{ change: covering.change, entry: 'update-parent-document', receipts: [documentReceipt] }])
     expect(update.correction).toContain(PARENT_DOCUMENT)
     // A fix reported as done with no commit at all stays unproven, whatever the entry names.
@@ -2663,7 +2706,7 @@ const LIMITS_RULE = 'a limitation is only something you were supposed to check a
   'the private spec for an unbriefed stage, are never limitations and are not reported.\n' +
   'They get no unchecked coverage entry either.'
 const LIMITS_LINE = 'LIMITATIONS: ' + LIMITS_RULE
-const FILES_CHECK = 'one writerScope entry per commit, filesMatch true when every path the commit touched appears in the writer\'s files list.\n' +
+const FILES_CHECK = 'one writerScope entry per commit, naming its repository, filesMatch true when every path the commit touched, under its repository\'s path, appears in the writer\'s files list.\n' +
   'The files list covers all commits of the writer together. A path in it that no commit of the writer touched is a\n' +
   'writer-scope problem: report it in the note of the writer\'s last commit and set that entry\'s ok to false.'
 
@@ -2718,17 +2761,19 @@ describe('what a limitation is, and the per-commit files check', () => {
     const { calls } = await simulate()
     expect(calls.find(c => c.label === 'verify').prompt).toContain(FILES_CHECK)
     expect(await template('finding-verifier')).toContain('The writer\'s files list names the paths of all its commits together, ' +
-      'so filesMatch is true when every path the commit touched appears in that list. A path in the files list that no commit of ' +
+      'relative to the tree root, so filesMatch is true when every path the commit touched, under its repository\'s path, appears ' +
+      'in that list. A path in the files list that no commit of ' +
       'the writer touched is a writer-scope problem: report it in the note of the writer\'s last commit and set that entry\'s ok to false.')
-    expect(flat(skill)).toContain('A writer\'s `files` list names the paths of all its commits together, so `filesMatch` is true when ' +
-      'every path the commit touched appears in that list. A path in `files` that no commit of the writer touched is a writer-scope ' +
+    expect(flat(skill)).toContain('A writer\'s `files` list names the paths of all its commits together, relative to the tree root, ' +
+      'so `filesMatch` is true when every path the commit touched, under its repository\'s path, appears in that list. ' +
+      'A path in `files` that no commit of the writer touched is a writer-scope ' +
       'problem, reported in the note of the writer\'s last commit with `ok` false.')
   })
 
   test('a writer with two commits and one files list reaches the fix stage when the verifier accepts each commit', async () => {
     const FIRST = 'd'.repeat(40)
     const implementation = implemented({
-      commits: [{ sha: FIRST, subject: 'add the error helper' }, { sha: INITIAL, subject: 'return the error through the helper' }],
+      commits: [{ sha: FIRST, subject: 'add the error helper', repository: '.' }, { sha: INITIAL, subject: 'return the error through the helper', repository: '.' }],
       files: [{ path: 'src/errors.js', bytes: 80, change: 'added' }, { path: 'src/example.js', bytes: 120, change: 'modified' }],
     })
     const { result, calls } = await simulate({ implementation, reports: oneReport, verify: approveOne,

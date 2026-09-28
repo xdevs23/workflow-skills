@@ -61,10 +61,11 @@ Rules:
   the sense check above finds the record permits the rebuild.
 - Honor the stated invariants literally (ordering, idempotency, concurrency, "complete only
   after X"). A plausible-looking change that breaks one is wrong.
-- Narrow commit permission: start in the supplied isolated worktree at the pinned start SHA
-  with a clean index and working tree. If unrelated or pre-existing changes exist, stop; never
-  stage, discard or absorb them. Stage only the explicit paths you changed for this task,
-  inspect the staged diff, and create a new commit after checks. No broad add, amend, reset,
+- Narrow commit permission: the supplied isolated tree holds one or more git repositories, each
+  listed with its start SHA. Start every one at its start SHA with a clean index and working tree.
+  If unrelated or pre-existing changes exist, stop; never stage, discard or absorb them. Stage
+  only the explicit paths you changed for this task, inspect the staged diff, and create new
+  commits after checks in the repositories you changed. No broad add, amend, reset,
   rebase, merge, cherry-pick, branch switching or push. Never bypass commit hooks or signing,
   and follow the project's commit-message rules.
 - Put scratch files where workflow-skills:local-cache says. Keep them and the local todo record
@@ -72,7 +73,7 @@ Rules:
   Do not turn an ignored artifact into a tracked file to satisfy clean status.
 - Self-check before done: run tests and build after your last write. Fix what you added that
   fails; if blocked, report the failure and never claim a clean tested snapshot. After
-  committing, check HEAD and clean status again. If hooks changed content after the checks,
+  committing, check HEAD and clean status in every repository again. If hooks changed content after the checks,
   rerun the checks on the final committed content before claiming proof.
 - Write the design document as your last write. Once your implementation is done, write it by
   hand from the code you built and the spec, at the path the prompt gives. It describes the change
@@ -82,17 +83,20 @@ Rules:
   Check every statement about behaviour against that code. The document carries no words of the
   user, no local absolute paths and no account of the conversation, and it follows the
   repository's prose rules and the writing-style skill. Your checks then run once, after that
-  write. Commit the document as its own commit and list it in files. No design document is
+  write. Commit the document as its own commit in the repository that holds it and list it in
+  files. No design document is
   written, committed or checked before implementation: the YAML spec is the one source every
   stage reads.
-- Return abort, limitations (what, effect blocks or narrows), startSha, the full snapshotSha from
-  `git rev-parse --verify HEAD^{commit}`, clean (true only for an empty
-  `git status --porcelain=v1 --untracked-files=all`), git (both outputs quoted as head and
-  status), proofPassed, premises, senseCheck, commits (sha, subject), files (every path a commit
-  of this stage touched: byte size at the snapshot, 0 when deleted, change added / modified /
-  deleted), checks (each bare run's command, passed, quoted output, truncated when only the last
-  6000 characters fit) and specSuggestions. Reuse startSha for a genuine no-op with empty commits
-  and files; never create an empty commit merely to produce a new SHA. No backgrounded waits.
+- Return abort, limitations (what, effect blocks or narrows), repositories (one entry per listed
+  repository: path, startSha, the full snapshotSha from `git rev-parse --verify HEAD^{commit}`,
+  clean, true only for an empty `git status --porcelain=v1 --untracked-files=all`, and git, both
+  outputs quoted as head and status), proofPassed, premises, senseCheck, commits (sha, subject and
+  the path of its repository), files (every path a commit of this stage touched, relative to the
+  tree root: byte size at the snapshot, 0 when deleted, change added / modified / deleted), checks
+  (each bare run's command, passed, quoted output, truncated when only the last 6000 characters
+  fit) and specSuggestions. A repository you did not change keeps its startSha as its snapshotSha
+  and lists no commit; never create an empty commit merely to produce a new SHA. No backgrounded
+  waits.
 
 The returned object is the deliverable and carries everything you owe.
 

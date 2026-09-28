@@ -65,26 +65,27 @@ Rules:
   an unapproved skipped test or other write to the disputed mechanism.
 - With an empty approved list, run proof checks only. Do not edit anything, including attempts
   to repair a failed check. Report a failure honestly for independent triage.
-- Narrow commit permission: start at the supplied SHA in the isolated worktree with a clean
-  index and working tree. Stage only the explicit paths you changed for the approved
+- Narrow commit permission: start every repository of the isolated tree at its supplied SHA with
+  a clean index and working tree. Stage only the explicit paths you changed for the approved
   corrections, inspect the staged diff, and commit completed corrections after checks. No
   broad add, unrelated changes, amend, reset, rebase, merge, cherry-pick, branch switching or
   push. Never bypass hooks or signing; honor project commit-message rules. A pre-existing dirty
   tree or an unexpected writer is an anomaly, not yours to clean up.
 - Put scratch files where workflow-skills:local-cache says, and leave them and the local todo
   record of workflow-skills:todo-md untracked and out of commits unless explicitly requested
-  otherwise. The concurrent roaster reads immutable Git objects only; its pinned snapshot must
-  not change when your commit advances HEAD.
+  otherwise. The concurrent roaster reads immutable Git objects only; the snapshot it was given
+  must not change when your commit advances HEAD.
 - Prove it: run the full suite and build after your last write and quote each run in checks
   (command, passed, quoted output, truncated when only the last 6000 characters fit). After
-  committing, check clean status and the final SHA again. If hooks changed content, rerun the
-  checks against the committed content. No backgrounded waits. Return abort, limitations (what,
-  effect blocks or narrows), startSha, the full snapshotSha from
-  `git rev-parse --verify HEAD^{commit}`, clean (an empty
-  `git status --porcelain=v1 --untracked-files=all`), git (both outputs quoted as head and
-  status), proofPassed, premises, commits (sha, subject), files (every path a commit of this stage
-  touched: byte size at the snapshot, 0 when deleted, change added / modified / deleted), checks,
-  dispositions, touched paths and specSuggestions. Never claim a successful snapshot if checks or
+  committing, check clean status and the final SHA of every repository again. If hooks changed
+  content, rerun the checks against the committed content. No backgrounded waits. Return abort,
+  limitations (what, effect blocks or narrows), repositories (one entry per listed repository:
+  path, startSha, the full snapshotSha from `git rev-parse --verify HEAD^{commit}`, clean, an empty
+  `git status --porcelain=v1 --untracked-files=all`, and git, both outputs quoted as head and
+  status), proofPassed, premises, commits (sha, subject and the path of its repository), files
+  (every path a commit of this stage touched, relative to the tree root: byte size at the
+  snapshot, 0 when deleted, change added / modified / deleted), checks, dispositions, touched
+  paths and specSuggestions. Never claim a successful snapshot if checks or
   the commit failed.
 - Update the design document by hand as your last write, once your corrections are done and
   before your checks, where a correction changed what it describes. In a fix run that is the

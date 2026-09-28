@@ -20,7 +20,8 @@ const UNIT = {
   privateRecord: '<main checkout>/.cache/directives/<unit>.yaml',   // where workflow-skills:local-cache puts directive records
   pluginRoot: '<plugin root>',           // the directory holding tools/check-spec.ts
   checkCommand: '<the check command>',   // writers only, run bare after the last write
-  baseSha: args.baseSha,                 // the clean worktree's starting commit, passed at launch
+  base: args.base,                       // one { path, sha } per git repository of the tree: its path under the tree root and starting commit, passed at launch
+  documents: '<documents directory>',    // design documents, relative to the tree root and inside one repository of base; docs for a one-repository tree
   criteriaCount: args.criteriaCount,     // counts.kind.criterion from the check tool, passed at launch
   implementerPrompt: 'Implement, check, and commit only scoped changes.',
   scoping: '<orchestrator scoping, or none>',
@@ -118,20 +119,21 @@ const AUTHORITY = [                    // authority-aware seats only; quality us
 ].join('\n')
 const READ_GIT = [
   'GIT READ-ONLY: never stage, commit, reset, amend, rebase, merge or switch branches/worktrees.',
-  'The clean worktree and HEAD must stay at the supplied snapshot; report unexpected movement.',
+  'Every repository of the tree and its HEAD must stay at the supplied snapshot; report unexpected movement.',
   WRITE_NOTHING,
   LIMITS,
 ].join('\n')
 const WRITE_GIT = [
-  'NARROW COMMIT PERMISSION: start clean at START SHA in the isolated worktree.',
-  'Stage explicit paths for only your scoped changes, inspect the staged diff, check, and create a new commit.',
+  'NARROW COMMIT PERMISSION: start clean in every repository of the list at its START SHA, inside the isolated tree.',
+  'Stage explicit paths for only your scoped changes, inspect the staged diff, check, and create new commits in the repositories you changed.',
   'No broad add, unrelated changes, amend, reset, rebase, merge, branch switching or push.',
   'Never bypass signing or hooks. Follow project commit style. Recheck proof if hooks change content.',
   WRITE_SCRATCH,
   'Keep scratch files and the local todo record of workflow-skills:todo-md out of commits unless explicitly requested.',
-  'Return startSha, full snapshotSha, clean, git (quoted head and status), commits, files and checks;',
-  'never an empty commit for a no-op, whose commits and files are empty and whose snapshotSha is startSha.',
-  'Check git rev-parse --verify HEAD^{commit} and git status --porcelain=v1 --untracked-files=all after committing.',
+  'Return repositories, one entry per repository of the list with path, startSha, full snapshotSha, clean and git (quoted head and',
+  'status), commits (each with sha, subject and the path of its repository), files (paths relative to the tree root) and checks;',
+  'never an empty commit for a no-op: a repository you left unchanged keeps its startSha as its snapshotSha and lists no commit.',
+  'After committing, run git -C <tree>/<path> rev-parse --verify HEAD^{commit} and git status --porcelain=v1 --untracked-files=all in every repository.',
 ].join('\n')
 // The spec rides as a PATH. The criteria live IN the doc and ride as a POINTER, never as a
 // copy: an embedded copy goes stale the instant the spec is amended, which is the drift law 9
@@ -190,8 +192,16 @@ const COVERAGE = { type: 'array', items: { type: 'object', required: ['what', 'c
 // A full 40- or 64-character commit id. A short id fails the schema at the stage that returned it,
 // so the verify check can compare ids exactly and never has to resolve a prefix.
 const COMMIT_ID = { type: 'string', pattern: '^(?:[0-9a-f]{40}|[0-9a-f]{64})$' }
-const COMMITS = { type: 'array', items: { type: 'object', required: ['sha', 'subject'], additionalProperties: false,
-  properties: { sha: COMMIT_ID, subject: { type: 'string' } } } }
+const COMMITS = { type: 'array', items: { type: 'object', required: ['sha', 'subject', 'repository'], additionalProperties: false,
+  properties: { sha: COMMIT_ID, subject: { type: 'string' }, repository: { type: 'string' } } } }
+// One entry per repository of the base list: where the writer started it, where it left it, and the
+// quoted head and status there.
+const REPOSITORIES = { type: 'array', minItems: 1, items: { type: 'object', additionalProperties: false,
+  required: ['path', 'startSha', 'snapshotSha', 'clean', 'git'],
+  properties: { path: { type: 'string' }, startSha: { type: 'string' }, snapshotSha: { type: 'string' }, clean: { type: 'boolean' }, git: GIT } } }
+// A snapshot of the tree: one full commit ID per repository.
+const SNAPSHOTS = { type: 'array', minItems: 1, items: { type: 'object', required: ['path', 'sha'], additionalProperties: false,
+  properties: { path: { type: 'string' }, sha: COMMIT_ID } } }
 // One entry per path a commit of the stage touched; bytes is the size at the snapshot, 0 when deleted.
 const FILES = { type: 'array', items: { type: 'object', required: ['path', 'bytes', 'change'], additionalProperties: false,
   properties: { path: { type: 'string' }, bytes: { type: 'integer', minimum: 0 }, change: { enum: ['added', 'modified', 'deleted'] } } } }
@@ -251,41 +261,45 @@ const ALTERNATIVES = { type: 'object', additionalProperties: false,
     candidates: { type: 'array', maxItems: 2, items: { type: 'object', additionalProperties: false,
       required: ['shape', 'collapses', 'cost', 'invariants'],
       properties: { shape: { type: 'string' }, collapses: { type: 'string' }, cost: { type: 'string' }, invariants: { type: 'string' } } } } } }
-const ROAST = { type: 'object', additionalProperties: false, required: ['limitations', 'coverage', 'findings', 'snapshotSha'],
-  properties: { limitations: LIMITATIONS, coverage: COVERAGE, findings: FINDINGS, snapshotSha: COMMIT_ID } }
+const ROAST = { type: 'object', additionalProperties: false, required: ['limitations', 'coverage', 'findings', 'snapshots'],
+  properties: { limitations: LIMITATIONS, coverage: COVERAGE, findings: FINDINGS, snapshots: SNAPSHOTS } }
 
 // Writer schemas. The deliverable proof is files together with checks: an account of the work
 // with an empty files list behind a new snapshot fails the completeness check below.
 const IMPLEMENT = { type: 'object', additionalProperties: false,
-  required: ['abort', 'limitations', 'startSha', 'snapshotSha', 'clean', 'proofPassed', 'premises',
-    'senseCheck', 'commits', 'files', 'checks', 'git', 'specSuggestions'],
-  properties: { abort: ABORT, limitations: LIMITATIONS, startSha: { type: 'string' }, snapshotSha: { type: 'string' },
-    clean: { type: 'boolean' }, proofPassed: { type: 'boolean' },
+  required: ['abort', 'limitations', 'repositories', 'proofPassed', 'premises',
+    'senseCheck', 'commits', 'files', 'checks', 'specSuggestions'],
+  properties: { abort: ABORT, limitations: LIMITATIONS, repositories: REPOSITORIES, proofPassed: { type: 'boolean' },
     premises: PREMISES,
     senseCheck: { type: 'object', required: ['passed', 'recordSilent', 'note'], additionalProperties: false,
       properties: { passed: { type: 'boolean' }, recordSilent: { type: 'boolean' }, note: { type: 'string' } } },
-    commits: COMMITS, files: FILES, checks: CHECKS, git: GIT, specSuggestions: STRINGS } }
+    commits: COMMITS, files: FILES, checks: CHECKS, specSuggestions: STRINGS } }
 const FIX = { type: 'object', additionalProperties: false,
-  required: ['abort', 'limitations', 'startSha', 'snapshotSha', 'clean', 'proofPassed', 'premises', 'commits',
-    'files', 'checks', 'git', 'specSuggestions', 'dispositions', 'touched'],
-  properties: { abort: ABORT, limitations: LIMITATIONS, startSha: { type: 'string' }, snapshotSha: { type: 'string' },
-    clean: { type: 'boolean' }, proofPassed: { type: 'boolean' }, premises: PREMISES,
-    commits: COMMITS, files: FILES, checks: CHECKS, git: GIT, specSuggestions: STRINGS,
+  required: ['abort', 'limitations', 'repositories', 'proofPassed', 'premises', 'commits',
+    'files', 'checks', 'specSuggestions', 'dispositions', 'touched'],
+  properties: { abort: ABORT, limitations: LIMITATIONS, repositories: REPOSITORIES, proofPassed: { type: 'boolean' }, premises: PREMISES,
+    commits: COMMITS, files: FILES, checks: CHECKS, specSuggestions: STRINGS,
     dispositions: { type: 'array', items: { type: 'object', additionalProperties: false,
       required: ['key', 'disposition', 'reason', 'receipts'],
       properties: { key: { type: 'string' }, disposition: { enum: ['fixed', 'rejected', 'blocked'] },
         reason: { type: 'string' }, receipts: RECEIPTS } } },
     touched: STRINGS } }
 const VERIFY = { type: 'object', additionalProperties: false,
-  required: ['abort', 'limitations', 'snapshotSha', 'clean', 'git', 'checks', 'writerScope', 'decisions',
+  required: ['abort', 'limitations', 'repositories', 'checks', 'writerScope', 'decisions',
     'issues', 'specSuggestions'],
-  properties: { abort: ABORT, limitations: LIMITATIONS, snapshotSha: { type: 'string' }, clean: { type: 'boolean' },
-    git: GIT, checks: CHECKS,
-    // One entry per implementer commit, inspected against its start. The writer's files list
-    // names the paths of all its commits together, so filesMatch is true when every path the
-    // commit touched appears in that list (law 12).
-    writerScope: { type: 'array', items: { type: 'object', required: ['sha', 'ok', 'filesMatch', 'note'], additionalProperties: false,
-      properties: { sha: COMMIT_ID, ok: { type: 'boolean' }, filesMatch: { type: 'boolean' }, note: { type: 'string' } } } },
+  properties: { abort: ABORT, limitations: LIMITATIONS, checks: CHECKS,
+    // One entry per repository of the list, with the quoted head and status observed there.
+    repositories: { type: 'array', minItems: 1, items: { type: 'object', required: ['path', 'snapshotSha', 'clean', 'git'],
+      additionalProperties: false,
+      properties: { path: { type: 'string' }, snapshotSha: { type: 'string' }, clean: { type: 'boolean' }, git: GIT } } },
+    // One entry per implementer commit, inspected against its start in its repository. The writer's
+    // files list names the paths of all its commits together, relative to the tree root, so
+    // filesMatch is true when every path the commit touched, under its repository's path, appears in
+    // that list (law 12).
+    writerScope: { type: 'array', items: { type: 'object', required: ['repository', 'sha', 'ok', 'filesMatch', 'note'],
+      additionalProperties: false,
+      properties: { repository: { type: 'string' }, sha: COMMIT_ID, ok: { type: 'boolean' }, filesMatch: { type: 'boolean' },
+        note: { type: 'string' } } } },
     decisions: { type: 'array', items: { type: 'object', additionalProperties: false,
       required: ['sourceIds', 'action', 'severity', 'reason', 'evidence', 'authority',
         'correction', 'constraints', 'acceptance', 'receipts'],
@@ -333,12 +347,33 @@ async function stage(prompt, opts, complete = () => {}) {
   throw new Error('FAIL-FAST: ' + (opts.label || 'agent') + ' returned no complete result after 3 attempts: ' + failure)
 }
 
-// The root supplies the clean isolated worktree's starting commit as an immutable ID, and
-// args.criteriaCount from the check tool's counts.kind.criterion. Law 9 keeps the YAML fixed
-// for the run; the tool assigns criterion ordinals in file order.
+// The root supplies base, one entry per git repository of the run's tree with its starting commit as
+// an immutable ID, and args.criteriaCount from the check tool's counts.kind.criterion. A tree that is
+// one repository is a list of one entry whose path is a single dot. Law 9 keeps the YAML fixed for the
+// run; the tool assigns criterion ordinals in file order.
 const SHA = new RegExp(COMMIT_ID.pattern)
-const baseSha = UNIT.baseSha
-if (!SHA.test(baseSha || '')) throw new Error('A full immutable baseSha is required')
+// A repository path is a single dot, or segments of letters, digits, dots, underscores and hyphens
+// joined by slashes, no segment being one or two dots. The form keeps quotes out, so the list passes
+// to the spec tool as JSON inside single quotes.
+const repositoryPath = path => typeof path === 'string' && (path === '.' ||
+  path.split('/').every(segment => /^[A-Za-z0-9._-]+$/.test(segment) && segment !== '.' && segment !== '..'))
+const checkRepositories = (list, name) => {
+  if (!Array.isArray(list) || !list.length) throw new Error(name + ' must be a non-empty list of { path, sha }, one per git repository of the tree')
+  const paths = new Set()
+  for (const entry of list) {
+    if (!repositoryPath(entry?.path)) throw new Error(name + ' names a path of another form: ' + JSON.stringify(entry?.path))
+    if (paths.has(entry.path)) throw new Error(name + ' names the path ' + entry.path + ' twice')
+    paths.add(entry.path)
+    if (!SHA.test(entry.sha || '')) throw new Error(name + ' carries no full immutable commit ID for ' + entry.path)
+  }
+}
+const base = UNIT.base
+checkRepositories(base, 'args.base')
+// Snapshots are lists of { path, sha } in the order of base.
+const shaByPath = list => new Map(list.map(entry => [entry.path, entry.sha]))
+const listed = list => list.map(entry => entry.path + ' ' + entry.sha).join(', ')
+const snapshotsOf = writer => writer.repositories.map(r => ({ path: r.path, sha: r.snapshotSha }))
+const sameSnapshots = (a, b) => a.length === b.length && a.every(entry => shaByPath(b).get(entry.path) === entry.sha)
 const criteriaCount = UNIT.criteriaCount
 if (!Number.isInteger(criteriaCount) || criteriaCount < 1) {
   throw new Error('args.criteriaCount must be an integer of at least 1: counts.kind.criterion from the check tool')
@@ -348,9 +383,15 @@ if (typeof UNIT.specPath !== 'string' || !UNIT.specPath.endsWith('.yaml')) {
 }
 if (typeof UNIT.transcripts !== 'string' || !UNIT.transcripts) throw new Error('args.transcripts must name the transcript directory')
 const CRITERIA = 'ACCEPTANCE CRITERIA: criterion items in YAML file order, assigned integer ordinals from one by the tool. Read them there; return a verdict PER criterion in verdicts, each with a receipt.'
-const checkWriterSnapshot = (result, startSha) => {
-  if (result.startSha !== startSha || !SHA.test(result.snapshotSha || '') || result.clean !== true) {
-    throw new Error('Writer did not return a clean immutable snapshot from the expected start SHA')
+const checkWriterSnapshot = (result, starts) => {
+  const expected = shaByPath(starts), paths = result.repositories.map(r => r.path)
+  if (paths.length !== expected.size || new Set(paths).size !== paths.length || paths.some(path => !expected.has(path))) {
+    throw new Error('Writer did not return exactly one entry per repository of the list: ' + JSON.stringify(paths))
+  }
+  for (const r of result.repositories) {
+    if (r.startSha !== expected.get(r.path) || !SHA.test(r.snapshotSha || '') || r.clean !== true) {
+      throw new Error('Writer did not return a clean immutable snapshot of ' + r.path + ' from its expected start SHA')
+    }
   }
 }
 
@@ -385,12 +426,22 @@ const checkAlternatives = r => {
   if (!r.candidates.length && !r.findings.length && !r.currentShapeRight) throw new Error('no candidate, no finding and currentShapeRight false')
 }
 const checkWriter = r => {
-  if (r.git.head.trim() !== r.snapshotSha) throw new Error('git.head ' + JSON.stringify(r.git.head) + ' differs from snapshotSha ' + JSON.stringify(r.snapshotSha))
-  if (r.clean !== (r.git.status === '')) throw new Error('clean disagrees with git.status')
-  if (r.snapshotSha !== r.startSha) {
-    if (!r.commits.length || !r.files.length) throw new Error('a new snapshot needs commits and files')
+  const paths = new Set(r.repositories.map(repository => repository.path))
+  for (const c of r.commits) if (!paths.has(c.repository)) throw new Error('commit ' + c.sha + ' names no repository of the result: ' + JSON.stringify(c.repository))
+  let moved = false
+  for (const { path, startSha, snapshotSha, clean, git } of r.repositories) {
+    if (git.head.trim() !== snapshotSha) throw new Error('git.head ' + JSON.stringify(git.head) + ' of ' + path + ' differs from snapshotSha ' + JSON.stringify(snapshotSha))
+    if (clean !== (git.status === '')) throw new Error('clean disagrees with git.status in ' + path)
+    const commits = r.commits.filter(c => c.repository === path)
+    if (snapshotSha !== startSha) {
+      moved = true
+      if (!commits.length) throw new Error('the new snapshot of ' + path + ' needs commits in it')
+    } else if (commits.length) throw new Error('the unchanged snapshot of ' + path + ' lists commits')
+  }
+  if (moved) {
+    if (!r.files.length) throw new Error('a new snapshot needs files')
     if (!r.checks.some(c => c.passed === r.proofPassed)) throw new Error('no check has passed equal to proofPassed')
-  } else if (r.commits.length || r.files.length) throw new Error('an unchanged snapshot lists commits or files')
+  } else if (r.files.length) throw new Error('an unchanged snapshot lists files')
 }
 const blocking = r => r.limitations.filter(l => l.effect === 'blocks')
 // Every stage ending uses the same run record and remaining-items handoff.
@@ -399,7 +450,7 @@ const REMAINING = ['open-decision', 'verifier-issue', 'writer-scope', 'blocking-
   'unfixed-approval', 'failed-proof', 'roast-finding', 'roast-limitation', 'unattested-fix',
   'abort', 'stage-failure']
 const remaining = []
-let snapshotSha = null, impl = null, verified = null
+let snapshots = null, impl = null, verified = null
 let sources = [], queue = []
 let exit = null, detail = '', activeLabel = 'impl'
 let passedFix = null, reportedFix = null
@@ -447,8 +498,9 @@ const CHECK = 'CHECK COMMAND, writer only (run bare after your last write): ' + 
 // The design document exists only after the work: the implementer writes it by hand from the code
 // it built as its last write, once its implementation is done, and the fixer brings it up to date
 // as its last write after its corrections. The checks run once, after that write. Its path is the
-// spec's file name under docs/.
-const DOCUMENT = 'docs/' + UNIT.specPath.split('/').pop().replace(/\.yaml$/, '') + '.md'
+// spec's file name in the documents directory of the marked block, and the writer commits it in the
+// repository that holds that directory.
+const DOCUMENT = UNIT.documents + '/' + UNIT.specPath.split('/').pop().replace(/\.yaml$/, '') + '.md'
 const DOCUMENT_CONTENT = [
   'The document describes the change as the code at your final commit implements it: what it does, how its parts fit',
   'together, the decisions with their reasons, and the alternatives the user rejected with their reasons. The rejected',
@@ -459,44 +511,52 @@ const DOCUMENT_CONTENT = [
 const DOCUMENT_IMPL = [
   'DESIGN DOCUMENT, writer only: once your implementation is done, write ' + DOCUMENT + ' by hand from the code you built and the spec, as your last write, before your checks.',
   DOCUMENT_CONTENT,
-  'Then run your checks once, and commit ' + DOCUMENT + ' as its own commit and list it in files.',
+  'Then run your checks once, and commit ' + DOCUMENT + ' as its own commit in the repository that holds it and list it in files.',
 ].join('\n')
 const DOCUMENT_FIX = [
   'DESIGN DOCUMENT, writer only: once your corrections are done, update ' + DOCUMENT + ' by hand where a correction changed what it describes, as your last write, before your checks.',
   DOCUMENT_CONTENT,
-  'Commit ' + DOCUMENT + ' as its own commit when it changed, and list it in files. With an empty approved list, write nothing.',
+  'Commit ' + DOCUMENT + ' as its own commit in the repository that holds it when it changed, and list it in files. With an empty approved list, write nothing.',
 ].join('\n')
 const RULES = 'RULE SOURCES: ' + UNIT.ruleSources + '.'
 const INVARIANTS = 'REQUIRED INVARIANTS, VERBATIM: ' + UNIT.invariants + '.'
 const HYGIENE = [
   STAGE, STYLE, READ_GIT, TREE, 'No background waits.',
 ].join('\n')
-const diffInput = sha => 'DIFF: ' + baseSha + '..' + sha + '. The clean worktree must remain at ' + sha + '.'
+// One diff range per repository whose snapshot moved from base, each read in its own repository.
+const diffInput = snaps => {
+  const start = shaByPath(base), moved = snaps.filter(s => s.sha !== start.get(s.path))
+  return ['DIFFS, one per repository whose snapshot differs from its base, read with git -C ' + UNIT.worktree + '/<path>:',
+    ...(moved.length ? moved.map(s => s.path + ': ' + start.get(s.path) + '..' + s.sha) : ['none: no repository moved']),
+    'Every repository must remain clean at its snapshot: ' + listed(snaps) + '.'].join('\n')
+}
 // Source findings get their IDs here, for readers and roasts alike. A kind-bearing (band-aid /
 // longer-route) finding is CRITICAL: one arriving with any other severity or none is set to it here.
-const sourceFindings = (findings, seat, sha) => findings.map((f, i) => {
+const sourceFindings = (findings, seat, snaps) => findings.map((f, i) => {
   if (f.kind && f.severity !== 'CRITICAL') log('Project-benefit finding from ' + seat + ' with kind ' + f.kind + ' set to severity CRITICAL')
-  return { ...f, ...(f.kind ? { severity: 'CRITICAL' } : {}), id: seat + ':' + i, seat, snapshotSha: sha }
+  return { ...f, ...(f.kind ? { severity: 'CRITICAL' } : {}), id: seat + ':' + i, seat, snapshots: snaps }
 })
-const readSeat = async ([type, label, inputs, schema, complete], sha) => {
+const readSeat = async ([type, label, inputs, schema, complete], snaps) => {
   const stageLabel = 'review:' + label
-  const result = await stage([...inputs, diffInput(sha)].join('\n\n'), {
+  const result = await stage([...inputs, diffInput(snaps)].join('\n\n'), {
     label: stageLabel, phase: 'Review', agentType: 'workflow-skills:' + type, ...UNIT.models.review, schema,
   }, complete)
-  return { ...result, seat: label, snapshotSha: sha,
+  return { ...result, seat: label, snapshots: snaps,
     label: stageLabel }
 }
-const roastPass = async (queue, sha) => {
+const roastPass = async (queue, snaps) => {
+  const start = shaByPath(base)
   const result = await stage([
     STAGE,
-    'IMMUTABLE BASE SHA: ' + baseSha, 'IMMUTABLE SNAPSHOT SHA: ' + sha,
-    'Read source ONLY through Git objects at those exact IDs, never HEAD or the source filesystem.',
+    ['IMMUTABLE COMMIT IDS, per repository of the tree as path: base..snapshot:',
+      ...snaps.map(s => s.path + ': ' + start.get(s.path) + '..' + s.sha)].join('\n'),
+    'Read source ONLY through Git objects at those exact IDs, with git -C ' + UNIT.worktree + '/<path> in each repository, never HEAD or the source filesystem.',
     'The fixer runs concurrently; its HEAD/worktree changes are expected, not your review surface.',
-    'Use git diff --no-ext-diff --no-textconv, git ls-tree, git show SHA:path and git grep at the pinned tree.',
+    'Use git diff --no-ext-diff --no-textconv, git ls-tree, git show SHA:path and git grep at those exact commits.',
     'No filesystem Read/Grep/Glob, working-tree scripts, builds, external diff helpers or Git mutations.',
     WRITE_NOTHING,
     LIMITS,
-    'Cite the snapshot SHA and snapshot file:line in receipts. Return snapshotSha, limitations, coverage and findings.',
+    'Cite the repository path, its snapshot SHA and the snapshot file:line in receipts. Return snapshots (the path and sha of each repository you read), limitations, coverage and findings.',
     'APPROVED FIX LIST (planned, not completed):', JSON.stringify(queue),
     'Do not repeat assigned defects; do flag inadequate corrections, interactions and uncovered weaknesses.',
   ].join('\n\n'), {
@@ -504,9 +564,9 @@ const roastPass = async (queue, sha) => {
     ...UNIT.models.roast, schema: ROAST,
   }, checkReader)
   abortOnFlag(result, 'roast')
-  if (result.snapshotSha !== sha) throw new Error('Roaster reviewed the wrong snapshot')
+  if (!sameSnapshots(result.snapshots, snaps)) throw new Error('Roaster reviewed the wrong snapshot')
   return { ...result, seat: 'roaster', label: 'roast',
-    findings: sourceFindings(result.findings, 'roaster', sha) }
+    findings: sourceFindings(result.findings, 'roaster', snaps) }
 }
 
 // Schema validation handles shapes and enums; these guards enforce cross-item contracts.
@@ -524,8 +584,13 @@ const exactlyOnce = (actual, expected, label) => {
 // The citation a rejection of an unbacked-choice finding carries in its authority: the record entry
 // by id, then the backing words quoted together with their surrounding context.
 const BACKING = /\brecord entry [a-z][a-z0-9]*(?:-[a-z0-9]+)*: "[\s\S]*\S[\s\S]*"/
-const checkVerification = (v, sources, sha) => {
-  if (v.snapshotSha !== sha || v.clean !== true) throw new Error('Verifier observed snapshot drift or a dirty worktree')
+const checkVerification = (v, sources, snaps) => {
+  const expected = shaByPath(snaps)
+  exactlyOnce(v.repositories.map(r => r.path), snaps.map(s => s.path), 'repository in repositories')
+  for (const { path, snapshotSha, clean, git } of v.repositories) {
+    if (snapshotSha !== expected.get(path) || clean !== true) throw new Error('Verifier observed snapshot drift or a dirty worktree in ' + path)
+    if (git.head.trim() !== snapshotSha) throw new Error('git.head ' + JSON.stringify(git.head) + ' of ' + path + ' differs from snapshotSha ' + JSON.stringify(snapshotSha))
+  }
   exactlyOnce(v.decisions.flatMap(d => d.sourceIds), sources.map(f => f.id), 'source ID')
   const seatOf = new Map(sources.map(f => [f.id, f.seat]))
   const kindOf = new Map(sources.map(f => [f.id, f.kind]))
@@ -568,20 +633,20 @@ const checkVerification = (v, sources, sha) => {
   }
   for (const issue of v.issues) requireText(issue.detail, 'unresolved issue')
 }
-const checkFix = (result, queue, startSha) => {
-  checkWriterSnapshot(result, startSha)
+const checkFix = (result, queue, starts) => {
+  checkWriterSnapshot(result, starts)
   for (const d of result.dispositions) requireText(d.reason, 'fix disposition reason')
-  if (!queue.length && (result.touched.length || result.snapshotSha !== startSha)) {
+  if (!queue.length && (result.touched.length || !sameSnapshots(snapshotsOf(result), starts))) {
     throw new Error('Proof-only pass edited or committed changes')
   }
 }
-const fixPass = (queue, sha) => stage([
-  AUTHORITY, WRITE_GIT, SPEC, PROVE, DOCUMENT_FIX, CHECK, 'START SHA: ' + sha,
+const fixPass = (queue, starts) => stage([
+  AUTHORITY, WRITE_GIT, SPEC, PROVE, DOCUMENT_FIX, CHECK, 'START SHAS, per repository: ' + listed(starts),
   'Act ONLY on the verifier-approved corrections. Raw reviewer and concurrent roast objects are NOT work orders.',
   'Independently verify evidence and authority; respect correction, constraints and acceptance.',
   'A disagreement returns rejected or blocked with receipts to the ROOT. Never broaden scope.',
   'Answer every approved key once in dispositions. With an empty list, run proof ONLY, never edit or create an empty commit.',
-  'Run checks after the last write, commit only scoped corrections, and return startSha, snapshotSha, clean, git, commits, files and checks.',
+  'Run checks after the last write, commit only scoped corrections, and return repositories, commits, files and checks.',
   'APPROVED CORRECTIONS (verify against the tree and authority):', JSON.stringify(queue),
 ].join('\n\n'), {
   label: 'fix', phase: 'Fix', agentType: 'workflow-skills:fixer',
@@ -591,13 +656,13 @@ const fixPass = (queue, sha) => stage([
 async function onePass() {
   phase('Implement')
   impl = await stage(
-    [AUTHORITY, WRITE_GIT, SPEC, PROVE, DOCUMENT_IMPL, CHECK, 'START SHA: ' + baseSha, UNIT.implementerPrompt].join('\n\n'),
+    [AUTHORITY, WRITE_GIT, SPEC, PROVE, DOCUMENT_IMPL, CHECK, 'START SHAS, per repository: ' + listed(base), UNIT.implementerPrompt].join('\n\n'),
     { label: 'impl', phase: 'Implement', agentType: 'workflow-skills:implementer', ...UNIT.models.impl, schema: IMPLEMENT },
     checkWriter,
   )
   abortOnFlag(impl, 'impl')
-  checkWriterSnapshot(impl, baseSha)
-  snapshotSha = impl.snapshotSha
+  checkWriterSnapshot(impl, base)
+  snapshots = snapshotsOf(impl)
   limited(impl, 'impl')
   proof(impl, 'impl')
   if (exit) return
@@ -615,7 +680,7 @@ async function onePass() {
     ['cold-alternatives', 'alternatives', [HYGIENE, INVARIANTS], ALTERNATIVES, checkAlternatives],
   ]
   phase('Review')
-  const readers = await Promise.allSettled(SEATS.map(s => readSeat(s, snapshotSha)))
+  const readers = await Promise.allSettled(SEATS.map(s => readSeat(s, snapshots)))
   const reports = []
   // A reader's limitation reaches the root only through the verifier, which receives every seat
   // object and keeps each limitation as an unresolved issue or discards it.
@@ -624,7 +689,7 @@ async function onePass() {
     try {
       if (r.status === 'rejected') throw r.reason
       const report = abortOnFlag(r.value, label)
-      reports.push({ ...report, findings: sourceFindings(report.findings, report.seat, snapshotSha) })
+      reports.push({ ...report, findings: sourceFindings(report.findings, report.seat, snapshots) })
     } catch (error) { failed(error, label) }
   })
   sources = reports.flatMap(r => r.findings)
@@ -632,11 +697,11 @@ async function onePass() {
   phase('Verify')
   activeLabel = 'verify'
   const result = await stage([
-    AUTHORITY, READ_GIT, SPEC, RULES, diffInput(snapshotSha),
-    'Independently run git rev-parse --verify HEAD^{commit} and git status --porcelain=v1 --untracked-files=all.',
-    'Confirm the immutable commit exists and the clean current tree matches it; return snapshotSha, clean and git with the quoted output.',
-    'Inspect each writer commit against its start SHA for unrelated changes or history rewriting:',
-    ['one writerScope entry per commit, filesMatch true when every path the commit touched appears in the writer\'s files list.',
+    AUTHORITY, READ_GIT, SPEC, RULES, diffInput(snapshots),
+    'In every repository of the list, independently run git -C ' + UNIT.worktree + '/<path> rev-parse --verify HEAD^{commit} and git status --porcelain=v1 --untracked-files=all.',
+    'Confirm each immutable commit exists and each clean tree matches it; return repositories with path, snapshotSha, clean and git with the quoted output of each.',
+    'Inspect each writer commit against its start SHA in its repository for unrelated changes or history rewriting:',
+    ['one writerScope entry per commit, naming its repository, filesMatch true when every path the commit touched, under its repository\'s path, appears in the writer\'s files list.',
       'The files list covers all commits of the writer together. A path in it that no commit of the writer touched is a',
       'writer-scope problem: report it in the note of the writer\'s last commit and set that entry\'s ok to false.'].join('\n'),
     'Verify ALL source findings, every seat\'s limitations and unchecked coverage; consolidate without losing IDs.',
@@ -649,9 +714,8 @@ async function onePass() {
     label: 'verify', phase: 'Verify', agentType: 'workflow-skills:finding-verifier',
     ...UNIT.models.verify, schema: VERIFY,
   }, v => {
-    checkVerification(v, sources, snapshotSha)
-    if (v.git.head.trim() !== v.snapshotSha) throw new Error('git.head ' + JSON.stringify(v.git.head) + ' differs from snapshotSha ' + JSON.stringify(v.snapshotSha))
-    exactlyOnce(v.writerScope.map(w => w.sha), impl.commits.map(c => c.sha), 'writer commit in writerScope')
+    checkVerification(v, sources, snapshots)
+    exactlyOnce(v.writerScope.map(w => w.repository + ' ' + w.sha), impl.commits.map(c => c.repository + ' ' + c.sha), 'writer commit in writerScope')
   })
   verified = abortOnFlag(result, 'verify')
   queue = verified.decisions.filter(d => d.action === 'approve-fix').map((d, i) => ({ ...d, key: 'fix:' + i }))
@@ -669,8 +733,8 @@ async function onePass() {
   const leftForRoot = remaining.length > 0
 
   phase('Fix')
-  const startSha = snapshotSha
-  const pair = await Promise.allSettled([fixPass(queue, startSha), roastPass(queue, startSha)])
+  const starts = snapshots
+  const pair = await Promise.allSettled([fixPass(queue, starts), roastPass(queue, starts)])
   // Process the fixer first so its cause names detail when both tasks end the run.
   pair.forEach((r, i) => {
     const label = i === 0 ? 'fix' : 'roast'
@@ -679,10 +743,10 @@ async function onePass() {
       if (i === 0 && hasHardFlag(r.value)) reportedFix = r.value
       const result = abortOnFlag(r.value, label)
       if (i === 0) {
-        checkFix(result, queue, startSha)
+        checkFix(result, queue, starts)
         passedFix = result
         reportedFix = passedFix
-        snapshotSha = passedFix.snapshotSha
+        snapshots = snapshotsOf(passedFix)
         limited(passedFix, label)
         if (passedFix.dispositions.some(d => d.disposition !== 'fixed')) end('root-resolution', 'Fixer disagreement needs root resolution.')
         proof(passedFix, label)
@@ -707,7 +771,7 @@ const GATE = { type: 'object', required: ['exitCode', 'stdout', 'stderr', 'proof
 // The command runs in the worktree, where the cited rule files of this run resolve. The tool fails
 // when the private record of the marked block is not the record the spec names.
 const GATE_COMMAND = 'cd ' + UNIT.worktree + ' && bun ' + UNIT.pluginRoot + '/tools/check-spec.ts ' + UNIT.specPath +
-  ' --transcripts ' + UNIT.transcripts + ' --json --base ' + UNIT.baseSha + ' --record ' + UNIT.privateRecord
+  ' --transcripts ' + UNIT.transcripts + ' --json --base \'' + JSON.stringify(base) + '\' --record ' + UNIT.privateRecord
 const checkGate = r => {
   if (r.exitCode !== 0 || typeof r.proof !== 'string' || !r.proof.trim()) {
     throw new Error('the spec check did not pass: exit ' + r.exitCode + ', proof ' + JSON.stringify(r.proof) + ', stderr: ' + r.stderr)
@@ -723,7 +787,7 @@ try { await onePass() } catch (error) { failed(error, activeLabel) }
 for (const approved of queue) {
   const response = reportedFix?.dispositions?.find(d => d.key === approved.key)
   if (response?.disposition === 'fixed') {
-    add('unattested-fix', { approved, disposition: response, snapshotSha: reportedFix.snapshotSha, commits: reportedFix.commits }, approved.severity)
+    add('unattested-fix', { approved, disposition: response, snapshots: snapshotsOf(reportedFix), commits: reportedFix.commits }, approved.severity)
   } else add('unfixed-approval', { approved, ...(response ? { response } : {}) })
 }
 if (!exit) {
@@ -744,7 +808,7 @@ return {
   exit, detail, remaining, decisions,
   proof: passedFix ? { checks: passedFix.checks, files: passedFix.files }
     : impl ? { checks: impl.checks, files: impl.files } : null,
-  baseSha, snapshotSha,
+  base, snapshots,
   acceptance: 'pending-root-checks', // Pass completion is not size approval or integration permission.
   counts: { sources: sources.length, approved: queue.length,
     rejected: decisions.filter(d => d.action === 'reject').length,

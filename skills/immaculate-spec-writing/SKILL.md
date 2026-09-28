@@ -171,9 +171,11 @@ new spec from an empty file, or rewrites the spec in place from an empty file. T
 edited to follow a premise change, and the decisions that still stand come only from the user's
 words and the private record.
 
-Run `bun <plugin root>/tools/check-spec.ts .cache/specs/<unit>.yaml --transcripts <session-dir> --base <base-sha> --json`.
+Run `bun <plugin root>/tools/check-spec.ts .cache/specs/<unit>.yaml --transcripts <session-dir> --base '<base list>' --json`.
 The spec path in that command is the location `workflow-skills:local-cache` defines for private
-specs. The tool validates references and neither renders nor checks a design document.
+specs. The tool validates references and neither renders nor checks a design document. The base
+list is JSON with one `{ path, sha }` for every git repository of the tree, a single dot as the
+path of a tree that is one repository, and the tool runs at the tree root.
 Keep each criterion as a criterion item: the tool numbers them from one in file order and supplies
 `{ ordinal, id }` plus `counts.kind.criterion` for the implementation workflow's integer ordinals and
 `args.criteriaCount`. Before either spec review or implementation, validation must pass. The

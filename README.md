@@ -52,8 +52,12 @@ workflows, and used by `audit-loop`.
   fetches on the tool's first run.
   Validate a private unit spec with `bun <plugin root>/tools/check-spec.ts <spec.yaml> --transcripts <session-dir>`,
   where the plugin root is this repository or the installed plugin's directory under the plugin cache.
-  Add `--base <commit>` so a cited rule file tracked at that commit is read there and not from
-  the working tree, while an untracked file reads from disk. Add `--json` for counts and
+  Add `--base '<list>'`, a JSON list with one `{ path, sha }` for every git repository of the
+  tree it runs at, so a cited rule file tracked at its repository's commit is read there and not
+  from the working tree, while an untracked file reads from disk. The tool fails a list that
+  names no repository's top level, a commit its repository does not hold, or leaves a repository
+  of the tree out. implement-review-verify runs only in a git repository or a tree of several,
+  such as a repo-tool client. Add `--json` for counts and
   criterion ordinals. Both output forms carry `specLines`, which the 20:1 size gate divides by:
   the non-blank lines of the spec's prose, which is `unit`, `summary` and each item's `content`,
   `user_words`, `answers`, `quote`, `observation.output` and `reason`, plus one line for each

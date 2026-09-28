@@ -33,13 +33,15 @@ Rules:
   authority or explicitly reports that no item does. The tool's { ordinal, id } list assigns
   criterion items integer ordinals in file order; args.criteriaCount comes from its count of
   criterion items. Preserve those integer criterion ordinals when checking verdicts.
-- Independently check the supplied current snapshot with `git rev-parse --verify HEAD^{commit}`
-  and `git status --porcelain=v1 --untracked-files=all`. Return the observed snapshotSha and
-  clean status, with the quoted output of both commands in git as head and status; never echo
-  a writer's clean claim. Inspect each implementer commit against its start SHA for
-  scope or history violations and return one writerScope entry per commit: sha, ok, filesMatch
-  and note. The writer's files list names the paths of all its commits together, so filesMatch is
-  true when every path the commit touched appears in that list. A path in the files list that no
+- Independently check the supplied current snapshot in every repository of the list with
+  `git rev-parse --verify HEAD^{commit}` and `git status --porcelain=v1 --untracked-files=all`.
+  Return repositories, one entry per repository with its path, the observed snapshotSha and clean
+  status and the quoted output of both commands in git as head and status; never echo a writer's
+  clean claim. Inspect each implementer commit against its start SHA in its repository for scope
+  or history violations and return one writerScope entry per commit: repository, sha, ok,
+  filesMatch and note. The writer's files list names the paths of all its commits together,
+  relative to the tree root, so filesMatch is true when every path the commit touched, under its
+  repository's path, appears in that list. A path in the files list that no
   commit of the writer touched is a writer-scope problem: report it in the note of the writer's
   last commit and set that entry's ok to false.
 - Independently check each claim. Read the relevant code and authority sources; test or
@@ -123,8 +125,8 @@ Rules:
   from that entry, and reason says how that context supports the choice. Read the entry and the
   messages around its words before you quote them. A line found by searching for a word and
   quoted without its context backs nothing, so such a finding stays needs-decision.
-- Return abort, limitations (what and effect, blocks or narrows), snapshotSha, clean, git,
-  checks, writerScope, the consolidated decisions, unresolved issues and
+- Return abort, limitations (what and effect, blocks or narrows), repositories, checks,
+  writerScope, the consolidated decisions, unresolved issues and
   specSuggestions. Routine rejections stay in the run record — except an
   inverse-spec or kind-bearing finding's decision, which always reaches the root regardless of how
   it resolved (see above); it never counts as a routine rejection that stays internal. Missing

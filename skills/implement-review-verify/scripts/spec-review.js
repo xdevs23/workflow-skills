@@ -14,7 +14,7 @@ const UNIT = {
   transcripts: args.transcripts,         // the session transcript directory, passed at launch
   privateRecord: '<main checkout>/.cache/directives/<unit>.yaml',   // where workflow-skills:local-cache puts directive records
   pluginRoot: '<plugin root>',           // the directory holding tools/check-spec.ts
-  baseSha: args.baseSha,                 // the commit observation dates are measured against, passed at launch
+  base: args.base,                       // one { path, sha } per git repository of the tree, whose commits observation dates are measured against, passed at launch
   criteriaCount: args.criteriaCount,     // counts.kind.criterion from the check tool, passed at launch
   models: {
     gate: { model: 'claude-haiku-4-5', effort: 'low' },
@@ -139,9 +139,21 @@ const criteriaCount = UNIT.criteriaCount
 if (!Number.isInteger(criteriaCount) || criteriaCount < 1) {
   throw new Error('args.criteriaCount must be an integer of at least 1: counts.kind.criterion from the check tool')
 }
-if (!/^(?:[0-9a-f]{40}|[0-9a-f]{64})$/.test(UNIT.baseSha || '')) {
-  throw new Error('A full immutable baseSha is required for observation dates')
+// A repository path is a single dot, or segments of letters, digits, dots, underscores and hyphens
+// joined by slashes, no segment being one or two dots, as in the main script.
+const repositoryPath = path => typeof path === 'string' && (path === '.' ||
+  path.split('/').every(segment => /^[A-Za-z0-9._-]+$/.test(segment) && segment !== '.' && segment !== '..'))
+const checkRepositories = (list, name) => {
+  if (!Array.isArray(list) || !list.length) throw new Error(name + ' must be a non-empty list of { path, sha }, one per git repository of the tree')
+  const paths = new Set()
+  for (const entry of list) {
+    if (!repositoryPath(entry?.path)) throw new Error(name + ' names a path of another form: ' + JSON.stringify(entry?.path))
+    if (paths.has(entry.path)) throw new Error(name + ' names the path ' + entry.path + ' twice')
+    paths.add(entry.path)
+    if (!/^(?:[0-9a-f]{40}|[0-9a-f]{64})$/.test(entry.sha || '')) throw new Error(name + ' carries no full immutable commit ID for ' + entry.path)
+  }
 }
+checkRepositories(UNIT.base, 'args.base, which observation dates are measured against,')
 if (typeof UNIT.specPath !== 'string' || !UNIT.specPath.endsWith('.yaml')) {
   throw new Error('args.specPath must name the unit spec YAML file')
 }
@@ -156,7 +168,7 @@ const GATE = { type: 'object', required: ['exitCode', 'stdout', 'stderr', 'proof
 // The command runs in the main checkout, where the cited rule files resolve. The tool fails when the
 // private record of the marked block is not the record the spec names.
 const GATE_COMMAND = 'cd ' + UNIT.mainCheckout + ' && bun ' + UNIT.pluginRoot + '/tools/check-spec.ts ' + UNIT.specPath +
-  ' --transcripts ' + UNIT.transcripts + ' --json --base ' + UNIT.baseSha + ' --record ' + UNIT.privateRecord
+  ' --transcripts ' + UNIT.transcripts + ' --json --base \'' + JSON.stringify(UNIT.base) + '\' --record ' + UNIT.privateRecord
 const checkGate = r => {
   if (r.exitCode !== 0 || typeof r.proof !== 'string' || !r.proof.trim()) {
     throw new Error('the spec check did not pass: exit ' + r.exitCode + ', proof ' + JSON.stringify(r.proof) + ', stderr: ' + r.stderr)
@@ -189,7 +201,7 @@ return await Promise.all([
     }),
   stage([HOUSE, 'Read the current on-disk spec at ' + UNIT.specPath + ' in full.',
     'TRANSCRIPTS: ' + UNIT.transcripts + '. PRIVATE DIRECTIVES: ' + UNIT.privateRecord + '.',
-    'BASE COMMIT: ' + UNIT.baseSha,
+    'BASE COMMITS, per repository of the tree: ' + UNIT.base.map(entry => entry.path + ' ' + entry.sha).join(', '),
     'Judge each item, list the messages of the user and re-run read-only observations as your template requires; return your findings.',
   ].join('\n\n'),
     { label: 'spec:provenance', phase: 'Spec review', agentType: 'workflow-skills:spec-provenance', ...UNIT.models.provenance, schema: PROVENANCE },
