@@ -229,18 +229,18 @@ describe('workflow verification and consolidation', () => {
   test('the spec-writing skill states the directive veto and refuses a spec reworded to get past its reviewers', () => {
     const text = flat(specWriting)
     for (const phrase of ['private directive record',
-      '**An edit the root makes to a spec on its own is an ordinary derivation from an existing decision.**',
+      '**An edit you make to a spec on your own is an ordinary derivation from an existing decision.**',
       'It is never a new product, architecture, persistence, security or operational choice.',
-      'any point where the spec would contradict a recorded directive of the user, go to the user instead of being written around',
-      '**A spec is never reworded so that it gets past its reviewers.**',
+      'any point where the spec would contradict a recorded directive of the user, to the user instead of writing around them',
+      '**Never reword a spec so that it gets past its reviewers.**',
       'A spec that needs rewrite after rewrite is a sign that something is wrong',
-      'the root takes the conflict to the user instead of rewriting the spec again']) {
+      'take the conflict to the user instead of rewriting the spec again']) {
       expect([phrase, text.includes(phrase)]).toEqual([phrase, true])
     }
   })
 
   test('the private-source section requires context, provenance and blocks the launch on a missing record', () => {
-    expect(specWriting).toContain('qualifications, surrounding context and examples')
+    expect(flat(specWriting)).toContain('qualifications, surrounding context and examples')
     expect(specWriting).toContain('with its provenance recorded')
     expect(specWriting).toContain('blocks the launch')
     expect(specWriting).not.toContain('is an explicit limitation that blocks')
@@ -1109,7 +1109,7 @@ describe('spec provenance instructions and routing', () => {
     ]) expect(flat(skill)).toContain(phrase)
     for (const phrase of [
       'the unit spec, `<unit>.yaml` in the private-spec location that `workflow-skills:local-cache` defines, ignored and untracked',
-      'root writes the YAML before launching', '**rule:**', '**observation:**', '**derivation:**',
+      'write the YAML before launching', '**rule:**', '**observation:**', '**derivation:**',
       'asserting that a condition, failure mode or risk exists needs source transcript or observation',
       'hypothetical hazard stays a finding until an observation', 'simpler alternative it rules out',
       'parents include the transcript item asking for it or the observation', 'validate it again after every amendment',
@@ -1196,9 +1196,9 @@ describe('spec provenance instructions and routing', () => {
     const shared = ['A document enters a spec only as an observation of the current state of the code or the documents, re-run and dated',
       'A hand-written design document is never cited as the design: its decisions become items with the user\'s words, or they do not count.',
       'a comment carries provenance notes only',
-      'discarding the old entry, and a new spec from an empty file, or rewrites the spec in place from an empty file',
+      'discarding the old entry, and a new spec from an empty file, or rewrite the spec in place from an empty file',
       'never edited to follow a premise change', 'come only from the user\'s words and the private record',
-      'settled or decided on the', 'quotes the user\'s words and names the date they were said']
+      'settled or decided on your own authority', 'quotes the user\'s words and names the date they were said']
     for (const phrase of shared) expect([phrase, flat(specWriting).includes(phrase)]).toEqual([phrase, true])
     // The workflow skill points to spec-writing and no longer states the rules itself.
     expect(flat(skill)).toContain('The root writes the unit spec as `workflow-skills:spec-writing` says, validates it with the spec tool and launches the main run on it.')
@@ -1791,7 +1791,7 @@ describe('work execution rules', () => {
 
   test('the spec-writing inputs establish the five checks from the codebase, never from memory', async () => {
     const text = flat(await readSkill('spec-writing'))
-    expect(text).toContain('**What the tree already says about the work**')
+    expect(text).toContain('**Establish what the tree already says about the work**')
     for (const phrase of ['whether the thing is already implemented', 'what already exists that the work can build on',
       'what needs refactoring before the work can sit on it', 'what the work conflicts with',
       'how the applicable rules shape it', 'Every answer comes from reading the codebase and the rules']) {
@@ -1985,10 +1985,10 @@ describe('launch check and shipped scripts', () => {
   })
 
   test('the skill states the launch block, the contradiction sentence, the tool location and three triggers', () => {
-    for (const phrase of ['blocks the launch', 'writes no spec and starts no run on it', 'searches the session transcripts for the words',
-      'tells the user which decision it has no words for and waits', 'Writing the gap into the record as a limitation and continuing is the failure',
-      'contradiction between a design and the code, or between two statements of the user, is a question for the user with both sides quoted',
-      'no agent resolves and no spec is written on top of', 'under the plugin root', 'plugin cache', 'carries the loaded version']) {
+    for (const phrase of ['blocks the launch', 'Write no spec and start no run on it', 'Search the session transcripts for the words',
+      'tell the user which decision you have no words for and wait', 'Writing the gap into the record as a limitation and continuing is the failure',
+      'Put a contradiction between a design and the code, or between two statements of the user, to the user as a question with both sides quoted',
+      'No agent resolves it, and no spec is written on top of it', 'under the plugin root', 'plugin cache', 'carries the loaded version']) {
       expect([phrase, flat(specWriting).includes(phrase)]).toEqual([phrase, true])
     }
     const text = flat(skill)
@@ -2891,7 +2891,7 @@ describe('no loops in the workflow skills', () => {
       'The prose of a spec is wrapped at 120 characters', 'a folded scalar (`>`)',
       '`--base` takes the run\'s base list as JSON',
       'The tracked design document records decisions, constraints and rejected alternatives',
-      'The root writes the spec as this skill says, validates it with the spec tool and launches the main run on it']) {
+      'Write the spec as this skill says, validate it with the spec tool and launch the main run on it']) {
       expect([phrase, text.includes(phrase)]).toEqual([phrase, true])
     }
     for (const stale of ['loop', 'fleet', 'gap find', 'design/research', 'invalidates the reviews', 'committed spec']) {
