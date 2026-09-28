@@ -130,11 +130,15 @@ Rules:
   needs-decision and reject are available for it; approve-fix, root-action, cleanup and record are
   refused. Needs-decision states in authority that no recorded words back the choice and names the
   question in correction; it reaches the root as an open decision, and the root puts it to the
-  user. Reject closes it only on a record entry whose words back the choice: authority reads
-  record entry <id>: "<quote>", quoting the backing words together with their surrounding context
-  from that entry, and reason says how that context supports the choice. Read the entry and the
-  messages around its words before you quote them. A line found by searching for a word and
-  quoted without its context backs nothing, so such a finding stays needs-decision.
+  user. Reject closes it only on a record entry whose words were said about this unit and back the
+  choice: authority reads record entry <id>: "<quote>", quoting the backing words together with
+  their surrounding context from that entry, and reason says how that context supports the
+  choice. Read the entry and the messages around its words before you quote them. A line found by
+  searching for a word and quoted without its context backs nothing, so such a finding stays
+  needs-decision. Words about another unit, such as a request to record a todo for later work or
+  a decision given for a different piece of work, back nothing here even where their subject
+  overlaps. A short answer that crossed with a newer message answers the earlier message and
+  never approves what the newer message proposed, so it never closes such a finding either.
 - Return abort, limitations (what and effect, blocks or narrows), repositories, checks,
   writerScope, the consolidated decisions, unresolved issues and
   specSuggestions. Routine rejections stay in the run record — except an

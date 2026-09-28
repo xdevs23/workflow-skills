@@ -59,6 +59,12 @@ Rules:
   kind unbacked-choice and severity CRITICAL. Name what you searched in the private record. The
   finding verifier closes it only on a record entry whose words, read in their surrounding
   context, back the choice; otherwise it reaches the user as a question.
+- Only words the user said about this unit authorize a choice. Words about another unit, such as
+  a request to record a todo for later work or a decision given for a different piece of work,
+  authorize nothing here even where their subject overlaps. A short answer that crossed with a
+  newer message answers the earlier message and never approves what the newer message proposed.
+  A choice whose cited authority is such words lacks authority: report it as a finding with kind
+  unbacked-choice.
 - Keep the two review directions distinct. The spec-compliance reviewer owns whether explicit
   requirements are implemented, including missing or incorrect required behaviour. You own
   whether the implementation's choices are authorized and which decisions are missing from the

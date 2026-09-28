@@ -158,7 +158,12 @@ also has `reason`. Use exactly the fields of its source kind:
   message counts only with origin `human`, and `answers` resolves in the assistant records since
   the last message the user wrote. At least one
   item has this source: a spec with none of the user's words fails, and so does a requirement
-  derived from observations alone.
+  derived from observations alone. An item cites only words the user said about the unit the spec
+  describes. Words about another unit, such as a request to record a todo for later work or a
+  decision given for a different piece of work, never authorize an item of this spec, even where
+  their subject overlaps. A short answer that crossed with a newer message, such as a yes the user
+  sent while the next message was being written, is cited for what its content answers, the
+  earlier message, and never as approval of what the newer message proposed.
 - **rule:** `rule: { file, line }` and `quote`, matching the rule's words across hard-wrapped lines.
 - **observation:** `observation: { command, exit, output, date }`, recording a fact observed here.
   Use a read-only command that the implementer's sense check can repeat and compare against output
