@@ -1,0 +1,139 @@
+{
+  "loggedIn": true,
+  "api": {
+    "repos/acme/widgets/pulls?state=open&per_page=100": [
+      { "json": [[
+        { "number": 9, "head": { "ref": "fix/typo", "sha": "ccc3" } },
+        { "number": 12, "head": { "ref": "feature/login", "sha": "bbb2" } }
+      ]] }
+    ],
+    "repos/acme/widgets/pulls/12": [
+      { "json": [{ "number": 12, "state": "open", "merged": false, "head": { "ref": "feature/login", "sha": "bbb2" } }] },
+      { "json": [{ "number": 12, "state": "closed", "merged": true, "head": { "ref": "feature/login", "sha": "bbb2" } }] }
+    ],
+    "repos/acme/widgets/issues/12/comments": [
+      { "json": [[
+        {
+          "id": 101,
+          "user": { "login": "reviewer" },
+          "html_url": "https://github.com/acme/widgets/pull/12#issuecomment-101",
+          "body": "Please add a test for the empty password."
+        }
+      ]] }
+    ],
+    "repos/acme/widgets/pulls/12/reviews": [
+      { "json": [[
+        {
+          "id": 201,
+          "state": "CHANGES_REQUESTED",
+          "user": { "login": "reviewer" },
+          "html_url": "https://github.com/acme/widgets/pull/12#pullrequestreview-201",
+          "body": "Two findings.",
+          "commit_id": "aaa1"
+        },
+        {
+          "id": 202,
+          "state": "PENDING",
+          "user": { "login": "drafter" },
+          "html_url": "https://github.com/acme/widgets/pull/12#pullrequestreview-202",
+          "body": "Not submitted yet.",
+          "commit_id": "bbb2"
+        }
+      ]] }
+    ],
+    "repos/acme/widgets/pulls/12/comments": [
+      { "json": [
+        [
+          {
+            "id": 301,
+            "user": { "login": "reviewer" },
+            "html_url": "https://github.com/acme/widgets/pull/12#discussion_r301",
+            "path": "src/login.py",
+            "line": 14,
+            "body": "This accepts an empty password.",
+            "commit_id": "aaa1"
+          },
+          {
+            "id": 302,
+            "user": { "login": "author" },
+            "html_url": "https://github.com/acme/widgets/pull/12#discussion_r302",
+            "path": "src/login.py",
+            "line": 14,
+            "in_reply_to_id": 301,
+            "body": "Fixed in bbb2.",
+            "commit_id": "bbb2"
+          }
+        ],
+        [
+          {
+            "id": 303,
+            "user": { "login": "reviewer" },
+            "html_url": "https://github.com/acme/widgets/pull/12#discussion_r303",
+            "path": "src/session.py",
+            "line": null,
+            "body": "This name is unclear.",
+            "commit_id": "aaa1"
+          }
+        ]
+      ] }
+    ],
+    "repos/acme/widgets/commits/bbb2/check-runs": [
+      { "json": [
+        {
+          "total_count": 4,
+          "check_runs": [
+            {
+              "id": 401,
+              "name": "test",
+              "status": "completed",
+              "conclusion": "failure",
+              "html_url": "https://github.com/acme/widgets/runs/401"
+            },
+            {
+              "id": 402,
+              "name": "lint",
+              "status": "completed",
+              "conclusion": "success",
+              "html_url": "https://github.com/acme/widgets/runs/402"
+            },
+            {
+              "id": 403,
+              "name": "build",
+              "status": "in_progress",
+              "conclusion": null,
+              "html_url": "https://github.com/acme/widgets/runs/403"
+            }
+          ]
+        },
+        {
+          "total_count": 4,
+          "check_runs": [
+            {
+              "id": 404,
+              "name": "deploy",
+              "status": "completed",
+              "conclusion": "timed_out",
+              "html_url": "https://github.com/acme/widgets/runs/404"
+            }
+          ]
+        }
+      ] }
+    ],
+    "repos/acme/widgets/commits/aaa1/check-runs": [
+      { "json": [
+        {
+          "total_count": 1,
+          "check_runs": [
+            {
+              "id": 499,
+              "name": "test",
+              "status": "completed",
+              "conclusion": "failure",
+              "html_url": "https://github.com/acme/widgets/runs/499"
+            }
+          ]
+        }
+      ] }
+    ]
+  }
+}
