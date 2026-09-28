@@ -60,6 +60,10 @@ agents reading the codebase) isn't worth it. For those, just do the edit, or use
 A simple, direct change whose outcome is very unlikely to change meaningfully, and which has no
 meaningful impact on the overall product, is done directly, without a workflow.
 
+The workflow needs git: the project is one git repository, or a tree of several git repositories
+such as a repo-tool client. In a project without git no run starts, and the root may ask the user
+whether they want a git repository.
+
 ## Before phase 1 — settle the design AND pin acceptance criteria
 
 **Settle the design first.** The implementer builds against a decided design; it does not invent
@@ -135,7 +139,7 @@ before and during implementation: every stage reads it from its path. No Markdow
 is written, committed or checked before implementation. Validate the YAML after every amendment:
 
 ```sh
-bun <plugin root>/tools/check-spec.ts .cache/specs/<unit>.yaml --transcripts <session-dir> --base <base-sha> --json
+bun <plugin root>/tools/check-spec.ts .cache/specs/<unit>.yaml --transcripts <session-dir> --base '<base list>' --json
 ```
 
 The spec path in that command is the location `workflow-skills:local-cache` defines for private
@@ -145,6 +149,13 @@ under the plugin cache, the one whose `.claude-plugin/plugin.json` carries the l
 below uses `<plugin root>/tools/check-spec.ts`, and the shipped scripts take the plugin root in
 their marked block. An installed plugin older than this tool prints no proof, so its launch check
 fails and no run launches on it until the plugin is updated; that is the intended effect.
+
+`--base` takes the run's base list as JSON: one `{ path, sha }` for every git repository of the
+tree, the path relative to the tree root and a single dot for a tree that is one repository. The
+tool, run at the tree root, fails a list whose path is no repository's top level, whose commit that
+repository does not hold, or which leaves out a repository it finds under the tree root. It reads a
+cited rule file at the commit of the repository that holds it, reads a file no listed repository
+tracks from disk, and fails on any other git error.
 
 The tracked design document is written by hand from the code after the implementation, so it
 records what was built. It describes the change as the code at the writer's final commit
@@ -224,7 +235,7 @@ findable:
 Discovered here they cost an edit; discovered in phase 4 they cost the run.
 
 A third reader, **spec-provenance** (`agents/spec-provenance.md`), receives the YAML spec, transcript
-directory, private record and base commit. Item by item it judges authorization, asserted conditions
+directory, private record and base commits. Item by item it judges authorization, asserted conditions
 and mandated mechanisms. For every subject the spec covers it searches every message of the user in
 every transcript of that directory, queued messages included, and a later statement that refines,
 narrows or contradicts a cited one outranks it. It also checks the frame around the items: the
@@ -232,7 +243,7 @@ summary sentence by sentence, every boundary item, every comment line of the raw
 every document, branch or earlier unit the spec names or builds on. A claim there that no item
 backs, and a decision found only in a comment, are must-fix findings; comments carry provenance
 notes only. It re-runs each read-only observation command and reports output or exit
-mismatches and observations older than the base commit.
+mismatches and observations older than the newest base commit.
 
 The provenance reader lists every message the user wrote, in every transcript of the directory
 and queued messages included, on the unit's subject and on the subject of everything the unit
@@ -407,27 +418,36 @@ status). A failed check or commit is an incomplete stage, never a fabricated suc
 
 #### Writer commits are snapshots, not integration permission
 
-Start each writer in a clean isolated worktree at the supplied full SHA. Before edits, inspect
-HEAD, the index and working-tree status; unrelated or pre-existing changes are an anomaly,
+Start each writer in a clean isolated tree with every git repository of it at its supplied full
+SHA. Before edits, inspect HEAD, the index and working-tree status of each repository; unrelated
+or pre-existing changes are an anomaly,
 not permission to absorb or discard them. Only the implementer and fixer may stage explicit
 paths for their own scoped changes, inspect the staged diff, and create NEW commits after
 checks. No broad add, amend, reset, rebase, merge, cherry-pick, branch switching, history
 rewriting or push. Honor project commit-message rules and normal hooks/signing. If hooks
 change content, rerun proof on the final committed contents before claiming success.
 
-Return `startSha`, full `snapshotSha`, `clean`, `git` (the quoted output of
-`git rev-parse --verify HEAD^{commit}` and `git status --porcelain=v1 --untracked-files=all`),
-`commits`, `files` and `checks`. The script accepts a writer only when the quoted `git.head`
-equals `snapshotSha`, `clean` agrees with an empty `git.status`, a new snapshot lists commits and
-files with a check whose `passed` equals `proofPassed`, and an unchanged snapshot lists none.
+Return `repositories`, one entry per repository of the base list with its `path`, `startSha`,
+full `snapshotSha`, `clean` and `git` (the quoted output of `git rev-parse --verify HEAD^{commit}`
+and `git status --porcelain=v1 --untracked-files=all` in that repository), then `commits`, each
+naming its repository, `files`, relative to the tree root, and `checks`. The script accepts a
+writer only when every repository of the list appears exactly once at its expected start, each
+quoted `git.head` equals its `snapshotSha`, each `clean` agrees with an empty `git.status`, a
+repository whose snapshot moved has commits in it and an unchanged one none, and a new snapshot
+anywhere lists files with a check whose `passed` equals `proofPassed`.
 Scratch files, which go where `workflow-skills:local-cache` says, and the todo record of
 `workflow-skills:todo-md` remain ignored and untracked; clean status is not permission to commit
 them. Genuine no-ops reuse their starting SHA without an empty commit. Readers and the verifier
 independently
 check snapshots; a writer's own object is not proof by itself.
 
-All other seats remain Git-read-only. The root pins the starting commit as `args.baseSha`;
-use full object IDs, not HEAD or moving branch names, as review identity. Immutable commits
+All other seats remain Git-read-only. The root passes the starting commits as `args.base`, one
+`{ path, sha }` per git repository of the tree, changed or not; a tree that is one repository is a
+list of one entry whose path is a single dot. Each script refuses an empty list, a path named twice,
+a path of another form than a dot or slash-joined segments of letters, digits, dots, underscores and
+hyphens, and a commit ID that is not full. Use full object IDs, not HEAD or moving branch names, as
+review identity. Readers receive one diff range per repository whose snapshot moved and read with
+`git -C` in that repository. Immutable commits
 avoid an extra checkout, archive or copy. Acceptance and integration still happen separately.
 
 ### Phase 2 — Review (N agents, parallel VERDICT seats, split BY CONCERN)
@@ -559,9 +579,10 @@ and the implementer's object. It checks claims against the code, settled spec, a
 recorded instructions, resolves conflicts using evidence, and merges duplicate defects into ONE fix
 list, every decision with receipts. It preserves every source ID: consolidation is never permission
 to drop a finding. It also checks every seat's limitations and unchecked coverage entries, inspects
-each implementer commit in `writerScope`, and returns its own `git` and `checks`. A writer's `files`
-list names the paths of all its commits together, so `filesMatch` is true when every path the
-commit touched appears in that list. A path in `files` that no commit of the writer touched is a
+each implementer commit in `writerScope`, naming its repository, and returns its own
+`repositories` and `checks`. A writer's `files` list names the paths of all its commits together,
+relative to the tree root, so `filesMatch` is true when every path the commit touched, under its
+repository's path, appears in that list. A path in `files` that no commit of the writer touched is a
 writer-scope problem, reported in the note of the writer's last commit with `ok` false.
 
 This is ordinary workflow work, not a root checkpoint. The root is an exception handler.
@@ -634,12 +655,14 @@ closes it on its own.
 ### Phase 4 — Fix and roast concurrently
 
 Launch ONE fixer and ONE mandatory roaster together after the approved list is finalized.
-Capture the pre-fix SHA before starting either. The roaster receives the immutable base and
-snapshot SHAs plus the approved list, using its Bash-only Git-object prompt. It reads files
-with `git show SHA:path`, lists with `git ls-tree`, searches with `git grep` at that SHA,
-and compares with `git diff --no-ext-diff --no-textconv BASE_SHA SNAPSHOT_SHA --`.
+Capture the pre-fix SHAs before starting either. The roaster receives the immutable base and
+snapshot SHA of every repository plus the approved list, using its Bash-only Git-object prompt.
+In each repository, through `git -C`, it reads files with `git show SHA:path`, lists with
+`git ls-tree`, searches with `git grep` at that SHA, and compares with
+`git diff --no-ext-diff --no-textconv BASE_SHA SNAPSHOT_SHA --`.
 No source-tree Read/Grep/Glob, filesystem scripts, builds, symlink following or external diff
-helpers. It never substitutes HEAD. Receipts include the snapshot SHA and file:line.
+helpers. It never substitutes HEAD. Receipts include the repository path, its snapshot SHA and
+file:line, and it returns the snapshot it read per repository.
 
 The fix list is PLANNED WORK, not proof. The roast should avoid repeating assigned defects,
 but may flag inadequate corrections, interactions and uncovered weaknesses. Both tasks
@@ -784,8 +807,9 @@ change to make, in plain words). The list holds no user words and no field for t
 `<plugin root>/tools/check-spec.ts --fix-list <file> --transcripts <dir> --json`, which resolves
 every entry against the parent run's journal and prints the proof only when every entry resolves.
 The root passes the tool's `entries` and `parentSpec` output as `args.entries` and
-`args.parentSpec` and the parent run's final snapshot as `args.baseSha`, and fills the parent
-unit's private record into the block. The launch check runs the same command in the worktree with
+`args.parentSpec` and the parent run's final snapshots as `args.base`, the `snapshots` list its run
+record returns, and fills the parent unit's private record and documents directory into the
+block. The launch check runs the same command in the worktree with
 `--expect` and the JSON of those two launch values, which the script builds and quotes for the
 shell. The tool fails when they differ from the fix list, so the corrections the fixer receives are
 the ones the tool checked. The command also carries `--record` with the record path from the block,
@@ -968,8 +992,8 @@ proof. Apply improvements within authorized scope and report any broader follow-
 ### Size report and the 20:1 acceptance gate
 
 Measure the final candidate against its unit spec before integration, using immutable inputs:
-record the merge-base SHA, the candidate SHA and the `sha256` of the final spec that the spec tool
-prints. That `sha256` equals the one the launch check of the run that produced the candidate
+record, for every repository of the tree, the merge-base SHA and the candidate SHA, and the
+`sha256` of the final spec that the spec tool prints. That `sha256` equals the one the launch check of the run that produced the candidate
 printed, so the counted spec is the one the writers and reviewers read. The gate reads no design
 document. For bundle/patch delivery the comparison base is the project's declared reconstruction
 base; do not silently substitute a convenient newer base.
@@ -981,7 +1005,7 @@ base; do not silently substitute a convenient newer base.
   YAML file, quoted words, evidence and keys included, and belongs only to the tool summary.
 - **Code added/deleted:** sum the added and deleted line counts from
   `git diff --no-ext-diff --no-textconv --no-renames --numstat BASE_SHA CANDIDATE_SHA --`
-  over implementation files. Use added lines as the numerator, never net added-minus-deleted.
+  over implementation files, run in each repository and summed over all of them. Use added lines as the numerator, never net added-minus-deleted.
 - **Test added/deleted:** report separately for paths containing `tests/`, `test/`, `.test.`
   or `_test.`. Treat the repository root as a path boundary so root-level test directories count.
 - Exclude documentation (`*.md`), lockfiles, generated files and binaries from implementation
@@ -1048,7 +1072,8 @@ Keep temporary worktrees where `workflow-skills:local-cache` puts workflow workt
 Never delete a worktree merely because the workflow finished. First verify that it is clean,
 inspect ignored/untracked contents for material to preserve, and verify the project's handoff:
 
-- **Direct merge:** confirm the candidate commit is contained in the intended target branch.
+- **Direct merge:** confirm each repository's candidate commit is contained in its intended
+  target branch.
   For squash/rebase integration, verify the resulting content and the project's recorded mapping.
 - **PR:** creating a PR is not proof of merge. Verify the durable source branch/candidate and
   project-selected completion condition; retain the branch while the PR still needs it.
@@ -1327,10 +1352,12 @@ phases and every other line outside the marked block stay as shipped. A copy tha
 placeholders shows every main run in the workflow list under the same name and description. The
 marked block sits at the top of each file between two comment lines and holds every value a unit
 sets apart from `meta.name` and `meta.description` of the main script: the paths (main checkout,
-worktree, spec, transcripts, private record, plugin root), the check command, the base or start
-SHA, `criteriaCount`, the unit prompt text for the implementer, the scoping, the rule sources,
-the invariants and the model and effort per stage. The block holds no design document path: the
-scripts derive it from the spec path. The fix run's block holds the fix list path, the entries and
+worktree, spec, transcripts, private record, plugin root), the documents directory, the check
+command, the `base` list, `criteriaCount`, the unit prompt text for the implementer, the scoping, the rule sources,
+the invariants and the model and effort per stage. The documents directory is relative to the tree
+root and lies inside one repository of the list, `docs` for a tree that is one repository; the
+scripts join it with the spec's file name to name the design document, which the writers commit in
+that repository. The fix run's block holds the fix list path, the entries and
 the parent spec in place of the spec, `criteriaCount` and the implementer's prompt. Everything below the block
 is the reviewed script and is not edited per unit. Never copy a previous unit's script and edit
 it, and never generalize one that already ran into a runner several units share.
@@ -1363,7 +1390,7 @@ All three scripts begin with a launch check, before any other agent: a small sta
 changes to the tree the run works on, the worktree from the marked block for the main run and the
 fix run and the main checkout for the pre-phase, so the cited rule files resolve there.
 It then runs `<plugin root>/tools/check-spec.ts` with `--json`, the spec path from `args.specPath`, the
-transcript directory from `args.transcripts`, `--base` with the base commit and `--record` with the
+transcript directory from `args.transcripts`, `--base` with the base list as JSON in single quotes and `--record` with the
 private record from the marked block. The tool fails when that record path differs from the spec's `record`. The sentence
 tells the stage to run that exact command once with the Bash tool and return its exit code,
 stdout, stderr and the proof string printed on success, with no interpretation, retry or fix. Its
@@ -1435,12 +1462,14 @@ The completeness checks, by stage kind:
   verifier judges whether a limitation excuses it; the inverse seat has a non-empty
   `authorizations` list; the alternatives seat has a candidate, a finding, or
   `currentShapeRight` true;
-- **writers**: a `snapshotSha` other than `startSha` needs non-empty `commits` and `files` and a
-  check whose `passed` equals `proofPassed`; an unchanged one needs both empty; the quoted
-  `git.head` equals `snapshotSha` and `clean` equals `git.status` being empty; the fixer answers
-  every key once;
-- **finding verifier**: the source-coverage and decision guards, the quoted `git.head`
-  equals its `snapshotSha`, and one `writerScope` entry per implementer commit;
+- **writers**: one `repositories` entry per repository of the list; in each, a `snapshotSha`
+  other than `startSha` needs commits in that repository and an unchanged one none, the quoted
+  `git.head` equals `snapshotSha` and `clean` equals `git.status` being empty; a new snapshot
+  anywhere needs non-empty `files` and a check whose `passed` equals `proofPassed`, and no new
+  snapshot needs empty `files`; the fixer answers every key once;
+- **finding verifier**: the source-coverage and decision guards, one `repositories` entry per
+  repository whose quoted `git.head` equals its `snapshotSha`, and one `writerScope` entry per
+  implementer commit and repository;
 - **pre-phase seats**: `categories` non-empty and every gap with a receipt; `criteria` with
   exactly one entry per criterion from 1 to `args.criteriaCount`; provenance with non-empty
   coverage, receipts on findings and a non-empty `limitations` list when any entry is unchecked.
@@ -1479,7 +1508,7 @@ LABELLED for what it is, and marked UNTRUSTED where it is:
 
 ```js
 const fixPrompt = [
-  AUTHORITY, WRITE_GIT, SPEC, PROVE, CHECK, 'START SHA: ' + snapshotSha,
+  AUTHORITY, WRITE_GIT, SPEC, PROVE, CHECK, 'START SHAS, per repository: ' + listed(snapshots),
   'Act ONLY on the verifier-approved corrections. Independently verify their evidence and authority.',
   'Respect each correction, constraints and acceptance check. Never broaden scope.',
   'Answer each key in dispositions: fixed / rejected / blocked with receipts. Disagreements go to the ROOT.',

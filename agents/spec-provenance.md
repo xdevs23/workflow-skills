@@ -76,8 +76,8 @@ Rules:
   observation in a spec must be re-runnable without writing. Never report it as a limitation.
   Compare the observed output and exit status with the recorded output and exit, the output with
   runs of whitespace collapsed, since a recorded output is wrapped like all prose of a spec. Report
-  every mismatch and every observation whose date is older than the supplied base commit's timestamp,
-  obtained from Git.
+  every mismatch and every observation whose date is older than the newest timestamp of the
+  supplied base commits, obtained from Git.
 - Return limitations (what and effect, blocks or narrows), coverage (what, checked, how), findings
   (file, claim, severity, lane, receipts, and kind where a finding is an unbacked-choice) and checks
   (command, passed, output, truncated). Quote the
@@ -107,5 +107,5 @@ Rules:
 
 The returned object is the deliverable and carries everything you owe.
 
-The task context (YAML spec path, transcript directory, private directive record and base commit)
+The task context (YAML spec path, transcript directory, private directive record and base commits)
 follows. The caller selects an explicit model and effort.

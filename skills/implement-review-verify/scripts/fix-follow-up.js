@@ -16,7 +16,8 @@ const UNIT = {
   privateRecord: '<main checkout>/.cache/directives/<parent unit>.yaml',   // the parent unit's record, where workflow-skills:local-cache puts directive records
   pluginRoot: '<plugin root>',           // the directory holding tools/check-spec.ts
   checkCommand: '<the check command>',   // the fixer only, run bare after the last write
-  baseSha: args.baseSha,                 // the parent run's final snapshot, passed at launch
+  base: args.base,                       // the parent run's final snapshots, one { path, sha } per git repository of the tree, passed at launch
+  documents: '<documents directory>',    // the parent unit's documents directory, relative to the tree root
   entries: args.entries,                 // the entries list from the check tool's --json output, passed at launch
   parentSpec: args.parentSpec,           // the parentSpec from the check tool's --json output, passed at launch
   models: {
@@ -115,20 +116,21 @@ const AUTHORITY = [                    // the fixer only; the two checks and the
 ].join('\n')
 const READ_GIT = [
   'GIT READ-ONLY: never stage, commit, reset, amend, rebase, merge or switch branches/worktrees.',
-  'The clean worktree and HEAD must stay at the supplied snapshot; report unexpected movement.',
+  'Every repository of the tree and its HEAD must stay at the supplied snapshot; report unexpected movement.',
   WRITE_NOTHING,
   LIMITS,
 ].join('\n')
 const WRITE_GIT = [
-  'NARROW COMMIT PERMISSION: start clean at START SHA in the isolated worktree.',
-  'Stage explicit paths for only your scoped changes, inspect the staged diff, check, and create a new commit.',
+  'NARROW COMMIT PERMISSION: start clean in every repository of the list at its START SHA, inside the isolated tree.',
+  'Stage explicit paths for only your scoped changes, inspect the staged diff, check, and create new commits in the repositories you changed.',
   'No broad add, unrelated changes, amend, reset, rebase, merge, branch switching or push.',
   'Never bypass signing or hooks. Follow project commit style. Recheck proof if hooks change content.',
   WRITE_SCRATCH,
   'Keep scratch files and the local todo record of workflow-skills:todo-md out of commits unless explicitly requested.',
-  'Return startSha, full snapshotSha, clean, git (quoted head and status), commits, files and checks;',
-  'never an empty commit for a no-op, whose commits and files are empty and whose snapshotSha is startSha.',
-  'Check git rev-parse --verify HEAD^{commit} and git status --porcelain=v1 --untracked-files=all after committing.',
+  'Return repositories, one entry per repository of the list with path, startSha, full snapshotSha, clean and git (quoted head and',
+  'status), commits (each with sha, subject and the path of its repository), files (paths relative to the tree root) and checks;',
+  'never an empty commit for a no-op: a repository you left unchanged keeps its startSha as its snapshotSha and lists no commit.',
+  'After committing, run git -C <tree>/<path> rev-parse --verify HEAD^{commit} and git status --porcelain=v1 --untracked-files=all in every repository.',
 ].join('\n')
 const TREE = 'ASSIGNED TREE: ' + UNIT.worktree + '.'
 // The spec and the private record are the parent unit's: a fix restores what that unit's spec
@@ -178,8 +180,16 @@ const FINDINGS = { type: 'array', items: FINDING }
 const COVERAGE = { type: 'array', items: { type: 'object', required: ['what', 'checked', 'how'], additionalProperties: false,
   properties: { what: { type: 'string' }, checked: { type: 'boolean' }, how: { type: 'string' } } } }
 const COMMIT_ID = { type: 'string', pattern: '^(?:[0-9a-f]{40}|[0-9a-f]{64})$' }
-const COMMITS = { type: 'array', items: { type: 'object', required: ['sha', 'subject'], additionalProperties: false,
-  properties: { sha: COMMIT_ID, subject: { type: 'string' } } } }
+const COMMITS = { type: 'array', items: { type: 'object', required: ['sha', 'subject', 'repository'], additionalProperties: false,
+  properties: { sha: COMMIT_ID, subject: { type: 'string' }, repository: { type: 'string' } } } }
+// One entry per repository of the base list: where the writer started it, where it left it, and the
+// quoted head and status there.
+const REPOSITORIES = { type: 'array', minItems: 1, items: { type: 'object', additionalProperties: false,
+  required: ['path', 'startSha', 'snapshotSha', 'clean', 'git'],
+  properties: { path: { type: 'string' }, startSha: { type: 'string' }, snapshotSha: { type: 'string' }, clean: { type: 'boolean' }, git: GIT } } }
+// A snapshot of the tree: one full commit ID per repository.
+const SNAPSHOTS = { type: 'array', minItems: 1, items: { type: 'object', required: ['path', 'sha'], additionalProperties: false,
+  properties: { path: { type: 'string' }, sha: COMMIT_ID } } }
 const FILES = { type: 'array', items: { type: 'object', required: ['path', 'bytes', 'change'], additionalProperties: false,
   properties: { path: { type: 'string' }, bytes: { type: 'integer', minimum: 0 }, change: { enum: ['added', 'modified', 'deleted'] } } } }
 const STRINGS = { type: 'array', items: { type: 'string' } }
@@ -198,14 +208,13 @@ const DIFF = { type: 'object', additionalProperties: false, required: ['limitati
     mappings: { type: 'array', items: { type: 'object', additionalProperties: false,
       required: ['change', 'entry', 'receipts'],
       properties: { change: { type: 'string' }, entry: { type: 'string' }, receipts: RECEIPTS } } } } }
-const ROAST = { type: 'object', additionalProperties: false, required: ['limitations', 'coverage', 'findings', 'snapshotSha'],
-  properties: { limitations: LIMITATIONS, coverage: COVERAGE, findings: FINDINGS, snapshotSha: COMMIT_ID } }
+const ROAST = { type: 'object', additionalProperties: false, required: ['limitations', 'coverage', 'findings', 'snapshots'],
+  properties: { limitations: LIMITATIONS, coverage: COVERAGE, findings: FINDINGS, snapshots: SNAPSHOTS } }
 const FIX = { type: 'object', additionalProperties: false,
-  required: ['abort', 'limitations', 'startSha', 'snapshotSha', 'clean', 'proofPassed', 'premises', 'commits',
-    'files', 'checks', 'git', 'specSuggestions', 'dispositions', 'touched'],
-  properties: { abort: ABORT, limitations: LIMITATIONS, startSha: { type: 'string' }, snapshotSha: { type: 'string' },
-    clean: { type: 'boolean' }, proofPassed: { type: 'boolean' }, premises: PREMISES,
-    commits: COMMITS, files: FILES, checks: CHECKS, git: GIT, specSuggestions: STRINGS,
+  required: ['abort', 'limitations', 'repositories', 'proofPassed', 'premises', 'commits',
+    'files', 'checks', 'specSuggestions', 'dispositions', 'touched'],
+  properties: { abort: ABORT, limitations: LIMITATIONS, repositories: REPOSITORIES, proofPassed: { type: 'boolean' }, premises: PREMISES,
+    commits: COMMITS, files: FILES, checks: CHECKS, specSuggestions: STRINGS,
     dispositions: { type: 'array', items: { type: 'object', additionalProperties: false,
       required: ['key', 'disposition', 'reason', 'receipts'],
       properties: { key: { type: 'string' }, disposition: { enum: ['fixed', 'rejected', 'blocked'] },
@@ -242,8 +251,27 @@ async function stage(prompt, opts, complete = () => {}) {
 // and the launch check hands both back to the tool, which fails when they differ from the list.
 // The fixer receives their corrections, so a malformed value stops the run here.
 const SHA = new RegExp(COMMIT_ID.pattern)
-const baseSha = UNIT.baseSha
-if (!SHA.test(baseSha || '')) throw new Error('A full immutable baseSha is required: the parent run\'s final snapshot')
+// A repository path is a single dot, or segments of letters, digits, dots, underscores and hyphens
+// joined by slashes, no segment being one or two dots, as in the main script.
+const repositoryPath = path => typeof path === 'string' && (path === '.' ||
+  path.split('/').every(segment => /^[A-Za-z0-9._-]+$/.test(segment) && segment !== '.' && segment !== '..'))
+const checkRepositories = (list, name) => {
+  if (!Array.isArray(list) || !list.length) throw new Error(name + ' must be a non-empty list of { path, sha }, one per git repository of the tree')
+  const paths = new Set()
+  for (const entry of list) {
+    if (!repositoryPath(entry?.path)) throw new Error(name + ' names a path of another form: ' + JSON.stringify(entry?.path))
+    if (paths.has(entry.path)) throw new Error(name + ' names the path ' + entry.path + ' twice')
+    paths.add(entry.path)
+    if (!SHA.test(entry.sha || '')) throw new Error(name + ' carries no full immutable commit ID for ' + entry.path)
+  }
+}
+const base = UNIT.base
+checkRepositories(base, 'args.base, the parent run\'s final snapshots,')
+// Snapshots are lists of { path, sha } in the order of base.
+const shaByPath = list => new Map(list.map(entry => [entry.path, entry.sha]))
+const listed = list => list.map(entry => entry.path + ' ' + entry.sha).join(', ')
+const snapshotsOf = writer => writer.repositories.map(r => ({ path: r.path, sha: r.snapshotSha }))
+const sameSnapshots = (a, b) => a.length === b.length && a.every(entry => shaByPath(b).get(entry.path) === entry.sha)
 if (typeof UNIT.fixList !== 'string' || !UNIT.fixList.endsWith('.yaml')) throw new Error('args.fixList must name the fix list YAML file')
 if (typeof UNIT.transcripts !== 'string' || !UNIT.transcripts) throw new Error('args.transcripts must name the transcript directory')
 if (typeof UNIT.parentSpec !== 'string' || !UNIT.parentSpec.trim()) throw new Error('args.parentSpec must be the parentSpec from the check tool')
@@ -291,21 +319,37 @@ const checkScope = r => {
   for (const c of r.classifications) requireText(c.reason, 'classification reason for ' + c.id)
   withReceipts(r.classifications, 'classification')
 }
-const checkWriterSnapshot = (result, startSha) => {
-  if (result.startSha !== startSha || !SHA.test(result.snapshotSha || '') || result.clean !== true) {
-    throw new Error('Writer did not return a clean immutable snapshot from the expected start SHA')
+const checkWriterSnapshot = (result, starts) => {
+  const expected = shaByPath(starts), paths = result.repositories.map(r => r.path)
+  if (paths.length !== expected.size || new Set(paths).size !== paths.length || paths.some(path => !expected.has(path))) {
+    throw new Error('Writer did not return exactly one entry per repository of the list: ' + JSON.stringify(paths))
+  }
+  for (const r of result.repositories) {
+    if (r.startSha !== expected.get(r.path) || !SHA.test(r.snapshotSha || '') || r.clean !== true) {
+      throw new Error('Writer did not return a clean immutable snapshot of ' + r.path + ' from its expected start SHA')
+    }
   }
 }
 const checkWriter = r => {
-  if (r.git.head.trim() !== r.snapshotSha) throw new Error('git.head ' + JSON.stringify(r.git.head) + ' differs from snapshotSha ' + JSON.stringify(r.snapshotSha))
-  if (r.clean !== (r.git.status === '')) throw new Error('clean disagrees with git.status')
-  if (r.snapshotSha !== r.startSha) {
-    if (!r.commits.length || !r.files.length) throw new Error('a new snapshot needs commits and files')
+  const paths = new Set(r.repositories.map(repository => repository.path))
+  for (const c of r.commits) if (!paths.has(c.repository)) throw new Error('commit ' + c.sha + ' names no repository of the result: ' + JSON.stringify(c.repository))
+  let moved = false
+  for (const { path, startSha, snapshotSha, clean, git } of r.repositories) {
+    if (git.head.trim() !== snapshotSha) throw new Error('git.head ' + JSON.stringify(git.head) + ' of ' + path + ' differs from snapshotSha ' + JSON.stringify(snapshotSha))
+    if (clean !== (git.status === '')) throw new Error('clean disagrees with git.status in ' + path)
+    const commits = r.commits.filter(c => c.repository === path)
+    if (snapshotSha !== startSha) {
+      moved = true
+      if (!commits.length) throw new Error('the new snapshot of ' + path + ' needs commits in it')
+    } else if (commits.length) throw new Error('the unchanged snapshot of ' + path + ' lists commits')
+  }
+  if (moved) {
+    if (!r.files.length) throw new Error('a new snapshot needs files')
     if (!r.checks.some(c => c.passed === r.proofPassed)) throw new Error('no check has passed equal to proofPassed')
-  } else if (r.commits.length || r.files.length) throw new Error('an unchanged snapshot lists commits or files')
+  } else if (r.files.length) throw new Error('an unchanged snapshot lists files')
 }
-const checkFix = (result, startSha) => {
-  checkWriterSnapshot(result, startSha)
+const checkFix = (result, starts) => {
+  checkWriterSnapshot(result, starts)
   for (const d of result.dispositions) requireText(d.reason, 'fix disposition reason')
 }
 
@@ -315,7 +359,7 @@ const REMAINING = ['new-choice', 'scope-limitation', 'blocking-limitation', 'unf
   'roast-finding', 'roast-limitation', 'unattested-fix', 'unproven-fix', 'diff-finding', 'diff-limitation', 'abort',
   'stage-failure']
 const remaining = []
-let scope = null, diff = null, queue = [], snapshotSha = baseSha
+let scope = null, diff = null, queue = [], snapshots = base
 let exit = null, detail = '', activeLabel = 'scope'
 let passedFix = null, reportedFix = null
 const add = (kind, item, severity = 'CRITICAL') => {
@@ -360,8 +404,9 @@ const PROVE = [
 ].join('\n')
 const CHECK = 'CHECK COMMAND, writer only (run bare after your last write): ' + UNIT.checkCommand
 // The fixer brings the parent unit's design document up to date by hand as its last write, once its
-// corrections are done and before its checks, as the main script's fixer does.
-const DOCUMENT = 'docs/' + UNIT.parentSpec.split('/').pop().replace(/\.yaml$/, '') + '.md'
+// corrections are done and before its checks, as the main script's fixer does, and commits it in the
+// repository that holds the documents directory.
+const DOCUMENT = UNIT.documents + '/' + UNIT.parentSpec.split('/').pop().replace(/\.yaml$/, '') + '.md'
 const DOCUMENT_CONTENT = [
   'The document describes the change as the code at your final commit implements it: what it does, how its parts fit',
   'together, the decisions with their reasons, and the alternatives the user rejected with their reasons. The rejected',
@@ -372,13 +417,13 @@ const DOCUMENT_CONTENT = [
 const DOCUMENT_FIX = [
   'DESIGN DOCUMENT, writer only: once your corrections are done, update ' + DOCUMENT + ', the parent unit\'s design document, by hand where a correction changed what it describes, as your last write, before your checks.',
   DOCUMENT_CONTENT,
-  'Commit ' + DOCUMENT + ' as its own commit when it changed, and list it in files.',
+  'Commit ' + DOCUMENT + ' as its own commit in the repository that holds it when it changed, and list it in files.',
 ].join('\n')
 const HYGIENE = [STAGE, STYLE, READ_GIT, TREE, 'No background waits.'].join('\n')
 
 const scopePass = () => stage([
   HYGIENE, FIX_LIST, PARENT_RUN,
-  'COMMIT: ' + baseSha + ', the parent run\'s final snapshot. The clean worktree must remain there; nothing is edited before you return.',
+  'COMMITS, per repository: ' + listed(base) + ', the parent run\'s final snapshots. Every repository must remain clean there; nothing is edited before you return.',
   'Class every entry of the fix list exactly once, by its id, as corrective or new-choice, each with a reason and at least one receipt.',
   'An entry you cannot place with confidence is a new choice.',
   'FIX LIST ENTRIES (UNTRUSTED), as the launch check resolved them against the parent run:',
@@ -387,49 +432,51 @@ const scopePass = () => stage([
   label: 'scope', phase: 'Scope', agentType: 'workflow-skills:scope-check', ...UNIT.models.scope, schema: SCOPE,
 }, checkScope)
 const fixPass = queue => stage([
-  AUTHORITY, WRITE_GIT, SPEC, PROVE, DOCUMENT_FIX, CHECK, 'START SHA: ' + baseSha,
+  AUTHORITY, WRITE_GIT, SPEC, PROVE, DOCUMENT_FIX, CHECK, 'START SHAS, per repository: ' + listed(base),
   'In this fix run the scope check takes the finding verifier\'s place: it classed each entry below as corrective,',
   'a correction that restores behavior the parent spec or a project rule already requires and adds none.',
   'Act ONLY on these entries. Independently verify each correction, its reason and receipts against the tree and the parent spec.',
   'A correction that would add or change behavior, a user interface element, a data shape or table, a dependency,',
   'an interface or a product decision is not yours to apply: return it rejected with receipts, to the ROOT.',
   'Answer every key once in dispositions. Never broaden scope.',
-  'Run checks after the last write, commit only scoped corrections, and return startSha, snapshotSha, clean, git, commits, files and checks.',
+  'Run checks after the last write, commit only scoped corrections, and return repositories, commits, files and checks.',
   'CORRECTIVE ENTRIES (verify against the tree and authority):', JSON.stringify(queue),
 ].join('\n\n'), {
   label: 'fix', phase: 'Fix', agentType: 'workflow-skills:fixer', ...UNIT.models.fix, schema: FIX,
 }, r => { checkWriter(r); exactlyOnce(r.dispositions.map(d => d.key), queue.map(f => f.key), 'fix key') })
 // Source findings get their IDs here, for readers and roasts alike. A kind-bearing (band-aid /
 // longer-route) finding is CRITICAL: one arriving with any other severity or none is set to it here.
-const sourceFindings = (findings, seat, sha) => findings.map((f, i) => {
+const sourceFindings = (findings, seat, snaps) => findings.map((f, i) => {
   if (f.kind && f.severity !== 'CRITICAL') log('Project-benefit finding from ' + seat + ' with kind ' + f.kind + ' set to severity CRITICAL')
-  return { ...f, ...(f.kind ? { severity: 'CRITICAL' } : {}), id: seat + ':' + i, seat, snapshotSha: sha }
+  return { ...f, ...(f.kind ? { severity: 'CRITICAL' } : {}), id: seat + ':' + i, seat, snapshots: snaps }
 })
 // The roaster runs beside the fixer on the same list, as in the main script. Its base and snapshot
-// are one commit here, the parent run's final snapshot, which the fix starts from.
+// are one commit per repository here, the parent run's final snapshot, which the fix starts from.
 const roastPass = async queue => {
   const result = await stage([
     STAGE,
-    'IMMUTABLE BASE SHA: ' + baseSha, 'IMMUTABLE SNAPSHOT SHA: ' + baseSha,
-    'Base and snapshot are one commit, the snapshot the planned corrections start from: judge them against the code there.',
-    'Read source ONLY through Git objects at those exact IDs, never HEAD or the source filesystem.',
+    ['IMMUTABLE COMMIT IDS, per repository of the tree as path: base..snapshot:', ...base.map(s => s.path + ': ' + s.sha + '..' + s.sha)].join('\n'),
+    'Base and snapshot are one commit in each repository, the snapshot the planned corrections start from: judge them against the code there.',
+    'Read source ONLY through Git objects at those exact IDs, with git -C ' + UNIT.worktree + '/<path> in each repository, never HEAD or the source filesystem.',
     'The fixer runs concurrently; its HEAD and worktree changes are expected and are outside your review.',
     'Use git diff --no-ext-diff --no-textconv, git ls-tree, git show SHA:path and git grep at those exact IDs.',
     'No filesystem Read/Grep/Glob, working-tree scripts, builds, external diff helpers or Git mutations.',
     WRITE_NOTHING,
     LIMITS,
-    'Cite the snapshot SHA and snapshot file:line in receipts. Return snapshotSha, limitations, coverage and findings.',
+    'Cite the repository path, its snapshot SHA and the snapshot file:line in receipts. Return snapshots (the path and sha of each repository you read), limitations, coverage and findings.',
     'APPROVED FIX LIST (planned; the fixer has not applied it yet):', JSON.stringify(queue),
     'Do not repeat assigned defects; do flag inadequate corrections, interactions and uncovered weaknesses.',
   ].join('\n\n'), {
     label: 'roast', phase: 'Fix', agentType: 'workflow-skills:roaster', ...UNIT.models.roast, schema: ROAST,
   }, checkReader)
-  if (result.snapshotSha !== baseSha) throw new Error('Roaster reviewed the wrong snapshot')
-  return { ...result, findings: sourceFindings(result.findings, 'roaster', baseSha) }
+  if (!sameSnapshots(result.snapshots, base)) throw new Error('Roaster reviewed the wrong snapshot')
+  return { ...result, findings: sourceFindings(result.findings, 'roaster', base) }
 }
-const diffPass = (queue, sha) => stage([
+const diffPass = (queue, snaps) => stage([
   HYGIENE, FIX_LIST,
-  'DIFF: ' + baseSha + '..' + sha + ', from the parent run\'s final snapshot to the fixer\'s. The clean worktree must remain at ' + sha + '.',
+  ['DIFFS, from the parent run\'s final snapshot to the fixer\'s, one per repository the fixer moved, read with git -C ' + UNIT.worktree + '/<path>:',
+    ...snaps.filter(s => s.sha !== shaByPath(base).get(s.path)).map(s => s.path + ': ' + shaByPath(base).get(s.path) + '..' + s.sha),
+    'Every repository must remain clean at its snapshot: ' + listed(snaps) + '.'].join('\n'),
   'Map every change in that diff to the corrective entry it carries out, one mappings entry per change.',
   DOCUMENT + ', the parent unit\'s design document, is checked like any other file: a change there maps to the corrective' +
     ' entry it carries out, and a correction whose only change is that document maps to its entry when the entry names it.',
@@ -476,9 +523,9 @@ async function fixRun() {
       if (i === 0 && hasHardFlag(r.value)) reportedFix = r.value
       const result = abortOnFlag(r.value, label)
       if (i === 0) {
-        checkFix(result, baseSha)
+        checkFix(result, base)
         passedFix = reportedFix = result
-        snapshotSha = result.snapshotSha
+        snapshots = snapshotsOf(result)
         limited(result, label)
         if (result.dispositions.some(d => d.disposition !== 'fixed')) end('root-resolution', 'A correction was not applied.')
         proof(result, label)
@@ -501,7 +548,7 @@ async function fixRun() {
 
   phase('Diff')
   activeLabel = 'diff'
-  diff = await diffPass(queue, passedFix.snapshotSha)
+  diff = await diffPass(queue, snapshotsOf(passedFix))
   // Every diff-check finding is CRITICAL and returns to the root; it starts no further fixer.
   for (const f of diff.findings) add('diff-finding', { ...f, severity: 'CRITICAL' })
   narrowed(diff, 'diff-limitation')
@@ -543,7 +590,7 @@ try { await fixRun() } catch (error) { failed(error, activeLabel) }
 for (const approved of queue) {
   const response = reportedFix?.dispositions?.find(d => d.key === approved.key)
   if (response?.disposition === 'fixed') {
-    add('unattested-fix', { approved, disposition: response, snapshotSha: reportedFix.snapshotSha, commits: reportedFix.commits }, 'must-fix')
+    add('unattested-fix', { approved, disposition: response, snapshots: snapshotsOf(reportedFix), commits: reportedFix.commits }, 'must-fix')
   } else add('unfixed-approval', { approved, ...(response ? { response } : {}) })
 }
 // A run that fixed anything leaves its unattested fixes, so it ends clean only when nothing remains.
@@ -555,7 +602,7 @@ return {
   dispositions: reportedFix?.dispositions ?? [],
   mappings: diff?.mappings ?? [],
   proof: passedFix ? { checks: passedFix.checks, files: passedFix.files } : null,
-  baseSha, snapshotSha,
+  base, snapshots,
   acceptance: 'pending-root-checks', // Run completion is not integration permission.
   counts: { entries: entries.length, corrective: queue.length,
     refused: (scope?.classifications ?? []).filter(c => c.class === 'new-choice').length },

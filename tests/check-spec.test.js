@@ -1,6 +1,6 @@
 import { afterAll, describe, expect, test } from 'bun:test'
 import { createHash } from 'node:crypto'
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -322,19 +322,62 @@ describe('structured unit spec validation', () => {
     // The fixture rule file is tracked, so a quote of its committed text passes at HEAD even when
     // the working copy has moved on, and a quote of the working copy fails at HEAD.
     const head = Bun.spawnSync(['git', 'rev-parse', 'HEAD'], { cwd: root }).stdout.toString().trim()
+    const base = JSON.stringify([{ path: '.', sha: head }])
     const trackedRules = 'tests/fixtures/spec-provenance/rules.txt'
     const committed = Bun.spawnSync(['git', 'show', `${head}:${trackedRules}`], { cwd: root }).stdout.toString()
     const original = readFileSync(join(root, trackedRules), 'utf8')
     writeFileSync(join(root, trackedRules), committed.replace('Retain the input order', 'Keep the input order'))
     try {
-      expect(changed(s => { s.items[1].rule.file = trackedRules }, ['--base', head]).exit).toBe(0)
+      expect(changed(s => { s.items[1].rule.file = trackedRules }, ['--base', base]).exit).toBe(0)
       invalid(changed(s => { s.items[1].rule.file = trackedRules }), 'quote does not match')
-      invalid(changed(s => { s.items[1].rule.file = trackedRules; s.items[1].quote = 'Keep the input order' }, ['--base', head]), 'quote does not match')
+      invalid(changed(s => { s.items[1].rule.file = trackedRules; s.items[1].quote = 'Keep the input order' }, ['--base', base]), 'quote does not match')
     } finally { writeFileSync(join(root, trackedRules), original) }
     // An untracked file has no committed state, so --base reads it from disk.
     const untracked = join(scratch, 'untracked-rule.txt')
     writeFileSync(untracked, 'Retain the input order across every exported row.\n')
-    expect(changed(s => { s.items[1].rule = { file: untracked, line: 1 } }, ['--base', head]).exit).toBe(0)
+    expect(changed(s => { s.items[1].rule = { file: untracked, line: 1 } }, ['--base', base]).exit).toBe(0)
+  })
+
+  test('--base takes one entry per repository of the tree, checks the list against the tree and reads a rule in its own repository', () => {
+    // A tree root that is no repository and holds two, as a repo-tool task tree does. api changes after
+    // its base commit, web never changes, and the spec cites a rule inside api.
+    const tree = join(scratch, `${serial++}-tree`)
+    const git = (repository, ...command) => {
+      const result = Bun.spawnSync(['git', '-C', join(tree, repository), ...command], { stdout: 'pipe', stderr: 'pipe' })
+      expect([command[0], result.exitCode]).toEqual([command[0], 0])
+      return result.stdout.toString().trim()
+    }
+    const repository = (path, text) => {
+      mkdirSync(join(tree, path), { recursive: true })
+      git(path, 'init', '--quiet', '--initial-branch=main')
+      writeFileSync(join(tree, path, 'rules.txt'), text)
+      git(path, 'add', '--', 'rules.txt')
+      git(path, 'commit', '--quiet', '-m', 'fixture: record the rules')
+      return git(path, 'rev-parse', '--verify', 'HEAD^{commit}')
+    }
+    const api = repository('api', 'Retain the input order across every exported row.\n')
+    const web = repository('web', 'Unrelated.\n')
+    writeFileSync(join(tree, 'api', 'rules.txt'), 'Keep the input order across every exported row.\n')
+    const spec = structuredClone(valid)
+    // The tool runs in the tree, where a link to the fixtures keeps the record's relative paths valid.
+    // The walk for repositories follows no link.
+    symlinkSync(join(root, 'tests'), join(tree, 'tests'))
+    spec.items[1].rule = { file: 'api/rules.txt', line: 1 }
+    const path = join(scratch, `${serial++}.yaml`)
+    writeFileSync(path, Bun.YAML.stringify(spec))
+    const inTree = list => {
+      const result = Bun.spawnSync([process.execPath, tool, path, '--transcripts', fixtures, '--base', JSON.stringify(list)], { cwd: tree })
+      return { exit: result.exitCode, out: result.stdout.toString(), err: result.stderr.toString() }
+    }
+    const complete = [{ path: 'api', sha: api }, { path: 'web', sha: web }]
+    // The rule is read at api's base commit, where it still says Retain, although the file on disk moved on.
+    expect(inTree(complete)).toMatchObject({ exit: 0, err: '' })
+    invalid(inTree(complete.slice(0, 1)), '--base leaves out the git repositories at web')
+    invalid(inTree([{ path: 'api', sha: web }, complete[1]]), `--base commit ${web} is not in the repository at api`)
+    invalid(inTree([...complete, { path: '.', sha: api }]), '--base path . is not the top level of a git repository')
+    invalid(inTree([{ path: 'api/../web', sha: web }]), '--base names a path of another form')
+    invalid(inTree([complete[0], complete[0]]), '--base names the path api twice')
+    invalid(inTree([]), '--base expects a non-empty JSON list')
   })
 
   test('a cycle whose chain reaches a sourced item still fails, while a shared-parent acyclic derivation passes', () => {

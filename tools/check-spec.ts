@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto'
 import { createReadStream } from 'node:fs'
-import { readdir, readFile, stat } from 'node:fs/promises'
-import { isAbsolute, join, resolve } from 'node:path'
+import { readdir, readFile, realpath, stat } from 'node:fs/promises'
+import { isAbsolute, join, relative, resolve, sep } from 'node:path'
 import { createInterface } from 'node:readline'
 import { parseArgs } from 'node:util'
 import { fromMarkdown } from 'mdast-util-from-markdown@2.0.3'
@@ -360,7 +360,7 @@ async function checkRecord(content: string, transcripts: string, { fail, shape, 
 }
 
 const usage = 'Usage: bun tools/check-spec.ts <spec.yaml> --transcripts <dir> ' +
-  '[--json] [--base <commit>] [--record <path>], ' +
+  '[--json] [--base <JSON list of { path, sha }>] [--record <path>], ' +
   'or bun tools/check-spec.ts --fix-list <file> --transcripts <dir> [--json] [--expect <json>] [--record <path>]'
 
 async function main() {
@@ -380,13 +380,25 @@ async function main() {
   if (positionals.length !== 1 || !values.transcripts || values.expect !== undefined) {
     throw new Error(usage)
   }
-  // A cited rule file is read as it stood at the base commit when it is tracked there, so a unit
-  // that rewrites the very line its spec quotes still passes after the change. A file the commit
-  // does not hold, a path outside the repository, or no repository at all reads from disk.
+  const repositories = values.base === undefined ? [] : await baseRepositories(values.base)
+  // A cited rule file is read at the base commit of the repository whose path is the longest one
+  // containing it, so a unit that rewrites the very line its spec quotes still passes after the change.
+  // A file no listed repository contains, and a file its repository does not track at that commit,
+  // reads from disk. Any other git failure fails the check instead of falling back to the disk.
   const ruleText = async (file: string) => {
-    if (values.base) {
-      const shown = Bun.spawnSync(['git', 'show', `${values.base}:./${file}`], { stdout: 'pipe', stderr: 'pipe' })
-      if (shown.exitCode === 0) return shown.stdout.toString()
+    const target = resolve(file)
+    const holder = repositories.map(repository => ({ ...repository, root: resolve(repository.path) }))
+      .filter(({ root }) => target.startsWith(root + sep))
+      .sort((a, b) => b.root.length - a.root.length)[0]
+    if (holder) {
+      const inside = relative(holder.root, target)
+      const tracked = git(holder.path, 'ls-tree', '--name-only', holder.sha, '--', inside)
+      if (tracked.exitCode !== 0) throw new Error(`git cannot list ${file} at ${holder.sha}: ${tracked.stderr.toString().trim()}`)
+      if (tracked.stdout.toString().trim()) {
+        const shown = git(holder.path, 'show', `${holder.sha}:${inside}`)
+        if (shown.exitCode !== 0) throw new Error(`git cannot read ${file} at ${holder.sha}: ${shown.stderr.toString().trim()}`)
+        return shown.stdout.toString()
+      }
     }
     return readFile(file, 'utf8')
   }
@@ -591,6 +603,56 @@ const runId = /^[A-Za-z0-9][A-Za-z0-9_.-]*$/
 // The stage label the parent run gives a reader: the roaster's stage is roast, every other review:<name>.
 const stageLabel = (reader: string) => reader === 'roaster' ? 'roast' : `review:${reader}`
 const isFile = (path: string) => stat(path).then(found => found.isFile(), () => false)
+const exists = (path: string) => stat(path).then(() => true, () => false)
+const git = (directory: string, ...command: string[]) =>
+  Bun.spawnSync(['git', '-C', directory, ...command], { stdout: 'pipe', stderr: 'pipe' })
+
+// A repository of the --base list: its path under the tree root and its base commit. The path is a
+// single dot, or segments of letters, digits, dots, underscores and hyphens joined by slashes, no
+// segment being one or two dots, so a list passes through a shell inside single quotes.
+type Repository = { path: string, sha: string }
+const repositoryPath = (path: unknown) => typeof path === 'string' && (path === '.' ||
+  path.split('/').every(segment => /^[A-Za-z0-9._-]+$/.test(segment) && segment !== '.' && segment !== '..'))
+
+// Reads the --base list and checks it against the tree the tool runs in. Every entry names the top
+// level of a git repository by a path of the list form, with a full commit ID that repository holds.
+// A walk from the tree root, which descends until it meets the top level of a repository and goes no
+// deeper there, finds no repository the list leaves out, so no repository of the tree goes unread.
+async function baseRepositories(value: string): Promise<Repository[]> {
+  let list: unknown
+  try { list = JSON.parse(value) } catch (error) { throw new Error(`--base expects a JSON list of { path, sha }: ${messageOf(error)}`) }
+  if (!Array.isArray(list) || !list.length) throw new Error('--base expects a non-empty JSON list of { path, sha }, one per git repository of the tree')
+  const listed = new Set<string>()
+  for (const entry of list) {
+    if (!mapping(entry) || !repositoryPath(entry.path)) {
+      throw new Error(`--base names a path of another form: ${JSON.stringify(mapping(entry) ? entry.path : entry)}`)
+    }
+    const path = entry.path as string
+    if (listed.has(path)) throw new Error(`--base names the path ${path} twice`)
+    listed.add(path)
+    if (typeof entry.sha !== 'string' || !/^(?:[0-9a-f]{40}|[0-9a-f]{64})$/.test(entry.sha)) {
+      throw new Error(`--base carries no full commit ID for ${path}`)
+    }
+    const top = git(path, 'rev-parse', '--show-toplevel')
+    if (top.exitCode !== 0 || top.stdout.toString().trim() !== await realpath(path)) {
+      throw new Error(`--base path ${path} is not the top level of a git repository`)
+    }
+    if (git(path, 'cat-file', '-e', `${entry.sha}^{commit}`).exitCode !== 0) {
+      throw new Error(`--base commit ${entry.sha} is not in the repository at ${path}`)
+    }
+  }
+  const found: string[] = []
+  const walk = async (directory: string) => {
+    if (await exists(join(directory, '.git'))) { found.push(directory); return }
+    for (const child of await readdir(directory, { withFileTypes: true })) {
+      if (child.isDirectory()) await walk(join(directory, child.name))
+    }
+  }
+  await walk('.')
+  const missing = found.filter(path => !listed.has(path))
+  if (missing.length) throw new Error(`--base leaves out the git repositories at ${missing.join(', ')}`)
+  return list as Repository[]
+}
 
 // The journal of a run: <transcripts>/<session>/subagents/workflows/<run>/journal.jsonl, in exactly
 // one session.
