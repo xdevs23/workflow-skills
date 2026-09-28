@@ -61,12 +61,17 @@ const textOf = (record: Mapping) => {
 // human marks the user's words.
 const queuedCommand = (record: Mapping): record is Mapping & { attachment: Mapping } =>
   record.type === 'attachment' && mapping(record.attachment) && record.attachment.type === 'queued_command'
+// A queued prompt is a string, or a block array when the message carries an image beside its text.
+const promptText = (prompt: unknown) => {
+  if (typeof prompt === 'string') return withoutReminders(prompt)
+  if (Array.isArray(prompt)) return withoutReminders(textBlocks(prompt))
+  throw new Error('attachment.prompt must be a string or block array')
+}
 const queuedText = (record: Mapping & { attachment: Mapping }) => {
   const { origin, prompt } = record.attachment
   const kind = mapping(origin) ? origin.kind : undefined
   if (kind !== 'human') throw new Error(`a queued command of origin ${JSON.stringify(kind ?? null)} is not the user's words`)
-  if (typeof prompt !== 'string') throw new Error('attachment.prompt must be a string')
-  return withoutReminders(prompt)
+  return promptText(prompt)
 }
 // The host's placeholder in `answers` for a question the user answered with a typed note alone.
 const notesOnly = '(notes only)'
@@ -170,7 +175,7 @@ const replyTexts = (replies: Mapping[], dialog: Set<string>) => replies.map(repl
 // The text a context quote is checked against: a message's text with the question text of its
 // dialog calls, or the prompt of a queued command.
 const recordText = (record: Mapping) => queuedCommand(record)
-  ? (typeof record.attachment.prompt === 'string' ? withoutReminders(record.attachment.prompt) : '')
+  ? (() => { try { return promptText(record.attachment.prompt) } catch { return '' } })()
   : [textOf(record), ...dialogCalls(record).map(call => dialogText(call.input))].join(' ')
 
 // A line of a spec's prose, counted with its indentation and markers, holds at most this many
