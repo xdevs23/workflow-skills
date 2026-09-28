@@ -162,15 +162,15 @@ the user back, is class `unbacked-item`.
   every spec item it concerns in `items`, a list of at least one id, together with the `class`,
   the `claim` and `receipts`, so a `joint-impossibility` entry names each item of the conflict.
 - No spec finding fails the sense check, sets the abort or asks the user.
-- An entry of class `joint-impossibility` or `missing-contract` blocks the run. The implementer
-  returns it with a limitation of effect `blocks` that names the entry, and edits and commits
-  nothing, so every repository's snapshot is its start SHA. A spec with such an entry has nothing
-  built, whatever other entries it has.
+- Expect an entry of class `joint-impossibility` or `missing-contract` to block the run. The
+  implementer returns it with a limitation of effect `blocks` that names the entry, and edits and
+  commits nothing, so every repository's snapshot is its start SHA. A spec with such an entry has
+  nothing built, whatever other entries it has.
 - The script ends the run after the implement stage with exit `root-resolution` and a
   `blocking-limitation` item, as it does for every blocking limitation of the implementer, and no
   review stage starts.
-- An entry of class `unbacked-item` does not block. The implementer builds nothing for the items it
-  names and builds the rest of the spec.
+- Expect an entry of class `unbacked-item` not to block the run. The implementer builds nothing for
+  the items it names and builds the rest of the spec.
 - An item that cannot be built without an item of an `unbacked-item` entry rests on the same
   missing words, so the entry names it in `items` too and it stays unbuilt.
 - An item named only in a `reality-drift` entry is built.
