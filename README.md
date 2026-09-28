@@ -35,8 +35,9 @@ When a session has a skill of the same name without the plugin prefix, such as a
 the only one of that name available.
 
 ### Audit-lens subagents (read-only)
-`separation-of-concerns`, `abstraction-quality`, `code-smell`, `type-safety`, `code-cleanliness`,
-`missing-gaps`, `domain-leakage`, `type-smearing`. All eight run as seats of every
+The eight read-only audit-lens subagents are `separation-of-concerns`, `abstraction-quality`,
+`code-smell`, `type-safety`, `code-cleanliness`, `missing-gaps`, `domain-leakage` and
+`type-smearing`. All eight run as seats of every
 `implement-review-verify` run's review stage, beside its seven other seats. They are also usable
 directly as `agentType`s in your own workflows.
 
