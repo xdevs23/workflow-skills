@@ -34,7 +34,7 @@ proves the look did not change.
 ## Adopting a harness
 
 A project without a harness adopts one as its own unit of work, before the interface change that
-prompted it. The adoption is never folded into a product change.
+prompted it. The adoption is never made part of a product change.
 
 The implementation guide ships inside this skill as the folder `implementation-guide/`, starting at
 `implementation-guide/index.md`. Before writing any harness code, the agent reads every file of the
@@ -100,8 +100,9 @@ A scene is curated when no existing scene exposes the surface a change touches.
 2. Define the question the scene answers, the complete fixture that every consumer receives, the
    interactions, the measured checks and the named checkpoints. Verify every assumption the scene
    rests on against the code, and agree on the observable checks before the product change starts.
-3. Run it until it passes for the right reasons, and look at every PNG it writes. A scene that
-   passes because a fixture was left empty or a target matched the wrong element answers nothing.
+3. Run it and look at every PNG it writes. It counts only when it passes for the right reasons: a
+   scene that passes because a fixture was left empty or a target matched the wrong element
+   answers nothing.
 4. Add its entry to the project's scene documentation: the question, the fixture, the checkpoints
    and the checks.
 5. Keep exploratory scenes in the harness's directory inside the project cache, the location

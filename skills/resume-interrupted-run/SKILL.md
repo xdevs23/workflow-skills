@@ -34,9 +34,6 @@ rescuing.
   nothing.
 - An agent **completed with a bad result**. That is the opposite problem — see the boundary section
   at the end.
-- A **re-verification round** after a fix pass. Those seats stay cold by design and re-run on their
-  same original prompt (see `implement-review-verify`); this procedure is only for a seat that was cut
-  off before it ever returned a verdict.
 
 ## The procedure
 
