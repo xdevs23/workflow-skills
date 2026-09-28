@@ -21,6 +21,7 @@ const UNIT = {
   pluginRoot: '<plugin root>',           // the directory holding tools/check-spec.ts
   checkCommand: '<the check command>',   // the fixer only, run bare after its last write
   base: args.base,                       // one { path, sha } per git repository of the tree: its path under the tree root and starting commit, passed at launch
+  partialBase: false,                    // true only in a tree too large to list, where base names just the repositories the unit changes
   documents: '<documents directory>',    // design documents, relative to the tree root and inside one repository of base; docs for a one-repository tree
   criteriaCount: args.criteriaCount,     // counts.kind.criterion from the check tool, passed at launch
   implementerPrompt: 'Implement, run focused checks, and commit only scoped changes.',
@@ -778,7 +779,7 @@ const GATE = { type: 'object', required: ['exitCode', 'stdout', 'stderr', 'proof
 // The command runs in the worktree, where the cited rule files of this run resolve. The tool fails
 // when the private record of the marked block is not the record the spec names.
 const GATE_COMMAND = 'cd ' + UNIT.worktree + ' && bun ' + UNIT.pluginRoot + '/tools/check-spec.ts ' + UNIT.specPath +
-  ' --transcripts ' + UNIT.transcripts + ' --json --base \'' + JSON.stringify(base) + '\' --record ' + UNIT.privateRecord
+  ' --transcripts ' + UNIT.transcripts + ' --json --base \'' + JSON.stringify(base) + '\'' + (UNIT.partialBase ? ' --partial-base' : '') + ' --record ' + UNIT.privateRecord
 const checkGate = r => {
   if (r.exitCode !== 0 || typeof r.proof !== 'string' || !r.proof.trim()) {
     throw new Error('the spec check did not pass: exit ' + r.exitCode + ', proof ' + JSON.stringify(r.proof) + ', stderr: ' + r.stderr)

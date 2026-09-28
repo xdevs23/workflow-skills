@@ -368,8 +368,8 @@ describe('structured unit spec validation', () => {
     spec.items[1].rule = { file: 'api/rules.txt', line: 1 }
     const path = join(scratch, `${serial++}.yaml`)
     writeFileSync(path, Bun.YAML.stringify(spec))
-    const inTree = list => {
-      const result = Bun.spawnSync([process.execPath, tool, path, '--transcripts', fixtures, '--base', JSON.stringify(list)], { cwd: tree })
+    const inTree = (list, ...options) => {
+      const result = Bun.spawnSync([process.execPath, tool, path, '--transcripts', fixtures, '--base', JSON.stringify(list), ...options], { cwd: tree })
       return { exit: result.exitCode, out: result.stdout.toString(), err: result.stderr.toString() }
     }
     const complete = [{ path: 'api', sha: api }, { path: 'web', sha: web }]
@@ -381,6 +381,14 @@ describe('structured unit spec validation', () => {
     invalid(inTree([{ path: 'api/../web', sha: web }]), '--base names a path of another form')
     invalid(inTree([complete[0], complete[0]]), '--base names the path api twice')
     invalid(inTree([]), '--base expects a non-empty JSON list')
+    // A partial list names only the repositories a unit changes and skips the search for the others,
+    // while every listed repository and commit is still checked.
+    expect(inTree(complete.slice(0, 1), '--partial-base')).toMatchObject({ exit: 0, err: '' })
+    invalid(inTree([{ path: 'api', sha: web }], '--partial-base'), `--base commit ${web} is not in the repository at api`)
+    invalid(inTree([...complete, { path: '.', sha: api }], '--partial-base'), '--base path . is not the top level of a git repository')
+    const bare = Bun.spawnSync([process.execPath, tool, path, '--transcripts', fixtures, '--partial-base'], { cwd: tree })
+    expect(bare.exitCode).not.toBe(0)
+    expect(bare.stderr.toString()).toContain('Usage:')
   })
 
   test('a cycle whose chain reaches a sourced item still fails, while a shared-parent acyclic derivation passes', () => {
