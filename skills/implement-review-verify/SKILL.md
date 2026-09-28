@@ -116,7 +116,7 @@ compliance, inverse-spec and finding verification judge it after code.
 
 ## The shape
 
-Four phases: **Implement → Review → Verify → Fix**.
+The implement-review-verify workflow runs four phases: **Implement → Review → Verify → Fix**.
 Cold alternatives joins Review. The mandatory roaster overlaps Fix on the pre-fix commit plus approved fix list; its findings return to the root in `remaining`.
 
 ### Phase 1 — Implement (1 agent, sequential — `agentType:'implementer'`)
@@ -629,10 +629,10 @@ user may not agree with the finding, so no unit spec cites such words for one. A
 a decision, an open decision, and anything the scope check refused go to the user and then to a
 full unit with a spec. The root never uses the fix run for work it wants done beyond a finding.
 
-The fix run is `scripts/fix-follow-up.js`, copied and filled in its marked block like the other two
-scripts. Its copy sets `meta.name` to a kebab-case name of the fix run and `meta.description` to
-one line saying what the run fixes, as a copy of the other two scripts does. It takes no spec and
-no quotation. Its input is a fix list,
+The fix run is `scripts/fix-follow-up.js`, copied and filled in its marked block like the main
+script, `scripts/implement-review-verify.js`. Its copy sets `meta.name` to a kebab-case name of
+the fix run and `meta.description` to one line saying what the run fixes, as a copy of the main
+script does. It takes no spec and no quotation. Its input is a fix list,
 a YAML file in the main checkout's project cache, which `workflow-skills:local-cache` defines, with the keys `parentSpec`
 (the absolute path of the unit spec the parent run was built against), `run` (the parent run's
 ID) and `entries`. The tool reports a relative `parentSpec` as a violation. Each entry has
