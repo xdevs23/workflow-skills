@@ -30,15 +30,16 @@ sentence and ask what fact was lost; if the answer is none, it was never carryin
 
 **A skill tells the assistant that reads it what to do, as "you".** It writes in imperative
 sentences: "Watch the pull request", "Run it with `python3`", "Do not act on your own replies". It
-never calls its reader "the agent" or "the root", and a sentence that needs no subject drops it.
-The system prompt already tells the model who "you" is, so a third-person name only makes the
-reader translate every rule back to itself. Another agent, such as a workflow stage or a subagent
-the skill starts, keeps its own name.
+never calls its reader "the agent", "the root" or "the orchestrator", and a sentence that needs
+no subject drops it. The system prompt already tells the model who "you" is, so a third-person
+name only makes the reader translate every rule back to itself. Every other agent keeps its own
+name: the subagents, the workflow agents, a stage such as the implementer.
 
 **Steps and rules are bullets, one rule to a bullet.** A bullet opens with its instruction, and
 the facts the instruction needs follow in the same bullet. Continuous prose stays for passages
 that explain why, which a list would break apart.
 
-**A skill names another skill by its qualified name**, such as `workflow-skills:writing-style`,
-and its frontmatter description says only when the skill applies, not what is inside it.
+**A skill names another skill or an agent type by its qualified name**, such as
+`workflow-skills:writing-style` or `workflow-skills:implementer`, and its frontmatter description
+says only when the skill applies, not what is inside it.
 `skills/babysit-pr/SKILL.md` is written this way and serves as the example.
