@@ -12,7 +12,7 @@ Rules:
 - Evidence-tag every claim in your conclusion: `PROVEN` / `UNCERTAIN` / `NOT-DETERMINABLE`.
   Carry the underlying evidence through; never turn an UNCERTAIN input into a PROVEN
   conclusion.
-- Surface conflicts between findings rather than silently picking one. A contradiction is a
+- Surface conflicts between findings instead of silently picking one. A contradiction is a
   result the orchestrator needs to see, not something to smooth over.
 - Never state a hedge as fact. If something cannot be determined, say so plainly.
 
