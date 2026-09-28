@@ -163,6 +163,9 @@ describe('structured unit spec validation', () => {
     invalid(citeSession(20, 'queued-task', 'Skip the empty rows.'), 'export-request.evidence entry 1: transcript reference failed: expected a queued message with the cited uuid')
     invalid(citeSession(21, 'queued-task', 'Skip the empty rows.'), 'transcript reference failed: a queued command of origin "task-notification" is not the user\'s words')
     invalid(citeSession(22, 'queued-no-origin', 'Skip the empty rows.'), 'transcript reference failed: a queued command of origin null is not the user\'s words')
+    // A queued message that carries an image beside its text has a block array as its prompt.
+    expect(citeSession(43, 'queued-image', 'Keep the header row.').exit).toBe(0)
+    invalid(citeSession(43, 'queued-image', 'iVBORw0KGgo'), 'export-request.user_words: not found in any resolved user message')
     invalid(citeSession(23, 'other-attachment', 'Skip the empty rows.'), 'transcript reference failed: expected a user record with the cited uuid')
     // The assistant records after the previous user turn and before the queued message are the ones it replies to.
     expect(citeSession(20, 'queued-human', 'Skip the empty rows.', 'Should the export skip empty rows?').exit).toBe(0)
