@@ -46,12 +46,13 @@ dedicated skill prescribes. It does not say who pushes a change or how a push is
   made on.
 - Check a reported problem against the code before editing anything, make the change the comment
   needs or decline a finding the check disproves, and in both cases reply through the
-  `pr-comment-replies` skill.
+  `workflow-skills:pr-comment-replies` skill.
 
 ## Failed checks
 
-Tell a failure the repository causes apart from a failure of the infrastructure, and fix the failure
-the repository causes. Skip check results on a commit older than the newest push.
+- Tell a failure the repository causes apart from a failure of the infrastructure, and fix the
+  failure the repository causes.
+- Skip check results on a commit older than the newest push.
 
 ## Asking the user
 
