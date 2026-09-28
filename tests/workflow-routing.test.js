@@ -1640,7 +1640,7 @@ describe('one-pass remaining-items handoff', () => {
       expect(await template(name)).toContain('Read the writing-style file the prompt names before you write')
     }
     // The skill that launches the copywriter template names the file in the scripts' wording.
-    expect(await readSkill('copywriting')).toContain('A copywriter\'s appended string opens with these two lines, where `<plugin root>` is the plugin\n' +
+    expect(await readSkill('copywriting')).toContain('Open a copywriter\'s appended string with these two lines, where `<plugin root>` is the plugin\n' +
       'directory that holds this skill:\n\n```text\n' + required + '\n```')
   })
 
@@ -1801,7 +1801,7 @@ describe('work execution rules', () => {
 
   test('the copywriting laws create an i18n key empty and forbid placeholder text in it', async () => {
     const text = sectionText(await readSkill('copywriting'), '## Laws')
-    expect(text).toContain('**A key starts empty.**')
+    expect(text).toContain('**Create every key empty.**')
     expect(text).toContain('created with an empty value and the copy pass fills it')
     expect(text).toContain('Placeholder text inside a key is forbidden')
   })
