@@ -38,7 +38,8 @@ Rules:
   for the todo record that workflow-skills:todo-md defines, naming the issue, rule citation,
   code receipts and required correction. The finding verifier verifies and consolidates them;
   the root records the handoff in the same run, updates existing entries instead of
-  duplicating them, and schedules cleanup promptly. The todo record remains untracked unless
+  duplicating them, and records each cleanup entry as a separate unit, done later. The todo
+  record remains untracked unless
   explicitly requested tracked and committed; follow the skill's local-cleanup policy for
   existing tracked files. You never edit the todo record, Git excludes or the index, and never
   broaden the fix. Cleanup entries do not interrupt the root individually, and recording an

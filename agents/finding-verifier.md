@@ -80,8 +80,8 @@ Rules:
   code receipts, source IDs and required correction for the root's same-run handoff to the todo
   record that workflow-skills:todo-md defines. That record stays untracked unless explicitly
   requested tracked and committed; you never write or stage it. Recording cleanup is not fixing
-  it: it must be scheduled promptly, without expanding this unit or interrupting the root per
-  issue.
+  it: the root records each entry as a separate unit, done later, without expanding this unit or
+  interrupting the root per issue.
 - A confirmed rule violation stays CRITICAL regardless of house style or pre-existing status;
   describe operational impact separately. Reject a false violation only with evidence that it
   is not a violation; never downgrade a real one to a style nit. Record is genuinely
@@ -96,12 +96,12 @@ Rules:
   faithfully or ask the user about a genuinely unsettled one after checking the question against
   the recorded directives. Reject only with concrete counterevidence against the finding itself,
   never because a later spec edit made it look resolved;
-  an edited spec does not resolve the finding, and enforcement continues against the original
-  directives in the follow-up. A rejection is not a
+  an edited spec does not resolve the finding, and the original directives stay the measure it
+  is judged against. A rejection is not a
   routine disposition here: like every other inverse-spec outcome, it still reaches the root with
   its counterevidence intact, because directive precedence over the spec (and over this template)
   applies to a rejection exactly as it does to an approval or an open question. Preserve its
-  CRITICAL status and inverse-spec source IDs through consolidation and follow-up, and
+  CRITICAL status and inverse-spec source IDs through consolidation and the handoff to the root, and
   never let the recorded directives be summarized away, truncated or selectively quoted to make a
   finding disappear.
 - A source finding carrying kind band-aid or longer-route is a project-benefit finding about a

@@ -2,6 +2,7 @@ import { describe, expect, test } from 'bun:test'
 import { fileURLToPath } from 'node:url'
 
 const skill = await Bun.file(new URL('../skills/implement-review-verify/SKILL.md', import.meta.url)).text()
+const specWriting = await Bun.file(new URL('../skills/spec-writing/SKILL.md', import.meta.url)).text()
 const blocks = []
 Bun.markdown.render(skill, {
   code(body, { language }) {
@@ -229,22 +230,24 @@ describe('workflow verification and consolidation', () => {
     expect(inverseTemplate).toMatch(/Treat the choice like any other in the diff: an authorizations\s+entry that maps it to the\s+exact authorizing words, or a finding when no such words exist/)
   })
 
-  test('the spec-writing and research/verify loop skills wire in the directive veto', async () => {
-    const dir = new URL('../skills/', import.meta.url)
-    const specWriting = await Bun.file(new URL('immaculate-spec-writing/SKILL.md', dir)).text()
-    const research = await Bun.file(new URL('research-loop/SKILL.md', dir)).text()
-    const verify = await Bun.file(new URL('verify-loop/SKILL.md', dir)).text()
-    expect(specWriting).toContain('private directive record')
-    expect(specWriting).toMatch(/never installs a new product, architecture, persistence, security or\s+operational choice/)
-    expect(research).toMatch(/cannot settle a product,\s+architecture, persistence, security or operational choice/)
-    expect(verify).toContain('is not something this loop resolves by editing')
+  test('the spec-writing skill states the directive veto and refuses a spec reworded to get past its reviewers', () => {
+    const text = flat(specWriting)
+    for (const phrase of ['private directive record',
+      '**An edit the root makes to a spec on its own is an ordinary derivation from an existing decision.**',
+      'It is never a new product, architecture, persistence, security or operational choice.',
+      'any point where the spec would contradict a recorded directive of the user, go to the user instead of being written around',
+      '**A spec is never reworded so that it gets past its reviewers.**',
+      'A spec that needs rewrite after rewrite is a sign that something is wrong',
+      'the root takes the conflict to the user instead of rewriting the spec again']) {
+      expect([phrase, text.includes(phrase)]).toEqual([phrase, true])
+    }
   })
 
   test('the private-source section requires context, provenance and blocks the launch on a missing record', () => {
-    expect(skill).toContain('qualifications, surrounding context and examples')
-    expect(skill).toContain('with its provenance recorded')
-    expect(skill).toContain('blocks the launch')
-    expect(skill).not.toContain('is an explicit limitation that blocks')
+    expect(specWriting).toContain('qualifications, surrounding context and examples')
+    expect(specWriting).toContain('with its provenance recorded')
+    expect(specWriting).toContain('blocks the launch')
+    expect(specWriting).not.toContain('is an explicit limitation that blocks')
   })
 
   test('AUTHORITY requires reading directive context, rejects a keyword test, and forbids proceeding on a wordless record', () => {
@@ -275,11 +278,10 @@ describe('workflow verification and consolidation', () => {
     expect(docs).toMatch(/crossing it automatically triggers that timing review/)
   })
 
-  test('the spec-writing skill requires the private record itself, not just an "if any" hedge', async () => {
-    const specWriting = await Bun.file(new URL('../skills/immaculate-spec-writing/SKILL.md', import.meta.url)).text()
+  test('the spec-writing skill requires the private record itself, not just an "if any" hedge', () => {
     expect(specWriting).not.toContain('if any')
-    expect(specWriting).toContain('cannot be omitted from that record')
-    expect(specWriting).toMatch(/keep factual\s+research findings distinct from the decisions/)
+    expect(flat(specWriting)).toContain('cannot be omitted from that record')
+    expect(flat(specWriting)).toContain('keep factual research findings distinct from the decisions')
   })
 
   test('the workflow skill wires a root question-premise check ahead of any decision request', () => {
@@ -1115,15 +1117,8 @@ describe('spec provenance instructions and routing', () => {
 
   test('the workflow states source rules, both launch checks, the written document after implementation and the generated denominator', () => {
     for (const phrase of [
-      'the unit spec, `<unit>.yaml` in the private-spec location that `workflow-skills:local-cache` defines, ignored and untracked',
-      'root writes the YAML before launching',
-      '`transcript`', '`rule`', '`observation`', '`derivation`',
-      'asserting that a condition, failure mode or risk exists needs source transcript or observation',
-      'hypothetical hazard stays a finding until an observation', 'simpler alternative it rules out',
-      'parents include the transcript item asking for it or the observation',
-      'root runs the tool before the spec pre-phase and again before the main run',
-      'A failing spec launches neither run', 'Validate the YAML after every amendment',
-      'No Markdown design document is written, committed or checked before implementation',
+      '`transcript`', 'root runs the tool before the spec pre-phase and again before the main run',
+      'A failing spec launches neither run',
       'The tool prints its summary on stdout, as JSON with `--json`.',
       'The tracked design document is written by hand from the code after the implementation, so it records what was built.',
       'It describes the change as the code at the writer\'s final commit implements it: what it does, how its parts fit together,' +
@@ -1146,10 +1141,6 @@ describe('spec provenance instructions and routing', () => {
         ' so the counted spec is the one the writers and reviewers read.', 'The gate reads no design document.',
       'The tool\'s `nonBlankLines` counts the whole YAML file, quoted words, evidence and keys included, and belongs only to the tool summary.',
       'code added / spec lines, displayed to one decimal', 'The root obtains the counts from Git and the spec tool',
-      'by its path under the main checkout, never a path relative to its worktree',
-      "claim in the todo record that `workflow-skills:todo-md` defines has the same status as a reviewer's claim",
-      'todo record is never cited as a source',
-      'write each one as a `criterion` item in the YAML spec',
       'same must-fix, should-fix and nit severity the gap-finder uses',
       'non-empty `limitations` list when any entry is unchecked',
       'A problem reported to the user quotes the observed symptom and the line that causes it',
@@ -1161,6 +1152,17 @@ describe('spec provenance instructions and routing', () => {
         ' stage goes stale, and the fixer\'s run after the last write of the run is the one full check.',
       'never sits in a block that reviewers receive',
     ]) expect(flat(skill)).toContain(phrase)
+    for (const phrase of [
+      'the unit spec, `<unit>.yaml` in the private-spec location that `workflow-skills:local-cache` defines, ignored and untracked',
+      'root writes the YAML before launching', '**rule:**', '**observation:**', '**derivation:**',
+      'asserting that a condition, failure mode or risk exists needs source transcript or observation',
+      'hypothetical hazard stays a finding until an observation', 'simpler alternative it rules out',
+      'parents include the transcript item asking for it or the observation', 'validate it again after every amendment',
+      'No Markdown design document is written, committed or checked before implementation',
+      'by its path under the main checkout, never a path relative to its worktree',
+      "claim in the todo record that `workflow-skills:todo-md` defines has the same status as a reviewer's claim",
+      'todo record is never cited as a source', 'write each one as a `criterion` item in the YAML spec',
+    ]) expect([phrase, flat(specWriting).includes(phrase)]).toEqual([phrase, true])
     for (const stale of ['numbered acceptance criteria in the spec', 'make sure the spec doc carries them',
       'a limitation for each unchecked entry', 'For the pre-implement check', 'regenerate the document after every amendment',
       'regenerates the tracked document', 'for the main run `--check-render`', 'generated document exists in the worktree',
@@ -1240,24 +1242,26 @@ describe('spec provenance instructions and routing', () => {
     }
   })
 
-  test('both skills state that authority lives only in items and that a premise change rewrites the spec', async () => {
-    const specWriting = flat(await Bun.file(new URL('../skills/immaculate-spec-writing/SKILL.md', import.meta.url)).text())
+  test('the spec-writing skill states that authority lives only in items and that a premise change rewrites the spec', () => {
     const shared = ['A document enters a spec only as an observation of the current state of the code or the documents, re-run and dated',
       'A hand-written design document is never cited as the design: its decisions become items with the user\'s words, or they do not count.',
       'a comment carries provenance notes only',
       'discarding the old entry, and a new spec from an empty file, or rewrites the spec in place from an empty file',
       'never edited to follow a premise change', 'come only from the user\'s words and the private record',
       'settled or decided on the', 'quotes the user\'s words and names the date they were said']
-    for (const [name, text] of [['implement-review-verify', flat(skill)], ['immaculate-spec-writing', specWriting]]) {
-      for (const phrase of shared) expect([name, phrase, text.includes(phrase)]).toEqual([name, phrase, true])
-    }
+    for (const phrase of shared) expect([phrase, flat(specWriting).includes(phrase)]).toEqual([phrase, true])
+    // The workflow skill points to spec-writing and no longer states the rules itself.
+    expect(flat(skill)).toContain('The root writes and validates the unit spec as `workflow-skills:spec-writing` says before either run starts.')
+    for (const phrase of shared.slice(0, 2)) expect([phrase, flat(skill).includes(phrase)]).toEqual([phrase, false])
   })
 
-  test('the implement-review-verify skill states the inherited-work rule and four rules beside the question-premise check', () => {
-    const text = flat(skill)
+  test('spec-writing states the inherited-work rule, and the workflow skill four rules beside the question-premise check', () => {
     for (const phrase of ['starts by listing the decisions it inherits as items with the user\'s words',
-      'A decision that cannot be backed that way goes to the user before building continues',
-      'the root redesigns before any unit continues and shows the redesign to the user, beginning with what the user sees and then the data model',
+      'A decision that cannot be backed that way goes to the user before building continues']) {
+      expect([phrase, flat(specWriting).includes(phrase)]).toEqual([phrase, true])
+    }
+    const text = flat(skill)
+    for (const phrase of ['the root redesigns before any unit continues and shows the redesign to the user, beginning with what the user sees and then the data model',
       'The root never adds a limit to a decision of the user. A limit that seems needed is asked as its own question.',
       'every edit that touches that premise stops until the question is answered',
       'A title, module or heading that contradicts a decision of the user is renamed in the same change']) {
@@ -1288,22 +1292,18 @@ describe('spec provenance instructions and routing', () => {
     }
   })
 
-  test('spec writing emits the validated YAML format with source rules and the written document after implementation', async () => {
-    const prose = flat(await Bun.file(new URL('../skills/immaculate-spec-writing/SKILL.md', import.meta.url)).text())
+  test('spec writing emits the validated YAML format with source rules and leaves the design document to the workflow skill', () => {
+    const prose = flat(specWriting)
     for (const phrase of ['the unit spec, `<unit>.yaml` in the private-spec location that `workflow-skills:local-cache` defines', '`summary`', '<plugin root>/tools/check-spec.ts', 'valid.yaml', 'validate it again after every amendment',
       '**transcript:**', '**rule:**', '**observation:**', '**derivation:**', 'user_words', '`answers`', '{ command, exit, output, date }',
       'source transcript or observation', 'simpler alternative it rules out', 'parents include the transcript item',
-      '{ ordinal, id }', 'args.criteriaCount', 'the only form of the spec before and during implementation',
-      'The tracked design document under `docs/` is written by hand from the code after the implementation, so it records what was built',
-      'the implementer writes it as its last write once its implementation is done, runs its focused checks after that write and commits it',
-      'the fixer updates it as its last write after its corrections, before its checks',
-      'It describes the change as the code at the writer\'s final commit implements it: what it does, how its parts fit together,' +
-        ' the decisions with their reasons, and the alternatives the user rejected with their reasons, taken from the items of kind' +
-        ' `rejected`, to which the writer adds none of its own.',
-      'The writer checks every statement about behaviour against that code.',
-      'It carries no words of the user, no local absolute paths and no account of the conversation, and it follows the repository\'s prose rules',
-      '`summary` (Markdown, the spec\'s own summary)', 'the design document never shows the path',
-      'The tool validates references.']) expect(prose).toContain(phrase)
+      '{ ordinal, id }', 'args.criteriaCount', 'the only form of the spec that exists before and during implementation',
+      '`summary` (Markdown, the spec\'s own summary)', 'design document never shows the path',
+      'The tool validates references.']) expect([phrase, prose.includes(phrase)]).toEqual([phrase, true])
+    // The design document rule is stated once, in the workflow skill.
+    for (const phrase of ['The tracked design document', 'written by hand from the code']) {
+      expect([phrase, prose.includes(phrase), flat(skill).includes(phrase)]).toEqual([phrase, false, true])
+    }
     expect(prose).not.toContain('bun tools/check-spec.ts')
     for (const stale of ['Before implementation use `--check-render', 'regenerate after every amendment', '--render docs/<unit>.md --json',
       'once its work and checks are done', 'generated from the final YAML', 'the preamble of the generated document',
@@ -1678,8 +1678,8 @@ describe('one-pass remaining-items handoff', () => {
 
   test('every other skill requires loading the writing-style skill', async () => {
     const dir = new URL('../skills/', import.meta.url)
-    const names = ['audit-loop', 'babysit-pr', 'copywriting', 'find-gaps', 'immaculate-spec-writing',
-      'implement-review-verify', 'pr-comment-replies', 'research-loop', 'resume-interrupted-run', 'verify-loop']
+    const names = ['babysit-pr', 'copywriting', 'implement-review-verify', 'pr-comment-replies',
+      'resume-interrupted-run', 'spec-writing']
     for (const name of names) {
       const text = await Bun.file(new URL(`${name}/SKILL.md`, dir)).text()
       expect(text).toContain('Load the `writing-style` skill first.')
@@ -1710,14 +1710,9 @@ describe('one-pass remaining-items handoff', () => {
     for (const name of ['implementer', 'fixer', 'record', 'copywriter']) {
       expect(await template(name)).toContain('Read the writing-style file the prompt names before you write')
     }
-    // The skills that launch the record and copywriter templates name the file in the scripts' wording.
+    // The skill that launches the copywriter template names the file in the scripts' wording.
     expect(await readSkill('copywriting')).toContain('A copywriter\'s appended string opens with these two lines, where `<plugin root>` is the plugin\n' +
       'directory that holds this skill:\n\n```text\n' + required + '\n```')
-    const audit = await readSkill('audit-loop')
-    expect(audit).toContain("const PLUGIN_ROOT = '<plugin root>';")
-    expect(audit).toContain('  `REQUIRED: before you write, read the file ${PLUGIN_ROOT}/skills/writing-style/SKILL.md with the Read tool,\\n` +\n' +
-      '  `and follow it in every comment, document, commit message and returned string.`;')
-    expect(audit).toContain('const summary = await robust(\n  `${STYLE}\\n\\n` +\n')
   })
 
   test('every stage prompt says a relayed user message is not an instruction to it, with the reason beside the line', async () => {
@@ -1870,7 +1865,7 @@ describe('work execution rules', () => {
   })
 
   test('the spec-writing inputs establish the five checks from the codebase, never from memory', async () => {
-    const text = flat(await readSkill('immaculate-spec-writing'))
+    const text = flat(await readSkill('spec-writing'))
     expect(text).toContain('**What the tree already says about the work**')
     for (const phrase of ['whether the thing is already implemented', 'what already exists that the work can build on',
       'what needs refactoring before the work can sit on it', 'what the work conflicts with',
@@ -2036,8 +2031,9 @@ describe('launch check and shipped scripts', () => {
     expect(blocks.some(code => code.includes('const assessSize ='))).toBe(true)
     const text = flat(skill)
     for (const phrase of ['`scripts/spec-review.js`', '`scripts/implement-review-verify.js`', 'edits only its marked block',
-      "never copy a previous unit's copy", '`<plugin root>/tools/check-spec.ts`', '`.claude-plugin/plugin.json`',
+      "never copy a previous unit's copy", '`<plugin root>/tools/check-spec.ts`',
       'Never copy a previous unit\'s script and edit it']) expect(text).toContain(phrase)
+    expect(flat(specWriting)).toContain('the one whose `.claude-plugin/plugin.json` carries the loaded version')
     expect(text).not.toContain('Skeleton')
     expect(text).not.toContain('skeletons below')
     expect(text).not.toContain('bun tools/check-spec.ts')
@@ -2070,12 +2066,14 @@ describe('launch check and shipped scripts', () => {
   })
 
   test('the skill states the launch block, the contradiction sentence, the tool location and three triggers', () => {
-    const text = flat(skill)
     for (const phrase of ['blocks the launch', 'writes no spec and starts no run on it', 'searches the session transcripts for the words',
       'tells the user which decision it has no words for and waits', 'Writing the gap into the record as a limitation and continuing is the failure',
       'contradiction between a design and the code, or between two statements of the user, is a question for the user with both sides quoted',
-      'no agent resolves and no spec is written on top of', 'under the plugin root', 'plugin cache', 'carries the loaded version',
-      'An installed plugin older than this', 'prints no proof', '`no-words`', 'Three triggers, one field, one disposition']) {
+      'no agent resolves and no spec is written on top of', 'under the plugin root', 'plugin cache', 'carries the loaded version']) {
+      expect([phrase, flat(specWriting).includes(phrase)]).toEqual([phrase, true])
+    }
+    const text = flat(skill)
+    for (const phrase of ['An installed plugin older than this', 'prints no proof', '`no-words`', 'Three triggers, one field, one disposition']) {
       expect([phrase, text.includes(phrase)]).toEqual([phrase, true])
     }
   })
@@ -2904,12 +2902,12 @@ describe('the user\'s words reach every stage', () => {
     const main = await simulate()
     const fix = await simulateFix()
     const texts = [['main AUTHORITY', main.calls.find(c => c.label === 'impl').prompt], ['fix AUTHORITY', fix.calls.find(c => c.label === 'fix').prompt],
-      ['skill', skill]]
+      ['skill', skill], ['spec-writing', specWriting]]
     for (const name of ['spec-provenance', 'implementer', 'fixer', 'finding-verifier']) texts.push([name, await template(name)])
     for (const [name, text] of texts) expect([name, lower(text).includes(rule), lower(text).includes(contradiction)]).toEqual([name, true, true])
     expect(lawText(skill, 8)).toContain('this hierarchy and the directive-conflict hard flag of law 10 treat a contradiction with it like a contradiction with the user\'s own sentence')
-    for (const [name, text] of [['skill', flat(skill)], ['spec-provenance', await template('spec-provenance')]]) {
-      expect([name, text.replaceAll('`', '').includes('A spec item built on an approval quotes the approved text in its answers field')]).toEqual([name, true])
+    for (const [name, text] of [['spec-writing', flat(specWriting)], ['spec-provenance', await template('spec-provenance')]]) {
+      expect([name, text.replaceAll('`', '').includes('spec item built on an approval quotes the approved text in its answers field')]).toEqual([name, true])
     }
     // The pre-phase script gives its unbriefed stages the hygiene floor only: its reader gets the rule from its template.
     expect([coldSkeleton.includes('const AUTHORITY'), lower(coldSkeleton).includes('approves field')]).toEqual([false, false])
@@ -2932,29 +2930,136 @@ describe('the user\'s words reach every stage', () => {
     expect(pre.find(c => c.label === 'spec:provenance').prompt).not.toContain('advisory')
   })
 
-  test('the README and both skills describe the YAML record', async () => {
+  test('the README and the spec-writing skill describe the YAML record', async () => {
     const readme = flat(await Bun.file(new URL('../README.md', import.meta.url)).text())
-    const specWriting = flat(await readSkill('immaculate-spec-writing'))
     for (const [name, text, phrase] of [
       ['README', readme, 'The record is a YAML file of `unit` and `entries`'],
-      ['implement-review-verify', flat(skill), 'as a YAML file with exactly the keys `unit` and `entries`'],
-      ['immaculate-spec-writing', specWriting, 'The private directive record is a YAML file with exactly the keys `unit` and `entries`'],
+      ['spec-writing', flat(specWriting), 'as a YAML file with exactly the keys `unit` and `entries`'],
     ]) {
       expect([name, text.includes(phrase), /record\.md|Markdown record(?! included)/.test(text)]).toEqual([name, true, false])
     }
     // Every entry carries quoted context, and no document calls it optional.
     for (const [name, text, phrase] of [
       ['README', readme, 'a non-empty list of quoted `context` from the surrounding conversation'],
-      ['implement-review-verify', flat(skill), '`context`, a non-empty list of quotes'],
-      ['immaculate-spec-writing', specWriting, '`context` (a non-empty list of quotes from the surrounding conversation'],
+      ['spec-writing', flat(specWriting), '`context`, a non-empty list of quotes'],
       ['spec-provenance', await template('spec-provenance'), 'a non-empty list of quoted context from the surrounding conversation'],
     ]) {
       expect([name, text.includes(phrase), /optionally `?context/.test(text)]).toEqual([name, true, false])
     }
-    for (const text of [flat(skill), specWriting]) {
-      for (const phrase of ['never a task notification, an injected meta record, command output or another tool result', 'a Markdown record included']) {
-        expect([phrase, text.includes(phrase)]).toEqual([phrase, true])
+    for (const phrase of ['never a task notification, an injected meta record, command output or another tool result', 'a Markdown record included']) {
+      expect([phrase, flat(specWriting).includes(phrase)]).toEqual([phrase, true])
+    }
+  })
+})
+
+// Every file under a directory of the plugin, read as text, keyed by its path relative to the plugin root.
+const filesUnder = async directory => {
+  const root = new URL(`../${directory}/`, import.meta.url)
+  const paths = [...new Bun.Glob('**/*').scanSync({ cwd: fileURLToPath(root), onlyFiles: true, dot: true })]
+  return Promise.all(paths.map(async path => [`${directory}/${path}`, await Bun.file(new URL(path, root)).text()]))
+}
+const DELETED = ['immaculate-spec-writing', 'find-gaps', 'audit-loop', 'research-loop', 'verify-loop']
+
+describe('no loops in the workflow skills', () => {
+  test('the five loop skills are gone and nothing in the plugin names them', async () => {
+    for (const name of DELETED) {
+      const directory = fileURLToPath(new URL(`../skills/${name}/`, import.meta.url))
+      expect([name, [...new Bun.Glob('**/*').scanSync({ cwd: fileURLToPath(new URL('../skills/', import.meta.url)) })]
+        .some(path => path.startsWith(`${name}/`)), await Bun.file(directory + 'SKILL.md').exists()]).toEqual([name, false, false])
+    }
+    const files = [...await filesUnder('skills'), ...await filesUnder('agents'), ...await filesUnder('tools'),
+      ...await filesUnder('.claude-plugin'), ['README.md', await Bun.file(new URL('../README.md', import.meta.url)).text()]]
+    expect(files.length).toBeGreaterThan(40)
+    for (const [path, text] of files) {
+      for (const name of DELETED) expect([path, name, text.includes(name)]).toEqual([path, name, false])
+    }
+  })
+
+  test('the spec-writing skill triggers on writing a spec and states its own rules', () => {
+    expect(specWriting).toStartWith('---\nname: spec-writing\n' +
+      'description: Applies whenever a unit spec or its private directive record is written or amended.\n---\n')
+    const text = flat(specWriting)
+    for (const phrase of ['**Settle the design first.**', '**Authority lives only in the items.**',
+      '**Inherited work is listed before it is built on.**', '**A premise change rewrites the entire spec.**',
+      '**ACCEPTANCE CRITERIA ARE MANDATORY.**', '**Approved text counts as the user\'s words.**',
+      '**Anti-re-litigation needs a technical decision record and a PRIVATE source record.**',
+      'Never selectively omit, truncate or rewrite the original evidence',
+      'A necessary part of the record being unavailable or incomplete blocks the launch.',
+      'The prose of a spec is wrapped at 120 characters', 'a folded scalar (`>`)',
+      '`--base` takes the run\'s base list as JSON']) {
+      expect([phrase, text.includes(phrase)]).toEqual([phrase, true])
+    }
+    for (const stale of ['loop', 'fleet', 'gap find', 'design/research', 'invalidates the reviews']) {
+      expect([stale, text.toLowerCase().includes(stale)]).toEqual([stale, false])
+    }
+  })
+
+  test('the workflow skill records remaining items and moves on, and never reruns a finished unit', () => {
+    const text = sectionText(skill, '### Remaining items and follow-up work')
+    for (const phrase of ['When a run ends, the root records every remaining item in the todo record',
+      'each as its own unit, and moves on to the next work',
+      "the root never starts a run on the same spec again, never edits a finished run's spec, and never hands a new run the previous run's findings as its next round",
+      'A new run starts only for a recorded item that is supposed to be fixed: a confirmed must-fix or CRITICAL defect in code the unit wrote',
+      'whose fix list names findings of the parent run', 'Every other such item goes to a new implement-review-verify unit with its own spec',
+      'never the findings its own review raises; those are recorded the same way',
+      'Every other item stays in the todo record as a separate unit, done later.',
+      'A run that ended before its review stage returned', 'built no reviewed result',
+      'otherwise starts it once more on the same spec after the cause is fixed and recorded',
+      'an abort that puts a question to the user waits for the answer first',
+      '**Two relocations mean the cause is untouched.**']) {
+      expect([phrase, text.includes(phrase)]).toEqual([phrase, true])
+    }
+    const whole = flat(skill)
+    for (const phrase of ['A completed run never runs again: the root records its remaining items in the todo record and moves on',
+      'Each cleanup entry is recorded as a separate unit, done later',
+      'The root does not edit a spec or its record while a run on it is in flight.',
+      "A change after the run started is work for a new unit and never repeats the finished run's reviews.",
+      'A new run that changes the code is measured against the size bar on its own candidate.',
+      "recording in the todo record that the user's recorded words back the code's choice",
+      'The root attests fixed keys by reading their commits and running the checks.']) {
+      expect([phrase, whole.includes(phrase)]).toEqual([phrase, true])
+    }
+    for (const stale of ["Each follow-up starts from the previous pass", 'Findings raised by its review become new entries',
+      'goes to a new follow-up workflow', 'invalidates the reviews and approvals', 'invalidate affected', 'repeat affected verification',
+      'it is re-checked', 'design/research', 'cleanup units promptly', 'follow-up reviews judge', 'uses the follow-up rule',
+      'correcting the spec to state', 'corrects the spec to state', 'are fixed in a follow-up']) {
+      expect([stale, whole.includes(stale)]).toEqual([stale, false])
+    }
+    expect(skeleton).toContain("inverseSpecDecisions, // the root's unconditional handoff: record the backing words, or ask the user.")
+    expect(skeleton).not.toContain('amend the spec, or ask the user')
+  })
+
+  test('no agent template schedules cleanup promptly or treats a new run as the next pass', async () => {
+    for (const [path, text] of await filesUnder('agents')) {
+      expect([path, /promptly|follow-up/.test(text)]).toEqual([path, false])
+    }
+    expect(await template('finding-verifier')).toContain('the root records each entry as a separate unit, done later')
+    expect(await template('project-rule-reader')).toContain('records each cleanup entry as a separate unit, done later')
+    expect(await template('roaster')).toContain('resulting tree and records it in the todo record')
+  })
+
+  test('no skill runs anything until it passes, repeats a round after a fix, or folds work into other work', async () => {
+    for (const [path, text] of await filesUnder('skills')) {
+      const prose = flat(text).toLowerCase()
+      for (const stale of ['until it passes', 're-verification round', 'fold gaps', 'fold/fix', 'folded into', 'fold it']) {
+        expect([path, stale, prose.includes(stale)]).toEqual([path, stale, false])
       }
     }
+    const visual = flat(await readSkill('visual-verification'))
+    expect(visual).toContain('Run it and look at every PNG it writes. It counts only when it passes for the right reasons')
+    expect(visual).toContain('The adoption is never made part of a product change.')
+  })
+
+  test('the README and both manifests list spec-writing and describe no loop', async () => {
+    const readme = await Bun.file(new URL('../README.md', import.meta.url)).text()
+    const plugin = await Bun.file(new URL('../.claude-plugin/plugin.json', import.meta.url)).json()
+    const marketplace = await Bun.file(new URL('../.claude-plugin/marketplace.json', import.meta.url)).json()
+    expect(readme).toContain('| `spec-writing` |')
+    expect(marketplace.plugins[0].description).toContain('spec-writing')
+    expect(plugin.description).toContain('spec writing')
+    for (const [name, text] of [['README', readme], ['plugin.json', plugin.description], ['marketplace.json', marketplace.plugins[0].description]]) {
+      expect([name, /\bloops?\b|continuously/i.test(text)]).toEqual([name, false])
+    }
+    expect(flat(readme)).toContain('Usable directly as `agentType`s in your own workflows.')
   })
 })
