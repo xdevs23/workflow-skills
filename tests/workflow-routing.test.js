@@ -16,15 +16,22 @@ const skeleton = await Bun.file(new URL('implement-review-verify.js', scripts)).
 const coldSkeleton = await Bun.file(new URL('spec-review.js', scripts)).text()
 const fixSkeleton = await Bun.file(new URL('fix-follow-up.js', scripts)).text()
 const AsyncFunction = Object.getPrototypeOf(async function () {}).constructor
+// A unit's copy of a shipped script: every model placeholder of the marked block set to a model
+// named after its entry, so the model an agent runs on shows which entry it came from.
+const filled = script => script.replace(/^(\s+)'?([a-z-]+)'?: \{ model: '<[^']*>'/gm,
+  (_, indent, key) => `${indent}'${key}': { model: 'model-${key}'`)
 const run = new AsyncFunction('agent', 'phase', 'log', 'args',
-  skeleton.replace('export const meta =', 'const meta ='))
+  filled(skeleton).replace('export const meta =', 'const meta ='))
 const SPEC_PATH = '<main checkout>/.cache/specs/<unit>.yaml'
 const TRANSCRIPTS = '<session-dir>'
 // The launch check's result: the tool ran, passed and printed its proof.
 const passedGate = (fields = {}) => ({ exitCode: 0, stdout: '{"proof":"0123456789abcdef0123456789abcdef"}', stderr: '', proof: '0123456789abcdef0123456789abcdef', ...fields })
-const gateModel = { model: 'claude-haiku-4-5', effort: 'low' }
+const gateModel = { model: 'model-gate', effort: 'low' }
 
-const readers = ['correctness', 'cleanliness', 'spec', 'dupes', 'quality', 'inverse', 'rules', 'alternatives']
+// The eight audit seats, each labelled and loading the template of its name.
+const AUDIT = ['separation-of-concerns', 'abstraction-quality', 'code-smell', 'type-safety', 'code-cleanliness',
+  'missing-gaps', 'domain-leakage', 'type-smearing']
+const readers = ['correctness', 'spec', 'dupes', 'quality', 'inverse', 'rules', 'alternatives', ...AUDIT]
 const source = (seat, index = 0) => `${seat}:${index}`
 const CRITERIA = 2
 const receipt = { file: 'src/example.js', line: 12, quote: 'catch (error) {}' }
@@ -36,9 +43,9 @@ const verdicts = () => Array.from({ length: CRITERIA }, (_, i) => ({ criterion: 
 const cold = (fields = {}) => ({ limitations: [], coverage, findings: [], ...fields })
 const briefed = (fields = {}) => ({ abort: noAbort, ...cold(fields) })
 const seatObject = {
-  correctness: () => briefed({ verdicts: verdicts() }), cleanliness: () => briefed({ verdicts: verdicts() }),
+  correctness: () => briefed({ verdicts: verdicts() }),
   spec: () => briefed({ verdicts: verdicts() }), dupes: () => briefed({ verdicts: verdicts() }),
-  quality: () => cold(),
+  quality: () => cold(), ...Object.fromEntries(AUDIT.map(seat => [seat, () => cold()])),
   inverse: () => briefed({ authorizations: [{ choice: 'the error propagation helper', receipts: [receipt],
     authority: 'docs/spec.md:8: "Return the error to the caller."', class: 'authorized', saving: '' }] }),
   rules: () => briefed({ ruleSources: [{ path: 'CLAUDE.md', read: true }] }),
@@ -111,7 +118,8 @@ async function simulate({ reports = {}, verify = {}, fixes = {}, fail = {}, impl
       expect([opts.model, opts.effort, opts.phase]).toEqual([gateModel.model, gateModel.effort, 'Launch'])
       return gate
     }
-    expect(opts.model).toBe('<explicit>')
+    // Each agent runs on its own entry: a review seat on the one keyed by its label.
+    expect(opts.model).toBe('model-' + (opts.phase === 'Review' ? opts.label.split(':')[1] : opts.label))
     expect(opts.effort).toBe('high')
     if (fail[opts.label]) throw new Error(fail[opts.label])
     if (opts.label === 'impl') return (lastWriter = implementation ?? implemented())
@@ -159,7 +167,7 @@ const coldObject = label => label === 'gate' ? passedGate()
   : { limitations: [], satisfiable: true, conflicts: [],
     criteria: Array.from({ length: CRITERIA }, (_, i) => ({ criterion: i + 1, checkable: true, why: 'observable' })) }
 const preRun = (agent, args = launchArgs(), logs = [], phases = []) =>
-  new AsyncFunction('agent', 'phase', 'log', 'args', coldSkeleton.replace('export const meta =', 'const meta ='))(
+  new AsyncFunction('agent', 'phase', 'log', 'args', filled(coldSkeleton).replace('export const meta =', 'const meta ='))(
     (prompt, opts) => agent(prompt, bare(opts)), name => phases.push(name), line => logs.push(line), args)
 // The three review seats of the pre-run, after the launch check.
 const seatCalls = calls => calls.filter(c => c.label !== 'gate')
@@ -315,7 +323,8 @@ describe('workflow verification and consolidation', () => {
         : ['implementer', 'fixer'].includes(type) ? 'Read, Grep, Glob, Bash, Edit, Write'
         : 'Read, Grep, Glob, Bash'
       expect(template).toContain(`\ntools: ${tools}\n---\n`)
-      expect(template).toContain('Execution boundary: perform only your assigned stage')
+      // The audit templates stay as they are; their stages receive the boundary in the prompt, checked above.
+      if (!AUDIT.includes(type)) expect(template).toContain('Execution boundary: perform only your assigned stage')
     }
   })
 
@@ -913,9 +922,9 @@ const handedTo = (calls, label, findings) =>
 describe('coder sense check and project-benefit review', () => {
   test('the finding schemas enum-lock kind, with unbacked-choice for the briefed readers only', async () => {
     const { calls } = await simulate()
-    const unbriefed = ['quality', 'cold-alternatives', 'roaster']
+    const unbriefed = ['quality', ...AUDIT, 'cold-alternatives', 'roaster']
     const readerCalls = calls.filter(c => c.phase === 'Review' || c.agentType === 'roaster')
-    expect(readerCalls).toHaveLength(9)
+    expect(readerCalls).toHaveLength(16)
     for (const call of readerCalls) {
       const kinds = unbriefed.includes(call.agentType) ? ['band-aid', 'longer-route'] : ['band-aid', 'longer-route', 'unbacked-choice']
       expect([call.agentType, call.schema.properties.findings.items.properties.kind]).toEqual([call.agentType, { enum: kinds }])
@@ -938,10 +947,10 @@ describe('coder sense check and project-benefit review', () => {
 
   test('a kind-bearing source finding is set to CRITICAL at intake, for readers and roasts alike', async () => {
     const { severity, ...unmarked } = bandAid
-    const reader = await simulate({ reports: report('review:cleanliness', [{ ...bandAid, severity: 'must-fix' }]),
-      verify: { 'verify': verification([rejectShape([source('cleanliness')])]) } })
-    expect(reader.logs).toContain('Project-benefit finding from cleanliness with kind band-aid set to severity CRITICAL')
-    handedTo(reader.calls, 'verify', [{ ...bandAid, id: source('cleanliness'), seat: 'cleanliness', snapshots: at(INITIAL) }])
+    const reader = await simulate({ reports: report('review:dupes', [{ ...bandAid, severity: 'must-fix' }]),
+      verify: { 'verify': verification([rejectShape([source('dupes')])]) } })
+    expect(reader.logs).toContain('Project-benefit finding from dupes with kind band-aid set to severity CRITICAL')
+    handedTo(reader.calls, 'verify', [{ ...bandAid, id: source('dupes'), seat: 'dupes', snapshots: at(INITIAL) }])
     const roast = await simulate({ reports: report('roast', [{ ...unmarked, kind: 'longer-route' }]) })
     expect(roast.logs).toContain('Project-benefit finding from roaster with kind longer-route set to severity CRITICAL')
     expect(roast.result.remaining).toEqual([{ kind: 'roast-finding', severity: 'CRITICAL', item: {
@@ -1016,8 +1025,8 @@ describe('coder sense check and project-benefit review', () => {
     expect(calls.filter(c => c.phase === 'Verify')).toHaveLength(1)
   })
 
-  test('the nine review seats carry the project-benefit judgment scoped to this diff', async () => {
-    const briefed = ['reviewer-correctness', 'reviewer-cleanliness', 'reviewer-spec-compliance', 'duplicate-checker', 'reviewer-inverse-spec', 'project-rule-reader']
+  test('the review seats with a project-benefit template and the roaster carry that judgment scoped to this diff', async () => {
+    const briefed = ['reviewer-correctness', 'reviewer-spec-compliance', 'duplicate-checker', 'reviewer-inverse-spec', 'project-rule-reader']
     const shared = ['helps the project, not only', "severity CRITICAL whatever this seat's scale says for its other findings", "kind marks a choice made in this unit's own diff"]
     const quoted = ['band-aid, a repair of a mechanism the recorded words do not call for', 'longer-route, a longer implementation where the recorded words already describe a simpler one', 'Quote the recorded words beside the finding']
     const shaped = ['Flag by shape', 'Attach no quotes; the finding verifier attaches the recorded words']
@@ -1038,7 +1047,7 @@ describe('coder sense check and project-benefit review', () => {
       ['fixer', ['Bounded sense check before your first write, on every approved correction', 'itself a band-aid on a mechanism the recorded words do not call for, where the record describes deletion or a rewrite',
         "no agent's justification and no root statement substitutes for it", "You do not repeat the implementer's request-level sense check",
         'holds no quotation attributed to the user sets abort.trigger to no-words before your first write']],
-      ['finding-verifier', ['is CRITICAL, and neither cleanup nor record is available for it', "supply the quote yourself for a cold seat's finding (quality, cold alternatives)",
+      ['finding-verifier', ['is CRITICAL, and neither cleanup nor record is available for it', "supply the quote yourself for a cold seat's finding (quality, cold alternatives, an audit seat)",
         'Where the record holds no words about the mechanism, state that silence in plain words in the authority field', 'Approve-fix only for the deletion or rewrite the record describes']],
     ]) { const text = await template(name); for (const phrase of phrases) expect(text).toContain(phrase) }
     const flatSkill = flat(skill)
@@ -1054,7 +1063,7 @@ describe('coder sense check and project-benefit review', () => {
       expect(calls.find(c => c.agentType === type).prompt).toContain('Never report that gap as a limitation and proceed.')
       expect(calls.find(c => c.agentType === type).prompt).not.toContain('is a root-action limitation')
     }
-    for (const type of ['quality', 'cold-alternatives', 'roaster']) expect(calls.find(c => c.agentType === type).prompt).not.toContain('sense check')
+    for (const type of ['quality', ...AUDIT, 'cold-alternatives', 'roaster']) expect(calls.find(c => c.agentType === type).prompt).not.toContain('sense check')
     for (const name of ['directive-authority.md', 'workflow-finding-verification.md']) expect(await Bun.file(new URL(`../docs/${name}`, import.meta.url)).text()).toContain('](coder-sense-check-and-project-benefit.md)')
   })
 })
@@ -1066,14 +1075,14 @@ const FIELDS = {
   implementer: [...WRITER, 'premises', 'senseCheck'], fixer: [...WRITER, 'premises', 'dispositions', 'touched'],
   'finding-verifier': ['abort', 'limitations', 'repositories', 'checks', 'writerScope', 'decisions', 'issues', 'specSuggestions'],
   roaster: ['limitations', 'coverage', 'findings', 'snapshots'], quality: ['limitations', 'coverage', 'findings'],
-  'reviewer-correctness': VERDICT_SEAT, 'reviewer-cleanliness': VERDICT_SEAT, 'reviewer-spec-compliance': VERDICT_SEAT, 'duplicate-checker': VERDICT_SEAT,
+  'reviewer-correctness': VERDICT_SEAT, 'reviewer-spec-compliance': VERDICT_SEAT, 'duplicate-checker': VERDICT_SEAT,
   'reviewer-inverse-spec': ['abort', 'limitations', 'coverage', 'findings', 'authorizations'],
   'project-rule-reader': ['abort', 'limitations', 'coverage', 'findings', 'ruleSources', 'scope'],
   'cold-alternatives': ['limitations', 'coverage', 'findings', 'currentShapeRight', 'candidates'], 'gap-finder': [],
   'spec-provenance': ['limitations', 'coverage', 'findings', 'checks'],
   'scope-check': ['limitations', 'coverage', 'classifications'], 'diff-check': ['limitations', 'coverage', 'mappings', 'findings'],
 }
-const BRIEFED = ['implementer', 'fixer', 'finding-verifier', 'reviewer-correctness', 'reviewer-cleanliness', 'reviewer-spec-compliance', 'duplicate-checker', 'reviewer-inverse-spec', 'project-rule-reader']
+const BRIEFED = ['implementer', 'fixer', 'finding-verifier', 'reviewer-correctness', 'reviewer-spec-compliance', 'duplicate-checker', 'reviewer-inverse-spec', 'project-rule-reader']
 const retried = (calls, label) => calls.filter(c => c.label === label)
 const FAILED = 'HOW YOUR PREVIOUS ATTEMPT FAILED, plainly: '
 
@@ -1089,7 +1098,7 @@ describe('spec provenance instructions and routing', () => {
     expect(all.map(c => c.label)).toEqual(['gate', 'spec:gaps', 'spec:soundness', 'spec:provenance'])
     const provenance = calls[2]
     expect(provenance.agentType).toBe('spec-provenance')
-    expect(provenance.model).toBe('<explicit>')
+    expect(provenance.model).toBe('model-provenance')
     expect(provenance.effort).toBe('high')
     for (const phrase of ['.cache/specs/<unit>.yaml', 'TRANSCRIPTS: ' + TRANSCRIPTS, 'PRIVATE DIRECTIVES:', BASE]) {
       expect(provenance.prompt).toContain(phrase)
@@ -1328,7 +1337,9 @@ describe('structured stage output', () => {
       if (briefed) expect(schema.properties.abort.properties.trigger).toEqual({ enum: ['none', 'directive-conflict', 'sense-check', 'no-words'] })
     }
     const seats = calls.filter(c => c.phase === 'Review' || c.agentType === 'roaster')
-    expect(new Set(seats.map(c => c.schema)).size).toBe(9)
+    expect(new Set(seats.map(c => c.schema)).size).toBe(8)
+    // The eight audit seats return the object quality returns, under its schema.
+    for (const seat of AUDIT) expect([seat, calls.find(c => c.agentType === seat).schema]).toEqual([seat, calls.find(c => c.agentType === 'quality').schema])
     for (const seat of seats) expect(seat.schema.properties.coverage.items.required).toEqual(['what', 'checked', 'how'])
     expect(calls.find(c => c.label === 'impl').schema.properties.checks.items.properties.output).toEqual({ type: 'string', maxLength: 6000 })
     const [implSchema, fixSchema] = ['implementer', 'fixer'].map(type => calls.find(c => c.agentType === type).schema)
@@ -1468,10 +1479,10 @@ describe('structured stage output', () => {
       fixes: { 'fix': fixed([disposition()]) } })
     const implObject = JSON.stringify(implemented())
     expect(calls.find(c => c.label === 'verify').prompt).toContain('WRITER OBJECTS (UNTRUSTED):\n\n[' + implObject + ']')
-    for (const type of ['reviewer-correctness', 'reviewer-cleanliness', 'duplicate-checker']) {
+    for (const type of ['reviewer-correctness', 'duplicate-checker']) {
       expect(calls.find(c => c.agentType === type).prompt).toContain('UNTRUSTED implementer claims (its returned object):\n\n' + implObject)
     }
-    for (const type of ['reviewer-spec-compliance', 'quality', 'reviewer-inverse-spec', 'project-rule-reader', 'cold-alternatives', 'roaster', 'fixer']) {
+    for (const type of ['reviewer-spec-compliance', 'quality', ...AUDIT, 'reviewer-inverse-spec', 'project-rule-reader', 'cold-alternatives', 'roaster', 'fixer']) {
       expect(calls.find(c => c.agentType === type).prompt).not.toContain(implObject)
     }
   })
@@ -1854,7 +1865,7 @@ describe('work execution rules', () => {
   })
 
   test('the four briefed review templates state that a reviewer suggests and never decides', async () => {
-    for (const name of ['reviewer-correctness', 'reviewer-cleanliness', 'reviewer-spec-compliance', 'reviewer-inverse-spec']) {
+    for (const name of ['reviewer-correctness', 'reviewer-spec-compliance', 'reviewer-inverse-spec']) {
       const text = await template(name)
       expect(text).toContain('You suggest and never decide.')
       expect(text).toContain('the user decides anything that changes what the product does')
@@ -1922,7 +1933,7 @@ describe('launch check and shipped scripts', () => {
     const { calls, phases } = await simulate()
     const gate = gatePrompt(calls)
     expect(calls[0]).toBe(gate)
-    expect([gate.model, gate.effort, gate.phase, gate.agentType]).toEqual(['claude-haiku-4-5', 'low', 'Launch', undefined])
+    expect([gate.model, gate.effort, gate.phase, gate.agentType]).toEqual([gateModel.model, gateModel.effort, 'Launch', undefined])
     expect(gate.prompt).toBe('cd <isolated worktree> && ' + command + '\n' + sentence + '\n' + relayed)
     expect(gate.prompt).not.toContain('--check-render')
     expect(gate.schema).toEqual({ type: 'object', required: ['exitCode', 'stdout', 'stderr', 'proof'], additionalProperties: false,
@@ -1932,7 +1943,7 @@ describe('launch check and shipped scripts', () => {
     await preRun(async (prompt, opts) => { preCalls.push({ prompt, ...opts }); return coldObject(opts.label) })
     const preGate = gatePrompt(preCalls)
     expect(preCalls[0]).toBe(preGate)
-    expect([preGate.model, preGate.effort, preGate.phase]).toEqual(['claude-haiku-4-5', 'low', 'Launch'])
+    expect([preGate.model, preGate.effort, preGate.phase]).toEqual([gateModel.model, gateModel.effort, 'Launch'])
     expect(preGate.prompt).toBe('cd <isolated worktree> && ' + command + '\n' + sentence + '\n' + relayed)
     expect(preGate.schema).toEqual(gate.schema)
   })
@@ -2024,14 +2035,14 @@ describe('launch check and shipped scripts', () => {
       // No script names a generated document to render or check before implementation.
       expect(script).not.toContain('generatedDocument')
       expect(script).not.toContain('--check-render')
-      expect(block).toContain("gate: { model: 'claude-haiku-4-5', effort: 'low' }")
+      expect(block).toContain("gate: { model: '<explicit>', effort: 'low' }")
       expect(script.slice(stop)).not.toContain("model: '<explicit>'")
       expect(script.slice(stop)).not.toContain('<the check command>')
     }
     expect(blocks.some(code => code.includes("name: 'kebab-name'") || code.includes("name: 'spec-cold-review'"))).toBe(false)
     expect(blocks.some(code => code.includes('const assessSize ='))).toBe(true)
     const text = flat(skill)
-    for (const phrase of ['`scripts/spec-review.js`', '`scripts/implement-review-verify.js`', 'edits only its marked block',
+    for (const phrase of ['`scripts/spec-review.js`', '`scripts/implement-review-verify.js`', 'changes only its marked block',
       "never copy a previous unit's copy", '`<plugin root>/tools/check-spec.ts`',
       'Never copy a previous unit\'s script and edit it']) expect(text).toContain(phrase)
     expect(flat(specWriting)).toContain('the one whose `.claude-plugin/plugin.json` carries the loaded version')
@@ -2040,15 +2051,26 @@ describe('launch check and shipped scripts', () => {
     expect(text).not.toContain('bun tools/check-spec.ts')
   })
 
-  test('the shipped main script carries the placeholder name and description, and the copy rule names them as values a unit sets', async () => {
+  test('each shipped script carries the placeholder name and description, and a copy of any of the three sets its own', async () => {
     // Evaluating the meta literal returns the object the workflow list reads.
-    const meta = await new AsyncFunction(skeleton.replace('export const meta =', 'return'))()
-    expect([meta.name, meta.description]).toEqual(['kebab-name', 'one line'])
+    const metaOf = script => new AsyncFunction(script.replace('export const meta =', 'return'))()
+    for (const [name, script] of [['main', skeleton], ['spec review', coldSkeleton], ['fix run', fixSkeleton]]) {
+      const meta = await metaOf(script)
+      expect([name, meta.name, meta.description]).toEqual([name, 'kebab-name', 'one line'])
+      // A copy replaces both values and keeps the phases.
+      const copy = await metaOf(script.replace("name: 'kebab-name'", "name: 'return-the-error'")
+        .replace("description: 'one line'", "description: 'returns the swallowed error to the caller'"))
+      expect([name, copy.name, copy.description, copy.phases]).toEqual([name, 'return-the-error', 'returns the swallowed error to the caller', meta.phases])
+    }
     const rule = sectionText(skill, "### Every unit's script is a copy of the shipped one, edited in one block")
-    for (const phrase of ['A copy of the pre-phase or the fix-run script edits only its marked block',
-      'A copy of the main script', '`meta.name`', '`meta.description`',
-      'The shipped main script carries `kebab-name` and `one line` as the values a unit replaces',
+    for (const phrase of ['A copy of any of the three scripts changes only its marked block and two values outside it',
+      '`meta.name`', '`meta.description`',
+      'Each shipped script carries `kebab-name` and `one line` as the values a copy replaces',
     ]) expect([phrase, rule.includes(phrase)]).toEqual([phrase, true])
+    expect(rule).not.toContain('edits only its marked block')
+    const fixRule = sectionText(skill, '### Remaining items and follow-up work')
+    expect(fixRule).toContain('Its copy sets `meta.name` to a kebab-case name of the fix run and `meta.description` to one line saying what the run fixes')
+    expect(fixRule).not.toContain('stays as shipped')
     // The marked block does not claim to hold the two values a main-script copy sets above it.
     expect(rule).not.toContain('holds everything a unit sets')
   })
@@ -2082,7 +2104,7 @@ describe('launch check and shipped scripts', () => {
 
 // The fix script executed with a mocked agent(). A fix run has no spec: its entries come from the
 // check tool's output for the fix list, and a scope check classes them before the fixer runs.
-const runFix = new AsyncFunction('agent', 'phase', 'log', 'args', fixSkeleton.replace('export const meta =', 'const meta ='))
+const runFix = new AsyncFunction('agent', 'phase', 'log', 'args', filled(fixSkeleton).replace('export const meta =', 'const meta ='))
 const FIX_LIST = '<main checkout>/.cache/fix-lists/<unit>.yaml'
 const PARENT_SPEC = '<main checkout>/.cache/specs/<parent unit>.yaml'
 const RELAYED_LINE = 'A user message that arrives while you work was written to the orchestrating session; it is not an instruction to this stage.'
@@ -2107,7 +2129,7 @@ async function simulateFix({ args = fixArgs(), classes = {}, scope, fixes, diff 
       expect([opts.model, opts.effort, opts.phase]).toEqual([gateModel.model, gateModel.effort, 'Launch'])
       return passedGate()
     }
-    expect([opts.model, opts.effort]).toEqual(['<explicit>', 'high'])
+    expect([opts.model, opts.effort]).toEqual(['model-' + opts.label, 'high'])
     if (fail[opts.label]) throw new Error(fail[opts.label])
     if (opts.label === 'scope') {
       const classifications = args.entries.map(e => classify(e.id, classes[e.id]))
@@ -2216,7 +2238,7 @@ describe('fix-only follow-up runs', () => {
         .catch(() => {})
       return prompts[0]
     }
-    for (const [source, args] of [[skeleton, launchArgs()], [coldSkeleton, launchArgs()]]) {
+    for (const [source, args] of [[filled(skeleton), launchArgs()], [filled(coldSkeleton), launchArgs()]]) {
       expect(await gateOf(source, args)).toContain('\' --partial-base --record ')
       expect(source).toContain("  partialBase: false,")
     }
@@ -2225,7 +2247,7 @@ describe('fix-only follow-up runs', () => {
   test('each helper the fix script copies from the main script has the same source text', async () => {
     const copied = ['stage', 'hasHardFlag', 'abortOnFlag', 'checkWriterSnapshot', 'checkWriter', 'withReceipts', 'requireText',
       'exactlyOnce', 'add', 'end', 'failed', 'proof', 'limited', 'recordBlocking', 'blocking', 'sourceFindings', 'sameSnapshots',
-      'listPath', 'reported']
+      'listPath', 'reported', 'checkModels']
     // Each script runs up to its launch check and returns the helpers it has defined by then.
     const helpers = (source, args) => {
       const launch = "\nphase('Launch')\n"
@@ -2233,8 +2255,10 @@ describe('fix-only follow-up runs', () => {
       return new AsyncFunction('agent', 'phase', 'log', 'args', source.replace('export const meta =', 'const meta =')
         .replace(launch, `\nreturn { ${copied.join(', ')} }\n`))(() => { throw new Error('no stage runs before the launch') }, () => {}, () => {}, args)
     }
-    const main = await helpers(skeleton, launchArgs()), fix = await helpers(fixSkeleton, fixArgs())
+    const main = await helpers(filled(skeleton), launchArgs()), fix = await helpers(filled(fixSkeleton), fixArgs())
     for (const name of copied) expect([name, fix[name].toString()]).toEqual([name, main[name].toString()])
+    // The spec review script copies the model check too.
+    expect(coldSkeleton).toContain('const checkModels = ' + main.checkModels.toString())
   })
 
   test('a new-choice entry reaches remaining with its reason and never the fixer', async () => {
@@ -2751,7 +2775,7 @@ describe('what a limitation is, and the per-commit files check', () => {
     const fix = await simulateFix()
     const stages = [...main.calls.map(c => ({ ...c, run: 'main' })), ...pre.map(c => ({ ...c, run: 'spec' })),
       ...fix.calls.map(c => ({ ...c, run: 'fix' }))]
-    expect(stages).toHaveLength(22)
+    expect(stages).toHaveLength(29)
     for (const call of stages) {
       const id = call.run + ':' + call.label
       const reader = !['gate', 'impl', 'fix'].includes(call.label)
@@ -2762,7 +2786,7 @@ describe('what a limitation is, and the per-commit files check', () => {
   test('every reading-stage template states the rule, the verifier discards a breaking entry, and the skill states it once', async () => {
     const readingTemplates = Object.entries(FIELDS)
       .filter(([name, fields]) => fields.includes('limitations') && !['implementer', 'fixer'].includes(name)).map(([name]) => name)
-    expect(readingTemplates).toHaveLength(13)
+    expect(readingTemplates).toHaveLength(12)
     const rule = flat(LIMITS_RULE.replace(/^a /, 'A '))
     for (const name of readingTemplates) expect([name, (await template(name)).includes(rule)]).toEqual([name, true])
     expect(await template('finding-verifier')).toContain('discard a limitation that names an act the stage\'s own rules forbid ' +
@@ -2882,7 +2906,7 @@ describe('the user\'s words reach every stage', () => {
 
   test('the briefed readers report an unbacked choice by kind, and the unbriefed ones never hear of it', async () => {
     const rule = 'A choice in the spec, the prompt or the diff that no words of the user back is a finding with kind unbacked-choice and severity CRITICAL.'
-    for (const name of ['reviewer-correctness', 'reviewer-cleanliness', 'reviewer-spec-compliance', 'duplicate-checker', 'reviewer-inverse-spec', 'project-rule-reader']) {
+    for (const name of ['reviewer-correctness', 'reviewer-spec-compliance', 'duplicate-checker', 'reviewer-inverse-spec', 'project-rule-reader']) {
       expect([name, (await template(name)).includes(rule)]).toEqual([name, true])
     }
     expect(await template('reviewer-inverse-spec')).toContain('A missing-decision finding carries kind unbacked-choice.')
@@ -3071,6 +3095,180 @@ describe('no loops in the workflow skills', () => {
     for (const [name, text] of [['README', readme], ['plugin.json', plugin.description], ['marketplace.json', marketplace.plugins[0].description]]) {
       expect([name, /\bloops?\b|continuously/i.test(text)]).toEqual([name, false])
     }
-    expect(flat(readme)).toContain('Usable directly as `agentType`s in your own workflows.')
+    expect(flat(readme)).toContain('usable directly as `agentType`s in your own workflows.')
+  })
+})
+
+// The template each review seat loads, by the label its stage carries.
+const SEAT_TEMPLATES = [['correctness', 'reviewer-correctness'], ['spec', 'reviewer-spec-compliance'], ['dupes', 'duplicate-checker'],
+  ['quality', 'quality'], ['inverse', 'reviewer-inverse-spec'], ['rules', 'project-rule-reader'], ['alternatives', 'cold-alternatives'],
+  ...AUDIT.map(seat => [seat, seat])]
+// The removed seat's template name, built so that no file of the tree spells it out.
+const REMOVED = ['reviewer', 'cleanliness'].join('-')
+// Every file under a directory of the tree, as paths relative to the tree root.
+const treeFiles = directory => [...new Bun.Glob('**/*').scanSync({ cwd: fileURLToPath(new URL('../' + directory + '/', import.meta.url)) })]
+  .map(file => directory + '/' + file)
+// A run of a copy that must stop before its first agent: the error it throws and the agents it started.
+const stopsBeforeAnyAgent = async (script, args) => {
+  const calls = []
+  const copy = new AsyncFunction('agent', 'phase', 'log', 'args', script.replace('export const meta =', 'const meta ='))
+  const error = await copy(async (prompt, opts) => { calls.push(opts); throw new Error('no agent runs') }, () => {}, () => {}, args)
+    .then(() => null, error => error)
+  return { message: error?.message, calls }
+}
+
+describe('fixed review seats and a model for every agent', () => {
+  test('the review stage runs exactly the fifteen seats, each on the template of its name', async () => {
+    const { calls } = await simulate()
+    const review = calls.filter(c => c.phase === 'Review').map(c => [c.label.slice('review:'.length), c.agentType])
+    expect(review).toEqual(SEAT_TEMPLATES)
+    for (const [, name] of SEAT_TEMPLATES) expect([name, await Bun.file(new URL(`../agents/${name}.md`, import.meta.url)).exists()]).toEqual([name, true])
+    expect(await Bun.file(new URL(`../agents/${REMOVED}.md`, import.meta.url)).exists()).toBe(false)
+  })
+
+  test('the eight audit seats receive the hygiene floor and the diff and nothing else', async () => {
+    const { calls } = await simulate()
+    const quality = calls.find(c => c.label === 'review:quality').prompt
+    const [floor, diff, ...rest] = quality.split('\n\n')
+    expect([floor.startsWith('EXECUTION CONTEXT'), floor.endsWith('No background waits.'), diff.startsWith('DIFFS,'), rest]).toEqual([true, true, true, []])
+    expect(floor).toContain('GIT READ-ONLY:')
+    expect(diff).toContain('.: ' + BASE + '..' + INITIAL)
+    for (const seat of AUDIT) {
+      const prompt = calls.find(c => c.label === 'review:' + seat).prompt
+      expect([seat, prompt]).toEqual([seat, quality])
+      for (const briefing of ['AUTHORITY', 'SPEC', 'PRIVATE DIRECTIVES', 'UNTRUSTED implementer', 'REQUIRED INVARIANTS', 'ACCEPTANCE CRITERIA']) {
+        expect([seat, briefing, prompt.includes(briefing)]).toEqual([seat, briefing, false])
+      }
+    }
+  })
+
+  test('an audit seat\'s finding reaches the verifier under a source ID of its label', async () => {
+    const { calls } = await simulate({ reports: report('review:code-smell', [finding]),
+      verify: { verify: verification([decision([source('code-smell')])]) }, fixes: { fix: fixed([disposition()]) } })
+    handedTo(calls, 'verify', [{ ...finding, id: source('code-smell'), seat: 'code-smell', snapshots: at(INITIAL) }])
+    const seatObjects = calls.find(c => c.label === 'verify').prompt.split('SEAT OBJECTS (UNTRUSTED):\n\n')[1].split('\n\nWRITER OBJECTS')[0]
+    expect(JSON.parse(seatObjects).map(r => r.seat)).toEqual(readers)
+  })
+
+  test('no file under skills, agents, tools or tests, and not the README, names the removed seat', async () => {
+    const files = [...['skills', 'agents', 'tools', 'tests'].flatMap(treeFiles), 'README.md']
+    expect(files).toContain('tests/workflow-routing.test.js')
+    for (const file of files) expect([file, (await pluginText(file)).includes(REMOVED)]).toEqual([file, false])
+    for (const script of [skeleton, coldSkeleton, fixSkeleton]) expect(script).not.toContain("'cleanliness'")
+  })
+
+  test('the finding verifier\'s template names all fifteen seats and reports a missing seat object to the root', async () => {
+    const text = await template('finding-verifier')
+    expect(text).toContain('The review stage has fifteen fixed seats')
+    for (const [label, name] of SEAT_TEMPLATES) expect([label, text.includes(label), text.includes(name)]).toEqual([label, true, true])
+    expect(text).toContain('Check that the seat objects hold one object for each of the fifteen.')
+    expect(text).toContain('A seat whose object is missing from your input is an unresolved issue of kind root-action that names the seat')
+  })
+
+  test('a copy whose seat list leaves out, adds or repeats a seat stops before its first agent', async () => {
+    const line = "  ['code-smell', 'code-smell', [HYGIENE], QUALITY, checkReader],\n"
+    const copy = filled(skeleton)
+    expect(copy.split(line)).toHaveLength(2)
+    const extra = "  ['code-smell', 'code-smell', [HYGIENE], QUALITY, checkReader],\n  ['roaster', 'extra', [HYGIENE], QUALITY, checkReader],\n"
+    for (const edited of [copy.replace(line, ''), copy.replace(line, line + line), copy.replace(line, extra),
+      copy.replace("  ['reviewer-correctness', 'correctness',", "  ['reviewer-correctness', 'correct',")]) {
+      const { message, calls } = await stopsBeforeAnyAgent(edited, launchArgs())
+      expect([message?.startsWith('The review stage runs exactly the fifteen seats correctness, spec, dupes,'), calls]).toEqual([true, []])
+    }
+    expect(skeleton).toContain("const REVIEW_SEATS = ['correctness', 'spec', 'dupes', 'quality', 'inverse', 'rules', 'alternatives',")
+  })
+
+  test('each review seat runs on its own model entry, keyed by its label', async () => {
+    const { calls } = await simulate()
+    const review = calls.filter(c => c.phase === 'Review')
+    expect(review.map(c => c.model)).toEqual(readers.map(seat => 'model-' + seat))
+    expect(new Set(review.map(c => c.model)).size).toBe(15)
+    const block = skeleton.slice(skeleton.indexOf('// ---- UNIT VALUES.'), skeleton.indexOf('// ---- END OF UNIT VALUES ----'))
+    for (const seat of readers) {
+      const key = seat.includes('-') ? `'${seat}'` : seat
+      expect([seat, block.includes(`      ${key}: { model: '<explicit>', effort: 'high' },`)]).toEqual([seat, true])
+    }
+  })
+
+  test('a model entry that is missing, still a placeholder or named for no agent stops the run before its first agent', async () => {
+    const cases = [
+      [skeleton, launchArgs(), 'UNIT.models.gate.model must be set by the root, not "<explicit>"'],
+      [filled(skeleton).replace("      'code-smell': { model: 'model-code-smell', effort: 'high' },\n", ''), launchArgs(),
+        'UNIT.models.review.code-smell.model must be set by the root, not undefined'],
+      [filled(skeleton).replace("model: 'model-verify'", "model: '<explicit>'"), launchArgs(), 'UNIT.models.verify.model must be set by the root, not "<explicit>"'],
+      [filled(skeleton).replace("effort: 'low'", "effort: ''"), launchArgs(), 'UNIT.models.gate.effort must be set by the root, not ""'],
+      [filled(skeleton).replace("    review: {", "    review: {\n      cleanliness: { model: 'model-cleanliness', effort: 'high' },"), launchArgs(),
+        'UNIT.models.review.cleanliness names no agent of this script'],
+      [filled(skeleton).replace("    'roast': {", "    audit: { model: 'model-audit', effort: 'high' },\n    'roast': {"), launchArgs(),
+        'UNIT.models.audit names no agent of this script'],
+      [coldSkeleton, launchArgs(), 'UNIT.models.gate.model must be set by the root, not "<explicit>"'],
+      [filled(coldSkeleton).replace("model: 'model-soundness'", "model: '<explicit, other family>'"), launchArgs(),
+        'UNIT.models.soundness.model must be set by the root, not "<explicit, other family>"'],
+      [filled(coldSkeleton).replace("    'provenance': {", "    review: { model: 'model-review', effort: 'high' },\n    'provenance': {"), launchArgs(),
+        'UNIT.models.review names no agent of this script'],
+      [fixSkeleton, fixArgs(), 'UNIT.models.gate.model must be set by the root, not "<explicit>"'],
+      [filled(fixSkeleton).replace("    'diff': { model: 'model-diff', effort: 'high' },\n", ''), fixArgs(), 'UNIT.models.diff.model must be set by the root, not undefined'],
+      [filled(fixSkeleton).replace("    'diff': {", "    verify: { model: 'model-verify', effort: 'high' },\n    'diff': {"), fixArgs(),
+        'UNIT.models.verify names no agent of this script'],
+    ]
+    for (const [script, args, expected] of cases) {
+      // Each case edits its copy; an edit that matched nothing would leave a script that runs.
+      expect([expected, [skeleton, coldSkeleton, fixSkeleton].includes(script) || ![skeleton, coldSkeleton, fixSkeleton].map(filled).includes(script)])
+        .toEqual([expected, true])
+      const { message, calls } = await stopsBeforeAnyAgent(script, args)
+      expect([expected, message, calls]).toEqual([expected, expected, []])
+    }
+  })
+
+  test('no shipped script and no agent template names a model', async () => {
+    for (const [name, script] of [['main', skeleton], ['spec review', coldSkeleton], ['fix run', fixSkeleton]]) {
+      const models = [...script.matchAll(/model: '([^']*)'/g)].map(match => match[1])
+      expect(models.length).toBeGreaterThan(0)
+      for (const model of models) expect([name, model, /^<.*>$/.test(model)]).toEqual([name, model, true])
+    }
+    // A model identifier, such as claude-<name> or gpt-<name>, or a model family name.
+    const named = /\b(claude|gpt)-[a-z0-9]|\b(haiku|sonnet|opus|gemini)\b/i
+    for (const file of pluginFiles().filter(f => f.startsWith('agents/') || f.endsWith('.js'))) {
+      expect([file, named.test(await pluginText(file))]).toEqual([file, false])
+    }
+  })
+
+  test('the skill states the fixed seats, the rule against rewriting them, the model entries and where a note for the implementer goes', () => {
+    const review = sectionText(skill, '### Phase 2 — Review (N agents, parallel VERDICT seats, split BY CONCERN)')
+    for (const phrase of ['**The review stage has fifteen fixed, mandatory seats.** Every run runs all of them, whatever the size of the change',
+      'No root leaves a review seat out, rewrites a seat\'s template or the prompt text the script gives a seat, or removes anything from either.',
+      'The one exception is the note `resume-interrupted-run` appends to the prompt of an interrupted agent of a run being resumed, which adds and removes nothing else.',
+      'it stops before its first agent when the seat list holds any other set']) {
+      expect([phrase, review.includes(phrase)]).toEqual([phrase, true])
+    }
+    const additional = sectionText(skill, '### Additional review seats — parallel with the verdict reviewers')
+    for (const phrase of ['**The eight audit seats**', 'Each receives what quality receives, the hygiene floor and the diff of every repository that moved',
+      'returns what quality returns: `limitations`, `coverage` and `findings`', 'under source IDs of their label']) {
+      expect([phrase, additional.includes(phrase)]).toEqual([phrase, true])
+    }
+    const fan = sectionText(skill, "## Don't over-fan")
+    expect(fan).toContain('No review seat is droppable, whatever the size of the change')
+    expect(fan).not.toContain('Droppable on a tightly-scoped change')
+    const models = sectionText(skill, '## Model assignment')
+    for (const phrase of ['one model entry, a model and an effort, for every agent the script starts, and the root sets every one of them, the launch check included',
+      'no shipped script names a model, and no agent template names one either', '`models.review` holds one entry per review seat, keyed by the seat\'s label',
+      'The script stops before its first agent when an entry is missing, is still a placeholder, or names an agent or seat the script does not have.',
+      'A seat that reads whole files, such as the rule reader, may need a model with a larger context']) {
+      expect([phrase, models.includes(phrase)]).toEqual([phrase, true])
+    }
+    const copy = sectionText(skill, "### Every unit's script is a copy of the shipped one, edited in one block")
+    for (const phrase of ['A note for the implementer, such as the transcript of an earlier attempt it can read, goes into the marked block\'s `implementerPrompt`, and nothing below the block changes for it.',
+      'so such a note carries over committed work only, through the base list, and never uncommitted changes']) {
+      expect([phrase, copy.includes(phrase)]).toEqual([phrase, true])
+    }
+    expect(flat(skill)).not.toContain('claude-haiku-4-5')
+  })
+
+  test('the resume example names a seat that stays, and the README runs the audit templates as review seats', async () => {
+    const resume = await readSkill('resume-interrupted-run')
+    expect(resume).toContain("const specCompliancePrompt = [AUTHORITY, SPEC, SEAT_BRIEF].join('\\n\\n')")
+    expect(resume).not.toContain('cleanlinessPrompt')
+    const readme = flat(await Bun.file(new URL('../README.md', import.meta.url)).text())
+    expect(readme).toContain("All eight run as seats of every `implement-review-verify` run's review stage, beside its seven other seats.")
   })
 })

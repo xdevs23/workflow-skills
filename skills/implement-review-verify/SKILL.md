@@ -328,8 +328,21 @@ avoid an extra checkout, archive or copy. Acceptance and integration still happe
 ### Phase 2 — Review (N agents, parallel VERDICT seats, split BY CONCERN)
 
 Independent reviewers, run in parallel, each owning a DISTINCT lens, each via its own `agentType`.
-This phase is a **genuine barrier** — the finding verifier needs every selected reader before consolidation. The
-standing seats:
+This phase is a **genuine barrier** — the finding verifier needs every seat's object before consolidation.
+
+**The review stage has fifteen fixed, mandatory seats.** Every run runs all of them, whatever the
+size of the change: correctness, spec compliance, the duplicate checker, quality, inverse-spec, the
+project rule reader, cold alternatives, and the eight audit seats (separation of concerns,
+abstraction quality, code smell, type safety, code cleanliness, missing gaps, domain leakage and
+type smearing), each loading the agent template of its name. No root leaves a review seat out,
+rewrites a seat's template or the prompt text the script gives a seat, or removes anything from
+either. The one exception is the note `resume-interrupted-run` appends to the prompt of an
+interrupted agent of a run being resumed, which adds and removes nothing else. The main script
+keeps the list of the fifteen required seat labels apart from its seat list, and it stops before
+its first agent when the seat list holds any other set; the finding verifier's template names the
+fifteen seats and reports a seat whose object is missing as an issue for the root.
+
+The seats that give per-criterion verdicts:
 - **Correctness** (`agents/reviewer-correctness.md`) — bugs, races, broken invariants, the failure
   modes the change introduces. Name the hazards in the prompt: "check the guard semantics around X"
   beats "find bugs". Tell it to say plainly "I found nothing" rather than invent issues. This seat
@@ -344,11 +357,6 @@ standing seats:
   item**, treating any collapse or truncation device as a FAILURE rather than a formatting choice.
   It is a seat check for the same reason as the one above: it needs a reader holding both artifacts
   side by side, and nothing a gate can run goes red.
-- **Separation of concerns / cleanliness** (`agents/reviewer-cleanliness.md`) — does logic sit in
-  the right layer? Did a special-case leak into shared/generic code? Dead code left by the rework?
-  Naming — including a **PLAIN-LANGUAGE lens**: identifiers and prose in plain words, no coined
-  metaphor vocabulary, because a coined vocabulary makes the work unreadable to the person who owns
-  the thing it describes. (NOT bugs — that's the other seat's job.)
 - **Spec compliance** (`agents/reviewer-spec-compliance.md`) — checks explicit requirements
   FORWARD into the implementation: missing or incorrect required behaviour. The spec, not the
   orchestrator's description, is its reference. It receives NO implementer object. Inverse-spec
@@ -358,8 +366,8 @@ standing seats:
   instead of shared. Cheap, narrow, and catches a class nothing else does.
 
 **A seat earns its place by having a DISTINCT FAILURE-DETECTION MODE, not by adding redundancy.**
-Three identical reviewers are worth less than three different lenses. Add a fifth lens (security,
-performance) only when the change actually has that surface.
+Three identical reviewers are worth less than three different lenses. The fifteen seats are the
+lenses of every run, and the main script stops a run whose seat list holds another set.
 
 **Concern-reviewer output: per-criterion verdicts, never bare lists.** These seats return
 `verdicts`, exactly one entry per criterion from 1 to `args.criteriaCount`, each
@@ -367,8 +375,8 @@ performance) only when the change actually has that surface.
 **must-fix / should-fix / nit**. A bare findings list lets a reviewer hedge; a verdict is a claim
 someone can refute. Receipts are the only currency that survives triage.
 
-**Only the three code-lens verdict seats receive the implementer's object as UNTRUSTED CLAIMS.**
-The code-lens seats (correctness, cleanliness, duplication) get it serialized, explicitly as a
+**Only the two code-lens verdict seats receive the implementer's object as UNTRUSTED CLAIMS.**
+The code-lens seats (correctness and duplication) get it serialized, explicitly as a
 list of CLAIMS TO VERIFY against the actual tree, never as a source they may review by reading:
 holding the claim in hand is what lets a seat catch a claim that is false, which it cannot do if
 it never saw the claim.
@@ -398,8 +406,8 @@ and the user decides anything that changes what the product does. Behavior nobod
 a decision, whoever proposed it and however small it looks. One of two existing paths closes it:
 behavior added without authority is removed as an unauthorized addition, which the inverse-spec
 template already prescribes, and only a choice that removing the behavior cannot close reaches the
-user at all. The correctness, cleanliness, spec-compliance and inverse-spec templates carry the
-same rule in their own words.
+user at all. The correctness, spec-compliance and inverse-spec templates carry the same rule in
+their own words.
 
 Every seat object goes to the finding verifier. A lane or severity assigned
 by a reviewer does not authorize a fix; only the verifier's checked, consolidated approval does.
@@ -419,14 +427,22 @@ by a reviewer does not authorize a fix; only the verifier's checked, consolidate
 - **Cold alternatives** (`agents/cold-alternatives.md`) — only the diff, surrounding code
   and required invariants, never the implementer's object. Returns `candidates` (at most two
   materially simpler shapes) or `currentShapeRight`.
+- **The eight audit seats** (`agents/separation-of-concerns.md`, `agents/abstraction-quality.md`,
+  `agents/code-smell.md`, `agents/type-safety.md`, `agents/code-cleanliness.md`,
+  `agents/missing-gaps.md`, `agents/domain-leakage.md`, `agents/type-smearing.md`) — each judges
+  the code through its one lens. Each receives what quality receives, the hygiene floor and the
+  diff of every repository that moved, and returns what quality returns: `limitations`, `coverage`
+  and `findings`, accepted by the same completeness check. Their templates ask for nothing about
+  the spec, so they get no authority block and no spec. Their findings reach the finding verifier
+  with the other seats' under source IDs of their label, such as `code-smell:0`.
 
-All selected Review seats are REQUIRED results. Read them against a stable tree and await
+All fifteen Review seats are REQUIRED results. Read them against a stable tree and await
 ALL of them before verification. The roaster is the explicit exception to this scheduling:
 it runs in Fix against immutable Git objects, never against the writer's moving filesystem.
 Quality can legitimately return an empty findings list with its coverage. Each seat has its own
 schema: the inverse reviewer owes a non-empty `authorizations` map, the rule reader `ruleSources`
 and a `scope` on every finding, the alternatives seat a candidate, a finding or
-`currentShapeRight` true. Acceptance-criterion verdicts belong to the four concern seats only.
+`currentShapeRight` true. Acceptance-criterion verdicts belong to the three concern seats only.
 
 **Every review seat also judges whether the diff HELPS THE PROJECT, not only whether it is
 correct.** Two finding kinds, enum-locked as the optional `kind` field of the findings schema, each
@@ -434,17 +450,18 @@ CRITICAL, scoped to choices made in this unit's own diff: **`band-aid`** — a r
 the recorded words do not call for, a compensation layer around an earlier choice, or a workaround
 that leaves the underlying mechanism in place — and **`longer-route`** — a longer implementation
 where the recorded words already describe a simpler one. Briefed seats quote the recorded words
-beside the finding. Cold seats (quality, cold alternatives, the roaster) keep their input
-boundaries, flag by shape and attach no quotes; the verifier supplies the words for a quality or
-cold-alternatives finding, and a roaster finding returns to the root in remaining, where the root
-checks it against the tree and the recorded words. The rule reader
+beside the finding. Cold seats (quality, the eight audit seats, cold alternatives, the roaster)
+keep their input boundaries, flag by shape and attach no quotes; the verifier supplies the words
+for a finding of quality, an audit seat or cold alternatives, and a roaster finding returns to the
+root in remaining, where the root checks it against the tree and the recorded words. The rule reader
 reports a pre-existing band-aid beside the diff without a kind, so the cleanup lane stays available.
 
 **A choice without the user's words is its own finding kind.** A briefed reader reports a choice
 in the spec, the prompt or the diff that no words of the user back as a finding with kind
 **`unbacked-choice`**, and the inverse-spec reviewer's missing-decision findings carry it. A
-decision on such a finding is CRITICAL. The unbriefed readers (quality, `cold-alternatives`, the roaster)
-never see the private record, so their schemas do not carry that kind. The provenance reader
+decision on such a finding is CRITICAL. The unbriefed readers (quality, the eight audit seats,
+`cold-alternatives`, the roaster) never see the private record, so their schemas do not carry that
+kind. The provenance reader
 reports the same kind in the pre-phase.
 
 ### Phase 3 — Verify and consolidate (1 read-only `agentType:'finding-verifier'`)
@@ -507,7 +524,7 @@ finding, and a rejection whose `authority` lacks that citation.
 Reviewer lanes and severity are claims to verify, not queue permissions. Every source ID
 must belong to exactly one decision group. The SCRIPT checks coverage, unknown IDs, duplicate
 IDs and approval payloads before mutation. A missing seat object or an invalid handoff stops the
-run, and a `blocks` limitation on any accepted stage other than the eight reading seats and the
+run, and a `blocks` limitation on any accepted stage other than the fifteen reading seats and the
 verifier ends it after that stage with exit `root-resolution` and a `blocking-limitation` item. A
 reading seat's limitation reaches the root only through the verifier, which receives it with the
 seat's object and keeps it as an unresolved issue or discards it, and the pass goes on to the fix
@@ -574,7 +591,7 @@ returned with the remaining items; the root checks its claims against the tree.
 
 #### One pass per run
 
-**Each stage runs once.** Implement, the eight parallel Review seats, Verify, then Fix with its
+**Each stage runs once.** Implement, the fifteen parallel Review seats, Verify, then Fix with its
 concurrent roast. A stage failure, a hard flag or a blocking limitation ends the run after that
 stage, except that the verifier's own blocking limitation, like an unresolved verifier decision,
 ends it after the fix stage. A reading seat's limitation reaches the root only as the verifier's
@@ -682,8 +699,9 @@ a decision, an open decision, and anything the scope check refused go to the use
 full unit with a spec. The root never uses the fix run for work it wants done beyond a finding.
 
 The fix run is `scripts/fix-follow-up.js`, copied and filled in its marked block like the other two
-scripts. Its `meta` stays as shipped, because only a copy of the main script also sets the `name`
-and the `description` of its `meta`. It takes no spec and no quotation. Its input is a fix list,
+scripts. Its copy sets `meta.name` to a kebab-case name of the fix run and `meta.description` to
+one line saying what the run fixes, as a copy of the other two scripts does. It takes no spec and
+no quotation. Its input is a fix list,
 a YAML file in the main checkout's project cache, which `workflow-skills:local-cache` defines, with the keys `parentSpec`
 (the absolute path of the unit spec the parent run was built against), `run` (the parent run's
 ID) and `entries`. The tool reports a relative `parentSpec` as a violation. Each entry has
@@ -992,7 +1010,7 @@ given check is, because only two of them stop the run:
   violation: the stage helper's completeness checks (law 4) in the acceptance section below. These
   stop the run deliberately, and **the decision lives in the script** — never delegated to a
   downstream agent to rediscover, for the same reason the structural abort does not (law 10).
-- **RECORDING — SEATS.** Quality and cleanliness emit findings for independent verification,
+- **RECORDING — SEATS.** The review seats emit findings for independent verification,
   not directly into a fix queue. Their judgments are claims, not exit-code gates. A missing
   required report or a verified unresolved decision still prevents the next stage.
 
@@ -1019,9 +1037,9 @@ Do not place checks after the completed workflow and still claim its proof cover
 Likewise, do not ask reviewers to judge a criterion a later stage has not yet produced.
 
 **THE RECORDING SEATS RIDE AS TEMPLATE CONSTANTS, not as per-script prose.** Anything retyped per
-run erodes — audits find the standing quality and cleanliness lenses silently absent from the large
-majority of a fleet's scripts, each omission individually reasonable when it was made. A constant
-resists that; retyping does not. Author the constant once for the run and retain it when
+run erodes — audits find standing review lenses silently absent from the large majority of a
+fleet's scripts, each omission individually reasonable when it was made. A constant resists that;
+retyping does not. Author the constant once for the run and retain it when
 resuming an interrupted run, so completed stages replay from their journaled results.
 
 ## The quality bar
@@ -1235,24 +1253,28 @@ The phase shape only holds up if the script is written to hold it up.
 
 The skill ships three complete scripts under `scripts/`: `scripts/spec-review.js` for the pre-phase,
 `scripts/implement-review-verify.js` for the main run and `scripts/fix-follow-up.js` for a fix run.
-Copy the shipped script, and never copy a previous unit's copy. A copy of the pre-phase or the
-fix-run script edits only its marked block. A copy of the main script edits its marked block and
-sets exactly two values outside it, `meta.name` and `meta.description`: the name is a kebab-case
-name of the unit, and the description is one line saying what the run implements. The shipped main
-script carries `kebab-name` and `one line` as the values a unit replaces, and its phases and every
-other line outside the marked block stay as shipped. A copy that keeps the placeholders shows every
-main run in the workflow list under the same name and description. The marked block sits at the top
-of each file between two comment lines and holds every value a unit sets apart from `meta.name` and
-`meta.description` of the main script: the paths (main checkout, worktree, spec, transcripts,
-private record, plugin root), the documents directory, the check command, the `base` list,
-`criteriaCount`, the unit prompt text for the implementer, the scoping, the rule sources, the
-invariants and the model and effort per stage. The documents directory is relative to the tree root
-and lies inside one repository of the list, `docs` for a tree that is one repository; the scripts
-join it with the spec's file name to name the design document, which the writers commit in that
-repository. The fix run's block holds the fix list path, the entries and the parent spec in place of
-the spec, `criteriaCount` and the implementer's prompt. Everything below the block is the reviewed
-script and is not edited per unit. Never copy a previous unit's script and edit it, and never
-generalize one that already ran into a runner several units share.
+Copy the shipped script, and never copy a previous unit's copy. A copy of any of the three scripts
+changes only its marked block and two values outside it, `meta.name` and `meta.description`: the
+name is a kebab-case name of the unit, or of the fix run, and the description is one line saying
+what the run does. Each shipped script carries `kebab-name` and `one line` as the values a copy
+replaces, and its phases and every other line outside the marked block stay as shipped. A copy
+that keeps the placeholders shows every run of that script in the workflow list under the same
+name and description. The marked block sits at the top of each file between two comment lines and
+holds every value a unit sets apart from `meta.name` and `meta.description`: the paths (main
+checkout, worktree, spec, transcripts, private record, plugin root), the documents directory, the
+check command, the `base` list, `criteriaCount`, the unit prompt text for the implementer, the
+scoping, the rule sources, the invariants and one model entry per agent. The documents directory
+is relative to the tree root and lies inside one repository of the list, `docs` for a tree that is
+one repository; the scripts join it with the spec's file name to name the design document, which
+the writers commit in that repository. The fix run's block holds the fix list path, the entries
+and the parent spec in place of the spec, `criteriaCount` and the implementer's prompt. Everything
+below the block is the reviewed script and is not edited per unit. Never copy a previous unit's
+script and edit it, and never generalize one that already ran into a runner several units share.
+
+A note for the implementer, such as the transcript of an earlier attempt it can read, goes into
+the marked block's `implementerPrompt`, and nothing below the block changes for it. The implementer
+still starts clean at the start commits of the base list, so such a note carries over committed
+work only, through the base list, and never uncommitted changes.
 
 A script is not neutral plumbing: most of it is prompt text, and every line of that text is
 authority to the stage that receives it. A copied script carries the previous unit's authority —
@@ -1278,8 +1300,9 @@ joins `FOCUSED` in its place, the order to run only the checks that cover what i
 
 ### The launch check
 
-All three scripts begin with a launch check, before any other agent: a small stage on
-`claude-haiku-4-5` at low effort whose prompt is one command line and one sentence. The command
+All three scripts begin with a launch check, before any other agent: a small stage on the model
+the root sets in the `gate` entry of the marked block, shipped at low effort, whose prompt is one
+command line and one sentence. The command
 changes to the tree the run works on, the worktree from the marked block, so the cited rule files
 resolve there and the tool finds the repositories of that tree alone. The main checkout of a
 multi-repository project can hold other task trees and cached clones, which the tool would count as
@@ -1323,8 +1346,9 @@ Fix, and returns the run record. Its `meta` is a pure literal whose phase titles
 what the run implements, so each main run appears in the workflow list under its own unit.
 `AUTHORITY` rides every authority-aware seat, `HYGIENE` the unbriefed
 ones, `WRITE_GIT` the two writers and `READ_GIT` the readers. The field shapes are declared once
-and reused inside nine review seat schemas and the writer, verifier and launch check schemas,
-each a closed object declared in full. `stage()` is the one acceptance helper, `abortOnFlag()`
+and reused inside eight reader schemas and the writer, verifier and launch check schemas,
+each a closed object declared in full; the eight audit seats share the quality seat's schema,
+because they return the object it returns. `stage()` is the one acceptance helper, `abortOnFlag()`
 the structural abort for every consumed stage result, and the completeness checks, the
 remaining-items handoff and the exit values are the ones the sections above and below describe.
 
@@ -1370,7 +1394,7 @@ The completeness checks, by stage kind:
   exactly one entry per criterion from 1 to `args.criteriaCount`; provenance with non-empty
   coverage, receipts on findings and a non-empty `limitations` list when any entry is unchecked.
 
-A `blocks` limitation on any accepted stage other than the eight reading seats and the verifier
+A `blocks` limitation on any accepted stage other than the fifteen reading seats and the verifier
 ends the run after that stage: the script records a `blocking-limitation` item with its stage label
 and exits with `root-resolution`. The verifier's own is recorded the same way, and the run ends
 with `root-resolution` after the fix stage has run. The main script records no reading seat's
@@ -1462,12 +1486,14 @@ vanishing from the set.
 ### Schema versus plain text
 
 Every stage carries a `schema`, because every stage's object is what the next stage and the script
-consume (validated, retried on mismatch). Nine review seats have nine schemas, each declared in
-full under its own name, so validation says which seat omitted what; the five leaf shapes (abort,
-receipt, limitation, check, git) are constants reused inside them as field shapes. No stage schema
-declares a free-prose field, and every stage schema root is closed with `additionalProperties:
-false`: a capped summary string beside the fields is the place the content drifts back into. The
-quality seat's schema, like the other cold seats', names field shapes only and carries no `abort`.
+consume (validated, retried on mismatch). The readers have eight schemas, each declared in full
+under its own name, so validation says which schema a seat's object failed: one per briefed seat,
+one for quality, which the eight audit seats share, one for cold alternatives and one for the
+roaster. The five leaf shapes (abort, receipt, limitation, check, git) are constants reused inside
+them as field shapes. No stage schema declares a free-prose field, and every stage schema root is
+closed with `additionalProperties: false`: a capped summary string beside the fields is the place
+the content drifts back into. The quality seat's schema, like the other cold seats', names field
+shapes only and carries no `abort`.
 
 The reviewer, verification and fixer objects carry enum-locked machine fields and typed evidence:
 the script checks source coverage, branches on verifier action and on the fixer's per-key
@@ -1484,8 +1510,9 @@ An unfamiliar word must fail validation, not silently skip a phase and produce s
 
 ### The AUTHORITY constant
 
-This content rides authority-aware seats, verbatim, not paraphrased. Quality and cold
-spec readers get the hygiene floor only; cold alternatives gets that floor plus invariants.
+This content rides authority-aware seats, verbatim, not paraphrased. Quality, the eight audit
+seats and cold spec readers get the hygiene floor only; cold alternatives gets that floor plus
+invariants.
 Do not defeat an unbriefed seat by appending instructions to read the spec or project docs.
 For the other seats:
 - **The authority hierarchy** (law 8) — user verbatim directives > the spec, named by PATH and read
@@ -1566,10 +1593,13 @@ choice is not the fixer's to make; no scope expansion or authority-document edit
 ## Agent prompt templates (verbatim base, append-only)
 
 Every NAMED role this skill spawns has a fixed prompt template in `agents/` — `agents/implementer.md`,
-`agents/reviewer-correctness.md`, `agents/reviewer-cleanliness.md`,
-`agents/reviewer-spec-compliance.md`, `agents/duplicate-checker.md`, `agents/roaster.md`,
-`agents/cold-alternatives.md`, `agents/quality.md`, `agents/reviewer-inverse-spec.md`,
-`agents/project-rule-reader.md`, `agents/finding-verifier.md`, `agents/fixer.md`, plus
+`agents/reviewer-correctness.md`, `agents/reviewer-spec-compliance.md`,
+`agents/duplicate-checker.md`, `agents/roaster.md`, `agents/cold-alternatives.md`,
+`agents/quality.md`, `agents/reviewer-inverse-spec.md`, `agents/project-rule-reader.md`, the eight
+audit templates `agents/separation-of-concerns.md`, `agents/abstraction-quality.md`,
+`agents/code-smell.md`, `agents/type-safety.md`, `agents/code-cleanliness.md`,
+`agents/missing-gaps.md`, `agents/domain-leakage.md` and `agents/type-smearing.md`,
+`agents/finding-verifier.md`, `agents/fixer.md`, plus
 `agents/gap-finder.md` and `agents/spec-provenance.md` for the spec-review
 pre-phase and `agents/scope-check.md` and `agents/diff-check.md` for the fix run. That file's body is the agent's **authoritative
 rules** and is used **VERBATIM** as the start of its prompt — invoke the agent via
@@ -1584,6 +1614,14 @@ An exception that states its reason is a rule; a template quietly missing is a d
 ## Model assignment
 
 Set an EXPLICIT model AND effort on EVERY agent/stage — never inherit or default (see law 1).
+The marked block of each shipped script holds one model entry, a model and an effort, for every
+agent the script starts, and the root sets every one of them, the launch check included. Every
+entry ships with a placeholder in angle brackets as its model, such as `<explicit>`, so no shipped
+script names a model, and no agent template names one either. In the main script, `models.review`
+holds one entry per review seat, keyed by the seat's label, so each of the fifteen seats can run on
+its own model. The script stops before its first agent when an entry is missing, is still a
+placeholder, or names an agent or seat the script does not have. A seat that reads whole files,
+such as the rule reader, may need a model with a larger context than the others.
 General rule unless a project overrides it: **implementation and fixing → the strongest available
 coding model at high effort; review → a strong model from a DIFFERENT family than the implementer,
 high effort; mechanical stages → a mid tier at low/medium effort; never the cheapest tier.** The
@@ -1592,16 +1630,9 @@ stated model policy if it has one.
 
 ## Don't over-fan
 
-Scale to the change; more agents re-reading the same code is cost, not rigor.
-
-- **Never droppable:** implementer, finding verifier, fix/proof pass, roaster, at least one
-  correctness reviewer, quality and the project rule reader. No selected reader may silently fail.
-- **Droppable on a tightly-scoped change:** duplicate checker when no decision path is added,
-  cleanliness for a handful of lines in one file, and cold alternatives when no shape changes.
-- **Never drop inverse-spec or spec-compliance when a written spec exists** — it is the cheapest insurance against
-  the failure that the other seats structurally cannot see, because they check the code against the
-  prompt.
-- Reserve wider fan-out for genuine breadth (many independent sites), not for reassurance.
+No review seat is droppable, whatever the size of the change: every run runs the implementer, all
+fifteen review seats, the finding verifier, the fix or proof pass and the roaster, and no reader may
+silently fail. The main script stops a run whose seat list leaves a seat out.
 
 **The escape hatch: a targeted patch.** The full composition carries a roughly FIXED overhead per
 increment — worth paying for an increment, absurd for a three-file fix. For those, drop out of the

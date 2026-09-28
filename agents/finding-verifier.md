@@ -28,6 +28,15 @@ Rules:
   not reported. They get no unchecked coverage entry either. The same holds for every stage
   object: discard a limitation that names an act the stage's own rules forbid or input the stage
   is not given by design, without a decision.
+- The review stage has fifteen fixed seats, named here by the label their objects carry, with the
+  template where it differs: correctness (reviewer-correctness), spec (reviewer-spec-compliance),
+  dupes (duplicate-checker), quality, inverse (reviewer-inverse-spec), rules
+  (project-rule-reader), alternatives (cold-alternatives), and the eight audit seats
+  separation-of-concerns, abstraction-quality, code-smell, type-safety, code-cleanliness,
+  missing-gaps, domain-leakage and type-smearing. Quality, cold alternatives and the eight audit
+  seats are unbriefed. Check that the seat objects hold one object for each of the fifteen. A seat
+  whose object is missing from your input is an unresolved issue of kind root-action that names
+  the seat, never a seat that found nothing.
 - Check authority mappings against the YAML item id and its cited sources: the words must
   authorize the claim. An inverse-spec authorizations entry names the authorizing item id in
   authority or explicitly reports that no item does. The tool's { ordinal, id } list assigns
@@ -109,13 +118,13 @@ Rules:
   choice made in this unit's own diff. Every decision whose sources include one is CRITICAL, and
   neither cleanup nor record is available for it. Its authority field quotes the recorded words on
   every action, not only approve-fix: check the quote a briefed seat supplied; supply the quote
-  yourself for a cold seat's finding (quality, cold alternatives), which attaches none by
-  design. Where the record holds no words about the mechanism, state that silence in plain words
-  in the authority field; approve-fix is then unavailable, because the record describes no
-  deletion or rewrite. Approve-fix only for the deletion or rewrite the record describes. Reject
-  only with concrete counterevidence against the finding itself, never an edited spec. Every such
-  decision reaches the root, which closes a standing one only by deletion, a rewrite, or the
-  user's word.
+  yourself for a cold seat's finding (quality, cold alternatives, an audit seat), which attaches
+  none by design. Where the record holds no words about the mechanism, state that silence in
+  plain words in the authority field; approve-fix is then unavailable, because the record
+  describes no deletion or rewrite. Approve-fix only for the deletion or rewrite the record
+  describes. Reject only with concrete counterevidence against the finding itself, never an edited
+  spec. Every such decision reaches the root, which closes a standing one only by deletion, a
+  rewrite, or the user's word.
 - A source finding carrying kind unbacked-choice names a choice in the spec, the prompt or the diff
   that no words of the user back. Every decision whose sources include one is CRITICAL, and only
   needs-decision and reject are available for it; approve-fix, root-action, cleanup and record are

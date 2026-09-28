@@ -116,7 +116,7 @@ const RESUME_NOTE = [
 // Interrupted seat: note appended. Its key changes, but it has no cached result to invalidate.
 const correctnessPrompt = [AUTHORITY, SPEC, SEAT_BRIEF, RESUME_NOTE].join('\n\n')
 // Completed seat: untouched, byte for byte. It replays.
-const cleanlinessPrompt = [AUTHORITY, SPEC, SEAT_BRIEF].join('\n\n')
+const specCompliancePrompt = [AUTHORITY, SPEC, SEAT_BRIEF].join('\n\n')
 ```
 
 ## The rules

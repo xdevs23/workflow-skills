@@ -1,10 +1,14 @@
 export const meta = {
-  name: 'fix-follow-up',
-  description: 'fixes the corrective findings of a named earlier run, with a scope check before the fix and a diff check after it',
+  name: 'kebab-name',
+  description: 'one line',
   phases: [{ title: 'Launch' }, { title: 'Scope' }, { title: 'Fix' }, { title: 'Diff' }],
 }
 // meta must be a PURE LITERAL: no variables, no interpolation. Phase titles here must
 // match the phase() calls EXACTLY or the progress grouping silently degrades.
+// A copy also sets name and description: name becomes a kebab-case name of the fix run and
+// description one line saying what the run fixes, so each fix run shows in the workflow list
+// under its own name. kebab-name and one line are the values a copy replaces. The phases and
+// every other line outside the marked block stay as shipped.
 
 // ---- UNIT VALUES. A unit copies this file and sets the values of this block. ----
 // Everything below the closing line is the reviewed script and is not edited per unit.
@@ -20,8 +24,11 @@ const UNIT = {
   documents: '<documents directory>',    // the parent unit's documents directory, relative to the tree root
   entries: args.entries,                 // the entries list from the check tool's --json output, passed at launch
   parentSpec: args.parentSpec,           // the parentSpec from the check tool's --json output, passed at launch
+  // One model and effort per agent the script starts, each set by the root. The script stops before
+  // its first agent on an entry that is missing, still a placeholder in angle brackets, or named for
+  // no agent of the script.
   models: {
-    gate: { model: 'claude-haiku-4-5', effort: 'low' },
+    gate: { model: '<explicit>', effort: 'low' },
     scope: { model: '<explicit>', effort: 'high' },
     fix: { model: '<explicit>', effort: 'high' },
     roast: { model: '<explicit>', effort: 'high' },
@@ -265,6 +272,20 @@ const checkRepositories = (list, name) => {
     if (!SHA.test(entry.sha || '')) throw new Error(name + ' carries no full immutable commit ID for ' + entry.path)
   }
 }
+// The root sets the model and the effort of every agent in the marked block. names lists the agents
+// an entry of models may stand for; a value in angle brackets is the shipped placeholder.
+const checkModels = (models, names, path) => {
+  for (const name of Object.keys(models ?? {})) if (!names.includes(name)) throw new Error(path + '.' + name + ' names no agent of this script')
+  for (const name of names) {
+    const entry = models?.[name]
+    for (const field of ['model', 'effort']) {
+      const value = entry?.[field]
+      if (typeof value !== 'string' || !value.trim() || /^<.*>$/.test(value.trim())) {
+        throw new Error(path + '.' + name + '.' + field + ' must be set by the root, not ' + JSON.stringify(value))
+      }
+    }
+  }
+}
 const base = UNIT.base
 checkRepositories(base, 'args.base, the parent run\'s final snapshots,')
 // Snapshots are lists of { path, sha } in the order of base.
@@ -292,6 +313,7 @@ if (!Array.isArray(entries) || !entries.length ||
   throw new Error('args.entries must be the entries list from the check tool: non-empty, each with a unique id, a source, a finding and a correction')
 }
 const entryIds = entries.map(e => e.id)
+checkModels(UNIT.models, ['gate', 'scope', 'fix', 'roast', 'diff'], 'UNIT.models')
 
 // Completeness checks; each throws naming what is missing.
 const requireText = (value, label) => {
