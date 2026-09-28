@@ -4,17 +4,32 @@ The plugin ships `watch-prs`, a Python tool that polls one or more pull requests
 CLI and prints one JSON line for every new comment, review, review thread comment and failed check
 on the head commit, and one line when a pull request closes or merges. The babysit-pr skill has the
 agent run it once a pull request exists and act on each line it prints. The tool is a cleaned-up
-version of a watcher first written inside one project, with the same events and fields, and it
-changes only what a tool shipped in a plugin needs.
+version of a watcher first written inside one project, and it prints the same events with the same
+fields.
+
+The tool differs from that earlier watcher in these ways:
+
+- The pull requests, the state file and the interval between polls come from the command line.
+- Every read of GitHub goes through `gh api --paginate --slurp`, including the pull request itself
+  and the lookup of a branch, which the earlier watcher read with a plain `gh api` call and
+  `gh pr list`.
+- A pull request named by branch is looked up among the open pull requests only, and a branch that
+  matches none or more than one of them ends the tool with an error. The earlier watcher took the
+  first pull request in any state.
+- The tool checks once at start that `gh` is installed and logged in, and exits with an error when
+  it is not.
+- The tool creates the state file's directory when it is missing, and replaces the state file in
+  one step.
 
 ## Running the tool
 
-The tool is the script `watch-prs.py` in the plugin's tools directory, run with `python3` as
-`watch-prs.py --state <file> [--interval <seconds>] <pull request>...`. Each pull request is named
-as `owner/repo#number`, or as `owner/repo@branch` for the open pull request whose head is that
-branch. The state file is required. The interval between polls is 60 seconds unless `--interval`
-gives another finite number of seconds, zero included, and the tool refuses a negative or infinite
-one. A name that matches neither form ends the tool with a usage error before it calls `gh`.
+The tool is a Python program in the plugin's tools directory and runs with `python3`. It takes the
+state file with `--state`, which is required, the seconds between polls with `--interval`, and one
+or more pull requests as its remaining arguments. Each pull request is named as `owner/repo#number`,
+or as `owner/repo@branch` for the open pull request whose head is that branch. The interval is 60
+seconds unless `--interval` gives another finite number of seconds, zero included, and the tool
+refuses a negative or infinite one. A name that matches neither form ends the tool with a usage
+error before it calls `gh`.
 
 The tool reads GitHub only through `gh api --paginate --slurp` and reads every answer with Python's
 `json` module. A single object, such as the pull request itself, comes back from `--slurp` as a list
@@ -49,10 +64,13 @@ polls of the remaining pull requests it sleeps for the interval.
 ## Pull requests named by branch
 
 A pull request named by branch is the open pull request whose head branch has that name. The tool
-lists the repository's open pull requests and takes the first whose head ref matches. When none
-does, it exits with an error that names the repository and the branch, before it prints `watching`
-or polls anything, since a closed pull request has nothing left to watch. A failing listing ends the
-tool the same way, with `gh`'s message. A pull request named by number is watched as given.
+lists the repository's open pull requests and collects every one whose head ref matches. A head ref
+is only the branch name, so pull requests from different forks can share it. When exactly one
+matches, the tool watches it. When none matches, the tool exits with an error that names the
+repository and the branch. When more than one matches, it exits with an error that lists them and
+asks for the one to watch by its number. Both errors come before the tool prints `watching` or polls
+anything. A failing listing ends the tool the same way, with `gh`'s message. A pull request named by
+number is watched as given.
 
 ## The login check
 
@@ -81,21 +99,21 @@ comments also returns the replies to them.
 
 ## The babysit-pr skill
 
-The skill's Start and watch section names the tool and its command. The agent keeps the state file
-in the project cache that `workflow-skills:local-cache` defines. It runs the tool through the
-Monitor tool where the harness has it, since every printed line is one event, and otherwise in a
-shell where `gh` is logged in, reading the lines the tool prints.
+The skill's Start and watch section names the tool, says where the plugin keeps it and how to run
+it. The agent keeps the state file in the project cache that `workflow-skills:local-cache` defines.
+It runs the tool through the Monitor tool where the harness has it, since every printed line is one
+event, and otherwise in a shell where `gh` is logged in, reading the lines the tool prints.
 
 The agent does not act on its own replies. Every reply opens with the note alert that the
 pr-comment-replies skill requires, and the agent recognizes its own replies by it, so a reply never
 comes back to it as new work.
 
 When a watch ends while the pull request is still open, the agent starts it again. When the tool
-exits with an error, such as a missing login or a branch without an open pull request, the agent
-starts it again only once the cause the message names is fixed, so an error exit does not turn into
-a restart loop. When the pull request is closed or merged, the agent stops.
+exits with an error, such as a missing login or a branch with no open pull request or with more than
+one, the agent starts it again only once the cause the message names is fixed, so an error exit
+does not turn into a restart loop. When the pull request is closed or merged, the agent stops.
 
-The README's requirement list names the tool, its command, the events it prints and its need for
+The README's requirement list names the tool, its arguments, the events it prints and its need for
 Python 3 and a logged-in `gh`.
 
 ## Tests
@@ -108,10 +126,11 @@ test can check which paths the tool read.
 
 The tests cover every event kind with its fields, a null `line` and `in_reply_to`, a pending review
 and a failed check on an older commit left out, a restart with the same state printing no event
-again while a new comment still prints, a branch name finding its open pull request and a branch
-with none ending in an error, a closed and a merged pull request ending the watch with `done` and
-status zero, a failing `gh` call printing `poll-error` before polling goes on, and a missing login
-or a missing `gh` ending the tool with an error.
+again while a new comment still prints, a branch name finding its open pull request, a branch with
+none ending in an error, a branch shared by open pull requests from two forks ending in an error, a
+closed and a merged pull request ending the watch with `done` and status zero, a failing `gh` call
+printing `poll-error` before polling goes on, and a missing login or a missing `gh` ending the tool
+with an error.
 
 ## Decisions
 
@@ -121,13 +140,13 @@ plugin cannot do: it cannot carry one project's pull requests, and the plugin's 
 place for a project's state.
 
 Every read of GitHub goes through `gh api --paginate --slurp` and Python's `json` module. The
-GitHub CLI's output is JSON, and a library reads it; no part of the tool parses an established
+GitHub CLI's output is JSON, and a library reads it. No part of the tool parses an established
 format by hand. The branch lookup lists the open pull requests through the same call and matches
 the head ref in Python.
 
-A branch name stands for the open pull request of that branch. The earlier watcher took the first
-pull request in any state, which can be a closed one, and a closed pull request has nothing left to
-watch.
+A branch shared by more than one matching pull request ends the tool with an error. Taking one of
+them would watch, and have the agent answer on, a pull request other than the one meant, and the
+tool picks no fork on its own.
 
 The login check runs once at start and ends the tool on failure, while a later failed poll keeps
 polling. A missing login would otherwise print `poll-error` every interval without end, and no part
@@ -136,4 +155,5 @@ of the plugin leaves a session a way to loop.
 The state file is replaced in one step. A watcher run through the Monitor tool is stopped by a
 signal at any moment, and a truncated state file would end every later start with a JSON error.
 
-The plugin version rises to 0.28.0, since origin already carries 0.27.0.
+OPEN: whether a branch name stands only for an open pull request, as the tool does now, or for a
+pull request in any state, as the earlier watcher did, is not decided.
