@@ -635,7 +635,7 @@ describe('workflow verification and consolidation', () => {
       })]) },
     })
     expect(result.detail).toContain('Inverse-spec finding cannot be dispositioned as cleanup; ' +
-      'the root must record the words that back the choice, or ask the user')
+      'the root must record in the todo record that the user\'s recorded words back the choice, or ask the user')
     expect(calls.some(c => c.phase === 'Fix')).toBe(false)
   })
 
@@ -3006,7 +3006,8 @@ describe('no loops in the workflow skills', () => {
       'whose fix list names findings of the parent run', 'Every other such item goes to a new implement-review-verify unit with its own spec',
       'never the findings its own review raises; those are recorded the same way',
       'Every other item stays in the todo record as a separate unit, done later.',
-      'A run interrupted mid-flight is resumed through `resume-interrupted-run`, as law 5 says.',
+      'A run interrupted mid-flight is resumed through `resume-interrupted-run`, as law 5 says, and that skill is only for a run' +
+        ' that was actually interrupted, never a way around these rules.',
       'A run that ended any other way, before or after its review, has its items recorded like every run, ' +
         'and the root never starts a run on the same spec again.',
       '**Two relocations mean the cause is untouched.**']) {

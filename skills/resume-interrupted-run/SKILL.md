@@ -34,6 +34,8 @@ rescuing.
   nothing.
 - An agent **completed with a bad result**. That is the opposite problem — see the boundary section
   at the end.
+- The run **ended on its own**, whatever its exit. Its remaining items are recorded, and a new run
+  starts only for what must be fixed. This skill is never a way to run the same spec again.
 
 ## The procedure
 
