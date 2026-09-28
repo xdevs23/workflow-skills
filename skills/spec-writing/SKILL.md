@@ -191,9 +191,9 @@ wrapped prose is written as a literal block (`|`).
 in the YAML spec: checkable, one per behaviour that must hold. The tool numbers them from one in
 file order and supplies `{ ordinal, id }` plus `counts.kind.criterion` for the implementation
 workflow's integer ordinals and `args.criteriaCount`.
-The concern reviewers return verdicts *per criterion*; the additional seats retain their distinct contracts. Without pinned
-criteria, "review" degrades to vibes, each seat invents its own bar, and nothing the fixer
-receives can be triaged against anything. No criteria, no launch.
+The concern reviewers return verdicts *per criterion*; the additional seats retain their distinct
+contracts. Without criteria written down, "review" degrades to vibes, each seat invents its own
+bar, and nothing the fixer receives can be triaged against anything. No criteria, no launch.
 
 ## Validating the spec
 
