@@ -18,9 +18,10 @@ convention wins.
 
 `TODO.md` holds **what is left, and where each item currently stands**.
 
-It is the only place local project status lives. An in-session task list disappears when the session
-ends, and private notes are invisible to everyone else, so neither one may hold status. If a
-fact about project advancement exists nowhere else, it belongs here.
+- Keep local project status in `TODO.md` and nowhere else. An in-session task list disappears when
+  the session ends, and private notes are invisible to everyone else, so neither one may hold
+  status.
+- Record here any fact about project advancement that exists nowhere else.
 
 The file is **gitignored and untracked**: it is a working file on one machine, not repository
 content. A fresh clone does not have it. That is deliberate: it changes constantly and it
@@ -35,16 +36,17 @@ Four records divide the work between them:
 | design docs (wherever the project keeps them) | The durable design for a change, including the alternatives rejected and why |
 | in-session task list | This session's steps only; disposable |
 
-The consequence: when an item finishes, its **design** stays in the design docs, its **diff**
-stays in git, and its `TODO.md` entry shrinks to a receipt. Do not re-explain a design here that
-a design doc already carries.
+When an item finishes, its **design** stays in the design docs, its **diff** stays in git, and its
+`TODO.md` entry shrinks to a receipt.
+
+- Do not re-explain a design here that a design doc already carries.
 
 # 2. Layout of the file
 
-The file reads OLDEST FIRST: entries carry ascending ids and the newest entry is the last one
-in the file, so a reader follows the project's history in the order it happened and the ledger
-is appended, never inserted into. Reference material (header, conventions) comes first, then
-the record in id order:
+- Keep the file OLDEST FIRST: entries carry ascending ids and the newest entry is the last one in
+  the file, so a reader follows the project's history in the order it happened.
+- Append to the ledger, and never insert into it.
+- Put reference material (header, conventions) first, then the record in id order:
 
 1. **Header**: what the file is, plus the conventions that apply to every entry (reference this skill)
 2. **Incidents**: recorded failures kept verbatim so they do not repeat. Each one states what
@@ -78,7 +80,7 @@ the record in id order:
   or a potential work unit with no pointer is one nobody can trace back to its words.
   Finding the line: search the project's session transcript directory for the promptId or uuid or read the specified line directly.
 
-Sub-items take a fourth level (`#### #29.1 — ...`) and follow the same shape.
+- Give a sub-item a fourth level (`#### #29.1 — ...`) and the same shape.
 
 # 4. The states an entry can take
 
@@ -95,18 +97,20 @@ item sits:
   The entry must state the question, and the options, in plain terms or that the theory is missing,
   which would trigger a discussion thread about the feature-.
 
-  A decision that is owed **blocks the item, not the queue**. The item is skipped and flagged;
-  work moves to the next one. Stopping the whole queue on an open question is a recorded
-  incident, not a practice.
+  A decision that is owed **blocks the item, not the queue**. Skip and flag the item, and move the
+  work to the next one. Stopping the whole queue on an open question is a recorded incident, not a
+  practice.
 
 **Ready to build**
 
-Whether a unit is ready to build is decided by the user's words only, and may not be decided by the agent.
-If a user's prompt is inferred as authorization due to ambiguity in the words, you must plainly state it **in bold**
-and ask the user to confirm.
-
 - `READY`: the design is agreed and written down. The entry names the design doc. Work does not start yet.
 - `TODO`/`QUEUED`: the unit can be built at any time, even if the session is wiped and started fresh.
+
+The user's words alone decide whether a unit is ready to build.
+
+- Never decide it yourself.
+- When you infer authorization from a prompt of the user because its words are ambiguous, state that
+  plainly **in bold** and ask the user to confirm.
 
 **Being built**
 
@@ -130,40 +134,36 @@ and ask the user to confirm.
 
 **Held**
 
-An item can be finished but deliberately withheld. Mark it `HELD CHANGE` inside the entry it
-belongs to, state exactly what must happen first, and state what would go wrong if it shipped
-early. A held change is the one case where a correct, passing change must stay out of a commit.
+An item can be finished but deliberately withheld.
+
+- Mark it `HELD CHANGE` inside the entry it belongs to.
+- State exactly what must happen first, and state what would go wrong if it shipped early.
+- Keep it out of a commit: a held change is the one case where a correct, passing change must stay
+  out of a commit.
 
 ## 5. Writing style
 
-**Write for a reader with no context.** Every entry is read fresh. A reader who was not there
-must be able to act on it without asking anything.
-
-**State the fact, then the evidence.** A claim with no receipt ages into folklore. Prefer
-"boot clean: zero index-creation failures, backfill matched=6 updated=6" over "deployed fine".
-
-**Dates are absolute.** Never "today", "last week", "recently". Write `2026-08-08`. Timestamps
-carry `Z` with UTC when the hour matters.
-
-**Uppercase carries weight; spend it.** Uppercase marks a state, a hard constraint, or
-something that costs money or data if missed. Uppercase everywhere reads as noise and hides the
-parts that matter.
-
-**Supersede, never rewrite, append below.** A newer queue block says what it supersedes and is
-written after the old one; the old block stays. Ids ascend down the file; nothing is inserted
-above an older entry.
-History is what makes a decision re-checkable. Delete only what was factually wrong, and say so.
-
-**Corrections stay visible.** When an entry turns out to be wrong, correct it in place and note
-what it said before. An item found already shipped, or a claim found false, is recorded as such.
-
-**An accepted limitation is only ever an EXTERNAL system's limit**, and it carries its official
-source, the date it was checked, and a sign-off naming whoever model and session wrote it. Scoped-out work, a
-choice the project made, a shortcut or a broken rule is never one, and a shortfall relabelled
-as a dated "decision" is the same laundering one step over.
-
-**Plain language.** No filler openers, no compressed jargon. Enumerations are bullet lists, not
-run-on sentences joined by dashes or semicolons. Do not use mannered speech.
+- **Write for a reader with no context.** Every entry is read fresh. A reader who was not there
+  must be able to act on it without asking anything.
+- **State the fact, then the evidence.** A claim with no receipt ages into folklore. Prefer
+  "boot clean: zero index-creation failures, backfill matched=6 updated=6" over "deployed fine".
+- **Write dates as absolute dates.** Never "today", "last week", "recently". Write `2026-08-08`.
+  Give timestamps `Z` with UTC when the hour matters.
+- **Spend uppercase, since it carries weight.** Uppercase marks a state, a hard constraint, or
+  something that costs money or data if missed. Uppercase everywhere reads as noise and hides the
+  parts that matter.
+- **Supersede, never rewrite, append below.** A newer queue block says what it supersedes and is
+  written after the old one; the old block stays. Ids ascend down the file; nothing is inserted
+  above an older entry. History is what makes a decision re-checkable. Delete only what was
+  factually wrong, and say so.
+- **Keep corrections visible.** When an entry turns out to be wrong, correct it in place and note
+  what it said before. Record an item found already shipped, or a claim found false, as such.
+- **Accept a limitation only when it is an EXTERNAL system's limit**, and give it its official
+  source, the date it was checked, and a sign-off naming whoever model and session wrote it.
+  Scoped-out work, a choice the project made, a shortcut or a broken rule is never one, and a
+  shortfall relabelled as a dated "decision" is the same laundering one step over.
+- **Write plain language.** No filler openers, no compressed jargon. Write enumerations as bullet
+  lists, not run-on sentences joined by dashes or semicolons. Do not use mannered speech.
 
 ## 6. What never goes in
 
@@ -173,10 +173,10 @@ run-on sentences joined by dashes or semicolons. Do not use mannered speech.
   the decision and its date, not the conversation that produced it.
 - **Credentials of any kind**, even though the file is local. They leak by being copied.
 
-`TODO.md` itself is gitignored and untracked, so operational detail that must never reach a
-commit (which models or accounts ran a step, machine-local specifics) may be recorded here
-where it helps. The rule that binds is the destination: none of it may cross into a tracked
-file, a doc, or a commit message.
+- Record operational detail that must never reach a commit (which models or accounts ran a step,
+  machine-local specifics) here where it helps, since `TODO.md` itself is gitignored and untracked.
+- Never let any of it cross into a tracked file, a doc, or a commit message. The rule that binds is
+  the destination.
 
 ## 7. When to write
 
