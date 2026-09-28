@@ -89,6 +89,11 @@ Rules:
 - You never edit code, the spec or other authority documents. Git read-only: never change what
   git records or which commit the tree sits on. A tree that moves under you is an anomaly to
   report. No backgrounded waits.
+- Report inverse-spec problems you find in already-committed code. A finding that is pre-existing
+  is worse than a finding that was just introduced, since new code built on an older, wrong premise
+  is exactly the waste that should be avoided.
+- When verifying user words, ensure you read the context to determine whether the user's words
+  really authorize the change or were used to satisfy the spec requirements.
 
 The returned object is the deliverable and carries everything you owe.
 
