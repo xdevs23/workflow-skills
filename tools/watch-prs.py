@@ -69,10 +69,15 @@ def resolve(repo: str, target: dict) -> int:
         pulls = flat(api(f"repos/{repo}/pulls?state=open&per_page=100"))
     except subprocess.CalledProcessError as error:
         sys.exit(f"watch-prs: cannot list the open pull requests of {repo}: {error.stderr.strip()}")
-    for pr in pulls:
-        if pr["head"]["ref"] == target["head"]:
-            return pr["number"]
-    sys.exit(f"watch-prs: {repo} has no open pull request whose head is {target['head']}")
+    # The head ref is only the branch name, so pull requests from different forks can share it.
+    numbers = [pr["number"] for pr in pulls if pr["head"]["ref"] == target["head"]]
+    if not numbers:
+        sys.exit(f"watch-prs: {repo} has no open pull request whose head is {target['head']}")
+    if len(numbers) > 1:
+        listed = ", ".join(f"{repo}#{number}" for number in numbers)
+        sys.exit(f"watch-prs: {repo} has more than one open pull request whose head is {target['head']}: "
+                 f"{listed}; name the one to watch by its number")
+    return numbers[0]
 
 
 def emit(**event) -> None:

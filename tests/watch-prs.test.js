@@ -116,6 +116,19 @@ test('a branch with no open pull request ends in an error before anything is wat
   expect(run.polled).toStrictEqual(['repos/acme/widgets/pulls?state=open&per_page=100'])
 })
 
+test('a branch shared by open pull requests from different forks ends in an error before anything is watched', async () => {
+  const run = await watch(await fixture((github) => {
+    github.api['repos/acme/widgets/pulls?state=open&per_page=100'][0].json[0].push(
+      { number: 99, head: { ref: 'feature/login', sha: 'ddd4', repo: { full_name: 'someone/widgets' } } })
+    return github
+  }), ['acme/widgets@feature/login'])
+  expect(run.status).not.toBe(0)
+  expect(run.stdout).toBe('')
+  expect(run.stderr).toContain(
+    'acme/widgets has more than one open pull request whose head is feature/login: acme/widgets#12, acme/widgets#99')
+  expect(run.polled).toStrictEqual(['repos/acme/widgets/pulls?state=open&per_page=100'])
+})
+
 test('a closed pull request ends the watch with closed, done and status zero', async () => {
   const run = await watch(await fixture((github) => {
     github.api[PULL] = [pull('closed', false)]
