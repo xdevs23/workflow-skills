@@ -30,8 +30,8 @@ const UNIT = {
   invariants: '<only the constraints alternatives must preserve>',
   fileSizeCap: '<the per-file size cap>',
   // One model and effort per agent the script starts, each set by the root. The script stops before
-  // its first agent on an entry that is missing, still a placeholder in angle brackets, or named for
-  // no agent of the script.
+  // its first agent on an entry that is missing, still a placeholder in angle brackets, named for no
+  // agent of the script, or holding any field besides model and effort.
   models: {
     gate: { model: '<explicit>', effort: 'low' },
     impl: { model: '<explicit>', effort: 'high' },
@@ -385,7 +385,9 @@ const checkRepositories = (list, name) => {
   }
 }
 // The root sets the model and the effort of every agent in the marked block. names lists the agents
-// an entry of models may stand for; a value in angle brackets is the shipped placeholder.
+// an entry of models may stand for; a value in angle brackets is the shipped placeholder. An entry
+// holds nothing else: the stage options spread it, so another field would replace the agent's
+// template or another option of its stage.
 const checkModels = (models, names, path) => {
   for (const name of Object.keys(models ?? {})) if (!names.includes(name)) throw new Error(path + '.' + name + ' names no agent of this script')
   for (const name of names) {
@@ -396,6 +398,8 @@ const checkModels = (models, names, path) => {
         throw new Error(path + '.' + name + '.' + field + ' must be set by the root, not ' + JSON.stringify(value))
       }
     }
+    const extra = Object.keys(entry).filter(field => field !== 'model' && field !== 'effort')
+    if (extra.length) throw new Error(path + '.' + name + ' holds ' + extra.join(', ') + ', and an entry holds only a model and an effort')
   }
 }
 const base = UNIT.base
@@ -570,11 +574,15 @@ const INVARIANTS = 'REQUIRED INVARIANTS, VERBATIM: ' + UNIT.invariants + '.'
 const HYGIENE = [
   STAGE, STYLE, READ_GIT, TREE, 'No background waits.',
 ].join('\n')
-// The fifteen seats of the review stage. Every run runs each of them, whatever the size of the
-// change, and the marked block keys one model entry to each label.
-const REVIEW_SEATS = ['correctness', 'spec', 'dupes', 'quality', 'inverse', 'rules', 'alternatives',
-  'separation-of-concerns', 'abstraction-quality', 'code-smell', 'type-safety', 'code-cleanliness',
-  'missing-gaps', 'domain-leakage', 'type-smearing']
+// The fifteen seats of the review stage, each label with the template it loads. Every run runs each
+// of them, whatever the size of the change, and the marked block keys one model entry to each label.
+const REVIEW_SEATS = {
+  correctness: 'reviewer-correctness', spec: 'reviewer-spec-compliance', dupes: 'duplicate-checker',
+  quality: 'quality', inverse: 'reviewer-inverse-spec', rules: 'project-rule-reader', alternatives: 'cold-alternatives',
+  'separation-of-concerns': 'separation-of-concerns', 'abstraction-quality': 'abstraction-quality',
+  'code-smell': 'code-smell', 'type-safety': 'type-safety', 'code-cleanliness': 'code-cleanliness',
+  'missing-gaps': 'missing-gaps', 'domain-leakage': 'domain-leakage', 'type-smearing': 'type-smearing',
+}
 // The seat list: the template, label, prompt blocks, schema and completeness check of each seat.
 // Only the two briefed code-lens readers receive the implementer's object, as claims. The eight
 // audit seats receive what quality receives, the hygiene floor and the diff, and return its object.
@@ -595,15 +603,17 @@ const seatList = claims => [
   ['domain-leakage', 'domain-leakage', [HYGIENE], QUALITY, checkReader],
   ['type-smearing', 'type-smearing', [HYGIENE], QUALITY, checkReader],
 ]
-// A seat list that leaves a seat out, adds one or names one twice stops the run before its first agent.
-const seatLabels = seatList([]).map(seat => seat[1])
-if (JSON.stringify([...seatLabels].sort()) !== JSON.stringify([...REVIEW_SEATS].sort())) {
-  throw new Error('The review stage runs exactly the fifteen seats ' + REVIEW_SEATS.join(', ') +
-    ', and the seat list holds ' + seatLabels.join(', '))
+// A seat list that leaves a seat out, adds one, names one twice or gives a label another template
+// stops the run before its first agent.
+const requiredSeats = Object.entries(REVIEW_SEATS).map(([label, type]) => label + ' on ' + type)
+const listedSeats = seatList([]).map(([type, label]) => label + ' on ' + type)
+if (JSON.stringify([...listedSeats].sort()) !== JSON.stringify([...requiredSeats].sort())) {
+  throw new Error('The review stage runs exactly the fifteen seats ' + requiredSeats.join(', ') +
+    ', and the seat list holds ' + listedSeats.join(', '))
 }
 const { review: seatModels, ...stageModels } = UNIT.models ?? {}
 checkModels(stageModels, ['gate', 'impl', 'verify', 'fix', 'roast'], 'UNIT.models')
-checkModels(seatModels, REVIEW_SEATS, 'UNIT.models.review')
+checkModels(seatModels, Object.keys(REVIEW_SEATS), 'UNIT.models.review')
 // One diff range per repository whose snapshot moved from base, each read in its own repository.
 const diffInput = snaps => {
   const start = shaByPath(base), moved = snaps.filter(s => s.sha !== start.get(s.path))

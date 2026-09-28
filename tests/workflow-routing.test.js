@@ -3165,17 +3165,23 @@ describe('fixed review seats and a model for every agent', () => {
     expect(text).toContain('A seat whose object is missing from your input is an unresolved issue of kind root-action that names the seat')
   })
 
-  test('a copy whose seat list leaves out, adds or repeats a seat stops before its first agent', async () => {
+  test('a copy whose seat list leaves out, adds or repeats a seat, or gives one another template, stops before its first agent', async () => {
     const line = "  ['code-smell', 'code-smell', [HYGIENE], QUALITY, checkReader],\n"
     const copy = filled(skeleton)
     expect(copy.split(line)).toHaveLength(2)
     const extra = "  ['code-smell', 'code-smell', [HYGIENE], QUALITY, checkReader],\n  ['roaster', 'extra', [HYGIENE], QUALITY, checkReader],\n"
+    const retemplated = "  ['quality', 'code-smell', [HYGIENE], QUALITY, checkReader],\n"
     for (const edited of [copy.replace(line, ''), copy.replace(line, line + line), copy.replace(line, extra),
-      copy.replace("  ['reviewer-correctness', 'correctness',", "  ['reviewer-correctness', 'correct',")]) {
+      copy.replace("  ['reviewer-correctness', 'correctness',", "  ['reviewer-correctness', 'correct',"), copy.replace(line, retemplated)]) {
+      expect(edited).not.toBe(copy)
       const { message, calls } = await stopsBeforeAnyAgent(edited, launchArgs())
-      expect([message?.startsWith('The review stage runs exactly the fifteen seats correctness, spec, dupes,'), calls]).toEqual([true, []])
+      expect([message?.startsWith('The review stage runs exactly the fifteen seats correctness on reviewer-correctness, ' +
+        'spec on reviewer-spec-compliance, dupes on duplicate-checker,'), calls]).toEqual([true, []])
     }
-    expect(skeleton).toContain("const REVIEW_SEATS = ['correctness', 'spec', 'dupes', 'quality', 'inverse', 'rules', 'alternatives',")
+    const retemplatedRun = await stopsBeforeAnyAgent(copy.replace(line, retemplated), launchArgs())
+    expect(retemplatedRun.message).toContain('and the seat list holds correctness on reviewer-correctness')
+    expect(retemplatedRun.message).toContain('code-smell on quality')
+    expect(skeleton).toContain("  correctness: 'reviewer-correctness', spec: 'reviewer-spec-compliance', dupes: 'duplicate-checker',")
   })
 
   test('each review seat runs on its own model entry, keyed by its label', async () => {
@@ -3210,6 +3216,14 @@ describe('fixed review seats and a model for every agent', () => {
       [filled(fixSkeleton).replace("    'diff': { model: 'model-diff', effort: 'high' },\n", ''), fixArgs(), 'UNIT.models.diff.model must be set by the root, not undefined'],
       [filled(fixSkeleton).replace("    'diff': {", "    verify: { model: 'model-verify', effort: 'high' },\n    'diff': {"), fixArgs(),
         'UNIT.models.verify names no agent of this script'],
+      [filled(skeleton).replace("{ model: 'model-code-smell', effort: 'high' }", "{ model: 'model-code-smell', effort: 'high', agentType: 'workflow-skills:quality' }"),
+        launchArgs(), 'UNIT.models.review.code-smell holds agentType, and an entry holds only a model and an effort'],
+      [filled(skeleton).replace("{ model: 'model-impl', effort: 'high' }", "{ model: 'model-impl', effort: 'high', agentType: 'workflow-skills:quality' }"),
+        launchArgs(), 'UNIT.models.impl holds agentType, and an entry holds only a model and an effort'],
+      [filled(coldSkeleton).replace("{ model: 'model-gaps', effort: 'high' }", "{ model: 'model-gaps', effort: 'high', agentType: 'workflow-skills:quality' }"),
+        launchArgs(), 'UNIT.models.gaps holds agentType, and an entry holds only a model and an effort'],
+      [filled(fixSkeleton).replace("{ model: 'model-fix', effort: 'high' }", "{ model: 'model-fix', effort: 'high', agentType: 'workflow-skills:quality' }"),
+        fixArgs(), 'UNIT.models.fix holds agentType, and an entry holds only a model and an effort'],
     ]
     for (const [script, args, expected] of cases) {
       // Each case edits its copy; an edit that matched nothing would leave a script that runs.
