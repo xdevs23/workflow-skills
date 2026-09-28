@@ -1394,8 +1394,10 @@ joins `FOCUSED` in its place, the order to run only the checks that cover what i
 
 All three scripts begin with a launch check, before any other agent: a small stage on
 `claude-haiku-4-5` at low effort whose prompt is one command line and one sentence. The command
-changes to the tree the run works on, the worktree from the marked block for the main run and the
-fix run and the main checkout for the pre-phase, so the cited rule files resolve there.
+changes to the tree the run works on, the worktree from the marked block, so the cited rule files
+resolve there and the tool finds the repositories of that tree alone. The main checkout of a
+multi-repository project can hold other task trees and cached clones, which the tool would count as
+repositories the base list leaves out.
 It then runs `<plugin root>/tools/check-spec.ts` with `--json`, the spec path from
 `args.specPath`, the transcript directory from `args.transcripts`, `--base` with the base list as
 JSON in single quotes and `--record` with the private record from the marked block. The tool fails

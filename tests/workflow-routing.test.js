@@ -1930,7 +1930,7 @@ describe('launch check and shipped scripts', () => {
     const preGate = gatePrompt(preCalls)
     expect(preCalls[0]).toBe(preGate)
     expect([preGate.model, preGate.effort, preGate.phase]).toEqual(['claude-haiku-4-5', 'low', 'Launch'])
-    expect(preGate.prompt).toBe('cd <main checkout> && ' + command + '\n' + sentence + '\n' + relayed)
+    expect(preGate.prompt).toBe('cd <isolated worktree> && ' + command + '\n' + sentence + '\n' + relayed)
     expect(preGate.schema).toEqual(gate.schema)
   })
 
@@ -2010,7 +2010,7 @@ describe('launch check and shipped scripts', () => {
     const end = '// ---- END OF UNIT VALUES ----'
     for (const [script, fields] of [
       [skeleton, ['mainCheckout', 'worktree', 'specPath', 'transcripts', 'privateRecord', 'pluginRoot', 'checkCommand', 'base', 'documents', 'criteriaCount', 'implementerPrompt', 'models']],
-      [coldSkeleton, ['mainCheckout', 'specPath', 'transcripts', 'privateRecord', 'pluginRoot', 'base', 'criteriaCount', 'models']],
+      [coldSkeleton, ['mainCheckout', 'worktree', 'specPath', 'transcripts', 'privateRecord', 'pluginRoot', 'base', 'criteriaCount', 'models']],
       [fixSkeleton, ['mainCheckout', 'worktree', 'fixList', 'transcripts', 'privateRecord', 'pluginRoot', 'checkCommand', 'base', 'documents', 'entries', 'models']],
     ]) {
       const meta = script.indexOf('export const meta =')
