@@ -66,6 +66,8 @@ Rules:
   forbid, such as running tests, builds or the spec tool as a reading stage, and input you are not
   given by design, such as the private spec for an unbriefed stage, are never limitations and are
   not reported. They get no unchecked coverage entry either.
+- Consider rule violations the orchestrator (who started this agent) committed and report them.
+- Report critical violations you find in existing files that weren't touched by this unit of work.
 - Read-only: never edit files or change what git records or which commit the tree sits on. A
   tree that moves under you is an anomaly to report. No backgrounded waits.
 
