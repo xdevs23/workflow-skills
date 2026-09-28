@@ -12,13 +12,13 @@ over this file wherever the two differ.
 
 ## The directory
 
-The project cache is the `.cache/` directory at the project root. It is ignored and untracked, and
-the project's ignore rules must cover it before anything is written there. Nothing in it is ever
-committed.
+- The project cache is the `.cache/` directory at the project root, ignored and untracked.
+- Make sure the project's ignore rules cover it before you write anything there.
+- Never commit anything in it.
 
 ## What goes there
 
-These files of the work, which are not meant for the repository, go in the project cache:
+Put these files of the work, which are not meant for the repository, in the project cache:
 
 - temporary files, logs, research documents and plans;
 - private specs, under `.cache/specs/`;
@@ -29,6 +29,7 @@ These files of the work, which are not meant for the repository, go in the proje
 
 ## Reading stages
 
-A reading stage writes nothing, in the project cache or anywhere else: no copies of files and no
-notes. The one exception is the output of a command that cannot be read directly, which a reading
-stage may write to the system temporary directory.
+- A reading stage writes nothing, in the project cache or anywhere else: no copies of files and no
+  notes.
+- The one exception is the output of a command that cannot be read directly, which a reading stage
+  may write to the system temporary directory.

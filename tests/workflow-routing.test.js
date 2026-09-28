@@ -2576,8 +2576,8 @@ describe('the project cache, the todo record and scratch files by role', () => {
     expect(flat(firstParagraph(text))).toBe('When the session has a skill named `local-cache` without the plugin prefix, that skill applies ' +
       'and this one does not. This skill, `workflow-skills:local-cache`, applies only when it is the only `local-cache` skill available. ' +
       "The user's global preferences about this directory take priority over this file wherever the two differ.")
-    for (const phrase of ['the `.cache/` directory at the project root', "the project's ignore rules must cover it",
-      'Nothing in it is ever committed', 'temporary files, logs, research documents and plans', 'private specs, under `.cache/specs/`',
+    for (const phrase of ['the `.cache/` directory at the project root', "Make sure the project's ignore rules cover it before you write anything there.",
+      'Never commit anything in it.', 'temporary files, logs, research documents and plans', 'private specs, under `.cache/specs/`',
       'private directive records, under `.cache/directives/`', 'workflow worktrees, under `.cache/worktrees/`',
       "a writing stage's scratch files, under `.cache/<agent-scope>/`", "under that worktree's own `.cache/`",
       'A reading stage writes nothing, in the project cache or anywhere else: no copies of files and no notes.',
