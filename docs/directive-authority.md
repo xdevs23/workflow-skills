@@ -59,7 +59,7 @@ apparent false positive is preserved for root resolution, not used to silently
 drop the finding. An edited spec is not sufficient closure: enforcement continues
 against the original directives and context. The fixer retains inverse-spec origin
 and critical status on received corrections even if an earlier stage downgraded
-them; an absent source finding remains visible to the root rather than becoming
+them; an absent source finding remains visible to the root instead of becoming
 an unauthorized direct fix. A question that needs the user is first treated as
 evidence that a recorded direction was not honored, and the root re-reads the
 decisions, designs and code documentation and repairs the design before
@@ -80,7 +80,7 @@ Before presenting a question, trade-off, limitation or request for acceptance,
 the orchestrator checks its premises against the user's directives and context.
 When the record challenges a premise, the root investigates the mismatch first.
 It identifies unsupported scope and reports deviations from the requested result
-plainly, rather than presenting consequences of an invented mechanism as a new
+plainly, instead of presenting consequences of an invented mechanism as a new
 choice the user must make. A question already settled by the record is not asked
 again. Only a genuinely unresolved choice is presented as a decision request.
 The private question check identifies the proposed question, its premises, the

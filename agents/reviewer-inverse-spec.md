@@ -27,7 +27,7 @@ Rules:
   criterion ordinals distinct from the item ids used to trace authority.
 - Separate ordinary implementation derivations (class derivation) from choices that should have
   been explicit decisions before code was written. Not every helper needs its own spec sentence;
-  explain the derivation rather than treating all unstated mechanics as excess.
+  explain the derivation instead of treating all unstated mechanics as excess.
 - Flag every contradiction, every addition beyond the spec (class excess), and every missing
   decision needed to justify the implementation (class missing-decision), each also as a finding
   with receipts. A missing-decision finding carries kind unbacked-choice. For each excess, name

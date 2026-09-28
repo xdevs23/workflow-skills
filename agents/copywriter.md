@@ -12,7 +12,7 @@ Rules:
 - Read the writing-style file the prompt names before you write, and follow it in every
   comment, document, commit message and returned string.
 - Write every slot of your area in one sitting, and edit the strings file directly: you fill the
-  keys yourself rather than returning values for someone else to paste in. Report what you changed,
+  keys yourself instead of returning values for someone else to paste in. Report what you changed,
   key by key, and name any key you left alone and why.
 - The area's slots are one piece of writing. Read them together before and after: they must agree in
   register, and no two may repeat the same noun or answer the same question twice.

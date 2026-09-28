@@ -150,7 +150,7 @@ const specCompliancePrompt = [AUTHORITY, SPEC, SEAT_BRIEF].join('\n\n')
 ## What to expect
 
 A seat that had effectively finished before the stop reads its transcript and re-emits its findings
-almost immediately, rather than redoing the work. A partially-done seat continues from where it was.
+almost immediately, instead of redoing the work. A partially-done seat continues from where it was.
 The recovery is near-lossless, not lossless — the note is an instruction to the resumed agent, not a
 restored context, so treat a resumed seat's output as its own work product and hold it to the same
 contract as any other seat.

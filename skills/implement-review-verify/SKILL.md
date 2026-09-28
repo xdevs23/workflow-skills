@@ -33,7 +33,7 @@ each scales to the change.
   input boundaries: execution hygiene is appropriate for unbriefed seats, design briefing is not.
 - Do not grant extra tools or broaden a reader's source access merely to load a skill.
 - A stage whose required stage instructions remain inaccessible reports that specific limitation
-  rather than pretending they were read.
+  instead of pretending they were read.
 - Missing Workflow, Agent or Skill tools alone are not an authority contradiction or a reason to
   stop a fully briefed stage. Missing capabilities needed for the actual assignment, missing
   authorization, or genuinely contradictory applicable requirements still block the affected work
@@ -231,7 +231,7 @@ collisions and consistency drift.
   on the user's verbatim decision quoted in the private record; you choose the continuation from the
   coder's object and that decision.
 - **Scope follows the same rule.** The implementer touches only what the task needs, and flags
-  anything beyond the ruled scope as an invention rather than building it.
+  anything beyond the ruled scope as an invention instead of building it.
 - **The design document is the implementer's last write.** It writes the document by hand from the
   code once its implementation is done, as the unit spec section above describes, and its checks
   run once after that write. It commits only its own scoped changes after checks, with the design
@@ -822,7 +822,7 @@ recorded in [work execution rules](../../docs/work-execution-rules.md).
 - Name the largest time sink and whether it was necessary reasoning/generation, machine waiting,
   repeated source discovery, repeated checks, or rework.
 - Parallel durations overlap: do not add agent elapsed times and call the total workflow wall time.
-- If timing data is unavailable, report that limitation rather than inventing durations.
+- If timing data is unavailable, report that limitation instead of inventing durations.
 - Twenty minutes of executed (not cached-replay) elapsed time per agent task is the soft ceiling.
   Any agent whose executed duration exceeds 20 minutes automatically triggers this review for that
   agent: name its largest time sink and remove the avoidable part at the source. Time spent on
@@ -862,7 +862,7 @@ project's declared reconstruction base; do not silently substitute a convenient 
   number. State additional project-specific test/doc patterns explicitly. Keep the same
   classification and rename setting on every measurement; report deleted totals and test totals
   alongside the ratio. Disabling rename detection makes accounting reproducible (a moved file
-  counts as delete/add); explain large moves rather than silently changing the measurement.
+  counts as delete/add); explain large moves instead of silently changing the measurement.
 - **Ratio:** code added / spec lines, displayed to one decimal. Compare unrounded
   counts: **above 20:1 blocks acceptance/merge**; exactly 20:1 does not breach the size gate.
   The size gate passing is not proof of correctness or permission to skip another check.
@@ -1156,7 +1156,7 @@ These laws are non-negotiable across every run of this skill.
     Non-blocking suggestions belong in `specSuggestions`, or `record` when dispositioning a
     supplied finding. A preference for different requirements is not an impossibility.
     If the assigned work genuinely cannot satisfy the applicable requirements, report the concrete
-    impossibility and block rather than inventing requirements or claiming completion. Contradictions
+    impossibility and block instead of inventing requirements or claiming completion. Contradictions
     between authority documents retain the existing law-10 hard flag; the spec-versus-instructions
     pre-check already exists and does not need another gate. Reviewers retain their usual checks.
     **ONLY YOU MAY EDIT A SPEC OR OTHER AUTHORITY DOCUMENT.** If you amend one, record the technical
@@ -1410,7 +1410,7 @@ keys replay instantly and unfinished stages re-run.
 
 ### `parallel()` returns nulls
 
-`parallel()` thunks resolve to `null` on error rather than rejecting.
+`parallel()` thunks resolve to `null` on error instead of rejecting.
 
 - Apply `filter(Boolean)` before use, or wrap each thunk in `stage()` when a missing result must
   kill the run instead of silently vanishing from the set.
@@ -1575,7 +1575,7 @@ silently fail. The main script stops a run whose seat list leaves a seat out.
 
 **The escape hatch: a targeted patch.** The full composition carries a roughly FIXED overhead per
 increment — worth paying for an increment, absurd for a three-file fix. For those, drop out of the
-composition entirely rather than running a thinned version of it: **ONE agent in an ISOLATED GIT
+composition entirely instead of running a thinned version of it: **ONE agent in an ISOLATED GIT
 WORKTREE** (create it manually with `git worktree add` if the runner cannot), the gates run **inside
 that worktree**, and you **inspect the result yourself** — read the diff, look at the actual output
 — before the project's chosen integration or delivery. Apply the completion checks above.

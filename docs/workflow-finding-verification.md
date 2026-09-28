@@ -74,7 +74,7 @@ Implementer and fixer have narrow permission to create new scoped commits in the
 worktree after checks, returning `startSha`, a full `snapshotSha` and clean status with quoted
 Git evidence. Start clean; stage explicit paths only; inspect the staged diff; preserve
 hooks and signing. No broad add, unrelated changes, amend, reset, rebase, merge, branch
-switching or push. Genuine no-ops and proof-only passes reuse the starting SHA rather than
+switching or push. Genuine no-ops and proof-only passes reuse the starting SHA instead of
 creating empty commits. Local TODO.md and scratch remain ignored and untracked. Check failures,
 commit failures or dirty results cannot become successful snapshot handoffs.
 
@@ -104,7 +104,7 @@ Decisions are `approve-fix`, `reject`, `needs-decision`, `root-action`, `cleanup
 `record`. An approval includes verified evidence, authority citations and exact quotes,
 the permitted correction, constraints and an acceptance check. `record` is for genuinely
 non-blocking observations; it cannot dispose of a confirmed must-fix or critical defect.
-`cleanup` records verified out-of-scope work for the final cleanup handoff rather than
+`cleanup` records verified out-of-scope work for the final cleanup handoff instead of
 expanding this unit. Rejections require counterevidence, not a tone or taste label.
 
 Directive conflicts hard-flag the affected work, whether the conflicting text is a spec

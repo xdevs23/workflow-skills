@@ -56,7 +56,7 @@ described below.
   actually establishes.
 - Treat it as a veto on the draft: a directive it contradicts is a conflict to flag to the user, not
   evidence for a different decision.
-- If no such record applies, say so explicitly rather than silently treating none as none needed.
+- If no such record applies, say so explicitly instead of silently treating none as none needed.
 
 **Anti-re-litigation needs a technical decision record and a PRIVATE source record.**
 

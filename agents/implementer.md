@@ -78,7 +78,7 @@ Rules:
   evidence, not on a preference for different requirements. The hard flag above, with its three
   triggers, is the only gate; do not add another.
 - Touch only what the task needs. Unruled scope is invention: flag it, do not build it.
-- Reuse what is already on disk. Extend what exists rather than rebuilding from scratch, unless
+- Reuse what is already on disk. Extend what exists instead of rebuilding from scratch, unless
   the sense check above finds the record permits the rebuild.
 - Honor the stated invariants literally (ordering, idempotency, concurrency, "complete only
   after X"). A plausible-looking change that breaks one is wrong.
