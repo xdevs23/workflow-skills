@@ -686,6 +686,18 @@ const exactlyOnce = (actual, expected, label) => {
 // The citation a rejection of an unbacked-choice finding carries in its authority: the record entry
 // by id, then the backing words quoted together with their surrounding context.
 const BACKING = /\brecord entry [a-z][a-z0-9]*(?:-[a-z0-9]+)*: "[\s\S]*\S[\s\S]*"/
+// A joint-impossibility or missing-contract finding blocks the run, so the implementer returns it with
+// a blocking limitation and leaves every repository at its start. The script checks the pairing
+// instead of trusting it: without the limitation the run would go on and build what cannot be built.
+const BLOCKING_CLASSES = new Set(['joint-impossibility', 'missing-contract'])
+const checkImplementer = r => {
+  checkWriter(r)
+  const blocked = r.specFindings.find(f => BLOCKING_CLASSES.has(f.class))
+  if (!blocked) return
+  if (!blocking(r).length) throw new Error('a ' + blocked.class + ' spec finding needs a limitation of effect blocks')
+  const moved = r.repositories.filter(repository => repository.snapshotSha !== repository.startSha).map(repository => repository.path)
+  if (moved.length) throw new Error('a ' + blocked.class + ' spec finding leaves every repository at its start SHA, but moved: ' + moved.join(', '))
+}
 const checkVerification = (v, sources, snaps) => {
   const expected = shaByPath(snaps)
   const repositories = reported(v.repositories)
@@ -761,7 +773,7 @@ async function onePass() {
   impl = await stage(
     [AUTHORITY, WRITE_GIT, SPEC, PROVE, DOCUMENT_IMPL, FOCUSED, 'START SHAS, per repository: ' + listed(base), UNIT.implementerPrompt].join('\n\n'),
     { label: 'impl', phase: 'Implement', agentType: 'workflow-skills:implementer', ...UNIT.models.impl, schema: IMPLEMENT },
-    checkWriter,
+    checkImplementer,
   )
   abortOnFlag(impl, 'impl')
   checkWriterSnapshot(impl, base)
