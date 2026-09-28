@@ -76,13 +76,13 @@ it says which findings block the run and which items are built.
 The entry carries a list because a `joint-impossibility` concerns two items, and an entry with one
 id could name only one of them.
 
-A `joint-impossibility` or `missing-contract` entry blocks, because law 13 of implement-review-verify
-has work that genuinely cannot satisfy the applicable requirements report the concrete
-impossibility and block. Building the rest of the spec around such an entry would build one half of
-two requirements that cannot both hold, or build around an item whose contract nobody defined, and
-the proof would then read as complete. The block uses the implementer's existing blocking
-limitation, whose path through the script already ends the run with exit `root-resolution` and
-hands the root the limitation and the finding.
+A `joint-impossibility` or `missing-contract` entry blocks, because law 13 of
+implement-review-verify has work that genuinely cannot satisfy the applicable requirements report
+the concrete impossibility and block. Building the rest of the spec around such an entry would build
+one half of two requirements that cannot both hold, or build around an item whose contract nobody
+defined, and the proof would then read as complete. The block uses the implementer's existing
+blocking limitation, whose path through the script already ends the run with exit `root-resolution`
+and hands the root the limitation and the finding.
 
 An `unbacked-item` entry does not block, because it says only that no words of the user back its
 items. The rest of the spec can still be built from the words that do back it. An item that needs
