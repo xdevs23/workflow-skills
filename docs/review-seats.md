@@ -40,13 +40,15 @@ paragraph of their own, and their stages receive it through the hygiene floor.
 
 ## The seat check
 
-The main script holds the list of the fifteen required labels, `REVIEW_SEATS`, apart from its seat
-list, `seatList`. The seat list is a function of the implementer's claims, so the script reads its
-labels before any agent runs, and the review stage builds it again with the implementer's object.
-Before its first agent, the script compares the labels of the seat list with the required list and
-stops with an error that names both when a seat is missing, added or listed twice. A sentence in the
-skill alone would not hold: a root that edits the script below the marked block has already set
-such a sentence aside.
+The main script holds the fifteen required labels, `REVIEW_SEATS`, apart from its seat list,
+`seatList`, and maps each label to the template its seat loads. The seat list is a function of the
+implementer's claims, so the script reads its labels and templates before any agent runs, and the
+review stage builds it again with the implementer's object. Before its first agent, the script
+compares each label of the seat list, together with its template, with the required pairs and stops
+with an error that names both when a seat is missing, added or listed twice, or when a label loads
+another template. A label kept with a swapped template would otherwise run the wrong reviewer under
+a name the verifier accepts. A sentence in the skill alone would not hold: a root that edits the
+script below the marked block has already set such a sentence aside.
 
 The finding verifier's template names all fifteen seats by label and template and checks that its
 input holds one seat object for each. A seat whose object is missing is an unresolved issue of kind
@@ -70,8 +72,10 @@ no shipped script and no agent template names a model and the root sets every on
 
 The helper `checkModels`, with the same text in all three scripts, runs before the first agent. It
 stops the run when an entry is missing, when its model or its effort is empty or still a
-placeholder, or when the block holds an entry for a name the script does not have, such as a seat
-outside the fifteen. Each review seat then runs on its own entry, so a seat that reads whole files,
+placeholder, when the block holds an entry for a name the script does not have, such as a seat
+outside the fifteen, or when an entry holds any field besides the model and the effort. The stage
+options spread the entry, so a field such as `agentType` would replace the template of the agent it
+starts. Each review seat then runs on its own entry, so a seat that reads whole files,
 such as the rule reader, can get a model with a larger context than the others.
 
 ## Names of runs
@@ -98,8 +102,9 @@ seat's prompt of hygiene floor and diff, and that an audit seat's finding reache
 a source ID of its label. They check that no file under the skills, agents, tools and tests
 directories, and not the README, names the removed template, and that the finding verifier's
 template names the fifteen seats. They check that a copy whose seat list leaves out, adds or repeats
-a seat stops before its first agent, that each seat runs on its own model entry, and that a missing,
-placeholder or unknown model entry stops each of the three scripts before its first agent. They
+a seat, or gives a seat's label another template, stops before its first agent, that each seat runs
+on its own model entry, and that a missing, placeholder or unknown model entry, or an entry with a
+field besides the model and the effort, stops each of the three scripts before its first agent. They
 check that no shipped script and no agent template names a model, and that a copy of each script
 sets its own meta name and description.
 
