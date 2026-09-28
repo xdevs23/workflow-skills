@@ -3162,7 +3162,7 @@ describe('fixed review seats and a model for every agent', () => {
 // so that this file does not match itself; the inverse-spec reviewer is a stage of the main run.
 const SPEC_REVIEW = [/(?<!inverse-)spec[- ]review/i, /pre-?phase/i, /cold[- ]review the spec/i]
 const SPEC_FINDING_CLASSES = ['joint-impossibility', 'missing-contract', 'reality-drift', 'unbacked-item']
-const specFinding = (item, kind) => ({ item, class: kind, claim: 'The spec item ' + item + ' is ' + kind + '.', receipts: [receipt] })
+const specFinding = (items, kind) => ({ items, class: kind, claim: 'The spec items ' + items.join(', ') + ' are ' + kind + '.', receipts: [receipt] })
 
 describe('the implementer checks the spec, and every stage reads only words said about this unit', () => {
   test('only the main and fix-run scripts ship, and no skill, template, README passage or test sends the root to a review of the spec before the main run', async () => {
@@ -3194,25 +3194,29 @@ describe('the implementer checks the spec, and every stage reads only words said
     }
   })
 
-  test('the implementer schema carries specFindings, one entry per finding with its item, enum-locked class, claim and receipts', async () => {
+  test('the implementer schema carries specFindings, one entry per finding with its items list, enum-locked class, claim and receipts', async () => {
     const { calls } = await simulate()
     const schema = calls.find(c => c.label === 'impl').schema
     expect(schema.required).toContain('specFindings')
     const entry = schema.properties.specFindings.items
     expect([entry.required, entry.additionalProperties, entry.properties.class, entry.properties.receipts.minItems])
-      .toEqual([['item', 'class', 'claim', 'receipts'], false, { enum: SPEC_FINDING_CLASSES }, 1])
+      .toEqual([['items', 'class', 'claim', 'receipts'], false, { enum: SPEC_FINDING_CLASSES }, 1])
+    // The entry names its spec items in a list of at least one id, and the single item field is gone.
+    expect([entry.properties.items, 'item' in entry.properties]).toEqual([{ type: 'array', minItems: 1, items: { type: 'string' } }, false])
     // Only the implementer returns spec findings.
     for (const call of calls.filter(c => c.label !== 'impl')) expect([call.label, 'specFindings' in call.schema.properties]).toEqual([call.label, false])
   })
 
   test('each spec finding reaches remaining as a spec-finding of its severity, and none stops the run', async () => {
-    const specFindings = SPEC_FINDING_CLASSES.map((kind, i) => specFinding('item-' + i, kind))
+    // A joint-impossibility entry names both items of the conflict.
+    const specFindings = SPEC_FINDING_CLASSES.map((kind, i) => specFinding(kind === 'joint-impossibility' ? ['item-' + i, 'item-' + i + 'b'] : ['item-' + i], kind))
     const implementation = implemented({ specFindings })
     const { result, calls } = await simulate({ implementation })
     expect(calls.map(c => c.label)).toEqual(['gate', 'impl', ...readers.map(s => 'review:' + s), 'verify', 'fix', 'roast'])
     expect([result.exit, result.detail]).toEqual(['follow-up', 'The pass completed with items requiring follow-up.'])
     expect(result.remaining).toEqual(specFindings.map(f => ({ kind: 'spec-finding',
       severity: f.class === 'unbacked-item' ? 'CRITICAL' : 'must-fix', item: f })))
+    expect(result.remaining.map(r => r.item.items)).toEqual([['item-0', 'item-0b'], ['item-1'], ['item-2'], ['item-3']])
     // The finding verifier receives them with the implementer's object.
     expect(calls.find(c => c.label === 'verify').prompt).toContain('WRITER OBJECTS (UNTRUSTED):\n\n[' + JSON.stringify(implementation) + ']')
     // They also reach the root when the run ends early.
@@ -3233,14 +3237,25 @@ describe('the implementer checks the spec, and every stage reads only words said
         'joint-impossibility, two requirements that each hold alone and cannot both hold',
         'missing-contract, an artifact the spec assumes without saying how it is made', 'reality-drift, a recorded fact the code no longer bears out',
         "each spec item rests, directly or through its parents, on the user's words said about this unit", other, crossed,
-        'is class unbacked-item', 'Return every finding in specFindings, one entry per finding with the item id in item, the class, the claim and receipts.',
-        'None of them fails the sense check, sets abort.trigger or asks the user',
-        'build nothing for an item of class unbacked-item, build the rest of the spec']],
+        'is class unbacked-item', 'Return every finding in specFindings, one entry per finding with the ids of every spec item it concerns in items, the class, the claim and receipts;',
+        'a joint-impossibility entry names each item of the conflict.', 'None of them fails the sense check, sets abort.trigger or asks the user',
+        'build nothing for an item named in an entry of class unbacked-item, joint-impossibility or missing-contract, and build the rest of the spec, an item named only in a reality-drift entry included.']],
       ['reviewer-inverse-spec', await template('reviewer-inverse-spec'), ['Only words the user said about this unit authorize a choice.', other, crossed,
         'A choice whose cited authority is such words lacks authority: report it as a finding with kind unbacked-choice.']],
       ['finding-verifier', await template('finding-verifier'), ['Reject closes it only on a record entry whose words were said about this unit and back the choice',
-        other + ', back nothing here even where their subject overlaps.', 'so it never closes such a finding either']],
+        other + ', back nothing here even where their subject overlaps.', 'so it never closes such a finding either',
+        'the implementer left every item named in an entry of class unbacked-item, joint-impossibility or missing-contract unbuilt.',
+        'A source finding that asks to build, complete or change such an item is never approve-fix',
+        'decide it needs-decision, name that specFindings entry by its class and items in authority, and state the open question in correction.',
+        'It reaches the root as an open decision']],
       ['skill', flat(skill), ['**The sense check also reads the spec.**', 'is class `unbacked-item`',
+        'one entry per finding with the ids of every spec item it concerns in `items`, a list of at least one id',
+        'so a `joint-impossibility` entry names each item of the conflict',
+        'the implementer builds nothing for an item named in an entry of class `unbacked-item`, `joint-impossibility` or `missing-contract`, and builds the rest of the spec',
+        'never approves a fix that builds an item left unbuilt, as phase 3 describes.',
+        'A finding that asks to build an item the implementer left unbuilt is never `approve-fix`.',
+        'A source finding that asks to build, complete or change such an item is decided `needs-decision`',
+        'the decision reaches the root in `remaining` as an open decision',
         'into `remaining` as a `spec-finding` item, CRITICAL for `unbacked-item` and must-fix otherwise',
         'the spec finding `class` (`joint-impossibility` / `missing-contract` / `reality-drift` / `unbacked-item`)']],
     ]) for (const phrase of phrases) expect([name, phrase, text.includes(phrase)]).toEqual([name, phrase, true])

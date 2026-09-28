@@ -157,12 +157,18 @@ decision given for a different piece of work, back no item of this spec, and a s
 crossed with a newer message answers the earlier message and never approves what the newer
 message proposed. An item that cites such words as its authority, or states a decision no words of
 the user back, is class `unbacked-item`. The implementer returns each finding in `specFindings`,
-one entry per finding with the item id in `item`, the `class`, the `claim` and `receipts`. None of
-them fails the sense check, sets the abort or asks the user during the run: the implementer builds
-nothing for an `unbacked-item` item and builds the rest of the spec. The script puts every entry
-into `remaining` as a `spec-finding` item, CRITICAL for `unbacked-item` and must-fix otherwise, so
-the root reads each one after the run and records it. The finding verifier receives the entries
-with the implementer's object.
+one entry per finding with the ids of every spec item it concerns in `items`, a list of at least
+one id, together with the `class`, the `claim` and `receipts`, so a `joint-impossibility` entry
+names each item of the conflict. None of them fails the sense check, sets the abort or asks the
+user during the run: the implementer builds nothing for an item named in an entry of class
+`unbacked-item`, `joint-impossibility` or `missing-contract`, and builds the rest of the spec, an
+item named only in a `reality-drift` entry included. Building one half of two requirements that
+cannot both hold, or an item whose contract nobody defined, would leave a proof that reads as
+complete, while law 13 has such work report the impossibility and block. The script puts every
+entry into `remaining` as a `spec-finding` item, CRITICAL for `unbacked-item` and must-fix
+otherwise, so the root reads each one after the run and records it. The finding verifier receives
+the entries with the implementer's object and never approves a fix that builds an item left
+unbuilt, as phase 3 describes.
 
 **A record that was never supplied is not a silent record.** Before any edit, the implementer sets
 `abort.trigger` to `no-words` and leaves the tree unmodified when the private directive record was
@@ -451,6 +457,16 @@ quoting the backing words together with their surrounding context from that entr
 without its context backs nothing. The script's decision checks refuse `approve-fix`,
 `root-action`, `cleanup` and `record` for such a finding, and a rejection whose `authority` lacks
 that citation.
+
+A finding that asks to build an item the implementer left unbuilt is never `approve-fix`. The
+implementer's `specFindings` entry names its spec items in `items`, and every item named in an
+entry of class `unbacked-item`, `joint-impossibility` or `missing-contract` stays unbuilt. The
+spec-compliance reviewer never sees that object and reports such an item as missing required
+behaviour. A source finding that asks to build, complete or change such an item is decided
+`needs-decision`: `authority` names that `specFindings` entry by its class and items, `correction`
+states the open question, and the decision reaches the root in `remaining` as an open decision.
+Without this rule the verifier would approve the missing item and the fixer would build what the
+sense check left unbuilt, before the root reads the finding.
 
 Reviewer lanes and severity are claims to verify, not queue permissions. Every source ID
 must belong to exactly one decision group. The SCRIPT checks coverage, unknown IDs, duplicate

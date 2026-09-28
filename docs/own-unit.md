@@ -51,10 +51,12 @@ proposed. An item that cites such words as its authority, or states a decision n
 user back, is of class `unbacked-item`.
 
 The implementer returns each finding in `specFindings`, a field its output schema requires, one
-entry per finding with the item id in `item`, the `class`, the `claim` and `receipts` with at least
-one receipt. The class is an enum of the four names above. No finding fails the sense check, sets
-the abort or asks the user. The implementer builds nothing for an item of class `unbacked-item` and
-builds the rest of the spec.
+entry per finding with the ids of every spec item it concerns in `items`, a list of at least one
+id, the `class`, the `claim` and `receipts` with at least one receipt. A `joint-impossibility`
+entry names each item of the conflict. The class is an enum of the four names above. No finding
+fails the sense check, sets the abort or asks the user. The implementer builds nothing for an item
+named in an entry of class `unbacked-item`, `joint-impossibility` or `missing-contract`, and builds
+the rest of the spec, an item named only in a `reality-drift` entry included.
 
 ## How the findings reach the root
 
@@ -106,8 +108,10 @@ The agents of the run report problems with the spec, and the run does not stop f
 that passed the tool is launched as written, and what the implementer finds reaches the root in the
 same handoff as every other open item, after the run.
 
-An item with no words of the user behind it is not built, and its finding is CRITICAL. The other
-three classes are must-fix, because the implementer still builds the rest of the spec around them.
+An item with no words of the user behind it is not built, and its finding is CRITICAL. The items
+of a `joint-impossibility` or `missing-contract` finding are not built either, and those findings
+are must-fix like a `reality-drift` finding, because the implementer still builds the rest of the
+spec around them.
 
 The script branches on the class to set the severity, so the class is locked in the schema as an
 enum, like every other vocabulary the scripts branch on.
