@@ -409,6 +409,13 @@ describe('workflow verification and consolidation', () => {
     expect((await roastedAt([{ path: '<isolated worktree>/api/', sha: API_NEW }, { path: './web', sha: BASE }])).exit).toBe('clean')
     expect((await roastedAt([{ path: '<isolated worktree>/other', sha: API_NEW }, { path: 'web', sha: BASE }])).remaining
       .some(r => r.kind === 'stage-failure' && /wrong snapshot/.test(r.item.message))).toBe(true)
+    // The verifier may name a repository by its path inside the worktree too; a path of another repository is refused.
+    const verifiedAt = async paths => (await simulate({ args: launchArgs({ base }), implementation, fixes: { fix: fixed([], { repositories: unmoved }) },
+      verify: { verify: verification([], { repositories: repositories.map(({ snapshotSha, clean, git }, i) => ({ path: paths[i], snapshotSha, clean, git })) }) },
+      reports: { roast: { snapshots: [{ path: 'api', sha: API_NEW }, { path: 'web', sha: BASE }] } } })).result
+    expect((await verifiedAt(['<isolated worktree>/api', '<isolated worktree>/web/'])).exit).toBe('clean')
+    expect((await verifiedAt(['<isolated worktree>/other', 'web'])).remaining
+      .some(r => r.kind === 'stage-failure' && /repository in repositories/.test(r.item.message))).toBe(true)
     // A writer that leaves a repository out, or moves one without a commit in it, is refused.
     const apiCommit = [{ sha: API_NEW, subject: 'implement the change', repository: 'api' }]
     for (const [fields, message] of [[{ repositories: repositories.slice(0, 1), commits: apiCommit }, 'exactly one entry per repository of the list'],
@@ -3172,6 +3179,19 @@ describe('the implementer checks the spec, and every stage reads only words said
       for (const script of [skeleton, fixSkeleton]) expect([name, script.includes(name)]).toEqual([name, false])
     }
     expect(flat(skill)).toContain('No script of this skill starts the `gap-finder` and `spec-provenance` templates.')
+  })
+
+  test('every repository entry says its path is the listed one, and its head the commit ID alone', async () => {
+    const { calls } = await simulate()
+    const fixRun = (await simulateFix()).calls
+    const writers = [...calls.filter(c => ['impl', 'verify', 'fix'].includes(c.label)), ...fixRun.filter(c => c.label === 'fix')]
+    expect(writers.map(c => c.label)).toEqual(['impl', 'verify', 'fix', 'fix'])
+    for (const { label, schema } of writers) {
+      const entry = schema.properties.repositories.items.properties
+      expect([label, entry.path.description]).toEqual([label, 'The path of the repository exactly as the base list names it, such as ., never an absolute path.'])
+      expect([label, entry.git.properties.head.description]).toEqual([label, expect.stringContaining('The commit ID that git rev-parse --verify HEAD^{commit} printed, and nothing else')])
+      expect([label, entry.git.properties.status.description]).toEqual([label, expect.stringContaining('the empty string on a clean tree')])
+    }
   })
 
   test('the implementer schema carries specFindings, one entry per finding with its item, enum-locked class, claim and receipts', async () => {
