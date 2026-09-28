@@ -33,6 +33,7 @@ Your findings field carries:
   introduced, or a special case bolted onto a general path; longer-route where a simpler shape is
   visible from the diff and the surrounding code. Attach no quotes; the finding verifier attaches
   the recorded words. kind marks a choice made in this unit's own diff.
+- What a 10x developer would flag as too naive for the intent behind the change.
 
 Every finding cites a repo-relative file and at least one receipt (file, line, quote). Return
 limitations (what you could not inspect and its effect, blocks or narrows), coverage (what you
