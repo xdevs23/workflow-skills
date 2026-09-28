@@ -93,8 +93,8 @@ naming the format.
 
 **Approved text counts as the user's words.** Text the user approved, held in the approves field
 of a private record entry, counts as the user's verbatim directive: a contradiction with it is a
-contradiction with the user's own sentence. The hierarchy of law 8 and the directive-conflict hard
-flag of law 10 in `workflow-skills:implement-review-verify` treat it that way, and a spec item
+contradiction with the user's own sentence. The hierarchy of law 6 and the directive-conflict hard
+flag of law 8 in `workflow-skills:implement-review-verify` treat it that way, and a spec item
 built on an approval quotes the approved text in its `answers` field. The tool checks that the
 approved text stands where the entry says it does; the implementer's sense check judges, before
 code is written, whether the entry's words approve it.

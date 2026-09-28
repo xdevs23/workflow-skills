@@ -1016,7 +1016,7 @@ describe('coder sense check and project-benefit review', () => {
     expect(await template('project-rule-reader')).toContain('a band-aid that already existed beside the diff is reported without kind, so the cleanup lane stays available')
   })
 
-  test('the coder and verifier templates, law 10 and the shared authority constant state the three triggers and the kind rules', async () => {
+  test('the coder and verifier templates, law 8 and the shared authority constant state the three triggers and the kind rules', async () => {
     for (const [name, phrases] of [
       ['implementer', ['Sense check before any edit: read the private directive record and the spec and ask two questions.', 'A record that says nothing about the mechanism rules nothing out: the check passes and senseCheck records recordSilent true.',
         'Hard-flag and stop on one of three triggers, with one abort field and one disposition', "continues only on the user's verbatim decision quoted in the private record",
@@ -1029,7 +1029,7 @@ describe('coder sense check and project-benefit review', () => {
         'Where the record holds no words about the mechanism, state that silence in plain words in the authority field', 'Approve-fix only for the deletion or rewrite the record describes']],
     ]) { const text = await template(name); for (const phrase of phrases) expect(text).toContain(phrase) }
     const flatSkill = flat(skill)
-    expect(flatSkill).toContain('10. **HARD-FLAG SEMANTICS.** A hard flag (agent stops, script aborts) has exactly three triggers.')
+    expect(flatSkill).toContain('8. **HARD-FLAG SEMANTICS.** A hard flag (agent stops, script aborts) has exactly three triggers.')
     expect(flatSkill).toContain('**Three triggers, one field, one disposition**')
     for (const phrase of ['exactly one trigger', 'One trigger, one field', 'one trigger only', 'single abort condition',
       'exactly two triggers', 'Two triggers, one field', 'two triggers, one abort field', 'abort on two triggers']) expect(flatSkill).not.toContain(phrase)
@@ -1743,8 +1743,8 @@ describe('work execution rules', () => {
     expect(text).toContain('amended as the same entry each time the defect reappears, never duplicated')
   })
 
-  test('law 12 requires an observation before a claim about an external system', () => {
-    const text = lawText(skill, 12)
+  test('law 10 requires an observation before a claim about an external system', () => {
+    const text = lawText(skill, 10)
     expect(text).toContain('**No claim about an external system without an observation of it.**')
     expect(text).toContain('requires an observation of that system misbehaving, quoted')
     expect(text).toContain('never evidence of which component caused it')
@@ -2808,7 +2808,7 @@ describe('the user\'s words reach every stage', () => {
       ['skill', skill], ['spec-writing', specWriting]]
     for (const name of ['spec-provenance', 'implementer', 'fixer', 'finding-verifier']) texts.push([name, await template(name)])
     for (const [name, text] of texts) expect([name, lower(text).includes(rule), lower(text).includes(contradiction)]).toEqual([name, true, true])
-    expect(lawText(skill, 8)).toContain('this hierarchy and the directive-conflict hard flag of law 10 treat a contradiction with it like a contradiction with the user\'s own sentence')
+    expect(lawText(skill, 6)).toContain('this hierarchy and the directive-conflict hard flag of law 8 treat a contradiction with it like a contradiction with the user\'s own sentence')
     for (const [name, text] of [['spec-writing', flat(specWriting)], ['spec-provenance', await template('spec-provenance')]]) {
       expect([name, text.replaceAll('`', '').includes('spec item built on an approval quotes the approved text in its answers field')]).toEqual([name, true])
     }
@@ -2901,7 +2901,7 @@ describe('no loops in the workflow skills', () => {
       'whose fix list names findings of the parent run', 'Every other such item goes to a new implement-review-verify unit with its own spec',
       'never the findings its own review raises; those are recorded the same way',
       'Every other item stays in the todo record as a separate unit, done later.',
-      'A run interrupted mid-flight is resumed through `resume-interrupted-run`, as law 5 says, and that skill is only for a run' +
+      'A run interrupted mid-flight is resumed through `resume-interrupted-run`, as law 3 says, and that skill is only for a run' +
         ' that was actually interrupted, never a way around these rules.',
       'A run that ended any other way, before or after its review, has its items recorded like every run, ' +
         'and the root never starts a run on the same spec again.',
