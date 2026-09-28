@@ -62,9 +62,9 @@ conflict to flag to the user, not evidence for a different decision. If no such 
 say so explicitly rather than silently treating none as none needed.
 
 **Anti-re-litigation needs a technical decision record and a PRIVATE source record.**
-The committed spec records decisions, constraints and rejected alternatives with their reasons,
-never conversational quotations. Treat user messages as confidential: verbatim directives may
-be kept only in untracked, ignored artifacts unless committing them is explicitly authorized.
+The tracked design document records decisions, constraints and rejected alternatives with their
+reasons, never conversational quotations. Treat user messages as confidential: verbatim directives
+may be kept only in untracked, ignored artifacts unless committing them is explicitly authorized.
 Point authority-aware seats at that private record to verify fidelity without copying it into
 tracked docs, tests, code or commit messages. A broad commit instruction does not authorize
 including private records. Keep workflow scripts containing private text untracked too. The
@@ -102,8 +102,9 @@ words approve it.
 Never selectively omit, truncate or rewrite the original evidence to make a spec or implementation
 pass; only a later, actual user decision may supersede an earlier one, and only
 with its provenance recorded — an assistant's own spec edit never does. The root does not edit a
-spec or its record while a run on it is in flight. A change after the run started is work for a
-new unit and never repeats the finished run's reviews.
+spec or its record while a run on it is in flight. The spec review before the main run is the one
+run after which the root amends the spec, once, before it launches the main run on it. A change
+after the main run started is work for a new unit and never repeats the finished run's reviews.
 
 A necessary part of the record being unavailable or incomplete blocks the launch. The root writes
 no spec and starts no run on it. It searches the session transcripts for the words, and where it

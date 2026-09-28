@@ -634,7 +634,8 @@ describe('workflow verification and consolidation', () => {
         correction: 'Record it for later scheduling.',
       })]) },
     })
-    expect(result.detail).toContain('Inverse-spec finding cannot be dispositioned as cleanup')
+    expect(result.detail).toContain('Inverse-spec finding cannot be dispositioned as cleanup; ' +
+      'the root must record the words that back the choice, or ask the user')
     expect(calls.some(c => c.phase === 'Fix')).toBe(false)
   })
 
@@ -1301,7 +1302,7 @@ describe('spec provenance instructions and routing', () => {
       '`summary` (Markdown, the spec\'s own summary)', 'design document never shows the path',
       'The tool validates references.']) expect([phrase, prose.includes(phrase)]).toEqual([phrase, true])
     // The design document rule is stated once, in the workflow skill.
-    for (const phrase of ['The tracked design document', 'written by hand from the code']) {
+    for (const phrase of ['The tracked design document is written by hand', 'written by hand from the code']) {
       expect([phrase, prose.includes(phrase), flat(skill).includes(phrase)]).toEqual([phrase, false, true])
     }
     expect(prose).not.toContain('bun tools/check-spec.ts')
@@ -2986,10 +2987,12 @@ describe('no loops in the workflow skills', () => {
       'Never selectively omit, truncate or rewrite the original evidence',
       'A necessary part of the record being unavailable or incomplete blocks the launch.',
       'The prose of a spec is wrapped at 120 characters', 'a folded scalar (`>`)',
-      '`--base` takes the run\'s base list as JSON']) {
+      '`--base` takes the run\'s base list as JSON',
+      'The tracked design document records decisions, constraints and rejected alternatives',
+      'The spec review before the main run is the one run after which the root amends the spec, once']) {
       expect([phrase, text.includes(phrase)]).toEqual([phrase, true])
     }
-    for (const stale of ['loop', 'fleet', 'gap find', 'design/research', 'invalidates the reviews']) {
+    for (const stale of ['loop', 'fleet', 'gap find', 'design/research', 'invalidates the reviews', 'committed spec']) {
       expect([stale, text.toLowerCase().includes(stale)]).toEqual([stale, false])
     }
   })
@@ -3003,9 +3006,9 @@ describe('no loops in the workflow skills', () => {
       'whose fix list names findings of the parent run', 'Every other such item goes to a new implement-review-verify unit with its own spec',
       'never the findings its own review raises; those are recorded the same way',
       'Every other item stays in the todo record as a separate unit, done later.',
-      'A run that ended before its review stage returned', 'built no reviewed result',
-      'otherwise starts it once more on the same spec after the cause is fixed and recorded',
-      'an abort that puts a question to the user waits for the answer first',
+      'A run interrupted mid-flight is resumed through `resume-interrupted-run`, as law 5 says.',
+      'A run that ended any other way, before or after its review, has its items recorded like every run, ' +
+        'and the root never starts a run on the same spec again.',
       '**Two relocations mean the cause is untouched.**']) {
       expect([phrase, text.includes(phrase)]).toEqual([phrase, true])
     }
@@ -3013,7 +3016,9 @@ describe('no loops in the workflow skills', () => {
     for (const phrase of ['A completed run never runs again: the root records its remaining items in the todo record and moves on',
       'Each cleanup entry is recorded as a separate unit, done later',
       'The root does not edit a spec or its record while a run on it is in flight.',
-      "A change after the run started is work for a new unit and never repeats the finished run's reviews.",
+      'The spec review before the main run is the one run after which the root amends the spec, once, ' +
+        'before it launches the main run on it.',
+      "A change after the main run started is work for a new unit and never repeats the finished run's reviews.",
       'A new run that changes the code is measured against the size bar on its own candidate.',
       "recording in the todo record that the user's recorded words back the code's choice",
       'The root attests fixed keys by reading their commits and running the checks.']) {
@@ -3022,7 +3027,8 @@ describe('no loops in the workflow skills', () => {
     for (const stale of ["Each follow-up starts from the previous pass", 'Findings raised by its review become new entries',
       'goes to a new follow-up workflow', 'invalidates the reviews and approvals', 'invalidate affected', 'repeat affected verification',
       'it is re-checked', 'design/research', 'cleanup units promptly', 'follow-up reviews judge', 'uses the follow-up rule',
-      'correcting the spec to state', 'corrects the spec to state', 'are fixed in a follow-up']) {
+      'correcting the spec to state', 'corrects the spec to state', 'are fixed in a follow-up',
+      'starts it once more', 'built no reviewed result']) {
       expect([stale, whole.includes(stale)]).toEqual([stale, false])
     }
     expect(skeleton).toContain("inverseSpecDecisions, // the root's unconditional handoff: record the backing words, or ask the user.")
@@ -3034,6 +3040,10 @@ describe('no loops in the workflow skills', () => {
       expect([path, /promptly|follow-up/.test(text)]).toEqual([path, false])
     }
     expect(await template('finding-verifier')).toContain('the root records each entry as a separate unit, done later')
+    expect(await template('finding-verifier')).toContain("record in the todo record that the user's recorded words " +
+      "back the code's choice or ask the user about a genuinely unsettled choice")
+    expect(await template('finding-verifier')).toContain('the root never corrects the spec of the run')
+    expect(await template('finding-verifier')).not.toContain('correct the spec to state')
     expect(await template('project-rule-reader')).toContain('records each cleanup entry as a separate unit, done later')
     expect(await template('roaster')).toContain('resulting tree and records it in the todo record')
   })
