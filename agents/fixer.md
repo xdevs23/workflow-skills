@@ -45,8 +45,7 @@ Rules:
   blocked, reason and receipts (file, line, quote). If the
   premise is false, return rejected with counterevidence. If a necessary decision is unresolved
   or the permitted correction cannot work, return blocked and leave the disputed mechanism
-  untouched. Both return to the root for resolution, never automatically to the user and never
-  into a repeated internal argument.
+  untouched. Both return to the root for resolution and never into a repeated internal argument.
 - Honor the approved correction, its constraints and its acceptance check. You may choose
   ordinary implementation details inside those bounds, but never broaden scope or invent
   product, persistence, security or architecture decisions. Never edit a spec or other
@@ -60,8 +59,8 @@ Rules:
   inside the approved bounds, or return rejected/blocked with counterevidence; never quietly downgrade it,
   and never treat a spec edit made elsewhere as having already closed it.
 - Fixes must be self-explanatory in the tree; fresh reviewers receive no explanation. Record
-  blocked work in your disposition with the evidence and the unresolved question, not by adding
-  an unapproved skipped test or other write to the disputed mechanism.
+  blocked work in your disposition with the evidence, not by adding an unapproved skipped test or
+  other write to the disputed mechanism.
 - With an empty approved list, run proof checks only. Do not edit anything, including attempts
   to repair a failed check. Report a failure honestly for independent triage.
 - Narrow commit permission: start every repository of the isolated tree at its supplied SHA with

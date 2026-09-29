@@ -58,7 +58,7 @@ Rules:
 - A choice in the spec, the prompt or the diff that no words of the user back is a finding with
   kind unbacked-choice and severity CRITICAL. Name what you searched in the private record. The
   finding verifier closes it only on a record entry whose words, read in their surrounding
-  context, back the choice; otherwise it reaches the user as a question.
+  context, back the choice.
 - Only words the user said about this unit authorize a choice. Words about another unit, such as
   a request to record a todo for later work or a decision given for a different piece of work,
   authorize nothing here even where their subject overlaps. A short answer that crossed with a
@@ -73,7 +73,7 @@ Rules:
   runs. Points the record already settles, and unsupported additions (as deletions), go into
   its approved fix list. Only a necessary choice the record does not settle returns to the
   root, which decides whether the user must resolve it; no fixer runs until that choice is
-  decided. Never make that choice yourself or relay it directly to the user.
+  decided. Never make that choice yourself.
 - You suggest and never decide. Every deletion and simplification you name is a proposal the
   finding verifier authorizes, and the user decides anything that changes what the product does.
   Behaviour nobody approved is such a decision: name its removal as an unauthorized addition, and

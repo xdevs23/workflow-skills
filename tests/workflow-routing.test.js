@@ -635,7 +635,7 @@ describe('workflow verification and consolidation', () => {
       })]) },
     })
     expect(result.detail).toContain('Inverse-spec finding cannot be dispositioned as cleanup; ' +
-      'the root must record in the todo record that the user\'s recorded words back the choice, or ask the user')
+      'the root must record in the todo record that the user\'s recorded words back the choice')
     expect(calls.some(c => c.phase === 'Fix')).toBe(false)
   })
 
@@ -1033,8 +1033,12 @@ describe('coder sense check and project-benefit review', () => {
         "no agent's justification and no root statement substitutes for it", "You do not repeat the implementer's request-level sense check",
         'holds no quotation attributed to the user sets abort.trigger to no-words before your first write']],
       ['finding-verifier', ['is CRITICAL, and neither cleanup nor record is available for it', "supply the quote yourself for a cold seat's finding (quality, cold alternatives, an audit seat)",
-        'Where the record holds no words about the mechanism, state that silence in plain words in the authority field', 'Approve-fix only for the deletion or rewrite the record describes']],
+        'Where the record holds no words about the mechanism, state that silence in plain words in the authority field',
+        'Approve-fix for the deletion or rewrite the record describes, or for a deletion or rewrite that improves code quality without changing anything the spec specifies.',
+        'the authority field also names the rule of this template on corrections that improve code quality, and the evidence field quotes the reviewer\'s rule or the project rule the correction serves.',
+        "Keeping the flagged shape needs the user's word"]],
     ]) { const text = await template(name); for (const phrase of phrases) expect(text).toContain(phrase) }
+    for (const stale of ['approve-fix is then unavailable', 'Approve-fix only for the deletion or rewrite']) expect(await template('finding-verifier')).not.toContain(stale)
     const flatSkill = flat(skill)
     expect(flatSkill).toContain('8. **HARD-FLAG SEMANTICS.** A hard flag (agent stops, script aborts) has exactly three triggers.')
     expect(flatSkill).toContain('**Three triggers, one field, one disposition**')
@@ -1179,7 +1183,7 @@ describe('spec provenance instructions and routing', () => {
       'output and exit status', 'older than the newest timestamp of the', 'findings are advisory',
       'read the assistant message the cited words reply to', 'answer a list, a label or a yes/no question, the item must carry answers',
       'a missing one is a must-fix finding', 'against question and answer together', 'admit two readings, the finding is must-fix and names both readings',
-      'only by asking the user that one question', 'These findings are advisory, and none of them holds up a run.']) {
+      'These findings are advisory, and none of them holds up a run.']) {
       expect(prose).toContain(phrase)
     }
   })
@@ -1921,7 +1925,7 @@ describe('launch check and shipped scripts', () => {
     const end = '// ---- END OF UNIT VALUES ----'
     for (const [script, fields] of [
       [skeleton, ['mainCheckout', 'worktree', 'specPath', 'transcripts', 'privateRecord', 'pluginRoot', 'checkCommand', 'base', 'partialBase', 'documents', 'criteriaCount', 'implementerPrompt', 'models']],
-      [fixSkeleton, ['mainCheckout', 'worktree', 'fixList', 'transcripts', 'privateRecord', 'pluginRoot', 'checkCommand', 'base', 'documents', 'entries', 'models']],
+      [fixSkeleton, ['mainCheckout', 'worktree', 'fixList', 'transcripts', 'privateRecord', 'pluginRoot', 'checkCommand', 'base', 'documents', 'entries', 'ruleSources', 'models']],
     ]) {
       const meta = script.indexOf('export const meta =')
       const start = script.indexOf(marker), stop = script.indexOf(end)
@@ -2144,15 +2148,18 @@ describe('fix-only follow-up runs', () => {
     const copied = ['stage', 'hasHardFlag', 'abortOnFlag', 'checkWriterSnapshot', 'checkWriter', 'withReceipts', 'requireText',
       'exactlyOnce', 'add', 'end', 'failed', 'proof', 'limited', 'recordBlocking', 'blocking', 'sourceFindings', 'sameSnapshots',
       'listPath', 'reported', 'checkModels']
+    // The seat map and the two prompt blocks built from it and from the marked block are copied values.
+    const values = ['REVIEW_SEATS', 'REVIEWER_RULES', 'RULES']
     // Each script runs up to its launch check and returns the helpers it has defined by then.
     const helpers = (source, args) => {
       const launch = "\nphase('Launch')\n"
       expect(source.split(launch)).toHaveLength(2)
       return new AsyncFunction('agent', 'phase', 'log', 'args', source.replace('export const meta =', 'const meta =')
-        .replace(launch, `\nreturn { ${copied.join(', ')} }\n`))(() => { throw new Error('no stage runs before the launch') }, () => {}, () => {}, args)
+        .replace(launch, `\nreturn { ${[...copied, ...values].join(', ')} }\n`))(() => { throw new Error('no stage runs before the launch') }, () => {}, () => {}, args)
     }
     const main = await helpers(filled(skeleton), launchArgs()), fix = await helpers(filled(fixSkeleton), fixArgs())
     for (const name of copied) expect([name, fix[name].toString()]).toEqual([name, main[name].toString()])
+    for (const name of values) expect([name, fix[name]]).toEqual([name, main[name]])
   })
 
   test('a new-choice entry reaches remaining with its reason and never the fixer', async () => {
@@ -2934,7 +2941,7 @@ describe('no loops in the workflow skills', () => {
       'starts it once more', 'built no reviewed result']) {
       expect([stale, whole.includes(stale)]).toEqual([stale, false])
     }
-    expect(skeleton).toContain("inverseSpecDecisions, // the root's unconditional handoff: record the backing words, or ask the user.")
+    expect(skeleton).toContain("inverseSpecDecisions, // the root's unconditional handoff: record the backing words.")
     expect(skeleton).not.toContain('amend the spec, or ask the user')
   })
 
@@ -2943,8 +2950,8 @@ describe('no loops in the workflow skills', () => {
       expect([path, /promptly|follow-up/.test(text)]).toEqual([path, false])
     }
     expect(await template('finding-verifier')).toContain('the root records each entry as a separate unit, done later')
-    expect(await template('finding-verifier')).toContain("record in the todo record that the user's recorded words " +
-      "back the code's choice or ask the user about a genuinely unsettled choice")
+    expect(await template('finding-verifier')).toContain("record in the todo record that the user's recorded words back the " +
+      "code's choice; the root never corrects the spec of the run")
     expect(await template('finding-verifier')).toContain('the root never corrects the spec of the run')
     expect(await template('finding-verifier')).not.toContain('correct the spec to state')
     expect(await template('project-rule-reader')).toContain('records each cleanup entry as a separate unit, done later')
@@ -3280,7 +3287,7 @@ describe('the implementer checks the spec, and every stage reads only words said
         'A joint-impossibility or missing-contract entry ends the run before any review, so in a run that reaches you the items left unbuilt are the items named in an entry of class unbacked-item',
         'which names every item that cannot be built without one of its items as well.',
         'A source finding that asks to build, complete or change such an item is never approve-fix',
-        'decide it needs-decision, name that specFindings entry by its class and items in authority, and state the open question in correction.',
+        'decide it needs-decision and name that specFindings entry by its class and items in authority.',
         'It reaches the root as an open decision']],
       ['skill', flat(skill), ['**The sense check also reads the spec.**', 'is class `unbacked-item`',
         'one entry per finding with the ids of every spec item it concerns in `items`, a list of at least one id',
@@ -3299,5 +3306,88 @@ describe('the implementer checks the spec, and every stage reads only words said
         'into `remaining` as a `spec-finding` item, CRITICAL for `unbacked-item` and must-fix otherwise',
         'the spec finding `class` (`joint-impossibility` / `missing-contract` / `reality-drift` / `unbacked-item`)']],
     ]) for (const phrase of phrases) expect([name, phrase, text.includes(phrase)]).toEqual([name, phrase, true])
+  })
+})
+
+// The finding verifier and the fix run's scope check judge findings of critics whose purpose is code
+// quality, and no stage is told to put a question to the user.
+describe('review seats are critics, and no stage asks the user a question', () => {
+  const TEMPLATES = ['reviewer-correctness', 'reviewer-spec-compliance', 'duplicate-checker', 'quality', 'reviewer-inverse-spec',
+    'project-rule-reader', 'cold-alternatives', ...AUDIT].map(type => '<plugin root>/agents/' + type + '.md')
+  const REVIEWER_RULES_LINE = "REVIEWER RULES: these templates are the reviewers' rules, what each review seat looks for. The review seats are critics without authority:"
+  const RULE_SOURCES = 'RULE SOURCES: <applicable project, directory and global rule paths>.'
+
+  test('the finding verifier\'s prompt names the template of every review seat and the rule sources', async () => {
+    const { calls } = await simulate()
+    const prompt = calls.find(c => c.label === 'verify').prompt
+    expect(prompt).toContain(REVIEWER_RULES_LINE + '\n' + TEMPLATES.join('\n'))
+    expect(prompt).toContain(RULE_SOURCES)
+    expect(TEMPLATES).toHaveLength(15)
+  })
+
+  test('the scope check\'s prompt names the template of every review seat and the rule sources from the marked block', async () => {
+    const marker = '// ---- UNIT VALUES. A unit copies this file and sets the values of this block. ----'
+    const block = fixSkeleton.slice(fixSkeleton.indexOf(marker), fixSkeleton.indexOf('// ---- END OF UNIT VALUES ----'))
+    expect(block).toContain("  ruleSources: '<applicable project, directory and global rule paths>',")
+    const { calls } = await simulateFix()
+    const prompt = calls.find(c => c.label === 'scope').prompt
+    expect(prompt).toContain(REVIEWER_RULES_LINE + '\n' + TEMPLATES.join('\n'))
+    expect(prompt).toContain(RULE_SOURCES)
+    for (const label of ['fix', 'roast', 'diff']) expect([label, calls.find(c => c.label === label).prompt.includes(REVIEWER_RULES_LINE)]).toEqual([label, false])
+  })
+
+  test('the finding verifier and the scope check state the rule on corrections that improve code quality, with a reviewer\'s rule as evidence', async () => {
+    const shared = ['These templates are the reviewers\' rules: read them with the rule sources to know what each seat looks for.',
+      'The review seats are critics without authority, and their purpose is to improve code quality.',
+      'A reviewer\'s rule is evidence and is never cited as authority',
+      'Merging duplicated code into one shared function is such a correction',
+      'A correction that adds or changes behavior still needs the user\'s words.']
+    for (const [name, phrases] of [
+      ['finding-verifier', [...shared, 'A correction that improves code quality without changing anything the spec specifies needs no words of the user.',
+        'Decide such a correction approve-fix on this rule: its authority field names this rule of the finding verifier\'s template, and its evidence field ' +
+        'quotes the reviewer\'s rule or the project rule the correction serves, as evidence of what it improves.',
+        'so it never stands in the authority field']],
+      ['scope-check', [...shared, 'A correction that improves code quality without changing anything the parent spec specifies needs no words of the user.',
+        'Class such a correction corrective on this rule: its reason names this rule of the scope check\'s template, and its receipts quote the reviewer\'s ' +
+        'rule or the project rule the correction serves, as evidence of what it improves.',
+        'a function that only holds the merged code is not a new interface']],
+    ]) {
+      const text = await template(name)
+      for (const phrase of phrases) expect([name, phrase, text.includes(phrase)]).toEqual([name, phrase, true])
+      for (const stale of ['quoted as authority', 'citing the reviewer\'s rule']) expect([name, stale, text.includes(stale)]).toEqual([name, stale, false])
+    }
+    const text = flat(skill)
+    for (const phrase of ['**Review seats are critics whose purpose is to improve code quality.** They carry no authority.',
+      'It also receives the rule sources and the template path of every review seat',
+      'with that rule named in `authority` and the reviewer\'s rule or the project rule the correction serves quoted in `evidence`. A reviewer\'s rule is evidence and is never cited as authority.',
+      'The scope check receives the rule sources and the template path of every review seat of the main script',
+      'its receipts quote the reviewer\'s rule or the project rule the correction serves as evidence, and a reviewer\'s rule is never cited as authority.',
+      'or for a deletion or rewrite that improves code quality without changing anything the spec specifies',
+      'Establish the impossibility. The decision carries no correction and returns to you.']) {
+      expect([phrase, text.includes(phrase)]).toEqual([phrase, true])
+    }
+  })
+
+  test('no agent template and neither script tells a stage to pose, name or recommend a question or ask the user', async () => {
+    const deleted = ['reaches the user as a question', 'the exact question', 'a recommendation', 'ask the user', 'or an open question',
+      'names the question', 'puts it to the user', 'state the open question', 'the unresolved question', 'relay it directly to the user',
+      'never automatically to the user', 'asking the user', 'cannot close reaches the user', 'for the user or for a full unit',
+      'answers it as a question', 'next action or question', 'question for the user']
+    const texts = [...(await filesUnder('agents')), ['implement-review-verify.js', skeleton], ['fix-follow-up.js', fixSkeleton]]
+    expect(texts.length).toBeGreaterThan(30)
+    for (const [path, text] of texts) {
+      const prose = flat(text).toLowerCase()
+      for (const phrase of deleted) expect([path, phrase, prose.includes(phrase)]).toEqual([path, phrase, false])
+    }
+  })
+
+  test('a needs-decision decision without a correction is accepted, and root-action still names its next action', async () => {
+    const open = await simulate({ reports: oneReport, verify: { verify: verification([decision([source('correctness')], {
+      action: 'needs-decision', severity: 'must-fix', authority: '', correction: '', constraints: '', acceptance: '' })]) } })
+    expect([open.result.exit, open.result.detail]).toEqual(['root-resolution', 'Review or verification left items for the root.'])
+    expect(open.result.remaining.filter(r => r.kind === 'open-decision').map(r => r.item.correction)).toEqual([''])
+    const action = await simulate({ reports: oneReport, verify: { verify: verification([decision([source('correctness')], {
+      action: 'root-action', correction: '' })]) } })
+    expect(action.result.detail).toContain('Missing next action')
   })
 })

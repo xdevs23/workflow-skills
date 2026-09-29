@@ -24,6 +24,7 @@ const UNIT = {
   documents: '<documents directory>',    // the parent unit's documents directory, relative to the tree root
   entries: args.entries,                 // the entries list from the check tool's --json output, passed at launch
   parentSpec: args.parentSpec,           // the parentSpec from the check tool's --json output, passed at launch
+  ruleSources: '<applicable project, directory and global rule paths>',
   // One model and effort per agent the script starts, each set by the root. The script stops before
   // its first agent on an entry that is missing, still a placeholder in angle brackets, named for no
   // agent of the script, or holding any field besides model and effort.
@@ -459,9 +460,23 @@ const DOCUMENT_FIX = [
   'Commit ' + DOCUMENT + ' as its own commit in the repository that holds it when it changed, and list it in files.',
 ].join('\n')
 const HYGIENE = [STAGE, STYLE, READ_GIT, TREE, 'No background waits.'].join('\n')
+const RULES = 'RULE SOURCES: ' + UNIT.ruleSources + '.'
+// The fifteen seats of the main script's review stage, each label with the template it loads, as in
+// the main script. The scope check reads their templates as the reviewers' rules.
+const REVIEW_SEATS = {
+  correctness: 'reviewer-correctness', spec: 'reviewer-spec-compliance', dupes: 'duplicate-checker',
+  quality: 'quality', inverse: 'reviewer-inverse-spec', rules: 'project-rule-reader', alternatives: 'cold-alternatives',
+  'separation-of-concerns': 'separation-of-concerns', 'abstraction-quality': 'abstraction-quality',
+  'code-smell': 'code-smell', 'type-safety': 'type-safety', 'code-cleanliness': 'code-cleanliness',
+  'missing-gaps': 'missing-gaps', 'domain-leakage': 'domain-leakage', 'type-smearing': 'type-smearing',
+}
+const REVIEWER_RULES = [
+  'REVIEWER RULES: these templates are the reviewers\' rules, what each review seat looks for. The review seats are critics without authority:',
+  ...Object.values(REVIEW_SEATS).map(type => UNIT.pluginRoot + '/agents/' + type + '.md'),
+].join('\n')
 
 const scopePass = () => stage([
-  HYGIENE, FIX_LIST, PARENT_RUN,
+  HYGIENE, RULES, REVIEWER_RULES, FIX_LIST, PARENT_RUN,
   'COMMITS, per repository: ' + listed(base) + ', the parent run\'s final snapshots. Every repository must remain clean there; nothing is edited before you return.',
   'Class every entry of the fix list exactly once, by its id, as corrective or new-choice, each with a reason and at least one receipt.',
   'An entry you cannot place with confidence is a new choice.',

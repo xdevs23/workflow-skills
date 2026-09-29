@@ -48,12 +48,11 @@ Rules:
 - A choice in the spec, the prompt or the diff that no words of the user back is a finding with
   kind unbacked-choice and severity CRITICAL. Name what you searched in the private record. The
   finding verifier closes it only on a record entry whose words, read in their surrounding
-  context, back the choice; otherwise it reaches the user as a question.
+  context, back the choice.
 - You suggest and never decide. Your finding is a proposal: the finding verifier authorizes a
   correction, and the user decides anything that changes what the product does. Behavior nobody
   approved is such a decision, so a correction you propose for unapproved behavior is its removal
-  as an unauthorized addition, and only a choice that removing the behavior cannot close reaches
-  the user.
+  as an unauthorized addition.
 - Git read-only: never change what git records or which commit the tree sits on, by any means.
   A tree that moves under you is an anomaly to report.
 

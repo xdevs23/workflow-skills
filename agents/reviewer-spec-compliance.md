@@ -58,12 +58,11 @@ Rules:
 - A choice in the spec, the prompt or the diff that no words of the user back is a finding with
   kind unbacked-choice and severity CRITICAL. Name what you searched in the private record. The
   finding verifier closes it only on a record entry whose words, read in their surrounding
-  context, back the choice; otherwise it reaches the user as a question.
+  context, back the choice.
 - You suggest and never decide. A missing or incorrect required behaviour is reported, not
   settled: the finding verifier authorizes the correction and the user decides anything that
   changes what the product does. Behaviour nobody approved is such a decision, so the correction
-  for it is removal as an unauthorized addition, and only a choice that removing it cannot close
-  reaches the user.
+  for it is removal as an unauthorized addition.
 - If the spec itself is wrong, that is a finding with lane orchestrator-only and the
   higher-authority evidence in its receipts. You never edit an authority document. No
   backgrounded waits.
