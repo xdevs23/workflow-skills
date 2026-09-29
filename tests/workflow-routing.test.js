@@ -3357,15 +3357,29 @@ describe('review seats are critics, and no stage asks the user a question', () =
       for (const stale of ['quoted as authority', 'citing the reviewer\'s rule']) expect([name, stale, text.includes(stale)]).toEqual([name, stale, false])
     }
     const text = flat(skill)
-    for (const phrase of ['**Review seats are critics whose purpose is to improve code quality.** They carry no authority.',
+    for (const phrase of ['**Review seats are critics whose purpose is to improve code quality.** They carry no authority, so a reviewer\'s rule is evidence and is never cited as authority.',
       'It also receives the rule sources and the template path of every review seat',
-      'with that rule named in `authority` and the reviewer\'s rule or the project rule the correction serves quoted in `evidence`. A reviewer\'s rule is evidence and is never cited as authority.',
+      'A correction that improves code quality without changing anything the spec specifies needs no words of the user. The rule is in the finding verifier\'s own template, and on it the verifier may decide such a correction `approve-fix`.',
+      'An `approve-fix` on that rule names the rule in `authority` and quotes in `evidence` the reviewer\'s rule or the project rule the correction serves.',
       'The scope check receives the rule sources and the template path of every review seat of the main script',
-      'its receipts quote the reviewer\'s rule or the project rule the correction serves as evidence, and a reviewer\'s rule is never cited as authority.',
-      'or for a deletion or rewrite that improves code quality without changing anything the spec specifies',
+      'The scope check treats the review seats as critics without authority whose purpose is to improve code quality, so a reviewer\'s rule is never cited as authority.',
+      'The classification of such a correction names that rule in its reason. Its receipts quote the reviewer\'s rule or the project rule as evidence of what the correction improves.',
+      'a function that only holds the merged code is not a new interface.',
+      '`approve-fix` on a kind-bearing finding is available for the deletion or rewrite the record describes, or for a deletion or rewrite that improves code quality without changing anything the spec specifies.',
+      'An `approve-fix` of the second kind also names the verifier\'s rule on such corrections in `authority`',
+      'Keeping the flagged shape of a kind-bearing finding needs the user\'s word.',
       'Establish the impossibility. The decision carries no correction and returns to you.']) {
       expect([phrase, text.includes(phrase)]).toEqual([phrase, true])
     }
+    // Each rule of the phase-3 and scope-check passages stands in a bullet of its own.
+    for (const opening of ['- **Review seats are critics', '- A correction that improves code quality without changing anything the spec',
+      '- An `approve-fix` on that rule', '- A correction that adds or changes behavior still needs', '- The scope check treats the review seats',
+      '- The classification of such a correction', '- A correction that adds or changes behavior is a new choice.',
+      '- `cleanup` and `record` are never available for a decision on a kind-bearing finding.', '- Keeping the flagged shape of a kind-bearing finding',
+      '- `reject` on a kind-bearing finding needs counterevidence']) {
+      expect([opening, skill.includes('\n' + opening)]).toEqual([opening, true])
+    }
+    expect(text).not.toContain('the correction serves as evidence')
   })
 
   test('no agent template and neither script tells a stage to pose, name or recommend a question or ask the user', async () => {
