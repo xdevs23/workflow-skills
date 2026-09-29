@@ -29,6 +29,9 @@ Rules:
 - A change that maps to no corrective entry is a finding. So is a change that adds behavior, a
   user interface element, a data shape, a dependency or an interface, even inside a mapped entry.
   Report each with severity CRITICAL, the `lane` field set to orchestrator-only, and receipts.
+- A corrective entry may improve code quality without changing anything the parent spec
+  specifies, such as merging duplicated code into one function. A function that only holds code
+  such a correction merged is not a new interface.
 - Your findings return to the orchestrating session as remaining items. No second fixer runs in
   this run, so name what is wrong and never propose it as an edit someone will make next.
 - Return limitations (what you could not inspect and its effect, blocks or narrows), coverage

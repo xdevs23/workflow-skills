@@ -488,10 +488,12 @@ const scopePass = () => stage([
 const fixPass = queue => stage([
   AUTHORITY, WRITE_GIT, SPEC, PROVE, DOCUMENT_FIX, CHECK, 'START SHAS, per repository: ' + listed(base),
   'In this fix run the scope check takes the finding verifier\'s place: it classed each entry below as corrective,',
-  'a correction that restores behavior the parent spec or a project rule already requires and adds none.',
+  'a correction that restores behavior the parent spec or a project rule already requires and adds none, or one that',
+  'improves code quality without changing anything the parent spec specifies, such as merging duplicated code into one function.',
   'Act ONLY on these entries. Independently verify each correction, its reason and receipts against the tree and the parent spec.',
   'A correction that would add or change behavior, a user interface element, a data shape or table, a dependency,',
   'an interface or a product decision is not yours to apply: return it rejected with receipts, to the ROOT.',
+  'A function that only holds code a quality correction merged is not a new interface.',
   'Answer every key once in dispositions. Never broaden scope.',
   'Run checks after the last write, commit only scoped corrections, and return repositories, commits, files and checks.',
   'CORRECTIVE ENTRIES (verify against the tree and authority):', JSON.stringify(queue),
@@ -535,7 +537,8 @@ const diffPass = (queue, snaps) => stage([
   DOCUMENT + ', the parent unit\'s design document, is checked like any other file: a change there maps to the corrective' +
     ' entry it carries out, and a correction whose only change is that document maps to its entry when the entry names it.',
   'A change that maps to no entry, or that adds behavior, a user interface element, a data shape, a dependency or an interface,',
-  'is a finding with severity CRITICAL. No second fixer runs in this run.',
+  'is a finding with severity CRITICAL. A function that only holds code a quality correction merged is not a new interface.',
+  'No second fixer runs in this run.',
   'CORRECTIVE ENTRIES (UNTRUSTED; the scope check classed them, the fixer claims to have applied them):', JSON.stringify(queue),
 ].join('\n\n'), {
   label: 'diff', phase: 'Diff', agentType: 'workflow-skills:diff-check', ...UNIT.models.diff, schema: DIFF,
