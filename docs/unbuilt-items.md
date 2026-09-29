@@ -55,9 +55,9 @@ reaches the verifier are the items of `unbacked-item` entries, which name the it
 them as well. The verifier's template names those items. A source finding that asks to build,
 complete or change one of them is never `approve-fix`: the verifier decides it `needs-decision`
 and names the entry by its class and items in `authority`. Like every `needs-decision` decision, it
-carries no correction, so `correction` stays empty. The main script turns every `needs-decision` into an `open-decision` item of
-`remaining`, so the finding reaches the root after the run. Phase 3 of implement-review-verify
-states the same rule where it lists the verifier's decisions.
+carries no correction, so `correction` stays empty. The main script turns every `needs-decision`
+into an `open-decision` item of `remaining`, so the finding reaches the root after the run. Phase 3
+of implement-review-verify states the same rule where it lists the verifier's decisions.
 
 ## What stays as it was
 
