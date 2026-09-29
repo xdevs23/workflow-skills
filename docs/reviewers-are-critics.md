@@ -68,13 +68,22 @@ decision only by deletion, a rewrite, or the user's word.
   its rejected and blocked dispositions never go to the user automatically.
 - The spec-provenance template loses the root asking the user about a reading. The scope check's
   template loses the user as a destination of a new choice.
-- The main script's comments and error messages lose their wording about the user answering a
-  question or being asked.
+- The main script loses the comment above its check of unbacked-choice decisions, and its other
+  comments and error messages lose their wording about the user answering a question or being
+  asked.
 
-A needs-decision decision now carries no correction. The finding verifier's template says so, and
-the main script's decision check requires a correction for `root-action` and `cleanup` only,
-naming it the next action. The schema of the verifier's object is unchanged, so a needs-decision
-decision returns `correction` as an empty string.
+A needs-decision decision now carries no correction. The finding verifier's template says so. The
+schema of the verifier's object is unchanged, so a needs-decision decision returns `correction` as
+an empty string, and the main script's decision check refuses one whose `correction` holds
+anything else. The check still requires a correction for `root-action` and `cleanup`, naming it
+the next action.
+
+The older design documents on items left unbuilt, on the project-benefit review and on the work
+execution rules follow the same changes. The first describes a needs-decision decision on an item
+left unbuilt with an empty correction. The second lists the quality route beside the deletion or
+rewrite the record describes. The third says that the reviewer templates it names state that a
+reviewer proposes and never decides and that unapproved behavior is removed, and that only
+implement-review-verify says which choice reaches the user.
 
 The passages of implement-review-verify that address the root, which talks to the user, keep their
 wording. The skill describes the reviewer templates and rule sources both stages receive, the rule
@@ -111,8 +120,9 @@ sources block of the fix run equal the main script's. They check that both templ
 implement-review-verify state the rule on corrections that improve code quality, that a reviewer's
 rule is evidence and is never cited as authority, and the changed rule for band-aid and
 longer-route findings. They check that no agent template and neither script contains the deleted
-wording, and that a needs-decision decision with an empty correction is accepted while a
-root-action decision without one is refused.
+wording. They check that a needs-decision decision with an empty correction is accepted, that one
+with a correction is refused before it reaches the remaining items, and that a root-action
+decision without a correction is refused.
 
 The plugin version rises from 0.31.0 to 0.32.0.
 
