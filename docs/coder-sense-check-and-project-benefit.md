@@ -64,9 +64,12 @@ This document builds on [directive authority](directive-authority.md) and
    cold-alternatives seat, and where the record holds no words about the mechanism it states
    that silence in plain words instead; a roaster finding of either kind reaches the root as a
    remaining item of the run, and the root checks it against the tree and the recorded words;
-   `approve-fix` only for the deletion or rewrite the record describes, so a silent record never
-   yields one; `reject` only with counterevidence against the finding itself; every such
-   decision reaches the root.
+   `approve-fix` for the deletion or rewrite the record describes, or for a deletion or rewrite
+   that improves code quality without changing anything the spec specifies, where `authority`
+   also names the verifier's rule on such corrections and `evidence` quotes the reviewer's rule or
+   the project rule the correction serves; keeping the flagged shape needs the user's word;
+   `reject` only with counterevidence against the finding itself; every such decision reaches the
+   root.
 8. **Closure at the root.** The root closes a standing project-benefit decision only by
    deletion, a rewrite, or the user's verbatim word to keep the shape, quoted in the private
    record. A decision the verifier rejected with counterevidence closes at the root once the
