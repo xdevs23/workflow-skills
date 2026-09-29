@@ -38,7 +38,10 @@ correction corrective. A classification has no authority field, so its reason na
 scope check's template and its receipts quote the reviewer's rule or the project rule the
 correction serves, beside the code it improves. A function that only holds merged code is not a
 new interface in the scope check's sense, so a deduplication is no longer a new choice. A
-correction that adds or changes behavior stays a new choice.
+correction that adds or changes behavior stays a new choice. The fixer's prompt and the diff check
+of the fix run follow the same rule: the fixer's prompt counts a quality correction that keeps the
+parent spec as corrective, and neither counts a function that only holds merged code as a new
+interface, so a correction the scope check admits is not refused by the next stage.
 
 ## Band-aid and longer-route findings
 
@@ -64,8 +67,9 @@ decision only by deletion, a rewrite, or the user's word.
   open question listed with an approval and a rejection of an inverse-spec finding, the question
   named in `correction` for an unbacked choice and for an item left unbuilt, and the root putting
   that question to the user.
-- The fixer's template loses the unresolved question of a blocked disposition and the clause that
-  its rejected and blocked dispositions never go to the user automatically.
+- The fixer's template loses the unresolved question of a blocked disposition. It keeps the
+  clause that its rejected and blocked dispositions go to the root and never to the user
+  automatically, because that clause forbids asking the user.
 - The spec-provenance template loses the root asking the user about a reading. The scope check's
   template loses the user as a destination of a new choice.
 - The main script loses the comment above its check of unbacked-choice decisions, and its other
