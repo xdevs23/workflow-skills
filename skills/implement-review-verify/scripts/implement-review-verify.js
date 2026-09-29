@@ -594,6 +594,12 @@ const REVIEW_SEATS = {
   'code-smell': 'code-smell', 'type-safety': 'type-safety', 'code-cleanliness': 'code-cleanliness',
   'missing-gaps': 'missing-gaps', 'domain-leakage': 'domain-leakage', 'type-smearing': 'type-smearing',
 }
+// The template of every review seat, handed to the finding verifier beside the rule sources so it
+// knows what each seat looks for.
+const REVIEWER_RULES = [
+  'REVIEWER RULES: these templates are the reviewers\' rules, what each review seat looks for. The review seats are critics without authority:',
+  ...Object.values(REVIEW_SEATS).map(type => UNIT.pluginRoot + '/agents/' + type + '.md'),
+].join('\n')
 // The seat list: the template, label, prompt blocks, schema and completeness check of each seat.
 // Only the two briefed code-lens readers receive the implementer's object, as claims. The eight
 // audit seats receive what quality receives, the hygiene floor and the diff, and return its object.
@@ -716,11 +722,11 @@ const checkVerification = (v, sources, snaps) => {
     if (d.action === 'approve-fix') {
       for (const field of ['authority', 'correction', 'constraints', 'acceptance']) requireText(d[field], 'approved ' + field)
     }
-    // A choice no words of the user back reaches the user as a question, or closes on a record
-    // entry whose words, quoted in their context, back it. No other action answers it.
+    // A choice no words of the user back stays needs-decision, or closes on a record entry whose
+    // words, quoted in their context, back it. No other action answers it.
     if (d.sourceIds.some(id => kindOf.get(id) === 'unbacked-choice')) {
       if (!['needs-decision', 'reject'].includes(d.action)) {
-        throw new Error('Unbacked-choice finding allows only needs-decision or reject, never ' + d.action + '; the user answers it as a question')
+        throw new Error('Unbacked-choice finding allows only needs-decision or reject, never ' + d.action)
       }
       if (d.action === 'reject' && !BACKING.test(d.authority)) {
         throw new Error('Unbacked-choice rejection must cite in authority the record entry by id with the backing words quoted in their context: record entry <id>: "<quote>"')
@@ -742,9 +748,10 @@ const checkVerification = (v, sources, snaps) => {
     // cleanup is for work OUTSIDE this unit's repair scope; an inverse-spec finding is about a
     // choice made INSIDE this unit's own diff, so it can never be deferred there or as record.
     if (fromInverse && d.action === 'cleanup') {
-      throw new Error('Inverse-spec finding cannot be dispositioned as cleanup; the root must record in the todo record that the user\'s recorded words back the choice, or ask the user')
+      throw new Error('Inverse-spec finding cannot be dispositioned as cleanup; the root must record in the todo record that the user\'s recorded words back the choice')
     }
-    if (['needs-decision', 'root-action', 'cleanup'].includes(d.action)) requireText(d.correction, 'next action or question')
+    // A needs-decision decision carries no correction; the other two name the next action.
+    if (['root-action', 'cleanup'].includes(d.action)) requireText(d.correction, 'next action')
   }
   for (const issue of v.issues) requireText(issue.detail, 'unresolved issue')
 }
@@ -801,7 +808,7 @@ async function onePass() {
   phase('Verify')
   activeLabel = 'verify'
   const result = await stage([
-    AUTHORITY, READ_GIT, SPEC, RULES, diffInput(snapshots),
+    AUTHORITY, READ_GIT, SPEC, RULES, REVIEWER_RULES, diffInput(snapshots),
     'In every repository of the list, independently run git -C ' + UNIT.worktree + '/<path> rev-parse --verify HEAD^{commit} and git status --porcelain=v1 --untracked-files=all.',
     'Confirm each immutable commit exists and each clean tree matches it; return repositories with path as the list names it, snapshotSha, clean, and git with head, the commit ID alone, and status, the output of git status.',
     'Inspect each writer commit against its start SHA in its repository for unrelated changes or history rewriting:',
@@ -924,7 +931,7 @@ return {
     rejected: decisions.filter(d => d.action === 'reject').length,
     recorded: decisions.filter(d => d.action === 'record').length },
   cleanup: decisions.filter(d => d.action === 'cleanup'),
-  inverseSpecDecisions, // the root's unconditional handoff: record the backing words, or ask the user.
+  inverseSpecDecisions, // the root's unconditional handoff: record the backing words.
   projectBenefitDecisions, // closed only by deletion, a rewrite, or the user's recorded word.
 }
 

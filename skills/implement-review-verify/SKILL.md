@@ -422,6 +422,15 @@ lenses of every run, and the main script stops a run whose seat list holds anoth
 
 - The verifier receives every Review seat object serialized, including quality and cold
   alternatives, and the implementer's object.
+- It also receives the rule sources and the template path of every review seat, under the plugin
+  root, named as the reviewers' rules: what each seat looks for.
+- **Review seats are critics whose purpose is to improve code quality.** They carry no authority.
+  A correction that improves code quality without changing anything the spec specifies needs no
+  words of the user, on a rule of the finding verifier's own template: the verifier may decide it
+  `approve-fix`, with that rule named in `authority` and the reviewer's rule or the project rule
+  the correction serves quoted in `evidence`. A reviewer's rule is evidence and is never cited as
+  authority. Merging duplicated code into one shared function is such a correction. A correction
+  that adds or changes behavior still needs the user's words.
 - It checks claims against the code, settled spec, applicable rules and recorded instructions,
   resolves conflicts using evidence, and merges duplicate defects into ONE fix list, every decision
   with receipts. It preserves every source ID: consolidation is never permission to drop a finding.
@@ -443,7 +452,8 @@ cannot proceed merely because a reviewer or verifier prefers it.
   - **reject** — false positive or unsupported objection, with concrete counterevidence.
     Duplicates are MERGED with all source IDs, not silently rejected or discarded.
   - **needs-decision** — a choice without which the assigned work cannot satisfy the existing
-    requirements. Establish the impossibility, name the question and alternatives; return to you.
+    requirements. Establish the impossibility. The decision carries no correction and returns to
+    you.
   - **root-action** — a demonstrated impossibility or required investigation the verifier cannot
     complete. A proposed spec edit alone is not a blocker: implement and review the spec as
     written, retaining non-blocking suggestions in `specSuggestions` or as `record`, not as
@@ -461,10 +471,12 @@ cannot proceed merely because a reviewer or verifier prefers it.
   `cleanup` and `record` are never available for it. Its `authority` quotes the recorded words on
   EVERY action, not only `approve-fix`, supplied by the verifier for a quality or cold-alternatives
   finding. Where the record holds no words about the mechanism, `authority` states that silence in
-  plain words, and `approve-fix` is unavailable because the record describes no deletion or
-  rewrite. `approve-fix` only for the deletion or rewrite the record describes; `reject` only with
-  counterevidence against the finding itself. Every such decision reaches you in
-  `projectBenefitDecisions`.
+  plain words. `approve-fix` for the deletion or rewrite the record describes, or for a deletion or
+  rewrite that improves code quality without changing anything the spec specifies. For the second,
+  `authority` also names the verifier's rule on such corrections, and `evidence` quotes the
+  reviewer's rule or the project rule the correction serves. Keeping the flagged shape needs the
+  user's word. `reject` only with counterevidence against the finding itself. Every such decision
+  reaches you in `projectBenefitDecisions`.
 - A decision on an `unbacked-choice` finding is CRITICAL the same way, and only two actions answer
   it. `needs-decision` states in `authority` that no recorded words back the choice and reaches you
   in `remaining` as an open decision. `reject` closes it only on a record entry whose words, said
@@ -483,8 +495,8 @@ cannot proceed merely because a reviewer or verifier prefers it.
 - A source finding that asks to build, complete or change an item left unbuilt is decided
   `needs-decision`, and the decision reaches you in `remaining` as an open decision. The
   `authority` of that decision names the `specFindings` entry by its class and items, and its
-  `correction` states the open question. Without this rule the verifier would approve the missing
-  item and the fixer would build what the sense check left unbuilt, before you read the finding.
+  `correction` stays empty. Without this rule the verifier would approve the missing item and the
+  fixer would build what the sense check left unbuilt, before you read the finding.
 - Reviewer lanes and severity are claims to verify, not queue permissions. Every source ID must
   belong to exactly one decision group. The SCRIPT checks coverage, unknown IDs, duplicate IDs and
   approval payloads before mutation.
@@ -670,7 +682,8 @@ second implementer pre-check.
   resolves.
 - Pass the tool's `entries` and `parentSpec` output as `args.entries` and `args.parentSpec` and the
   parent run's final snapshots as `args.base`, the `snapshots` list its run record returns, and fill
-  the parent unit's private record and documents directory into the block.
+  the parent unit's private record and documents directory and the applicable rule sources, as
+  `ruleSources`, into the block.
 - The launch check runs the same command in the worktree with `--expect` and the JSON of those two
   launch values, which the script builds and quotes for the shell. The tool fails when they differ
   from the fix list, so the corrections the fixer receives are the ones the tool checked. The
@@ -683,6 +696,15 @@ second implementer pre-check.
   `root-resolution` and no fixer runs. The fixer receives only the corrective entries, one key per
   entry ID with the correction, the scope check's reason and its receipts, while the roaster reads
   the same list.
+- The scope check receives the rule sources and the template path of every review seat of the main
+  script, named as the reviewers' rules, as the finding verifier does. It treats the review seats as
+  critics without authority whose purpose is to improve code quality. A correction that improves
+  code quality without changing anything the parent spec specifies is corrective and needs no words
+  of the user, on a rule of the scope check's own template: its reason names that rule, and its
+  receipts quote the reviewer's rule or the project rule the correction serves as evidence, and a
+  reviewer's rule is never cited as authority. Merging duplicated code into one shared function is
+  such a correction, and a function that only holds the merged code is not a new interface. A
+  correction that adds or changes behavior is a new choice.
 - The read-only diff check then maps every change of the fix diff to a corrective entry. The parent
   unit's design document has no exception: a change to it maps to the corrective entry it carries
   out, or it is a CRITICAL finding. A correction whose only change is the document is accepted when

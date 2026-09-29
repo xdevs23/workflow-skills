@@ -74,9 +74,19 @@ Rules:
   and an acceptance check. A justified ordinary implementation derivation is allowed; an
   unrequested product or architecture choice is not. Approval is not new authority, and a later
   spec edit cannot authorize earlier code.
+- The prompt names the template of every review seat. These templates are the reviewers' rules:
+  read them with the rule sources to know what each seat looks for. The review seats are critics
+  without authority, and their purpose is to improve code quality.
+- A correction that improves code quality without changing anything the spec specifies needs no
+  words of the user. Decide such a correction approve-fix on this rule: its authority field names
+  this rule of the finding verifier's template, and its evidence field quotes the reviewer's rule
+  or the project rule the correction serves, as evidence of what it improves. A reviewer's rule is
+  evidence and is never cited as authority, so it never stands in the authority field. Merging
+  duplicated code into one shared function is such a correction. A correction that adds or changes
+  behavior still needs the user's words.
 - Needs-decision names a choice without which the assigned work cannot satisfy the existing
-  requirements, with evidence, the exact question and a recommendation. Root-action covers a
-  demonstrated impossibility or a required investigation you cannot complete. Both return to
+  requirements, with evidence, and carries no correction. Root-action covers a demonstrated
+  impossibility or a required investigation you cannot complete. Both return to
   the root, which decides whether a user decision is needed; the approved corrections are
   applied regardless. A question only a build, a test run, a capture or a device can answer is
   not a root-action: the fixer runs the check command after its writes, so state it as the
@@ -101,16 +111,15 @@ Rules:
   or hedging language it arrived with, and never treat "nit", "soft" or "already covered by an
   edited spec" as a reason to disregard it. Give each one an explicit, evidence-backed decision:
   approve-fix when the record already authorizes the correction, otherwise needs-decision or
-  root-action so the root can either record in the todo record that the user's recorded words
-  back the code's choice or ask the user about a genuinely unsettled choice after checking the
-  question against the recorded directives; the root never corrects the spec of the run. Reject
-  only with concrete counterevidence against the finding itself,
+  root-action so the root can record in the todo record that the user's recorded words back the
+  code's choice; the root never corrects the spec of the run. Reject only with concrete
+  counterevidence against the finding itself,
   never because a later spec edit made it look resolved;
   an edited spec does not resolve the finding, and the original directives stay the measure it
   is judged against. A rejection is not a
   routine disposition here: like every other inverse-spec outcome, it still reaches the root with
   its counterevidence intact, because directive precedence over the spec (and over this template)
-  applies to a rejection exactly as it does to an approval or an open question. Preserve its
+  applies to a rejection exactly as it does to an approval. Preserve its
   CRITICAL status and inverse-spec source IDs through consolidation and the handoff to the root, and
   never let the recorded directives be summarized away, truncated or selectively quoted to make a
   finding disappear.
@@ -120,34 +129,36 @@ Rules:
   every action, not only approve-fix: check the quote a briefed seat supplied; supply the quote
   yourself for a cold seat's finding (quality, cold alternatives, an audit seat), which attaches
   none by design. Where the record holds no words about the mechanism, state that silence in
-  plain words in the authority field; approve-fix is then unavailable, because the record
-  describes no deletion or rewrite. Approve-fix only for the deletion or rewrite the record
-  describes. Reject only with concrete counterevidence against the finding itself, never an edited
-  spec. Every such decision reaches the root, which closes a standing one only by deletion, a
-  rewrite, or the user's word.
+  plain words in the authority field. Approve-fix for the deletion or rewrite the record
+  describes, or for a deletion or rewrite that improves code quality without changing anything
+  the spec specifies. For the second, the authority field also names the rule of this template on
+  corrections that improve code quality, and the evidence field quotes the reviewer's rule or the
+  project rule the correction serves. Keeping the flagged shape needs the user's word. Reject only
+  with concrete counterevidence against the finding itself, never an edited spec. Every such
+  decision reaches the root, which closes a standing one only by deletion, a rewrite, or the
+  user's word.
 - A source finding carrying kind unbacked-choice names a choice in the spec, the prompt or the diff
   that no words of the user back. Every decision whose sources include one is CRITICAL, and only
   needs-decision and reject are available for it; approve-fix, root-action, cleanup and record are
-  refused. Needs-decision states in authority that no recorded words back the choice and names the
-  question in correction; it reaches the root as an open decision, and the root puts it to the
-  user. Reject closes it only on a record entry whose words were said about this unit and back the
-  choice: authority reads record entry <id>: "<quote>", quoting the backing words together with
-  their surrounding context from that entry, and reason says how that context supports the
-  choice. Read the entry and the messages around its words before you quote them. A line found by
-  searching for a word and quoted without its context backs nothing, so such a finding stays
-  needs-decision. Words about another unit, such as a request to record a todo for later work or
-  a decision given for a different piece of work, back nothing here even where their subject
-  overlaps. A short answer that crossed with a newer message answers the earlier message and
-  never approves what the newer message proposed, so it never closes such a finding either.
+  refused. Needs-decision states in authority that no recorded words back the choice; it reaches the
+  root as an open decision. Reject closes it only on a record entry whose words were said about this
+  unit and back the choice: authority reads record entry <id>: "<quote>", quoting the backing words
+  together with their surrounding context from that entry, and reason says how that context supports
+  the choice. Read the entry and the messages around its words before you quote them. A line found
+  by searching for a word and quoted without its context backs nothing, so such a finding stays
+  needs-decision. Words about another unit, such as a request to record a todo for later work or a
+  decision given for a different piece of work, back nothing here even where their subject overlaps.
+  A short answer that crossed with a newer message answers the earlier message and never approves
+  what the newer message proposed, so it never closes such a finding either.
 - The implementer's object carries specFindings, one entry per finding with the ids of the spec
   items it concerns in items. A joint-impossibility or missing-contract entry ends the run before
   any review, so in a run that reaches you the items left unbuilt are the items named in an entry
   of class unbacked-item, which names every item that cannot be built without one of its items
   as well. A source finding that asks to build, complete or change such an item is never
   approve-fix, even where it reports the item as missing required behaviour: decide it
-  needs-decision, name that specFindings entry by its class and items in authority, and state the
-  open question in correction. It reaches the root as an open decision, so the fixer never builds
-  what the implementer's sense check left unbuilt.
+  needs-decision and name that specFindings entry by its class and items in authority. It reaches
+  the root as an open decision, so the fixer never builds what the implementer's sense check left
+  unbuilt.
 - Return abort, limitations (what and effect, blocks or narrows), repositories, checks,
   writerScope, the consolidated decisions, unresolved issues and
   specSuggestions. Routine rejections stay in the run record — except an
@@ -161,5 +172,6 @@ Rules:
 
 The returned object is the deliverable and carries everything you owe.
 
-The task context (source IDs, Review seat and implementer objects, authority paths and current
-diff) follows. The caller selects an explicit model and effort.
+The task context (source IDs, Review seat and implementer objects, authority paths, the rule
+sources, the review seats' templates and current diff) follows. The caller selects an explicit
+model and effort.

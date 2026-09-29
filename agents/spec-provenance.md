@@ -67,7 +67,6 @@ Rules:
   that assistant text; a missing one is a must-fix finding. Judge the item's content against
   question and answer together, never against the answer alone.
 - Where the cited words admit two readings, the finding is must-fix and names both readings.
-  The root resolves it only by asking the user that one question.
 - Re-run each observation's command under your read-only contract. Inspect it first: its operation
   must be read-only by construction. Leave a command that would write, or whose safety you cannot
   establish, unexecuted, and report a must-fix finding against that observation item, because an
