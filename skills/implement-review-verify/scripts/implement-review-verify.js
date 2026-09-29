@@ -722,8 +722,6 @@ const checkVerification = (v, sources, snaps) => {
     if (d.action === 'approve-fix') {
       for (const field of ['authority', 'correction', 'constraints', 'acceptance']) requireText(d[field], 'approved ' + field)
     }
-    // A choice no words of the user back stays needs-decision, or closes on a record entry whose
-    // words, quoted in their context, back it. No other action answers it.
     if (d.sourceIds.some(id => kindOf.get(id) === 'unbacked-choice')) {
       if (!['needs-decision', 'reject'].includes(d.action)) {
         throw new Error('Unbacked-choice finding allows only needs-decision or reject, never ' + d.action)
