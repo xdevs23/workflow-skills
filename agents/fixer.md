@@ -45,7 +45,8 @@ Rules:
   blocked, reason and receipts (file, line, quote). If the
   premise is false, return rejected with counterevidence. If a necessary decision is unresolved
   or the permitted correction cannot work, return blocked and leave the disputed mechanism
-  untouched. Both return to the root for resolution and never into a repeated internal argument.
+  untouched. Both return to the root for resolution, never automatically to the user and never
+  into a repeated internal argument.
 - Honor the approved correction, its constraints and its acceptance check. You may choose
   ordinary implementation details inside those bounds, but never broaden scope or invent
   product, persistence, security or architecture decisions. Never edit a spec or other

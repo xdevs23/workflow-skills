@@ -2951,8 +2951,6 @@ describe('no loops in the workflow skills', () => {
       expect([path, /promptly|follow-up/.test(text)]).toEqual([path, false])
     }
     expect(await template('finding-verifier')).toContain('the root records each entry as a separate unit, done later')
-    expect(await template('finding-verifier')).toContain("record in the todo record that the user's recorded words back the " +
-      "code's choice; the root never corrects the spec of the run")
     expect(await template('finding-verifier')).toContain('the root never corrects the spec of the run')
     expect(await template('finding-verifier')).not.toContain('correct the spec to state')
     expect(await template('project-rule-reader')).toContain('records each cleanup entry as a separate unit, done later')
@@ -3387,7 +3385,7 @@ describe('review seats are critics, and no stage asks the user a question', () =
   test('no agent template and neither script tells a stage to pose, name or recommend a question or ask the user', async () => {
     const deleted = ['reaches the user as a question', 'the exact question', 'a recommendation', 'ask the user', 'or an open question',
       'names the question', 'puts it to the user', 'state the open question', 'the unresolved question', 'relay it directly to the user',
-      'never automatically to the user', 'asking the user', 'cannot close reaches the user', 'for the user or for a full unit',
+      'asking the user', 'cannot close reaches the user', 'for the user or for a full unit',
       'answers it as a question', 'next action or question']
     const texts = [...(await filesUnder('agents')), ['implement-review-verify.js', skeleton], ['fix-follow-up.js', fixSkeleton]]
     expect(texts.length).toBeGreaterThan(30)
@@ -3395,6 +3393,21 @@ describe('review seats are critics, and no stage asks the user a question', () =
       const prose = flat(text).toLowerCase()
       for (const phrase of deleted) expect([path, phrase, prose.includes(phrase)]).toEqual([path, phrase, false])
     }
+  })
+
+  test('the fix run\'s fixer and diff check accept a quality correction as corrective, like the scope check', async () => {
+    const { calls } = await simulateFix()
+    const quality = 'improves code quality without changing anything the parent spec specifies'
+    const helper = 'A function that only holds code a quality correction merged is not a new interface.'
+    for (const label of ['fix', 'diff']) {
+      const prompt = flat(calls.find(c => c.label === label).prompt)
+      expect([label, prompt.includes(helper)]).toEqual([label, true])
+    }
+    expect(flat(calls.find(c => c.label === 'fix').prompt)).toContain(quality)
+    expect(flat(await template('diff-check'))).toContain('A corrective entry may improve code quality without changing anything the parent spec specifies')
+    // A disagreement of the fixer still goes to the root and never to the user on its own.
+    expect(flat(await template('fixer'))).toContain('Both return to the root for resolution, never automatically to the user')
+    expect(flat(await template('finding-verifier'))).not.toContain('so the root can record')
   })
 
   test('a needs-decision decision is accepted only without a correction, and root-action still names its next action', async () => {
