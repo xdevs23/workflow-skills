@@ -1,17 +1,20 @@
 # Write the design document from the code
 
 A unit's design document is written by hand by the writers of the unit, from the code they built,
-after the implementation. The spec tool checks the prose of a spec against a 120-character width
+after the implementation, and only when the unit's change alters the design. A writer extends the
+document that already describes the part it changed and writes a new one only when none does. The
+spec tool checks the prose of a spec against a 120-character width
 rule and counts that prose as `specLines`, which the 20:1 size check divides by.
 
 ## The writers write the document
 
-The implementer writes the design document as its last write, once its implementation is done and
-before its checks. It writes the document by hand from the code it built and the spec, commits it
-as its own commit and lists it in the files it returns. The fixer of the main run updates the
-document by hand once its corrections are done, where a correction changed what the document
-describes, commits it as its own commit when it changed, and writes nothing when its approved list
-is empty. The fixer of a fix run does the same for the parent unit's document.
+The implementer, when its change alters the design, writes or extends a design document as its
+last write, once its implementation is done and before its checks. It writes the document by hand
+from the code it built and the spec, commits it as its own commit and lists it in the files it
+returns. The fixer of the main run writes or extends a document by hand once its corrections are
+done, when a correction alters the design, commits it as its own commit, and writes nothing when its
+approved list is empty. The fixer of a fix run does the same in the parent unit's documents
+directory.
 
 The document describes the change as the code at the writer's final commit implements it: what it
 does, how its parts fit together, the decisions with their reasons, and the alternatives that were
@@ -22,22 +25,44 @@ account of the conversation, and it follows the repository's prose rules and the
 skill.
 
 The main script and the fix-run script carry this step in the writer prompts, before the check
-command, so a prompt reads in the order of the work. Each script names the document after the
+command, so a prompt reads in the order of the work. Each script names a new document after the
 spec's file name: the main script after the unit spec, the fix-run script after the parent spec.
-Both scripts hold the same text for what the document carries, and no stage prompt produces the
-document with a tool.
+Both scripts hold the same text for when a writer writes a document and for what the document
+carries, and no stage prompt produces the document with a tool.
 
-The implementer and fixer templates, the implement-review-verify skill, the immaculate-spec-writing
-skill and the README describe this step and the contents of the document. The passages that say
-which documents may enter a spec as authority also cover the generated documents that earlier
+The implement-review-verify skill, the immaculate-spec-writing skill, the implementer and fixer
+templates and the README describe this step and the contents of the document. The passages that
+say which documents may enter a spec as authority also cover the generated documents that earlier
 units left in the repository.
+
+## A document only when the design changes
+
+A writer, the implementer or a fixer, writes or extends a design document only when its change
+alters the design: what the code does, how its parts fit together, a decision with its reason, or
+a rejected alternative. A change that alters none of these writes no document and commits none, and
+the stage is complete without one. Each writer prompt opens its document step with this rule, and
+the scripts accept a writer whose files hold no design document like any other writer.
+
+A writer whose change alters the design extends by hand the design document in the documents
+directory of the marked block that already describes the part it changed. It writes a new document
+only when no document there describes that part, and the script names that new document after the
+spec's file. The fixer of a fix run works in the parent unit's documents directory and names a new
+document after the parent spec. Whichever document a writer wrote or extended, it commits it as its
+own commit, as its last write before its checks, and lists it in its files. What the document
+carries is unchanged: the change as the code at the final commit implements it, with no words of
+the user and no local absolute paths.
+
+OPEN: the implementer and fixer templates and the README still describe the design document as a
+step every writer takes, while the writer prompts of both scripts and the implement-review-verify
+skill make it conditional on a change to the design.
 
 ## The fix run treats the document like any other file
 
 The diff check of a fix run maps every change of the fix to the corrective entry it carries out,
-and the parent unit's design document gets no exception. A change to it maps to an entry, or the
-check reports it as a finding, which the run returns to the root as CRITICAL. A correction whose
-only change is the document maps to its entry when that entry names the document, and the run then
+and no design document in the documents directory gets an exception, whether it is named after the
+parent spec or an earlier unit wrote it. A change to any of them maps to an entry, or the check
+reports it as a finding, which the run returns to the root as CRITICAL. A correction whose only
+change is a design document maps to its entry when that entry names that document, and the run then
 treats it as an ordinary fix. The prompt of the diff check says so.
 
 A fix run starts from the parent run's final snapshot and takes no other commit of the parent run,
@@ -105,9 +130,15 @@ counted spec is the one the writers and reviewers read.
   the code, and a generator that no stage calls would be code nothing uses.
 - A fix run takes no base commit of its parent unit, because nothing in it reads one, and asking
   for it would make every fix run supply a commit to no purpose.
-- The fix run checks the document like any other file, and accepts a correction whose only change
-  is the document when its entry names the document, so the document has neither a free pass nor a
-  special barrier.
+- A writer writes or extends a document only when its change alters the design, because a change
+  that alters no design leaves every design document true, and a document written for it would
+  record nothing about the design.
+- A writer extends the document that already describes the part it changed and writes a new one
+  only when none does, so the design of a part is described in one document instead of spread over
+  one document per unit that touched it.
+- The fix run checks every design document like any other file, and accepts a correction whose only
+  change is a design document when its entry names that document, so no document has either a free
+  pass or a special barrier.
 - The width rule checks both the length and the fill of a line, because a length limit alone would
   let a spec padded with short lines through, and padding would inflate the line count the size
   ratio is measured against.
