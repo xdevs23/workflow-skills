@@ -20,8 +20,10 @@ is a judgment a reader applies, so each one is prose in the file whose reader ap
    authorizes, and the user decides anything that changes what the product does. Behavior nobody
    approved is a decision. Behavior added without authority is removed as an unauthorized addition,
    which the inverse-spec template already prescribes, and only a choice that removing the behavior
-   cannot close reaches the user. It lives in the review phase section of the skill and in the
-   correctness, cleanliness, spec-compliance and inverse-spec templates, each in its own words.
+   cannot close reaches the user. It lives in the review phase section of the skill. The
+   correctness, cleanliness, spec-compliance and inverse-spec templates each state in their own
+   words that a reviewer proposes and never decides, and that behavior added without authority is
+   removed as an unauthorized addition. Only the skill says which choice reaches the user.
 3. **The quality bar.** A change is measured against modularity; an architecture whose structure
    carries the cases instead of conditionals bolted onto one generic path; a generic mechanism that
    never learns the specifics of one concrete type; and package names that describe the project
