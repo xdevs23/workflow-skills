@@ -362,8 +362,9 @@ lenses of every run, and the main script stops a run whose seat list holds anoth
   approved is such a decision, whoever proposed it and however small it looks. One of two existing
   paths closes it: behavior added without authority is removed as an unauthorized addition, which
   the inverse-spec template already prescribes, and only a choice that removing the behavior cannot
-  close reaches the user at all. The correctness, spec-compliance and inverse-spec templates carry
-  the same rule in their own words.
+  close reaches the user at all. The correctness, spec-compliance and inverse-spec templates each
+  state in their own words that a reviewer proposes and never decides, and that behavior added
+  without authority is removed as an unauthorized addition.
 - **Every seat object goes to the finding verifier.** A lane or severity assigned by a reviewer
   does not authorize a fix; only the verifier's checked, consolidated approval does.
 

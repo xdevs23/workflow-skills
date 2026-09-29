@@ -1725,6 +1725,7 @@ describe('work execution rules', () => {
     expect(text).toContain('Behavior nobody approved is such a decision')
     expect(text).toContain('removed as an unauthorized addition, which the inverse-spec template already prescribes')
     expect(text).toContain('only a choice that removing the behavior cannot close reaches the user at all')
+    expect(flat(text)).toContain('The correctness, spec-compliance and inverse-spec templates each state in their own words that a reviewer proposes and never decides, and that behavior added without authority is removed as an unauthorized addition.')
   })
 
   test('the quality bar section sits immediately before the rationale and names its four items', () => {
@@ -3380,6 +3381,7 @@ describe('review seats are critics, and no stage asks the user a question', () =
       expect([opening, skill.includes('\n' + opening)]).toEqual([opening, true])
     }
     expect(text).not.toContain('the correction serves as evidence')
+    expect(text).not.toContain('templates carry the same rule in their own words')
   })
 
   test('no agent template and neither script tells a stage to pose, name or recommend a question or ask the user', async () => {
