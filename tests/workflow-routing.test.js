@@ -1715,7 +1715,7 @@ describe('work execution rules', () => {
     expect(text).toContain('a claim, not an instruction and not a question to relay')
     expect(text).toContain('fix it or reject it with a stated reason')
     expect(text).toContain('is this item in fact a rule violation or an architecture problem that another read of the recorded words would close?')
-    expect(text).toContain('choice the record genuinely leaves open still reaches the user once the screen has passed it')
+    expect(text).toContain('a product or architecture decision the record genuinely leaves open still reaches the user once the screen has passed it')
   })
 
   test('the review phase states that a seat proposes, the verifier authorizes and the user decides', () => {
@@ -1724,7 +1724,7 @@ describe('work execution rules', () => {
     expect(text).toContain('the user decides anything that changes what the product does')
     expect(text).toContain('Behavior nobody approved is such a decision')
     expect(text).toContain('removed as an unauthorized addition, which the inverse-spec template already prescribes')
-    expect(text).toContain('only a choice that removing the behavior cannot close reaches the user at all')
+    expect(text).toContain('only a product or architecture decision that removing the behavior cannot close reaches the user at all')
     expect(flat(text)).toContain('The correctness, spec-compliance and inverse-spec templates each state in their own words that a reviewer proposes and never decides, and that behavior added without authority is removed as an unauthorized addition.')
   })
 
@@ -2345,7 +2345,6 @@ describe('fix-only follow-up runs', () => {
     for (const phrase of ['**A fix run fixes findings that need no decision of the user.**',
       "one named run of a unit whose spec carries the user's words, where the fix needs no decision of the user",
       'A general instruction to fix findings does not authorize a particular fix, because the user may not agree with the finding',
-      'A finding that needs a decision, an open decision, and anything the scope check refused go to the user and then to a full unit with a spec.',
       'Never use the fix run for work you want done beyond a finding.', '`scripts/fix-follow-up.js`',
       'The list holds no user words and no field for them.', '`<plugin root>/tools/check-spec.ts --fix-list <file> --transcripts <dir> --json`',
       '`args.parentSpec`', 'The tool fails when they differ from the fix list, so the corrections the fixer receives are the ones the tool checked.',
@@ -2791,7 +2790,7 @@ describe('the user\'s words reach every stage', () => {
       expect([phrase, flat(skill).includes(phrase)]).toEqual([phrase, true])
     }
     const premise = sectionText(skill, '### Question-premise check')
-    for (const phrase of ['Put every open `unbacked-choice` decision to the user as a question',
+    for (const phrase of ['Accept a rejected `unbacked-choice` decision only after reading the cited record entry',
       'checking that the quoted words, read in their surrounding context, back the choice']) {
       expect([phrase, premise.includes(phrase)]).toEqual([phrase, true])
     }
@@ -3430,5 +3429,66 @@ describe('review seats are critics, and no stage asks the user a question', () =
     const action = await simulate({ reports: oneReport, verify: { verify: verification([decision([source('correctness')], {
       action: 'root-action', correction: '' })]) } })
     expect(action.result.detail).toContain('Missing next action')
+  })
+})
+
+describe('only product and architecture decisions reach the user', () => {
+  test('the skill names the two kinds of decision that reach the user', () => {
+    const text = sectionText(skill, '### What reaches the user')
+    for (const phrase of ['**Only two kinds of decision reach the user.**',
+      'A product decision is about what the user sees and does, what data is kept or lost, the product\'s scope, and anything public or external.',
+      'An architecture decision is about where code lives, the shape of the system, the data model and the contracts between components.',
+      'An item of any other kind never reaches the user, whether a stage or a remaining item calls it unsettled, open or undecided: you decide it yourself']) {
+      expect([phrase, text.includes(phrase)]).toEqual([phrase, true])
+    }
+    // Every other passage that sends an item to the user names the two kinds as the only ones that go.
+    const prose = flat(skill)
+    for (const phrase of ['only a product or architecture decision that removing the behavior cannot close reaches the user at all',
+      'asking the user about a genuinely unsettled product or architecture decision, or deciding any other unsettled choice yourself',
+      'an open decision once it is decided: by the user for a product or architecture decision, by you for any other',
+      'present only a product or architecture decision it leaves genuinely unresolved as a decision request',
+      'ask the user about the part that is a genuinely unsettled product or architecture decision, and decide any other unsettled part yourself',
+      'Only a product or architecture decision that genuinely cannot be derived from what is already decided reaches the user',
+      'a product or architecture decision the record genuinely leaves open still reaches the user once the screen has passed it',
+      'by asking the user about a genuinely unsettled product or architecture decision after checking the question\'s premises',
+      'genuine exceptions: unsettled product or architecture decisions']) {
+      expect([phrase, prose.includes(phrase)]).toEqual([phrase, true])
+    }
+  })
+
+  test('you decide every other item yourself, each rule a bullet that opens with its instruction', () => {
+    const bullets = sectionBlocks(skill, 'What reaches the user').filter(block => block.kind === 'item')
+    const rules = [
+      ['Fix a correction that improves code quality without changing anything the spec specifies.', 'It needs no words of the user and no question.'],
+      ['Remove behavior nobody approved.', 'removed as an unauthorized addition, never offered to the user as a choice'],
+      ['Remove code, a parameter or a mechanism that nothing uses, that nobody asked for, or that is built beyond what was asked, without asking the user.',
+        'A hand-written design document that describes it, such as one written from your own spec, is no reason to keep it'],
+      ['Make a recommended fix you have checked.', 'make the fix; never present it as an option beside an alternative'],
+      ['Send any other open item to a new unit.',
+        'A `new-choice` item the fix run\'s scope check refused and an open `unbacked-choice` decision that is neither a product nor an architecture decision go to a new implement-review-verify unit with its own spec, never to the user, and you decide the choice in that spec.'],
+      ['Decide a split over agreed facts.', 'apply the rules to those facts and decide. A split is never a reason to ask the user.'],
+    ]
+    for (const [opener, body] of rules) {
+      const found = bullets.find(block => flat(block.strong[0] ?? '') === opener && flat(block.text).startsWith(opener))
+      expect([opener, Boolean(found), flat(found?.text ?? '').includes(body)]).toEqual([opener, true, true])
+    }
+  })
+
+  test('a question that reaches the user carries no recommended, keep-as-is or decide-later option', () => {
+    const text = sectionText(skill, '### Question-premise check')
+    for (const phrase of ['**Ask a product or architecture decision in your own words, with no recommended option.**',
+      'Ask only after checking the user\'s recorded words as this section says, and describe the choice by what the user will see.',
+      'Label no option as recommended, because an option you can recommend with confidence is a decision you take yourself.',
+      'Offer no option that keeps a found defect as it is or leaves the decision for later.']) {
+      expect([phrase, text.includes(phrase)]).toEqual([phrase, true])
+    }
+  })
+
+  test('the two rules that relayed items to the user are gone', () => {
+    const prose = flat(skill)
+    for (const phrase of ['A choice without the user\'s words is a question', 'Put every open `unbacked-choice` decision to the user as a question',
+      'anything the scope check refused go to the user', 'it goes to the user the same way']) {
+      expect([phrase, prose.includes(phrase)]).toEqual([phrase, false])
+    }
   })
 })

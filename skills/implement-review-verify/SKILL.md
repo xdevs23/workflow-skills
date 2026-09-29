@@ -361,10 +361,10 @@ lenses of every run, and the main script stops a run whose seat list holds anoth
   authorizes, and the user decides anything that changes what the product does. Behavior nobody
   approved is such a decision, whoever proposed it and however small it looks. One of two existing
   paths closes it: behavior added without authority is removed as an unauthorized addition, which
-  the inverse-spec template already prescribes, and only a choice that removing the behavior cannot
-  close reaches the user at all. The correctness, spec-compliance and inverse-spec templates each
-  state in their own words that a reviewer proposes and never decides, and that behavior added
-  without authority is removed as an unauthorized addition.
+  the inverse-spec template already prescribes, and only a product or architecture decision that
+  removing the behavior cannot close reaches the user at all. The correctness, spec-compliance and
+  inverse-spec templates each state in their own words that a reviewer proposes and never decides,
+  and that behavior added without authority is removed as an unauthorized addition.
 - **Every seat object goes to the finding verifier.** A lane or severity assigned by a reviewer
   does not authorize a fix; only the verifier's checked, consolidated approval does.
 
@@ -524,9 +524,10 @@ cannot proceed merely because a reviewer or verifier prefers it.
   they do not interrupt you one by one.
 - Every decision on an inverse-spec source finding, however it resolves, stays visible to you in
   that summary: an `approve-fix` or a well-evidenced `reject` does not need to interrupt the cycle,
-  but you still owe each one an explicit resolution — recording in the todo record that the user's
-  recorded words back the code's choice, or asking the user about a genuinely unsettled one — and
-  neither a later spec edit nor a completed run closes it on its own.
+  but you still owe each one an explicit resolution: recording in the todo record that the user's
+  recorded words back the code's choice, asking the user about a genuinely unsettled product or
+  architecture decision, or deciding any other unsettled choice yourself as the section on what
+  reaches the user says. Neither a later spec edit nor a completed run closes it on its own.
 
 ### Phase 4 — Fix and roast concurrently
 
@@ -650,7 +651,7 @@ second implementer pre-check.
   fixer's claim.
 - A new run starts only for a recorded item that is supposed to be fixed: a confirmed must-fix or
   CRITICAL defect in code the unit wrote, an unfixed approval, a failed proof, or an open decision
-  once the user has decided it.
+  once it is decided: by the user for a product or architecture decision, by you for any other.
 - A finding whose fix needs no decision of the user may go to a fix run, described below, whose fix
   list names findings of the parent run. Every other such item goes to a new implement-review-verify
   unit with its own spec, and such a finding may go there as well when the user's words cover its
@@ -670,9 +671,8 @@ second implementer pre-check.
   run of a unit whose spec carries the user's words, where the fix needs no decision of the user: a
   logic error, a crash, a race, a rule violation or another mechanical defect in code that unit
   wrote. A general instruction to fix findings does not authorize a particular fix, because the
-  user may not agree with the finding, so no unit spec cites such words for one. A finding that
-  needs a decision, an open decision, and anything the scope check refused go to the user and then
-  to a full unit with a spec. Never use the fix run for work you want done beyond a finding.
+  user may not agree with the finding, so no unit spec cites such words for one. Never use the fix
+  run for work you want done beyond a finding.
 - The fix run is `scripts/fix-follow-up.js`, copied and filled in its marked block like the main
   script, `scripts/implement-review-verify.js`. Its copy sets `meta.name` to a kebab-case name of
   the fix run and `meta.description` to one line saying what the run fixes, as a copy of the main
@@ -735,6 +735,32 @@ second implementer pre-check.
 - Record a disproved item with its counterevidence; a nit or record stays recorded in the todo
   record of `workflow-skills:todo-md`.
 
+### What reaches the user
+
+- **Only two kinds of decision reach the user.** A product decision is about what the user sees and
+  does, what data is kept or lost, the product's scope, and anything public or external. An
+  architecture decision is about where code lives, the shape of the system, the data model and the
+  contracts between components. An item of any other kind never reaches the user, whether a stage
+  or a remaining item calls it unsettled, open or undecided: you decide it yourself by the rules
+  of this section.
+- **Fix a correction that improves code quality without changing anything the spec specifies.** It
+  needs no words of the user and no question.
+- **Remove behavior nobody approved.** Behavior added without authority is removed as an
+  unauthorized addition, never offered to the user as a choice.
+- **Remove code, a parameter or a mechanism that nothing uses, that nobody asked for, or that is
+  built beyond what was asked, without asking the user.** A hand-written design document that
+  describes it, such as one written from your own spec, is no reason to keep it, because such a
+  document is never cited as the design.
+- **Make a recommended fix you have checked.** When a stage recommends a correction and your check
+  against the tree and the recorded words finds it correct, make the fix; never present it as an
+  option beside an alternative.
+- **Send any other open item to a new unit.** A `new-choice` item the fix run's scope check refused
+  and an open `unbacked-choice` decision that is neither a product nor an architecture decision go
+  to a new implement-review-verify unit with its own spec, never to the user, and you decide the
+  choice in that spec.
+- **Decide a split over agreed facts.** When stages or models split on a choice while agreeing on
+  the facts, apply the rules to those facts and decide. A split is never a reason to ask the user.
+
 ### Question-premise check
 
 - Before presenting any question, trade-off, limitation or acceptance request to the user, check
@@ -745,12 +771,13 @@ second implementer pre-check.
   mismatch before asking anything, identify the unsupported scope, and report a discovered
   implementation deviation from the requested result plainly — never present the consequence of an
   invented mechanism as though it were a new choice the user must make.
-- Never ask again a choice the record already settles; present only a choice it leaves genuinely
-  unresolved as a decision request.
+- Never ask again a choice the record already settles; present only a product or architecture
+  decision it leaves genuinely unresolved as a decision request.
 - Give every entry the run returns in `inverseSpecDecisions` this treatment: either record in the
   todo record that the user's recorded words back the code's choice or, after this check, ask the
-  user about the part that is genuinely unsettled. A code change the decision needs is a new run
-  under the remaining items rules above.
+  user about the part that is a genuinely unsettled product or architecture decision, and decide
+  any other unsettled part yourself. A code change the decision needs is a new run under the
+  remaining items rules above.
 - **A decision that changes what a thing is triggers a redesign.** When a decision of the user
   changes what a thing is, redesign before any unit continues and show the redesign to the user,
   beginning with what the user sees and then the data model.
@@ -771,21 +798,20 @@ second implementer pre-check.
   and the documentation of the code itself, and check whether the answer is already stated there.
   The user's words are on disk; answering from memory of them is not a check. Where a recorded
   direction was broken, repair the design; asking which broken shape is preferred launders the
-  break into an approval. Only a choice that genuinely cannot be derived from what is already
-  decided reaches the user.
+  break into an approval. Only a product or architecture decision that genuinely cannot be derived
+  from what is already decided reaches the user.
 - **You are the judge and act on your own conclusion.** A finding from a reviewer or a critic is a
   claim, not an instruction and not a question to relay. Verify the claim against the tree and the
   recorded words, then fix it or reject it with a stated reason, and never hand the claim itself to
   the user as a decision request. Anything headed for the user passes one screen first: is this
   item in fact a rule violation or an architecture problem that another read of the recorded words
   would close? Decide an item the screen closes there and then. The boundary above is unchanged by
-  the screen: a choice the recorded words settle is never asked, and a choice the record genuinely
-  leaves open still reaches the user once the screen has passed it.
-- **A choice without the user's words is a question.** Put every open `unbacked-choice` decision to
-  the user as a question; it is the one kind of item the screen above never closes. Accept a
-  rejected one only after reading the cited record entry and checking that the quoted words, read
-  in their surrounding context, back the choice. A quote that does not match its context leaves the
-  choice open, and it goes to the user the same way.
+  the screen: a choice the recorded words settle is never asked, and a product or architecture
+  decision the record genuinely leaves open still reaches the user once the screen has passed it.
+- Accept a rejected `unbacked-choice` decision only after reading the cited record entry and
+  checking that the quoted words, read in their surrounding context, back the choice. A quote that
+  does not match its context leaves the choice open, and you handle it as every other open
+  `unbacked-choice` decision, as the section on what reaches the user says.
 - **A reported problem carries two literal quotations.** A problem reported to the user quotes the
   observed symptom and the line that causes it, each with its file and line or the command that
   produced it. A characterization is not a quotation. When the cause is not identified the report
@@ -819,6 +845,11 @@ it cannot prove a future model actually performed the conversational premise che
   construction that pairs a question with a stated intention to proceed anyway is forbidden in
   every wording of it, since it asks and proceeds at once and so does both of the things the
   decide-or-ask rule above separates.
+- **Ask a product or architecture decision in your own words, with no recommended option.** Ask
+  only after checking the user's recorded words as this section says, and describe the choice by
+  what the user will see. Label no option as recommended, because an option you can recommend with
+  confidence is a decision you take yourself. Offer no option that keeps a found defect as it is or
+  leaves the decision for later.
 - Every entry in `projectBenefitDecisions` reaches you whatever its disposition. Close a standing
   one only by deletion, a rewrite, or the user's verbatim word to keep the shape, quoted in the
   private record; a patch that keeps the flagged mechanism leaves the decision open. A decision the
@@ -1196,11 +1227,12 @@ These laws are non-negotiable across every run of this skill.
     **Every inverse-spec finding is CRITICAL regardless of the severity or lane it arrived with; the
     finding verifier, the fixer and you all ignore that supplied categorization and must dispose of
     it explicitly — never leave it implicitly closed.** Resolve it by recording in the todo record
-    that the user's recorded words back the code's choice, or by asking the user about a genuinely
-    unsettled choice after checking the question's premises against the recorded directives; a code
-    change it needs is a new run under the remaining items rules. Amending the spec does not
-    resolve the finding, and the original verbatim directives are never erased, rewritten or
-    selectively omitted to make it disappear.
+    that the user's recorded words back the code's choice, by asking the user about a genuinely
+    unsettled product or architecture decision after checking the question's premises against the
+    recorded directives, or by deciding any other unsettled choice yourself; a code change it needs
+    is a new run under the remaining items rules. Amending the spec does not resolve the finding,
+    and the original verbatim directives are never erased, rewritten or selectively omitted to make
+    it disappear.
 14. **ASSERT AT THE GRANULARITY AT WHICH THE RULE BINDS** — per row, per section, per item — and
     **never aggregated over the whole artifact**. An aggregate assertion lets a fully DEGENERATE
     part pass on the strength of its neighbours: the property holds across the sample while the
@@ -1631,9 +1663,9 @@ Two rules come with it:
 - Give writing agents and reading agents the rules that `workflow-skills:local-cache` states for
   each of the two roles.
 - Keep routine consolidation, rejections and successful fixes inside the workflow record. Relay
-  a concise result plus genuine exceptions: unsettled decisions, authority prerequisites,
-  verifier/fixer disagreements or failed proofs. Preserve source findings and dispositions for
-  inspection; you need not consume every seat object to adjudicate routine work.
+  a concise result plus genuine exceptions: unsettled product or architecture decisions, authority
+  prerequisites, verifier/fixer disagreements or failed proofs. Preserve source findings and
+  dispositions for inspection; you need not consume every seat object to adjudicate routine work.
 - Complete the same-run cleanup handoff under **Rule violations and local cleanup records**:
   update the todo record of `workflow-skills:todo-md` without staging or committing it unless
   explicitly requested.
