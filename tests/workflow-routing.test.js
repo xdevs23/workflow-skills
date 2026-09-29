@@ -534,7 +534,7 @@ describe('workflow verification and consolidation', () => {
         reports: { 'review:correctness': { findings: [finding, finding] } },
         verify: { 'verify': verification([
           decision([source('correctness')]),
-          decision([source('correctness', 1)], { action, correction: 'Resolve the necessary retention policy first.' }),
+          decision([source('correctness', 1)], { action, correction: action === 'needs-decision' ? '' : 'Resolve the necessary retention policy first.' }),
         ]) },
         fixes: { fix: fixed([disposition()]) },
       })
@@ -979,7 +979,7 @@ describe('coder sense check and project-benefit review', () => {
 
   test("a cold seat's kind-bearing finding on a mechanism the record is silent about reaches the root as needs-decision", async () => {
     const silent = benefit([source('quality')], { action: 'needs-decision', authority: 'The recorded words hold nothing about the retry wrapper.',
-      correction: 'Ask whether the retry wrapper is a shape to keep.' })
+      correction: '' })
     const { result, calls } = await simulate({ reports: report('review:quality', [bandAid]), verify: { 'verify': verification([silent]) } })
     expect([result.exit, result.remaining]).toEqual(['root-resolution', [{ kind: 'open-decision', severity: 'CRITICAL', item: silent }]])
     expect(result.projectBenefitDecisions).toEqual([{ decision: silent,
@@ -2755,7 +2755,7 @@ describe('the user\'s words reach every stage', () => {
 
   test('needs-decision on an unbacked-choice finding reaches the root as an open decision', async () => {
     const open = benefit([source('correctness')], { action: 'needs-decision', authority: 'No recorded words back the three retries.',
-      correction: 'Should a failed upload be retried, and how often?' })
+      correction: '' })
     const { result, calls } = await simulate({ reports: report('review:correctness', [unbacked]), verify: { verify: verification([open]) } })
     expect([result.exit, result.remaining]).toEqual(['root-resolution', [{ kind: 'open-decision', severity: 'CRITICAL', item: open }]])
     expect(calls.some(c => c.phase === 'Fix')).toBe(true)
@@ -3381,11 +3381,23 @@ describe('review seats are critics, and no stage asks the user a question', () =
     }
   })
 
-  test('a needs-decision decision without a correction is accepted, and root-action still names its next action', async () => {
+  test('a needs-decision decision is accepted only without a correction, and root-action still names its next action', async () => {
     const open = await simulate({ reports: oneReport, verify: { verify: verification([decision([source('correctness')], {
       action: 'needs-decision', severity: 'must-fix', authority: '', correction: '', constraints: '', acceptance: '' })]) } })
     expect([open.result.exit, open.result.detail]).toEqual(['root-resolution', 'Review or verification left items for the root.'])
     expect(open.result.remaining.filter(r => r.kind === 'open-decision').map(r => r.item.correction)).toEqual([''])
+    // A correction on a needs-decision decision is refused before anything reaches remaining, for an
+    // ordinary finding and for an unbacked choice alike.
+    for (const [reports, refusedDecision] of [
+      [oneReport, decision([source('correctness')], { action: 'needs-decision', correction: 'Should a failed upload be retried, and how often?' })],
+      [report('review:correctness', [unbacked]), benefit([source('correctness')], { action: 'needs-decision',
+        authority: 'No recorded words back the three retries.', correction: 'Keep the three retries.' })],
+    ]) {
+      const refused = await simulate({ reports, verify: { verify: verification([refusedDecision]) } })
+      expect(refused.result.detail).toContain('A needs-decision decision carries no correction')
+      expect([retried(refused.calls, 'verify').length, (refused.result.remaining ?? []).some(r => r.kind === 'open-decision'),
+        refused.calls.some(c => c.phase === 'Fix')]).toEqual([3, false, false])
+    }
     const action = await simulate({ reports: oneReport, verify: { verify: verification([decision([source('correctness')], {
       action: 'root-action', correction: '' })]) } })
     expect(action.result.detail).toContain('Missing next action')

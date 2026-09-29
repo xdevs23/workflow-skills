@@ -750,7 +750,8 @@ const checkVerification = (v, sources, snaps) => {
     if (fromInverse && d.action === 'cleanup') {
       throw new Error('Inverse-spec finding cannot be dispositioned as cleanup; the root must record in the todo record that the user\'s recorded words back the choice')
     }
-    // A needs-decision decision carries no correction; the other two name the next action.
+    // A needs-decision decision carries no correction; root-action and cleanup name the next action.
+    if (d.action === 'needs-decision' && d.correction !== '') throw new Error('A needs-decision decision carries no correction')
     if (['root-action', 'cleanup'].includes(d.action)) requireText(d.correction, 'next action')
   }
   for (const issue of v.issues) requireText(issue.detail, 'unresolved issue')
