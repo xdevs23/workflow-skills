@@ -94,23 +94,31 @@ whether they want a git repository.
   verification judge it after code.
 
 The tracked design document is written by hand from the code after the implementation, so it
-records what was built.
+records what was built, and only when the change alters the design.
 
-- It describes the change as the code at the writer's final commit implements it: what it does, how
-  its parts fit together, the decisions with their reasons, and the alternatives the user rejected
-  with their reasons.
+- A writer, the implementer or a fixer, writes or extends a design document only when its change
+  alters the design: what the code does, how its parts fit together, a decision with its reason, or
+  a rejected alternative. A change that alters none of these writes no document and commits none,
+  and that is not an incomplete stage.
+- A writer whose change alters the design extends by hand the design document in the documents
+  directory that already describes the part it changed. It writes a new document, named after the
+  unit's spec file, only when no document describes that part.
+- The document describes the change as the code at the writer's final commit implements it: what
+  it does, how its parts fit together, the decisions with their reasons, and the alternatives the
+  user rejected with their reasons.
 - The rejected alternatives come from the spec's items of kind `rejected`, and the writer adds none
   of its own. The writer checks every statement about behaviour against that code.
 - The document carries no words of the user, no local absolute paths and no account of the
   conversation, and it follows the repository's prose rules and `workflow-skills:writing-style`.
-- Writing it is the writers' completion step. The implementer, once its implementation is done,
-  writes `docs/<unit>.md` as its last write. Its focused checks then run once, after that write, and
-  it commits the document as its own commit.
-- The fixer, once its corrections are done, updates the document by hand where a correction changed
-  what it describes, as its last write before its checks, and commits it when it changed. A fix
-  run's fixer does the same for the parent unit's document.
-- The writer prompts of the main and fix-run scripts carry this step, with the document path built
-  from the spec path of the marked block: the document takes its name from the spec's file name.
+- The implementer, once its implementation is done, writes or extends the document as its last
+  write when its change alters the design. Its focused checks then run once, after its last write,
+  and it commits the document as its own commit.
+- The fixer, once its corrections are done, writes or extends the document by hand when a
+  correction alters the design, as its last write before its checks, and commits it as its own
+  commit. A fix run's fixer does the same in the parent unit's documents directory.
+- The writer prompts of the main and fix-run scripts carry this step. The name of a new document is
+  built from the spec path of the marked block, `docs/<unit>.md` in a one-repository tree, and a fix
+  run builds it from the parent spec.
 
 ## The shape
 
@@ -238,14 +246,15 @@ collisions and consistency drift.
   Without such authority the flagged mechanism never continues, whatever a stage argues for it.
 - **Scope follows the same rule.** The implementer touches only what the task needs, and flags
   anything beyond the ruled scope as an invention instead of building it.
-- **The design document is the implementer's last write.** It writes the document by hand from the
-  code once its implementation is done, as the unit spec section above describes, and its checks
-  run once after that write. It commits only its own scoped changes after checks, with the design
-  document as its own commit. It then returns `files` (every path a commit of the stage touched,
-  with its byte size at the snapshot), `checks` (each bare run with its quoted output), `commits`,
-  the full immutable snapshot SHA, `clean` and `git` (the quoted HEAD and status), and
-  `specFindings`. A failed check or commit is an incomplete stage, never a fabricated successful
-  snapshot.
+- **A design document, when the change alters the design, is the implementer's last write.** It
+  writes or extends the document by hand from the code once its implementation is done, as the unit
+  spec section above describes, and a change that alters no design writes none. Its checks run once
+  after its last write. It commits only its own scoped changes after checks, with a design document
+  it wrote or extended as its own commit. It then returns `files` (every path a commit of the
+  stage touched, with its byte size at the snapshot), `checks` (each bare run with its quoted
+  output), `commits`, the full immutable snapshot SHA, `clean` and `git` (the quoted HEAD and
+  status), and `specFindings`. A failed check or commit is an incomplete stage, never a fabricated
+  successful snapshot.
 
 #### Writer commits are snapshots, not integration permission
 
@@ -567,11 +576,11 @@ cannot proceed merely because a reviewer or verifier prefers it.
     spec or other authority document to make the correction legal after the fact;
   - returns disagreements with counterevidence to you, not automatically to the user and not to
     another automatic fix attempt. A blocked mechanism stays untouched;
-  - updates the design document by hand as its last write once its corrections are done, where a
-    correction changed what it describes, runs full checks BARE AFTER THAT LAST WRITE, commits
-    completed scoped corrections and the document when it changed, then returns the clean snapshot
-    SHA, `git`, `commits`, `files`, `checks` with the quoted output and `proofPassed`; you attest
-    each claimed fix against its approved correction and checks.
+  - writes or extends a design document by hand as its last write once its corrections are done,
+    only when a correction alters the design, runs full checks BARE AFTER ITS LAST WRITE, commits
+    completed scoped corrections and the document it wrote or extended, then returns the clean
+    snapshot SHA, `git`, `commits`, `files`, `checks` with the quoted output and `proofPassed`; you
+    attest each claimed fix against its approved correction and checks.
 - With an EMPTY approved list the fix pass owes PROOF ONLY and may not edit or create an empty
   commit. It returns the original SHA. A failing check is reported for independent triage, not
   permission to invent a repair. The concurrent roast is still mandatory and must be returned with
@@ -720,12 +729,13 @@ second implementer pre-check.
 - The classification of such a correction names that rule in its reason. Its receipts quote the
   reviewer's rule or the project rule as evidence of what the correction improves.
 - A correction that adds or changes behavior is a new choice.
-- The read-only diff check then maps every change of the fix diff to a corrective entry. The parent
-  unit's design document has no exception: a change to it maps to the corrective entry it carries
-  out, or it is a CRITICAL finding. A correction whose only change is the document is accepted when
-  its entry names the document, and a fix reported as done needs a commit of the fixer whatever
-  path it touches. The fixer updates the document by hand from the code. Each finding of the diff
-  check returns as a CRITICAL `diff-finding` and starts no further fixer.
+- The read-only diff check then maps every change of the fix diff to a corrective entry. A design
+  document in the documents directory has no exception: a change to any of them maps to the
+  corrective entry it carries out, or it is a CRITICAL finding. A correction whose only change is a
+  design document is accepted when its entry names that document, and a fix reported as done needs
+  a commit of the fixer whatever path it touches. The fixer writes or extends a document by hand
+  from the code only when a correction alters the design. Each finding of the diff check returns as
+  a CRITICAL `diff-finding` and starts no further fixer.
 - Every entry the fixer reports fixed returns as an `unattested-fix` for you to attest, as in the
   main run, and the run then ends `follow-up`, as it also does when only must-fix or CRITICAL roast
   findings remain. It ends `root-resolution` when an entry was refused, a fix was not applied, a fix
@@ -1279,8 +1289,9 @@ The phase shape only holds up if the script is written to hold it up.
   `base` list, `criteriaCount`, the unit prompt text for the implementer, the scoping, the rule
   sources, the invariants and one model entry per agent.
 - The documents directory is relative to the tree root and lies inside one repository of the list,
-  `docs` for a tree that is one repository; the scripts join it with the spec's file name to name
-  the design document, which the writers commit in that repository.
+  `docs` for a tree that is one repository. It holds the design documents a writer extends, and the
+  scripts join it with the spec's file name to name a new one. The writers commit a document they
+  wrote or extended in that repository.
 - The fix run's block holds the fix list path, the entries and the parent spec in place of the
   spec, `criteriaCount` and the implementer's prompt.
 - Everything below the block is the reviewed script and is not edited per unit. Never copy a

@@ -1081,19 +1081,26 @@ describe('spec provenance instructions and routing', () => {
       '`transcript`', 'Run the tool before you launch the main run.', 'The run\'s first stage runs it once more',
       'A failing spec launches no run',
       'The tool prints its summary on stdout, as JSON with `--json`.',
-      'The tracked design document is written by hand from the code after the implementation, so it records what was built.',
-      'It describes the change as the code at the writer\'s final commit implements it: what it does, how its parts fit together,' +
+      'The tracked design document is written by hand from the code after the implementation, so it records what was built,' +
+        ' and only when the change alters the design.',
+      'The document describes the change as the code at the writer\'s final commit implements it: what it does, how its parts fit together,' +
         ' the decisions with their reasons, and the alternatives the user rejected with their reasons.',
       'The rejected alternatives come from the spec\'s items of kind `rejected`, and the writer adds none of its own.',
       'The writer checks every statement about behaviour against that code.',
       'The document carries no words of the user, no local absolute paths and no account of the conversation',
-      "Writing it is the writers' completion step", 'The implementer, once its implementation is done, writes `docs/<unit>.md` as its last write.',
-      'Its focused checks then run once, after that write, and it commits the document as its own commit',
-      'updates the document by hand where a correction changed what it describes, as its last write before its checks, and commits it when it changed',
-      'It writes the document by hand from the code once its implementation is done',
-      'updates the design document by hand as its last write once its corrections are done, where a correction changed what it describes,' +
-        ' runs full checks BARE AFTER THAT LAST WRITE',
-      "A fix run's fixer does the same for the parent unit's document", 'The documents directory is relative to the tree root',
+      'A writer, the implementer or a fixer, writes or extends a design document only when its change alters the design: what the code does,' +
+        ' how its parts fit together, a decision with its reason, or a rejected alternative.',
+      'A change that alters none of these writes no document and commits none, and that is not an incomplete stage.',
+      'A writer whose change alters the design extends by hand the design document in the documents directory that already describes the part it changed.',
+      'It writes a new document, named after the unit\'s spec file, only when no document describes that part.',
+      'The implementer, once its implementation is done, writes or extends the document as its last write when its change alters the design.',
+      'Its focused checks then run once, after its last write, and it commits the document as its own commit',
+      'writes or extends the document by hand when a correction alters the design, as its last write before its checks, and commits it as its own commit',
+      'It writes or extends the document by hand from the code once its implementation is done', 'a change that alters no design writes none',
+      'writes or extends a design document by hand as its last write once its corrections are done, only when a correction alters the design,' +
+        ' runs full checks BARE AFTER ITS LAST WRITE',
+      "A fix run's fixer does the same in the parent unit's documents directory", 'The documents directory is relative to the tree root',
+      'It holds the design documents a writer extends, and the scripts join it with the spec\'s file name to name a new one.',
       "tool's `counts.kind.criterion` for `args.criteriaCount`", 'integer ordinals from one in YAML file order',
       'the `specLines` count the spec tool reports for the final spec: the non-blank lines of its prose (`unit`, `summary` and each item\'s' +
         ' `content`, `user_words`, `answers`, `quote`, `observation.output` and `reason`), wrapped by the width rule the tool checks,' +
@@ -1128,7 +1135,8 @@ describe('spec provenance instructions and routing', () => {
       'so the generated document and the cited rule files', 'after its last write and its checks',
       'Its last commit is the design document', 'generated from the final YAML', 'renders it again', 'render command',
       'parentBaseSha', 'never edited by hand', '--render', '--check-render', 'generated document', 'blob ID',
-      'non-blank spec lines', 'the pinned spec']) expect(flat(skill)).not.toContain(stale)
+      'non-blank spec lines', 'the pinned spec', "Writing it is the writers' completion step", 'writes `docs/<unit>.md` as its last write',
+      'where a correction changed what it describes', 'to name the design document']) expect(flat(skill)).not.toContain(stale)
     expect(skeleton.split('counts.kind.criterion from the check tool')).toHaveLength(3)
   })
 
@@ -2397,8 +2405,15 @@ describe('fix-only follow-up runs', () => {
   })
 })
 
-const UNIT_DOCUMENT = '<documents directory>/<unit>.md'
-const PARENT_DOCUMENT = '<documents directory>/<parent unit>.md'
+const DOCUMENTS = '<documents directory>'
+const UNIT_DOCUMENT = DOCUMENTS + '/<unit>.md'
+const PARENT_DOCUMENT = DOCUMENTS + '/<parent unit>.md'
+// A design document an earlier unit wrote, which a later writer extends instead of writing its own.
+const OTHER_DOCUMENT = DOCUMENTS + '/error-handling.md'
+// When every writer writes or extends a design document, whitespace collapsed.
+const DOCUMENT_WHEN = 'DESIGN DOCUMENT, writer only: write or extend a design document only when your change alters the design:' +
+  ' what the code does, how its parts fit together, a decision with its reason, or a rejected alternative.' +
+  ' A change that alters none of these writes no document and commits none, and that is not an incomplete stage.'
 // What every writer prompt says the design document holds, whitespace collapsed.
 const DOCUMENT_CONTENT = ['The document describes the change as the code at your final commit implements it: what it does,' +
   ' how its parts fit together, the decisions with their reasons, and the alternatives the user rejected with their reasons.',
@@ -2407,24 +2422,34 @@ const DOCUMENT_CONTENT = ['The document describes the change as the code at your
 'The document carries no words of the user, no local absolute paths and no account of the conversation,' +
   ' and it follows the repository\'s prose rules and the writing-style skill.']
 
-describe('the design document is written from the code after implementation', () => {
-  test('the implementer and both fixers receive the writing step before their checks, and no stage prompt carries a render command', async () => {
+describe('a design document is written from the code after implementation, only when the design changes', () => {
+  test('the implementer and both fixers receive the when and where of the document before their checks, and no stage prompt carries a render command', async () => {
     const main = await simulate({ reports: oneReport, verify: approveOne, fixes: { fix: fixed([disposition()]) } })
     const fix = await simulateFix()
     const impl = main.calls.find(c => c.label === 'impl').prompt
     const mainFix = main.calls.find(c => c.label === 'fix').prompt
     const fixRunFix = fix.calls.find(c => c.label === 'fix').prompt
-    expect(impl).toContain('DESIGN DOCUMENT, writer only: once your implementation is done, write ' + UNIT_DOCUMENT +
-      ' by hand from the code you built and the spec, as your last write, before your focused checks.\n')
-    expect(impl).toContain('\nThen run your focused checks once, and commit ' + UNIT_DOCUMENT + ' as its own commit in the repository that holds it and list it in files.')
-    expect(mainFix).toContain('DESIGN DOCUMENT, writer only: once your corrections are done, update ' + UNIT_DOCUMENT +
-      ' by hand where a correction changed what it describes, as your last write, before your checks.\n')
-    expect(mainFix).toContain('\nCommit ' + UNIT_DOCUMENT + ' as its own commit in the repository that holds it when it changed, and list it in files.' +
+    expect(impl).toContain('\nWhen your change alters the design, once your implementation is done, extend the design document under ' + DOCUMENTS +
+      ' that already describes the part you changed, and write ' + UNIT_DOCUMENT + ' only when no document there describes that part.' +
+      ' Write or extend it by hand from the code you built and the spec, as your last write, before your focused checks.\n')
+    expect(impl).toContain('\nThen run your focused checks once, and commit the document you wrote or extended as its own commit' +
+      ' in the repository that holds it and list it in files.')
+    expect(mainFix).toContain('\nWhen a correction alters the design, once your corrections are done, extend the design document under ' + DOCUMENTS +
+      ' that already describes the part it changed, and write ' + UNIT_DOCUMENT + ' only when no document there describes that part.' +
+      ' Write or extend it by hand, as your last write, before your checks.\n')
+    expect(mainFix).toContain('\nCommit the document you wrote or extended as its own commit in the repository that holds it, and list it in files.' +
       ' With an empty approved list, write nothing.')
-    expect(fixRunFix).toContain('DESIGN DOCUMENT, writer only: once your corrections are done, update ' + PARENT_DOCUMENT +
-      ', the parent unit\'s design document, by hand where a correction changed what it describes, as your last write, before your checks.\n')
-    expect(fixRunFix).toContain('\nCommit ' + PARENT_DOCUMENT + ' as its own commit in the repository that holds it when it changed, and list it in files.')
+    expect(fixRunFix).toContain('\nWhen a correction alters the design, once your corrections are done, extend the design document under ' + DOCUMENTS +
+      ', the parent unit\'s documents directory, that already describes the part it changed, and write ' + PARENT_DOCUMENT +
+      ' only when no document there describes that part. Write or extend it by hand, as your last write, before your checks.\n')
+    expect(fixRunFix).toContain('\nCommit the document you wrote or extended as its own commit in the repository that holds it, and list it in files.')
     for (const prompt of [impl, mainFix, fixRunFix]) {
+      expect(flat(prompt)).toContain(DOCUMENT_WHEN)
+      // No writer is ordered to write or update a document at a fixed path.
+      for (const stale of ['write ' + UNIT_DOCUMENT + ' by hand', 'update ' + UNIT_DOCUMENT, 'update ' + PARENT_DOCUMENT, 'Commit ' + UNIT_DOCUMENT,
+        'Commit ' + PARENT_DOCUMENT, 'commit ' + UNIT_DOCUMENT, 'when it changed', 'the parent unit\'s design document']) {
+        expect([stale, prompt.includes(stale)]).toEqual([stale, false])
+      }
       for (const phrase of DOCUMENT_CONTENT) expect([phrase, flat(prompt).includes(phrase)]).toEqual([phrase, true])
       // The prompt reads in the order of the work: the document comes first, the checks after it.
       expect(prompt.indexOf('DESIGN DOCUMENT')).toBeGreaterThan(-1)
@@ -2445,13 +2470,25 @@ describe('the design document is written from the code after implementation', ()
     expect(fixSkeleton).not.toContain('parentBaseSha')
   })
 
-  test('the diff check treats the parent document like any other file, and a document-only correction whose entry names it is accepted', async () => {
+  test('a writer whose files hold no design document is accepted', async () => {
+    const code = [{ path: 'src/example.js', bytes: 120, change: 'modified' }]
+    const main = await simulate({ reports: oneReport, verify: approveOne,
+      implementation: implemented({ files: code }), fixes: { fix: fixed([disposition()], { files: code }) } })
+    expect(labels(main.calls)).toContain('fix')
+    expect(['clean', 'follow-up']).toContain(main.result.exit)
+    const fix = await simulateFix({ fixes: fixed([disposition('return-error')], { files: code }) })
+    expect([labels(fix.calls).at(-1), fix.result.exit]).toEqual(['diff', 'follow-up'])
+    expect(fix.result.remaining).toEqual([unattested('return-error')])
+  })
+
+  test('the diff check treats every design document like any other file, and a document-only correction whose entry names it is accepted', async () => {
     const { calls } = await simulateFix()
     const prompt = calls.find(c => c.label === 'diff').prompt
-    expect(prompt).toContain('\n\n' + PARENT_DOCUMENT + ', the parent unit\'s design document, is checked like any other file:' +
-      ' a change there maps to the corrective entry it carries out, and a correction whose only change is that document maps to its' +
-      ' entry when the entry names it.\n\n')
-    for (const stale of ['The one exception is', 'changed after the parent run', 'render', 'as it stands on disk']) {
+    expect(prompt).toContain('\n\nA change to any design document under ' + DOCUMENTS + ' is checked like a change to any other file:' +
+      ' it maps to the corrective entry it carries out, and a correction whose only change is a design document maps to its' +
+      ' entry when the entry names that document.\n\n')
+    for (const stale of ['The one exception is', 'changed after the parent run', 'render', 'as it stands on disk', PARENT_DOCUMENT,
+      'the parent unit\'s design document']) {
       expect([stale, prompt.includes(stale)]).toEqual([stale, false])
     }
     const updated = [{ path: PARENT_DOCUMENT, bytes: 80, change: 'modified' }]
@@ -2465,27 +2502,27 @@ describe('the design document is written from the code after implementation', ()
     expect([uncovered.result.exit, uncovered.result.detail]).toEqual(['root-resolution', 'The diff check found a change that no corrective entry covers.'])
     expect(uncovered.result.remaining).toEqual([{ kind: 'diff-finding', severity: 'CRITICAL', item: { ...stale, severity: 'CRITICAL' } },
       unattested('return-error')])
-    // A correction whose only change is the document reaches the diff check, and its entry, which
-    // names the document, makes it an ordinary fix.
-    const update = entry('update-parent-document', { finding: PARENT_DOCUMENT + ' describes a return value the code no longer has.',
-      correction: 'Update ' + PARENT_DOCUMENT + ' by hand so it describes the return value the code has.' })
-    const updateClass = { id: update.id, class: 'corrective', reason: PARENT_DOCUMENT + ' no longer describes the code.',
-      receipts: [documentReceipt] }
-    const updateDisposition = { ...disposition(update.id), receipts: [documentReceipt] }
-    const updateCommits = [{ sha: FIXED, subject: 'docs: describe the return value the code has', repository: '.' }]
-    const covering = { change: PARENT_DOCUMENT + ': the passage on the return value now describes the code', entry: update.id,
-      receipts: [documentReceipt] }
-    const onlyDocument = await simulateFix({ args: fixArgs({ entries: [update] }),
-      scope: { limitations: [], coverage, classifications: [updateClass] },
-      fixes: fixed([updateDisposition], { touched: [PARENT_DOCUMENT], files: updated, commits: updateCommits }),
-      diff: { mappings: [covering] } })
-    expect(labels(onlyDocument.calls).at(-1)).toBe('diff')
-    expect(onlyDocument.result.exit).toBe('follow-up')
-    expect(onlyDocument.result.remaining).toEqual([{ kind: 'unattested-fix', severity: 'must-fix', item: {
-      approved: { key: update.id, correction: update.correction, reason: updateClass.reason, receipts: [documentReceipt] },
-      disposition: updateDisposition, snapshots: at(FIXED), commits: updateCommits } }])
-    expect(onlyDocument.result.mappings).toEqual([{ change: covering.change, entry: 'update-parent-document', receipts: [documentReceipt] }])
-    expect(update.correction).toContain(PARENT_DOCUMENT)
+    // A correction whose only change is a design document reaches the diff check, and its entry,
+    // which names the document, makes it an ordinary fix: the document named after the parent spec
+    // and one an earlier unit wrote alike.
+    for (const document of [PARENT_DOCUMENT, OTHER_DOCUMENT]) {
+      const receipt = { file: document, line: 1, quote: '# Error handling' }
+      const update = entry('update-document', { finding: document + ' describes a return value the code no longer has.',
+        correction: 'Extend ' + document + ' by hand so it describes the return value the code has.' })
+      const updateClass = { id: update.id, class: 'corrective', reason: document + ' no longer describes the code.', receipts: [receipt] }
+      const updateDisposition = { ...disposition(update.id), receipts: [receipt] }
+      const updateCommits = [{ sha: FIXED, subject: 'docs: describe the return value the code has', repository: '.' }]
+      const covering = { change: document + ': the passage on the return value now describes the code', entry: update.id, receipts: [receipt] }
+      const onlyDocument = await simulateFix({ args: fixArgs({ entries: [update] }),
+        scope: { limitations: [], coverage, classifications: [updateClass] },
+        fixes: fixed([updateDisposition], { touched: [document], files: [{ path: document, bytes: 80, change: 'modified' }], commits: updateCommits }),
+        diff: { mappings: [covering] } })
+      expect([document, labels(onlyDocument.calls).at(-1), onlyDocument.result.exit]).toEqual([document, 'diff', 'follow-up'])
+      expect(onlyDocument.result.remaining).toEqual([{ kind: 'unattested-fix', severity: 'must-fix', item: {
+        approved: { key: update.id, correction: update.correction, reason: updateClass.reason, receipts: [receipt] },
+        disposition: updateDisposition, snapshots: at(FIXED), commits: updateCommits } }])
+      expect(onlyDocument.result.mappings).toEqual([{ change: covering.change, entry: 'update-document', receipts: [receipt] }])
+    }
     // A fix reported as done with no commit at all stays unproven, whatever the entry names.
     const uncommitted = await simulateFix({ fixes: fixed([disposition('return-error')], { touched: [] }) })
     expect(labels(uncommitted.calls)).not.toContain('diff')
@@ -2494,15 +2531,16 @@ describe('the design document is written from the code after implementation', ()
 
   test('the skill states the uniform diff check of a fix run', () => {
     const text = sectionText(skill, '### Remaining items and follow-up work')
-    for (const phrase of ["The parent unit's design document has no exception: a change to it maps to the corrective entry it carries out, or it is a CRITICAL finding.",
-      'A correction whose only change is the document is accepted when its entry names the document',
+    for (const phrase of ['A design document in the documents directory has no exception: a change to any of them maps to the corrective entry' +
+        ' it carries out, or it is a CRITICAL finding.',
+      'A correction whose only change is a design document is accepted when its entry names that document',
       'a fix reported as done needs a commit of the fixer whatever path it touches',
-      'The fixer updates the document by hand from the code.',
+      'The fixer writes or extends a document by hand from the code only when a correction alters the design.',
       'Each finding of the diff check returns as a CRITICAL `diff-finding`']) {
       expect([phrase, text.includes(phrase)]).toEqual([phrase, true])
     }
     for (const stale of ['which maps to no entry', 'touch that document alone', 'changed after the parent run', 're-rendered',
-      'renders the document', 'parentBaseSha']) {
+      'renders the document', 'parentBaseSha', "The parent unit's design document has no exception", 'The fixer updates the document']) {
       expect([stale, text.includes(stale)]).toEqual([stale, false])
     }
   })

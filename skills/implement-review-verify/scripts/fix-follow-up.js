@@ -443,10 +443,17 @@ const PROVE = [
   'run, git quotes HEAD and status. An account of the work with an empty files list is not the work.',
 ].join('\n')
 const CHECK = 'CHECK COMMAND, fixer only (run bare after your last write): ' + UNIT.checkCommand
-// The fixer brings the parent unit's design document up to date by hand as its last write, once its
-// corrections are done and before its checks, as the main script's fixer does, and commits it in the
-// repository that holds the documents directory.
-const DOCUMENT = UNIT.documents + '/' + UNIT.parentSpec.split('/').pop().replace(/\.yaml$/, '') + '.md'
+// As in the main script, a fixer whose correction alters the design extends by hand, as its last write
+// and before its checks, the document in the parent unit's documents directory that already describes
+// the part it changed, and writes a new one, named after the parent spec's file, only when none does.
+// A correction that alters no design writes none. The fixer commits the document in the repository
+// that holds the documents directory.
+const NEW_DOCUMENT = UNIT.documents + '/' + UNIT.parentSpec.split('/').pop().replace(/\.yaml$/, '') + '.md'
+const DOCUMENT_WHEN = [
+  'DESIGN DOCUMENT, writer only: write or extend a design document only when your change alters the design: what the code',
+  'does, how its parts fit together, a decision with its reason, or a rejected alternative. A change that alters none of',
+  'these writes no document and commits none, and that is not an incomplete stage.',
+].join('\n')
 const DOCUMENT_CONTENT = [
   'The document describes the change as the code at your final commit implements it: what it does, how its parts fit',
   'together, the decisions with their reasons, and the alternatives the user rejected with their reasons. The rejected',
@@ -455,9 +462,10 @@ const DOCUMENT_CONTENT = [
   'conversation, and it follows the repository\'s prose rules and the writing-style skill.',
 ].join('\n')
 const DOCUMENT_FIX = [
-  'DESIGN DOCUMENT, writer only: once your corrections are done, update ' + DOCUMENT + ', the parent unit\'s design document, by hand where a correction changed what it describes, as your last write, before your checks.',
+  DOCUMENT_WHEN,
+  'When a correction alters the design, once your corrections are done, extend the design document under ' + UNIT.documents + ', the parent unit\'s documents directory, that already describes the part it changed, and write ' + NEW_DOCUMENT + ' only when no document there describes that part. Write or extend it by hand, as your last write, before your checks.',
   DOCUMENT_CONTENT,
-  'Commit ' + DOCUMENT + ' as its own commit in the repository that holds it when it changed, and list it in files.',
+  'Commit the document you wrote or extended as its own commit in the repository that holds it, and list it in files.',
 ].join('\n')
 const HYGIENE = [STAGE, STYLE, READ_GIT, TREE, 'No background waits.'].join('\n')
 const RULES = 'RULE SOURCES: ' + UNIT.ruleSources + '.'
@@ -534,8 +542,8 @@ const diffPass = (queue, snaps) => stage([
     ...snaps.filter(s => s.sha !== shaByPath(base).get(s.path)).map(s => s.path + ': ' + shaByPath(base).get(s.path) + '..' + s.sha),
     'Every repository must remain clean at its snapshot: ' + listed(snaps) + '.'].join('\n'),
   'Map every change in that diff to the corrective entry it carries out, one mappings entry per change.',
-  DOCUMENT + ', the parent unit\'s design document, is checked like any other file: a change there maps to the corrective' +
-    ' entry it carries out, and a correction whose only change is that document maps to its entry when the entry names it.',
+  'A change to any design document under ' + UNIT.documents + ' is checked like a change to any other file: it maps to the corrective' +
+    ' entry it carries out, and a correction whose only change is a design document maps to its entry when the entry names that document.',
   'A change that maps to no entry, or that adds behavior, a user interface element, a data shape, a dependency or an interface,',
   'is a finding with severity CRITICAL. A function that only holds code a quality correction merged is not a new interface.',
   'No second fixer runs in this run.',
