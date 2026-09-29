@@ -59,8 +59,8 @@ Rules:
   inside the approved bounds, or return rejected/blocked with counterevidence; never quietly downgrade it,
   and never treat a spec edit made elsewhere as having already closed it.
 - Fixes must be self-explanatory in the tree; fresh reviewers receive no explanation. Record
-  blocked work in your disposition with the evidence, not by adding an unapproved skipped test or
-  other write to the disputed mechanism.
+  blocked work in your disposition with the evidence. Never add an unapproved skipped test or any
+  other write to the disputed mechanism to record it.
 - With an empty approved list, run proof checks only. Do not edit anything, including attempts
   to repair a failed check. Report a failure honestly for independent triage.
 - Narrow commit permission: start every repository of the isolated tree at its supplied SHA with
