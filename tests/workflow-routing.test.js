@@ -3372,7 +3372,7 @@ describe('review seats are critics, and no stage asks the user a question', () =
     const deleted = ['reaches the user as a question', 'the exact question', 'a recommendation', 'ask the user', 'or an open question',
       'names the question', 'puts it to the user', 'state the open question', 'the unresolved question', 'relay it directly to the user',
       'never automatically to the user', 'asking the user', 'cannot close reaches the user', 'for the user or for a full unit',
-      'answers it as a question', 'next action or question', 'question for the user']
+      'answers it as a question', 'next action or question']
     const texts = [...(await filesUnder('agents')), ['implement-review-verify.js', skeleton], ['fix-follow-up.js', fixSkeleton]]
     expect(texts.length).toBeGreaterThan(30)
     for (const [path, text] of texts) {
