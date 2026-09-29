@@ -557,12 +557,18 @@ const FOCUSED = [
   'bare and once: its tests, and its type check or build where the project has one. Never run the full check:',
   'the fixer runs it once after its corrections, and a full run here goes stale when the fixer changes a file.',
 ].join('\n')
-// The design document exists only after the work: the implementer writes it by hand from the code
-// it built as its last write, once its implementation is done, and the fixer brings it up to date
-// as its last write after its corrections. The checks run once, after that write. Its path is the
-// spec's file name in the documents directory of the marked block, and the writer commits it in the
-// repository that holds that directory.
-const DOCUMENT = UNIT.documents + '/' + UNIT.specPath.split('/').pop().replace(/\.yaml$/, '') + '.md'
+// A design document exists only after the work, and only where the work altered the design. A writer
+// whose change alters the design extends by hand, as its last write, the document in the documents
+// directory of the marked block that already describes the part it changed, and writes a new one,
+// named after the spec's file, only when none does. A change that alters no design writes none. The
+// checks run once, after the last write, and the writer commits the document in the repository that
+// holds that directory.
+const NEW_DOCUMENT = UNIT.documents + '/' + UNIT.specPath.split('/').pop().replace(/\.yaml$/, '') + '.md'
+const DOCUMENT_WHEN = [
+  'DESIGN DOCUMENT, writer only: write or extend a design document only when your change alters the design: what the code',
+  'does, how its parts fit together, a decision with its reason, or a rejected alternative. A change that alters none of',
+  'these writes no document and commits none, and that is not an incomplete stage.',
+].join('\n')
 const DOCUMENT_CONTENT = [
   'The document describes the change as the code at your final commit implements it: what it does, how its parts fit',
   'together, the decisions with their reasons, and the alternatives the user rejected with their reasons. The rejected',
@@ -571,14 +577,16 @@ const DOCUMENT_CONTENT = [
   'conversation, and it follows the repository\'s prose rules and the writing-style skill.',
 ].join('\n')
 const DOCUMENT_IMPL = [
-  'DESIGN DOCUMENT, writer only: once your implementation is done, write ' + DOCUMENT + ' by hand from the code you built and the spec, as your last write, before your focused checks.',
+  DOCUMENT_WHEN,
+  'When your change alters the design, once your implementation is done, extend the design document under ' + UNIT.documents + ' that already describes the part you changed, and write ' + NEW_DOCUMENT + ' only when no document there describes that part. Write or extend it by hand from the code you built and the spec, as your last write, before your focused checks.',
   DOCUMENT_CONTENT,
-  'Then run your focused checks once, and commit ' + DOCUMENT + ' as its own commit in the repository that holds it and list it in files.',
+  'Then run your focused checks once, and commit the document you wrote or extended as its own commit in the repository that holds it and list it in files.',
 ].join('\n')
 const DOCUMENT_FIX = [
-  'DESIGN DOCUMENT, writer only: once your corrections are done, update ' + DOCUMENT + ' by hand where a correction changed what it describes, as your last write, before your checks.',
+  DOCUMENT_WHEN,
+  'When a correction alters the design, once your corrections are done, extend the design document under ' + UNIT.documents + ' that already describes the part it changed, and write ' + NEW_DOCUMENT + ' only when no document there describes that part. Write or extend it by hand, as your last write, before your checks.',
   DOCUMENT_CONTENT,
-  'Commit ' + DOCUMENT + ' as its own commit in the repository that holds it when it changed, and list it in files. With an empty approved list, write nothing.',
+  'Commit the document you wrote or extended as its own commit in the repository that holds it, and list it in files. With an empty approved list, write nothing.',
 ].join('\n')
 const RULES = 'RULE SOURCES: ' + UNIT.ruleSources + '.'
 const INVARIANTS = 'REQUIRED INVARIANTS, VERBATIM: ' + UNIT.invariants + '.'
