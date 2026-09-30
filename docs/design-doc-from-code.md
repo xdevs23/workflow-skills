@@ -52,9 +52,10 @@ own commit, as its last write before its checks, and lists it in its files. What
 carries is unchanged: the change as the code at the final commit implements it, with no words of
 the user and no local absolute paths.
 
-OPEN: the implementer and fixer templates and the README still describe the design document as a
-step every writer takes, while the writer prompts of both scripts and the implement-review-verify
-skill make it conditional on a change to the design.
+The implementer and fixer templates state the same rule, and a writer reads its template's rules
+ahead of its prompt, so neither orders a document for a change that alters no design. The templates
+leave the choice of the document and the name of a new one to the prompt, which the script builds
+from the documents directory and the spec.
 
 ## The fix run treats the document like any other file
 
