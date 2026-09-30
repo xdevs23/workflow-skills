@@ -3618,7 +3618,7 @@ describe('review seats are critics, and no stage asks the user a question', () =
     const { calls } = await simulateFix()
     const fix = flat(calls.find(c => c.label === 'fix').prompt)
     for (const phrase of ['or one that removes code, a parameter or a mechanism that nothing uses, that nobody asked for, or that is built beyond what was asked.',
-      'Such code is a rule violation, so its removal is corrective and needs no words of the user, also where an item of the parent spec that no words of the user back names that code.',
+      'Such code is a rule violation, so its removal is corrective and needs no words of the user, also where an item of the parent spec that neither words of the user nor an applicable project rule back names that code.',
       asked + '.',
       'A removal of code that nothing uses, that nobody asked for, or that is built beyond what was asked is not such a change, even where it takes away what the removed code did.']) {
       expect(['fix', phrase, fix.includes(phrase)]).toEqual(['fix', phrase, true])
@@ -3655,7 +3655,7 @@ describe('review seats are critics, and no stage asks the user a question', () =
   test('the fixer template and both fixer prompts carry out an approved removal against a spec item without the user\'s words', async () => {
     const asked = 'Code that the user\'s words asked for still needs the user\'s word to be removed'
     const authority = 'An approved removal of code, a parameter or a mechanism that nothing uses, that nobody asked for, or that is built beyond ' +
-      'what was asked is no prompt-vs-spec conflict where a spec item that no words of the user back names that code: such an item ' +
+      'what was asked is no prompt-vs-spec conflict where a spec item that neither words of the user nor an applicable project rule back names that code: such an item ' +
       'is no authority for keeping the code. ' + asked + '.'
     const fixer = await template('fixer')
     for (const phrase of ['Apply approved corrections against the spec as written, apart from an approved removal of code that no words of the user asked for.',
@@ -3669,13 +3669,13 @@ describe('review seats are critics, and no stage asks the user a question', () =
     const main = flat((await simulate()).calls.find(c => c.label === 'fix').prompt)
     for (const phrase of [authority, 'Implement the spec AS WRITTEN.',
       'A correction marked removal true removes code, a parameter or a mechanism that nothing uses, that nobody asked for, or that is built beyond what was asked, ' +
-      'on the finding verifier\'s removal rule. Carry it out also where a spec item that no words of the user back names that code, even where it takes away what the removed code did.',
+      'on the finding verifier\'s removal rule. Carry it out also where a spec item that neither words of the user nor an applicable project rule back names that code, even where it takes away what the removed code did.',
       asked + ': return such a removal rejected with receipts, to the ROOT.']) {
       expect(['main fix', phrase, main.includes(phrase)]).toEqual(['main fix', phrase, true])
     }
     const follow = flat((await simulateFix()).calls.find(c => c.label === 'fix').prompt)
     for (const phrase of [authority, 'Implement the spec AS WRITTEN.',
-      'Carry it out also where an item of the parent spec that no words of the user back names that code.',
+      'Carry it out also where an item of the parent spec that neither words of the user nor an applicable project rule back names that code.',
       'A removal of code the user\'s words asked for is such a change: return it rejected with receipts, to the ROOT.']) {
       expect(['follow-up fix', phrase, follow.includes(phrase)]).toEqual(['follow-up fix', phrase, true])
     }
