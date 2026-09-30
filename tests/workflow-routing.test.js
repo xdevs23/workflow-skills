@@ -1094,12 +1094,15 @@ describe('spec provenance instructions and routing', () => {
       'A writer whose change alters the design extends by hand the design document in the documents directory that already describes the part it changed.',
       'It writes a new document, named after the unit\'s spec file, only when no document describes that part.',
       'The implementer, once its implementation is done, writes or extends the document as its last write when its change alters the design.',
-      'Its focused checks then run once, after its last write, and it commits the document as its own commit',
-      'writes or extends the document by hand when a correction alters the design, as its last write before its checks, and commits it as its own commit',
+      'The implementer\'s focused checks run once, after its last write.',
+      'The implementer commits a document it wrote or extended as its own commit.',
+      'writes or extends the document by hand when a correction alters the design, as its last write before its checks.',
+      'The fixer commits a document it wrote or extended as its own commit.',
       'It writes or extends the document by hand from the code once its implementation is done', 'a change that alters no design writes none',
-      'writes or extends a design document by hand as its last write once its corrections are done, only when a correction alters the design,' +
-        ' runs full checks BARE AFTER ITS LAST WRITE',
-      "A fix run's fixer does the same in the parent unit's documents directory", 'The documents directory is relative to the tree root',
+      'writes or extends a design document by hand as its last write once its corrections are done, only when a correction alters the design;',
+      'runs full checks BARE AFTER ITS LAST WRITE;',
+      "A fix run's fixer, when a correction alters the design, writes or extends a document in the parent unit's documents directory.",
+      'The documents directory is relative to the tree root',
       'It holds the design documents a writer extends, and the scripts join it with the spec\'s file name to name a new one.',
       "tool's `counts.kind.criterion` for `args.criteriaCount`", 'integer ordinals from one in YAML file order',
       'the `specLines` count the spec tool reports for the final spec: the non-blank lines of its prose (`unit`, `summary` and each item\'s' +
@@ -1136,7 +1139,9 @@ describe('spec provenance instructions and routing', () => {
       'Its last commit is the design document', 'generated from the final YAML', 'renders it again', 'render command',
       'parentBaseSha', 'never edited by hand', '--render', '--check-render', 'generated document', 'blob ID',
       'non-blank spec lines', 'the pinned spec', "Writing it is the writers' completion step", 'writes `docs/<unit>.md` as its last write',
-      'where a correction changed what it describes', 'to name the design document']) expect(flat(skill)).not.toContain(stale)
+      'where a correction changed what it describes', 'to name the design document', 'and it commits the document as its own commit',
+      'and commits it as its own commit', "A fix run's fixer does the same", 'you attest each claimed fix',
+      'Its checks run once after its last write']) expect(flat(skill)).not.toContain(stale)
     expect(skeleton.split('counts.kind.criterion from the check tool')).toHaveLength(3)
   })
 
@@ -2544,7 +2549,7 @@ describe('a design document is written from the code after implementation, only 
     for (const phrase of ['A design document in the documents directory has no exception: a change to any of them maps to the corrective entry' +
         ' it carries out, or it is a CRITICAL finding.',
       'A correction whose only change is a design document is accepted when its entry names that document',
-      'a fix reported as done needs a commit of the fixer whatever path it touches',
+      'A fix reported as done needs a commit of the fixer whatever path it touches',
       'The fixer writes or extends a document by hand from the code only when a correction alters the design.',
       'Each finding of the diff check returns as a CRITICAL `diff-finding`']) {
       expect([phrase, text.includes(phrase)]).toEqual([phrase, true])
@@ -2553,6 +2558,40 @@ describe('a design document is written from the code after implementation, only 
       'renders the document', 'parentBaseSha', "The parent unit's design document has no exception", 'The fixer updates the document']) {
       expect([stale, text.includes(stale)]).toEqual([stale, false])
     }
+  })
+
+  test('the skill gives each document rule of a writer and of the fix run\'s diff check its own bullet', () => {
+    const bullets = markdownBlocks(skill).filter(block => block.kind === 'item').map(block => flat(block.text))
+    for (const bullet of [
+      'The implementer, once its implementation is done, writes or extends the document as its last write when its change alters the design.',
+      'The implementer\'s focused checks run once, after its last write.',
+      'The implementer commits a document it wrote or extended as its own commit.',
+      'The fixer, once its corrections are done, writes or extends the document by hand when a correction alters the design,' +
+        ' as its last write before its checks.',
+      'The fixer commits a document it wrote or extended as its own commit.',
+      'A fix run\'s fixer, when a correction alters the design, writes or extends a document in the parent unit\'s documents directory.',
+      'The writer prompts of the main and fix-run scripts carry this step and name a new document after the spec path of the marked block,' +
+        ' `docs/<unit>.md` in a one-repository tree, and after the parent spec in a fix run.',
+      'A design document, when the change alters the design, is the implementer\'s last write. It writes or extends the document by hand' +
+        ' from the code once its implementation is done, as the unit spec section above describes, and a change that alters no design writes none.',
+      'The implementer\'s checks run once, after its last write.',
+      'The implementer commits only its own scoped changes after checks. A design document it wrote or extended is its own commit.',
+      'The implementer returns its snapshot with the evidence for it. It returns `files` (every path a commit of the stage touched,' +
+        ' with its byte size at the snapshot), `checks` (each bare run with its quoted output), `commits`, the full immutable snapshot SHA,' +
+        ' `clean` and `git` (the quoted HEAD and status), and `specFindings`.',
+      'A failed check or commit is an incomplete stage, never a fabricated successful snapshot.',
+      'writes or extends a design document by hand as its last write once its corrections are done, only when a correction alters the design;',
+      'runs full checks BARE AFTER ITS LAST WRITE;',
+      'commits completed scoped corrections and the document it wrote or extended;',
+      'then returns the clean snapshot SHA, `git`, `commits`, `files`, `checks` with the quoted output and `proofPassed`.',
+      'Attest each fix the fixer claims against its approved correction and checks.',
+      'The read-only diff check then maps every change of the fix diff to a corrective entry. A design document in the documents directory' +
+        ' has no exception: a change to any of them maps to the corrective entry it carries out, or it is a CRITICAL finding.',
+      'A correction whose only change is a design document is accepted when its entry names that document.',
+      'A fix reported as done needs a commit of the fixer whatever path it touches.',
+      'The fixer writes or extends a document by hand from the code only when a correction alters the design.',
+      'Each finding of the diff check returns as a CRITICAL `diff-finding` and starts no further fixer.',
+    ]) expect([bullet, bullets.filter(text => text === bullet).length]).toEqual([bullet, 1])
   })
 
   test('the writer templates and the README make the document conditional on a change to the design', async () => {
