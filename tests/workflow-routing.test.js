@@ -3508,7 +3508,9 @@ describe('only product and architecture decisions reach the user', () => {
         'the choice is an ordinary derivation from that rule item and the rules and observations that settle it',
         'Writing the spec supplies no authority, and every check for an unbacked item or a record without the user\'s words applies to it unchanged.',
         'The delegation covers only a choice that is neither a product nor an architecture decision.'],
-      ['Decide a split over agreed facts.', 'apply the rules to those facts and decide. A split is never a reason to ask the user.'],
+      ['Decide a split over agreed facts.', 'split on a choice that is neither a product nor an architecture decision while agreeing on the facts',
+        'apply the rules to those facts and decide. The split alone is never a reason to ask the user.',
+        'A product or architecture decision reaches the user whether or not the stages split on it.'],
     ]
     for (const [opener, ...phrases] of rules) {
       const found = bullets.find(block => flat(block.strong[0] ?? '') === opener && flat(block.text).startsWith(opener))
@@ -3521,7 +3523,8 @@ describe('only product and architecture decisions reach the user', () => {
     const text = sectionText(skill, '### Question-premise check')
     for (const phrase of ['**Ask a product or architecture decision in your own words, with no recommended option.**',
       'Ask only after checking the user\'s recorded words as this section says, and describe the choice by what the user will see.',
-      'Label no option as recommended, because an option you can recommend with confidence is a decision you take yourself.',
+      'Label no option as recommended.',
+      'An option the user\'s recorded words or the rules already settle is a decision you take yourself, and a choice they leave open is the user\'s, put without your preference attached.',
       'Offer no option that keeps a found defect as it is or leaves the decision for later.']) {
       expect([phrase, text.includes(phrase)]).toEqual([phrase, true])
     }

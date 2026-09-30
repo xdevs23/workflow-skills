@@ -770,8 +770,10 @@ second implementer pre-check.
   Writing the spec supplies no authority, and every check for an unbacked item or a record without
   the user's words applies to it unchanged. The delegation covers only a choice that is neither a
   product nor an architecture decision.
-- **Decide a split over agreed facts.** When stages or models split on a choice while agreeing on
-  the facts, apply the rules to those facts and decide. A split is never a reason to ask the user.
+- **Decide a split over agreed facts.** When stages or models split on a choice that is neither a
+  product nor an architecture decision while agreeing on the facts, apply the rules to those facts
+  and decide. The split alone is never a reason to ask the user. A product or architecture decision
+  reaches the user whether or not the stages split on it.
 
 ### Question-premise check
 
@@ -859,9 +861,10 @@ it cannot prove a future model actually performed the conversational premise che
   decide-or-ask rule above separates.
 - **Ask a product or architecture decision in your own words, with no recommended option.** Ask
   only after checking the user's recorded words as this section says, and describe the choice by
-  what the user will see. Label no option as recommended, because an option you can recommend with
-  confidence is a decision you take yourself. Offer no option that keeps a found defect as it is or
-  leaves the decision for later.
+  what the user will see. Label no option as recommended. An option the user's recorded words or
+  the rules already settle is a decision you take yourself, and a choice they leave open is the
+  user's, put without your preference attached. Offer no option that keeps a found defect as it is
+  or leaves the decision for later.
 - Every entry in `projectBenefitDecisions` reaches you whatever its disposition. Close a standing
   one only by deletion, a rewrite, or the user's verbatim word to keep the shape, quoted in the
   private record; a patch that keeps the flagged mechanism leaves the decision open. A decision the
