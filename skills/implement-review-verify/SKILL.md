@@ -1371,12 +1371,17 @@ Fix, and returns the run record. Its `meta` is a pure literal whose phase titles
 `one line`, and every copy replaces them with a kebab-case name of the unit and one line saying
 what the run implements, so each main run appears in the workflow list under its own unit.
 `AUTHORITY` rides every authority-aware seat, `HYGIENE` the unbriefed
-ones, `WRITE_GIT` the two writers and `READ_GIT` the readers. The field shapes are declared once
-and reused inside eight reader schemas and the writer, verifier and launch check schemas,
-each a closed object declared in full; the eight audit seats share the quality seat's schema,
-because they return the object it returns. `stage()` is the one acceptance helper, `abortOnFlag()`
-the structural abort for every consumed stage result, and the completeness checks, the
-remaining-items handoff and the exit values are the ones the sections above and below describe.
+ones, `WRITE_GIT` the two writers and `READ_GIT` the readers. `HYGIENE`, the hygiene floor of the
+main script, carries no writing-style order: the templates of the unbriefed seats let them open
+only the diff and the files it touches, and the rule reader checks the prose of the diff against
+the rule sources. The writers and the briefed seats receive the order through `AUTHORITY`, and the
+fix run's hygiene floor keeps it, since its scope check and diff check read the tree. The field
+shapes are declared once and reused inside eight reader schemas and the writer, verifier and
+launch check schemas, each a closed object declared in full; the eight audit seats share the
+quality seat's schema, because they return the object it returns. `stage()` is the one acceptance
+helper, `abortOnFlag()` the structural abort for every consumed stage result, and the completeness
+checks, the remaining-items handoff and the exit values are the ones the sections above and below
+describe.
 
 ### The backtick hazard — the single most common launch failure
 
