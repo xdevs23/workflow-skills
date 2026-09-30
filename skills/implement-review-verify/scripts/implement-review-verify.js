@@ -72,8 +72,9 @@ const STAGE = [
   'Report genuinely missing assignment capabilities/instructions, authorization or conflicting applicable requirements.',
   RELAYED,
 ].join('\n')
-// Every stage prompt built on STAGE joins this block, except the roaster's: the roaster has no Read
-// tool and reads only Git objects.
+// AUTHORITY carries this block to the writers and the briefed seats. HYGIENE leaves it out, since
+// the templates of the unbriefed seats let them open only the diff and the files it touches, and so
+// does the roaster's prompt, since the roaster has no Read tool and reads only Git objects.
 const STYLE = [
   'REQUIRED: before you write, read the file ' + UNIT.pluginRoot + '/skills/writing-style/SKILL.md with the Read tool,',
   'and follow it in every comment, document, commit message and returned string.',
@@ -585,8 +586,10 @@ const DOCUMENT_FIX = [
 ].join('\n')
 const RULES = 'RULE SOURCES: ' + UNIT.ruleSources + '.'
 const INVARIANTS = 'REQUIRED INVARIANTS, VERBATIM: ' + UNIT.invariants + '.'
+// The unbriefed seats get no writing-style order: the rule reader checks the prose of the diff
+// against the rule sources, and their findings go to the finding verifier only.
 const HYGIENE = [
-  STAGE, STYLE, READ_GIT, TREE, 'No background waits.',
+  STAGE, READ_GIT, TREE, 'No background waits.',
 ].join('\n')
 // The fifteen seats of the review stage, each label with the template it loads. Every run runs each
 // of them, whatever the size of the change, and the marked block keys one model entry to each label.
