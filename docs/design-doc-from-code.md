@@ -35,12 +35,13 @@ and the README describe this step and the contents of the document. The passages
 documents may enter a spec as authority also cover the generated documents that earlier units left
 in the repository.
 
-## A document only when the design changes
+## A document when the design changes
 
-A writer, the implementer or a fixer, writes or extends a design document only when its change
-alters the design: what the code does, how its parts fit together, a decision with its reason, or
-a rejected alternative. A change that alters none of these writes no document and commits none, and
-the stage is complete without one. Each writer prompt opens its document step with this rule, and
+A writer, the implementer or a fixer, writes or extends a design document when its change alters
+the design: what the code does, how its parts fit together, a decision with its reason, or a
+rejected alternative. A change that alters none of these needs no document, and the stage is
+complete without one. Correcting a design document that describes the code wrongly stays allowed
+whether or not the design changes. Each writer prompt opens its document step with this rule, and
 the scripts accept a writer whose files hold no design document like any other writer.
 
 A writer whose change alters the design extends by hand the design document in the documents
@@ -131,9 +132,10 @@ counted spec is the one the writers and reviewers read.
   the code, and a generator that no stage calls would be code nothing uses.
 - A fix run takes no base commit of its parent unit, because nothing in it reads one, and asking
   for it would make every fix run supply a commit to no purpose.
-- A writer writes or extends a document only when its change alters the design, because a change
-  that alters no design leaves every design document true, and a document written for it would
-  record nothing about the design.
+- A writer needs a document only when its change alters the design, because a change that alters
+  no design leaves every design document true, and a document written for it would record nothing
+  about the design. A document that describes the code wrongly can still be corrected, since the
+  correction makes it true again.
 - A writer extends the document that already describes the part it changed and writes a new one
   only when none does, so the design of a part is described in one document instead of spread over
   one document per unit that touched it.

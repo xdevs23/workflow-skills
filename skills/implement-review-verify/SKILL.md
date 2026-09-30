@@ -96,10 +96,11 @@ whether they want a git repository.
 The tracked design document is written by hand from the code after the implementation, so it
 records what was built, and only when the change alters the design.
 
-- A writer, the implementer or a fixer, writes or extends a design document only when its change
-  alters the design: what the code does, how its parts fit together, a decision with its reason, or
-  a rejected alternative. A change that alters none of these writes no document and commits none,
-  and that is not an incomplete stage.
+- A writer, the implementer or a fixer, writes or extends a design document when its change alters
+  the design: what the code does, how its parts fit together, a decision with its reason, or a
+  rejected alternative. A change that alters none of these needs no document, and that is not an
+  incomplete stage. Correcting a design document that describes the code wrongly stays allowed
+  whether or not the design changes.
 - A writer whose change alters the design extends by hand the design document in the documents
   directory that already describes the part it changed. It writes a new document, named after the
   unit's spec file, only when no document describes that part.

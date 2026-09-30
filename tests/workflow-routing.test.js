@@ -1088,9 +1088,10 @@ describe('spec provenance instructions and routing', () => {
       'The rejected alternatives come from the spec\'s items of kind `rejected`, and the writer adds none of its own.',
       'The writer checks every statement about behaviour against that code.',
       'The document carries no words of the user, no local absolute paths and no account of the conversation',
-      'A writer, the implementer or a fixer, writes or extends a design document only when its change alters the design: what the code does,' +
+      'A writer, the implementer or a fixer, writes or extends a design document when its change alters the design: what the code does,' +
         ' how its parts fit together, a decision with its reason, or a rejected alternative.',
-      'A change that alters none of these writes no document and commits none, and that is not an incomplete stage.',
+      'A change that alters none of these needs no document, and that is not an incomplete stage.',
+      'Correcting a design document that describes the code wrongly stays allowed whether or not the design changes.',
       'A writer whose change alters the design extends by hand the design document in the documents directory that already describes the part it changed.',
       'It writes a new document, named after the unit\'s spec file, only when no document describes that part.',
       'The implementer, once its implementation is done, writes or extends the document as its last write when its change alters the design.',
@@ -2416,9 +2417,10 @@ const PARENT_DOCUMENT = DOCUMENTS + '/<parent unit>.md'
 // A design document an earlier unit wrote, which a later writer extends instead of writing its own.
 const OTHER_DOCUMENT = DOCUMENTS + '/error-handling.md'
 // When every writer writes or extends a design document, whitespace collapsed.
-const DOCUMENT_WHEN = 'DESIGN DOCUMENT, writer only: write or extend a design document only when your change alters the design:' +
+const DOCUMENT_WHEN = 'DESIGN DOCUMENT, writer only: write or extend a design document when your change alters the design:' +
   ' what the code does, how its parts fit together, a decision with its reason, or a rejected alternative.' +
-  ' A change that alters none of these writes no document and commits none, and that is not an incomplete stage.'
+  ' A change that alters none of these needs no document, and that is not an incomplete stage.' +
+  ' Correcting a design document that describes the code wrongly stays allowed whether or not the design changes.'
 // What every writer prompt says the design document holds, whitespace collapsed.
 const DOCUMENT_CONTENT = ['The document describes the change as the code at your final commit implements it: what it does,' +
   ' how its parts fit together, the decisions with their reasons, and the alternatives the user rejected with their reasons.',
@@ -2596,9 +2598,10 @@ describe('a design document is written from the code after implementation, only 
 
   test('the writer templates and the README make the document conditional on a change to the design', async () => {
     const implementer = await template('implementer')
-    for (const phrase of ['Write or extend a design document only when your change alters the design: what the code does,' +
+    for (const phrase of ['Write or extend a design document when your change alters the design: what the code does,' +
         ' how its parts fit together, a decision with its reason, or a rejected alternative.',
-      'A change that alters none of these writes no document and commits none, and that is not an incomplete stage.',
+      'A change that alters none of these needs no document, and that is not an incomplete stage.',
+      'Correcting a design document that describes the code wrongly stays allowed whether or not the design changes.',
       'Follow the prompt on which document to write or extend and on the name of a new one.',
       'When your change alters the design, write or extend the document as your last write, once your implementation is done,' +
         ' by hand from the code you built and the spec.',
@@ -2613,9 +2616,10 @@ describe('a design document is written from the code after implementation, only 
       expect([phrase, implementer.includes(phrase)]).toEqual([phrase, true])
     }
     const fixer = await template('fixer')
-    for (const phrase of ['Write or extend a design document only when a correction alters the design: what the code does,' +
+    for (const phrase of ['Write or extend a design document when a correction alters the design: what the code does,' +
         ' how its parts fit together, a decision with its reason, or a rejected alternative.',
-      'A correction that alters none of these writes no document and commits none, and that is not an incomplete stage.',
+      'A correction that alters none of these needs no document, and that is not an incomplete stage.',
+      'Correcting a design document that describes the code wrongly stays allowed whether or not the design changes.',
       'Follow the prompt on which document to write or extend and on the name of a new one.',
       'When a correction alters the design, write or extend the document by hand as your last write, once your corrections are done' +
         ' and before your checks.',
@@ -2633,7 +2637,7 @@ describe('a design document is written from the code after implementation, only 
     for (const phrase of ['The YAML spec is the only form of the spec before and during implementation.',
       'a writer whose change alters the design writes or extends a tracked design document by hand from the code as its last write,' +
         ' before its checks, and commits it: the implementer once its implementation is done, the fixer once its corrections are done.',
-      'A change that alters no design writes no document.']) {
+      'A change that alters no design needs no document, and correcting a design document that describes the code wrongly stays allowed.']) {
       expect([phrase, readme.includes(phrase)]).toEqual([phrase, true])
     }
     for (const stale of ['the implementer writes the tracked design document', 'the fixer updates it as its last write',

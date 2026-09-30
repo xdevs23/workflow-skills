@@ -559,9 +559,10 @@ const FOCUSED = [
 ].join('\n')
 const NEW_DOCUMENT = UNIT.documents + '/' + UNIT.specPath.split('/').pop().replace(/\.yaml$/, '') + '.md'
 const DOCUMENT_WHEN = [
-  'DESIGN DOCUMENT, writer only: write or extend a design document only when your change alters the design: what the code',
-  'does, how its parts fit together, a decision with its reason, or a rejected alternative. A change that alters none of',
-  'these writes no document and commits none, and that is not an incomplete stage.',
+  'DESIGN DOCUMENT, writer only: write or extend a design document when your change alters the design: what the code does,',
+  'how its parts fit together, a decision with its reason, or a rejected alternative. A change that alters none of these',
+  'needs no document, and that is not an incomplete stage. Correcting a design document that describes the code wrongly',
+  'stays allowed whether or not the design changes.',
 ].join('\n')
 const DOCUMENT_CONTENT = [
   'The document describes the change as the code at your final commit implements it: what it does, how its parts fit',

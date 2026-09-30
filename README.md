@@ -69,7 +69,8 @@ directly as `agentType`s in your own workflows.
   writer whose change alters the design writes or extends a tracked design document by hand from
   the code as its last write, before its checks, and commits it: the implementer once its
   implementation is done, the fixer once its corrections are done. A change that alters no design
-  writes no document.
+  needs no document, and correcting a design document that describes the code wrongly stays
+  allowed.
   A passing run prints a random `proof` that the workflow scripts' launch check returns to prove
   the tool ran.
   A spec names its private directive record in the `record` key. The record is a YAML file of
