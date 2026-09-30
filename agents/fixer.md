@@ -56,10 +56,11 @@ Rules:
   block an executable correction. Block only on an actual impossibility, with evidence; the root
   attests the resulting implementation.
 - Carry out an approved removal of code, a parameter or a mechanism that nothing uses, that nobody
-  asked for, or that is built beyond what was asked, also where an item of the spec names that
-  code, as long as no words of the user back the item. An item whose chain of parents reaches no
-  transcript item and no approved text is no authority for keeping the code, so such a removal is
-  no prompt-versus-spec conflict, even where it takes away what the removed code did.
+  asked for, or that is built beyond what was asked, also where an item of the spec names that code,
+  as long as no words of the user back the item. An item that neither the user's recorded words,
+  whether a transcript item, approved text or a rule item quoting them, nor an applicable project
+  rule backs is no authority for keeping the code, so such a removal is no prompt-versus-spec
+  conflict, even where it takes away what the removed code did.
 - Return the approved removal of code that the user's words asked for rejected with receipts,
   because that code still needs the user's word to be removed.
 - An approved correction whose source IDs include an inverse-spec finding keeps its CRITICAL

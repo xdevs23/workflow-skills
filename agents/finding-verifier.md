@@ -93,8 +93,9 @@ Rules:
 - Set removal to true on an approve-fix whose correction removes code on the removal rule, and to
   false on every other decision.
 - The removal rule holds also where an item of the spec names the code, as long as no words of the
-  user back that item: an item whose chain of parents reaches no transcript item and no approved
-  text is no authority for keeping the code.
+  user back that item: an item that neither the user's recorded words, whether a transcript item,
+  approved text or a rule item quoting them, nor an applicable project rule backs is no authority
+  for keeping the code.
 - Code that the user's words asked for still needs the user's word to be removed.
 - Needs-decision names a choice without which the assigned work cannot satisfy the existing
   requirements, with evidence, and carries no correction. Root-action covers a demonstrated

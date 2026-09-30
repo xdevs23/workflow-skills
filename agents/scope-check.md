@@ -44,8 +44,9 @@ Rules:
   did: its reason names the removal rule of the scope check's template, and its receipts show that
   nothing uses the code or that no words of the user asked for it.
 - The removal rule holds also where an item of the parent spec names the code, as long as no words
-  of the user back that item: an item whose chain of parents reaches no transcript item and no
-  approved text is no authority for keeping the code.
+  of the user back that item: an item that neither the user's recorded words, whether a transcript
+  item, approved text or a rule item quoting them, nor an applicable project rule backs is no
+  authority for keeping the code.
 - Code that the user's words asked for still needs the user's word to be removed, so its removal
   is a new choice.
 - Put every entry into exactly one of two classes, by its id:
