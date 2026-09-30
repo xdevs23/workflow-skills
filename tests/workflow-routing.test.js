@@ -2422,6 +2422,11 @@ const DOCUMENT_CONTENT = ['The document describes the change as the code at your
 'The document carries no words of the user, no local absolute paths and no account of the conversation,' +
   ' and it follows the repository\'s prose rules and the writing-style skill.']
 
+// Orders that would make a writer produce a document whatever its change, or pick the parent unit's
+// document whatever part a correction changed.
+const UNCONDITIONAL_DOCUMENT = ['Write the design document as your last write', 'at the path the prompt gives',
+  'Update the design document', 'In a fix run that is the parent unit\'s document', 'when it changed']
+
 describe('a design document is written from the code after implementation, only when the design changes', () => {
   test('the implementer and both fixers receive the when and where of the document before their checks, and no stage prompt carries a render command', async () => {
     const main = await simulate({ reports: oneReport, verify: approveOne, fixes: { fix: fixed([disposition()]) } })
@@ -2454,6 +2459,11 @@ describe('a design document is written from the code after implementation, only 
       // The prompt reads in the order of the work: the document comes first, the checks after it.
       expect(prompt.indexOf('DESIGN DOCUMENT')).toBeGreaterThan(-1)
       expect(prompt.indexOf('DESIGN DOCUMENT')).toBeLessThan(prompt.indexOf(prompt === impl ? 'FOCUSED CHECKS' : 'CHECK COMMAND'))
+    }
+    // A writer reads its template's body ahead of its prompt, and neither orders a document whatever the change.
+    for (const [agent, prompt] of [['implementer', impl], ['fixer', mainFix], ['fixer', fixRunFix]]) {
+      const effective = await template(agent) + ' ' + flat(prompt)
+      for (const stale of UNCONDITIONAL_DOCUMENT) expect([agent, stale, effective.includes(stale)]).toEqual([agent, stale, false])
     }
     const writers = new Set(['main:impl', 'main:fix', 'fix:fix'])
     for (const [run, calls] of [['main', main.calls], ['fix', fix.calls]]) {
@@ -2545,41 +2555,52 @@ describe('a design document is written from the code after implementation, only 
     }
   })
 
-  test('the writer templates and the README describe the written document as the writers\' completion step', async () => {
+  test('the writer templates and the README make the document conditional on a change to the design', async () => {
     const implementer = await template('implementer')
-    for (const phrase of ['Write the design document as your last write.',
-      'Once your implementation is done, write it by hand from the code you built and the spec, at the path the prompt gives.',
+    for (const phrase of ['Write or extend a design document only when your change alters the design: what the code does,' +
+        ' how its parts fit together, a decision with its reason, or a rejected alternative.',
+      'A change that alters none of these writes no document and commits none, and that is not an incomplete stage.',
+      'Follow the prompt on which document to write or extend and on the name of a new one.',
+      'When your change alters the design, write or extend the document as your last write, once your implementation is done,' +
+        ' by hand from the code you built and the spec.',
       'It describes the change as the code at your final commit implements it: what it does, how its parts fit together,' +
         ' the decisions with their reasons, and the alternatives the user rejected with their reasons.',
       'The rejected alternatives come from the spec\'s items of kind rejected, and you add none of your own.',
       'Check every statement about behaviour against that code.',
       'The document carries no words of the user, no local absolute paths and no account of the conversation',
-      'Your focused checks then run once, after that write.', 'Commit the document as its own commit',
+      'Your focused checks then run once, after that write.',
+      'Commit the document you wrote or extended as its own commit in the repository that holds it and list it in files.',
       'No design document is written, committed or checked before implementation']) {
       expect([phrase, implementer.includes(phrase)]).toEqual([phrase, true])
     }
     const fixer = await template('fixer')
-    for (const phrase of ['Update the design document by hand as your last write, once your corrections are done and before your checks,' +
-        ' where a correction changed what it describes.',
-      'In a fix run that is the parent unit\'s document.',
+    for (const phrase of ['Write or extend a design document only when a correction alters the design: what the code does,' +
+        ' how its parts fit together, a decision with its reason, or a rejected alternative.',
+      'A correction that alters none of these writes no document and commits none, and that is not an incomplete stage.',
+      'Follow the prompt on which document to write or extend and on the name of a new one.',
+      'When a correction alters the design, write or extend the document by hand as your last write, once your corrections are done' +
+        ' and before your checks.',
       'the alternatives the user rejected with their reasons, taken from the spec\'s items of kind rejected and never added by you.',
       'Check every statement about behaviour against that code.',
       'It carries no words of the user, no local absolute paths and no account of the conversation',
-      'Commit it as its own commit when it changed', 'With an empty approved list, write nothing.']) {
+      'Commit the document you wrote or extended as its own commit and list it in files.', 'With an empty approved list, write nothing.']) {
       expect([phrase, fixer.includes(phrase)]).toEqual([phrase, true])
     }
     for (const stale of ['after your last write and your checks', 'after your corrections and checks', '--render', 'render command',
-      'Render the design document']) {
+      'Render the design document', ...UNCONDITIONAL_DOCUMENT]) {
       expect([stale, implementer.includes(stale) || fixer.includes(stale)]).toEqual([stale, false])
     }
     const readme = flat(await Bun.file(new URL('../README.md', import.meta.url)).text())
     for (const phrase of ['The YAML spec is the only form of the spec before and during implementation.',
-      'the implementer writes the tracked design document by hand from the code as its last write, before its checks, and commits it',
-      'the fixer updates it as its last write after its corrections']) {
+      'a writer whose change alters the design writes or extends a tracked design document by hand from the code as its last write,' +
+        ' before its checks, and commits it: the implementer once its implementation is done, the fixer once its corrections are done.',
+      'A change that alters no design writes no document.']) {
       expect([phrase, readme.includes(phrase)]).toEqual([phrase, true])
     }
-    expect(readme).not.toContain('to check that document before implementation')
-    expect(readme).not.toContain('to generate the tracked design document')
+    for (const stale of ['the implementer writes the tracked design document', 'the fixer updates it as its last write',
+      'to check that document before implementation', 'to generate the tracked design document']) {
+      expect([stale, readme.includes(stale)]).toEqual([stale, false])
+    }
     for (const option of ['--render', '--check-render']) expect([option, readme.includes(option)]).toEqual([option, false])
   })
 })

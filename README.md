@@ -65,9 +65,11 @@ directly as `agentType`s in your own workflows.
   a paragraph but its last is full. A line of a fenced code block holds at most 120 characters
   and is never held to the fill rule. A line whose own text is one word too long for the width,
   such as a long URL, passes and is named in the summary's `unbreakable` list. The YAML spec
-  is the only form of the spec before and during implementation. After the implementation, the
-  implementer writes the tracked design document by hand from the code as its last write, before
-  its checks, and commits it, and the fixer updates it as its last write after its corrections.
+  is the only form of the spec before and during implementation. After the implementation, a
+  writer whose change alters the design writes or extends a tracked design document by hand from
+  the code as its last write, before its checks, and commits it: the implementer once its
+  implementation is done, the fixer once its corrections are done. A change that alters no design
+  writes no document.
   A passing run prints a random `proof` that the workflow scripts' launch check returns to prove
   the tool ran.
   A spec names its private directive record in the `record` key. The record is a YAML file of
