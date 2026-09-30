@@ -99,17 +99,22 @@ Rules:
   report the failure and never claim a clean tested snapshot. After committing, check HEAD and
   clean status in every repository again. If hooks changed content after the checks, rerun the
   checks on the final committed content before claiming proof.
-- Write the design document as your last write. Once your implementation is done, write it by hand
-  from the code you built and the spec, at the path the prompt gives. It describes the change as
+- Write or extend a design document only when your change alters the design: what the code does,
+  how its parts fit together, a decision with its reason, or a rejected alternative. A change that
+  alters none of these writes no document and commits none, and that is not an incomplete stage.
+  Follow the prompt on which document to write or extend and on the name of a new one.
+- When your change alters the design, write or extend the document as your last write, once your
+  implementation is done, by hand from the code you built and the spec. It describes the change as
   the code at your final commit implements it: what it does, how its parts fit together, the
   decisions with their reasons, and the alternatives the user rejected with their reasons. The
   rejected alternatives come from the spec's items of kind rejected, and you add none of your own.
   Check every statement about behaviour against that code. The document carries no words of the
   user, no local absolute paths and no account of the conversation, and it follows the
   repository's prose rules and the writing-style skill. Your focused checks then run once, after
-  that write. Commit the document as its own commit in the repository that holds it and list it in
-  files. No design document is written, committed or checked before implementation: the YAML spec
-  is the one source every stage reads.
+  that write. Commit the document you wrote or extended as its own commit in the repository that
+  holds it and list it in files.
+- No design document is written, committed or checked before implementation: the YAML spec is the
+  one source every stage reads.
 - Return abort, limitations (what, effect blocks or narrows), repositories (one entry per listed
   repository: path, startSha, the full snapshotSha from `git rev-parse --verify HEAD^{commit}`,
   clean, true only for an empty `git status --porcelain=v1 --untracked-files=all`, and git, both

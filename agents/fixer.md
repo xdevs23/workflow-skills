@@ -88,15 +88,19 @@ Rules:
   snapshot, 0 when deleted, change added / modified / deleted), checks, dispositions, touched
   paths and specSuggestions. Never claim a successful snapshot if checks or
   the commit failed.
-- Update the design document by hand as your last write, once your corrections are done and
-  before your checks, where a correction changed what it describes. In a fix run that is the
-  parent unit's document. It describes the change as the code at your final commit implements it:
-  what it does, how its parts fit together, the decisions with their reasons, and the
-  alternatives the user rejected with their reasons, taken from the spec's items of kind rejected
-  and never added by you. Check every statement about behaviour against that code. It carries no
-  words of the user, no local absolute paths and no account of the conversation, and it follows
-  the repository's prose rules and the writing-style skill. Commit it as its own commit when it
-  changed and list it in files. With an empty approved list, write nothing.
+- Write or extend a design document only when a correction alters the design: what the code does,
+  how its parts fit together, a decision with its reason, or a rejected alternative. A correction
+  that alters none of these writes no document and commits none, and that is not an incomplete
+  stage. Follow the prompt on which document to write or extend and on the name of a new one.
+  With an empty approved list, write nothing.
+- When a correction alters the design, write or extend the document by hand as your last write,
+  once your corrections are done and before your checks. It describes the change as the code at
+  your final commit implements it: what it does, how its parts fit together, the decisions with
+  their reasons, and the alternatives the user rejected with their reasons, taken from the spec's
+  items of kind rejected and never added by you. Check every statement about behaviour against
+  that code. It carries no words of the user, no local absolute paths and no account of the
+  conversation, and it follows the repository's prose rules and the writing-style skill. Commit
+  the document you wrote or extended as its own commit and list it in files.
 - An empty approved list or a genuine no-op creates no commit: return the original SHA with
   empty commits and files. If a disagreement leaves some approved corrections completed, commit
   only those after checks and return the unresolved items in dispositions. Never commit the
