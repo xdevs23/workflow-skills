@@ -68,14 +68,41 @@ reaches no transcript item and no approved text is no authority for keeping the 
 user's words asked for still needs the user's word to be removed, so the scope check classes its
 removal a new choice.
 
-The fix run's fixer prompt lists the removal among the corrections the scope check classes
-corrective, repeats the exception for code the user's words asked for, and says that a removal on
-the rule is not a change of behavior the fixer returns to the root. The diff check's template and
-its prompt map a change that carries out such a removal to the entry that names it, even where the
-change takes away what the removed code did. implement-review-verify states the rule where it
-describes the finding verifier's decisions and the fix run's scope check, and its rule that has the
-root remove such code without asking now says that the finding verifier and the scope check apply
-the same rule.
+Each decision of the finding verifier carries a boolean `removal`. The verifier sets it to true on
+an `approve-fix` whose correction removes code on the removal rule, and to false on every other
+decision. The main script's decision check refuses `removal` true on any action other than
+`approve-fix`. The field is what lets a removal reach the fixer from a finding of kind
+`unbacked-choice`: such a finding names a choice that no words of the user back, so removing the
+chosen code is exactly the correction the removal rule allows. A decision whose sources include
+such a finding may be `needs-decision`, `reject` with a record entry citation, or an `approve-fix`
+with `removal` true. The check refuses an `approve-fix` without the mark, which keeps an addition,
+a change of the choice or any other approval out, and it still refuses `root-action`, `cleanup`
+and `record`. The rule applies to every source of a consolidated decision, so a group that joins
+an unbacked choice with a band-aid finding and an ordinary finding reaches the fixer on the same
+mark. The script cannot tell from the mark whether the removed code was asked for by the user's
+words. The verifier's template and prompt require the verifier's own check of the record before it
+sets the mark, and the fixer checks the approval again.
+
+The fixer's template applies approved corrections against the spec as written, apart from an
+approved removal of code that no words of the user asked for. It carries out such a removal also
+where a spec item without the user's words names the code, because such an item is no authority
+for keeping the code, so the removal is no conflict between the prompt and the spec. It returns
+the removal of code the user's words asked for rejected with receipts. The authority block both
+scripts give their briefed stages states the same exception beside the rule to implement the spec
+as written. The main script's fixer prompt tells the fixer to carry out a correction marked
+`removal` also against such a spec item and to return a removal of requested code rejected. The fix
+run's fixer prompt lists the removal among the corrections the scope check classes corrective,
+repeats the exception for code the user's words asked for, and says that a removal on the rule is
+not a change of behavior the fixer returns to the root, while a removal of requested code is.
+
+The diff check's template and its prompt map a change that carries out such a removal to the entry
+that names it, even where the change takes away what the removed code did. Both also state that a
+change removing code the user's words asked for never maps to an entry as such a removal.
+implement-review-verify states the rule where it describes the finding verifier's decisions and the
+fix run's scope check, states the three answers to an `unbacked-choice` finding, and its rule that
+has the root remove such code without asking says that the finding verifier and the scope check
+apply the same rule. In the templates and the skill each rule of the removal passages stands in a
+bullet of its own.
 
 ## Band-aid and longer-route findings
 
@@ -172,10 +199,15 @@ with a correction is refused before it reaches the remaining items, and that a r
 decision without a correction is refused. They check that the finding verifier's, the scope
 check's and the diff check's templates, the fix run's fixer and diff prompts and
 implement-review-verify state the removal rule, the rule's reach over a spec item without the
-user's words, and the exception for code the user's words asked for.
+user's words, and the exception for code the user's words asked for, and that each rule of those
+passages opens a bullet of its own. They check that the fixer's template and both fixer prompts
+carry out an approved removal against a spec item without the user's words and return the removal
+of requested code. They check that a removal of an unbacked choice marked `removal` reaches the
+fixer, alone and in a consolidated group with a band-aid finding and an ordinary finding, that an
+`approve-fix` on an unbacked choice without the mark is refused, and that the mark on another
+action is refused.
 
-The plugin version rises from 0.31.0 to 0.32.0. The removal rule keeps it at 0.32.0, because the
-published branch does not carry that version yet.
+The plugin version rises from 0.31.0 to 0.32.0, and the removal rule raises it to 0.33.0.
 
 ## Rejected alternatives
 
