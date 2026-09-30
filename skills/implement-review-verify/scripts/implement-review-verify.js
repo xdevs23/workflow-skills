@@ -557,12 +557,6 @@ const FOCUSED = [
   'bare and once: its tests, and its type check or build where the project has one. Never run the full check:',
   'the fixer runs it once after its corrections, and a full run here goes stale when the fixer changes a file.',
 ].join('\n')
-// A design document exists only after the work, and only where the work altered the design. A writer
-// whose change alters the design extends by hand, as its last write, the document in the documents
-// directory of the marked block that already describes the part it changed, and writes a new one,
-// named after the spec's file, only when none does. A change that alters no design writes none. The
-// checks run once, after the last write, and the writer commits the document in the repository that
-// holds that directory.
 const NEW_DOCUMENT = UNIT.documents + '/' + UNIT.specPath.split('/').pop().replace(/\.yaml$/, '') + '.md'
 const DOCUMENT_WHEN = [
   'DESIGN DOCUMENT, writer only: write or extend a design document only when your change alters the design: what the code',
