@@ -3581,7 +3581,7 @@ describe('review seats are critics, and no stage asks the user a question', () =
   test('the judging stages, the fix run\'s fixer and diff prompts and the skill treat removing unused or unasked-for code as corrective', async () => {
     const violation = 'Code, a parameter or a mechanism that nothing uses, that nobody asked for, or that is built beyond what was asked is a rule violation, ' +
       'and a correction that removes it is corrective and needs no words of the user.'
-    const unbacked = 'as long as no words of the user back that item: an item whose chain of parents reaches no transcript item and no approved text is no authority for keeping the code.'
+    const unbacked = 'as long as no words of the user back that item: an item that neither the user\'s recorded words, whether a transcript item, approved text or a rule item quoting them, nor an applicable project rule backs is no authority for keeping the code.'
     const asked = 'Code that the user\'s words asked for still needs the user\'s word to be removed'
     for (const [name, phrases] of [
       ['finding-verifier', [violation, unbacked, asked, 'Decide a removal on the removal rule approve-fix, even where it takes away what the removed code did: ' +
@@ -3661,7 +3661,7 @@ describe('review seats are critics, and no stage asks the user a question', () =
     for (const phrase of ['Apply approved corrections against the spec as written, apart from an approved removal of code that no words of the user asked for.',
       'Carry out an approved removal of code, a parameter or a mechanism that nothing uses, that nobody asked for, or that is built beyond what was asked, ' +
       'also where an item of the spec names that code, as long as no words of the user back the item.',
-      'An item whose chain of parents reaches no transcript item and no approved text is no authority for keeping the code, ' +
+      'An item that neither the user\'s recorded words, whether a transcript item, approved text or a rule item quoting them, nor an applicable project rule backs is no authority for keeping the code, ' +
       'so such a removal is no prompt-versus-spec conflict, even where it takes away what the removed code did.',
       'Return the approved removal of code that the user\'s words asked for rejected with receipts, because that code still needs the user\'s word to be removed.']) {
       expect(['fixer', phrase, fixer.includes(phrase)]).toEqual(['fixer', phrase, true])

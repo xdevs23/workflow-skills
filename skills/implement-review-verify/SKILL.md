@@ -466,8 +466,9 @@ lenses of every run, and the main script stops a run whose seat list holds anoth
   removal rule, and to false on every other decision. The script's decision checks refuse `removal`
   true on any other action.
 - The removal rule holds also where an item of the spec names the code, as long as no words of the
-  user back that item: an item whose chain of parents reaches no transcript item and no approved
-  text is no authority for keeping the code.
+  user back that item: an item that neither the user's recorded words, whether a transcript item,
+  approved text or a rule item quoting them, nor an applicable project rule backs is no authority
+  for keeping the code.
 - Code that the user's words asked for still needs the user's word to be removed.
 - It checks claims against the code, settled spec, applicable rules and recorded instructions,
   resolves conflicts using evidence, and merges duplicate defects into ONE fix list, every decision
