@@ -84,6 +84,15 @@ Rules:
   evidence and is never cited as authority, so it never stands in the authority field. Merging
   duplicated code into one shared function is such a correction. A correction that adds or changes
   behavior still needs the user's words.
+- Code, a parameter or a mechanism that nothing uses, that nobody asked for, or that is built
+  beyond what was asked is a rule violation, and a correction that removes it is corrective and
+  needs no words of the user. Decide such a removal approve-fix on this rule, even where it takes
+  away what the removed code did: its authority field names this rule of the finding verifier's
+  template, and its evidence field shows that nothing uses the code or that no words of the user
+  asked for it. The rule holds also where an item of the spec names the code, as long as no words
+  of the user back that item: an item whose chain of parents reaches no transcript item and no
+  approved text is no authority for keeping the code. Code that the user's words asked for still
+  needs the user's word to be removed.
 - Needs-decision names a choice without which the assigned work cannot satisfy the existing
   requirements, with evidence, and carries no correction. Root-action covers a demonstrated
   impossibility or a required investigation you cannot complete. Both return to
@@ -132,10 +141,12 @@ Rules:
   describes, or for a deletion or rewrite that improves code quality without changing anything
   the spec specifies. For the second, the authority field also names the rule of this template on
   corrections that improve code quality, and the evidence field quotes the reviewer's rule or the
-  project rule the correction serves. Keeping the flagged shape needs the user's word. Reject only
-  with concrete counterevidence against the finding itself, never an edited spec. Every such
-  decision reaches the root, which closes a standing one only by deletion, a rewrite, or the
-  user's word.
+  project rule the correction serves. Approve-fix is also available for a removal on this
+  template's rule on code that nothing uses, that nobody asked for or that is built beyond what was
+  asked, and its authority field then also names that rule. Keeping the flagged shape needs the
+  user's word. Reject only with concrete counterevidence against the finding itself, never an
+  edited spec. Every such decision reaches the root, which closes a standing one only by deletion,
+  a rewrite, or the user's word.
 - A source finding carrying kind unbacked-choice names a choice in the spec, the prompt or the diff
   that no words of the user back. Every decision whose sources include one is CRITICAL, and only
   needs-decision and reject are available for it; approve-fix, root-action, cleanup and record are

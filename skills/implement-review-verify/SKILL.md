@@ -455,6 +455,17 @@ lenses of every run, and the main script stops a run whose seat list holds anoth
 - An `approve-fix` on that rule names the rule in `authority` and quotes in `evidence` the
   reviewer's rule or the project rule the correction serves.
 - A correction that adds or changes behavior still needs the user's words.
+- Code, a parameter or a mechanism that nothing uses, that nobody asked for, or that is built beyond
+  what was asked is a rule violation, and a correction that removes it needs no words of the user.
+  The rule is in the finding verifier's own template beside the quality rule, and on it the
+  verifier may decide such a removal `approve-fix`, even where the removal takes away what the code
+  did.
+- An `approve-fix` on the removal rule names the rule in `authority`, and its `evidence` shows that
+  nothing uses the code or that no words of the user asked for it.
+- The removal rule holds also where an item of the spec names the code, as long as no words of the
+  user back that item: an item whose chain of parents reaches no transcript item and no approved
+  text is no authority for keeping the code.
+- Code that the user's words asked for still needs the user's word to be removed.
 - It checks claims against the code, settled spec, applicable rules and recorded instructions,
   resolves conflicts using evidence, and merges duplicate defects into ONE fix list, every decision
   with receipts. It preserves every source ID: consolidation is never permission to drop a finding.
@@ -503,6 +514,8 @@ cannot proceed merely because a reviewer or verifier prefers it.
   spec specifies.
 - An `approve-fix` of the second kind also names the verifier's rule on such corrections in
   `authority`, and `evidence` quotes the reviewer's rule or the project rule the correction serves.
+- `approve-fix` on a kind-bearing finding is also available for a removal on the removal rule, and
+  its `authority` then also names that rule.
 - Keeping the flagged shape of a kind-bearing finding needs the user's word.
 - `reject` on a kind-bearing finding needs counterevidence against the finding itself.
 - A decision on an `unbacked-choice` finding is CRITICAL the same way, and only two actions answer
@@ -737,6 +750,14 @@ second implementer pre-check.
 - The classification of such a correction names that rule in its reason. Its receipts quote the
   reviewer's rule or the project rule as evidence of what the correction improves.
 - A correction that adds or changes behavior is a new choice.
+- A removal of code, a parameter or a mechanism that nothing uses, that nobody asked for, or that
+  is built beyond what was asked is corrective and needs no words of the user, on the removal rule
+  of the scope check's own template, even where it takes away what the code did. The rule holds
+  also where an item of the parent spec names the code, as long as no words of the user back that
+  item.
+- The classification of such a removal names the removal rule in its reason, and its receipts show
+  that nothing uses the code or that no words of the user asked for it.
+- The removal of code that the user's words asked for is a new choice.
 - The read-only diff check then maps every change of the fix diff to a corrective entry. A design
   document in the documents directory has no exception: a change to any of them maps to the
   corrective entry it carries out, or it is a CRITICAL finding.
@@ -776,7 +797,9 @@ second implementer pre-check.
 - **Remove code, a parameter or a mechanism that nothing uses, that nobody asked for, or that is
   built beyond what was asked, without asking the user.** A hand-written design document that
   describes it, such as one written from your own spec, is no reason to keep it, because such a
-  document is never cited as the design.
+  document is never cited as the design. The finding verifier and the fix run's scope check apply
+  the same rule: the verifier decides such a removal `approve-fix` and the scope check classes it
+  corrective, without the user's words.
 - **Make a recommended fix you have checked.** When a stage recommends a correction and your check
   against the tree and the recorded words finds it correct, make the fix; never present it as an
   option beside an alternative.
