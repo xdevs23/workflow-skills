@@ -10,8 +10,7 @@ a stage or a remaining item calls that item unsettled, open or undecided.
 ## The root's own decisions
 
 The skill's section "What reaches the user" sits between the remaining-items rules and the
-question-premise check. It opens with the two kinds of decision and then states the root's own
-decisions, one rule to a bullet, each bullet opening with its instruction:
+question-premise check.
 
 - The root fixes a correction that improves code quality without changing anything the spec
   specifies. Such a correction needs no words of the user and no question.
@@ -25,7 +24,14 @@ decisions, one rule to a bullet, each bullet opening with its instruction:
   alternative.
 - A `new-choice` item the fix run's scope check refused, and an open `unbacked-choice` decision,
   that is neither a product nor an architecture decision goes to a new implement-review-verify unit
-  with its own spec, and the root decides the choice in that spec. It never goes to the user.
+  with its own spec, and the root decides the choice in that spec. It never goes to the user. The
+  authority for that choice is the user's recorded delegation of this kind of choice, which the
+  skill's rule carries. The new spec cites that rule as a `rule` item, the new unit's private
+  record holds the user's approval of the rule with its context, and the choice is an ordinary
+  derivation from the rule item and the rules and observations that settle it. Writing the spec
+  supplies no authority, and the checks for an unbacked item and for a record without the user's
+  words apply unchanged. The delegation covers only choices that are neither product nor
+  architecture decisions.
 - When stages or models split on a choice while agreeing on the facts, the root applies the rules
   to those facts and decides. A split is never a reason to ask the user.
 
@@ -35,6 +41,10 @@ Several passages of the skill sent a genuinely unsettled or open choice to the u
 what kind of choice it was. Each now names product and architecture decisions as the only ones that
 go to the user, and has the root decide any other:
 
+- the rule on a sense-check flag, where the root first checks the coder's evidence against the spec
+  and the user's recorded words, chooses a continuation those words already decide without a new
+  question, sends only a product or architecture decision they leave unresolved to the user, and
+  lets the flagged mechanism continue on no other authority;
 - the rule that a reviewer suggests and never decides, where only a product or architecture
   decision that removing the unapproved behavior cannot close reaches the user;
 - the explicit resolution the root owes every inverse-spec decision, in the verification phase and
@@ -78,6 +88,11 @@ the question-premise check beside the existing rules on the shape of an ask.
   describes the mechanism does not argue for keeping it.
 - A split between stages that agree on the facts is a disagreement about how the rules apply, and
   applying the rules is the root's job.
+- A sense-check flag whose continuation the user's recorded words already decide needs no new
+  question, because those words are already the user's decision. The flagged mechanism still never
+  continues on a stage's argument alone.
+- A spec gains no decision authority by being written, so a choice the root makes in a new unit's
+  spec traces to the user's recorded delegation of that kind of choice.
 - The stages keep their outputs. The finding verifier still returns a needs-decision decision and
   the fix run's scope check still returns a `new-choice` item to the root. This change decides only
   where the root sends them afterwards.
@@ -85,6 +100,10 @@ the question-premise check beside the existing rules on the shape of an ask.
 ## Tests
 
 The workflow routing suite checks that the skill names the two kinds of decision, that each passage
-sending an item to the user names them, that each of the root's own decisions is a bullet of "What
-reaches the user" opening with its instruction, that the question-premise check carries the form
-of a question, and that the wording of both deleted rules is absent from the skill.
+sending an item to the user names them in its own section or item, that each of the root's own
+decisions is a bullet of "What reaches the user" opening with its instruction, that the
+question-premise check carries the form of a question, and that the wording of both deleted rules
+and of the unconditional sense-check rule is absent from the skill. A restriction moved out of its
+passage fails that passage's check even where its words still stand elsewhere in the skill. The
+suite finds headings, sections, list items and numbered laws in the blocks that Bun's Markdown
+parser returns, and never in the raw text.
