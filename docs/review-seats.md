@@ -31,13 +31,13 @@ tree and the order not to wait in the background. An audit seat gets no authorit
 no private record and no implementer object, since any of them would brief a seat whose template
 judges only the code.
 
-The hygiene floor of the main script carries no order to read the writing-style file. The templates
-of quality, cold alternatives and the eight audit seats let them open only the diff and the files it
-touches, so such an order would send them to a file their templates forbid. Their findings go to the
-finding verifier only, and the prose of the diff is checked by the project rule reader, which
-receives the order through its authority block and reads the rule sources. The writers and the
-other briefed seats keep the order through the authority block as well. The fix run's hygiene
-floor keeps it too, because the scope check and the diff check that receive it read the tree.
+The hygiene floor of the main script carries no order to read the writing-style file. None of the
+seats that receive it needs the style rules: their findings go to the finding verifier only, and the
+prose of the diff is checked by the project rule reader, which receives the order through its
+authority block and reads the rule sources. The writers and the other briefed seats keep the order
+through the authority block as well. The fix run's hygiene floor keeps it too, because the scope
+check and the diff check that receive it read the tree. The quality template also lets that seat
+open only the diff and the files it touches, so the order sent it to a file its template forbids.
 
 An audit seat returns the object quality returns, `limitations`, `coverage` and `findings`, under
 the quality seat's schema and the same completeness check. Its findings reach the finding verifier

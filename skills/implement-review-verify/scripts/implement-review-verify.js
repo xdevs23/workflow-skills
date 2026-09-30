@@ -72,8 +72,7 @@ const STAGE = [
   'Report genuinely missing assignment capabilities/instructions, authorization or conflicting applicable requirements.',
   RELAYED,
 ].join('\n')
-// AUTHORITY carries this block to the writers and the briefed seats. HYGIENE leaves it out, since
-// the templates of the unbriefed seats let them open only the diff and the files it touches, and so
+// AUTHORITY carries this block to the writers and the briefed seats. HYGIENE leaves it out, and so
 // does the roaster's prompt, since the roaster has no Read tool and reads only Git objects.
 const STYLE = [
   'REQUIRED: before you write, read the file ' + UNIT.pluginRoot + '/skills/writing-style/SKILL.md with the Read tool,',

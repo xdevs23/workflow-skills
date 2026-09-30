@@ -1644,12 +1644,11 @@ describe('one-pass remaining-items handoff', () => {
     const stages = calls.filter(c => !['gate', 'roast', ...unbriefed].includes(c.label))
     expect(stages.map(c => c.label)).toEqual(['impl', ...['correctness', 'spec', 'dupes', 'inverse', 'rules'].map(seat => 'review:' + seat), 'verify', 'fix'])
     for (const call of stages) expect([call.label, call.prompt.split(required).length - 1]).toEqual([call.label, 1])
-    // The unbriefed seats' templates let them open only the diff and the files it touches, and the
-    // roaster has no Read tool and reads only Git objects, so their prompts name no file to read.
-    for (const label of [...unbriefed, 'roast']) {
-      const prompt = calls.find(c => c.label === label).prompt
-      expect([label, prompt.includes('writing-style'), /read the file/i.test(prompt)]).toEqual([label, false, false])
-    }
+        // The unbriefed seats get no writing-style order: their findings go to the finding verifier only.
+    for (const label of unbriefed) expect([label, calls.find(c => c.label === label).prompt.includes('writing-style')]).toEqual([label, false])
+    // The roaster has no Read tool and reads only Git objects, so its prompt names no file to read.
+    const roast = calls.find(c => c.label === 'roast').prompt
+    expect([roast.includes('writing-style'), /read the file/i.test(roast)]).toEqual([false, false])
     // The fix run's scope check reads the tree and keeps the order through its hygiene floor.
     const scope = (await simulateFix()).calls.find(c => c.label === 'scope').prompt
     expect(scope.split(required).length - 1).toBe(1)
