@@ -26,10 +26,18 @@ verify. Design documents of earlier units still describe the cleanliness seat as
 The eight audit templates judge the code through one lens each and ask for nothing about the spec.
 Each audit seat therefore receives exactly what the quality seat receives: the hygiene floor and
 the diff of every repository that moved. The hygiene floor holds the execution boundary, the
-writing-style file to read, the read-only Git rules, the rule against writing files, the rule on
-what a limitation is, the assigned tree and the order not to wait in the background. An audit seat
-gets no authority block, no spec, no private record and no implementer object, since any of them
-would brief a seat whose template judges only the code.
+read-only Git rules, the rule against writing files, the rule on what a limitation is, the assigned
+tree and the order not to wait in the background. An audit seat gets no authority block, no spec,
+no private record and no implementer object, since any of them would brief a seat whose template
+judges only the code.
+
+The hygiene floor of the main script carries no order to read the writing-style file. The templates
+of quality, cold alternatives and the eight audit seats let them open only the diff and the files it
+touches, so such an order would send them to a file their templates forbid. Their findings go to the
+finding verifier only, and the prose of the diff is checked by the project rule reader, which
+receives the order through its authority block and reads the rule sources. The writers and the
+other briefed seats keep the order through the authority block as well. The fix run's hygiene
+floor keeps it too, because the scope check and the diff check that receive it read the tree.
 
 An audit seat returns the object quality returns, `limitations`, `coverage` and `findings`, under
 the quality seat's schema and the same completeness check. Its findings reach the finding verifier
@@ -99,14 +107,16 @@ The routing tests run each shipped script as a copy whose model placeholders hol
 after their entry, so every call shows the entry it ran on. They check that the review stage runs
 exactly the fifteen seats with their templates, that each audit seat's prompt equals the quality
 seat's prompt of hygiene floor and diff, and that an audit seat's finding reaches the verifier under
-a source ID of its label. They check that no file under the skills, agents, tools and tests
-directories, and not the README, names the removed template, and that the finding verifier's
-template names the fifteen seats. They check that a copy whose seat list leaves out, adds or repeats
-a seat, or gives a seat's label another template, stops before its first agent, that each seat runs
-on its own model entry, and that a missing, placeholder or unknown model entry, or an entry with a
-field besides the model and the effort, stops each of the three scripts before its first agent. They
-check that no shipped script and no agent template names a model, and that a copy of each script
-sets its own meta name and description.
+a source ID of its label. They check that the prompts of quality, cold alternatives and the audit
+seats name no writing-style file, that the prompts of the writers and the briefed seats name it
+once, and that the fix run's scope check still receives it. They check that no file under the
+skills, agents, tools and tests directories, and not the README, names the removed template, and
+that the finding verifier's template names the fifteen seats. They check that a copy whose seat
+list leaves out, adds or repeats a seat, or gives a seat's label another template, stops before its
+first agent, that each seat runs on its own model entry, and that a missing, placeholder or unknown
+model entry, or an entry with a field besides the model and the effort, stops each of the three
+scripts before its first agent. They check that no shipped script and no agent template names a
+model, and that a copy of each script sets its own meta name and description.
 
 ## Rejected alternatives
 
