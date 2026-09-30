@@ -6,7 +6,10 @@ reviewers' rules, together with the rule sources. Both templates state that the 
 critics without authority whose purpose is to improve code quality, and carry their own rule that a
 correction which improves code quality without changing anything the spec specifies needs no words
 of the user. A reviewer's rule is quoted as evidence of what such a correction improves and is
-never cited as authority. Every sentence and clause of the agent templates and the two scripts that
+never cited as authority. Both templates also carry a removal rule: code, a parameter or a
+mechanism that nothing uses, that nobody asked for, or that is built beyond what was asked is a rule
+violation, so removing it is corrective and needs no words of the user, while code the user's words
+asked for still needs the user's word to go. Every sentence and clause of the agent templates and the two scripts that
 had a stage pose, name or recommend a question, ask the user, or send its output to the user as a
 question is deleted, so a stage flags issues as facts.
 
@@ -43,6 +46,37 @@ of the fix run follow the same rule: the fixer's prompt counts a quality correct
 parent spec as corrective, and neither counts a function that only holds merged code as a new
 interface, so a correction the scope check admits is not refused by the next stage.
 
+## Removing code nothing uses or nobody asked for
+
+The finding verifier's template states, beside the quality rule, that code, a parameter or a
+mechanism that nothing uses, that nobody asked for, or that is built beyond what was asked is a rule
+violation, and that a correction removing it is corrective and needs no words of the user. The
+verifier decides such a removal `approve-fix`, even where the removal takes away what the code did.
+The `authority` field names the removal rule of the verifier's template, and the `evidence` field
+shows that nothing uses the code or that no words of the user asked for it.
+
+The scope check's template states the same rule for a fix run. The scope check classes such a
+removal corrective, its reason names the removal rule of the scope check's template, and its
+receipts show the code it removes together with the evidence that nothing uses it or that no words
+of the user asked for it. The corrective class of the template lists the removal beside the
+restoring correction and the quality correction, and the opening of the template names it among
+the three things a fix run may do.
+
+In both templates the rule holds also where an item of the spec, or of a fix run's parent spec,
+names the code, as long as no words of the user back that item. An item whose chain of parents
+reaches no transcript item and no approved text is no authority for keeping the code. Code that the
+user's words asked for still needs the user's word to be removed, so the scope check classes its
+removal a new choice.
+
+The fix run's fixer prompt lists the removal among the corrections the scope check classes
+corrective, repeats the exception for code the user's words asked for, and says that a removal on
+the rule is not a change of behavior the fixer returns to the root. The diff check's template and
+its prompt map a change that carries out such a removal to the entry that names it, even where the
+change takes away what the removed code did. implement-review-verify states the rule where it
+describes the finding verifier's decisions and the fix run's scope check, and its rule that has the
+root remove such code without asking now says that the finding verifier and the scope check apply
+the same rule.
+
 ## Band-aid and longer-route findings
 
 A decision on a finding of kind `band-aid` or `longer-route` stays CRITICAL, has neither `cleanup`
@@ -52,7 +86,8 @@ mechanism. `approve-fix` used to be available only for a deletion or rewrite the
 It is now also available for a deletion or rewrite that improves code quality without changing
 anything the spec specifies. For that case `authority` also names the verifier's rule on such
 corrections, and `evidence` quotes the reviewer's rule or the project rule the correction serves.
-Keeping the flagged shape still needs the user's word, and the root still closes a standing
+`approve-fix` is available as well for a removal on the removal rule, and `authority` then also
+names that rule. Keeping the flagged shape still needs the user's word, and the root still closes a standing
 decision only by deletion, a rewrite, or the user's word.
 
 ## Deleted question wording
@@ -107,6 +142,14 @@ template: a reviewer that could cite its own rule as authority would approve its
 its rule only shows what the correction improves. Behavior is what the user decides, so a
 correction that adds or changes behavior still needs the user's words.
 
+Removing code that nothing uses, that nobody asked for or that is overbuilt needs no words of the
+user, because that code never had them to be built, and code that should not exist needs none to
+go. The root already removed such code without asking. The judging stages used to lack the rule,
+so they held such a removal to the words of the user as a change of behavior and returned it to the
+root. A spec item that no words of the user back gives no authority for keeping the code, because
+writing a spec supplies no decision. Code that the user's words asked for got those words to be
+built, so its removal needs the user's word as well.
+
 The question wording is deleted instead of reworded, because a stage reports to the root and never
 talks to the user. A reworded invitation to ask would keep the same opening, and a stage that
 states the facts gives the root what it needs to decide what reaches the user.
@@ -126,9 +169,13 @@ rule is evidence and is never cited as authority, and the changed rule for band-
 longer-route findings. They check that no agent template and neither script contains the deleted
 wording. They check that a needs-decision decision with an empty correction is accepted, that one
 with a correction is refused before it reaches the remaining items, and that a root-action
-decision without a correction is refused.
+decision without a correction is refused. They check that the finding verifier's, the scope
+check's and the diff check's templates, the fix run's fixer and diff prompts and
+implement-review-verify state the removal rule, the rule's reach over a spec item without the
+user's words, and the exception for code the user's words asked for.
 
-The plugin version rises from 0.31.0 to 0.32.0.
+The plugin version rises from 0.31.0 to 0.32.0. The removal rule keeps it at 0.32.0, because the
+published branch does not carry that version yet.
 
 ## Rejected alternatives
 
