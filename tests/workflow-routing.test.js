@@ -59,6 +59,7 @@ const decision = (ids, fields = {}) => ({
   correction: 'Return the specified error to the caller.',
   constraints: 'Do not change the success response.',
   acceptance: 'Exercise the failure path and assert the caller receives the error.',
+  removal: false,
   receipts: [receipt],
   ...fields,
 })
@@ -1034,9 +1035,9 @@ describe('coder sense check and project-benefit review', () => {
         'holds no quotation attributed to the user sets abort.trigger to no-words before your first write']],
       ['finding-verifier', ['is CRITICAL, and neither cleanup nor record is available for it', "supply the quote yourself for a cold seat's finding (quality, cold alternatives, an audit seat)",
         'Where the record holds no words about the mechanism, state that silence in plain words in the authority field',
-        'Approve-fix for the deletion or rewrite the record describes, or for a deletion or rewrite that improves code quality without changing anything the spec specifies.',
+        'Approve-fix a project-benefit finding for the deletion or rewrite the record describes, or for a deletion or rewrite that improves code quality without changing anything the spec specifies.',
         'the authority field also names the rule of this template on corrections that improve code quality, and the evidence field quotes the reviewer\'s rule or the project rule the correction serves.',
-        "Keeping the flagged shape needs the user's word"]],
+        "Keeping the flagged shape of a project-benefit finding needs the user's word"]],
     ]) { const text = await template(name); for (const phrase of phrases) expect(text).toContain(phrase) }
     for (const stale of ['approve-fix is then unavailable', 'Approve-fix only for the deletion or rewrite']) expect(await template('finding-verifier')).not.toContain(stale)
     const flatSkill = flat(skill)
@@ -2859,13 +2860,48 @@ const backing = 'record entry retry-policy: "Before you start: if the upload fai
 const lower = text => flat(text).toLowerCase()
 
 describe('the user\'s words reach every stage', () => {
-  test('an unbacked-choice decision answered with record, cleanup, approve-fix or root-action fails the verifier checks', async () => {
-    for (const fields of [{ action: 'record', correction: 'Record it.' }, { action: 'cleanup', correction: 'Record it.' }, {},
+  test('an unbacked-choice decision answered with record, cleanup or root-action fails the verifier checks', async () => {
+    for (const fields of [{ action: 'record', correction: 'Record it.' }, { action: 'cleanup', correction: 'Record it.' },
       { action: 'root-action', correction: 'Investigate the retry policy.' }]) {
       const { result, calls } = await simulate({ reports: report('review:inverse', [unbacked]),
         verify: { verify: verification([benefit([source('inverse')], fields)]) } })
-      expect(result.detail).toContain('Unbacked-choice finding allows only needs-decision or reject, never ' + (fields.action ?? 'approve-fix'))
+      expect(result.detail).toContain('Unbacked-choice finding allows only needs-decision, reject or a removal approve-fix, never ' + fields.action)
       expect([retried(calls, 'verify').length, calls.some(c => c.phase === 'Fix')]).toEqual([3, false])
+    }
+  })
+
+  test('an approve-fix on an unbacked-choice finding that is no removal on the removal rule fails the verifier checks', async () => {
+    // An addition, a change of the choice and an approval that keeps the choice all arrive without the removal mark.
+    for (const correction of ['Add a backoff delay between the three upload retries.', 'Retry the upload five times instead of three.',
+      'Keep the three retries and document them.']) {
+      const { result, calls } = await simulate({ reports: report('review:inverse', [unbacked]),
+        verify: { verify: verification([benefit([source('inverse')], { correction })]) } })
+      expect([correction, result.detail.includes('Unbacked-choice finding allows approve-fix only for a removal on the removal rule, marked removal true')])
+        .toEqual([correction, true])
+      expect([retried(calls, 'verify').length, calls.some(c => c.phase === 'Fix')]).toEqual([3, false])
+    }
+    // The removal mark belongs to an approve-fix alone.
+    const marked = benefit([source('correctness')], { action: 'needs-decision', authority: 'No recorded words back the three retries.',
+      correction: '', removal: true })
+    const { result, calls } = await simulate({ reports: report('review:correctness', [unbacked]), verify: { verify: verification([marked]) } })
+    expect(result.detail).toContain('Only an approve-fix carries removal true, never needs-decision')
+    expect(calls.some(c => c.phase === 'Fix')).toBe(false)
+  })
+
+  test('a removal of an unbacked choice on the removal rule reaches the fixer, alone and in a group with other source kinds', async () => {
+    const removal = { authority: 'The removal rule of the finding verifier\'s template. The record holds no words about upload retries.',
+      evidence: 'src/example.js:12 retries the upload three times, and no record entry asks for retries.',
+      correction: 'Delete the retry loop so a failed upload fails once.', removal: true }
+    const alone = benefit([source('correctness')], removal)
+    const grouped = benefit([source('correctness'), source('inverse'), source('rules')], removal)
+    for (const [reports, approved] of [[report('review:correctness', [unbacked]), alone],
+      [{ ...report('review:correctness', [unbacked]), ...report('review:inverse', [bandAid]), ...report('review:rules', [finding]) }, grouped]]) {
+      const { result, calls } = await simulate({ reports, verify: { verify: verification([approved]) }, fixes: { fix: fixed([disposition()]) } })
+      expect(retried(calls, 'verify')).toHaveLength(1)
+      expect(calls.find(c => c.label === 'fix').prompt).toContain('APPROVED CORRECTIONS (verify against the tree and authority):\n\n' +
+        JSON.stringify([{ ...approved, key: 'fix:0' }]))
+      expect([result.exit, result.remaining.map(r => r.kind)]).toEqual(['follow-up', ['unattested-fix']])
+      expect(result.projectBenefitDecisions.map(d => d.decision)).toEqual([approved])
     }
   })
 
@@ -2891,17 +2927,34 @@ describe('the user\'s words reach every stage', () => {
     expect(result.projectBenefitDecisions.map(d => d.decision)).toEqual([closed])
   })
 
-  test('the verifier prompt, the verifier template and the skill state the two answers to an unbacked-choice finding', async () => {
+  test('the verifier prompt, the verifier template and the skill state the three answers to an unbacked-choice finding', async () => {
     const { calls } = await simulate()
-    expect(flat(calls.find(c => c.label === 'verify').prompt)).toContain('Answer an unbacked-choice finding only with needs-decision, or with reject whose authority reads record entry <id>: "<the backing words quoted together with their surrounding context>"')
+    const prompt = flat(calls.find(c => c.label === 'verify').prompt)
+    for (const phrase of ['Answer an unbacked-choice finding with needs-decision, with reject whose authority reads record entry <id>: "<the backing words quoted together with their surrounding context>"',
+      'or with an approve-fix marked removal true whose correction only removes the chosen code, after your own check of the record shows that no words of the user back that choice.',
+      'Code that the user\'s words asked for still needs the user\'s word to be removed.',
+      'Set removal true on an approve-fix whose correction removes code, a parameter or a mechanism that nothing uses, that nobody asked for, or that is built beyond what was asked, ' +
+      'on the removal rule of your template, and false on every other decision.']) {
+      expect([phrase, prompt.includes(phrase)]).toEqual([phrase, true])
+    }
     const verifier = await template('finding-verifier')
-    for (const phrase of ['only needs-decision and reject are available for it; approve-fix, root-action, cleanup and record are refused',
+    for (const phrase of ['only needs-decision, reject and an approve-fix for a removal on the removal rule are available for it; root-action, cleanup, record and every other approve-fix are refused',
+      'Approve-fix an unbacked-choice finding only for a removal on the removal rule, with removal set to true: your own check of the record shows that no words of the user back the choice, ' +
+      'and the correction removes the chosen code and adds or changes nothing else.',
+      'A correction that adds, changes or replaces the choice, and the removal of code the user\'s words asked for, are never such an approve-fix.',
+      'Set removal to true on an approve-fix whose correction removes code on the removal rule, and to false on every other decision.',
       'Needs-decision states in authority that no recorded words back the choice', 'record entry <id>: "<quote>", quoting the backing words together with their surrounding context',
       'reason says how that context supports the choice', 'A line found by searching for a word and quoted without its context backs nothing']) {
       expect([phrase, verifier.includes(phrase)]).toEqual([phrase, true])
     }
-    for (const phrase of ['A decision on an `unbacked-choice` finding is CRITICAL the same way, and only two actions answer it.',
-      'The script\'s decision checks refuse `approve-fix`, `root-action`, `cleanup` and `record` for such a finding',
+    for (const phrase of ['A decision on an `unbacked-choice` finding is CRITICAL the same way, and three actions answer it: ' +
+      '`needs-decision`, `reject`, and `approve-fix` for a removal on the removal rule.',
+      '`approve-fix` answers an `unbacked-choice` finding only for a removal on the removal rule, with `removal` true: the verifier\'s own check of the record shows ' +
+      'that no words of the user back the choice, and the correction removes the chosen code and adds or changes nothing else.',
+      'the removal of code the user\'s words asked for, are never such an `approve-fix`.',
+      'The script\'s decision checks refuse `root-action`, `cleanup` and `record` for an `unbacked-choice` finding, an `approve-fix` without `removal` true, ' +
+      'and a rejection whose `authority` lacks the record entry citation.',
+      'The verifier sets `removal` to true on an `approve-fix` whose correction removes code on the removal rule, and to false on every other decision.',
       'the inverse-spec reviewer\'s missing-decision findings carry it', '(`band-aid` / `longer-route` / `unbacked-choice`)']) {
       expect([phrase, flat(skill).includes(phrase)]).toEqual([phrase, true])
     }
@@ -3531,20 +3584,36 @@ describe('review seats are critics, and no stage asks the user a question', () =
     const unbacked = 'as long as no words of the user back that item: an item whose chain of parents reaches no transcript item and no approved text is no authority for keeping the code.'
     const asked = 'Code that the user\'s words asked for still needs the user\'s word to be removed'
     for (const [name, phrases] of [
-      ['finding-verifier', [violation, unbacked, asked, 'Decide such a removal approve-fix on this rule, even where it takes away what the removed code did: ' +
-        'its authority field names this rule of the finding verifier\'s template, and its evidence field shows that nothing uses the code or that no words of the user asked for it.',
-        'The rule holds also where an item of the spec names the code',
-        'Approve-fix is also available for a removal on this template\'s rule on code that nothing uses, that nobody asked for or that is built beyond what was asked, ' +
-        'and its authority field then also names that rule.']],
-      ['scope-check', [violation, unbacked, asked + ', so its removal is a new choice.', 'Class such a removal corrective on this rule, even where it takes away what the removed code did: ' +
-        'its reason names this rule of the scope check\'s template, and its receipts show that nothing uses the code or that no words of the user asked for it.',
-        'The rule holds also where an item of the parent spec names the code', 'or the correction removes code on the removal rule above;',
+      ['finding-verifier', [violation, unbacked, asked, 'Decide a removal on the removal rule approve-fix, even where it takes away what the removed code did: ' +
+        'its authority field names the removal rule of the finding verifier\'s template, and its evidence field shows that nothing uses the code or that no words of the user asked for it.',
+        'The removal rule holds also where an item of the spec names the code',
+        'Approve-fix a project-benefit finding also for a removal on the removal rule, and its authority field then also names that rule.']],
+      ['scope-check', [violation, unbacked, asked + ', so its removal is a new choice.', 'Class a removal on the removal rule corrective, even where it takes away what the removed code did: ' +
+        'its reason names the removal rule of the scope check\'s template, and its receipts show that nothing uses the code or that no words of the user asked for it.',
+        'The removal rule holds also where an item of the parent spec names the code', 'or the correction removes code on the removal rule above;',
         'or remove code that the removal rule below names.', 'or, for a removal, the code it removes and the evidence that nothing uses it or that no words of the user asked for it.']],
       ['diff-check', ['A corrective entry may also remove code, a parameter or a mechanism that nothing uses, that nobody asked for, or that is built beyond what was asked, which is a rule violation.',
-        'A change that carries out such a removal maps to its entry, even where it takes away what the removed code did.']],
+        'A change that carries out such a removal maps to its entry, even where it takes away what the removed code did.',
+        asked + ', so a change that removes such code never maps to an entry as a removal of code nobody asked for.']],
     ]) {
       const text = await template(name)
       for (const phrase of phrases) expect([name, phrase, text.includes(phrase)]).toEqual([name, phrase, true])
+    }
+    // Each rule of the removal passages of the finding verifier's and the scope check's templates stands in a bullet of its own.
+    for (const [name, openings] of [
+      ['finding-verifier', ['- Code, a parameter or a mechanism that nothing uses', '- Decide a removal on the removal rule approve-fix',
+        '- Set removal to true on an approve-fix', '- The removal rule holds also where an item of the spec names the code',
+        '- Code that the user\'s words asked for still needs the user\'s word to be removed.',
+        '- The authority field of a decision on a project-benefit finding', '- Approve-fix a project-benefit finding for the deletion',
+        '- Approve-fix a project-benefit finding also for a removal', '- Keeping the flagged shape of a project-benefit finding',
+        '- Reject a project-benefit finding only', '- Every decision on a project-benefit finding reaches the root',
+        '- Approve-fix an unbacked-choice finding only for a removal']],
+      ['scope-check', ['- Code, a parameter or a mechanism that nothing uses', '- Class a removal on the removal rule corrective',
+        '- The removal rule holds also where an item of the parent spec names the code', '- Code that the user\'s words asked for still needs']],
+      ['diff-check', ['- Code that the user\'s words asked for still needs']],
+    ]) {
+      const raw = await Bun.file(new URL(`../agents/${name}.md`, import.meta.url)).text()
+      for (const opening of openings) expect([name, opening, raw.includes('\n' + opening)]).toEqual([name, opening, true])
     }
     const { calls } = await simulateFix()
     const fix = flat(calls.find(c => c.label === 'fix').prompt)
@@ -3554,8 +3623,12 @@ describe('review seats are critics, and no stage asks the user a question', () =
       'A removal of code that nothing uses, that nobody asked for, or that is built beyond what was asked is not such a change, even where it takes away what the removed code did.']) {
       expect(['fix', phrase, fix.includes(phrase)]).toEqual(['fix', phrase, true])
     }
-    expect(flat(calls.find(c => c.label === 'diff').prompt)).toContain('A change that removes code, a parameter or a mechanism that nothing uses, that nobody asked for, ' +
-      'or that is built beyond what was asked maps to the corrective entry that names that removal, even where it takes away what the removed code did.')
+    const diff = flat(calls.find(c => c.label === 'diff').prompt)
+    for (const phrase of ['A change that removes code, a parameter or a mechanism that nothing uses, that nobody asked for, ' +
+      'or that is built beyond what was asked maps to the corrective entry that names that removal, even where it takes away what the removed code did.',
+      asked + ', so a change that removes such code never maps to an entry as a removal of code nobody asked for.']) {
+      expect(['diff', phrase, diff.includes(phrase)]).toEqual(['diff', phrase, true])
+    }
     const text = flat(skill)
     for (const phrase of ['Code, a parameter or a mechanism that nothing uses, that nobody asked for, or that is built beyond what was asked is a rule violation, ' +
       'and a correction that removes it needs no words of the user. The rule is in the finding verifier\'s own template beside the quality rule, ' +
@@ -3564,7 +3637,7 @@ describe('review seats are critics, and no stage asks the user a question', () =
       'The removal rule holds also where an item of the spec names the code, ' + unbacked,
       '`approve-fix` on a kind-bearing finding is also available for a removal on the removal rule, and its `authority` then also names that rule.',
       'is corrective and needs no words of the user, on the removal rule of the scope check\'s own template, even where it takes away what the code did.',
-      'The rule holds also where an item of the parent spec names the code, as long as no words of the user back that item.',
+      'The removal rule holds also where an item of the parent spec names the code, as long as no words of the user back that item.',
       'The classification of such a removal names the removal rule in its reason, and its receipts show that nothing uses the code or that no words of the user asked for it.',
       'The finding verifier and the fix run\'s scope check apply the same rule: the verifier decides such a removal `approve-fix` and the scope check classes it corrective, without the user\'s words.']) {
       expect([phrase, text.includes(phrase)]).toEqual([phrase, true])
@@ -3572,8 +3645,43 @@ describe('review seats are critics, and no stage asks the user a question', () =
     // The exception for code the user's words asked for stands in a bullet of its own in both passages.
     for (const opening of ['- Code that the user\'s words asked for still needs the user\'s word to be removed.',
       '- The removal of code that the user\'s words asked for is a new choice.', '- An `approve-fix` on the removal rule',
-      '- The classification of such a removal']) {
+      '- The classification of such a removal', '- The removal rule holds also where an item of the parent spec names the code',
+      '- The verifier sets `removal` to true', '- `approve-fix` answers an `unbacked-choice` finding only for a removal',
+      '- The script\'s decision checks refuse `root-action`, `cleanup` and `record`']) {
       expect([opening, skill.includes('\n' + opening)]).toEqual([opening, true])
+    }
+  })
+
+  test('the fixer template and both fixer prompts carry out an approved removal against a spec item without the user\'s words', async () => {
+    const asked = 'Code that the user\'s words asked for still needs the user\'s word to be removed'
+    const authority = 'An approved removal of code, a parameter or a mechanism that nothing uses, that nobody asked for, or that is built beyond ' +
+      'what was asked is no prompt-vs-spec conflict where a spec item that no words of the user back names that code: such an item ' +
+      'is no authority for keeping the code. ' + asked + '.'
+    const fixer = await template('fixer')
+    for (const phrase of ['Apply approved corrections against the spec as written, apart from an approved removal of code that no words of the user asked for.',
+      'Carry out an approved removal of code, a parameter or a mechanism that nothing uses, that nobody asked for, or that is built beyond what was asked, ' +
+      'also where an item of the spec names that code, as long as no words of the user back the item.',
+      'An item whose chain of parents reaches no transcript item and no approved text is no authority for keeping the code, ' +
+      'so such a removal is no prompt-versus-spec conflict, even where it takes away what the removed code did.',
+      'Return the approved removal of code that the user\'s words asked for rejected with receipts, because that code still needs the user\'s word to be removed.']) {
+      expect(['fixer', phrase, fixer.includes(phrase)]).toEqual(['fixer', phrase, true])
+    }
+    const main = flat((await simulate()).calls.find(c => c.label === 'fix').prompt)
+    for (const phrase of [authority, 'Implement the spec AS WRITTEN.',
+      'A correction marked removal true removes code, a parameter or a mechanism that nothing uses, that nobody asked for, or that is built beyond what was asked, ' +
+      'on the finding verifier\'s removal rule. Carry it out also where a spec item that no words of the user back names that code, even where it takes away what the removed code did.',
+      asked + ': return such a removal rejected with receipts, to the ROOT.']) {
+      expect(['main fix', phrase, main.includes(phrase)]).toEqual(['main fix', phrase, true])
+    }
+    const follow = flat((await simulateFix()).calls.find(c => c.label === 'fix').prompt)
+    for (const phrase of [authority, 'Implement the spec AS WRITTEN.',
+      'Carry it out also where an item of the parent spec that no words of the user back names that code.',
+      'A removal of code the user\'s words asked for is such a change: return it rejected with receipts, to the ROOT.']) {
+      expect(['follow-up fix', phrase, follow.includes(phrase)]).toEqual(['follow-up fix', phrase, true])
+    }
+    for (const opening of ['- Carry out an approved removal of code', '- Return the approved removal of code that the user\'s words asked for']) {
+      const raw = await Bun.file(new URL('../agents/fixer.md', import.meta.url)).text()
+      expect([opening, raw.includes('\n' + opening)]).toEqual([opening, true])
     }
   })
 

@@ -86,13 +86,16 @@ Rules:
   behavior still needs the user's words.
 - Code, a parameter or a mechanism that nothing uses, that nobody asked for, or that is built
   beyond what was asked is a rule violation, and a correction that removes it is corrective and
-  needs no words of the user. Decide such a removal approve-fix on this rule, even where it takes
-  away what the removed code did: its authority field names this rule of the finding verifier's
-  template, and its evidence field shows that nothing uses the code or that no words of the user
-  asked for it. The rule holds also where an item of the spec names the code, as long as no words
-  of the user back that item: an item whose chain of parents reaches no transcript item and no
-  approved text is no authority for keeping the code. Code that the user's words asked for still
-  needs the user's word to be removed.
+  needs no words of the user. This is the removal rule.
+- Decide a removal on the removal rule approve-fix, even where it takes away what the removed code
+  did: its authority field names the removal rule of the finding verifier's template, and its
+  evidence field shows that nothing uses the code or that no words of the user asked for it.
+- Set removal to true on an approve-fix whose correction removes code on the removal rule, and to
+  false on every other decision.
+- The removal rule holds also where an item of the spec names the code, as long as no words of the
+  user back that item: an item whose chain of parents reaches no transcript item and no approved
+  text is no authority for keeping the code.
+- Code that the user's words asked for still needs the user's word to be removed.
 - Needs-decision names a choice without which the assigned work cannot satisfy the existing
   requirements, with evidence, and carries no correction. Root-action covers a demonstrated
   impossibility or a required investigation you cannot complete. Both return to
@@ -133,24 +136,29 @@ Rules:
   finding disappear.
 - A source finding carrying kind band-aid or longer-route is a project-benefit finding about a
   choice made in this unit's own diff. Every decision whose sources include one is CRITICAL, and
-  neither cleanup nor record is available for it. Its authority field quotes the recorded words on
+  neither cleanup nor record is available for it.
+- The authority field of a decision on a project-benefit finding quotes the recorded words on
   every action, not only approve-fix: check the quote a briefed seat supplied; supply the quote
   yourself for a cold seat's finding (quality, cold alternatives, an audit seat), which attaches
   none by design. Where the record holds no words about the mechanism, state that silence in
-  plain words in the authority field. Approve-fix for the deletion or rewrite the record
-  describes, or for a deletion or rewrite that improves code quality without changing anything
-  the spec specifies. For the second, the authority field also names the rule of this template on
-  corrections that improve code quality, and the evidence field quotes the reviewer's rule or the
-  project rule the correction serves. Approve-fix is also available for a removal on this
-  template's rule on code that nothing uses, that nobody asked for or that is built beyond what was
-  asked, and its authority field then also names that rule. Keeping the flagged shape needs the
-  user's word. Reject only with concrete counterevidence against the finding itself, never an
-  edited spec. Every such decision reaches the root, which closes a standing one only by deletion,
-  a rewrite, or the user's word.
+  plain words in the authority field.
+- Approve-fix a project-benefit finding for the deletion or rewrite the record describes, or for a
+  deletion or rewrite that improves code quality without changing anything the spec specifies.
+  For the second, the authority field also names the rule of this template on corrections that
+  improve code quality, and the evidence field quotes the reviewer's rule or the project rule the
+  correction serves.
+- Approve-fix a project-benefit finding also for a removal on the removal rule, and its authority
+  field then also names that rule.
+- Keeping the flagged shape of a project-benefit finding needs the user's word.
+- Reject a project-benefit finding only with concrete counterevidence against the finding itself,
+  never an edited spec.
+- Every decision on a project-benefit finding reaches the root, which closes a standing one only
+  by deletion, a rewrite, or the user's word.
 - A source finding carrying kind unbacked-choice names a choice in the spec, the prompt or the diff
   that no words of the user back. Every decision whose sources include one is CRITICAL, and only
-  needs-decision and reject are available for it; approve-fix, root-action, cleanup and record are
-  refused. Needs-decision states in authority that no recorded words back the choice; it reaches the
+  needs-decision, reject and an approve-fix for a removal on the removal rule are available for it;
+  root-action, cleanup, record and every other approve-fix are refused. Needs-decision states in
+  authority that no recorded words back the choice; it reaches the
   root as an open decision. Reject closes it only on a record entry whose words were said about this
   unit and back the choice: authority reads record entry <id>: "<quote>", quoting the backing words
   together with their surrounding context from that entry, and reason says how that context supports
@@ -160,6 +168,11 @@ Rules:
   decision given for a different piece of work, back nothing here even where their subject overlaps.
   A short answer that crossed with a newer message answers the earlier message and never approves
   what the newer message proposed, so it never closes such a finding either.
+- Approve-fix an unbacked-choice finding only for a removal on the removal rule, with removal set
+  to true: your own check of the record shows that no words of the user back the choice, and the
+  correction removes the chosen code and adds or changes nothing else. A correction that adds,
+  changes or replaces the choice, and the removal of code the user's words asked for, are never
+  such an approve-fix.
 - The implementer's object carries specFindings, one entry per finding with the ids of the spec
   items it concerns in items. A joint-impossibility or missing-contract entry ends the run before
   any review, so in a run that reaches you the items left unbuilt are the items named in an entry

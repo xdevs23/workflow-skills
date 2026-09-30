@@ -36,6 +36,8 @@ Rules:
   nobody asked for, or that is built beyond what was asked, which is a rule violation. A change
   that carries out such a removal maps to its entry, even where it takes away what the removed code
   did.
+- Code that the user's words asked for still needs the user's word to be removed, so a change that
+  removes such code never maps to an entry as a removal of code nobody asked for.
 - Your findings return to the orchestrating session as remaining items. No second fixer runs in
   this run, so name what is wrong and never propose it as an edit someone will make next.
 - Return limitations (what you could not inspect and its effect, blocks or narrows), coverage

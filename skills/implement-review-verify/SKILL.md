@@ -462,6 +462,9 @@ lenses of every run, and the main script stops a run whose seat list holds anoth
   did.
 - An `approve-fix` on the removal rule names the rule in `authority`, and its `evidence` shows that
   nothing uses the code or that no words of the user asked for it.
+- The verifier sets `removal` to true on an `approve-fix` whose correction removes code on the
+  removal rule, and to false on every other decision. The script's decision checks refuse `removal`
+  true on any other action.
 - The removal rule holds also where an item of the spec names the code, as long as no words of the
   user back that item: an item whose chain of parents reaches no transcript item and no approved
   text is no authority for keeping the code.
@@ -518,14 +521,23 @@ cannot proceed merely because a reviewer or verifier prefers it.
   its `authority` then also names that rule.
 - Keeping the flagged shape of a kind-bearing finding needs the user's word.
 - `reject` on a kind-bearing finding needs counterevidence against the finding itself.
-- A decision on an `unbacked-choice` finding is CRITICAL the same way, and only two actions answer
-  it. `needs-decision` states in `authority` that no recorded words back the choice and reaches you
-  in `remaining` as an open decision. `reject` closes it only on a record entry whose words, said
-  about this unit, back the choice: its `authority` reads `record entry <id>: "<quote>"`, quoting
-  the backing words together with their surrounding context from that entry, and its `reason` says
-  how that context supports the choice. A line found by searching for a word and quoted without its
-  context backs nothing. The script's decision checks refuse `approve-fix`, `root-action`,
-  `cleanup` and `record` for such a finding, and a rejection whose `authority` lacks that citation.
+- A decision on an `unbacked-choice` finding is CRITICAL the same way, and three actions answer it:
+  `needs-decision`, `reject`, and `approve-fix` for a removal on the removal rule.
+- `needs-decision` on an `unbacked-choice` finding states in `authority` that no recorded words back
+  the choice and reaches you in `remaining` as an open decision.
+- `reject` closes an `unbacked-choice` finding only on a record entry whose words, said about this
+  unit, back the choice: its `authority` reads `record entry <id>: "<quote>"`, quoting the backing
+  words together with their surrounding context from that entry, and its `reason` says how that
+  context supports the choice. A line found by searching for a word and quoted without its context
+  backs nothing.
+- `approve-fix` answers an `unbacked-choice` finding only for a removal on the removal rule, with
+  `removal` true: the verifier's own check of the record shows that no words of the user back the
+  choice, and the correction removes the chosen code and adds or changes nothing else. A correction
+  that adds, changes or replaces the choice, and the removal of code the user's words asked for, are
+  never such an `approve-fix`.
+- The script's decision checks refuse `root-action`, `cleanup` and `record` for an `unbacked-choice`
+  finding, an `approve-fix` without `removal` true, and a rejection whose `authority` lacks the
+  record entry citation.
 - The spec-compliance reviewer never sees the implementer's object, so it reports an item the
   implementer left unbuilt as missing required behaviour. The implementer's `specFindings` entry
   names its spec items in `items`. A `joint-impossibility` or `missing-contract` entry ends the run
@@ -752,9 +764,9 @@ second implementer pre-check.
 - A correction that adds or changes behavior is a new choice.
 - A removal of code, a parameter or a mechanism that nothing uses, that nobody asked for, or that
   is built beyond what was asked is corrective and needs no words of the user, on the removal rule
-  of the scope check's own template, even where it takes away what the code did. The rule holds
-  also where an item of the parent spec names the code, as long as no words of the user back that
-  item.
+  of the scope check's own template, even where it takes away what the code did.
+- The removal rule holds also where an item of the parent spec names the code, as long as no words
+  of the user back that item.
 - The classification of such a removal names the removal rule in its reason, and its receipts show
   that nothing uses the code or that no words of the user asked for it.
 - The removal of code that the user's words asked for is a new choice.

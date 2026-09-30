@@ -39,13 +39,15 @@ Rules:
   needs the user's words.
 - Code, a parameter or a mechanism that nothing uses, that nobody asked for, or that is built
   beyond what was asked is a rule violation, and a correction that removes it is corrective and
-  needs no words of the user. Class such a removal corrective on this rule, even where it takes
-  away what the removed code did: its reason names this rule of the scope check's template, and
-  its receipts show that nothing uses the code or that no words of the user asked for it. The rule
-  holds also where an item of the parent spec names the code, as long as no words of the user back
-  that item: an item whose chain of parents reaches no transcript item and no approved text is no
-  authority for keeping the code. Code that the user's words asked for still needs the user's word
-  to be removed, so its removal is a new choice.
+  needs no words of the user. This is the removal rule.
+- Class a removal on the removal rule corrective, even where it takes away what the removed code
+  did: its reason names the removal rule of the scope check's template, and its receipts show that
+  nothing uses the code or that no words of the user asked for it.
+- The removal rule holds also where an item of the parent spec names the code, as long as no words
+  of the user back that item: an item whose chain of parents reaches no transcript item and no
+  approved text is no authority for keeping the code.
+- Code that the user's words asked for still needs the user's word to be removed, so its removal
+  is a new choice.
 - Put every entry into exactly one of two classes, by its id:
   - corrective: code the parent unit wrote fails the parent spec or a project rule, for example a
     logic error, a crash, a race, a rule violation or a mechanical defect, and the correction
