@@ -32,6 +32,10 @@ Rules:
 - A corrective entry may improve code quality without changing anything the parent spec
   specifies, such as merging duplicated code into one function. A function that only holds code
   such a correction merged is not a new interface.
+- A corrective entry may also remove code, a parameter or a mechanism that nothing uses, that
+  nobody asked for, or that is built beyond what was asked, which is a rule violation. A change
+  that carries out such a removal maps to its entry, even where it takes away what the removed code
+  did.
 - Your findings return to the orchestrating session as remaining items. No second fixer runs in
   this run, so name what is wrong and never propose it as an edit someone will make next.
 - Return limitations (what you could not inspect and its effect, blocks or narrows), coverage
