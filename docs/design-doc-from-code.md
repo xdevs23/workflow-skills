@@ -30,10 +30,10 @@ spec's file name: the main script after the unit spec, the fix-run script after 
 Both scripts hold the same text for when a writer writes a document and for what the document
 carries, and no stage prompt produces the document with a tool.
 
-The implement-review-verify skill, the immaculate-spec-writing skill, the implementer and fixer
-templates and the README describe this step and the contents of the document. The passages that
-say which documents may enter a spec as authority also cover the generated documents that earlier
-units left in the repository.
+The implement-review-verify skill, the spec-writing skill, the implementer and fixer templates
+and the README describe this step and the contents of the document. The passages that say which
+documents may enter a spec as authority also cover the generated documents that earlier units left
+in the repository.
 
 ## A document only when the design changes
 
