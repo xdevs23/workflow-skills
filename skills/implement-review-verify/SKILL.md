@@ -227,9 +227,15 @@ collisions and consistency drift.
   sense-check observation as a `band-aid` or `longer-route` finding (phase 2), never as a flag, and
   a reading seat never sees a wordless record because the implementer stops the run before any
   reader starts.
-- **A sense-check flag needs the user's decision.** After a sense-check flag the unit continues only
-  on the user's verbatim decision quoted in the private record; you choose the continuation from the
-  coder's object and that decision.
+- **A sense-check flag continues only on the user's recorded words.** After a sense-check flag,
+  check the coder's object and its evidence against the existing authority first: the spec and the
+  user's verbatim words quoted in the private record. Where those words already decide the
+  continuation, such as removing behavior nobody approved or fixing a correction that improves
+  quality without changing the spec, choose that continuation yourself without a new question.
+  Only a product or architecture decision the existing authority leaves genuinely unresolved goes
+  to the user, and the unit then continues only on the user's verbatim decision quoted in the
+  private record. Decide any other unresolved choice as the section on what reaches the user says.
+  Without such authority the flagged mechanism never continues, whatever a stage argues for it.
 - **Scope follows the same rule.** The implementer touches only what the task needs, and flags
   anything beyond the ruled scope as an invention instead of building it.
 - **The design document is the implementer's last write.** It writes the document by hand from the
@@ -746,7 +752,7 @@ second implementer pre-check.
 - **Fix a correction that improves code quality without changing anything the spec specifies.** It
   needs no words of the user and no question.
 - **Remove behavior nobody approved.** Behavior added without authority is removed as an
-  unauthorized addition, never offered to the user as a choice.
+  unauthorized addition. Never offer it to the user as a choice.
 - **Remove code, a parameter or a mechanism that nothing uses, that nobody asked for, or that is
   built beyond what was asked, without asking the user.** A hand-written design document that
   describes it, such as one written from your own spec, is no reason to keep it, because such a
@@ -756,8 +762,14 @@ second implementer pre-check.
   option beside an alternative.
 - **Send any other open item to a new unit.** A `new-choice` item the fix run's scope check refused
   and an open `unbacked-choice` decision that is neither a product nor an architecture decision go
-  to a new implement-review-verify unit with its own spec, never to the user, and you decide the
-  choice in that spec.
+  to a new implement-review-verify unit with its own spec. Never send them to the user. You decide
+  the choice in that spec on the authority of the user's recorded delegation of this kind of
+  choice, which this rule carries: the new spec cites this rule as a `rule` item, the private
+  record of the new unit holds the user's approval of the rule with its context, and the choice is
+  an ordinary derivation from that rule item and the rules and observations that settle it.
+  Writing the spec supplies no authority, and every check for an unbacked item or a record without
+  the user's words applies to it unchanged. The delegation covers only a choice that is neither a
+  product nor an architecture decision.
 - **Decide a split over agreed facts.** When stages or models split on a choice while agreeing on
   the facts, apply the rules to those facts and decide. A split is never a reason to ask the user.
 

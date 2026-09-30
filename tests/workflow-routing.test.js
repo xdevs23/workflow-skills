@@ -1222,7 +1222,7 @@ describe('spec provenance instructions and routing', () => {
       expect([phrase, text.includes(phrase)]).toEqual([phrase, true])
     }
     // Each rule is a bullet of the question-premise section that opens with its bold sentence.
-    const premise = sectionBlocks(skill, 'Question-premise check').filter(block => block.kind === 'item')
+    const premise = sectionBlocks(skill, '### Question-premise check').filter(block => block.kind === 'item')
     for (const opener of ['A decision that changes what a thing is triggers a redesign.', 'A limit is never attached to a decision.',
       'A question about a premise stops every edit to it.', 'Names follow decisions.']) {
       const found = premise.some(block => block.strong[0] === opener && block.text.startsWith(opener))
@@ -1686,26 +1686,66 @@ describe('one-pass remaining-items handoff', () => {
   })
 })
 
-// Headings in document order, so a rule required to sit immediately before another is checked by position.
-const headings = text => [...text.matchAll(/^#{2,4} .+$/gm)].map(match => match[0])
-const readSkill = name => Bun.file(new URL(`../skills/${name}/SKILL.md`, import.meta.url)).text()
-// One section's own text: from its heading to the next heading of the same or higher level, so a
-// rule that moves to another section stops satisfying the criterion that names this one.
-const sectionText = (text, heading) => {
-  const start = text.indexOf(`\n${heading}\n`)
-  if (start < 0) throw new Error(`Missing heading: ${heading}`)
-  const body = text.slice(start + heading.length + 2)
-  const next = body.search(new RegExp(`^#{1,${heading.match(/^#+/)[0].length}} `, 'm'))
-  return flat(next < 0 ? body : body.slice(0, next))
+// The blocks of a Markdown file as Bun's parser reads them. A block holds only its own inline text,
+// with each code span written in backticks, the list of code spans in it and the list of its bold
+// phrases. With `bold` set, the text also writes each bold phrase between double asterisks, as the
+// source does. A heading also holds its level, and an item of an ordered list its depth and number.
+// The parser closes a nested block before the block that holds it, so a nested item comes before
+// its parent item and every other block is in document order.
+// The parser has no front matter support: it reads the front matter of these files as a heading,
+// which keeps it out of the paragraphs.
+const markdownBlocks = (text, { bold = false } = {}) => {
+  const blocks = []
+  let spans = []
+  let strong = []
+  const block = kind => (children, meta) => {
+    if (children) {
+      blocks.push({ kind, text: children, spans, strong, ...(kind === 'heading' && { level: meta.level }),
+        ...(kind === 'item' && meta.ordered && { depth: meta.depth, number: meta.start + meta.index }) })
+    }
+    spans = []
+    strong = []
+    return ''
+  }
+  Bun.markdown.render(text, {
+    heading: block('heading'), paragraph: block('paragraph'), listItem: block('item'),
+    th: block('cell'), td: block('cell'), html: block('html'),
+    code: body => { blocks.push({ kind: 'code', text: body, spans: [], strong: [] }); return '' },
+    codespan: span => { spans.push(span); return '`' + span + '`' },
+    strong: children => { strong.push(children); return bold ? `**${children}**` : children },
+  })
+  return blocks
 }
-// One numbered law's own item, from its number to the next one.
+// A heading as the source writes it: its level in hash marks, then its text.
+const headingLabel = block => `${'#'.repeat(block.level)} ${block.text}`
+// Headings of levels two to four in document order, so a rule required to sit immediately before
+// another is checked by position.
+const headings = text => markdownBlocks(text, { bold: true })
+  .filter(block => block.kind === 'heading' && block.level >= 2 && block.level <= 4).map(headingLabel)
+const readSkill = name => Bun.file(new URL(`../skills/${name}/SKILL.md`, import.meta.url)).text()
+// The blocks of one section, after its heading and up to the next heading of the same or higher level.
+const sectionBlocks = (text, heading, options) => {
+  const blocks = markdownBlocks(text, options)
+  const start = blocks.findIndex(block => block.kind === 'heading' && headingLabel(block) === heading)
+  if (start < 0) throw new Error(`Missing heading: ${heading}`)
+  const end = blocks.findIndex((block, i) => i > start && block.kind === 'heading' && block.level <= blocks[start].level)
+  return blocks.slice(start + 1, end < 0 ? blocks.length : end)
+}
+// One section's own text with its bold phrases marked, so a rule that moves to another section
+// stops satisfying the criterion that names this one.
+const sectionText = (text, heading) => flat(sectionBlocks(text, heading, { bold: true }).map(block => block.text).join(' '))
+// The one item of a section that opens with the given words, so a rule is checked in the item that states it.
+const sectionItem = (text, heading, opener) => {
+  const items = sectionBlocks(text, heading).filter(block => block.kind === 'item' && flat(block.text).startsWith(opener))
+  expect([heading, opener, items.length]).toEqual([heading, opener, 1])
+  return flat(items[0].text)
+}
+// One numbered law's own item, with its bold phrases marked.
 const lawText = (text, number) => {
-  const laws = sectionText(text, '## Laws')
-  const start = laws.indexOf(`${number}. **`)
-  if (start < 0) throw new Error(`Missing law: ${number}`)
-  const body = laws.slice(start)
-  const next = body.indexOf(`${number + 1}. **`)
-  return next < 0 ? body : body.slice(0, next)
+  const law = sectionBlocks(text, '## Laws', { bold: true })
+    .find(block => block.kind === 'item' && block.depth === 0 && block.number === number)
+  if (!law) throw new Error(`Missing law: ${number}`)
+  return flat(law.text)
 }
 
 describe('work execution rules', () => {
@@ -2513,38 +2553,6 @@ const WRITE_SCRATCH = 'SCRATCH: put scratch files where the workflow-skills:loca
 const WRITE_NOTHING = 'WRITE NOTHING: no copies of files and no notes. Only the output of a command that cannot be read directly may be written, to the system temporary directory.'
 // The input paths a stage reads, which sit in the project cache and are no place to write.
 const INPUT_PATHS = [SPEC_PATH, PARENT_SPEC, FIX_LIST, '<main checkout>/.cache/directives/<unit>.yaml', '<main checkout>/.cache/directives/<parent unit>.yaml']
-// The blocks of a Markdown file as Bun's parser reads them, in document order. A block holds only
-// its own inline text, with each code span written in backticks, the list of code spans in it and
-// the list of its bold phrases. A heading also holds its level.
-// The parser has no front matter support: it reads the front matter of these files as a heading,
-// which keeps it out of the paragraphs.
-const markdownBlocks = text => {
-  const blocks = []
-  let spans = []
-  let strong = []
-  const block = kind => (children, meta) => {
-    if (children) blocks.push({ kind, text: children, spans, strong, ...(kind === 'heading' && { level: meta.level }) })
-    spans = []
-    strong = []
-    return ''
-  }
-  Bun.markdown.render(text, {
-    heading: block('heading'), paragraph: block('paragraph'), listItem: block('item'),
-    th: block('cell'), td: block('cell'), html: block('html'),
-    code: body => { blocks.push({ kind: 'code', text: body, spans: [], strong: [] }); return '' },
-    codespan: span => { spans.push(span); return '`' + span + '`' },
-    strong: children => { strong.push(children); return children },
-  })
-  return blocks
-}
-// The blocks of one section, after its heading and up to the next heading of the same or higher level.
-const sectionBlocks = (text, heading) => {
-  const blocks = markdownBlocks(text)
-  const start = blocks.findIndex(block => block.kind === 'heading' && block.text === heading)
-  if (start < 0) throw new Error(`Missing heading: ${heading}`)
-  const end = blocks.findIndex((block, i) => i > start && block.kind === 'heading' && block.level <= blocks[start].level)
-  return blocks.slice(start + 1, end < 0 ? blocks.length : end)
-}
 const firstParagraph = text => markdownBlocks(text).find(block => block.kind === 'paragraph').text
 // A code span holding a command starts with a program name followed by its arguments.
 const command = span => /^[a-z][\w-]* /.test(span)
@@ -3441,36 +3449,71 @@ describe('only product and architecture decisions reach the user', () => {
       'An item of any other kind never reaches the user, whether a stage or a remaining item calls it unsettled, open or undecided: you decide it yourself']) {
       expect([phrase, text.includes(phrase)]).toEqual([phrase, true])
     }
-    // Every other passage that sends an item to the user names the two kinds as the only ones that go.
-    const prose = flat(skill)
-    for (const phrase of ['only a product or architecture decision that removing the behavior cannot close reaches the user at all',
-      'asking the user about a genuinely unsettled product or architecture decision, or deciding any other unsettled choice yourself',
-      'an open decision once it is decided: by the user for a product or architecture decision, by you for any other',
-      'present only a product or architecture decision it leaves genuinely unresolved as a decision request',
-      'ask the user about the part that is a genuinely unsettled product or architecture decision, and decide any other unsettled part yourself',
-      'Only a product or architecture decision that genuinely cannot be derived from what is already decided reaches the user',
-      'a product or architecture decision the record genuinely leaves open still reaches the user once the screen has passed it',
-      'by asking the user about a genuinely unsettled product or architecture decision after checking the question\'s premises',
-      'genuine exceptions: unsettled product or architecture decisions']) {
-      expect([phrase, prose.includes(phrase)]).toEqual([phrase, true])
+  })
+
+  // Each passage that sends an item to the user is checked in its own item, so a restriction moved
+  // out of its passage fails even where its words still stand elsewhere. The review phase and the
+  // judge's screen keep their section checks in the work execution rules.
+  test('every other passage that sends an item to the user names the two kinds as the only ones that go', () => {
+    const phase1 = '### Phase 1 — Implement (1 agent, sequential — `agentType:\'workflow-skills:implementer\'`)'
+    const phase3 = '### Phase 3 — Verify and consolidate (1 read-only `agentType:\'workflow-skills:finding-verifier\'`)'
+    const remaining = '### Remaining items and follow-up work'
+    const premise = '### Question-premise check'
+    const passages = [
+      [sectionItem(skill, phase3, 'Every decision on an inverse-spec source finding'),
+        'asking the user about a genuinely unsettled product or architecture decision, or deciding any other unsettled choice yourself'],
+      [sectionItem(skill, remaining, 'A new run starts only for a recorded item that is supposed to be fixed'),
+        'an open decision once it is decided: by the user for a product or architecture decision, by you for any other'],
+      [sectionItem(skill, premise, 'Never ask again a choice the record already settles'),
+        'present only a product or architecture decision it leaves genuinely unresolved as a decision request'],
+      [sectionItem(skill, premise, 'Give every entry the run returns in `inverseSpecDecisions` this treatment'),
+        'ask the user about the part that is a genuinely unsettled product or architecture decision, and decide any other unsettled part yourself'],
+      [sectionItem(skill, premise, 'A question is evidence of drift.'),
+        'Only a product or architecture decision that genuinely cannot be derived from what is already decided reaches the user'],
+      [lawText(skill, 13),
+        'by asking the user about a genuinely unsettled product or architecture decision after checking the question\'s premises'],
+      [sectionItem(skill, '## Authoring notes', 'Keep routine consolidation, rejections and successful fixes inside the workflow record.'),
+        'genuine exceptions: unsettled product or architecture decisions'],
+      [sectionItem(skill, phase1, 'A sense-check flag continues only on the user\'s recorded words.'),
+        'check the coder\'s object and its evidence against the existing authority first'],
+    ]
+    for (const [text, phrase] of passages) expect([phrase, text.includes(phrase)]).toEqual([phrase, true])
+  })
+
+  test('a sense-check flag reaches the user only for a product or architecture decision the existing authority leaves open', () => {
+    const text = sectionItem(skill, '### Phase 1 — Implement (1 agent, sequential — `agentType:\'workflow-skills:implementer\'`)',
+      'A sense-check flag continues only on the user\'s recorded words.')
+    for (const phrase of ['Where those words already decide the continuation, such as removing behavior nobody approved',
+      'choose that continuation yourself without a new question',
+      'Only a product or architecture decision the existing authority leaves genuinely unresolved goes to the user, and the unit then continues only on the user\'s verbatim decision quoted in the private record.',
+      'Decide any other unresolved choice as the section on what reaches the user says.',
+      'Without such authority the flagged mechanism never continues']) {
+      expect([phrase, text.includes(phrase)]).toEqual([phrase, true])
     }
+    expect(text).not.toContain('After a sense-check flag the unit continues only on the user\'s verbatim decision')
   })
 
   test('you decide every other item yourself, each rule a bullet that opens with its instruction', () => {
-    const bullets = sectionBlocks(skill, 'What reaches the user').filter(block => block.kind === 'item')
+    const bullets = sectionBlocks(skill, '### What reaches the user').filter(block => block.kind === 'item')
     const rules = [
       ['Fix a correction that improves code quality without changing anything the spec specifies.', 'It needs no words of the user and no question.'],
-      ['Remove behavior nobody approved.', 'removed as an unauthorized addition, never offered to the user as a choice'],
+      ['Remove behavior nobody approved.', 'removed as an unauthorized addition. Never offer it to the user as a choice.'],
       ['Remove code, a parameter or a mechanism that nothing uses, that nobody asked for, or that is built beyond what was asked, without asking the user.',
         'A hand-written design document that describes it, such as one written from your own spec, is no reason to keep it'],
       ['Make a recommended fix you have checked.', 'make the fix; never present it as an option beside an alternative'],
       ['Send any other open item to a new unit.',
-        'A `new-choice` item the fix run\'s scope check refused and an open `unbacked-choice` decision that is neither a product nor an architecture decision go to a new implement-review-verify unit with its own spec, never to the user, and you decide the choice in that spec.'],
+        'A `new-choice` item the fix run\'s scope check refused and an open `unbacked-choice` decision that is neither a product nor an architecture decision go to a new implement-review-verify unit with its own spec. Never send them to the user.',
+        'You decide the choice in that spec on the authority of the user\'s recorded delegation of this kind of choice, which this rule carries',
+        'the new spec cites this rule as a `rule` item, the private record of the new unit holds the user\'s approval of the rule with its context',
+        'the choice is an ordinary derivation from that rule item and the rules and observations that settle it',
+        'Writing the spec supplies no authority, and every check for an unbacked item or a record without the user\'s words applies to it unchanged.',
+        'The delegation covers only a choice that is neither a product nor an architecture decision.'],
       ['Decide a split over agreed facts.', 'apply the rules to those facts and decide. A split is never a reason to ask the user.'],
     ]
-    for (const [opener, body] of rules) {
+    for (const [opener, ...phrases] of rules) {
       const found = bullets.find(block => flat(block.strong[0] ?? '') === opener && flat(block.text).startsWith(opener))
-      expect([opener, Boolean(found), flat(found?.text ?? '').includes(body)]).toEqual([opener, true, true])
+      expect([opener, Boolean(found)]).toEqual([opener, true])
+      for (const phrase of phrases) expect([opener, phrase, flat(found.text).includes(phrase)]).toEqual([opener, phrase, true])
     }
   })
 
@@ -3484,10 +3527,10 @@ describe('only product and architecture decisions reach the user', () => {
     }
   })
 
-  test('the two rules that relayed items to the user are gone', () => {
+  test('the rules that sent items to the user unconditionally are gone', () => {
     const prose = flat(skill)
     for (const phrase of ['A choice without the user\'s words is a question', 'Put every open `unbacked-choice` decision to the user as a question',
-      'anything the scope check refused go to the user', 'it goes to the user the same way']) {
+      'anything the scope check refused go to the user', 'it goes to the user the same way', 'A sense-check flag needs the user\'s decision.']) {
       expect([phrase, prose.includes(phrase)]).toEqual([phrase, false])
     }
   })
