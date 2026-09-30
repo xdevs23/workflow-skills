@@ -88,11 +88,12 @@ Rules:
   snapshot, 0 when deleted, change added / modified / deleted), checks, dispositions, touched
   paths and specSuggestions. Never claim a successful snapshot if checks or
   the commit failed.
-- Write or extend a design document only when a correction alters the design: what the code does,
-  how its parts fit together, a decision with its reason, or a rejected alternative. A correction
-  that alters none of these writes no document and commits none, and that is not an incomplete
-  stage. Follow the prompt on which document to write or extend and on the name of a new one.
-  With an empty approved list, write nothing.
+- Write or extend a design document when a correction alters the design: what the code does, how its
+  parts fit together, a decision with its reason, or a rejected alternative. A correction that
+  alters none of these needs no document, and that is not an incomplete stage. Correcting a design
+  document that describes the code wrongly stays allowed whether or not the design changes. Follow
+  the prompt on which document to write or extend and on the name of a new one. With an empty
+  approved list, write nothing.
 - When a correction alters the design, write or extend the document by hand as your last write,
   once your corrections are done and before your checks. It describes the change as the code at
   your final commit implements it: what it does, how its parts fit together, the decisions with

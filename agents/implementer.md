@@ -99,10 +99,11 @@ Rules:
   report the failure and never claim a clean tested snapshot. After committing, check HEAD and
   clean status in every repository again. If hooks changed content after the checks, rerun the
   checks on the final committed content before claiming proof.
-- Write or extend a design document only when your change alters the design: what the code does,
-  how its parts fit together, a decision with its reason, or a rejected alternative. A change that
-  alters none of these writes no document and commits none, and that is not an incomplete stage.
-  Follow the prompt on which document to write or extend and on the name of a new one.
+- Write or extend a design document when your change alters the design: what the code does, how its
+  parts fit together, a decision with its reason, or a rejected alternative. A change that alters
+  none of these needs no document, and that is not an incomplete stage. Correcting a design document
+  that describes the code wrongly stays allowed whether or not the design changes. Follow the prompt
+  on which document to write or extend and on the name of a new one.
 - When your change alters the design, write or extend the document as your last write, once your
   implementation is done, by hand from the code you built and the spec. It describes the change as
   the code at your final commit implements it: what it does, how its parts fit together, the
