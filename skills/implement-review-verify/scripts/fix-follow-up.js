@@ -443,11 +443,6 @@ const PROVE = [
   'run, git quotes HEAD and status. An account of the work with an empty files list is not the work.',
 ].join('\n')
 const CHECK = 'CHECK COMMAND, fixer only (run bare after your last write): ' + UNIT.checkCommand
-// As in the main script, a fixer whose correction alters the design extends by hand, as its last write
-// and before its checks, the document in the parent unit's documents directory that already describes
-// the part it changed, and writes a new one, named after the parent spec's file, only when none does.
-// A correction that alters no design writes none. The fixer commits the document in the repository
-// that holds the documents directory.
 const NEW_DOCUMENT = UNIT.documents + '/' + UNIT.parentSpec.split('/').pop().replace(/\.yaml$/, '') + '.md'
 const DOCUMENT_WHEN = [
   'DESIGN DOCUMENT, writer only: write or extend a design document only when your change alters the design: what the code',
