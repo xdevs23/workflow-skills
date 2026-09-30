@@ -32,8 +32,10 @@ question-premise check.
   supplies no authority, and the checks for an unbacked item and for a record without the user's
   words apply unchanged. The delegation covers only choices that are neither product nor
   architecture decisions.
-- When stages or models split on a choice while agreeing on the facts, the root applies the rules
-  to those facts and decides. A split is never a reason to ask the user.
+- When stages or models split on a choice that is neither a product nor an architecture decision
+  while agreeing on the facts, the root applies the rules to those facts and decides. The split
+  alone is never a reason to ask the user, and a product or architecture decision reaches the user
+  whether or not the stages split on it.
 
 ## Passages that send an item to the user
 
@@ -75,8 +77,9 @@ match its context leaves the choice open, and the root handles it as every other
 A product or architecture decision that does reach the user is asked after the root has checked
 the user's recorded words, as the question-premise check describes. The question is in the root's
 own wording and describes the choice by what the user will see. No option is labelled as
-recommended, because an option the root can recommend with confidence is a decision it takes
-itself. No option keeps a found defect as it is or leaves the decision for later. The rule sits in
+recommended. An option the user's recorded words or the rules already settle is a decision the
+root takes itself, and a choice they leave open is the user's, put without the root's preference.
+No option keeps a found defect as it is or leaves the decision for later. The rule sits in
 the question-premise check beside the existing rules on the shape of an ask.
 
 ## Decisions and their reasons
@@ -87,7 +90,8 @@ the question-premise check beside the existing rules on the shape of an ask.
   design document never counts as the design, as the spec-writing skill states, so a document that
   describes the mechanism does not argue for keeping it.
 - A split between stages that agree on the facts is a disagreement about how the rules apply, and
-  applying the rules is the root's job.
+  applying the rules is the root's job, except where the choice is a product or architecture
+  decision, which stays the user's.
 - A sense-check flag whose continuation the user's recorded words already decide needs no new
   question, because those words are already the user's decision. The flagged mechanism still never
   continues on a stage's argument alone.
