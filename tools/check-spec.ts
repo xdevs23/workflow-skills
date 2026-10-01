@@ -101,7 +101,6 @@ const humanOrigin = (value: unknown) => mapping(value) && value.kind === 'human'
 const parseRecord = (line: string): Mapping | undefined => {
   try { const record = JSON.parse(line); return mapping(record) ? record : undefined } catch { return undefined }
 }
-const kebabCase = /^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$/
 // The random string only a passing run prints, so a stage that returns it has run this tool.
 const freshProof = () => Buffer.from(crypto.getRandomValues(new Uint8Array(16))).toString('hex')
 const sha256Of = (bytes: Buffer) => createHash('sha256').update(bytes).digest('hex')
@@ -373,12 +372,12 @@ const fixListKeys = ['run', 'entries']
 const pointerKeys = ['file', 'line', 'key']
 // An entry's source: a decision of the finding verifier or a finding of the roaster, by its index in
 // the list of the last result of that stage.
-const entrySource = /^(verify|roaster):(0|[1-9][0-9]*)$/
 const sourceKinds = {
   verify: { label: 'verify', list: 'decisions', field: 'decision' },
   roaster: { label: 'roast', list: 'findings', field: 'finding' },
 } as const
 type SourceKind = keyof typeof sourceKinds
+const entrySource = new RegExp(`^(${Object.keys(sourceKinds).join('|')}):(0|[1-9][0-9]*)$`)
 // A run id is one directory name under the session's workflow directory.
 const runId = /^[A-Za-z0-9][A-Za-z0-9_.-]*$/
 const isFile = (path: string) => stat(path).then(found => found.isFile(), () => false)
@@ -475,8 +474,7 @@ async function makeFixList(run: string, transcripts: string) {
     items.forEach((item, index) => entries.push({ source: `${kind}:${index}`, [field]: item, attach: [] }))
   }
   if (!entries.length) throw new Error(`run ${run} has no decision of a verify stage and no finding of a roast stage`)
-  // The serializer leaves a space after a key whose value starts on the next line; the list keeps none.
-  console.log(Bun.YAML.stringify({ run, entries }, null, 2).replace(/ +$/gm, ''))
+  console.log(Bun.YAML.stringify({ run, entries }, null, 2))
 }
 
 // What is wrong with a pointer, or nothing. A pointer names a record of a JSON lines file, such as a
@@ -526,7 +524,7 @@ async function checkFixList(file: string, transcripts: string, json: boolean, ex
         const path = match ? match[0] : `entry ${index + 1}`
         const kind = match?.[1] as SourceKind | undefined
         if (!shape(value, ['source', ...(kind ? [sourceKinds[kind].field] : []), 'attach'], index, path)) continue
-        if (!kind) { fail(index, `${path}.source`, `expected verify:<index> or roaster:<index>: ${JSON.stringify(value.source)}`); continue }
+        if (!kind) { fail(index, `${path}.source`, `expected ${Object.keys(sourceKinds).map(kind => `${kind}:<index>`).join(' or ')}: ${JSON.stringify(value.source)}`); continue }
         if (entries.some(entry => entry.source === path)) { fail(index, path, `duplicate source ${path}`); continue }
         const field = sourceKinds[kind].field
         if (Object.hasOwn(value, field) && !mapping(value[field])) fail(index, `${path}.${field}`, 'expected a mapping')

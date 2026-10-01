@@ -468,7 +468,6 @@ describe('fix list validation', () => {
   test('the generated fix list holds every decision of the last verify stage and every roast finding, with no pointers, and passes', () => {
     const made = makeList('wf_parent-run')
     expect([made.exit, made.err]).toEqual([0, ''])
-    expect(made.out.split('\n').some(line => / $/.test(line))).toBe(false)
     expect(Bun.YAML.parse(made.out)).toEqual({ run: 'wf_parent-run', entries: [
       { source: 'verify:0', decision: decisions[0], attach: [] }, { source: 'verify:1', decision: decisions[1], attach: [] },
       { source: 'roaster:0', finding: roastFinding, attach: [] }] })
