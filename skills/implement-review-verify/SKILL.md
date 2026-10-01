@@ -1228,18 +1228,16 @@ These laws are non-negotiable across every run of this skill.
    documents record decisions and constraints, not conversational appendices.
 6. **AUTHORITY ARCHITECTURE — state the hierarchy in authority-aware prompts.** Quality, the
    eight audit seats and cold alternatives receive only their hygiene and diff inputs, not the
-   shared authority briefing. For other seats the three tiers are: **user verbatim directives >
-   the spec > this prompt**, with the prompt explicitly labelled **UNTRUSTED** relative to both,
-   and *"a prompt-vs-spec conflict is itself a must-fix finding"*. **The AUTHORITY DOCUMENTS are the top two
-   tiers only — the directives and the spec. The prompt is not one**, which is what makes a
-   prompt-vs-spec conflict an ordinary finding rather than the hard flag of law 8 — **but the user
-   veto still reaches the prompt.** A prompt that directly contradicts a directive is the same
-   hard-flag class as a spec that does: being untrusted RELATIVE TO THE SPEC does not exempt the
-   prompt from the directive ranked above both.
-   In the spec, only an entry of author `user` is a directive. An entry of author `assistant` is
-   context that gives the user entries after it their meaning, such as the question a bare yes
-   answers: this hierarchy and the directive-conflict hard flag of law 8 treat a contradiction with
-   what the user answered yes to like a contradiction with the user's own sentence.
+   shared authority briefing. For other seats the order is: **the user entries of the spec > this
+   prompt**, with the prompt explicitly labelled **UNTRUSTED**, and *"a prompt-vs-spec conflict is
+   itself a must-fix finding"*. An entry of author `assistant` is context that gives the user
+   entries after it their meaning, such as the question a bare yes answers, and is never authority.
+   **The prompt is no authority either**, which is what makes a prompt-vs-spec conflict an ordinary
+   finding rather than the hard flag of law 8, **but the user veto still reaches the prompt.** A
+   prompt that directly contradicts a user entry, or what the user answered yes to, is the hard flag
+   `directive-conflict`: this hierarchy and the directive-conflict hard flag of law 8 treat a
+   contradiction with what the user answered yes to like a contradiction with the user's own
+   sentence.
    You add nothing beyond the spec: no scoping, no invariant and no note of yours reaches a stage.
    This exists because **your own errors are the dominant error class** — a mis-stated decision, a
    gloss that contradicts another gloss of the same words, a "verbatim" appendix that isn't, or an
@@ -1616,11 +1614,12 @@ This content rides authority-aware seats, verbatim, not paraphrased. Quality, th
 seats and cold alternatives get the hygiene floor only.
 Do not defeat an unbriefed seat by appending instructions to read the spec or project docs.
 For the other seats:
-- **The authority hierarchy** (law 6) — user verbatim directives > the spec, named by PATH and read
-  from disk > this prompt, explicitly UNTRUSTED relative to the spec. Name the AUTHORITY DOCUMENTS
-  as the first two and say plainly that the prompt is not one, or the next bullet has no boundary
-  — but the directive still reaches the prompt directly (a spec gains no decision authority merely
-  by being written, and neither does a prompt that overrides a directive it disagrees with).
+- **The authority hierarchy** (law 6): the user entries of the spec, named by PATH and read from
+  disk > this prompt, explicitly UNTRUSTED. Say plainly that an entry of author `assistant` and the
+  prompt are no authority, or the next bullet has no boundary, while a user entry still reaches the
+  prompt directly: a prompt that contradicts one, or what the user answered yes to, is the
+  `directive-conflict` hard flag (a spec gains no decision authority merely by being written, and
+  neither does a prompt that overrides a user entry it disagrees with).
 - **The spec's entries** (law 6) — the spec is the discussion of its unit, quoted verbatim. An
   entry of author `user` is the user's words and the authority; an entry of author `assistant` is
   context that gives the user entries after it their meaning, such as the question a bare yes
