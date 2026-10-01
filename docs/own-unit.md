@@ -45,12 +45,12 @@ message and never approves what the newer message proposed. An entry whose words
 another unit is of class `unbacked-entry`.
 
 The implementer returns each finding in `specFindings`, a field its output schema requires, one
-entry per finding with the words of every spec entry it concerns quoted in `words`, a list of at
-least one quote, the `class`, the `claim` and `receipts` with at least one receipt. A
-`joint-impossibility` entry quotes each statement of the conflict. The class is an enum of the four
-names above. No finding fails the sense check, sets the abort or asks the user. The design document
-on what the implementer leaves unbuilt describes which findings block the run, and what the
-implementer builds when a finding does not block it.
+entry per finding with `evidence`, a pointer to every spec entry it concerns by its session file,
+line and the key path of the quoted part, the `class`, the `claim` and `receipts` with at least one
+receipt. A `joint-impossibility` entry points at each statement of the conflict. The class is an
+enum of the four names above. No finding fails the sense check, sets the abort or asks the user. The
+design document on what the implementer leaves unbuilt describes which findings block the run, and
+what the implementer builds when a finding does not block it.
 
 ## How the findings reach the root
 

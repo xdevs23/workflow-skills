@@ -31,23 +31,24 @@ words around it.
 ## Findings point at their evidence
 
 Correctness, spec compliance and the duplicate checker read the spec and return findings only, with
-no verdicts. Each finding says in `claim` what the implementation gets wrong and names in
-`evidence` where its backing stands, never as a bare quote. For the user's words an evidence entry
-has kind `transcript`, the session file and line of the spec entry, and in `key` the key path of
-the quoted part inside that JSON record, one key name per element. Where no words of the user back
-the finding, it has kind `rule`, the file and line of a global, plugin or project rule, and an
-empty key path. Whoever receives the finding reads the record or rule and the records around it, so
-a bare yes is read together with what it answered. The script retries and then fails a reviewer
-whose finding has no evidence, an evidence entry without a file, or a transcript entry without a
-key path. The other reviewers keep their schemas.
+no verdicts. Each finding says in `claim` what the implementation gets wrong and names in `evidence`
+where its backing stands. For the user's words an evidence entry has kind `transcript`, the session
+file and line of the spec entry, and in `key` the key path of the quoted part inside that JSON
+record, one key name per element. Where no words of the user back the finding, it has kind `rule`,
+the file and line of a global, plugin or project rule, and an empty key path. Whoever receives the
+finding reads the record or rule and the records around it, so a bare yes is read together with what
+it answered. The script retries and then fails a reviewer whose finding has no evidence, an evidence
+entry without a file, a transcript entry without a key path, or a rule entry with one. The other
+reviewers keep their schemas. A stage that reads the spec learns the transcript directory beside its
+path, so a relative session file in an entry or a pointer resolves where the spec tool resolved it.
 
-The implementer's spec findings quote the words of the spec entries they concern in `words`. The
-classes are `joint-impossibility`, two statements of the user that cannot both hold,
-`missing-contract`, `reality-drift`, and `unbacked-entry`, an entry whose words were said about
-another unit. An `unbacked-entry` finding does not block the run and is handed to the root as
-CRITICAL. The finding verifier closes an `unbacked-choice` finding with a rejection only on a
-citation of the form `spec entry <file>:<line>: "<quote>"`, which names the entry by its session
-record.
+The implementer's spec findings point at the spec entries they concern in `evidence`, by the same
+rules as a finding of a concern seat. The classes are `joint-impossibility`, two statements of the
+user that cannot both hold, `missing-contract`, `reality-drift`, and `unbacked-entry`, an entry
+whose words were said about another unit. An `unbacked-entry` finding does not block the run and is
+handed to the root as CRITICAL. The finding verifier closes an `unbacked-choice` finding with a
+rejection only on a citation of the form `spec entry <file>:<line>: "<quote>"`, which names the
+entry by its session record.
 
 ## Agent templates
 

@@ -236,10 +236,10 @@ collisions and consistency drift.
   here, and a short answer that crossed with a newer message answers the earlier message and never
   approves what the newer message proposed. An entry whose words are such words is class
   `unbacked-entry`.
-- The implementer returns each finding in `specFindings`, one entry per finding with the words of
-  every spec entry it concerns, quoted verbatim in `words`, a list of at least one quote, together
-  with the `class`, the `claim` and `receipts`, so a `joint-impossibility` entry quotes each side of
-  the conflict.
+- The implementer returns each finding in `specFindings`, one entry per finding with `evidence`, the
+  `class`, the `claim` and `receipts`. Its `evidence` points at every spec entry the finding
+  concerns by the entry's session file, line and the key path of the quoted part, so a
+  `joint-impossibility` entry points at each side of the conflict.
 - No spec finding fails the sense check, sets the abort or asks the user.
 - Expect an entry of class `joint-impossibility` or `missing-contract` to block the run. The
   implementer returns it with a limitation of effect `blocks` that names the entry, and edits and
@@ -258,7 +258,7 @@ collisions and consistency drift.
   said about this unit, so the run builds what the user's words about this unit ask for and you
   read the finding after the run.
 - What cannot be built without the words of an `unbacked-entry` entry rests on the same words, so
-  the entry quotes it in `words` too and it stays unbuilt.
+  the entry points at it in `evidence` too and it stays unbuilt.
 - What the words of a `reality-drift` entry ask for is built.
 - The script puts every entry into `remaining` as a `spec-finding` item, CRITICAL for
   `unbacked-entry` and must-fix otherwise, so you read each one after the run, however the run
@@ -614,10 +614,10 @@ proceed merely because a reviewer or verifier prefers it.
   spec entry citation.
 - The spec-compliance reviewer never sees the implementer's object, so it reports what the
   implementer left unbuilt as missing required behaviour. The implementer's `specFindings` entry
-  quotes the words of its spec entries in `words`. A `joint-impossibility` or `missing-contract`
-  entry ends the run after the implement stage, so in a run that reaches review what was left
-  unbuilt is what the words of an entry of class `unbacked-entry` ask for, which quotes as well the
-  words that cannot be built without them.
+  points at its spec entries in `evidence`. A `joint-impossibility` or `missing-contract` entry ends
+  the run after the implement stage, so in a run that reaches review what was left unbuilt is what
+  the words of an entry of class `unbacked-entry` ask for, which points as well at the entries that
+  cannot be built without them.
 - A finding that asks to build what the implementer left unbuilt is never `approve-fix`.
 - A source finding that asks to build, complete or change what was left unbuilt is decided
   `needs-decision`, and the decision reaches you in `remaining` as an open decision. The
@@ -1241,14 +1241,14 @@ These laws are non-negotiable across every run of this skill.
    stage on the cheapest tier while the run looks healthy.
 2. **FAIL-FAST.** An agent returning null or an incomplete object retries the SAME agent (3 attempts
    total) with the failure named, then the helper throws naming the last failure and no downstream
-   stage runs. The main run records the failure and remaining items; it
-   never treats a failure as an empty review. Completeness is structural: the schema validates
-   shapes and enums, and the script checks the cross-field contracts (the user's words on every
-   finding of a concern seat, a receipt on every finding, coverage with a limitation behind every
-   unchecked entry, files and checks behind a new snapshot, a reason behind an abort; see the
-   acceptance section).
-   The law guards EVERY required reader, including adversaries: the verifier consumes them all.
-   A missing object is incomplete verification, never a harmless gap in a finished fix.
+   stage runs. The main run records the failure and remaining items; it never treats a failure as an
+   empty review. Completeness is structural: the schema validates shapes and enums, and the script
+   checks the cross-field contracts (an evidence pointer on every finding of a concern seat and
+   every spec finding of the implementer, a receipt on every finding, coverage with a limitation
+   behind every unchecked entry, files and checks behind a new snapshot, a reason behind an abort;
+   see the acceptance section). The law guards EVERY required reader, including adversaries: the
+   verifier consumes them all. A missing object is incomplete verification, never a harmless gap in
+   a finished fix.
 3. **Resume interrupted runs only.** A run stopped mid-flight is resumed through
    `workflow-skills:resume-interrupted-run`. Completed stages replay their journaled results, and
    unfinished stages re-run. A completed run never runs again: you record its remaining items in
@@ -1509,18 +1509,19 @@ with the last failure named, so its cause is visible.
 
 The completeness checks, by stage kind:
 - **every briefed stage**: `abort.reason` non-empty when the trigger is not `none`;
-- **the three concern seats**: every finding has a receipt, a lane and the user's words in
-  `words`;
+- **the three concern seats**: every finding has a receipt, a lane and an `evidence` list of at
+  least one pointer, a transcript pointer with a key path and a rule pointer with an empty one;
 - **the other readers**: every finding has a receipt; `coverage` non-empty; a coverage entry with
   `checked` false marks a real gap and needs a non-empty `limitations` list, and the finding
   verifier judges whether a limitation excuses it; the inverse seat has a non-empty
   `authorizations` list; the alternatives seat has a candidate, a finding, or
   `currentShapeRight` true;
-- **writers**: one `repositories` entry per repository of the list; in each, a `snapshotSha`
-  other than `startSha` needs commits in that repository and an unchanged one none, the quoted
-  `git.head` equals `snapshotSha` and `clean` equals `git.status` being empty; a new snapshot
-  anywhere needs non-empty `files` and a check whose `passed` equals `proofPassed`, and no new
-  snapshot needs empty `files`; the fixer answers every key once;
+- **writers**: one `repositories` entry per repository of the list; in each, a `snapshotSha` other
+  than `startSha` needs commits in that repository and an unchanged one none, the quoted `git.head`
+  equals `snapshotSha` and `clean` equals `git.status` being empty; a new snapshot anywhere needs
+  non-empty `files` and a check whose `passed` equals `proofPassed`, and no new snapshot needs empty
+  `files`; every `specFindings` entry of the implementer has evidence by the rules of the concern
+  seats; the fixer answers every key once;
 - **finding verifier**: the source-coverage and decision guards, one `repositories` entry per
   repository whose quoted `git.head` equals its `snapshotSha`, and one `writerScope` entry per
   implementer commit and repository.

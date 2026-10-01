@@ -165,6 +165,7 @@ const TREE = 'ASSIGNED TREE: ' + UNIT.worktree + '.'
 const SPEC = [
   'SPEC (authority): ' + UNIT.specPath + ' - read the current on-disk revision in full.',
   'It quotes the user: read it privately and never copy its words into tracked files.',
+  'TRANSCRIPTS: a session file that a spec entry or a transcript evidence entry names by a relative path lies under ' + UNIT.transcripts + '.',
   TREE,
 ].join('\n')
 
@@ -206,10 +207,10 @@ const FINDINGS = { type: 'array', items: FINDING }
 const BRIEFED_KINDS = { enum: ['band-aid', 'longer-route', 'unbacked-choice'] }
 const BRIEFED_FINDING = { ...FINDING, properties: { ...FINDING.properties, kind: BRIEFED_KINDS } }
 const BRIEFED_FINDINGS = { type: 'array', items: BRIEFED_FINDING }
-// Where the backing of a finding stands, never a bare quote: the transcript record of the user's words
-// it is judged against, by session file, line and the key path of the quoted part inside that JSON
-// record, one key name per element, or a rule by its file and line, with an empty key path. Whoever
-// receives the finding reads that record or rule and the records around it.
+// Where the backing of a finding stands: the transcript record of the user's words it is judged
+// against, by session file, line and the key path of the quoted part inside that JSON record, one key
+// name per element, or a rule by its file and line, with an empty key path. Whoever receives the
+// finding reads that record or rule and the records around it.
 const EVIDENCE = { type: 'array', minItems: 1, items: { type: 'object', required: ['kind', 'file', 'line', 'key'], additionalProperties: false,
   properties: { kind: { enum: ['transcript', 'rule'] }, file: { type: 'string' }, line: { type: 'integer', minimum: 1 }, key: { type: 'array', items: { type: 'string' } } } } }
 // The three seats that judge the change against the spec flag a problem by saying in claim what is
@@ -287,11 +288,11 @@ const ROAST = { type: 'object', additionalProperties: false, required: ['limitat
   properties: { limitations: LIMITATIONS, coverage: COVERAGE, findings: FINDINGS, snapshots: SNAPSHOTS } }
 
 // What the implementer's sense check finds in the spec before its first edit, one entry per finding:
-// the words of every spec entry it concerns, quoted verbatim, so a joint-impossibility quotes each
-// side of the conflict, the class and the claim with receipts. The script branches on class to set
-// the severity of the remaining item, so the class is enum-locked (law 9).
-const SPEC_FINDINGS = { type: 'array', items: { type: 'object', required: ['words', 'class', 'claim', 'receipts'], additionalProperties: false,
-  properties: { words: { type: 'array', minItems: 1, items: { type: 'string' } },
+// in evidence the record of every spec entry it concerns, so a joint-impossibility names each side of
+// the conflict, the class and the claim with receipts. The script branches on class to set the
+// severity of the remaining item, so the class is enum-locked (law 9).
+const SPEC_FINDINGS = { type: 'array', items: { type: 'object', required: ['evidence', 'class', 'claim', 'receipts'], additionalProperties: false,
+  properties: { evidence: EVIDENCE,
     class: { enum: ['joint-impossibility', 'missing-contract', 'reality-drift', 'unbacked-entry'] },
     claim: { type: 'string' }, receipts: RECEIPTS } } }
 
@@ -473,17 +474,21 @@ const checkReader = r => {
     }
   }
 }
+// A transcript pointer needs the key path of the quoted part; a rule pointer names a line of a file
+// that is no JSON record, so its key path is empty.
+const checkEvidence = f => {
+  if (!Array.isArray(f.evidence) || !f.evidence.length) throw new Error('Missing the evidence the finding rests on: ' + f.claim)
+  for (const e of f.evidence) {
+    requireText(e.file, 'the file of the evidence of: ' + f.claim)
+    if (e.kind === 'transcript' && (!e.key.length || e.key.some(name => typeof name !== 'string' || !name.trim()))) {
+      throw new Error('Missing the JSON key path of the transcript evidence of: ' + f.claim)
+    }
+    if (e.kind === 'rule' && e.key.length) throw new Error('A rule evidence entry takes an empty key path: ' + f.claim)
+  }
+}
 const checkBacked = r => {
   checkReader(r)
-  for (const f of r.findings) {
-    if (!Array.isArray(f.evidence) || !f.evidence.length) throw new Error('Missing the evidence the finding rests on: ' + f.claim)
-    for (const e of f.evidence) {
-      requireText(e.file, 'the file of the evidence of: ' + f.claim)
-      if (e.kind === 'transcript' && (!e.key.length || e.key.some(name => typeof name !== 'string' || !name.trim()))) {
-        throw new Error('Missing the JSON key path of the transcript evidence of: ' + f.claim)
-      }
-    }
-  }
+  for (const f of r.findings) checkEvidence(f)
 }
 const checkInverse = r => { checkReader(r); if (!r.authorizations.length) throw new Error('authorizations is empty') }
 const checkAlternatives = r => {
@@ -715,6 +720,7 @@ const BACKING = /\bspec entry [^\s:]+:[1-9][0-9]*: "[\s\S]*\S[\s\S]*"/
 const BLOCKING_CLASSES = new Set(['joint-impossibility', 'missing-contract'])
 const checkImplementer = r => {
   checkWriter(r)
+  for (const f of r.specFindings) checkEvidence(f)
   const blocked = r.specFindings.find(f => BLOCKING_CLASSES.has(f.class))
   if (!blocked) return
   if (!blocking(r).length) throw new Error('a ' + blocked.class + ' spec finding needs a limitation of effect blocks')
