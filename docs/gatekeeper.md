@@ -23,15 +23,13 @@ question-premise check.
   words finds it correct, the root makes the fix and never presents it as an option beside an
   alternative.
 - A `new-choice` item the fix run's scope check refused, and an open `unbacked-choice` decision,
-  that is neither a product nor an architecture decision goes to a new implement-review-verify unit
-  with its own spec, and the root decides the choice in that spec. It never goes to the user. The
-  authority for that choice is the user's recorded delegation of this kind of choice, which the
-  skill's rule carries. The new spec cites that rule as a `rule` item, the new unit's private
-  record holds the user's approval of the rule with its context, and the choice is an ordinary
-  derivation from the rule item and the rules and observations that settle it. Writing the spec
-  supplies no authority, and the checks for an unbacked item and for a record without the user's
-  words apply unchanged. The delegation covers only choices that are neither product nor
-  architecture decisions.
+  that is neither a product nor an architecture decision goes to a new implement-review-verify unit,
+  and the root decides the choice itself. The user is never asked to decide it. The authority for
+  that choice is the user's recorded delegation of this kind of choice, which the skill's rule
+  carries. The root states its decision in the chat, where the user sees it, and the message that
+  states it goes into the new unit's spec as an assistant entry, so the stages read the decision as
+  context beside the user's words. The checks for a spec without the user's words apply unchanged.
+  The delegation covers only choices that are neither product nor architecture decisions.
 - When stages or models split on a choice that is neither a product nor an architecture decision
   while agreeing on the facts, the root applies the rules to those facts and decides. The split
   alone is never a reason to ask the user, and a product or architecture decision reaches the user
@@ -67,7 +65,7 @@ decision, an open decision and anything the scope check refused to the user and 
 unit with a spec.
 
 The check that followed the first rule stays as its own bullet. The root accepts a verifier's
-rejection of an `unbacked-choice` finding only after reading the cited record entry and checking
+rejection of an `unbacked-choice` finding only after reading the cited spec entry and checking
 that the quoted words, read in their surrounding context, back the choice. A quote that does not
 match its context leaves the choice open, and the root handles it as every other open
 `unbacked-choice` decision under "What reaches the user".
@@ -95,8 +93,9 @@ the question-premise check beside the existing rules on the shape of an ask.
 - A sense-check flag whose continuation the user's recorded words already decide needs no new
   question, because those words are already the user's decision. The flagged mechanism still never
   continues on a stage's argument alone.
-- A spec gains no decision authority by being written, so a choice the root makes in a new unit's
-  spec traces to the user's recorded delegation of that kind of choice.
+- A choice the root makes for a new unit traces to the user's recorded delegation of that kind of
+  choice, and the root states it in the chat, so the user sees every such decision and the stages
+  receive it as context.
 - The stages keep their outputs. The finding verifier still returns a needs-decision decision and
   the fix run's scope check still returns a `new-choice` item to the root. This change decides only
   where the root sends them afterwards.

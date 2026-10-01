@@ -20,43 +20,37 @@ check.
 Every passage that sent the root to that review now says that the root writes the spec, validates
 it with the spec tool and launches the main run on it, and that the stages of that run report what
 they find in the spec. This holds for the implement-review-verify skill, including its opening
-section on the unit spec and law 7, for the spec-writing skill, for the README row of
+section on the unit spec and law 7, for the README row of
 implement-review-verify and for the routing tests. The passages that named the provenance reader as
 the stage judging a spec before code now name the implementer's sense check. The partial base
 setting belongs to the main script alone.
 
-The gap-finder and spec-provenance templates stay in the agents directory, and no script starts
-them. The skill says so where it lists the templates. The spec-provenance template keeps its checks
-and loses the words that tied it to the removed run: the timing before implementation, the two
-classes of finding that held the main run until the user answered, and the instruction to put every
-unbacked choice to the user as a question before the main run. All of its findings are advisory,
-and none of them holds up a run.
+The gap-finder template stays in the agents directory, and no script starts it. The skill says so
+where it lists the templates.
 
 ## What the sense check now reads
 
 The implementer's sense check keeps its two questions about the mechanism a request changes, its
-abort on a failed check and its handling of a silent record. Before the first edit it now also
-reads the spec against the code and the private directive record, checking the spec's claims
-against the code instead of only reading them, and it looks for the three classes the removed
-review looked for:
+abort on a failed check and its handling of a silent spec. Before the first edit it now also reads
+the spec against the code, checking what the spec's entries claim against the code instead of only
+reading them, and it looks for the three classes the removed review looked for:
 
-- `joint-impossibility`: two requirements that each hold alone and cannot both hold;
+- `joint-impossibility`: two statements of the user that each hold alone and cannot both hold;
 - `missing-contract`: an artifact the spec assumes without saying how it is made;
 - `reality-drift`: a recorded fact the code no longer bears out.
 
-It checks as well that each item rests, directly or through its parents, on the user's words said
-about this unit. Words about another unit back no item of this spec, and a short answer that crossed
-with a newer message answers the earlier message and never approves what the newer message
-proposed. An item that cites such words as its authority, or states a decision no words of the
-user back, is of class `unbacked-item`.
+It checks as well that each user entry holds words said about this unit. Words about another unit
+back nothing in this spec, and a short answer that crossed with a newer message answers the earlier
+message and never approves what the newer message proposed. An entry whose words were said about
+another unit is of class `unbacked-entry`.
 
 The implementer returns each finding in `specFindings`, a field its output schema requires, one
-entry per finding with the ids of every spec item it concerns in `items`, a list of at least one
-id, the `class`, the `claim` and `receipts` with at least one receipt. A `joint-impossibility`
-entry names each item of the conflict. The class is an enum of the four names above. No finding
-fails the sense check, sets the abort or asks the user. The design document on the items the
-implementer leaves unbuilt describes which findings block the run, and which items the implementer
-builds when a finding does not block it.
+entry per finding with the words of every spec entry it concerns quoted in `words`, a list of at
+least one quote, the `class`, the `claim` and `receipts` with at least one receipt. A
+`joint-impossibility` entry quotes each statement of the conflict. The class is an enum of the four
+names above. No finding fails the sense check, sets the abort or asks the user. The design document
+on what the implementer leaves unbuilt describes which findings block the run, and what the
+implementer builds when a finding does not block it.
 
 ## How the findings reach the root
 
@@ -84,22 +78,21 @@ vocabularies law 9 requires the schemas to lock.
 
 ## Only words said about this unit count
 
-The spec-writing skill states the rule beside the transcript source of an item. An item cites only
-words the user said about the unit the spec describes. Words about another unit, such as a request
-to record a todo for later work or a decision given for a different piece of work, never authorize
-an item of the spec, even where their subject overlaps. A short answer that crossed with a newer
-message is cited for what its content answers, the earlier message, and never as approval of what
-the newer message proposed.
+The implement-review-verify skill states the rule where it describes the unit spec. The spec holds
+only words the user said about its unit. Words about another unit, such as a request to record a
+todo for later work or a decision given for a different piece of work, stay out of it, even where
+their subject overlaps. A short answer that crossed with a newer message is read for what its
+content answers, the earlier message, and never as approval of what the newer message proposed.
 
 The inverse-spec reviewer's template counts a choice as authorized only by words said about this
 unit. A choice whose cited authority is words about another unit or a crossed short answer lacks
 authority, and the reviewer reports it as a finding with kind `unbacked-choice`. The finding
-verifier's template closes an `unbacked-choice` finding by rejection only on a record entry whose
+verifier's template closes an `unbacked-choice` finding by rejection only on a spec entry whose
 words were said about this unit, read in their surrounding context. Words about another unit and a
 crossed short answer never close one. The skill's paragraph on answering such a finding carries
-the same limit. The script's decision check on a rejection is unchanged: it still requires the
-record entry id and the quoted words in the authority, and whether those words were said about this
-unit is the verifier's judgment.
+the same limit. The script's decision check on a rejection requires the spec entry's session file
+and line and the quoted words in the authority, and whether those words were said about this unit
+is the verifier's judgment.
 
 ## Decisions and their reasons
 
@@ -113,29 +106,28 @@ The agents of the run report problems with the spec. A spec that passed the tool
 written, and what the implementer finds reaches the root in the same handoff as every other open
 item, after the run.
 
-A finding of class `unbacked-item` is CRITICAL, because no words of the user back its items, and
-every other class is must-fix.
+A finding of class `unbacked-entry` is CRITICAL, because its words were said about another unit,
+and every other class is must-fix.
 
 The script branches on the class to set the severity, so the class is locked in the schema as an
 enum, like every other vocabulary the scripts branch on.
 
-The gap-finder and spec-provenance templates are kept as files, because each still has a use of its
-own outside the removed run.
+The gap-finder template is kept as a file, because it still has a use of its own outside the
+removed run.
 
-The rule on words about another unit and on crossed short answers is stated in the skill that
-writes specs and in each stage that judges authority, so the root that writes a spec and the stages
-that check it read the same rule.
+The rule on words about another unit and on crossed short answers is stated in the workflow skill's
+section on the unit spec and in each stage that judges authority, so the root that assembles a spec
+and the stages that check it read the same rule.
 
 ## Tests
 
 The routing tests check that only the main and fix-run scripts ship, that no skill, template, README
 passage or test sends the root to a review of the spec before the main run, and that no script
-starts the gap-finder or spec-provenance template while both files remain. They check that the
-spec-provenance template calls its findings advisory and has none of them hold up a run. They check
-the implementer schema's `specFindings` field with its entry shape and class enum, that an
-`unbacked-item` or `reality-drift` finding becomes a `spec-finding` item of its severity while
-every stage still runs, and that the findings reach the root beside an implementer abort. They check that spec-writing, the implementer, the
-inverse-spec reviewer and the finding verifier templates, and the skill state the rules above. The
+starts the gap-finder template. They check the implementer schema's `specFindings` field with its
+entry shape and class enum, that an `unbacked-entry` or `reality-drift` finding becomes a
+`spec-finding` item of its severity while every stage still runs, and that the findings reach the
+root beside an implementer abort. They check that the implementer, the inverse-spec reviewer and
+the finding verifier templates, and the skill state the rules above. The
 tests that ran the removed script are deleted, and the others no longer read it.
 
 ## Rejected alternatives

@@ -1,12 +1,12 @@
 # Count a note on a dialog answer as the user's words
 
-The spec tool accepts the words the user types as a note on a question-dialog answer, so a spec item can cite them.
+The spec tool accepts the words the user types as a note on a question-dialog answer, so a user entry of the spec can quote them.
 
 This document is generated from a private spec by the spec tool and is never edited by hand.
 
 ## Requirements
 
-**note-blocked**: Words the user types as a note on a question-dialog answer can back a spec item, the same way a chosen or typed answer does.
+**note-blocked**: Words the user types as a note on a question-dialog answer can stand in a user entry of the spec, the same way a chosen or typed answer does.
 
 **dialog-counts**: A question-dialog answer holds the user's words.
 

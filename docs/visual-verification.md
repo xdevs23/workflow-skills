@@ -226,9 +226,9 @@ workflow skills, and covers:
   the one used;
 * that a project without a harness adopts one as its own unit of work, and that the agent
   reads every file of the implementation guide in full, in index order, before writing any
-  harness code; the adoption spec cites the guide part by part, each citation a rule item
-  with the guide file under the plugin root, its line and a quote, and the adoption is
-  likely split into several sequential units decided when that spec is written;
+  harness code; the runs of each adoption unit receive the guide parts it implements among
+  their rule sources, each by its file under the plugin root, and the adoption is likely
+  split into several sequential units;
 * verifying a change: pick a scene that exposes the change, or curate one first as a
   separate small step; capture the unchanged interface, from the base commit where the
   harness supports it; implement only the approved change; capture again with the same scene,
@@ -249,25 +249,28 @@ workflow skills, and covers:
   cannot be reused, output never filtered through other commands, clock-driven interface
   states, accumulating source exports and file watchers, and fixture drift.
 
-**unit-spec-integration**: The skill file tells the orchestrating session how to express visual work in an
-implement-review-verify unit spec:
-* a criterion names the scene, the checkpoints and the expected comparison outcome, either
-  zero changed pixels or changes only in named checkpoints with the measured checks passing;
-* the orchestrating session captures the before state once, in the worktree the stages use,
-  from the base commit, before the implement stage starts, and writes its capture name into
-  the unit spec; no stage captures the before state again;
-* each writing stage, after its last commit, captures under a name never used before in
-  that worktree, such as its stage label with the run identifier, runs the comparison
-  against the before capture, and returns both names with the comparison report as
-  evidence; the stage's pass or fail proof stays the project's check command, since the
-  comparison exits nonzero for every intended change; the outcome is judged from the
-  per-checkpoint changed counts against the checkpoints the criterion names;
-* reading stages that receive the spec open the PNGs, receipts and comparison reports in
-  that worktree's project cache and check that each receipt's source revision is the
-  snapshot under review; stages that receive no spec by design get nothing added; a point
-  that needs a new capture goes to the fixer;
-* a fix run's fix-list entry for a visual defect states the scene, the checkpoints, the
-  expected outcome and the before capture's name in its correction.
+**unit-spec-integration**: The skill file tells the orchestrating session how visual work runs in an
+implement-review-verify unit, with implement-review-verify left unchanged:
+* what a visual change should do comes from the user's words in the unit spec, and nothing is
+  written into the spec for it: no criterion, no capture name and no path; the comparison
+  outcome is zero changed pixels, changes only in the checkpoints the user's words concern with
+  the measured checks passing, or the intended change of a compatibility input;
+* the implementer captures the before state in its worktree from its start commit, before its
+  first edit; no other stage captures the before state;
+* each writing stage, after its last commit, captures under a name never used before in that
+  worktree, such as its stage label with the run identifier, runs the comparison against the
+  before capture, and returns the comparison with both capture names in its checks; the stage's
+  pass or fail proof stays the project's check command, since the comparison exits nonzero for
+  every intended change;
+* the capture names travel with the implementer's object to the stages that receive it; a stage
+  without it finds the captures by the commits their receipts record, and a fix run's fixer
+  through a pointer its fix list entry attaches;
+* reading stages that receive the spec open the PNGs, receipts and comparison reports in that
+  worktree's project cache and check that each receipt's source revision is the commit it
+  claims; stages that receive no spec by design get nothing added; a point that needs a new
+  capture goes to the fixer;
+* the scratch directory of the runtime and the rendering engine lives in the system temporary
+  directory, one private directory per run, and the launcher removes it when the run ends.
 
 **cache-naming**: The skill file and the guide name the harness's artifact location as a directory inside
 the project cache that the local-cache skill defines, and follow cache-naming-rule and

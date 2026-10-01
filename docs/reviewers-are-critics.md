@@ -62,11 +62,11 @@ of the user asked for it. The corrective class of the template lists the removal
 restoring correction and the quality correction, and the opening of the template names it among
 the three things a fix run may do.
 
-In both templates the rule holds also where an item of the spec, or of a fix run's parent spec,
-names the code, as long as no words of the user back that item. An item that neither the user's
-recorded words, whether a transcript item, approved text or a rule item quoting them, nor an
-applicable project rule backs is no authority for keeping the code. Code that the user's words asked
-for still needs the user's word to be removed, so the scope check classes its removal a new choice.
+In both templates the rule holds also where only an assistant entry of the spec, or an assistant
+message an entry of a fix list points at, names the code: an assistant entry is no authority for
+keeping the code. Code that an applicable project rule asks for is not code nobody asked for, so
+the removal rule does not reach it. Code that the user's words asked for still needs the user's
+word to be removed, so the scope check classes its removal a new choice.
 
 Each decision of the finding verifier carries a boolean `removal`. The verifier sets it to true on
 an `approve-fix` whose correction removes code on the removal rule, and to false on every other
@@ -74,23 +74,24 @@ decision. The main script's decision check refuses `removal` true on any action 
 `approve-fix`. The field is what lets a removal reach the fixer from a finding of kind
 `unbacked-choice`: such a finding names a choice that no words of the user back, so removing the
 chosen code is exactly the correction the removal rule allows. A decision whose sources include
-such a finding may be `needs-decision`, `reject` with a record entry citation, or an `approve-fix`
+such a finding may be `needs-decision`, `reject` with a spec entry citation, or an `approve-fix`
 with `removal` true. The check refuses an `approve-fix` without the mark, which keeps an addition,
 a change of the choice or any other approval out, and it still refuses `root-action`, `cleanup`
 and `record`. The rule applies to every source of a consolidated decision, so a group that joins
 an unbacked choice with a band-aid finding and an ordinary finding reaches the fixer on the same
 mark. The script cannot tell from the mark whether the removed code was asked for by the user's
-words. The verifier's template and prompt require the verifier's own check of the record before it
-sets the mark, and the fixer checks the approval again.
+words. The verifier's template and prompt require the verifier's own check of the user's words
+before it sets the mark, and the fixer checks the approval again.
 
 The fixer's template applies approved corrections against the spec as written, apart from an
 approved removal of code that no words of the user asked for. It carries out such a removal also
-where a spec item without the user's words names the code, because such an item is no authority
-for keeping the code, so the removal is no conflict between the prompt and the spec. It returns
+where only an assistant entry names the code, because such an entry is no authority for keeping
+the code, so the removal is no conflict between the prompt and the spec. It returns
 the removal of code the user's words asked for rejected with receipts. The authority block both
 scripts give their briefed stages states the same exception beside the rule to implement the spec
 as written. The main script's fixer prompt tells the fixer to carry out a correction marked
-`removal` also against such a spec item and to return a removal of requested code rejected. The fix
+`removal` also where only an assistant entry names the code and to return a removal of requested
+code rejected. The fix
 run's fixer prompt lists the removal among the corrections the scope check classes corrective,
 repeats the exception for code the user's words asked for, and says that a removal on the rule is
 not a change of behavior the fixer returns to the root, while a removal of requested code is.
@@ -132,8 +133,7 @@ decision only by deletion, a rewrite, or the user's word.
 - The fixer's template loses the unresolved question of a blocked disposition. It keeps the
   clause that its rejected and blocked dispositions go to the root and never to the user
   automatically, because that clause forbids asking the user.
-- The spec-provenance template loses the root asking the user about a reading. The scope check's
-  template loses the user as a destination of a new choice.
+- The scope check's template loses the user as a destination of a new choice.
 - The main script loses the comment above its check of unbacked-choice decisions, and its other
   comments and error messages lose their wording about the user answering a question or being
   asked.
@@ -173,8 +173,8 @@ Removing code that nothing uses, that nobody asked for or that is overbuilt need
 user, because that code never had them to be built, and code that should not exist needs none to
 go. The root already removed such code without asking. The judging stages used to lack the rule,
 so they held such a removal to the words of the user as a change of behavior and returned it to the
-root. A spec item that no words of the user back gives no authority for keeping the code, because
-writing a spec supplies no decision. Code that the user's words asked for got those words to be
+root. An assistant entry of the spec gives no authority for keeping the code, because only the
+user's words decide, and a project rule that asks for the code does. Code that the user's words asked for got those words to be
 built, so its removal needs the user's word as well.
 
 The question wording is deleted instead of reworded, because a stage reports to the root and never
@@ -198,11 +198,11 @@ wording. They check that a needs-decision decision with an empty correction is a
 with a correction is refused before it reaches the remaining items, and that a root-action
 decision without a correction is refused. They check that the finding verifier's, the scope
 check's and the diff check's templates, the fix run's fixer and diff prompts and
-implement-review-verify state the removal rule, the rule's reach over a spec item without the
-user's words, and the exception for code the user's words asked for, and that each rule of those
-passages opens a bullet of its own. They check that the fixer's template and both fixer prompts
-carry out an approved removal against a spec item without the user's words and return the removal
-of requested code. They check that a removal of an unbacked choice marked `removal` reaches the
+implement-review-verify state the removal rule, the rule's reach over code only an assistant entry
+names, the protection of code a project rule asks for, and the exception for code the user's words
+asked for, and that each rule of those passages opens a bullet of its own. They check that the
+fixer's template and both fixer prompts carry out an approved removal of code only an assistant
+entry or message names and return the removal of requested code. They check that a removal of an unbacked choice marked `removal` reaches the
 fixer, alone and in a consolidated group with a band-aid finding and an ordinary finding, that an
 `approve-fix` on an unbacked choice without the mark is refused, and that the mark on another
 action is refused.

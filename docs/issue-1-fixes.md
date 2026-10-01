@@ -85,9 +85,9 @@ option descriptions of that `AskUserQuestion` input. The simpler alternative thi
 is accepting every tool result, which the user excluded.
 
 **prose-follows**: The skill's passages that say a blocking limitation on a stage ends the run after that stage
-name the reading seats and the verifier as the exceptions, and the passage on the tool's
-transcript items states that an answer through the question dialog can be cited and no
-other tool result can.
+name the reading seats and the verifier as the exceptions, and the passage on the spec's user
+entries states that an answer through the question dialog can be quoted and no other tool result
+can.
 
 **gate-runs-in-tree**: The launch check's command changes to the worktree from the marked block before it runs
 the tool, so the generated document path and the cited rule files resolve in the tree the

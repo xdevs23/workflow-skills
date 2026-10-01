@@ -16,10 +16,9 @@ name. Their labels name their stages as `review:<label>` and their source findin
 `alternatives`, and for each audit seat the name of its template.
 
 The cleanliness seat is gone. Its template, reviewer-cleanliness, is deleted, and its schema left
-the main script with it, because the other seats already cover what it checked. The seats that give
-a verdict per acceptance criterion are now correctness, spec compliance and the duplicate checker,
-and only correctness and the duplicate checker receive the implementer's object as claims to
-verify. Design documents of earlier units still describe the cleanliness seat as it was then.
+the main script with it, because the other seats already cover what it checked. The seats that judge
+the change against the spec are correctness, spec compliance and the duplicate checker, and only
+correctness and the duplicate checker receive the implementer's object as claims to verify. Design documents of earlier units still describe the cleanliness seat as it was then.
 
 ## The audit seats
 
@@ -27,9 +26,9 @@ The eight audit templates judge the code through one lens each and ask for nothi
 Each audit seat therefore receives exactly what the quality seat receives: the hygiene floor and
 the diff of every repository that moved. The hygiene floor holds the execution boundary, the
 read-only Git rules, the rule against writing files, the rule on what a limitation is, the assigned
-tree and the order not to wait in the background. An audit seat gets no authority block, no spec,
-no private record and no implementer object, since any of them would brief a seat whose template
-judges only the code.
+tree and the order not to wait in the background. An audit seat gets no authority block, no spec
+and no implementer object, since any of them would brief a seat whose template judges only the
+code.
 
 The hygiene floor of the main script carries no order to read the writing-style file. None of the
 seats that receive it needs the style rules: their findings go to the finding verifier only, and the

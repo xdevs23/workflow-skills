@@ -173,9 +173,9 @@ Before presenting a question, trade-off, limitation or acceptance request, the r
 identifies its premises, relevant directive/context references and related spec/inverse-spec
 findings. Investigate any challenged premise first, disclose unsupported implementation
 plainly, and do not ask again about a decision the record already settles. Ask only about
-genuinely unresolved choices, not whether to accept consequences of invented scope. Preserve
-the original private record; root edits cannot rewrite, truncate or selectively omit it to
-force agreement. Tests establish instruction wiring and routing, not future interpretation.
+genuinely unresolved choices, not whether to accept consequences of invented scope. A run's spec
+is never edited: its quotes cannot be rewritten, truncated or selectively omitted to force
+agreement. Tests establish instruction wiring and routing, not future interpretation.
 
 After every run the root inspects actual stage durations, including retries and cached replay,
 names the biggest time sink, and removes avoidable waiting, repeated discovery/checks or rework

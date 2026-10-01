@@ -18,9 +18,9 @@ This document is generated from a private spec by the spec tool and is never edi
 
 **test-command**: The repository runs its checks with bun test over the test files.
 
-**input-change-review**: The comparison stays the strict automatic verdict. A unit whose change alters a compatibility input on purpose, such as a translation, a fixture, the scene module or a dependency lock, says so in its criterion. When the comparison refuses that pair, the writing stage returns the refusal together with an evidence sheet of the same two captures, and the reviewing stages judge the outcome by reading the sheet, the two receipts and the after capture's measured checks. There is no automatic matching of receipt fields, no per-file input list and no structured results file of the sheet. The more elaborate alternative this rules out is automatic receipt matching, which kept growing new gaps.
+**input-change-review**: The comparison stays the strict automatic verdict. A unit whose change alters a compatibility input on purpose, such as a translation, a fixture, the scene module or a dependency lock, is named so by the user's words for the unit. When the comparison refuses that pair, the writing stage returns the refusal together with an evidence sheet of the same two captures, and the reviewing stages judge the outcome by reading the sheet, the two receipts and the after capture's measured checks. There is no automatic matching of receipt fields, no per-file input list and no structured results file of the sheet. The more elaborate alternative this rules out is automatic receipt matching, which kept growing new gaps.
 
-**scratch-length-only**: The mount-or-share rule for the scratch directory covers only a scratch path too long for the rendering engine. A slow shared file system stays a pitfall that names its symptom, since a short mount path leaves the storage as slow as before.
+**scratch-length-only**: The scratch directory lives in the system temporary directory because a scratch path inside a deep worktree is too long for the rendering engine. A slow shared file system stays a pitfall that names its symptom.
 
 ## Boundaries
 

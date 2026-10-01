@@ -80,11 +80,9 @@ no loop. This builds on [finding verification](workflow-finding-verification.md)
    against the tree, and attests each `unattested-fix` by reading its commits against the
    approved correction and running the checks itself. A confirmed item of severity `must-fix`
    or `CRITICAL`, an unfixed approval, a failed proof, and an open decision once the user has
-   decided it, are fixed in a follow-up implement-review-verify workflow. The root writes the
-   follow-up's spec as it writes any unit spec: one numbered acceptance criterion per item with
-   its receipts, the settled decision for a decided item, the previous run's snapshot as the
-   base, and the count of those criteria as `criteriaCount`; the follow-up's cold spec review
-   and every other stage apply to it unchanged. A follow-up never reuses the previous run's
+   decided it, are fixed in a follow-up implement-review-verify workflow. The follow-up runs on a
+   copy of the spec that holds the user's words about its items, with the previous run's
+   snapshot as the base, and every stage applies to it unchanged. A follow-up never reuses the previous run's
    prompts or run ID. A disproved item is recorded with its counterevidence; a `nit` or a
    `record` stays recorded. A follow-up's review may raise new items, which are new entries;
    each follow-up's list is the previous pass's list. The root never reports a fix as verified

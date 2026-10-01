@@ -48,8 +48,8 @@ available.
 **local-cache-skill**: A new skill, `skills/local-cache/SKILL.md`, named local-cache, is the one definition of the
 project cache: the ignored, untracked `.cache/` directory at the project root, which the
 project's ignore rules must cover. It states what goes there: temporary files, logs,
-research and plans; private specs under `.cache/specs/` and private directive records under
-`.cache/directives/`; workflow worktrees under `.cache/worktrees/`; and a writing stage's
+research and plans; private specs under `.cache/specs/`; workflow worktrees under
+`.cache/worktrees/`; and a writing stage's
 scratch files under `.cache/<agent-scope>/`, or, inside a worktree, under that worktree's
 `.cache/`. It states that reading stages write nothing there. It states that nothing in it
 is ever committed. Its first paragraph states the precedence rule of `skill-precedence`.

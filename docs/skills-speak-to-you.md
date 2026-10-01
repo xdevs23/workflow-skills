@@ -32,8 +32,7 @@ it that the skill's reader is the root session. A "you" in that paragraph would 
 subagent and could no longer say that.
 
 Strings the shipped scripts send to a stage or check in a result keep their exact form wherever a
-skill quotes them. These are the lane value `orchestrator-only`, the `ORCHESTRATOR SCOPING` label,
-the stage line that says a stage is not the orchestrator, the verifier action `root-action`, the
+skill quotes them. These are the lane value `orchestrator-only`, the stage line that says a stage is not the orchestrator, the verifier action `root-action`, the
 exit value `root-resolution` and the fixer prompt line in the example code that sends
 disagreements to the root. In a stage's prompt the root is another agent, so it keeps a name there.
 The list of what the AUTHORITY constant tells an authority-aware seat is written from the seat's

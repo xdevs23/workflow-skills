@@ -3,8 +3,7 @@
 ## Required result
 
 Every stage of the implement-review-verify workflow returns one structured object and nothing
-else. The object carries everything the stage owes: verdicts, findings with receipts, coverage,
-limitations, checks with their quoted output, Git evidence, decisions, dispositions. No stage
+else. The object carries everything the stage owes: findings with receipts, coverage, limitations, checks with their quoted output, Git evidence, decisions, dispositions. No stage
 schema declares a free-prose field and every stage schema is closed. The script accepts a stage
 on the completeness of its object, never on the length of a text. This builds on
 [finding verification](workflow-finding-verification.md) and
@@ -40,9 +39,10 @@ on the completeness of its object, never on the length of a text. This builds on
    base composed by spread. Every one of the nine carries `limitations`, `coverage`
    (`[{ what, checked, how }]`, what the seat inspected and how) and `findings`; the six briefed
    seats also carry `abort`. Beyond that:
-   * correctness, cleanliness, spec compliance, duplicate checker: `verdicts`, an array of
-     `{ criterion, verdict, receipts }` with `criterion` an integer, `verdict` an enum of
-     `PASS`, `AT-RISK` and `FAIL`, and at least one receipt on every verdict;
+   * correctness, spec compliance, duplicate checker: no verdicts; every finding also carries
+     `evidence`, at least one `{ kind, file, line, key }` with `kind` an enum of `transcript`
+     and `rule`, naming the transcript record of the user's words it is judged against with the
+     key path of the quoted part, or the file and line of a rule with an empty key path;
    * inverse-spec: `authorizations`, an array of `{ choice, receipts, authority, class, saving }`
      with `class` an enum of `authorized`, `derivation`, `excess`, `missing-decision` and
      `directive-conflict`;
@@ -62,8 +62,8 @@ on the completeness of its object, never on the length of a text. This builds on
    plus `dispositions` (`[{ key, disposition, reason, receipts }]`, the disposition enum
    unchanged) and `touched`; its `premises` array is where a false prompt premise or a
    prompt-versus-spec conflict is recorded, as the shared authority constant requires of every
-   briefed seat. The fixer's per-criterion status is retired: fresh review and
-   verification attest the criteria, and no stage consumed that self-report. The deliverable
+   briefed seat. The fixer reports no status of its own beside its dispositions: fresh review and
+   verification attest the fixes, and no stage consumed such a self-report. The deliverable
    proof is `files` together with `checks`; the marker line and the marker search in the retry
    helper are removed.
 4. **Finding verifier schema** (`agents/finding-verifier.md`; the verify-loop's `verifier`
@@ -89,14 +89,10 @@ on the completeness of its object, never on the length of a text. This builds on
    retry helpers: it calls the agent, returns at once an object whose `abort.trigger` is not
    `none` and whose `reason` is non-empty, retries up to three times on a null result or a
    failed completeness check, and throws after the third attempt with the last failure named.
-   `args.criteriaCount` is a required integer of at least 1; the root counts the numbered items
-   under the spec's acceptance-criteria heading at the revision it launches, and law 7 keeps
-   that revision fixed for the run. The completeness checks:
+   The completeness checks:
    * every briefed stage: `abort.reason` non-empty when the trigger is not `none`;
-   * verdict seats: exactly one verdict per criterion from 1 to `args.criteriaCount`, every
-     verdict with a receipt; a mismatch throws with a message naming the count and the
-     criteria returned, so a stale count is visible as the cause; every finding has a receipt
-     and a lane;
+   * the three concern seats: every finding has a receipt, a lane and evidence, every evidence
+     entry names a file, and every transcript entry names a key path;
    * the other readers: every finding has a receipt; `coverage` non-empty; every coverage entry
      with `checked` false is matched by a limitation; the inverse seat has a non-empty
      `authorizations` list; the alternatives seat has a candidate, a finding, or
@@ -129,7 +125,7 @@ on the completeness of its object, never on the length of a text. This builds on
    prose section, the phase 1 abort paragraph, the phase 4 fixer paragraph, the phase 2 and
    phase 3 sentences on reports, and the finding verifier's rule to read every report in full
    are rewritten to the fields and the completeness checks. The rule that a finding is a defect
-   keeps its meaning: verdicts and coverage go in their own fields.
+   keeps its meaning: coverage and limitations go in their own fields.
 9. **Handoff between stages.** The three briefed code-lens readers receive the implementer's
    object serialized under the untrusted-claims label, where they receive its report today. The
    finding verifier receives every seat object serialized and the implementer's object. The

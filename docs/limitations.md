@@ -40,10 +40,6 @@ false. The finding verifier's template, the verify prompt of the main script and
 state this, and a routing test shows a writer with several commits and one files list
 passing the scope check.
 
-**unrunnable-observation**: An observation whose command the provenance review cannot run read-only is a must-fix
-finding against that observation item, because an observation in a spec must be re-runnable
-without writing. It is never reported as a limitation.
-
 **readers-limitations-through-verifier**: In the main script, the limitation of each of the eight review stages reaches the
 orchestrating session only through the finding verifier, which keeps it as an unresolved issue or discards it under
 `limitation-definition`; the script no longer records a reading stage's blocking limitation

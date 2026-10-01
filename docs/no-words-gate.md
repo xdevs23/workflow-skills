@@ -77,15 +77,15 @@ lives: in shipped script files instead of code blocks inside the skill.
 
 **no-words-trigger**: `abort.trigger` gains the value `no-words` beside `none`, `directive-conflict` and
 `sense-check`, in every stage schema that carries the enum and in the skill's prose about
-the triggers. The implementer sets it before any edit when the private directive record
-was not supplied, cannot be read, or holds no verbatim words of the user, and leaves the
-tree unmodified. A record holds the user's words when it carries at least one quotation
-attributed to the user; a record with no such quotation is wordless. A record that holds
-the user's words and says nothing about the mechanism still passes as silent. The script
-treats `no-words` like the other two triggers: `abortOnFlag` throws, the run ends with
-exit `aborted`, and the aborting object rides in `remaining`. A spec item whose source is `transcript` counts as the user's
-words. A paraphrase, a summary and a design document's decision list do not. The fixer
-sets the same trigger under the same condition. The shared prompt names the flag and
+the triggers. The implementer sets it before any edit when the spec was not supplied,
+cannot be read, or holds no entry of author `user`, and leaves the tree unmodified. A spec
+that holds the user's words and says nothing about the mechanism still passes as silent.
+The script treats `no-words` like the other two triggers: `abortOnFlag` throws, the run
+ends with exit `aborted`, and the aborting object rides in `remaining`. An entry of author
+`user` counts as the user's words. An assistant entry, a paraphrase, a summary and a design
+document's decision list do not. The fixer sets the same trigger before its first write; in
+a fix run, which reads no spec, it sets it when no entry it receives points at words of the
+user or at a rule. The shared prompt names the flag and
 forbids reporting the gap and proceeding. The simpler alternative this rules out is a
 limitation entry, which the failing session wrote and walked past.
 
@@ -97,14 +97,9 @@ exists to stop. The skill also states that a contradiction between a design and 
 or between two statements of the user, is a question for the user with both sides quoted,
 which no agent resolves and no spec is written on top of.
 
-**tool-requires-words**: The tool fails a spec in which no item has source `transcript`, with a violation naming
-`items`. It fails every `requirement` item with source `derivation` whose parent chain
-never reaches a `transcript` or `rule` item, with a violation naming the item: an
-observation shows that a condition exists and does not show that anyone asked for a
-mechanism. An item whose own source is `transcript`, `rule` or `observation` is a
-recorded fact and is not subject to that check. The existing check that
-`items` is a non-empty list stays. The simpler alternative this rules out is trusting the
-author to include the words.
+**tool-requires-words**: The tool fails a spec in which no entry has author `user`, with a violation naming
+`entries`, and a spec whose `entries` is not a non-empty list. The simpler alternative this
+rules out is trusting the author to include the words.
 
 **tool-answers-field**: A `transcript` item may carry `answers`, a verbatim quote of the assistant text that the
 cited user words reply to. The key is optional: the shape check allows it absent and

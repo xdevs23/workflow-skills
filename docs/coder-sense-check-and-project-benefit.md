@@ -9,20 +9,20 @@ This document builds on [directive authority](directive-authority.md) and
 
 1. **Coders check that the request makes sense before writing.** A coder that finds it does
    not make sense hard-flags and says why. The unit continues only on the user's verbatim
-   decision, quoted in the private directive record.
+   decision, quoted in a copy of the spec.
 2. **Every review seat judges whether the diff helps the project, not only whether it is
    correct.** Band-aids, workarounds and longer routes are CRITICAL findings that reach the
    root, which cannot close them by patching.
 
 ## Decisions
 
-1. **Implementer sense check.** Before any edit, the implementer reads the private directive
-   record and the spec and asks two questions: does any recorded decision rule out the mechanism
-   the request changes, or describe the system in a shape that mechanism contradicts; and does
-   growing that mechanism serve the project, or would the request stack new behavior onto a
-   mechanism the record has already ruled out. A record that says nothing about the mechanism
-   rules nothing out: the check passes and the report notes the silence. Where the record
-   permits it, the coder removes the code and rebuilds it to the spec instead of growing it.
+1. **Implementer sense check.** Before any edit, the implementer reads the spec and asks two
+   questions: do the user's words rule out the mechanism the request changes, or describe the
+   system in a shape that mechanism contradicts; and does growing that mechanism serve the
+   project, or would the request stack new behavior onto a mechanism the user's words have
+   already excluded. Words that say nothing about the mechanism exclude nothing: the check
+   passes and the report notes the silence. Where the user's words permit it, the coder removes
+   the code and rebuilds it to the spec instead of growing it.
 2. **A failed check hard-flags.** The stage returns its abort field with the `sense-check`
    trigger and the reason: the mechanism, the recorded decision it contradicts, and why
    extending it is the wrong shape (the field is defined in
@@ -30,7 +30,7 @@ This document builds on [directive authority](directive-authority.md) and
    the existing directive-contradiction trigger:
    before any edit the tree stays unmodified; after edits landed, further writes stop and the
    coder reports the edits as they stand, committing nothing and reverting nothing. The unit
-   continues only on the user's verbatim decision quoted in the private record; the root
+   continues only on the user's verbatim decision quoted in a copy of the spec; the root
    chooses the continuation from the coder's report and that decision.
 3. **Fixer bounded check.** The fixer checks each approved correction before its first write:
    a correction that is itself a band-aid on a mechanism the record does not call for, where
@@ -82,8 +82,8 @@ This document builds on [directive authority](directive-authority.md) and
 * **A `blocked` disposition instead of a fixer hard flag.** It returns one key as an ordinary
   disagreement and lets the other approved corrections land on a mechanism the fixer has just
   judged should not exist.
-* **Giving cold seats the directive record so they can quote it.** Unbriefedness is what makes
-  those seats useful; the verifier supplies the quote for their findings.
+* **Giving cold seats the spec so they can quote it.** Unbriefedness is what makes those seats
+  useful; the verifier supplies the user's words for their findings.
 * **A prose prefix in the claim instead of an enum field.** Law 9: the script branches only on
   enum-locked vocabulary.
 

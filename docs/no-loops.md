@@ -70,7 +70,7 @@ run's findings as its next round.
 A new run starts only for a recorded item that is supposed to be fixed: a confirmed must-fix or
 CRITICAL defect in code the unit wrote, an unfixed approval, a failed proof, or an open decision
 once the user has decided it. A finding whose fix needs no decision of the user may go to a fix run,
-whose fix list names findings of the parent run. Every other such item goes to a new unit with its
+whose fix list holds entries of the parent run's review. Every other such item goes to a new unit with its
 own spec. A new run takes as its work the items it was started for, and the findings of its own
 review are recorded in the todo record like any other remaining item. Every other item stays in the
 todo record as a separate unit, done later. The cleanup entries the rule reader and the finding

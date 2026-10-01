@@ -38,10 +38,10 @@ Hard-flagged reports and structured findings remain available in the exception
 handoff with their originating stage and evidence, even when the cycle stops
 before ordinary verification. Stopping must not erase the findings that caused it.
 
-Spec compliance and inverse-spec review both check the private directive record
-as well as the specification. Spec compliance retains its forward requirement
+Spec compliance and inverse-spec review both read the user entries of the
+specification in their context. Spec compliance retains its forward requirement
 coverage; inverse-spec retains its reverse authorization check. Neither accepts
-an assistant-authored specification as proof of a user decision. All inverse-spec
+an assistant entry or any text the orchestrator wrote as proof of a user decision. All inverse-spec
 findings are CRITICAL, regardless of phrasing or perceived operational impact.
 A no-findings report is still legitimate; critical severity is not a finding quota.
 
@@ -52,12 +52,13 @@ all of them as CRITICAL. No finding is dismissed because it was labeled a nit,
 soft ambiguity, optional suggestion or already covered by an edited spec.
 Duplicate consolidation preserves all source identities and critical status.
 
-Every inverse-spec finding requires root resolution: the spec is amended to
-faithfully describe existing user decisions, or a genuinely unsettled decision
-is put to the user after the question-premise check. Counterevidence to an
+Every inverse-spec finding requires root resolution: the root records that the
+user's words back the code's choice, puts a genuinely unsettled product or
+architecture decision to the user after the question-premise check, or decides
+any other choice itself and states it in the chat. Counterevidence to an
 apparent false positive is preserved for root resolution, not used to silently
-drop the finding. An edited spec is not sufficient closure: enforcement continues
-against the original directives and context. The fixer retains inverse-spec origin
+drop the finding. A copy of the spec with new words is no closure on its own:
+enforcement continues against the user's words and their context. The fixer retains inverse-spec origin
 and critical status on received corrections even if an earlier stage downgraded
 them; an absent source finding remains visible to the root instead of becoming
 an unauthorized direct fix. A question that needs the user is first treated as
@@ -69,10 +70,10 @@ launched alongside the question. The root either records a derivable choice as
 its own decision or asks and stops, and it never offers a choice that stands
 until the user objects, because silence is not a source of authority.
 
-The root may correct a specification to faithfully reflect existing user
-decisions. A new decision requires user authorization. Neither an amendment nor
-a passing implementation test retroactively authorizes an unsupported addition.
-Delegated implementers, reviewers and fixers do not edit the task specification.
+No one edits a run's specification: it quotes the discussion verbatim, and new
+words of the user go into a copy for the next run. A new decision requires user
+authorization. Neither a copy nor a passing implementation test retroactively
+authorizes an unsupported addition.
 
 ## Questions and acceptance
 
@@ -98,26 +99,23 @@ work for review and correction, not automatically an authority conflict.
 
 ## Confidentiality and boundaries
 
-Verbatim directives and private context remain in ignored, untracked records unless
-publication is explicitly authorized. Repository specifications contain technical
+The specification quotes the user, so it remains ignored and untracked unless
+publication is explicitly authorized. Tracked design documents contain technical
 requirements, not conversational quotations, personal examples or private incident
 narratives. Tests use synthetic scenarios unrelated to private incidents.
 
-The root supplies the private record from the actual conversation, preserving
-relevant directives, surrounding qualifications and supplied examples without
-selective omission. References identify their source and ordering; summaries are
-labeled and never substitute for available verbatim evidence. Applicable project
-requirements are referenced alongside, not relabeled as user quotations. Record
-content is fixed for a review cycle; new directives invalidate affected reviews
-and approvals. Original verbatim directives are retained: never erase, truncate,
-rewrite or selectively omit them to make a spec or implementation pass. Later
-user decisions may supersede earlier instructions with explicit provenance;
-an assistant's spec edits cannot. An inaccessible or incomplete necessary record is an explicit
-root-action limitation that prevents acceptance, not permission to trust the spec.
-No new storage service or public source-record format is required.
+The root assembles the specification from the actual conversation: the user's
+words about the unit, with the assistant messages they need as context, without
+selective omission. Every entry names its session record, so its source and order
+are known; a summary never substitutes for the quoted words. Applicable project
+requirements reach the stages as rules, never relabeled as user quotations. A
+run's specification is fixed for that run; new words go into a copy for the next
+one. Original words are never erased, truncated, rewritten or selectively omitted
+to make an implementation pass. A specification without the user's words is not
+permission to trust anything else.
 
-Authority-aware stages receive the relevant private record and may not claim
-fidelity when necessary evidence is unavailable. Deliberately unbriefed quality,
+Authority-aware stages receive the specification and may not claim fidelity when
+necessary evidence is unavailable. Deliberately unbriefed quality,
 cold-alternative and cold spec-review inputs retain their existing boundaries;
 authority-aware checks do not depend on those unbriefed roles acquiring new inputs.
 
