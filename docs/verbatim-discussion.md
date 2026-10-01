@@ -60,13 +60,13 @@ under a directory named after the spec.
 
 The visual-verification skill writes nothing into the spec for visual work. The implementer takes
 the before captures before its first edit, and every writer returns the comparison with both capture
-names in its checks. Every writer also returns in `artifacts` the files it leaves outside its
-commits, such as its captures, each with its path and what it holds. The script hands the
-implementer's artifacts on to every briefed review seat and to the fixer without knowing what they
-are, the finding verifier reads them in the implementer's object, and a fix run reaches them through
-a pointer to the parent run's implementer result. The scratch directory of the runtime and the
-rendering engine lives in the system temporary directory, one private directory per run, and the
-launcher removes it when the run ends.
+names in its checks. The implementer also returns in `artifacts` the files it leaves outside its
+commits, such as its captures, each with its absolute path and what it holds. The script hands them
+to the spec-compliance, inverse-spec and rule readers and to the fixer without knowing what they
+are, the correctness and duplicate readers and the finding verifier read them in the implementer's
+object, and a fix run reaches them through a pointer to the parent run's implementer result. The
+scratch directory of the runtime and the rendering engine lives in the system temporary directory,
+one private directory per run, and the launcher removes it when the run ends.
 
 ## Alternatives the user rejected
 

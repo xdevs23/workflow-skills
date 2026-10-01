@@ -142,8 +142,8 @@ for it: no criterion, no capture name and no path.
   comparison against the before capture and returns the comparison command and its output, which
   name both captures, in its checks. The stage's pass or fail proof stays the project's check
   command, because the comparison exits nonzero for every intended change.
-- Return in `artifacts` every capture, comparison report and evidence sheet a writing stage made,
-  each with its path in the harness directory and what it shows.
+- The implementer returns in `artifacts` every capture, comparison report and evidence sheet it
+  made, each with its absolute path and what it shows.
 - Expect the main script to hand the implementer's `artifacts` to every reading stage that receives
   the spec and to the fixer, so each of them opens the captures the implementer compared by their
   names.

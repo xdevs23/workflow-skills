@@ -96,9 +96,8 @@ Rules:
   git, both outputs quoted as head and status), proofPassed, premises, commits (sha, subject and the
   path of its repository), files (every path a commit of this stage touched, relative to the tree
   root: byte size at the snapshot, 0 when deleted, change added / modified / deleted), checks,
-  artifacts (every file you leave outside your commits for the stages after you, such as a capture
-  of the running program, with its path and what it holds), dispositions, touched paths and
-  specSuggestions. Never claim a successful snapshot if checks or the commit failed.
+  dispositions, touched paths and specSuggestions. Never claim a successful snapshot if checks or
+  the commit failed.
 - Write or extend a design document when a correction alters the design: what the code does, how its
   parts fit together, a decision with its reason, or a rejected alternative. A correction that
   alters none of these needs no document, and that is not an incomplete stage. Correcting a design

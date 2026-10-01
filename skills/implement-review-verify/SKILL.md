@@ -342,12 +342,15 @@ collisions and consistency drift.
 - Each writer returns `repositories`, one entry per repository of the base list with its `path`,
   `startSha`, full `snapshotSha`, `clean` and `git` (the quoted output of `git rev-parse --verify
   HEAD^{commit}` and `git status --porcelain=v1 --untracked-files=all` in that repository), then
-  `commits`, each naming its repository, `files`, relative to the tree root, `checks`, and
-  `artifacts`, every file it leaves outside its commits for the stages after it, such as a capture
-  of the running program, with its path and what it holds.
-- The script hands the implementer's `artifacts` to every briefed review seat and to the fixer, and
-  the finding verifier reads them in the implementer's object. The unbriefed seats and the roaster
-  receive none, and the run returns the last writer's `artifacts` in its `proof`.
+  `commits`, each naming its repository, `files`, relative to the tree root, and `checks`.
+- Expect the implementer to return `artifacts` as well: every file it leaves outside its commits for
+  the stages after it, such as a capture of the running program, with its absolute path and what it
+  holds.
+- Expect the script to hand the implementer's `artifacts` in a block of their own to the
+  spec-compliance, inverse-spec and rule readers and to the fixer.
+- Expect the correctness and duplicate readers and the finding verifier to read the artifacts in the
+  implementer's object, which they receive whole.
+- Expect the unbriefed reviewers and the roaster to receive no artifacts.
 - The script accepts a writer only when every repository of the list appears exactly once at its
   expected start, each quoted `git.head` equals its `snapshotSha`, each `clean` agrees with an empty
   `git.status`, a repository whose snapshot moved has commits in it and an unchanged one none, and a
@@ -689,8 +692,8 @@ proceed merely because a reviewer or verifier prefers it.
     only when a correction alters the design;
   - runs full checks BARE AFTER ITS LAST WRITE;
   - commits completed scoped corrections and the document it wrote or extended;
-  - then returns the clean snapshot SHA, `git`, `commits`, `files`, `checks` with the quoted output,
-    `artifacts` and `proofPassed`.
+  - then returns the clean snapshot SHA, `git`, `commits`, `files`, `checks` with the quoted output
+    and `proofPassed`.
 - Attest each fix the fixer claims against its approved correction and checks.
 - With an EMPTY approved list the fix pass owes PROOF ONLY and may not edit or create an empty
   commit. It returns the original SHA. A failing check is reported for independent triage, not

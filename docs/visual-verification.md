@@ -262,10 +262,10 @@ implement-review-verify unit, with nothing specific to visual work in implement-
   before capture, and returns the comparison with both capture names in its checks; the stage's
   pass or fail proof stays the project's check command, since the comparison exits nonzero for
   every intended change;
-* each writing stage returns its captures, comparison reports and evidence sheets in `artifacts`,
-  and the main script hands the implementer's artifacts to every reading stage that receives the
-  spec and to the fixer; a fix run's fixer reaches them through a pointer its fix list entry
-  attaches to the parent run's implementer result;
+* the implementer returns its captures, comparison reports and evidence sheets in `artifacts`, each
+  by its absolute path, and every reading stage that receives the spec and the fixer get them, in
+  the implementer's object or in a block of their own; a fix run's fixer reaches them through a
+  pointer its fix list entry attaches to the parent run's implementer result;
 * reading stages that receive the spec open the PNGs, receipts and comparison reports in that
   worktree's project cache and check that each receipt's source revision is the commit it
   claims; stages that receive no spec by design get nothing added; a point that needs a new
