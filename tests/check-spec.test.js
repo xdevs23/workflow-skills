@@ -464,6 +464,22 @@ describe('fix list validation', () => {
     expect(result.err.trim().split('\n')).toHaveLength(2)
   })
 
+  test('a journal element that is no mapping fails, whether it is null or a list', () => {
+    const sessions = join(scratch, 'element-transcripts')
+    mkdirSync(join(sessions, 'session/subagents/workflows/wf_elements'), { recursive: true })
+    writeFileSync(join(sessions, 'session/subagents/workflows/wf_elements/journal.jsonl'), [
+      { type: 'started', key: 'elements', label: 'review:correctness' },
+      { type: 'result', key: 'elements', result: { findings: [null, ['The specified error is swallowed.']] } },
+    ].map(record => JSON.stringify(record)).join('\n') + '\n')
+    const path = written({ run: 'wf_elements', findings: ['correctness:0', 'correctness:1'] })
+    const result = Bun.spawnSync([process.execPath, tool, '--fix-list', path, '--transcripts', sessions, '--json'], { cwd: root })
+    expect(result.exitCode).not.toBe(0)
+    expect(result.stdout.toString()).toBe('')
+    for (const [source, index] of [['correctness:0', 0], ['correctness:1', 1]]) {
+      expect(result.stderr.toString()).toContain(`${source}: the element at index ${index} of review:correctness is not a mapping`)
+    }
+  })
+
   test('a retried stage resolves against its last result only', () => {
     const result = changedList(l => { l.findings = ['correctness:0'] }, ['--json'])
     expect([result.exit, result.err]).toEqual([0, ''])
