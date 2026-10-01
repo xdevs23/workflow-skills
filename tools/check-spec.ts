@@ -357,10 +357,9 @@ const exists = (path: string) => stat(path).then(() => true, () => false)
 const git = (directory: string, ...command: string[]) =>
   Bun.spawnSync(['git', '-C', directory, ...command], { stdout: 'pipe', stderr: 'pipe' })
 
-// A repository of the --base list: its path under the tree root and its base commit. The path is a
-// single dot, or segments of letters, digits, dots, underscores and hyphens joined by slashes, no
-// segment being one or two dots, so a list passes through a shell inside single quotes.
-type Repository = { path: string, sha: string }
+// The path of a repository of the --base list under the tree root: a single dot, or segments of
+// letters, digits, dots, underscores and hyphens joined by slashes, no segment being one or two
+// dots, so a list passes through a shell inside single quotes.
 const repositoryPath = (path: unknown) => typeof path === 'string' && (path === '.' ||
   path.split('/').every(segment => /^[A-Za-z0-9._-]+$/.test(segment) && segment !== '.' && segment !== '..'))
 
@@ -370,7 +369,7 @@ const repositoryPath = (path: unknown) => typeof path === 'string' && (path === 
 // deeper there, finds no repository the list leaves out, so no repository of the tree goes unread.
 // A partial list names only the repositories a unit changes, in a tree too large to list, and skips
 // the walk: nothing then checks the repositories it leaves out.
-async function baseRepositories(value: string, partial: boolean): Promise<Repository[]> {
+async function baseRepositories(value: string, partial: boolean): Promise<void> {
   let list: unknown
   try { list = JSON.parse(value) } catch (error) { throw new Error(`--base expects a JSON list of { path, sha }: ${messageOf(error)}`) }
   if (!Array.isArray(list) || !list.length) throw new Error('--base expects a non-empty JSON list of { path, sha }, one per git repository of the tree')
@@ -393,7 +392,7 @@ async function baseRepositories(value: string, partial: boolean): Promise<Reposi
       throw new Error(`--base commit ${entry.sha} is not in the repository at ${path}`)
     }
   }
-  if (partial) return list as Repository[]
+  if (partial) return
   const found: string[] = []
   const walk = async (directory: string) => {
     if (await exists(join(directory, '.git'))) { found.push(directory); return }
@@ -404,7 +403,6 @@ async function baseRepositories(value: string, partial: boolean): Promise<Reposi
   await walk('.')
   const missing = found.filter(path => !listed.has(path))
   if (missing.length) throw new Error(`--base leaves out the git repositories at ${missing.join(', ')}`)
-  return list as Repository[]
 }
 
 // The journal of a run: <transcripts>/<session>/subagents/workflows/<run>/journal.jsonl, in exactly
