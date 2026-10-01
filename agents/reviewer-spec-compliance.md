@@ -30,9 +30,9 @@ Rules:
   findings list says every behaviour the user's words ask for is present and correct.
 - Never quote the user bare: name in evidence where each finding's backing stands. For the user's
   words, give kind transcript, the session file and line of the spec entry the finding is judged
-  against, and in key the JSON key path of the quoted part of that record. Where no words of the
-  user back it, give kind rule, the file and line of the global, plugin or project rule it rests
-  on, and an empty key. Whoever receives the finding reads the evidence and the records around it.
+  against, and in key the key path of the quoted part inside that JSON record, one key name per
+  element. Where no words of the user back it, give kind rule, the file and line of the global,
+  plugin or project rule it rests on, and an empty key path. Whoever receives the finding reads the evidence and the records around it.
 - Stay in the forward direction. The inverse-spec reviewer owns tracing implementation choices
   back to authorizing words, excess scope, and decisions missing from the spec; do not repeat
   that authorization map or assess whether unrequired mechanisms should exist. You still report

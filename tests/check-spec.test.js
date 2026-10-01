@@ -437,129 +437,165 @@ const changedList = (edit, options = []) => {
   edit(list)
   return checkList(written(list), options)
 }
-// The findings of the parent run's journal that the valid list names, as the journal holds them.
-const journalFindings = [
-  { source: 'correctness:1', finding: { file: 'src/example.js', claim: 'The specified error is\n  swallowed by the catch block.',
-    severity: 'must-fix', lane: 'fixer-actionable', receipts: [{ file: 'src/example.js', line: 12, quote: 'catch (error) {}' }] } },
-  { source: 'roaster:0', finding: { file: 'src/reader.js', claim: 'The file handle stays open when the read fails.',
-    severity: 'must-fix', lane: 'fixer-actionable', receipts: [{ file: 'src/reader.js', line: 20, quote: 'open(path)' }] } },
-]
+const makeList = (run, sessions = transcripts) => {
+  const result = Bun.spawnSync([process.execPath, tool, '--make-fix-list', run, '--transcripts', sessions], { cwd: root })
+  return { exit: result.exitCode, out: result.stdout.toString(), err: result.stderr.toString() }
+}
+// The parent run's journal as the fixture holds it: the last verify stage's decisions and the roast's finding.
+const journal = (await Bun.file(join(transcripts, 'session-a/subagents/workflows/wf_parent-run/journal.jsonl')).text())
+  .trim().split('\n').map(line => JSON.parse(line))
+const decisions = journal.find(record => record.type === 'result' && record.key === 'parent-verify-2').result.decisions
+const roastFinding = journal.find(record => record.type === 'result' && record.key === 'parent-roast').result.findings[0]
+const pointers = [{ file: 'session-a.jsonl', line: 1, key: ['message', 'content'] }, { file: 'tests/fixtures/fix-list/rules.md', line: 3, key: [] }]
+const validEntries = [{ source: 'verify:1', decision: decisions[1], attach: pointers }, { source: 'roaster:0', finding: roastFinding, attach: [] }]
 
 describe('fix list validation', () => {
-  test('a valid fix list passes with a fresh proof and each finding as the journal holds it, in both output forms', async () => {
+  test('a valid fix list passes with a fresh proof and its entries as the list holds them, in both output forms', async () => {
     const [first, second] = [checkList(validPath, ['--json']), checkList(validPath, ['--json'])]
     expect([first.exit, first.err]).toEqual([0, ''])
     const bytes = await Bun.file(validPath).arrayBuffer()
     expect(JSON.parse(first.out)).toEqual({
-      findings: journalFindings, run: 'wf_parent-run',
+      entries: validEntries, run: 'wf_parent-run',
       sha256: createHash('sha256').update(new Uint8Array(bytes)).digest('hex'),
       proof: expect.stringMatching(/^[0-9a-f]{32}$/), fixList: validPath,
     })
     expect(JSON.parse(first.out).proof).not.toBe(JSON.parse(second.out).proof)
     const plain = checkList(validPath)
     expect([plain.exit, plain.err]).toEqual([0, ''])
-    expect(plain.out).toMatch(/^findings=2 run=wf_parent-run sha256=[0-9a-f]{64} proof=[0-9a-f]{32} fixList=/)
+    expect(plain.out).toMatch(/^entries=2 run=wf_parent-run sha256=[0-9a-f]{64} proof=[0-9a-f]{32} fixList=/)
+  })
+
+  test('the generated fix list holds every decision of the last verify stage and every roast finding, with no pointers, and passes', () => {
+    const made = makeList('wf_parent-run')
+    expect([made.exit, made.err]).toEqual([0, ''])
+    expect(made.out.split('\n').some(line => / $/.test(line))).toBe(false)
+    expect(Bun.YAML.parse(made.out)).toEqual({ run: 'wf_parent-run', entries: [
+      { source: 'verify:0', decision: decisions[0], attach: [] }, { source: 'verify:1', decision: decisions[1], attach: [] },
+      { source: 'roaster:0', finding: roastFinding, attach: [] }] })
+    const checked = checkList(written(made.out), ['--json'])
+    expect([checked.exit, checked.err]).toEqual([0, ''])
+    invalid(makeList('wf_missing-run'), 'run wf_missing-run has no journal under the transcript directory')
+    invalid(makeList('wf_other-run'), 'run wf_other-run has no decision of a verify stage and no finding of a roast stage')
+    invalid(makeList('../wf_parent-run'), 'expected a run id')
   })
 
   test.each([
-    ['an unknown run', l => { l.run = 'wf_missing-run' }, 'correctness:1: run wf_missing-run has no journal under the transcript directory'],
-    ['an unknown reader', l => { l.findings[0] = 'naming:0' }, 'naming:0: the parent run has no stage labelled review:naming'],
-    ['an index out of range', l => { l.findings[0] = 'correctness:2' }, 'correctness:2: index 2 is outside the 2 findings of review:correctness'],
-    ['a stage without a findings list', l => { l.findings[0] = 'quality:0' }, 'quality:0: the last review:quality stage returned no findings list'],
-  ])('%s fails with a violation naming the source', (name, edit, message) => {
+    ['an unknown run', l => { l.run = 'wf_missing-run' }, 'verify:1: run wf_missing-run has no journal under the transcript directory'],
+    ['a stage the parent run lacks', l => { l.run = 'wf_other-run' }, 'verify:1: the parent run has no stage labelled verify'],
+    ['an index out of range', l => { l.entries[0].source = 'verify:2' }, 'verify:2: index 2 is outside the 2 decisions of verify'],
+    ['an edited decision', l => { l.entries[0].decision.correction = 'Return the error to the caller.' }, 'verify:1.decision: differs from the parent run\'s journal'],
+    ['an edited finding', l => { l.entries[1].finding.claim = 'The handle leaks.' }, 'roaster:0.finding: differs from the parent run\'s journal'],
+    ['a decision under a roaster source', l => { l.entries[1] = { source: 'roaster:0', decision: roastFinding, attach: [] } }, 'roaster:0.decision: unknown key'],
+  ])('%s fails with a violation naming the entry', (name, edit, message) => {
     const result = changedList(edit)
     invalid(result, message)
     expect(result.err).not.toContain('proof')
   })
 
-  test('a run-wide failure names every source', () => {
+  test('a run-wide failure names every entry', () => {
     const result = changedList(l => { l.run = 'wf_missing-run' })
-    for (const source of ['correctness:1', 'roaster:0']) invalid(result, `: ${source}: run wf_missing-run`)
+    for (const source of ['verify:1', 'roaster:0']) invalid(result, `: ${source}: run wf_missing-run`)
     expect(result.err.trim().split('\n')).toHaveLength(2)
   })
 
-  test('a journal element that is no mapping fails, whether it is null or a list', () => {
-    const sessions = join(scratch, 'element-transcripts')
-    mkdirSync(join(sessions, 'session/subagents/workflows/wf_elements'), { recursive: true })
-    writeFileSync(join(sessions, 'session/subagents/workflows/wf_elements/journal.jsonl'), [
-      { type: 'started', key: 'elements', label: 'review:correctness' },
-      { type: 'result', key: 'elements', result: { findings: [null, ['The specified error is swallowed.']] } },
-    ].map(record => JSON.stringify(record)).join('\n') + '\n')
-    const path = written({ run: 'wf_elements', findings: ['correctness:0', 'correctness:1'] })
-    const result = Bun.spawnSync([process.execPath, tool, '--fix-list', path, '--transcripts', sessions, '--json'], { cwd: root })
-    expect(result.exitCode).not.toBe(0)
-    expect(result.stdout.toString()).toBe('')
-    for (const [source, index] of [['correctness:0', 0], ['correctness:1', 1]]) {
-      expect(result.stderr.toString()).toContain(`${source}: the element at index ${index} of review:correctness is not a mapping`)
-    }
+  test('a retried stage resolves against its last result only', () => {
+    const first = journal.find(record => record.type === 'result' && record.key === 'parent-verify-1').result.decisions[0]
+    invalid(changedList(l => { l.entries = [{ source: 'verify:0', decision: first, attach: [] }] }), 'verify:0.decision: differs from the parent run\'s journal')
+    const last = changedList(l => { l.entries = [{ source: 'verify:0', decision: decisions[0], attach: [] }] }, ['--json'])
+    expect([last.exit, last.err]).toEqual([0, ''])
   })
 
-  test('a retried stage resolves against its last result only', () => {
-    const result = changedList(l => { l.findings = ['correctness:0'] }, ['--json'])
-    expect([result.exit, result.err]).toEqual([0, ''])
-    expect(JSON.parse(result.out).findings[0].finding.claim).toBe('The input is not trimmed.')
+  test.each([
+    ['a JSON lines record without a key path', p => { p.key = [] }, 'a record of a JSON lines file needs a key path'],
+    ['a key path the record lacks', p => { p.key = ['message', 'text'] }, 'the record holds no key path ["message","text"]'],
+    ['a line past the transcript', p => { p.line = 9 }, 'unreadable record: line is outside the transcript'],
+    ['a key name that is empty', p => { p.key = ['message', ' '] }, 'expected a list of key names'],
+    ['an unknown pointer key', p => { p.quote = 'A session transcript.' }, 'attach entry 1.quote: unknown key'],
+  ])('a transcript pointer with %s fails', (name, edit, message) => {
+    invalid(changedList(l => { edit(l.entries[0].attach[0]) }), message)
+  })
+
+  test.each([
+    ['a key path', p => { p.key = ['rules'] }, 'a line of a file that is no JSON lines file takes an empty key path'],
+    ['a line past the file', p => { p.line = 5 }, 'line 5 is outside the 4 lines of tests/fixtures/fix-list/rules.md'],
+    ['a missing file', p => { p.file = 'tests/fixtures/fix-list/missing.md' }, 'unreadable:'],
+  ])('a rule pointer with %s fails', (name, edit, message) => {
+    invalid(changedList(l => { edit(l.entries[0].attach[1]) }), message)
   })
 
   test.each([
     ['an unknown list key', l => { l.extra = true }, 'fix list.extra: unknown key'],
     ['a parentSpec key', l => { l.parentSpec = join(fixLists, 'parent.yaml') }, 'fix list.parentSpec: unknown key'],
-    ['an entries key', l => { l.entries = [] }, 'fix list.entries: unknown key'],
+    ['a findings key', l => { l.findings = ['correctness:1'] }, 'fix list.findings: unknown key'],
+    ['the keys of a spec', l => { l.unit = 'example' }, 'fix list.unit: unknown key'],
     ['a missing run', l => { delete l.run }, 'fix list.run: missing field'],
-    ['a missing findings list', l => { delete l.findings }, 'fix list.findings: missing field'],
+    ['missing entries', l => { delete l.entries }, 'fix list.entries: missing field'],
     ['a run id with a path in it', l => { l.run = '../wf_parent-run' }, 'fix list.run: expected a run id'],
-    ['empty findings', l => { l.findings = [] }, 'findings: expected a non-empty list'],
-    ['a finding with a correction', l => { l.findings[1] = { source: 'roaster:0', correction: 'Close the handle.' } }, 'finding 2: expected a source ID <seat>:<index>'],
-    ['a malformed source', l => { l.findings[0] = 'correctness-1' }, 'finding 1: expected a source ID <seat>:<index>: "correctness-1"'],
-    ['a duplicate source', l => { l.findings[1] = 'correctness:1' }, 'correctness:1: duplicate source correctness:1'],
+    ['empty entries', l => { l.entries = [] }, 'entries: expected a non-empty list'],
+    ['an entry with a correction', l => { l.entries[1].correction = 'Close the handle.' }, 'roaster:0.correction: unknown key'],
+    ['a reviewer source', l => { l.entries[1].source = 'correctness:1' }, 'entry 2.source: expected verify:<index> or roaster:<index>: "correctness:1"'],
+    ['a duplicate source', l => { l.entries.push(structuredClone(l.entries[0])) }, 'verify:1: duplicate source verify:1'],
+    ['a missing attach list', l => { delete l.entries[1].attach }, 'roaster:0.attach: missing field'],
+    ['an attach that is no list', l => { l.entries[1].attach = 'session-a.jsonl:1' }, 'roaster:0.attach: expected a list'],
   ])('%s fails shape validation', (name, edit, message) => invalid(changedList(edit), message))
+
+  test('a spec is no fix list, and a fix list is no spec', () => {
+    invalid(checkList(join(fixtures, 'valid.yaml')), 'fix list.unit: unknown key')
+    invalid(run(validPath), 'spec.run: unknown key')
+  })
 
   test('an unreadable fix list or a malformed journal line fails', () => {
     invalid(checkList(join(scratch, 'absent-list.yaml')), 'fix list: unreadable or malformed YAML')
     const sessions = join(scratch, 'broken-transcripts')
     mkdirSync(join(sessions, 'session/subagents/workflows/wf_broken'), { recursive: true })
     writeFileSync(join(sessions, 'session/subagents/workflows/wf_broken/journal.jsonl'), '{"type":"launched"}\nnot json\n')
-    const path = written({ ...validList, run: 'wf_broken' })
+    const path = written({ ...validList, entries: [validList.entries[1]], run: 'wf_broken' })
     const result = Bun.spawnSync([process.execPath, tool, '--fix-list', path, '--transcripts', sessions], { cwd: root })
     expect(result.exitCode).not.toBe(0)
-    expect(result.stderr.toString()).toContain('correctness:1: journal line 2 is not JSON')
+    expect(result.stderr.toString()).toContain('roaster:0: journal line 2 is not JSON')
   })
 
   describe('launch values', () => {
     const launch = (edit = () => {}) => {
-      const values = { findings: structuredClone(journalFindings) }
+      const values = { entries: structuredClone(validEntries) }
       edit(values)
       return ['--expect', JSON.stringify(values)]
     }
 
-    test('launch values equal to the findings the journal holds pass with a proof', () => {
+    test('launch values equal to the entries of the list pass with a proof', () => {
       const result = checkList(validPath, ['--json', ...launch()])
       expect([result.exit, result.err]).toEqual([0, ''])
       expect(JSON.parse(result.out).proof).toMatch(/^[0-9a-f]{32}$/)
     })
 
     test.each([
-      ['a changed claim', v => { v.findings[0].finding.claim = 'Log the error and continue.' }, 'correctness:1: differs from the launch values'],
-      ['a correction beside the finding', v => { v.findings[1].correction = 'Close the file handle.' }, 'roaster:0: differs from the launch values'],
-      ['a missing finding', v => { v.findings.pop() }, 'roaster:0: missing from the launch values'],
-      ['a finding the list does not name', v => { v.findings.push({ ...v.findings[0], source: 'correctness:0' }) }, 'launch values.findings: correctness:0 is not a finding of the fix list'],
-    ])('%s fails with a violation naming the source', (name, edit, message) => {
+      ['a changed decision', v => { v.entries[0].decision.correction = 'Log the error and continue.' }, 'verify:1: differs from the launch values'],
+      ['a correction beside the finding', v => { v.entries[1].correction = 'Close the file handle.' }, 'roaster:0: differs from the launch values'],
+      ['a pointer the list does not attach', v => { v.entries[1].attach.push(pointers[0]) }, 'roaster:0: differs from the launch values'],
+      ['a missing entry', v => { v.entries.pop() }, 'roaster:0: missing from the launch values'],
+      ['an entry the list does not hold', v => { v.entries.push({ ...v.entries[0], source: 'verify:0' }) }, 'launch values.entries: verify:0 is not an entry of the fix list'],
+    ])('%s fails with a violation naming the entry', (name, edit, message) => {
       const result = checkList(validPath, launch(edit))
       invalid(result, message)
       expect(result.err).not.toContain('proof')
     })
 
     test('malformed launch values fail', () => {
-      invalid(checkList(validPath, ['--expect', '{"findings": [']), 'launch values: malformed JSON')
+      invalid(checkList(validPath, ['--expect', '{"entries": [']), 'launch values: malformed JSON')
       invalid(checkList(validPath, ['--expect', '[]']), 'launch values: expected a mapping')
-      invalid(checkList(validPath, ['--expect', JSON.stringify({ findings: journalFindings, parentSpec: '/a/spec.yaml' })]), 'launch values.parentSpec: unknown key')
+      invalid(checkList(validPath, ['--expect', JSON.stringify({ entries: validEntries, findings: [] })]), 'launch values.findings: unknown key')
     })
   })
 
-  test('a spec argument or a spec option beside --fix-list is a usage error', () => {
+  test('a spec argument or a spec option beside --fix-list or --make-fix-list is a usage error', () => {
     for (const options of [[join(fixtures, 'valid.yaml')], ['--base', 'HEAD']]) {
       invalid(checkList(validPath, options), 'Usage')
     }
     const bare = Bun.spawnSync([process.execPath, tool, '--fix-list', validPath], { cwd: root })
     expect([bare.exitCode, bare.stderr.toString().includes('Usage')]).toEqual([1, true])
+    for (const options of [['--json'], ['--fix-list', validPath], ['--expect', '{}'], [join(fixtures, 'valid.yaml')]]) {
+      const made = Bun.spawnSync([process.execPath, tool, '--make-fix-list', 'wf_parent-run', '--transcripts', transcripts, ...options], { cwd: root })
+      expect([options.join(' '), made.exitCode, made.stderr.toString().includes('Usage')]).toEqual([options.join(' '), 1, true])
+    }
   })
 })
