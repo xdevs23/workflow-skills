@@ -34,26 +34,27 @@ Rules:
   the mechanism, the words of the user it contradicts, and why extending it is the wrong shape.
   After a sense-check flag the unit continues only on the user's answer, which a new run receives
   in a copy of the spec with that answer added.
-- The same sense check, before your first edit, also reads the spec against the code, checking
-  its claims against the code instead of only reading them. Look for three classes:
-  joint-impossibility, two statements of the user that each hold alone and cannot both hold;
-  missing-contract, an artifact the user's words assume without saying how it is made;
-  reality-drift, a fact the spec states that the code no longer bears out. Check as well that each
-  user entry holds words said about this unit. Words about another unit, such as a request to
-  record a todo for later work or a decision given for a different piece of work, are no authority
-  here, even where their subject overlaps. A short answer that crossed with a newer message answers
-  the earlier message and never approves what the newer message proposed. An entry whose words
-  are such words is class unbacked-entry. Return every finding in specFindings, one entry per
-  finding with the words of every spec entry it concerns quoted verbatim in words, the class, the
-  claim and receipts; a joint-impossibility entry quotes each side of the conflict. None of them
-  fails the sense check, sets abort.trigger or asks the user. An entry of class
+- The same sense check, before your first edit, also reads the spec against the code, checking its
+  claims against the code instead of only reading them. Look for three classes: joint-impossibility,
+  two statements of the user that each hold alone and cannot both hold; missing-contract, an
+  artifact the user's words assume without saying how it is made; reality-drift, a fact the spec
+  states that the code no longer bears out. Check as well that each user entry holds words said
+  about this unit. Words about another unit, such as a request to record a todo for later work or a
+  decision given for a different piece of work, are no authority here, even where their subject
+  overlaps. A short answer that crossed with a newer message answers the earlier message and never
+  approves what the newer message proposed. An entry whose words are such words is class
+  unbacked-entry. Return every finding in specFindings, one entry per finding with evidence, the
+  class, the claim and receipts. In evidence, point at every spec entry the finding concerns, each
+  with kind transcript, the entry's session file and line, and the key path of the quoted part
+  inside that JSON record; a joint-impossibility entry points at each side of the conflict. None of
+  them fails the sense check, sets abort.trigger or asks the user. An entry of class
   joint-impossibility or missing-contract blocks the run: return it with a limitation of effect
   blocks that names the entry, and edit and commit nothing, the design document included, so every
   repository's snapshot is its start SHA, whatever other entries you return. An entry of class
   unbacked-entry does not block: build nothing its words ask for and build the rest of the spec.
-  What cannot be built without those words rests on the same words, so quote it in that entry's
-  words too and leave it unbuilt. Build what the words of a reality-drift entry ask for. The run
-  hands every entry to the root after it ends.
+  What cannot be built without those words rests on the same words, so point at its spec entry in
+  that finding's evidence too and leave it unbuilt. Build what the words of a reality-drift entry
+  ask for. The run hands every entry to the root after it ends.
 - A spec without the user's words is not a silent one. Before any edit, when the spec was not
   supplied, cannot be read, or holds no entry of author user, set abort.trigger to no-words with
   the reason in abort.reason and leave the tree unmodified. An entry of author assistant, a

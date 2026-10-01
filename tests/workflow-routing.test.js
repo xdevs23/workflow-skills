@@ -1080,7 +1080,7 @@ describe('coder sense check and project-benefit review', () => {
 })
 
 // Field names every template must name (the gap-finder names none: the caller's schema defines its object).
-const CONCERN_SEAT = ['abort', 'limitations', 'coverage', 'findings', 'words']
+const CONCERN_SEAT = ['abort', 'limitations', 'coverage', 'findings', 'evidence']
 const WRITER = ['abort', 'limitations', 'repositories', 'proofPassed', 'commits', 'files', 'checks', 'specSuggestions']
 const FIELDS = {
   implementer: [...WRITER, 'premises', 'senseCheck', 'specFindings'], fixer: [...WRITER, 'premises', 'dispositions', 'touched'],
@@ -1284,6 +1284,8 @@ describe('structured stage output', () => {
       'Missing the JSON key path of the transcript evidence of'],
     ['a backed finding whose evidence names no file', 'spec', { findings: [{ ...backed, evidence: [{ kind: 'rule', file: '', line: 3, key: [] }] }] },
       'Missing the file of the evidence of'],
+    ['a backed finding whose rule evidence names a key', 'correctness', { findings: [{ ...backed, evidence: [{ kind: 'rule', file: 'CLAUDE.md', line: 3, key: ['message'] }] }] },
+      'A rule evidence entry takes an empty key path'],
     ['a finding without a receipt', 'quality', { findings: [{ ...finding, receipts: [] }] }, 'finding without a receipt'],
     ['a finding without a lane', 'rules', { findings: [{ ...finding, lane: undefined }] }, 'finding without a lane'],
     ['a coverage entry unchecked without a limitation', 'quality', { coverage: [{ what: 'the integration suite', checked: false, how: 'no database' }], limitations: [] }, 'coverage entry not checked and no limitation declared: the integration suite'],
@@ -2128,13 +2130,17 @@ describe('fix-only follow-up runs', () => {
         expect(flat(call.prompt)).toContain('FIX LIST: ' + FIX_LIST + '. Its run key names the parent run. Each entry holds, beside its source, a decision of the parent' +
           ' run\'s finding verifier (source verify:<index>) or a finding of its roaster (source roaster:<index>), as the parent run\'s journal holds it,' +
           ' and in attach the pointers the orchestrating session attached.')
-        expect(flat(call.prompt)).toContain('and carries no words of the session. The launch check compared every entry with the journal and resolved every pointer.' +
-          ' Read every record an entry points at.')
+        expect(flat(call.prompt)).toContain('and carries no words of the session. ' + POINTER_DIRECTORY +
+          ' The launch check compared every entry with the journal and resolved every pointer. Read every record an entry points at.')
         expect(flat(call.prompt)).toContain('A decision or a finding is a claim: calling a change a bug, a defect or a fix is a claim to check.')
         expect([call.prompt.includes('SPEC (authority)'), call.prompt.includes('PARENT UNIT SPEC')]).toEqual([false, false])
       }
     }
     expect(calls.find(c => c.label === 'scope').prompt).toContain('An entry you cannot place with confidence is a new choice.')
+    // Every stage that follows a pointer learns where a relative one resolves; the roaster reads Git objects only.
+    for (const call of calls.filter(c => c.label !== 'gate')) {
+      expect([call.label, call.prompt.split(POINTER_DIRECTORY).length - 1]).toEqual([call.label, call.label === 'roast' ? 0 : 1])
+    }
     for (const type of ['scope-check', 'diff-check']) {
       const text = await Bun.file(new URL(`../agents/${type}.md`, import.meta.url)).text()
       expect(text).toContain('\ntools: Read, Grep, Glob, Bash\n---\n')
@@ -3335,7 +3341,10 @@ describe('fixed review seats and a model for every agent', () => {
 const SPEC_REVIEW = [/(?<!inverse-)spec[- ]review/i, /pre-?phase/i, /cold[- ]review the spec/i]
 const SPEC_FINDING_CLASSES = ['joint-impossibility', 'missing-contract', 'reality-drift', 'unbacked-entry']
 // A spec finding quotes the words of every spec entry it concerns.
-const specFinding = (words, kind) => ({ words, class: kind, claim: 'The entries quoted here are ' + kind + '.', receipts: [receipt] })
+// A spec finding points at the transcript record of every spec entry it concerns, here by line.
+const POINTER_DIRECTORY = 'TRANSCRIPTS: a transcript or journal file that a pointer names by a relative path lies under ' + TRANSCRIPTS + '.'
+const specFinding = (lines, kind) => ({ evidence: lines.map(line => ({ kind: 'transcript', file: 'session.jsonl', line, key: ['message', 'content'] })),
+  class: kind, claim: 'The entries named here are ' + kind + '.', receipts: [receipt] })
 
 describe('the implementer checks the spec, and every stage reads only words said about this unit', () => {
   test('only the main and fix-run scripts ship, and no skill, template, README passage or test sends the root to a review of the spec before the main run', async () => {
@@ -3367,29 +3376,40 @@ describe('the implementer checks the spec, and every stage reads only words said
     }
   })
 
-  test('the implementer schema carries specFindings, one entry per finding with the quoted words, enum-locked class, claim and receipts', async () => {
+  test('the implementer schema carries specFindings, one entry per finding with evidence pointers, enum-locked class, claim and receipts', async () => {
     const { calls } = await simulate()
     const schema = calls.find(c => c.label === 'impl').schema
     expect(schema.required).toContain('specFindings')
     const entry = schema.properties.specFindings.items
     expect([entry.required, entry.additionalProperties, entry.properties.class, entry.properties.receipts.minItems])
-      .toEqual([['words', 'class', 'claim', 'receipts'], false, { enum: SPEC_FINDING_CLASSES }, 1])
-    // The entry quotes the words of its spec entries in a list of at least one quote, and names no item.
-    expect([entry.properties.words, 'items' in entry.properties]).toEqual([{ type: 'array', minItems: 1, items: { type: 'string' } }, false])
+      .toEqual([['evidence', 'class', 'claim', 'receipts'], false, { enum: SPEC_FINDING_CLASSES }, 1])
+    // The entry points at its spec entries with the evidence shape of the concern seats, and quotes no words.
+    const concern = calls.find(c => c.label === 'review:correctness').schema.properties.findings.items.properties.evidence
+    expect([entry.properties.evidence, 'words' in entry.properties, 'items' in entry.properties]).toEqual([concern, false, false])
     // Only the implementer returns spec findings.
     for (const call of calls.filter(c => c.label !== 'impl')) expect([call.label, 'specFindings' in call.schema.properties]).toEqual([call.label, false])
   })
 
+  test('every stage that reads the spec learns the directory its entries and transcript evidence resolve in', async () => {
+    const { calls } = await simulate({ reports: oneReport, verify: approveOne, fixes: { fix: fixed([disposition()]) } })
+    const line = 'TRANSCRIPTS: a session file that a spec entry or a transcript evidence entry names by a relative path lies under ' + TRANSCRIPTS + '.'
+    for (const call of calls.filter(c => c.label !== 'gate')) {
+      expect([call.label, call.prompt.includes(line)]).toEqual([call.label, call.prompt.includes('SPEC (authority)')])
+    }
+    expect(calls.filter(c => c.prompt.includes(line)).map(c => c.label).sort())
+      .toEqual(['fix', 'impl', 'review:correctness', 'review:dupes', 'review:inverse', 'review:rules', 'review:spec', 'verify'])
+  })
+
   test('an unbacked-entry or reality-drift finding reaches remaining as a spec-finding of its severity while every stage runs', async () => {
-    // The unbacked-entry finding quotes as well the words that cannot be built without its words.
-    const specFindings = [specFinding(['Add a retry button.', 'Show the retry count.'], 'unbacked-entry'), specFinding(['Rows keep their order.'], 'reality-drift')]
+    // The unbacked-entry finding points as well at the entry that cannot be built without its words.
+    const specFindings = [specFinding([12, 14], 'unbacked-entry'), specFinding([20], 'reality-drift')]
     const implementation = implemented({ specFindings })
     const { result, calls } = await simulate({ implementation })
     expect(calls.map(c => c.label)).toEqual(['gate', 'impl', ...readers.map(s => 'review:' + s), 'verify', 'fix', 'roast'])
     expect([result.exit, result.detail]).toEqual(['follow-up', 'The pass completed with items requiring follow-up.'])
     expect(result.remaining).toEqual([{ kind: 'spec-finding', severity: 'CRITICAL', item: specFindings[0] },
       { kind: 'spec-finding', severity: 'must-fix', item: specFindings[1] }])
-    expect(result.remaining.map(r => r.item.words)).toEqual([['Add a retry button.', 'Show the retry count.'], ['Rows keep their order.']])
+    expect(result.remaining.map(r => r.item.evidence.map(e => e.line))).toEqual([[12, 14], [20]])
     // The finding verifier receives them with the implementer's object.
     expect(calls.find(c => c.label === 'verify').prompt).toContain('WRITER OBJECTS (UNTRUSTED):\n\n[' + JSON.stringify(implementation) + ']')
     // They also reach the root when the run ends early.
@@ -3400,8 +3420,8 @@ describe('the implementer checks the spec, and every stage reads only words said
   })
 
   test('a joint-impossibility or missing-contract entry with a blocking limitation and unmoved snapshots ends the run after the implement stage', async () => {
-    for (const [kind, words] of [['joint-impossibility', ['Stream the rows.', 'Batch the rows.']], ['missing-contract', ['Use the shared token.']]]) {
-      const entry = specFinding(words, kind)
+    for (const [kind, lines] of [['joint-impossibility', [9, 11]], ['missing-contract', [30]]]) {
+      const entry = specFinding(lines, kind)
       const limitation = { what: 'The ' + kind + ' finding leaves the spec unbuildable as written.', effect: 'blocks' }
       const { result, calls } = await simulate({ implementation: implemented({ snapshotSha: BASE, limitations: [limitation], specFindings: [entry] }) })
       expect([kind, calls.map(c => c.label), calls.some(c => c.phase === 'Review')]).toEqual([kind, ['gate', 'impl'], false])
@@ -3414,7 +3434,7 @@ describe('the implementer checks the spec, and every stage reads only words said
   test('a joint-impossibility or missing-contract entry without a blocking limitation, or with moved snapshots, is refused', async () => {
     const limitation = { what: 'The spec cannot be built as written.', effect: 'blocks' }
     for (const kind of ['joint-impossibility', 'missing-contract']) {
-      const entry = specFinding(['Stream the rows.', 'Batch the rows.'], kind)
+      const entry = specFinding([9, 11], kind)
       const unpaired = await simulate({ implementation: implemented({ snapshotSha: BASE, specFindings: [entry] }) })
       expect([kind, unpaired.result.exit, unpaired.result.detail])
         .toEqual([kind, 'failed', expect.stringContaining('a ' + kind + ' spec finding needs a limitation of effect blocks')])
@@ -3424,8 +3444,15 @@ describe('the implementer checks the spec, and every stage reads only words said
         .toEqual([kind, 'failed', expect.stringContaining('a ' + kind + ' spec finding leaves every repository at its start SHA, but moved: .')])
     }
     // An unbacked-entry or reality-drift finding lets the run go on, with or without a limitation.
-    const { result } = await simulate({ implementation: implemented({ specFindings: [specFinding(['Add a retry button.'], 'unbacked-entry'), specFinding(['Rows keep their order.'], 'reality-drift')] }) })
+    const { result } = await simulate({ implementation: implemented({ specFindings: [specFinding([12], 'unbacked-entry'), specFinding([20], 'reality-drift')] }) })
     expect(result.exit).toBe('follow-up')
+    // A spec finding whose evidence breaks the pointer rules is refused like a concern seat's.
+    for (const [evidence, message] of [[[], 'Missing the evidence the finding rests on'],
+      [[{ kind: 'transcript', file: 'session.jsonl', line: 9, key: [] }], 'Missing the JSON key path of the transcript evidence of'],
+      [[{ kind: 'rule', file: 'CLAUDE.md', line: 3, key: ['message'] }], 'A rule evidence entry takes an empty key path']]) {
+      const refused = await simulate({ implementation: implemented({ specFindings: [{ ...specFinding([12], 'reality-drift'), evidence }] }) })
+      expect([message, refused.result.exit, refused.result.detail]).toEqual([message, 'failed', expect.stringContaining(message)])
+    }
   })
 
   test('the implementer, the inverse-spec reviewer, the finding verifier and the skill state the rules', async () => {
@@ -3436,30 +3463,31 @@ describe('the implementer checks the spec, and every stage reads only words said
         'joint-impossibility, two statements of the user that each hold alone and cannot both hold',
         "missing-contract, an artifact the user's words assume without saying how it is made", 'reality-drift, a fact the spec states that the code no longer bears out',
         'each user entry holds words said about this unit', other, crossed,
-        'is class unbacked-entry', 'Return every finding in specFindings, one entry per finding with the words of every spec entry it concerns quoted verbatim in words, the class, the claim and receipts;',
-        'a joint-impossibility entry quotes each side of the conflict.', 'None of them fails the sense check, sets abort.trigger or asks the user.',
+        'is class unbacked-entry', 'Return every finding in specFindings, one entry per finding with evidence, the class, the claim and receipts.',
+        'In evidence, point at every spec entry the finding concerns, each with kind transcript, the entry\'s session file and line, and the key path of the quoted part inside that JSON record;',
+        'a joint-impossibility entry points at each side of the conflict.', 'None of them fails the sense check, sets abort.trigger or asks the user.',
         'An entry of class joint-impossibility or missing-contract blocks the run: return it with a limitation of effect blocks that names the entry, and edit and commit nothing',
         "so every repository's snapshot is its start SHA, whatever other entries you return.",
         'An entry of class unbacked-entry does not block: build nothing its words ask for and build the rest of the spec.',
-        "What cannot be built without those words rests on the same words, so quote it in that entry's words too and leave it unbuilt.",
+        "What cannot be built without those words rests on the same words, so point at its spec entry in that finding's evidence too and leave it unbuilt.",
         'Build what the words of a reality-drift entry ask for.']],
       ['reviewer-inverse-spec', await template('reviewer-inverse-spec'), ['Only words the user said about this unit authorize a choice.', other, crossed,
         'A choice whose cited authority is such words lacks authority: report it as a finding with kind unbacked-choice.']],
       ['finding-verifier', await template('finding-verifier'), ['Reject closes it only on an entry of author user whose words were said about this unit and back the choice',
         other + ', back nothing here even where their subject overlaps.', 'so it never closes such a finding either',
         'A joint-impossibility or missing-contract entry ends the run before any review, so in a run that reaches you what was left unbuilt is what the words of an entry of class unbacked-entry ask for',
-        'which quotes as well the words that cannot be built without them.',
+        'which points as well at the entries that cannot be built without them.',
         'A source finding that asks to build, complete or change what those words ask for is never approve-fix',
-        'decide it needs-decision and name that specFindings entry by its class and words in authority.',
+        'decide it needs-decision and name that specFindings entry by its class and evidence in authority.',
         'It reaches the root as an open decision']],
       ['skill', flat(skill), ['**The sense check also reads the spec against the code.**', 'is class `unbacked-entry`',
-        'one entry per finding with the words of every spec entry it concerns, quoted verbatim in `words`, a list of at least one quote',
-        'so a `joint-impossibility` entry quotes each side of the conflict',
+        'one entry per finding with `evidence`, the `class`, the `claim` and `receipts`.',
+        'so a `joint-impossibility` entry points at each side of the conflict',
         'Expect an entry of class `joint-impossibility` or `missing-contract` to block the run.',
         'returns it with a limitation of effect `blocks` that names the entry, and edits and commits nothing',
         'The script ends the run after the implement stage with exit `root-resolution` and a `blocking-limitation` item',
         'Expect an entry of class `unbacked-entry` not to block the run. The implementer builds nothing its words ask for and builds the rest of the spec.',
-        'What cannot be built without the words of an `unbacked-entry` entry rests on the same words, so the entry quotes it in `words` too and it stays unbuilt.',
+        'What cannot be built without the words of an `unbacked-entry` entry rests on the same words, so the entry points at it in `evidence` too and it stays unbuilt.',
         'A `joint-impossibility` or `missing-contract` entry blocks because law 13 has work that genuinely cannot satisfy the applicable requirements report the concrete impossibility and block.',
         'so in a run that reaches review what was left unbuilt is what the words of an entry of class `unbacked-entry` ask for',
         'never approves a fix that builds what the implementer left unbuilt, as phase 3 describes.',
@@ -3470,7 +3498,7 @@ describe('the implementer checks the spec, and every stage reads only words said
         'the spec finding `class` (`joint-impossibility` / `missing-contract` / `reality-drift` / `unbacked-entry`)']],
     ]) for (const phrase of phrases) expect([name, phrase, text.includes(phrase)]).toEqual([name, phrase, true])
     for (const [name, text] of [['implementer', await template('implementer')], ['finding-verifier', await template('finding-verifier')], ['skill', flat(skill)]]) {
-      for (const stale of ['unbacked-item', 'spec item', 'in items', '`items`']) expect([name, stale, text.includes(stale)]).toEqual([name, stale, false])
+      for (const stale of ['unbacked-item', 'spec item', 'in items', '`items`', 'quoted in words', 'verbatim in words', 'in `words`']) expect([name, stale, text.includes(stale)]).toEqual([name, stale, false])
     }
   })
 })
