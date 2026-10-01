@@ -207,11 +207,11 @@ const BRIEFED_KINDS = { enum: ['band-aid', 'longer-route', 'unbacked-choice'] }
 const BRIEFED_FINDING = { ...FINDING, properties: { ...FINDING.properties, kind: BRIEFED_KINDS } }
 const BRIEFED_FINDINGS = { type: 'array', items: BRIEFED_FINDING }
 // Where the backing of a finding stands, never a bare quote: the transcript record of the user's words
-// it is judged against, by session file, line and the JSON key path of the quoted part, or a rule by its
-// file and line, with an empty key. Whoever receives the finding reads that record or rule and the
-// records around it.
+// it is judged against, by session file, line and the key path of the quoted part inside that JSON
+// record, one key name per element, or a rule by its file and line, with an empty key path. Whoever
+// receives the finding reads that record or rule and the records around it.
 const EVIDENCE = { type: 'array', minItems: 1, items: { type: 'object', required: ['kind', 'file', 'line', 'key'], additionalProperties: false,
-  properties: { kind: { enum: ['transcript', 'rule'] }, file: { type: 'string' }, line: { type: 'integer', minimum: 1 }, key: { type: 'string' } } } }
+  properties: { kind: { enum: ['transcript', 'rule'] }, file: { type: 'string' }, line: { type: 'integer', minimum: 1 }, key: { type: 'array', items: { type: 'string' } } } } }
 // The three seats that judge the change against the spec flag a problem by saying in claim what is
 // wrong with the implementation and naming in evidence where its backing stands.
 const BACKED_FINDINGS = { type: 'array', items: { ...BRIEFED_FINDING, required: [...FINDING.required, 'evidence'],
@@ -439,8 +439,9 @@ if (typeof UNIT.transcripts !== 'string' || !UNIT.transcripts) throw new Error('
 const AGAINST_SPEC = [
   'FINDINGS AGAINST THE SPEC: read the spec and flag what is wrong with the implementation, saying it in claim. Never quote the',
   'user bare: each finding names in evidence where its backing stands. For the user\'s words, kind transcript: the session file',
-  'and line of the spec entry it is judged against, and in key the JSON key path of the quoted part of that record. Where no',
-  'words of the user back it, kind rule: the file and line of the global, plugin or project rule it rests on, and an empty key.',
+  'and line of the spec entry it is judged against, and in key the key path of the quoted part inside that JSON record, one',
+  'key name per element, such as message, content. Where no words of the user back it, kind rule: the file and line of the',
+  'global, plugin or project rule it rests on, and an empty key path.',
   'Whoever receives the finding reads the evidence and the records around it.',
 ].join('\n')
 const checkWriterSnapshot = (result, starts) => {
@@ -478,7 +479,9 @@ const checkBacked = r => {
     if (!Array.isArray(f.evidence) || !f.evidence.length) throw new Error('Missing the evidence the finding rests on: ' + f.claim)
     for (const e of f.evidence) {
       requireText(e.file, 'the file of the evidence of: ' + f.claim)
-      if (e.kind === 'transcript') requireText(e.key, 'the JSON key path of the transcript evidence of: ' + f.claim)
+      if (e.kind === 'transcript' && (!e.key.length || e.key.some(name => typeof name !== 'string' || !name.trim()))) {
+        throw new Error('Missing the JSON key path of the transcript evidence of: ' + f.claim)
+      }
     }
   }
 }

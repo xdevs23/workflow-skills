@@ -34,9 +34,9 @@ Rules:
   duplicates: a coverage entry says so.
 - Never quote the user bare: name in evidence where each finding's backing stands. For the user's
   words, give kind transcript, the session file and line of the spec entry the finding is judged
-  against, and in key the JSON key path of the quoted part of that record. Where no words of the
-  user back it, give kind rule, the file and line of the global, plugin or project rule it rests
-  on, and an empty key. Whoever receives the finding reads the evidence and the records around it.
+  against, and in key the key path of the quoted part inside that JSON record, one key name per
+  element. Where no words of the user back it, give kind rule, the file and line of the global,
+  plugin or project rule it rests on, and an empty key path. Whoever receives the finding reads the evidence and the records around it.
 - A direct contradiction between a user directive and the spec or the prompt sets abort.trigger
   to directive-conflict and abort.reason to the reason, and you stop; otherwise abort.trigger is
   none.

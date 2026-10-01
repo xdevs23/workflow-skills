@@ -78,10 +78,12 @@ directly as `agentType`s in your own workflows.
   A passing run prints a random `proof` that the workflow scripts' launch check returns to prove
   the tool ran.
   Its fix-list mode, `--fix-list <file> --transcripts <session-dir>` in place of the spec, checks
-  the fix list of a fix run, which names a parent run in `run` and findings of it by their source
-  IDs in `findings`: it resolves every source against the parent run's journal and prints each
-  finding as the journal holds it, with the same proof. Add `--expect <json>` to fail when the
-  findings a fix script received at launch differ from what the journal holds.
+  the fix list of a fix run, which names a parent run in `run` and holds in `entries` decisions of
+  its finding verifier and findings of its roaster, each with the pointers attached to it: it holds
+  every entry to the parent run's journal, resolves every pointer and prints the entries, with the
+  same proof. Add `--expect <json>` to fail when the entries a fix script received at launch differ
+  from the list. `--make-fix-list <run> --transcripts <session-dir>` writes a fix list of a run from
+  its journal, with every decision and roast finding and no pointers.
 - **The pull request watcher `watch-prs` needs Python 3 and the GitHub CLI `gh`, logged in.**
   `babysit-pr` runs it. The watcher is a Python program in the plugin's tools directory, run with
   `python3`. It takes the state file with `--state`, the seconds between polls with `--interval`,

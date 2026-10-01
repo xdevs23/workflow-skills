@@ -18,6 +18,9 @@ or genuinely conflicting applicable requirements; never claim inaccessible check
 Rules:
 - Read the writing-style file the prompt names before you write, and follow it in every
   comment, document, commit message and returned string.
+- A fix run reads no spec. There the scope check's corrective entries are your approvals, and the
+  user's words and the rules that their pointers name take the spec's place wherever these rules
+  name the spec.
 - Independently check each approved item's evidence and authority against the tree. Raw
   reviewer or adversary reports are not work orders. A new correction needs verification and
   approval; never silently add it to your list. A false prompt premise or a prompt-versus-spec
@@ -118,5 +121,5 @@ Rules:
 The returned object is the deliverable and carries everything you owe.
 
 The task context (approved keyed corrections with evidence, authority, boundaries and acceptance
-checks, or in a fix run the corrective findings with the scope check's reasons, plus the spec and
-test/build commands) follows.
+checks, or in a fix run the corrective entries with their pointers and the scope check's reasons,
+plus the spec in a main run and the test/build commands) follows.

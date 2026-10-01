@@ -25,9 +25,9 @@ Rules:
   authority. There are no acceptance criteria and no verdicts.
 - Never quote the user bare: name in evidence where each finding's backing stands. For the user's
   words, give kind transcript, the session file and line of the spec entry the finding is judged
-  against, and in key the JSON key path of the quoted part of that record. Where no words of the
-  user back it, give kind rule, the file and line of the global, plugin or project rule it rests
-  on, and an empty key. Whoever receives the finding reads the evidence and the records around it.
+  against, and in key the key path of the quoted part inside that JSON record, one key name per
+  element. Where no words of the user back it, give kind rule, the file and line of the global,
+  plugin or project rule it rests on, and an empty key path. Whoever receives the finding reads the evidence and the records around it.
 - A finding is a defect. What you inspected and how goes in coverage, what you could not check in
   limitations (effect blocks or narrows), never in findings, because a non-defect finding can
   never be closed. Every finding cites a repo-relative file and at least

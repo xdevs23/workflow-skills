@@ -185,8 +185,8 @@ records what was built, and only when the change alters the design.
 - A fix run's fixer, when a correction alters the design, writes or extends a document in the
   parent unit's documents directory.
 - The writer prompts of the main and fix-run scripts carry this step and name a new document after
-  the spec path of the marked block, `docs/<unit>.md` in a one-repository tree, and after the parent
-  spec in a fix run.
+  the spec path of the marked block, `docs/<unit>.md` in a one-repository tree, and after the fix
+  list in a fix run.
 
 ## The shape
 
@@ -416,9 +416,9 @@ lenses of every run, and the main script stops a run whose seat list holds anoth
   `findings` rated **must-fix / should-fix / nit**, each with what is wrong with the implementation
   in `claim`, at least one receipt (file, line, quote), and in `evidence` where its backing stands.
   For the user's words, an evidence entry has kind `transcript`, the session file and line of the
-  spec entry, and in `key` the JSON key path of the quoted part of that record. Where no words of
-  the user back the finding, it has kind `rule`, the file and line of the global, plugin or project
-  rule, and an empty key. A bare quote is never evidence: a yes says nothing until the record it
+  spec entry, and in `key` the key path of the quoted part inside that JSON record, one key name per
+  element. Where no words of the user back the finding, it has kind `rule`, the file and line of the
+  global, plugin or project rule, and an empty key path. A bare quote is never evidence: a yes says nothing until the record it
   answers is read, so whoever receives the finding reads the evidence and the records around it.
   Receipts are the only currency that survives triage.
 - **Only the two code-lens concern seats receive the implementer's object as UNTRUSTED CLAIMS.**
@@ -769,7 +769,7 @@ second implementer pre-check.
   CRITICAL defect in code the unit wrote, an unfixed approval, a failed proof, or an open decision
   once it is decided: by the user for a product or architecture decision, by you for any other.
 - A finding whose fix needs no decision of the user may go to a fix run, described below, whose fix
-  list names findings of the parent run. Every other such item goes to a new implement-review-verify
+  list holds entries of the parent run's review. Every other such item goes to a new implement-review-verify
   run on a copy of the spec that holds the user's words about it, and such a finding may go there as
   well when the user's words cover its fix.
 - Make that copy like any copy of a spec: the same entries with the new ones added in session order,
@@ -792,32 +792,45 @@ second implementer pre-check.
 - The fix run is `scripts/fix-follow-up.js`, copied and filled in its marked block like the main
   script, `scripts/implement-review-verify.js`. Its copy sets `meta.name` to a kebab-case name of
   the fix run and `meta.description` to one line saying what the run fixes, as a copy of the main
-  script does. It takes no spec of its own: its stages read the parent unit's spec.
+  script does. It reads no spec: every entry of its fix list points at the records that back it.
 - The fix run's input is a fix list, a YAML file in the main checkout's project cache, which
   `workflow-skills:local-cache` defines, with exactly the keys `run` (the parent run's ID) and
-  `findings`, a list of source IDs of the parent run's findings, `<seat>:<index>` or
-  `roaster:<index>`. The list holds nothing else: no word of yours, no correction and no copy of a
-  finding, so the fix run receives what the reviewers said.
-- Run `<plugin root>/tools/check-spec.ts --fix-list <file> --transcripts <dir> --json`, which
-  resolves every source against the parent run's journal and prints each finding as the journal
-  holds it, with the proof only when every source resolves.
-- Pass the tool's `findings` output as `args.findings` and the parent run's final snapshots as
-  `args.base`, the `snapshots` list its run record returns, and fill the parent unit's spec, its
-  documents directory and the applicable rule sources, as `ruleSources`, into the block.
+  `entries`.
+- Write the fix list from scratch with
+  `<plugin root>/tools/check-spec.ts --make-fix-list <run> --transcripts <dir>`, which prints every
+  decision of the parent run's last verify stage and every finding of its last roast stage, each as
+  the journal holds it under its source, `verify:<index>` or `roaster:<index>`, with an empty
+  `attach` list.
+- Delete the entries that do not go to the fix run. Never edit an entry: the check holds each one
+  to the journal.
+- Attach to an entry, in `attach`, the pointers its fix needs and nothing else. A pointer names a
+  session transcript record, a journal record or a rule file by `file`, `line` and `key`, the key
+  path inside a JSON record, one key name per element, and empty for a file that is no JSON lines
+  file. A pointer to the message in which you state a decision is how that decision reaches the fix
+  run. No word of yours enters the list.
+- Never use a spec as a fix list or a fix list as a spec, and never write one from the other. The
+  two shapes never mix: the spec tool refuses a spec with the keys of a fix list, and a fix list
+  with the keys of a spec.
+- Run `<plugin root>/tools/check-spec.ts --fix-list <file> --transcripts <dir> --json`, which holds
+  every entry to the parent run's journal, resolves every pointer, and prints the entries with the
+  proof only when all of them hold.
+- Pass the tool's `entries` output as `args.entries` and the parent run's final snapshots as
+  `args.base`, the `snapshots` list its run record returns, and fill the parent unit's documents
+  directory and the applicable rule sources, as `ruleSources`, into the block.
 - The launch check runs the same command in the worktree with `--expect` and the JSON of the
-  findings, which the script builds and quotes for the shell. The tool fails when they differ from
-  what the parent run's journal holds, so every stage receives what the reviewers said.
-- The read-only scope check runs before any edit and classes the correction every finding asks for
+  entries, which the script builds and quotes for the shell. The tool fails when they differ from
+  the list, so every stage receives what the journal holds and the pointers the list attaches.
+- The read-only scope check runs before any edit and classes the correction every entry asks for
   as corrective or as a new choice, each with a reason and receipts. A new choice is not fixed: it
-  returns as a `new-choice` remaining item with its reason, and when no finding is corrective the
-  run ends there with `root-resolution` and no fixer runs. The fixer receives only the corrective
-  findings, one key per source ID with the finding as the journal holds it, the scope check's reason
-  and its receipts, while the roaster reads the same list.
+  returns as a `new-choice` remaining item with its reason, and when no entry is corrective the run
+  ends there with `root-resolution` and no fixer runs. The fixer receives only the corrective
+  entries, one key per source with the entry as the journal holds it, its pointers, the scope
+  check's reason and its receipts, while the roaster reads the same list.
 - The scope check receives the rule sources and the template path of every review seat of the main
   script, named as the reviewers' rules, as the finding verifier does.
 - The scope check treats the review seats as critics without authority whose purpose is to improve
   code quality, so a reviewer's rule is never cited as authority.
-- A correction that improves code quality without changing anything the parent spec specifies is
+- A correction that improves code quality without changing anything the user's words specify is
   corrective and needs no words of the user, on a rule of the scope check's own template. Merging
   duplicated code into one shared function is such a correction, and a function that only holds
   the merged code is not a new interface.
@@ -827,27 +840,26 @@ second implementer pre-check.
 - A removal of code, a parameter or a mechanism that nothing uses, that nobody asked for, or that
   is built beyond what was asked is corrective and needs no words of the user, on the removal rule
   of the scope check's own template, even where it takes away what the code did.
-- The removal rule holds also where an entry of author `assistant` in the parent spec names the
-  code.
+- The removal rule holds also where only an assistant message names the code.
 - The classification of such a removal names the removal rule in its reason, and its receipts show
   that nothing uses the code or that no words of the user asked for it.
 - The removal of code that the user's words asked for is a new choice.
 - Code that an applicable project rule asks for is not code nobody asked for, so the removal rule
   does not reach it.
-- The read-only diff check then maps every change of the fix diff to a corrective finding. A design
+- The read-only diff check then maps every change of the fix diff to a corrective entry. A design
   document in the documents directory has no exception: a change to any of them maps to the
-  corrective finding it carries out, or it is a CRITICAL finding.
-- A correction whose only change is a design document is accepted when its finding names that
+  corrective entry it carries out, or it is a CRITICAL finding.
+- A correction whose only change is a design document is accepted when its entry names that
   document.
 - A fix reported as done needs a commit of the fixer whatever path it touches.
 - The fixer writes or extends a document by hand from the code only when a correction alters the
   design.
 - Each finding of the diff check returns as a CRITICAL `diff-finding` and starts no further fixer.
-- Every finding the fixer reports fixed returns as an `unattested-fix` for you to attest, as in the
+- Every entry the fixer reports fixed returns as an `unattested-fix` for you to attest, as in the
   main run, and the run then ends `follow-up`, as it also does when only must-fix or CRITICAL roast
-  findings remain. It ends `root-resolution` when a finding was refused, a fix was not applied, a
+  findings remain. It ends `root-resolution` when an entry was refused, a fix was not applied, a
   fix reported as done has no commit or maps to no change in the diff check (an `unproven-fix`), the
-  proof failed, or the diff check found a change without a finding. It ends `clean` only when
+  proof failed, or the diff check found a change without an entry. It ends `clean` only when
   nothing at all remains, and ends on an abort or a stage failure as the main script does.
 - **Two relocations mean the cause is untouched.** When the todo record shows the same defect moved
   twice, the third change fixes the cause instead of moving it a third time, and a third relocation
@@ -1394,8 +1406,7 @@ The phase shape only holds up if the script is written to hold it up.
   `docs` for a tree that is one repository. It holds the design documents a writer extends, and the
   scripts join it with the spec's file name to name a new one. The writers commit a document they
   wrote or extended in that repository.
-- The fix run's block holds the fix list path, the findings and the parent spec in place of the
-  spec.
+- The fix run's block holds the fix list path and the entries in place of the spec.
 - Everything below the block is the reviewed script and is not edited per unit. Never copy a
   previous unit's script and edit it, and never generalize one that already ran into a runner
   several units share.
@@ -1448,9 +1459,10 @@ prompt names, and the script does nothing else with it.
 
 The fix run's launch check runs the tool's fix-list mode in place of the spec check:
 `--fix-list` with the fix list from `args.fixList`, the transcript directory, `--json` and
-`--expect` with the findings from the launch values as one JSON argument. The script refuses at
-once when `args.fixList` or the parent spec of the marked block does not end in `.yaml`, and the
-tool fails when the launch values differ from the findings the parent run's journal holds.
+`--expect` with the entries from the launch values as one JSON argument. The script refuses at
+once when `args.fixList` does not end in `.yaml`, and the tool fails when the launch values differ
+from the list, when an entry differs from the parent run's journal, or when a pointer does not
+resolve.
 
 ### The main script
 
