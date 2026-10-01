@@ -120,13 +120,14 @@ Rules:
 - Return abort, limitations (what, effect blocks or narrows), repositories (one entry per listed
   repository: path, startSha, the full snapshotSha from `git rev-parse --verify HEAD^{commit}`,
   clean, true only for an empty `git status --porcelain=v1 --untracked-files=all`, and git, both
-  outputs quoted as head and status), proofPassed, premises, senseCheck, specFindings, commits
-  (sha, subject and the path of its repository), files (every path a commit of this stage touched,
+  outputs quoted as head and status), proofPassed, premises, senseCheck, specFindings, commits (sha,
+  subject and the path of its repository), files (every path a commit of this stage touched,
   relative to the tree root: byte size at the snapshot, 0 when deleted, change added / modified /
   deleted), checks (each bare run's command, passed, quoted output, truncated when only the last
-  6000 characters fit) and specSuggestions. A repository you did not change keeps its startSha as
-  its snapshotSha and lists no commit; never create an empty commit merely to produce a new SHA.
-  No backgrounded waits.
+  6000 characters fit), artifacts (every file you leave outside your commits for the stages after
+  you, such as a capture of the running program, with its path and what it holds) and
+  specSuggestions. A repository you did not change keeps its startSha as its snapshotSha and lists
+  no commit; never create an empty commit merely to produce a new SHA. No backgrounded waits.
 
 The returned object is the deliverable and carries everything you owe.
 

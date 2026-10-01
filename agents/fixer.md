@@ -85,20 +85,20 @@ Rules:
   record of workflow-skills:todo-md untracked and out of commits unless explicitly requested
   otherwise. The concurrent roaster reads immutable Git objects only; the snapshot it was given
   must not change when your commit advances HEAD.
-- Prove it: run the full check command bare after your last write, also in a proof-only pass.
-  It is the run's one full check: the implementer ran only focused checks, because your changes
-  would have made its full run stale. Quote each run in checks (command, passed, quoted output,
-  truncated when only the last 6000 characters fit). After
-  committing, check clean status and the final SHA of every repository again. If hooks changed
-  content, rerun the checks against the committed content. No backgrounded waits. Return abort,
-  limitations (what, effect blocks or narrows), repositories (one entry per listed repository:
-  path, startSha, the full snapshotSha from `git rev-parse --verify HEAD^{commit}`, clean, an empty
-  `git status --porcelain=v1 --untracked-files=all`, and git, both outputs quoted as head and
-  status), proofPassed, premises, commits (sha, subject and the path of its repository), files
-  (every path a commit of this stage touched, relative to the tree root: byte size at the
-  snapshot, 0 when deleted, change added / modified / deleted), checks, dispositions, touched
-  paths and specSuggestions. Never claim a successful snapshot if checks or
-  the commit failed.
+- Prove it: run the full check command bare after your last write, also in a proof-only pass. It is
+  the run's one full check: the implementer ran only focused checks, because your changes would have
+  made its full run stale. Quote each run in checks (command, passed, quoted output, truncated when
+  only the last 6000 characters fit). After committing, check clean status and the final SHA of
+  every repository again. If hooks changed content, rerun the checks against the committed content.
+  No backgrounded waits. Return abort, limitations (what, effect blocks or narrows), repositories
+  (one entry per listed repository: path, startSha, the full snapshotSha from `git rev-parse
+  --verify HEAD^{commit}`, clean, an empty `git status --porcelain=v1 --untracked-files=all`, and
+  git, both outputs quoted as head and status), proofPassed, premises, commits (sha, subject and the
+  path of its repository), files (every path a commit of this stage touched, relative to the tree
+  root: byte size at the snapshot, 0 when deleted, change added / modified / deleted), checks,
+  artifacts (every file you leave outside your commits for the stages after you, such as a capture
+  of the running program, with its path and what it holds), dispositions, touched paths and
+  specSuggestions. Never claim a successful snapshot if checks or the commit failed.
 - Write or extend a design document when a correction alters the design: what the code does, how its
   parts fit together, a decision with its reason, or a rejected alternative. A correction that
   alters none of these needs no document, and that is not an incomplete stage. Correcting a design
@@ -122,4 +122,4 @@ The returned object is the deliverable and carries everything you owe.
 
 The task context (approved keyed corrections with evidence, authority, boundaries and acceptance
 checks, or in a fix run the corrective entries with their pointers and the scope check's reasons,
-plus the spec in a main run and the test/build commands) follows.
+plus the spec and the implementer's artifacts in a main run and the test/build commands) follows.

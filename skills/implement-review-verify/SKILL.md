@@ -325,7 +325,7 @@ collisions and consistency drift.
 - **The implementer returns its snapshot with the evidence for it.** It returns `files` (every path
   a commit of the stage touched, with its byte size at the snapshot), `checks` (each bare run with
   its quoted output), `commits`, the full immutable snapshot SHA, `clean` and `git` (the quoted HEAD
-  and status), and `specFindings`.
+  and status), `artifacts` and `specFindings`.
 - **A failed check or commit is an incomplete stage**, never a fabricated successful snapshot.
 
 #### Writer commits are snapshots, not integration permission
@@ -340,10 +340,14 @@ collisions and consistency drift.
 - Writers honor project commit-message rules and normal hooks/signing. If hooks change content, a
   writer reruns proof on the final committed contents before claiming success.
 - Each writer returns `repositories`, one entry per repository of the base list with its `path`,
-  `startSha`, full `snapshotSha`, `clean` and `git` (the quoted output of
-  `git rev-parse --verify HEAD^{commit}` and `git status --porcelain=v1 --untracked-files=all` in
-  that repository), then `commits`, each naming its repository, `files`, relative to the tree root,
-  and `checks`.
+  `startSha`, full `snapshotSha`, `clean` and `git` (the quoted output of `git rev-parse --verify
+  HEAD^{commit}` and `git status --porcelain=v1 --untracked-files=all` in that repository), then
+  `commits`, each naming its repository, `files`, relative to the tree root, `checks`, and
+  `artifacts`, every file it leaves outside its commits for the stages after it, such as a capture
+  of the running program, with its path and what it holds.
+- The script hands the implementer's `artifacts` to every briefed review seat and to the fixer, and
+  the finding verifier reads them in the implementer's object. The unbriefed seats and the roaster
+  receive none, and the run returns the last writer's `artifacts` in its `proof`.
 - The script accepts a writer only when every repository of the list appears exactly once at its
   expected start, each quoted `git.head` equals its `snapshotSha`, each `clean` agrees with an empty
   `git.status`, a repository whose snapshot moved has commits in it and an unchanged one none, and a
@@ -685,8 +689,8 @@ proceed merely because a reviewer or verifier prefers it.
     only when a correction alters the design;
   - runs full checks BARE AFTER ITS LAST WRITE;
   - commits completed scoped corrections and the document it wrote or extended;
-  - then returns the clean snapshot SHA, `git`, `commits`, `files`, `checks` with the quoted output
-    and `proofPassed`.
+  - then returns the clean snapshot SHA, `git`, `commits`, `files`, `checks` with the quoted output,
+    `artifacts` and `proofPassed`.
 - Attest each fix the fixer claims against its approved correction and checks.
 - With an EMPTY approved list the fix pass owes PROOF ONLY and may not edit or create an empty
   commit. It returns the original SHA. A failing check is reported for independent triage, not
