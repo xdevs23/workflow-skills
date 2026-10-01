@@ -525,6 +525,8 @@ lenses of every run, and the main script stops a run whose seat list holds anoth
 - The removal rule holds also where an entry of author `assistant` names the code: an assistant
   entry is no authority for keeping the code.
 - Code that the user's words asked for still needs the user's word to be removed.
+- Code that an applicable project rule asks for is not code nobody asked for, so the removal rule
+  does not reach it.
 - It checks claims against the code, the user's words in the spec and the applicable rules,
   resolves conflicts using evidence, and merges duplicate defects into ONE fix list, every decision
   with receipts. It preserves every source ID: consolidation is never permission to drop a finding.
@@ -820,6 +822,8 @@ second implementer pre-check.
 - The classification of such a removal names the removal rule in its reason, and its receipts show
   that nothing uses the code or that no words of the user asked for it.
 - The removal of code that the user's words asked for is a new choice.
+- Code that an applicable project rule asks for is not code nobody asked for, so the removal rule
+  does not reach it.
 - The read-only diff check then maps every change of the fix diff to a corrective finding. A design
   document in the documents directory has no exception: a change to any of them maps to the
   corrective finding it carries out, or it is a CRITICAL finding.

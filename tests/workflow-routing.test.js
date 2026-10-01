@@ -3595,12 +3595,13 @@ describe('review seats are critics, and no stage asks the user a question', () =
       'and a correction that removes it is corrective and needs no words of the user.'
     const unbacked = 'names the code: an assistant entry is no authority for keeping the code.'
     const asked = 'Code that the user\'s words asked for still needs the user\'s word to be removed'
+    const ruled = 'Code that an applicable project rule asks for is not code nobody asked for, so the removal rule does not reach it.'
     for (const [name, phrases] of [
-      ['finding-verifier', [violation, unbacked, asked, 'Decide a removal on the removal rule approve-fix, even where it takes away what the removed code did: ' +
+      ['finding-verifier', [violation, unbacked, asked, ruled, 'Decide a removal on the removal rule approve-fix, even where it takes away what the removed code did: ' +
         'its authority field names the removal rule of the finding verifier\'s template, and its evidence field shows that nothing uses the code or that no words of the user asked for it.',
         'The removal rule holds also where an entry of author assistant in the spec names the code',
         'Approve-fix a project-benefit finding also for a removal on the removal rule, and its authority field then also names that rule.']],
-      ['scope-check', [violation, unbacked, asked + ', so its removal is a new choice.', 'Class a removal on the removal rule corrective, even where it takes away what the removed code did: ' +
+      ['scope-check', [violation, unbacked, ruled, asked + ', so its removal is a new choice.', 'Class a removal on the removal rule corrective, even where it takes away what the removed code did: ' +
         'its reason names the removal rule of the scope check\'s template, and its receipts show that nothing uses the code or that no words of the user asked for it.',
         'The removal rule holds also where an entry of author assistant in the parent spec names the code', 'or the correction removes code on the removal rule above;',
         'or remove code that the removal rule below names.', 'or, for a removal, the code it removes and the evidence that nothing uses it or that no words of the user asked for it.']],
@@ -3646,7 +3647,7 @@ describe('review seats are critics, and no stage asks the user a question', () =
       'and a correction that removes it needs no words of the user. The rule is in the finding verifier\'s own template beside the quality rule, ' +
       'and on it the verifier may decide such a removal `approve-fix`, even where the removal takes away what the code did.',
       'An `approve-fix` on the removal rule names the rule in `authority`, and its `evidence` shows that nothing uses the code or that no words of the user asked for it.',
-      'The removal rule holds also where an entry of author `assistant` ' + unbacked,
+      'The removal rule holds also where an entry of author `assistant` ' + unbacked, ruled,
       '`approve-fix` on a kind-bearing finding is also available for a removal on the removal rule, and its `authority` then also names that rule.',
       'is corrective and needs no words of the user, on the removal rule of the scope check\'s own template, even where it takes away what the code did.',
       'The removal rule holds also where an entry of author `assistant` in the parent spec names the code.',
@@ -3668,7 +3669,8 @@ describe('review seats are critics, and no stage asks the user a question', () =
     const asked = 'Code that the user\'s words asked for still needs the user\'s word to be removed'
     const authority = 'An approved removal of code, a parameter or a mechanism that nothing uses, that nobody asked for, or that is built beyond ' +
       'what was asked is no prompt-vs-spec conflict where only an entry of author assistant names that code: such an entry ' +
-      'is no authority for keeping the code. ' + asked + '.'
+      'is no authority for keeping the code. ' + asked + '. ' +
+      'Code that an applicable project rule asks for is not code nobody asked for, so the removal rule does not reach it.'
     const fixer = await template('fixer')
     for (const phrase of ['Apply approved corrections against the spec as written, apart from an approved removal of code that no words of the user asked for.',
       'Carry out an approved removal of code, a parameter or a mechanism that nothing uses, that nobody asked for, or that is built beyond what was asked, ' +
