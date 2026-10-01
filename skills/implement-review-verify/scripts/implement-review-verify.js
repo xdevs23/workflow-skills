@@ -28,8 +28,7 @@ const UNIT = {
   fileSizeCap: '<the per-file size cap>',
   // One model and effort per agent the script starts, each set by the root. The script stops before
   // its first agent on an entry that is missing, still a placeholder in angle brackets, named for no
-  // agent of the script, or holding any field besides model and effort. A review-only run reads only
-  // the gate entry and the review entries.
+  // agent of the script, or holding any field besides model and effort.
   models: {
     gate: { model: '<explicit>', effort: 'low' },
     impl: { model: '<explicit>', effort: 'high' },
@@ -439,7 +438,7 @@ if (UNIT.reviewOnly) {
   if (head.length !== base.length || head.some(entry => !shaByPath(base).has(entry.path))) {
     throw new Error('args.head must name the repositories of args.base, one commit each')
   }
-} else if (head !== undefined) throw new Error('args.head is passed only to a review-only run')
+}
 // A reader may name a repository by its path inside the worktree instead of the list's path under the
 // tree root; both name the same repository.
 const listPath = path => {
@@ -680,11 +679,7 @@ if (JSON.stringify([...listedSeats].sort()) !== JSON.stringify([...requiredSeats
     ', and the seat list holds ' + listedSeats.join(', '))
 }
 const { review: seatModels, ...stageModels } = UNIT.models ?? {}
-// A review-only run starts the launch check and the seats alone, so it reads no other stage's entry.
-const STAGES = ['gate', 'impl', 'verify', 'fix', 'roast']
-const stages = UNIT.reviewOnly ? ['gate'] : STAGES
-checkModels(Object.fromEntries(Object.entries(stageModels).filter(([name]) => stages.includes(name) || !STAGES.includes(name))),
-  stages, 'UNIT.models')
+checkModels(stageModels, ['gate', 'impl', 'verify', 'fix', 'roast'], 'UNIT.models')
 checkModels(seatModels, Object.keys(REVIEW_SEATS), 'UNIT.models.review')
 // One diff range per repository whose snapshot moved from base, each read in its own repository.
 const diffInput = snaps => {
@@ -877,17 +872,21 @@ async function onePass() {
     } catch (error) { failed(error, label) }
   })
   sources = reports.flatMap(r => r.findings)
-  if (exit) return
-  // A review-only run has no finding verifier, so every finding and every limitation of a seat goes to
-  // the root as the seat returned it.
+  // A review-only run has no finding verifier, so every finding and every limitation of a reviewer that
+  // returned goes to the root, also when another reviewer failed. An inverse-spec finding is CRITICAL
+  // whatever its reviewer said, as the verifier holds it in a main run.
   if (UNIT.reviewOnly) {
     for (const report of reports) {
-      for (const f of report.findings) add('review-finding', f, f.severity)
+      for (const f of report.findings) {
+        const severity = report.seat === 'inverse' ? 'CRITICAL' : f.severity
+        add('review-finding', { ...f, severity }, severity)
+      }
       for (const l of uncovered(report)) add('review-limitation', { ...l, label: report.label }, 'should-fix')
       limited(report, report.label)
     }
     return
   }
+  if (exit) return
   phase('Verify')
   activeLabel = 'verify'
   const result = await stage([

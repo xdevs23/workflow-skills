@@ -3902,7 +3902,7 @@ const reviewRun = new AsyncFunction('agent', 'phase', 'log', 'args', reviewOnly(
 const reviewArgs = (fields = {}) => launchArgs({ head: at(INITIAL), ...fields })
 
 describe('review-only runs', () => {
-  test('a review-only run starts the launch check and the fifteen seats on base..head, and no other stage', async () => {
+  test('a review-only run starts the launch check and the fifteen reviewers on base..head, and no other stage', async () => {
     const { result, calls, phases } = await simulate({ script: reviewRun, args: reviewArgs() })
     expect(calls.map(c => c.label)).toEqual(['gate', ...readers.map(seat => 'review:' + seat)])
     expect(phases).toEqual(['Launch', 'Review'])
@@ -3913,7 +3913,7 @@ describe('review-only runs', () => {
     expect([result.exit, result.remaining, result.snapshots, result.proof]).toEqual(['clean', [], at(INITIAL), null])
   })
 
-  test('the findings and limitations of a review-only run go to the root as the seats returned them', async () => {
+  test('the findings and limitations of a review-only run go to the root as the reviewers returned them', async () => {
     const bandAid = { ...finding, kind: 'band-aid', severity: 'should-fix', claim: 'The catch block hides a defect of the reader.' }
     const narrows = { what: 'the integration suite', effect: 'narrows' }
     const unchecked = { what: 'the renderer', checked: false, how: 'no display' }
@@ -3928,49 +3928,48 @@ describe('review-only runs', () => {
     // A should-fix finding alone leaves the run clean with the finding in remaining.
     const minor = await simulate({ script: reviewRun, args: reviewArgs(), reports: { 'review:quality': { findings: [{ ...finding, severity: 'should-fix' }] } } })
     expect([minor.result.exit, minor.result.remaining.map(r => r.kind)]).toEqual(['clean', ['review-finding']])
-    // A blocking limitation of a seat ends the run for the root.
+    // An inverse-spec finding is CRITICAL whatever its reviewer said, as the verifier holds it in a main run.
+    const inverse = await simulate({ script: reviewRun, args: reviewArgs(), reports: { 'review:inverse': { findings: [{ ...finding, severity: 'nit' }] } } })
+    expect([inverse.result.exit, inverse.result.remaining.map(r => [r.kind, r.severity, r.item.severity])]).toEqual(['follow-up', [['review-finding', 'CRITICAL', 'CRITICAL']]])
+    // A blocking limitation of a reviewer ends the run for the root.
     const blocked = await simulate({ script: reviewRun, args: reviewArgs(), reports: { 'review:spec': { limitations: [{ what: 'the spec', effect: 'blocks' }] } } })
     expect([blocked.result.exit, blocked.result.detail]).toEqual(['root-resolution', 'Blocking limitation from review:spec.'])
   })
 
-  test('a seat that fails or sets its hard flag ends a review-only run as it ends a main run', async () => {
-    const failing = await simulate({ script: reviewRun, args: reviewArgs(), fail: { 'review:code-smell': 'model unavailable' } })
-    expect([failing.result.exit, failing.result.remaining.map(r => [r.kind, r.item.label])]).toEqual(['failed', [['stage-failure', 'review:code-smell']]])
+  test('a reviewer that fails or sets its hard flag ends a review-only run, and the others\' findings still reach the root', async () => {
+    const failing = await simulate({ script: reviewRun, args: reviewArgs(), reports: { 'review:correctness': { findings: [backed] } },
+      fail: { 'review:code-smell': 'model unavailable' } })
+    expect([failing.result.exit, failing.result.remaining.map(r => [r.kind, r.item.label ?? r.item.id])])
+      .toEqual(['failed', [['stage-failure', 'review:code-smell'], ['review-finding', 'correctness:0']]])
     const abort = { trigger: 'directive-conflict', reason: 'The prompt contradicts the user\'s words.' }
-    const aborted = await simulate({ script: reviewRun, args: reviewArgs(), reports: { 'review:inverse': { abort } } })
-    expect([aborted.result.exit, aborted.result.remaining.map(r => r.kind)]).toEqual(['aborted', ['abort']])
+    const aborted = await simulate({ script: reviewRun, args: reviewArgs(), reports: { 'review:inverse': { abort }, 'review:quality': { findings: [finding] } } })
+    expect([aborted.result.exit, aborted.result.remaining.map(r => r.kind)]).toEqual(['aborted', ['abort', 'review-finding']])
   })
 
-  test('the review mode, its head and its models are checked before any agent', async () => {
+  test('the review mode, its head and every model entry are checked before any agent', async () => {
     const reviewSource = reviewOnly(filled(skeleton))
     for (const [source, args, message] of [
       [reviewSource, reviewArgs({ head: undefined }), 'args.head must be a non-empty list'],
       [reviewSource, reviewArgs({ head: [{ path: 'web', sha: INITIAL }] }), 'args.head must name the repositories of args.base, one commit each'],
       [reviewSource, reviewArgs({ head: at('main') }), 'args.head carries no full immutable commit ID for .'],
-      [filled(skeleton), reviewArgs(), 'args.head is passed only to a review-only run'],
       [filled(skeleton).replace('  reviewOnly: false,', '  reviewOnly: 1,'), launchArgs(), 'UNIT.reviewOnly must be true or false'],
       [reviewSource.replace("'gate': { model: 'model-gate'", "'gate': { model: '<explicit>'"), reviewArgs(), 'UNIT.models.gate.model must be set by the root'],
+      [reviewSource.replace("'impl': { model: 'model-impl'", "'impl': { model: '<explicit>'"), reviewArgs(), 'UNIT.models.impl.model must be set by the root'],
     ]) {
       const seen = []
       const script = new AsyncFunction('agent', 'phase', 'log', 'args', source.replace('export const meta =', 'const meta ='))
       await expect(script(async prompt => { seen.push(prompt) }, () => {}, () => {}, args)).rejects.toThrow(message)
       expect([message, seen]).toEqual([message, []])
     }
-    // The entries of the stages a review-only run never starts may stay as shipped.
-    const shipped = reviewOnly(skeleton).replace(/^(\s+)'?(gate|correctness|spec|dupes|quality|inverse|rules|alternatives|[a-z]+-[a-z-]+)'?: \{ model: '<[^']*>'/gm,
-      (_, indent, key) => `${indent}'${key}': { model: 'model-${key}'`)
-    expect(shipped).toContain("impl: { model: '<explicit>'")
-    const { result } = await simulate({ script: new AsyncFunction('agent', 'phase', 'log', 'args', shipped.replace('export const meta =', 'const meta =')), args: reviewArgs() })
-    expect(result.exit).toBe('clean')
   })
 
   test('the review-pass skill runs the main script in review mode and has you judge the findings', async () => {
     const text = flat(await Bun.file(new URL('../skills/review-pass/SKILL.md', import.meta.url)).text())
     for (const phrase of ['Load the `workflow-skills:writing-style` skill first.',
       'Copy the main script of `workflow-skills:implement-review-verify` and set `reviewOnly` to true in its marked block.',
+      'Fill the rest of the marked block as for a main run, every model entry included.',
       'Pass at launch `base` and `head`',
-      'Judge every finding yourself, as the finding verifier of a main run would.',
-      'Never send a finding of a review pass to a fix run.']) {
+      'Judge every finding yourself, as the finding verifier of a main run would.']) {
       expect([phrase, text.includes(phrase)]).toEqual([phrase, true])
     }
     expect(await Bun.file(new URL('../skills/review-pass/scripts/review-pass.js', import.meta.url)).exists()).toBe(false)
