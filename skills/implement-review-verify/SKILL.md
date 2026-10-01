@@ -1541,19 +1541,6 @@ receives only the consolidated approvals, including source IDs and the evidence 
 check them. The script checks every source ID once in consolidation and every approved key
 once in fix dispositions. Unknown, duplicated and unanswered IDs are protocol failures.
 
-### The FINDING-RESTATEMENT style
-
-- Restate each finding in any prompt handing findings to a fixer as three parts: **the DEFECT, its
-  EVIDENCE, and explicitly WHAT NOT TO TOUCH.** The third part is the one that gets dropped and the
-  one that does the work — it is what keeps a fixer inside the finding instead of tidying its
-  neighbourhood on the way past.
-- Name any OPEN DECISION in the same block, stated plainly as deliberately NOT the fixer's job, and
-  ask the fixer to confirm it went untouched: an unnamed open question reads to a fixer as an
-  oversight to correct.
-
-Unlabelled concatenation is exactly where premise drift starts: the fixer cannot tell a claim from
-a ruling once they are one undifferentiated wall of text.
-
 ### `label` + `phase` on every `agent()` call
 
 - Give every `agent()` call a `label` and a `phase`. `label` makes the live progress tree and the
