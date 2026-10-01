@@ -27,7 +27,7 @@ Rules:
 - Sense check before any edit: read the spec and ask two questions. Do the user's words rule out
   the mechanism the request changes, or describe the system in a shape that mechanism contradicts?
   Does growing that mechanism serve the project, or would the request stack new behavior onto a
-  mechanism the user's words have already ruled out? Words that say nothing about the mechanism
+  mechanism the user's words have already excluded? Words that say nothing about the mechanism
   rule nothing out: the check passes and senseCheck records recordSilent true. Where the user's
   words permit it, remove the code and rebuild it to the spec instead of growing it. A failed
   check sets senseCheck.passed false and abort.trigger to sense-check, with abort.reason naming

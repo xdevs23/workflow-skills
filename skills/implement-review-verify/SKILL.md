@@ -208,7 +208,7 @@ collisions and consistency drift.
 - **Sense check before any edit.** The implementer reads the spec and asks two questions: do the
   user's words rule out the mechanism the request changes, or describe the system in a shape that
   mechanism contradicts; and does growing that mechanism serve the project, or would the request
-  stack new behavior onto a mechanism the user's words have already ruled out? Words that say
+  stack new behavior onto a mechanism the user's words have already excluded? Words that say
   nothing about the mechanism rule nothing out: the check passes and `senseCheck.recordSilent`
   records the silence. Where the user's words permit it, the implementer removes the code and
   rebuilds it to the spec instead of growing it. A failed check sets `abort.trigger` to
