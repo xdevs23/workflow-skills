@@ -3976,14 +3976,14 @@ describe('review-only runs', () => {
   })
 })
 
-describe('the code-cleanliness seat', () => {
-  test('flags every comment the code could do without and suggests what to do with it', async () => {
-    const text = flat(await template('code-cleanliness'))
+describe('the code-cleanliness template', () => {
+  test('flags every comment in the change and suggests what to do with it', async () => {
+    const text = await template('code-cleanliness')
     for (const phrase of ['Flag every comment in the change.',
       'A comment belongs only where the code cannot explain itself, such as at an external limitation or where it describes the behavior of something the project does not control.',
-      'Leave alone a comment of that kind that is already as short as its content allows.',
       'Suggest one or more of these for every comment you flag: remove the comment; shorten it; write the code in a cleaner, more readable and more obvious way so it needs no comment; remove the code it describes; or flag the comment\'s content, or the code it describes, as a rule violation.',
-      'Look for the rule violation behind a comment that explains something the architecture would not have allowed in the first place']) {
+      'Look for the rule violation behind a comment that explains something the architecture would not have allowed in the first place',
+      'Leave structural concerns to the other lenses, except the rule violation behind a comment, which you name.']) {
       expect([phrase, text.includes(phrase)]).toEqual([phrase, true])
     }
   })
