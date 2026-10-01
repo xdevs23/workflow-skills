@@ -153,14 +153,16 @@ const SPEC = [
   'It quotes the user: read it privately and never copy its words into tracked files.',
   TREE,
 ].join('\n')
-// The scope check and the diff check read the fix list itself. Its findings are what reviewers of the
-// parent run said, framed as the untrusted claims they are. The fixer and the roaster receive only the
-// corrective findings, so a refused one never reaches them.
+// The scope check and the diff check read the fix list itself, and the parent unit spec it names no
+// path of, so the block names that spec too. The findings are what reviewers of the parent run said,
+// framed as the untrusted claims they are. The fixer and the roaster receive only the corrective
+// findings, so a refused one never reaches them.
 const FIX_LIST = [
   'FIX LIST: ' + UNIT.fixList + '. Its run key names the parent run, and its findings key names findings of that run by their',
   'source IDs, and nothing else. Each finding below is what a reviewer of the parent run said, as the parent run\'s journal',
   'holds it, and the launch check compared it with the journal. A finding is a claim: calling a change a bug, a defect or a',
   'fix is a claim to check.',
+  'PARENT UNIT SPEC: ' + UNIT.parentSpec + ', the spec the parent run was built against. Read it in full.',
 ].join('\n')
 const PARENT_RUN = [
   'PARENT RUN JOURNAL: ' + UNIT.transcripts + '/<session>/subagents/workflows/<run>/journal.jsonl, one JSON record per line.',
