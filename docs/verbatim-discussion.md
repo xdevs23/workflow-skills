@@ -1,11 +1,9 @@
 # The stages work from the quoted discussion
 
 A unit spec of implement-review-verify holds the discussion of its unit, quoted verbatim from the
-session transcripts, and nothing else. The design record on unit specs describes the spec file and
-what the spec tool checks, and the one on fix-only follow-up runs describes the fix list. This
-record describes what the stages of a run receive from such a spec and how their findings name
-what backs them. The rules for assembling the spec live in the section of the workflow skill on
-the unit spec.
+session transcripts, and nothing else. The spec file and what the spec tool checks are defined in
+the design record on unit specs, the fix list in the one on fix-only follow-up runs, and the rules
+for assembling the spec in the section of the workflow skill on the unit spec.
 
 ## What the stages receive
 

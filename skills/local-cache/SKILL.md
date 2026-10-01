@@ -1,6 +1,6 @@
 ---
 name: local-cache
-description: Defines the project cache, the ignored and untracked directory for files that are not meant for the repository, such as temporary files, logs, research, plans, private specs, workflow worktrees and scratch files. Load it when deciding where to put a file that is not meant for the repository.
+description: Applies when you decide where to put a file that is not meant for the repository, such as a temporary file, a log, research, a plan, a private spec, a workflow worktree or a scratch file.
 ---
 
 # The project cache

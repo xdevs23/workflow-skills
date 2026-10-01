@@ -123,32 +123,10 @@ and the run's launch check runs it once more and continues only on the proof it 
 spec launches no run. Every stage receives the spec by its path under the main checkout, never a
 path relative to its worktree, because a worktree holds no untracked file.
 
-**stale-wording-removed**: Text in the files this unit edits that still describes a hand-numbered Markdown spec is
-brought in line: the launch paragraph telling the root to state criteria numbered and to make
-the spec doc carry them, the two `criteriaCount` error strings in the skeletons, the closing
-line of the spec-compliance template, the completeness prose that promises a limitation per
-unchecked provenance entry while the script only requires a non-empty list, and the size
-passage in `docs/workflow-finding-verification.md`. New text follows the writing-style
-skill: the words seat and lane stay where they name the existing review roles and the
-existing enum, and every other listed word is replaced with its plain form.
-
 ## Boundaries
 
 **no-hand-written-parsers**: The tool parses YAML with `Bun.YAML.parse` and JSON with `JSON.parse`, reading transcripts
 line by line. It contains no hand-written parsing of either and adds no dependency.
-
-**files-in-scope**: The unit changes `skills/implement-review-verify/SKILL.md`, the spec-compliance, inverse-spec
-and finding-verifier templates, `skills/immaculate-spec-writing/SKILL.md`,
-`docs/workflow-finding-verification.md` for the size passage only, adds `tools/check-spec.ts`
-and `agents/spec-provenance.md`, extends `tests/`, states the runtime minimum in the README,
-adds `tests/check-spec.test.js` to the README's documented test command, regenerates
-`docs/structured-unit-specs.md` and keeps the plugin version this branch already sets.
-Existing Markdown design documents stay as they are and no other unit is migrated. The
-wording sweep of the word pin is a separate unit.
-
-**behavior-preserved**: Reviewer input boundaries, the one pass, source coverage, the verifier's script checks,
-writer commit rules, the structured stage output contracts and the integer criterion
-ordinals are unchanged.
 
 ## Rejected alternatives
 

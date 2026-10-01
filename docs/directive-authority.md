@@ -106,12 +106,12 @@ narratives. Tests use synthetic scenarios unrelated to private incidents.
 
 The root assembles the specification from the actual conversation: the user's
 words about the unit, with the assistant messages they need as context, without
-selective omission. Every entry names its session record, so its source and order
-are known; a summary never substitutes for the quoted words. Applicable project
-requirements reach the stages as rules, never relabeled as user quotations. A
-run's specification is fixed for that run; new words go into a copy for the next
-one. Original words are never erased, truncated, rewritten or selectively omitted
-to make an implementation pass. A specification without the user's words is not
+selective omission. Every entry names its session record, so its source and
+order are known; a summary never substitutes for the quoted words. Applicable
+project requirements reach the stages as rules from their own files. A run's
+specification is fixed for that run; new words go into a copy for the next one.
+Original words are never erased, truncated, rewritten or selectively omitted to
+make an implementation pass. A specification without the user's words is not
 permission to trust anything else.
 
 Authority-aware stages receive the specification and may not claim fidelity when

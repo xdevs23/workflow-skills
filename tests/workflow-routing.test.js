@@ -1099,9 +1099,9 @@ const FAILED = 'HOW YOUR PREVIOUS ATTEMPT FAILED, plainly: '
 describe('spec provenance instructions and routing', () => {
   test('the workflow states source rules, the launch check, the written document after implementation and the generated denominator', () => {
     for (const phrase of [
-      '`author`', 'Run the tool before you launch the main run.', 'The run\'s first stage runs it once more',
+      '`author`', 'Run the tool before you launch the main run.', 'Expect the run\'s first stage to run the tool once more',
       'A failing spec launches no run',
-      'It prints its summary on stdout, as JSON with `--json`:',
+      'Read its summary on stdout, as JSON with `--json`:',
       'The tracked design document is written by hand from the code after the implementation, so it records what was built,' +
         ' and only when the change alters the design.',
       'The document describes the change as the code at the writer\'s final commit implements it: what it does, how its parts fit together,' +
@@ -2727,7 +2727,7 @@ describe('the project cache, the todo record and scratch files by role', () => {
   test('the local-cache skill defines the project cache, what goes there and the reading rule, after the precedence rule', async () => {
     const text = await readSkill('local-cache')
     expect(text).toContain('name: local-cache')
-    expect(text).toContain('Load it when deciding where to put a file that is not meant for the repository.')
+    expect(text).toContain('description: Applies when you decide where to put a file that is not meant for the repository,')
     expect(flat(firstParagraph(text))).toBe('When the session has a skill named `local-cache` without the plugin prefix, that skill applies ' +
       'and this one does not. This skill, `workflow-skills:local-cache`, applies only when it is the only `local-cache` skill available. ' +
       "The user's global preferences about this directory take priority over this file wherever the two differ.")
@@ -3039,7 +3039,7 @@ describe('the user\'s words reach every stage', () => {
       ['README', readme, ['A unit spec is a YAML file of `unit` and `entries`, and nothing else.',
         'Each entry quotes one session transcript record by its `file`, `line` and `uuid`, with its `author`, `user` or `assistant`, and its `text`']],
       ['skill', flat(skill), ['Give the spec exactly the keys `unit`, the unit\'s name, and `entries`.',
-        'A task notification, an injected meta record, command output and the result of any other tool are never the user\'s words.']],
+        'Never quote a task notification, an injected meta record, command output or the result of any other tool as the user\'s words.']],
     ]) {
       for (const phrase of phrases) expect([name, phrase, text.includes(phrase)]).toEqual([name, phrase, true])
       for (const stale of ['private directive record', '`context`', '`approves`', 'user_words']) expect([name, stale, text.includes(stale)]).toEqual([name, stale, false])

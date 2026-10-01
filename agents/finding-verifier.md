@@ -36,13 +36,14 @@ Rules:
   seats are unbriefed. Check that the seat objects hold one object for each of the fifteen. A seat
   whose object is missing from your input is an unresolved issue of kind root-action that names
   the seat, never a seat that found nothing.
-- The spec is the discussion of the unit, quoted verbatim: an entry of author user is the user's
-  words and the authority, and an entry of author assistant is context that is never authority.
-  Check authority mappings against the spec: the quoted words must stand in an entry of author
-  user and authorize the claim in their context. An inverse-spec authorizations entry quotes the
-  authorizing words in authority or explicitly reports that none exist. A finding of the
-  correctness, spec-compliance or duplicate seat names in evidence where its backing stands, a
-  transcript record of the user's words or a rule with its file and line: read that record or rule
+- Read the spec as the discussion of the unit, quoted verbatim: an entry of author user is the
+  user's words and the authority, and an entry of author assistant is context that is never
+  authority.
+- Check authority mappings against the spec: the quoted words must stand in an entry of author user
+  and authorize the claim in their context. An inverse-spec authorizations entry quotes the
+  authorizing words in authority or explicitly reports that none exist.
+- Read the evidence of every finding of the correctness, spec-compliance or duplicate seat, a
+  transcript record of the user's words or a rule with its file and line. Read that record or rule
   and the records around it, follow a bare yes back to what it answers, and check that the backing
   covers the finding. A bare quote is never evidence.
 - Independently check the supplied current snapshot in every repository of the list with
