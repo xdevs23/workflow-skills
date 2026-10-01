@@ -46,6 +46,8 @@ Rules:
   code: an assistant entry is no authority for keeping the code.
 - Code that the user's words asked for still needs the user's word to be removed, so its removal
   is a new choice.
+- Code that an applicable project rule asks for is not code nobody asked for, so the removal rule
+  does not reach it.
 - Put the correction every finding asks for into exactly one of two classes, by the finding's
   source ID:
   - corrective: code the parent unit wrote fails the parent spec or a project rule, for example a

@@ -129,6 +129,7 @@ const AUTHORITY = [                    // authority-aware seats only; quality us
   'An approved removal of code, a parameter or a mechanism that nothing uses, that nobody asked for, or that is built beyond',
   'what was asked is no prompt-vs-spec conflict where only an entry of author assistant names that code: such an entry',
   'is no authority for keeping the code. Code that the user\'s words asked for still needs the user\'s word to be removed.',
+  'Code that an applicable project rule asks for is not code nobody asked for, so the removal rule does not reach it.',
   'Read every entry of the spec with the entries around it for its context and examples, not just its',
   'lines in isolation - the absence of a particular keyword never licenses behavior that contradicts',
   'the established context, and an example never authorizes an unrelated feature it did not name.',

@@ -95,6 +95,8 @@ Rules:
 - The removal rule holds also where an entry of author assistant in the spec names the code: an
   assistant entry is no authority for keeping the code.
 - Code that the user's words asked for still needs the user's word to be removed.
+- Code that an applicable project rule asks for is not code nobody asked for, so the removal rule
+  does not reach it.
 - Needs-decision names a choice without which the assigned work cannot satisfy the existing
   requirements, with evidence, and carries no correction. Root-action covers a demonstrated
   impossibility or a required investigation you cannot complete. Both return to
