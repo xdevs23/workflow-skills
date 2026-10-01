@@ -2890,7 +2890,7 @@ const unbacked = { ...finding, kind: 'unbacked-choice', severity: 'CRITICAL', cl
 const rejectUnbacked = (authority, seat = 'correctness') => benefit([source(seat)], { action: 'reject', authority,
   reason: 'The entry asks for three attempts on a failed upload, which is the retry the finding names.',
   evidence: 'src/example.js:12 retries the upload three times.' })
-const backing = 'spec entry 6cb86621.jsonl:42: "Before you start: if the upload fails, try it three times and then stop and tell me."'
+const backing = 'spec entry session.jsonl:42: "Before you start: if the upload fails, try it three times and then stop and tell me."'
 const lower = text => flat(text).toLowerCase()
 
 describe('the user\'s words reach every stage', () => {
@@ -2948,8 +2948,8 @@ describe('the user\'s words reach every stage', () => {
   })
 
   test('a rejection closes an unbacked-choice finding only on a spec entry named by its file and line, with its quoted context', async () => {
-    for (const authority of ['The user asked for retries.', 'spec entry 6cb86621.jsonl:42', 'spec entry: "try it three times"',
-      '"if the upload fails, try it three times"', 'spec entry 6cb86621.jsonl:0: "try it three times"', 'spec entry 6cb86621.jsonl:42: " "',
+    for (const authority of ['The user asked for retries.', 'spec entry session.jsonl:42', 'spec entry: "try it three times"',
+      '"if the upload fails, try it three times"', 'spec entry session.jsonl:0: "try it three times"', 'spec entry session.jsonl:42: " "',
       'record entry retry-policy: "try it three times"']) {
       const { result, calls } = await simulate({ reports: report('review:correctness', [quote(unbacked)]),
         verify: { verify: verification([rejectUnbacked(authority)]) } })
