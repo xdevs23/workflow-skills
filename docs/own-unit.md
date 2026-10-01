@@ -55,7 +55,7 @@ what the implementer builds when a finding does not block it.
 ## How the findings reach the root
 
 The main script adds every entry of `specFindings` to `remaining` as a `spec-finding` item once the
-pass has ended, whatever the ending. An entry of class `unbacked-item` is CRITICAL, and every other
+pass has ended, whatever the ending. An entry of class `unbacked-entry` is CRITICAL, and every other
 entry is must-fix. The items follow the ones the pass itself added and come before the unfixed
 approvals and unattested fixes. When the implementer aborts, its findings still reach `remaining`
 beside the abort. When the implement stage fails without ever returning a complete object, there

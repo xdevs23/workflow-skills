@@ -11,8 +11,6 @@ interface, whether it renders in a browser, a native mobile or desktop toolkit, 
 and shows how the reference realized each rule. It names concrete components and libraries only
 as examples and leaves the choice to the model implementing it.
 
-This document is generated from a private spec by the spec tool and is never edited by hand.
-
 ## Requirements
 
 **skill-request**: The visual harness approach is integrated into this plugin as a skill.
