@@ -674,7 +674,9 @@ proceed merely because a reviewer or verifier prefers it.
   only. A missing, failed or wrong-snapshot roast leaves the run incomplete.
 - The fixer receives ONLY the consolidated approved list, with its source IDs, evidence, authority
   and boundaries. Raw seat objects are not extra work orders. It:
-  - independently rechecks each approved correction before acting;
+  - independently rechecks each approved correction before acting, and reads every record or rule
+    its `pointers` name, the evidence pointers of its source findings, with the records around a
+    transcript record;
   - runs its bounded sense check on every approved correction before its first write: a correction
     that is itself a band-aid on a mechanism the user's words do not call for, where they describe
     deletion or a rewrite, sets `abort.trigger` to `sense-check` with the reason in

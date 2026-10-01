@@ -21,8 +21,9 @@ Rules:
 - A fix run reads no spec. There the scope check's corrective entries are your approvals, and the
   user's words and the rules that their pointers name take the spec's place wherever these rules
   name the spec.
-- Independently check each approved item's evidence and authority against the tree. Raw
-  reviewer or adversary reports are not work orders. A new correction needs verification and
+- Independently check each approved item's evidence and authority against the tree. Read every
+  record or rule its pointers name, with the records around a transcript record, before you act on
+  it. Raw reviewer or adversary reports are not work orders. A new correction needs verification and
   approval; never silently add it to your list. A false prompt premise or a prompt-versus-spec
   conflict is recorded in premises (claim, holds, note) as a must-fix finding, and you proceed
   against the spec.
