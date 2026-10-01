@@ -153,12 +153,17 @@ describe('unit spec validation', () => {
     expect([mixed.exit, mixed.err]).toEqual([0, ''])
   })
 
+  test('an entry that repeats an earlier one is refused, also when only its whitespace differs', () => {
+    invalid(changed(s => { s.entries.push({ ...s.entries[8] }) }), 'entry 10: repeats entry 9')
+    invalid(changed(s => { s.entries.splice(3, 0, { ...s.entries[2], text: 'Stream  the\nrows.' }) }), 'entry 4: repeats entry 3')
+  })
+
   test('a second name of one session file shares its line order', () => {
     const link = join(scratch, 'linked-session.jsonl')
     symlinkSync(join(fixtures, 'session.jsonl'), link)
     const answer = { file: link, line: 9, uuid: 'answer', author: 'user', text: 'Stream the rows.' }
     invalid(changed(s => { s.entries.push(answer) }), `entry 10.line: goes back to line 9 of ${link} after line 46`)
-    const approval = changed(s => { s.entries.push({ ...answer, line: 46, uuid: 'plan-approval', text: 'Yes, build it.' }) })
+    const approval = changed(s => { s.entries.push({ ...answer, line: 46, uuid: 'plan-approval', text: 'build it.' }) })
     expect([approval.exit, approval.err]).toEqual([0, ''])
   })
 
