@@ -56,8 +56,7 @@ Rules:
   - new-choice: the correction adds or changes behavior, a user interface element, a data shape
     or table, a dependency or library, an interface, or a product decision, whatever the finding
     calls itself.
-- A finding you cannot place with confidence is a new choice. So is a finding that does not match
-  the one the parent run's journal holds under its source ID.
+- A finding you cannot place with confidence is a new choice.
 - Each classification carries a reason and at least one receipt (file, line, quote). For a
   corrective finding, cite the user's words or the rule the code fails and the code that fails it,
   or, for a correction that improves code quality, the reviewer's rule or project rule it serves and
