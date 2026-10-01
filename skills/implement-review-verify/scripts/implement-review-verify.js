@@ -206,10 +206,16 @@ const FINDINGS = { type: 'array', items: FINDING }
 const BRIEFED_KINDS = { enum: ['band-aid', 'longer-route', 'unbacked-choice'] }
 const BRIEFED_FINDING = { ...FINDING, properties: { ...FINDING.properties, kind: BRIEFED_KINDS } }
 const BRIEFED_FINDINGS = { type: 'array', items: BRIEFED_FINDING }
-// The three seats that judge the change against the spec flag a problem by quoting the user's words
-// it concerns, in words, and saying in claim what is wrong with the implementation.
-const QUOTED_FINDINGS = { type: 'array', items: { ...BRIEFED_FINDING, required: [...FINDING.required, 'words'],
-  properties: { ...BRIEFED_FINDING.properties, words: { type: 'string' } } } }
+// Where the backing of a finding stands, never a bare quote: the transcript record of the user's words
+// it is judged against, by session file, line and the JSON key path of the quoted part, or a rule by its
+// file and line, with an empty key. Whoever receives the finding reads that record or rule and the
+// records around it.
+const EVIDENCE = { type: 'array', minItems: 1, items: { type: 'object', required: ['kind', 'file', 'line', 'key'], additionalProperties: false,
+  properties: { kind: { enum: ['transcript', 'rule'] }, file: { type: 'string' }, line: { type: 'integer', minimum: 1 }, key: { type: 'string' } } } }
+// The three seats that judge the change against the spec flag a problem by saying in claim what is
+// wrong with the implementation and naming in evidence where its backing stands.
+const BACKED_FINDINGS = { type: 'array', items: { ...BRIEFED_FINDING, required: [...FINDING.required, 'evidence'],
+  properties: { ...BRIEFED_FINDING.properties, evidence: EVIDENCE } } }
 // What the seat inspected and how; an entry with checked false needs a limitation beside it, and
 // the finding verifier judges whether that limitation excuses it.
 const COVERAGE = { type: 'array', items: { type: 'object', required: ['what', 'checked', 'how'], additionalProperties: false,
@@ -243,13 +249,13 @@ const PREMISES = { type: 'array', items: { type: 'object', required: ['claim', '
 // alternatives, roaster) carry no abort field, because its member names would brief them.
 const CORRECTNESS = { type: 'object', additionalProperties: false,
   required: ['abort', 'limitations', 'coverage', 'findings'],
-  properties: { abort: ABORT, limitations: LIMITATIONS, coverage: COVERAGE, findings: QUOTED_FINDINGS } }
+  properties: { abort: ABORT, limitations: LIMITATIONS, coverage: COVERAGE, findings: BACKED_FINDINGS } }
 const SPEC_COMPLIANCE = { type: 'object', additionalProperties: false,
   required: ['abort', 'limitations', 'coverage', 'findings'],
-  properties: { abort: ABORT, limitations: LIMITATIONS, coverage: COVERAGE, findings: QUOTED_FINDINGS } }
+  properties: { abort: ABORT, limitations: LIMITATIONS, coverage: COVERAGE, findings: BACKED_FINDINGS } }
 const DUPLICATES = { type: 'object', additionalProperties: false,
   required: ['abort', 'limitations', 'coverage', 'findings'],
-  properties: { abort: ABORT, limitations: LIMITATIONS, coverage: COVERAGE, findings: QUOTED_FINDINGS } }
+  properties: { abort: ABORT, limitations: LIMITATIONS, coverage: COVERAGE, findings: BACKED_FINDINGS } }
 const INVERSE = { type: 'object', additionalProperties: false,
   required: ['abort', 'limitations', 'coverage', 'findings', 'authorizations'],
   properties: { abort: ABORT, limitations: LIMITATIONS, coverage: COVERAGE, findings: BRIEFED_FINDINGS,
@@ -430,9 +436,12 @@ if (typeof UNIT.specPath !== 'string' || !UNIT.specPath.endsWith('.yaml')) {
   throw new Error('args.specPath must name the unit spec YAML file')
 }
 if (typeof UNIT.transcripts !== 'string' || !UNIT.transcripts) throw new Error('args.transcripts must name the transcript directory')
-const QUOTE = [
-  'FINDINGS AGAINST THE SPEC: read the spec and flag what is wrong with the implementation. Each finding quotes in words,',
-  'verbatim, the words of an entry of author user it is judged against, and says in claim what the implementation gets wrong.',
+const AGAINST_SPEC = [
+  'FINDINGS AGAINST THE SPEC: read the spec and flag what is wrong with the implementation, saying it in claim. Never quote the',
+  'user bare: each finding names in evidence where its backing stands. For the user\'s words, kind transcript: the session file',
+  'and line of the spec entry it is judged against, and in key the JSON key path of the quoted part of that record. Where no',
+  'words of the user back it, kind rule: the file and line of the global, plugin or project rule it rests on, and an empty key.',
+  'Whoever receives the finding reads the evidence and the records around it.',
 ].join('\n')
 const checkWriterSnapshot = (result, starts) => {
   const expected = shaByPath(starts), paths = result.repositories.map(r => r.path)
@@ -463,9 +472,15 @@ const checkReader = r => {
     }
   }
 }
-const checkQuoted = r => {
+const checkBacked = r => {
   checkReader(r)
-  for (const f of r.findings) requireText(f.words, 'the user\'s words the finding quotes: ' + f.claim)
+  for (const f of r.findings) {
+    if (!Array.isArray(f.evidence) || !f.evidence.length) throw new Error('Missing the evidence the finding rests on: ' + f.claim)
+    for (const e of f.evidence) {
+      requireText(e.file, 'the file of the evidence of: ' + f.claim)
+      if (e.kind === 'transcript') requireText(e.key, 'the JSON key path of the transcript evidence of: ' + f.claim)
+    }
+  }
 }
 const checkInverse = r => { checkReader(r); if (!r.authorizations.length) throw new Error('authorizations is empty') }
 const checkAlternatives = r => {
@@ -603,9 +618,9 @@ const REVIEWER_RULES = [
 // Only the two briefed code-lens readers receive the implementer's object, as claims. The eight
 // audit seats receive what quality receives, the hygiene floor and the diff, and return its object.
 const seatList = claims => [
-  ['reviewer-correctness', 'correctness', [AUTHORITY, READ_GIT, SPEC, QUOTE, ...claims], CORRECTNESS, checkQuoted],
-  ['reviewer-spec-compliance', 'spec', [AUTHORITY, READ_GIT, SPEC, QUOTE], SPEC_COMPLIANCE, checkQuoted],
-  ['duplicate-checker', 'dupes', [AUTHORITY, READ_GIT, SPEC, QUOTE, ...claims], DUPLICATES, checkQuoted],
+  ['reviewer-correctness', 'correctness', [AUTHORITY, READ_GIT, SPEC, AGAINST_SPEC, ...claims], CORRECTNESS, checkBacked],
+  ['reviewer-spec-compliance', 'spec', [AUTHORITY, READ_GIT, SPEC, AGAINST_SPEC], SPEC_COMPLIANCE, checkBacked],
+  ['duplicate-checker', 'dupes', [AUTHORITY, READ_GIT, SPEC, AGAINST_SPEC, ...claims], DUPLICATES, checkBacked],
   ['quality', 'quality', [HYGIENE], QUALITY, checkReader],
   ['reviewer-inverse-spec', 'inverse', [AUTHORITY, READ_GIT, SPEC], INVERSE, checkInverse],
   ['project-rule-reader', 'rules', [AUTHORITY, READ_GIT, SPEC, RULES], RULES_SEAT, checkReader],

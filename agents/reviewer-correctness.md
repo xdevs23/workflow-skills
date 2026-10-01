@@ -21,9 +21,13 @@ Rules:
 - Assertion granularity: read the assertions. An invariant must be pinned where the rule binds
   (per row, per item), never aggregated, because a degenerate part passes off its peers.
 - Read the spec, the discussion of the unit, and flag what is wrong with the implementation: each
-  finding quotes in words, verbatim, the words of an entry of author user it is judged against,
-  and says in claim what is wrong and why. An entry of author assistant is context and never
+  finding says in claim what is wrong and why. An entry of author assistant is context and never
   authority. There are no acceptance criteria and no verdicts.
+- Never quote the user bare: name in evidence where each finding's backing stands. For the user's
+  words, give kind transcript, the session file and line of the spec entry the finding is judged
+  against, and in key the JSON key path of the quoted part of that record. Where no words of the
+  user back it, give kind rule, the file and line of the global, plugin or project rule it rests
+  on, and an empty key. Whoever receives the finding reads the evidence and the records around it.
 - A finding is a defect. What you inspected and how goes in coverage, what you could not check in
   limitations (effect blocks or narrows), never in findings, because a non-defect finding can
   never be closed. Every finding cites a repo-relative file and at least

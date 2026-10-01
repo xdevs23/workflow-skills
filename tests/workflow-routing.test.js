@@ -36,8 +36,8 @@ const receipt = { file: 'src/example.js', line: 12, quote: 'catch (error) {}' }
 const finding = { file: 'src/example.js', claim: 'The specified error is swallowed.', severity: 'must-fix', lane: 'fixer-actionable', receipts: [receipt] }
 // The correctness, spec-compliance and duplicate readers quote in words the user's words a finding
 // is judged against. No other reader's finding has the field.
-const quote = f => ({ ...f, words: 'Return the error to the caller.' })
-const quoted = quote(finding)
+const back = f => ({ ...f, evidence: [{ kind: 'transcript', file: 'session.jsonl', line: 9, key: 'message.content' }] })
+const backed = back(finding)
 const noAbort = { trigger: 'none', reason: '' }
 const coverage = [{ what: 'src/example.js', checked: true, how: 'read in full against the diff' }]
 // Stage objects: the cold reader shape, the briefed reader shape (abort), and each seat's own fields.
@@ -159,7 +159,7 @@ async function simulate({ reports = {}, verify = {}, fixes = {}, fail = {}, impl
   const result = await run(agent, name => phases.push(name), line => logs.push(line), args)
   return { result, calls, phases, logs }
 }
-const oneReport = { 'review:correctness': { findings: [quoted] } }
+const oneReport = { 'review:correctness': { findings: [backed] } }
 const approveOne = { 'verify': verification([decision([source('correctness')])]) }
 
 // These tests execute the documented skeleton with deterministic fake stage results.
@@ -536,7 +536,7 @@ describe('workflow verification and consolidation', () => {
   for (const action of ['needs-decision', 'root-action']) {
     test(`${action} reaches the root while the approved correction is still applied`, async () => {
       const { result, calls } = await simulate({
-        reports: { 'review:correctness': { findings: [quoted, quoted] } },
+        reports: { 'review:correctness': { findings: [backed, backed] } },
         verify: { 'verify': verification([
           decision([source('correctness')]),
           decision([source('correctness', 1)], { action, correction: action === 'needs-decision' ? '' : 'Resolve the necessary retention policy first.' }),
@@ -564,7 +564,7 @@ describe('workflow verification and consolidation', () => {
       reports: { 'review:spec': { findings: [{
         file: 'docs/spec.md', claim: 'The optional example could explain the error response more clearly.',
         severity: 'nit', lane: 'orchestrator-only', receipts: [{ file: 'docs/spec.md', line: 8, quote: 'Return the error to the caller.' }],
-        words: 'Return the error to the caller.',
+        evidence: [{ kind: 'transcript', file: 'session.jsonl', line: 9, key: 'message.content' }],
       }] } },
       verify: { 'verify': verification([decision([source('spec')], {
         action: 'record', severity: 'nit',
@@ -846,7 +846,7 @@ describe('workflow verification and consolidation', () => {
 
   test('distinct defects in one file remain separate, and partial disagreement preserves unattested fixes', async () => {
     const { result } = await simulate({
-      reports: { 'review:correctness': { findings: [quoted, { ...quoted, claim: 'The success response omits its identifier.' }] } },
+      reports: { 'review:correctness': { findings: [backed, { ...backed, claim: 'The success response omits its identifier.' }] } },
       verify: { 'verify': verification([
         decision([source('correctness')]),
         decision([source('correctness', 1)], { correction: 'Restore the required success identifier.' }),
@@ -925,12 +925,16 @@ describe('coder sense check and project-benefit review', () => {
     for (const call of readerCalls) {
       const kinds = unbriefed.includes(call.agentType) ? ['band-aid', 'longer-route'] : ['band-aid', 'longer-route', 'unbacked-choice']
       expect([call.agentType, call.schema.properties.findings.items.properties.kind]).toEqual([call.agentType, { enum: kinds }])
-      // The three seats that judge the change against the spec quote in words the user's words of each finding.
-      const quoting = ['reviewer-correctness', 'reviewer-spec-compliance', 'duplicate-checker'].includes(call.agentType)
+      // The three seats that judge the change against the spec name in evidence where each finding's backing stands.
+      const backing = ['reviewer-correctness', 'reviewer-spec-compliance', 'duplicate-checker'].includes(call.agentType)
       expect(call.schema.properties.findings.items.required).toEqual(['file', 'claim', 'severity', 'lane', 'receipts',
-        ...(call.agentType === 'project-rule-reader' ? ['scope'] : []), ...(quoting ? ['words'] : [])])
-      expect([call.agentType, 'words' in call.schema.properties.findings.items.properties, 'verdicts' in call.schema.properties])
-        .toEqual([call.agentType, quoting, false])
+        ...(call.agentType === 'project-rule-reader' ? ['scope'] : []), ...(backing ? ['evidence'] : [])])
+      expect([call.agentType, 'evidence' in call.schema.properties.findings.items.properties, 'words' in call.schema.properties.findings.items.properties,
+        'verdicts' in call.schema.properties]).toEqual([call.agentType, backing, false, false])
+      if (backing) {
+        const pointer = call.schema.properties.findings.items.properties.evidence
+        expect([pointer.minItems, pointer.items.required, pointer.items.properties.kind]).toEqual([1, ['kind', 'file', 'line', 'key'], { enum: ['transcript', 'rule'] }])
+      }
       expect(call.schema.properties.findings.items.properties.receipts.minItems).toBe(1)
     }
     // The fix run's readers are unbriefed as well.
@@ -942,10 +946,10 @@ describe('coder sense check and project-benefit review', () => {
 
   test('a kind-bearing source finding is set to CRITICAL at intake, for readers and roasts alike', async () => {
     const { severity, ...unmarked } = bandAid
-    const reader = await simulate({ reports: report('review:dupes', [quote({ ...bandAid, severity: 'must-fix' })]),
+    const reader = await simulate({ reports: report('review:dupes', [back({ ...bandAid, severity: 'must-fix' })]),
       verify: { 'verify': verification([rejectShape([source('dupes')])]) } })
     expect(reader.logs).toContain('Project-benefit finding from dupes with kind band-aid set to severity CRITICAL')
-    handedTo(reader.calls, 'verify', [{ ...quote(bandAid), id: source('dupes'), seat: 'dupes', snapshots: at(INITIAL) }])
+    handedTo(reader.calls, 'verify', [{ ...back(bandAid), id: source('dupes'), seat: 'dupes', snapshots: at(INITIAL) }])
     const roast = await simulate({ reports: report('roast', [{ ...unmarked, kind: 'longer-route' }]) })
     expect(roast.logs).toContain('Project-benefit finding from roaster with kind longer-route set to severity CRITICAL')
     expect(roast.result.remaining).toEqual([{ kind: 'roast-finding', severity: 'CRITICAL', item: {
@@ -953,7 +957,7 @@ describe('coder sense check and project-benefit review', () => {
     } }])
     const plain = await simulate({ reports: oneReport, verify: { ...approveOne },
       fixes: { 'fix': fixed([disposition()]) } })
-    handedTo(plain.calls, 'verify', [{ ...quoted, id: source('correctness'), seat: 'correctness', snapshots: at(INITIAL) }])
+    handedTo(plain.calls, 'verify', [{ ...backed, id: source('correctness'), seat: 'correctness', snapshots: at(INITIAL) }])
     expect([plain.result.exit, plain.logs]).toEqual(['follow-up', []])
   })
 
@@ -1009,7 +1013,7 @@ describe('coder sense check and project-benefit review', () => {
 
   test('a fixer sense-check flag in a valid FIX object ends the run with its structured result preserved', async () => {
     const abort = { trigger: 'sense-check', reason: 'the approved correction patches the compatibility shim the recorded words describe as deleted.' }
-    const { result, calls } = await simulate({ reports: report('review:correctness', [quoted, { ...quoted, claim: 'A second defect.' }]),
+    const { result, calls } = await simulate({ reports: report('review:correctness', [backed, { ...backed, claim: 'A second defect.' }]),
       verify: { 'verify': verification([decision([source('correctness')]), decision([source('correctness', 1)])]) },
       fixes: { 'fix': fixed([disposition(), disposition('fix:1', 'blocked')], { abort }) } })
     expect(result.exit).toBe('aborted')
@@ -1250,9 +1254,9 @@ describe('structured stage output', () => {
     for (const field of ['writerScope', 'decisions', 'issues']) expect([field, verify[field].items.additionalProperties]).toEqual([field, false])
   })
 
-  test('a finding of a concern seat without the user\'s words is retried with the cause named, then thrown, and the run needs no count', async () => {
-    const { words, ...unquoted } = quoted
-    const missing = 'Missing the user\'s words the finding quotes: ' + finding.claim
+  test('a finding of a concern seat without evidence is retried with the cause named, then thrown, and the run needs no count', async () => {
+    const { evidence, ...unquoted } = backed
+    const missing = 'Missing the evidence the finding rests on: ' + finding.claim
     for (const seat of ['correctness', 'spec', 'dupes']) {
       const { result, calls } = await simulate({ reports: { ['review:' + seat]: { findings: [unquoted] } } })
       expect([seat, ['clean', 'follow-up'].includes(result.exit), retried(calls, 'review:' + seat).length]).toEqual([seat, false, 3])
@@ -1268,8 +1272,11 @@ describe('structured stage output', () => {
   })
 
   for (const [name, seat, fields, message] of [
-    ['a quoted finding without a receipt', 'spec', { findings: [{ ...quoted, receipts: [] }] }, 'finding without a receipt'],
-    ['a quoted finding with blank words', 'dupes', { findings: [{ ...quoted, words: ' ' }] }, 'Missing the user\'s words the finding quotes'],
+    ['a backed finding without a receipt', 'spec', { findings: [{ ...backed, receipts: [] }] }, 'finding without a receipt'],
+    ['a backed finding whose transcript evidence names no key', 'dupes', { findings: [{ ...backed, evidence: [{ kind: 'transcript', file: 'session.jsonl', line: 9, key: ' ' }] }] },
+      'Missing the JSON key path of the transcript evidence of'],
+    ['a backed finding whose evidence names no file', 'spec', { findings: [{ ...backed, evidence: [{ kind: 'rule', file: '', line: 3, key: '' }] }] },
+      'Missing the file of the evidence of'],
     ['a finding without a receipt', 'quality', { findings: [{ ...finding, receipts: [] }] }, 'finding without a receipt'],
     ['a finding without a lane', 'rules', { findings: [{ ...finding, lane: undefined }] }, 'finding without a lane'],
     ['a coverage entry unchecked without a limitation', 'quality', { coverage: [{ what: 'the integration suite', checked: false, how: 'no database' }], limitations: [] }, 'coverage entry not checked and no limitation declared: the integration suite'],
@@ -2885,7 +2892,7 @@ describe('the user\'s words reach every stage', () => {
     // The removal mark belongs to an approve-fix alone.
     const marked = benefit([source('correctness')], { action: 'needs-decision', authority: 'No recorded words back the three retries.',
       correction: '', removal: true })
-    const { result, calls } = await simulate({ reports: report('review:correctness', [quote(unbacked)]), verify: { verify: verification([marked]) } })
+    const { result, calls } = await simulate({ reports: report('review:correctness', [back(unbacked)]), verify: { verify: verification([marked]) } })
     expect(result.detail).toContain('Only an approve-fix carries removal true, never needs-decision')
     expect(calls.some(c => c.phase === 'Fix')).toBe(false)
   })
@@ -2896,8 +2903,8 @@ describe('the user\'s words reach every stage', () => {
       correction: 'Delete the retry loop so a failed upload fails once.', removal: true }
     const alone = benefit([source('correctness')], removal)
     const grouped = benefit([source('correctness'), source('inverse'), source('rules')], removal)
-    for (const [reports, approved] of [[report('review:correctness', [quote(unbacked)]), alone],
-      [{ ...report('review:correctness', [quote(unbacked)]), ...report('review:inverse', [bandAid]), ...report('review:rules', [finding]) }, grouped]]) {
+    for (const [reports, approved] of [[report('review:correctness', [back(unbacked)]), alone],
+      [{ ...report('review:correctness', [back(unbacked)]), ...report('review:inverse', [bandAid]), ...report('review:rules', [finding]) }, grouped]]) {
       const { result, calls } = await simulate({ reports, verify: { verify: verification([approved]) }, fixes: { fix: fixed([disposition()]) } })
       expect(retried(calls, 'verify')).toHaveLength(1)
       expect(calls.find(c => c.label === 'fix').prompt).toContain('APPROVED CORRECTIONS (verify against the tree and authority):\n\n' +
@@ -2910,7 +2917,7 @@ describe('the user\'s words reach every stage', () => {
   test('needs-decision on an unbacked-choice finding reaches the root as an open decision', async () => {
     const open = benefit([source('correctness')], { action: 'needs-decision', authority: 'No recorded words back the three retries.',
       correction: '' })
-    const { result, calls } = await simulate({ reports: report('review:correctness', [quote(unbacked)]), verify: { verify: verification([open]) } })
+    const { result, calls } = await simulate({ reports: report('review:correctness', [back(unbacked)]), verify: { verify: verification([open]) } })
     expect([result.exit, result.remaining]).toEqual(['root-resolution', [{ kind: 'open-decision', severity: 'CRITICAL', item: open }]])
     expect(calls.some(c => c.phase === 'Fix')).toBe(true)
   })
@@ -2919,13 +2926,13 @@ describe('the user\'s words reach every stage', () => {
     for (const authority of ['The user asked for retries.', 'spec entry session.jsonl:42', 'spec entry: "try it three times"',
       '"if the upload fails, try it three times"', 'spec entry session.jsonl:0: "try it three times"', 'spec entry session.jsonl:42: " "',
       'record entry retry-policy: "try it three times"']) {
-      const { result, calls } = await simulate({ reports: report('review:correctness', [quote(unbacked)]),
+      const { result, calls } = await simulate({ reports: report('review:correctness', [back(unbacked)]),
         verify: { verify: verification([rejectUnbacked(authority)]) } })
       expect([authority, result.detail.includes('Unbacked-choice rejection must cite in authority the spec entry by its file and line')]).toEqual([authority, true])
       expect(calls.some(c => c.phase === 'Fix')).toBe(false)
     }
     const closed = rejectUnbacked(backing)
-    const { result } = await simulate({ reports: report('review:correctness', [quote(unbacked)]), verify: { verify: verification([closed]) } })
+    const { result } = await simulate({ reports: report('review:correctness', [back(unbacked)]), verify: { verify: verification([closed]) } })
     expect([result.exit, result.remaining, result.counts.rejected]).toEqual(['clean', [], 1])
     expect(result.projectBenefitDecisions.map(d => d.decision)).toEqual([closed])
   })
@@ -3663,7 +3670,7 @@ describe('review seats are critics, and no stage asks the user a question', () =
     // ordinary finding and for an unbacked choice alike.
     for (const [reports, refusedDecision] of [
       [oneReport, decision([source('correctness')], { action: 'needs-decision', correction: 'Should a failed upload be retried, and how often?' })],
-      [report('review:correctness', [quote(unbacked)]), benefit([source('correctness')], { action: 'needs-decision',
+      [report('review:correctness', [back(unbacked)]), benefit([source('correctness')], { action: 'needs-decision',
         authority: 'No recorded words back the three retries.', correction: 'Keep the three retries.' })],
     ]) {
       const refused = await simulate({ reports, verify: { verify: verification([refusedDecision]) } })

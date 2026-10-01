@@ -28,12 +28,15 @@ Rules:
   forbid, such as running tests, builds or the spec tool as a reading stage, and input you are not
   given by design, such as the private spec for an unbriefed stage, are never limitations and are
   not reported. They get no unchecked coverage entry either.
-- Read the spec, the discussion of the unit: each finding quotes in words, verbatim, the words of
-  an entry of author user it is judged against, such as the words that asked for the behaviour
-  the duplicated logic carries, and says in claim what is wrong with the implementation. An entry
-  of author assistant is context and never authority. There are no acceptance criteria and no
-  verdicts. Two sites encoding genuinely different decisions are not duplicates: a coverage entry
-  says so.
+- Read the spec, the discussion of the unit: each finding says in claim what is wrong with the
+  implementation. An entry of author assistant is context and never authority. There are no
+  acceptance criteria and no verdicts. Two sites encoding genuinely different decisions are not
+  duplicates: a coverage entry says so.
+- Never quote the user bare: name in evidence where each finding's backing stands. For the user's
+  words, give kind transcript, the session file and line of the spec entry the finding is judged
+  against, and in key the JSON key path of the quoted part of that record. Where no words of the
+  user back it, give kind rule, the file and line of the global, plugin or project rule it rests
+  on, and an empty key. Whoever receives the finding reads the evidence and the records around it.
 - A direct contradiction between a user directive and the spec or the prompt sets abort.trigger
   to directive-conflict and abort.reason to the reason, and you stop; otherwise abort.trigger is
   none.
