@@ -1756,7 +1756,7 @@ describe('work execution rules', () => {
   })
 
   test('the review phase states that a seat proposes, the verifier authorizes and the user decides', () => {
-    const text = sectionText(skill, '### Phase 2 — Review (N agents, parallel seats, split BY CONCERN)')
+    const text = sectionText(skill, '### Phase 2: Review (N agents, parallel seats, split BY CONCERN)')
     expect(text).toContain('**A reviewer suggests and never decides.**')
     expect(text).toContain('the user decides anything that changes what the product does')
     expect(text).toContain('Behavior nobody approved is such a decision')
@@ -3301,14 +3301,14 @@ describe('fixed review seats and a model for every agent', () => {
   })
 
   test('the skill states the fixed seats, the rule against rewriting them, the model entries and that no note goes to the implementer', () => {
-    const review = sectionText(skill, '### Phase 2 — Review (N agents, parallel seats, split BY CONCERN)')
+    const review = sectionText(skill, '### Phase 2: Review (N agents, parallel seats, split BY CONCERN)')
     for (const phrase of ['**The review stage has fifteen fixed, mandatory seats.** Every run runs all of them, whatever the size of the change',
       'Never leave a review seat out, rewrite a seat\'s template or the prompt text the script gives a seat, or remove anything from either.',
       'The one exception is the note `workflow-skills:resume-interrupted-run` appends to the prompt of an interrupted agent of a run being resumed, which adds and removes nothing else.',
       'it stops before its first agent when the seat list holds any other set']) {
       expect([phrase, review.includes(phrase)]).toEqual([phrase, true])
     }
-    const additional = sectionText(skill, '### Additional review seats — parallel with the concern reviewers')
+    const additional = sectionText(skill, '### Additional review seats, parallel with the concern reviewers')
     for (const phrase of ['**The eight audit seats**', 'Each receives what quality receives, the hygiene floor and the diff of every repository that moved',
       'returns what quality returns: `limitations`, `coverage` and `findings`', 'under source IDs of their label']) {
       expect([phrase, additional.includes(phrase)]).toEqual([phrase, true])
