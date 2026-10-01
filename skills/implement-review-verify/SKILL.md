@@ -492,15 +492,16 @@ lenses of every run, and the main script stops a run whose seat list holds anoth
 - **Every review seat also judges whether the diff HELPS THE PROJECT, not only whether it is
   correct.** Two finding kinds, enum-locked as the optional `kind` field of the findings schema,
   each CRITICAL, scoped to choices made in this unit's own diff: **`band-aid`** — a repair of a
-  mechanism the recorded words do not call for, a compensation layer around an earlier choice, or a
+  mechanism the user's words do not call for, a compensation layer around an earlier choice, or a
   workaround that leaves the underlying mechanism in place — and **`longer-route`** — a longer
-  implementation where the recorded words already describe a simpler one. Briefed seats quote the
-  recorded words beside the finding. Cold seats (quality, the eight audit seats, cold alternatives,
-  the roaster) keep their input boundaries, flag by shape and attach no quotes; the verifier
-  supplies the words for a finding of quality, an audit seat or cold alternatives, and a roaster
-  finding returns to you in remaining, where you check it against the tree and the recorded words.
-  The rule reader reports a pre-existing band-aid beside the diff without a kind, so the cleanup
-  lane stays available.
+  implementation where the user's words already describe a simpler one. The three concern seats name
+  in `evidence` where those words or the rule a finding rests on stand, and the inverse-spec and
+  rule readers name in the claim the spec entry of the simpler route by its session file and line.
+  Cold seats (quality, the eight audit seats, cold alternatives, the roaster) keep their input
+  boundaries, flag by shape and name no words; the verifier supplies the words for a finding of
+  quality, an audit seat or cold alternatives, and a roaster finding returns to you in remaining,
+  where you check it against the tree and the recorded words. The rule reader reports a pre-existing
+  band-aid beside the diff without a kind, so the cleanup lane stays available.
 - **A choice without the user's words is its own finding kind.** A briefed reader reports a choice
   in the spec, the prompt or the diff that no words of the user back as a finding with kind
   **`unbacked-choice`**, and the inverse-spec reviewer's missing-decision findings carry it. A

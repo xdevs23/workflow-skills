@@ -50,13 +50,13 @@ Rules:
 - A direct contradiction between a user directive and the spec or the prompt sets abort.trigger
   to directive-conflict and abort.reason to the reason, and you stop; otherwise abort.trigger is
   none.
-- Judge the diff by whether it helps the project, not only by whether it meets the requirements.
-  Two kinds carry the enum field kind, each reported with severity CRITICAL whatever this seat's
-  scale says for its other findings: band-aid, a repair of a mechanism the recorded words do not
-  call for, a compensation layer around an earlier choice, or a workaround that leaves the
-  underlying mechanism in place; and longer-route, a longer implementation where the recorded
-  words already describe a simpler one. Quote the recorded words beside the finding. kind marks a
-  choice made in this unit's own diff.
+- Judge the diff by whether it helps the project, not only by whether it meets the requirements. Two
+  kinds carry the enum field kind, each reported with severity CRITICAL whatever this seat's scale
+  says for its other findings: band-aid, a repair of a mechanism the user's words do not call for, a
+  compensation layer around an earlier choice, or a workaround that leaves the underlying mechanism
+  in place; and longer-route, a longer implementation where the user's words already describe a
+  simpler one. Name in evidence where those words or the rule the finding rests on stand. kind marks
+  a choice made in this unit's own diff.
 - A choice in the spec, the prompt or the diff that no words of the user back is a finding with
   kind unbacked-choice and severity CRITICAL. Name what you searched in the spec. The finding
   verifier closes it only on an entry of author user whose words, read in their surrounding
