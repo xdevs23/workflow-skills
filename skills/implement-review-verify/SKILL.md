@@ -71,8 +71,8 @@ nothing else. No word of yours enters it as a statement of your own: it holds th
 as their context, the parts of your messages they answer.
 
 - Write the spec as `<unit>.yaml` in the private-spec location that `workflow-skills:local-cache`
-  defines, ignored and untracked because it quotes the user. Give it exactly the keys `unit`, the
-  unit's name, and `entries`.
+  defines, ignored and untracked because it quotes the user.
+- Give the spec exactly the keys `unit`, the unit's name, and `entries`.
 - Give each entry exactly `file`, `line` and `uuid`, naming the session transcript record it
   quotes, `author`, which is `user` or `assistant`, and `text`, a verbatim substring of that record.
 - Quote in a user entry a message the user wrote, typed or queued, or an answer the user gave in the
@@ -87,22 +87,24 @@ as their context, the parts of your messages they answer.
   todo record is the first thing written, and the discussion of the unit starts at its origin.
 - Put in every message of the user about this unit from that point on, and only the part of a
   message that is about this unit. A message about two units gives each unit only its own part.
-  Words about another unit never enter the spec: you need to know what belongs where, so the user
-  can correct the spec where it is wrong.
+- Keep words about another unit out of the spec. Every entry belongs to this unit, so the user can
+  correct the sorting where it is wrong.
 - Add assistant entries only as far as the user's words need them, and only their relevant parts,
   such as the explanation and the question a bare yes answers. An assistant entry is context and
   never authority: only the user entries are.
 - Keep the entries in session order. Entries of one session file never go back in line order, so
   a yes stays after the question it answers.
 - Wrap the text of every entry at 120 characters, as the width rule below says.
-- Check the spec with the spec tool, then open it in VSCodium for the user to check. The user only
-  removes entries that do not belong and never types into the file. Launch the main run on the file
-  as the user leaves it.
+- Check the spec with the spec tool.
+- Open the checked spec in VSCodium for the user to check. The user only removes entries that do
+  not belong and never types into the file.
+- Launch the main run on the file as the user leaves it.
 - Give every stage the spec by its path under the main checkout, never a path relative to its
   worktree, because a worktree holds no untracked file.
-- Never change a run's spec. The discussion has no end: the user can add words while a run is
-  going or after it returns with issues. Put the new words in a copy of the spec, the same file
-  with the new entries appended, under a new file name, and start the next run on the copy.
+- Never change a run's spec.
+- Put the words the user adds while a run is going or after it returns with issues in a copy of
+  the spec, the same file with the new entries appended, under a new file name.
+- Start the next run on the copy.
 - Continue an implementer's flag the same way. A run that returns with nothing built because the
   implementer flagged the spec continues on a copy holding the user's answer.
 - Never start a second run on the same spec.
