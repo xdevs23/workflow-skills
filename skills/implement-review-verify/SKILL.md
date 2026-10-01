@@ -67,8 +67,9 @@ whether they want a git repository.
 ## Before phase 1 — the unit spec
 
 The unit spec is the discussion of the unit, quoted verbatim from the session transcripts, and
-nothing else. No word of yours enters it as a statement of your own: it holds the user's words and,
-as their context, the parts of your messages they answer.
+nothing else. Nothing is written for it: it holds the user's words and, as their context, quoted
+parts of your messages, such as the question an answer of the user replies to or a decision of
+yours the user has seen in the chat.
 
 - Write the spec as `<unit>.yaml` in the private-spec location that `workflow-skills:local-cache`
   defines, ignored and untracked because it quotes the user.
@@ -92,18 +93,22 @@ as their context, the parts of your messages they answer.
 - Add assistant entries only as far as the user's words need them, and only their relevant parts,
   such as the explanation and the question a bare yes answers. An assistant entry is context and
   never authority: only the user entries are.
+- Add a message in which you state a decision of your own to the spec as an assistant entry, so the
+  stages read the decision as context.
 - Keep the entries in session order. Entries of one session file never go back in line order, so
   a yes stays after the question it answers.
 - Wrap the text of every entry at 120 characters, as the width rule below says.
 - Check the spec with the spec tool.
-- Open the checked spec in VSCodium for the user to check. The user only removes entries that do
-  not belong and never types into the file.
+- Open the checked spec in the user's code editor for the user to check. The user only removes
+  entries that do not belong and never types into the file.
 - Launch the main run on the file as the user leaves it.
 - Give every stage the spec by its path under the main checkout, never a path relative to its
   worktree, because a worktree holds no untracked file.
 - Never change a run's spec.
 - Put the words the user adds while a run is going or after it returns with issues in a copy of
-  the spec, the same file with the new entries appended, under a new file name.
+  the spec under a new file name: the same entries, with the new ones added in session order.
+- Insert at its place an earlier message of yours that a new answer of the user needs, such as the
+  question a later yes answers.
 - Start the next run on the copy.
 - Continue an implementer's flag the same way. A run that returns with nothing built because the
   implementer flagged the spec continues on a copy holding the user's answer.
@@ -301,7 +306,7 @@ collisions and consistency drift.
   approved or fixing a correction that improves quality without changing the spec, choose that
   continuation yourself without a new question. Only a product or architecture decision the
   existing authority leaves genuinely unresolved goes to the user, and the unit then continues
-  only on the user's answer, appended to a copy of the spec for the next run. Decide any other
+  only on the user's answer, added to a copy of the spec for the next run. Decide any other
   unresolved choice as the section on what reaches the user says. Without such authority the
   flagged mechanism never continues, whatever a stage argues for it.
 - **Scope follows the same rule.** The implementer touches only what the task needs, and flags
@@ -762,8 +767,8 @@ second implementer pre-check.
   list names findings of the parent run. Every other such item goes to a new implement-review-verify
   run on a copy of the spec that holds the user's words about it, and such a finding may go there as
   well when the user's words cover its fix.
-- Make that copy like any copy of a spec: the same file with the user's new entries appended, as
-  the unit spec section says, and no word of yours. The previous run's snapshot is the new run's
+- Make that copy like any copy of a spec: the same entries with the new ones added in session order,
+  as the unit spec section says, and nothing written for it. The previous run's snapshot is the new run's
   base. Every stage of the main run applies unchanged. Every new run uses new prompts and a new run
   ID.
 - A new run takes as its work the recorded items it was started for, never the findings its own
@@ -871,9 +876,11 @@ second implementer pre-check.
   option beside an alternative.
 - **Send any other open item to a new unit.** A `new-choice` item the fix run's scope check refused
   and an open `unbacked-choice` decision that is neither a product nor an architecture decision go
-  to a new implement-review-verify unit. Never send them to the user. You decide the choice on the
-  authority of the user's recorded delegation of this kind of choice, which this rule carries. The
-  delegation covers only a choice that is neither a product nor an architecture decision.
+  to a new implement-review-verify unit. Never ask the user to decide them. You decide the choice
+  on the authority of the user's recorded delegation of this kind of choice, which this rule
+  carries, and state your decision in the chat, where the user sees it. The message that states it
+  goes into that unit's spec as an assistant entry. The delegation covers only a choice that is
+  neither a product nor an architecture decision.
 - **Decide a split over agreed facts.** When stages or models split on a choice that is neither a
   product nor an architecture decision while agreeing on the facts, apply the rules to those facts
   and decide. The split alone is never a reason to ask the user. A product or architecture decision
@@ -971,7 +978,7 @@ it cannot prove a future model actually performed the conversational premise che
   user's, put without your preference attached. Offer no option that keeps a found defect as it is
   or leaves the decision for later.
 - Every entry in `projectBenefitDecisions` reaches you whatever its disposition. Close a standing
-  one only by deletion, a rewrite, or the user's verbatim word to keep the shape, appended to a copy
+  one only by deletion, a rewrite, or the user's verbatim word to keep the shape, added to a copy
   of the spec; a patch that keeps the flagged mechanism leaves the decision open. A decision the
   verifier rejected closes once you have checked the counterevidence against the tree and the record
   and recorded it.

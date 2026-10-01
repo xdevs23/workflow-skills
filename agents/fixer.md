@@ -38,7 +38,7 @@ Rules:
   abort.trigger is none. Found before any write, the tree stays unmodified; found later, stop
   further writes and return the edits as they stand in files and commits, committing nothing more
   and reverting nothing. After such a flag the unit continues only on the user's answer, which a
-  new run receives in a copy of the spec with that answer appended; no agent's justification and
+  new run receives in a copy of the spec with that answer added; no agent's justification and
   no root statement substitutes for it. You do not repeat the
   implementer's request-level sense check: the reviewers and the finding verifier have already
   judged the finished code.

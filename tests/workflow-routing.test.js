@@ -230,7 +230,9 @@ describe('workflow verification and consolidation', () => {
   test('the unit spec is the discussion quoted verbatim, with no word of the orchestrating session in it', () => {
     const text = sectionText(skill, '## Before phase 1 — the unit spec')
     for (const phrase of ['The unit spec is the discussion of the unit, quoted verbatim from the session transcripts, and nothing else.',
-      'No word of yours enters it as a statement of your own',
+      'Nothing is written for it: it holds the user\'s words and, as their context, quoted parts of your messages',
+      'Add a message in which you state a decision of your own to the spec as an assistant entry, so the stages read the decision as context.',
+      'Insert at its place an earlier message of yours that a new answer of the user needs, such as the question a later yes answers.',
       'Give the spec exactly the keys `unit`, the unit\'s name, and `entries`.',
       'Give each entry exactly `file`, `line` and `uuid`, naming the session transcript record it quotes, `author`, which is `user` or `assistant`, and `text`, a verbatim substring of that record.',
       'Quote in an assistant entry a text block, the question text of a dialog call, or the content of a Write call.',
@@ -241,10 +243,10 @@ describe('workflow verification and consolidation', () => {
       'Entries of one session file never go back in line order, so a yes stays after the question it answers.',
       'Keep words about another unit out of the spec. Every entry belongs to this unit, so the user can correct the sorting where it is wrong.',
       'Check the spec with the spec tool.',
-      'Open the checked spec in VSCodium for the user to check. The user only removes entries that do not belong and never types into the file.',
+      'Open the checked spec in the user\'s code editor for the user to check. The user only removes entries that do not belong and never types into the file.',
       'Launch the main run on the file as the user leaves it.',
       'Never change a run\'s spec.',
-      'Put the words the user adds while a run is going or after it returns with issues in a copy of the spec, the same file with the new entries appended, under a new file name.',
+      'Put the words the user adds while a run is going or after it returns with issues in a copy of the spec under a new file name: the same entries, with the new ones added in session order.',
       'Start the next run on the copy.',
       'A run that returns with nothing built because the implementer flagged the spec continues on a copy holding the user\'s answer.',
       'Never start a second run on the same spec.']) {
@@ -1035,7 +1037,7 @@ describe('coder sense check and project-benefit review', () => {
     for (const [name, phrases] of [
       ['implementer', ['Sense check before any edit: read the spec and ask two questions.', 'Words that say nothing about the mechanism rule nothing out: the check passes and senseCheck records recordSilent true.',
         'Hard-flag and stop on one of three triggers, with one abort field and one disposition',
-        "After a sense-check flag the unit continues only on the user's answer, which a new run receives in a copy of the spec with that answer appended.",
+        "After a sense-check flag the unit continues only on the user's answer, which a new run receives in a copy of the spec with that answer added.",
         'A spec without the user\'s words is not a silent one.', 'set abort.trigger to no-words with the reason in abort.reason and leave the tree unmodified',
         'holds no entry of author user', "An entry of author assistant, a paraphrase, a summary or a design document's decision list is not the user's words."]],
       ['fixer', ['Bounded sense check before your first write, on every approved correction', "itself a band-aid on a mechanism the user's words in the spec do not call for, where they describe deletion or a rewrite",
@@ -1581,7 +1583,7 @@ describe('one-pass remaining-items handoff', () => {
     for (const phrase of ['record every remaining item', 'every remaining item in the todo record that `workflow-skills:todo-md` defines',
       'Check each `roast-finding` and `roast-limitation` against the tree',
       'Attest each `unattested-fix` by reading its commits', 'running the checks yourself',
-      'the same file with the user\'s new entries appended, as the unit spec section says, and no word of yours',
+      'the same entries with the new ones added in session order, as the unit spec section says, and nothing written for it',
       'The previous run\'s snapshot is the new run\'s base',
       'Every stage of the main run applies unchanged', 'new prompts and a new run ID',
       'Record a disproved item with its counterevidence', '**Resume interrupted runs only.**']) {
@@ -3766,7 +3768,7 @@ describe('only product and architecture decisions reach the user', () => {
       'A sense-check flag continues only on the user\'s words.')
     for (const phrase of ['Where those words already decide the continuation, such as removing behavior nobody approved',
       'choose that continuation yourself without a new question',
-      'Only a product or architecture decision the existing authority leaves genuinely unresolved goes to the user, and the unit then continues only on the user\'s answer, appended to a copy of the spec for the next run.',
+      'Only a product or architecture decision the existing authority leaves genuinely unresolved goes to the user, and the unit then continues only on the user\'s answer, added to a copy of the spec for the next run.',
       'Decide any other unresolved choice as the section on what reaches the user says.',
       'Without such authority the flagged mechanism never continues']) {
       expect([phrase, text.includes(phrase)]).toEqual([phrase, true])
@@ -3783,8 +3785,9 @@ describe('only product and architecture decisions reach the user', () => {
         'A hand-written design document that describes it, such as one written from your own spec, is no reason to keep it'],
       ['Make a recommended fix you have checked.', 'make the fix; never present it as an option beside an alternative'],
       ['Send any other open item to a new unit.',
-        'A `new-choice` item the fix run\'s scope check refused and an open `unbacked-choice` decision that is neither a product nor an architecture decision go to a new implement-review-verify unit. Never send them to the user.',
-        'You decide the choice on the authority of the user\'s recorded delegation of this kind of choice, which this rule carries.',
+        'A `new-choice` item the fix run\'s scope check refused and an open `unbacked-choice` decision that is neither a product nor an architecture decision go to a new implement-review-verify unit. Never ask the user to decide them.',
+        'You decide the choice on the authority of the user\'s recorded delegation of this kind of choice, which this rule carries, and state your decision in the chat, where the user sees it.',
+        'The message that states it goes into that unit\'s spec as an assistant entry.',
         'The delegation covers only a choice that is neither a product nor an architecture decision.'],
       ['Decide a split over agreed facts.', 'split on a choice that is neither a product nor an architecture decision while agreeing on the facts',
         'apply the rules to those facts and decide. The split alone is never a reason to ask the user.',
