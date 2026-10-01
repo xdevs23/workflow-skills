@@ -357,7 +357,7 @@ All other seats remain Git-read-only.
   repository. Immutable commits avoid an extra checkout, archive or copy.
 - Acceptance and integration still happen separately.
 
-### Phase 2 — Review (N agents, parallel seats, split BY CONCERN)
+### Phase 2: Review (N agents, parallel seats, split BY CONCERN)
 
 Run independent reviewers in parallel, each owning a DISTINCT lens, each via its own `agentType`.
 This phase is a **genuine barrier** — the finding verifier needs every seat's object before
@@ -394,7 +394,7 @@ and saying what is wrong with the implementation. There are no acceptance criter
   item**, treating any collapse or truncation device as a FAILURE rather than a formatting choice.
   It is a seat check for the same reason as the one above: it needs a reader holding both artifacts
   side by side, and nothing a gate can run goes red.
-- **Spec compliance** (`agents/reviewer-spec-compliance.md`) — checks the user's words FORWARD
+- **Spec compliance** (`agents/reviewer-spec-compliance.md`) checks the user's words FORWARD
   into the implementation: missing or incorrect behaviour they ask for. The spec, not your
   description, is its reference. It receives NO implementer object. Inverse-spec owns the reverse
   authorization map, excess scope and decisions missing from the spec.
@@ -422,7 +422,7 @@ lenses of every run, and the main script stops a run whose seat list holds anoth
   missing requirement look answered. One briefed verifier plus one cold judge beats both
   all-briefed and all-cold. This rule governs WHICH INPUT a seat gets, including in a fix run or a
   new unit's run.
-- **And a FINDING IS A DEFECT — nothing else.** What the seat inspected and how goes in `coverage`,
+- **And a FINDING IS A DEFECT, nothing else.** What the seat inspected and how goes in `coverage`,
   what it could not check in `limitations`, never in the findings array, because mixing coverage
   with defects obscures what actually needs correction. Every source finding carries a **FILE**,
   cited **repo-relative**, and a receipt, so verification can trace the claim to the tree. Concern
@@ -446,7 +446,7 @@ lenses of every run, and the main script stops a run whose seat list holds anoth
 - **Every seat object goes to the finding verifier.** A lane or severity assigned by a reviewer
   does not authorize a fix; only the verifier's checked, consolidated approval does.
 
-### Additional review seats — parallel with the concern reviewers
+### Additional review seats, parallel with the concern reviewers
 
 - **Quality** (`agents/quality.md`) — a broad, deliberately unbriefed read of the diff and
   touched-file context. No spec, directives, project docs, implementer object, or shared
@@ -458,7 +458,7 @@ lenses of every run, and the main script stops a run whose seat list holds anoth
 - **Project rule reader** (`agents/project-rule-reader.md`) — reads complete changed files
   against applicable project/global rules, including violations beside the diff. Its
   cleanup findings are preserved without expanding this unit's repair scope.
-- **Cold alternatives** (`agents/cold-alternatives.md`) — only the diff and the surrounding code,
+- **Cold alternatives** (`agents/cold-alternatives.md`): only the diff and the surrounding code,
   never the implementer's object. Returns `candidates` (at most two materially simpler shapes) or
   `currentShapeRight`.
 - **The eight audit seats** (`separation-of-concerns`, `abstraction-quality`, `code-smell`,
@@ -883,7 +883,7 @@ second implementer pre-check.
   touches.
 - Then check the user's recorded words against that premise: when they challenge the premise,
   investigate the mismatch before asking anything, identify the unsupported scope, and report a
-  discovered implementation deviation from the requested result plainly — never present the
+  discovered implementation deviation from the requested result plainly, and never present the
   consequence of an invented mechanism as though it were a new choice the user must make.
 - Never ask again a choice the user's recorded words already settle; present only a product or
   architecture decision they leave genuinely unresolved as a decision request.
@@ -1228,7 +1228,7 @@ These laws are non-negotiable across every run of this skill.
    the current spec path (law 7). The spec quotes the user, so it stays ignored and untracked, and
    its words never enter commit-bound artifacts without explicit permission. Technical design
    documents record decisions and constraints, not conversational appendices.
-6. **AUTHORITY ARCHITECTURE — state the hierarchy in authority-aware prompts.** Quality, the
+6. **AUTHORITY ARCHITECTURE: state the hierarchy in authority-aware prompts.** Quality, the
    eight audit seats and cold alternatives receive only their hygiene and diff inputs, not the
    shared authority briefing. For other seats the order is: **the user entries of the spec > this
    prompt**, with the prompt explicitly labelled **UNTRUSTED**, and *"a prompt-vs-spec conflict is
@@ -1241,10 +1241,10 @@ These laws are non-negotiable across every run of this skill.
    contradiction with what the user answered yes to like a contradiction with the user's own
    sentence.
    You add nothing beyond the spec: no scoping, no invariant and no note of yours reaches a stage.
-   This exists because **your own errors are the dominant error class** — a mis-stated decision, a
+   This exists because **your own errors are the dominant error class**: a mis-stated decision, a
    gloss that contradicts another gloss of the same words, a "verbatim" appendix that isn't, or an
-   assignment overriding a directive you disagree with — and a spec of the user's quoted words,
-   with nothing of yours beside it, leaves them no place to enter. A specification gains no
+   assignment overriding a directive you disagree with. A spec of the user's quoted words, with
+   nothing of yours beside it, leaves them no place to enter. A specification gains no
    decision authority merely by being written.
    **Untrusted means VERIFIED, not ignored:** every factual claim the prompt makes about the tree is
    checked against the tree, and a FALSE one is **verified-and-reported** — build to the true state,
@@ -1609,7 +1609,7 @@ For the other seats:
   prompt directly: a prompt that contradicts one, or what the user answered yes to, is the
   `directive-conflict` hard flag (a spec gains no decision authority merely by being written, and
   neither does a prompt that overrides a user entry it disagrees with).
-- **The spec's entries** (law 6) — the spec is the discussion of its unit, quoted verbatim. An
+- **The spec's entries** (law 6): the spec is the discussion of its unit, quoted verbatim. An
   entry of author `user` is the user's words and the authority; an entry of author `assistant` is
   context that gives the user entries after it their meaning, such as the question a bare yes
   answers, and is never authority. A contradiction with what the user answered yes to is a
