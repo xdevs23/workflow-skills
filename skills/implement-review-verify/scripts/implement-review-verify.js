@@ -21,12 +21,15 @@ const UNIT = {
   checkCommand: '<the check command>',   // the fixer only, run bare after its last write
   base: args.base,                       // one { path, sha } per git repository of the tree: its path under the tree root and starting commit, passed at launch
   partialBase: false,                    // true only in a tree too large to list, where base names just the repositories the unit changes
+  reviewOnly: false,                     // true runs the launch check and the review stage alone, on a change already committed from base to head
+  head: args.head,                       // a review-only run's end: one { path, sha } per repository of base, the commit the change ends at, passed at launch
   documents: '<documents directory>',    // design documents, relative to the tree root and inside one repository of base; docs for a one-repository tree
   ruleSources: '<applicable project, directory and global rule paths>',
   fileSizeCap: '<the per-file size cap>',
   // One model and effort per agent the script starts, each set by the root. The script stops before
   // its first agent on an entry that is missing, still a placeholder in angle brackets, named for no
-  // agent of the script, or holding any field besides model and effort.
+  // agent of the script, or holding any field besides model and effort. A review-only run reads only
+  // the gate entry and the review entries.
   models: {
     gate: { model: '<explicit>', effort: 'low' },
     impl: { model: '<explicit>', effort: 'high' },
@@ -428,6 +431,15 @@ const shaByPath = list => new Map(list.map(entry => [entry.path, entry.sha]))
 const listed = list => list.map(entry => entry.path + ' ' + entry.sha).join(', ')
 const snapshotsOf = writer => writer.repositories.map(r => ({ path: r.path, sha: r.snapshotSha }))
 const sameSnapshots = (a, b) => a.length === b.length && a.every(entry => shaByPath(b).get(entry.path) === entry.sha)
+// A review-only run reads a change already committed, from base to head, and starts no writer.
+if (typeof UNIT.reviewOnly !== 'boolean') throw new Error('UNIT.reviewOnly must be true or false')
+const head = UNIT.head
+if (UNIT.reviewOnly) {
+  checkRepositories(head, 'args.head')
+  if (head.length !== base.length || head.some(entry => !shaByPath(base).has(entry.path))) {
+    throw new Error('args.head must name the repositories of args.base, one commit each')
+  }
+} else if (head !== undefined) throw new Error('args.head is passed only to a review-only run')
 // A reader may name a repository by its path inside the worktree instead of the list's path under the
 // tree root; both name the same repository.
 const listPath = path => {
@@ -522,7 +534,7 @@ const blocking = r => r.limitations.filter(l => l.effect === 'blocks')
 const EXIT = ['clean', 'follow-up', 'root-resolution', 'aborted', 'failed']
 const REMAINING = ['open-decision', 'verifier-issue', 'writer-scope', 'blocking-limitation',
   'unfixed-approval', 'failed-proof', 'roast-finding', 'roast-limitation', 'unattested-fix',
-  'spec-finding', 'abort', 'stage-failure']
+  'spec-finding', 'review-finding', 'review-limitation', 'abort', 'stage-failure']
 const remaining = []
 let snapshots = null, impl = null, verified = null
 let sources = [], queue = []
@@ -550,6 +562,8 @@ const recordBlocking = (result, label) => {
 const limited = (result, label) => {
   if (recordBlocking(result, label)) end('root-resolution', 'Blocking limitation from ' + label + '.')
 }
+// What a reader could check only in part: its narrowing limitations and its unchecked coverage entries.
+const uncovered = r => [...r.limitations.filter(l => l.effect === 'narrows'), ...r.coverage.filter(c => !c.checked)]
 const proof = (writer, label) => {
   if (!writer.proofPassed) {
     add('failed-proof', { label, checks: writer.checks })
@@ -666,7 +680,11 @@ if (JSON.stringify([...listedSeats].sort()) !== JSON.stringify([...requiredSeats
     ', and the seat list holds ' + listedSeats.join(', '))
 }
 const { review: seatModels, ...stageModels } = UNIT.models ?? {}
-checkModels(stageModels, ['gate', 'impl', 'verify', 'fix', 'roast'], 'UNIT.models')
+// A review-only run starts the launch check and the seats alone, so it reads no other stage's entry.
+const STAGES = ['gate', 'impl', 'verify', 'fix', 'roast']
+const stages = UNIT.reviewOnly ? ['gate'] : STAGES
+checkModels(Object.fromEntries(Object.entries(stageModels).filter(([name]) => stages.includes(name) || !STAGES.includes(name))),
+  stages, 'UNIT.models')
 checkModels(seatModels, Object.keys(REVIEW_SEATS), 'UNIT.models.review')
 // One diff range per repository whose snapshot moved from base, each read in its own repository.
 const diffInput = snaps => {
@@ -823,7 +841,7 @@ const fixPass = (queue, starts) => stage([
   ...UNIT.models.fix, schema: FIX,
 }, r => { checkWriter(r); exactlyOnce(r.dispositions.map(d => d.key), queue.map(f => f.key), 'fix key') })
 
-async function onePass() {
+async function implement() {
   phase('Implement')
   impl = await stage(
     [AUTHORITY, WRITE_GIT, SPEC, PROVE, DOCUMENT_IMPL, FOCUSED, RETURN_ARTIFACTS, 'START SHAS, per repository: ' + listed(base), TASK].join('\n\n'),
@@ -835,14 +853,21 @@ async function onePass() {
   snapshots = snapshotsOf(impl)
   limited(impl, 'impl')
   proof(impl, 'impl')
+}
+
+async function onePass() {
+  if (UNIT.reviewOnly) { snapshots = head; activeLabel = 'review' }
+  else await implement()
   if (exit) return
 
-  const SEATS = seatList(['UNTRUSTED implementer claims (its returned object):', JSON.stringify(impl)], handedOn(impl.artifacts))
+  const SEATS = impl
+    ? seatList(['UNTRUSTED implementer claims (its returned object):', JSON.stringify(impl)], handedOn(impl.artifacts))
+    : seatList([], [])
   phase('Review')
   const readers = await Promise.allSettled(SEATS.map(s => readSeat(s, snapshots)))
   const reports = []
-  // A reader's limitation reaches the root only through the verifier, which receives every seat
-  // object and keeps each limitation as an unresolved issue or discards it.
+  // In a main run a reader's limitation reaches the root only through the verifier, which receives
+  // every seat object and keeps each limitation as an unresolved issue or discards it.
   readers.forEach((r, i) => {
     const label = 'review:' + SEATS[i][1]
     try {
@@ -853,6 +878,16 @@ async function onePass() {
   })
   sources = reports.flatMap(r => r.findings)
   if (exit) return
+  // A review-only run has no finding verifier, so every finding and every limitation of a seat goes to
+  // the root as the seat returned it.
+  if (UNIT.reviewOnly) {
+    for (const report of reports) {
+      for (const f of report.findings) add('review-finding', f, f.severity)
+      for (const l of uncovered(report)) add('review-limitation', { ...l, label: report.label }, 'should-fix')
+      limited(report, report.label)
+    }
+    return
+  }
   phase('Verify')
   activeLabel = 'verify'
   const result = await stage([
@@ -919,10 +954,7 @@ async function onePass() {
         proof(passedFix, label)
       } else {
         for (const f of result.findings) add('roast-finding', f, f.severity)
-        for (const l of [
-          ...result.limitations.filter(l => l.effect === 'narrows'),
-          ...result.coverage.filter(c => !c.checked),
-        ]) add('roast-limitation', l, 'should-fix')
+        for (const l of uncovered(result)) add('roast-limitation', l, 'should-fix')
         limited(result, label)
       }
     } catch (error) { failed(error, label, i === 0 && r.status === 'fulfilled' ? r.value : undefined) }

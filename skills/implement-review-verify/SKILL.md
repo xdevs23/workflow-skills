@@ -63,6 +63,9 @@ whether they want a git repository.
   agents reading the codebase) isn't worth it. For those, just do the edit, or use a single agent.
 - Do a simple, direct change whose outcome is very unlikely to change meaningfully, and which has
   no meaningful impact on the overall product, directly, without a workflow.
+- Use `workflow-skills:review-pass` for a change already committed that needs only the review seats,
+  such as one you edited directly: it runs the main script of this skill in review mode, the launch
+  check and the fifteen seats alone, and you judge their findings yourself.
 
 ## Before phase 1 — the unit spec
 
@@ -147,6 +150,8 @@ specs.
   tree, the path relative to the tree root and a single dot for a tree that is one repository. The
   tool, run at the tree root, fails a list whose path is no repository's top level, whose commit
   that repository does not hold, or which leaves out a repository it finds under the tree root.
+- Leave `reviewOnly` false in the marked block of a main run and pass no `head`. Only a review pass,
+  as `workflow-skills:review-pass` describes, sets it to true and passes `head`.
 - Set `partialBase` to true in the marked block of the main script for a tree too large to list,
   such as a ROM tree of a thousand repositories worked on in place. The base list then names only
   the repositories the unit changes, the launch check adds `--partial-base`, and the tool checks the
