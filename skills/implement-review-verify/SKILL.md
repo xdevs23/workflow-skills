@@ -102,6 +102,11 @@ yours the user has seen in the chat.
   stages read the decision as context.
 - Keep the entries in session order. Entries of one session file never go back in line order, so
   a yes stays after the question it answers.
+- Expect a later user entry to replace what it corrects in an earlier one only where its own words
+  present it as a correction of it: it says to do it differently instead, that something else was
+  meant, adds to what was said because of it, or forbids what was asked before.
+- Expect the implementer to report a later user entry that contradicts an earlier one without such
+  words as a `joint-impossibility`.
 - Wrap the text of every entry at 120 characters, as the width rule below says.
 - Check the spec with the spec tool.
 - Open the checked spec in the user's code editor for the user to check. The user only removes
@@ -234,13 +239,13 @@ collisions and consistency drift.
 - **The sense check also reads the spec against the code.** Before its first edit the implementer
   checks the spec's claims against the code instead of only reading them, and looks for three
   classes: `joint-impossibility`, two statements of the user that each hold alone and cannot both
-  hold; `missing-contract`, an artifact the user's words assume without saying how it is made; and
-  `reality-drift`, a fact the spec states that the code no longer bears out. It checks as well that
-  each user entry holds words said about this unit. Words about another unit, such as a request to
-  record a todo for later work or a decision given for a different piece of work, are no authority
-  here, and a short answer that crossed with a newer message answers the earlier message and never
-  approves what the newer message proposed. An entry whose words are such words is class
-  `unbacked-entry`.
+  hold, the later one not correcting the earlier one; `missing-contract`, an artifact the user's
+  words assume without saying how it is made; and `reality-drift`, a fact the spec states that the
+  code no longer bears out. It checks as well that each user entry holds words said about this unit.
+  Words about another unit, such as a request to record a todo for later work or a decision given
+  for a different piece of work, are no authority here, and a short answer that crossed with a newer
+  message answers the earlier message and never approves what the newer message proposed. An entry
+  whose words are such words is class `unbacked-entry`.
 - The implementer returns each finding in `specFindings`, one entry per finding with `evidence`, the
   `class`, the `claim` and `receipts`. Its `evidence` points at every spec entry the finding
   concerns by the entry's session file, line and the key path of the quoted part, so a
