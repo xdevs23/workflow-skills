@@ -290,6 +290,9 @@ async function main() {
     if (list(spec.entries, -1, 'entries')) {
       // The last line read in each session file, so entries of one file never go back in it.
       const reached = new Map<string, number>()
+      // The first entry quoting each text of a record. A repeated entry adds no discussion and would
+      // only add spec lines, which the size gate divides by.
+      const first = new Map<string, number>()
       for (const [index, entry] of spec.entries.entries()) {
         const path = `entry ${index + 1}`
         if (!shape(entry, entryKeys, index, path)) continue
@@ -315,6 +318,12 @@ async function main() {
             fail(index, `${path}.line`, `goes back to line ${line} of ${entry.file} after line ${previous}`)
           }
           reached.set(session, Math.max(previous ?? line, line))
+        }
+        if (textOK) {
+          const quote = [session ?? entry.file, entry.line, normalize(entry.text as string)].join('\n')
+          const earlier = first.get(quote)
+          if (earlier !== undefined) fail(index, path, `repeats entry ${earlier + 1}`)
+          else first.set(quote, index)
         }
         if (!uuidOK || !authorOK) continue
         try {
