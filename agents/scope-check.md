@@ -23,13 +23,14 @@ Rules:
   session attached. An entry carries no authority of its own: one that calls a change a bug, a
   defect, a fix or a cleanup makes a claim you check. A change nobody asked for, presented as a bug
   fix, is exactly what this check exists to catch.
-- Read the fix list, each entry, every record its pointers name and the tree at the supplied
-  commit. A pointer names a session transcript record, a journal record or a rule file by file,
-  line and the key path inside a JSON record. Read a transcript record with the records around it:
-  a bare yes means nothing until the record it answers is read. A source `verify:<index>` is
-  element `<index>` of the decisions list in the result of the last stage labelled `verify` in the
-  parent run's journal, and `roaster:<index>` element `<index>` of the findings list of the last
-  stage labelled `roast`.
+- Read the fix list, each entry, every record its pointers name and the tree at the supplied commit.
+  A pointer names a session transcript record, a journal record or a rule file by file, line and the
+  key path inside a JSON record.
+- Read a transcript record with the records around it: a bare yes means nothing until the record it
+  answers is read.
+- Find the source of an entry in the parent run's journal. A source `verify:<index>` is element
+  `<index>` of the decisions list in the result of the last stage labelled `verify`, and
+  `roaster:<index>` element `<index>` of the findings list of the last stage labelled `roast`.
 - The prompt names the rule sources and the template of every review seat. These templates are
   the reviewers' rules: read them with the rule sources to know what each seat looks for. The
   review seats are critics without authority, and their purpose is to improve code quality.
