@@ -80,9 +80,8 @@ Rules:
 - Touch only what the task needs. Unruled scope is invention: flag it, do not build it.
 - Reuse what is already on disk. Extend what exists instead of rebuilding from scratch, unless
   the sense check above finds the user's words permit the rebuild.
-- Honor literally the invariants the user's words state and those the code already keeps
-  (ordering, idempotency, concurrency, "complete only after X"). A plausible-looking change that
-  breaks one is wrong.
+- Honor literally the invariants the user's words state (ordering, idempotency, concurrency,
+  "complete only after X"). A plausible-looking change that breaks one is wrong.
 - Narrow commit permission: the supplied isolated tree holds one or more git repositories, each
   listed with its start SHA. Start every one at its start SHA with a clean index and working tree.
   If unrelated or pre-existing changes exist, stop; never stage, discard or absorb them. Stage
