@@ -1027,11 +1027,18 @@ describe('coder sense check and project-benefit review', () => {
   test('the review seats with a project-benefit template and the roaster carry that judgment scoped to this diff', async () => {
     const briefed = ['reviewer-correctness', 'reviewer-spec-compliance', 'duplicate-checker', 'reviewer-inverse-spec', 'project-rule-reader']
     const shared = ['helps the project, not only', "severity CRITICAL whatever this seat's scale says for its other findings", "kind marks a choice made in this unit's own diff"]
-    const quoted = ['band-aid, a repair of a mechanism the recorded words do not call for', 'longer-route, a longer implementation where the recorded words already describe a simpler one', 'Quote the recorded words beside the finding']
+    const concern = ['reviewer-correctness', 'reviewer-spec-compliance', 'duplicate-checker']
+    const quoted = ['band-aid, a repair of a mechanism the user\'s words do not call for', 'longer-route, a longer implementation where the user\'s words already describe a simpler one']
     const shaped = ['Flag by shape', 'Attach no quotes; the finding verifier attaches the recorded words']
     for (const name of [...briefed, 'quality', 'cold-alternatives', 'roaster']) {
       const text = await template(name)
       for (const phrase of [...shared, ...(briefed.includes(name) ? quoted : name === 'roaster' ? ['Flag by shape', 'Attach no quotes; the root checks'] : shaped)]) expect(text).toContain(phrase)
+      // A briefed seat names where the words stand and never quotes them beside the finding.
+      if (briefed.includes(name)) {
+        expect([name, flat(text).includes(concern.includes(name) ? 'Name in evidence where those words or the rule the finding rests on stand.'
+          : 'Name in the claim the spec entry whose words describe the simpler one, by its session file and line.')]).toEqual([name, true])
+        expect([name, text.includes('Quote the recorded words')]).toEqual([name, false])
+      }
       if (!briefed.includes(name)) expect(text).not.toContain('directive record')
     }
     expect(await template('project-rule-reader')).toContain('a band-aid that already existed beside the diff is reported without kind, so the cleanup lane stays available')
