@@ -1,61 +1,57 @@
-# Unit specs carry provenance per item
+# Unit specs quote the discussion
 
-A unit spec is a YAML list of items, and every item names where it comes from: words the user
-said, a rule in a file, a fact observed in this environment, or other items it follows from. A
-committed tool resolves those references, and a reader in the spec pre-phase judges whether the
-cited words authorize what the item claims, both before any implementer runs.
+A unit spec is a YAML file that quotes the discussion of its unit from the session transcripts, and
+nothing else. Every entry names the transcript record it quotes, and a committed tool checks each
+quote against that record before any stage of a run reads the spec.
 
 The failure this exists for: a reviewer raises a hypothesis, the root records it as a confirmed
 defect, it becomes a spec requirement, an implementer builds it faithfully, and every reviewer
 passes it because each one measures the code against the spec. The spec is the only authority
 the review measures against, and nothing measured the spec.
 
-This document is generated from the unit's private spec by `tools/check-spec.ts` and is never
-edited by hand.
-
 ## Requirements
 
-**items-with-evidence**: The spec handed to a workflow is a list of items. Each item is an object with a Markdown
-`content`, and an item that rests on the user's words carries `evidence` (transcript file,
-line, uuid) and the verbatim `user_words`. One item holds one requirement or decision.
-
-**root-cannot-slip-decisions-in**: Every item is checkable against its evidence, so the root cannot enter a decision of its own
-into a spec as though the user had made it.
+**spec-is-the-discussion**: A spec holds the discussion of its unit, quoted verbatim from the
+session transcripts, and nothing else. The orchestrating session writes no text of its own into
+it: there are no items, kinds, sources, derivations, criteria or summary, and no separate record
+of the user's words. Only an entry of author `user` is authority. An entry of author `assistant` is
+context: it gives the user entries after it their meaning, such as the explanation and the question
+a bare yes answers, and decides nothing itself.
 
 **spec-private-document-public**: The spec of a unit is `.cache/specs/<unit>.yaml` under the main checkout, untracked, because
 it quotes the user. The tracked design document under `docs/` carries no user words and is
 plain Markdown.
 
-**strict-sources**: `source` is a closed enum and every source kind has required fields and no others. An
-unknown key, an unknown enum value, a wrong type or an empty required string is a violation.
-Nothing softer validates, so no reader can argue an item into a weaker class.
+**file-shape**: The file is a mapping with exactly two keys: `unit`, the unit's name, and
+`entries`, a non-empty list. Every entry has exactly five fields: `file`, `line` and `uuid` name
+one record of a session transcript, `author` is `user` or `assistant`, and `text` is a verbatim
+substring of that record. Any other key of the file and any other field of an entry fails.
 
-**tool-is-not-enforcement**: The tool proves the spec is usable: its references resolve. Whether the cited words mean what
-an item claims is judged inside the workflow, by the provenance reader before code and by
-the spec-compliance, inverse-spec and finding-verifier stages after it.
+**what-the-spec-holds**: The spec starts at the message that the origin pointer of the unit's todo
+record names, since the todo record is the first thing written when a unit is asked for. From
+there it holds every message of the user about this unit, and of a message about two units only
+the part about this one, which is why an entry quotes a substring and never has to hold a whole
+message. Words about another unit stay out of the spec, and the user corrects the sorting where it
+is wrong. Assistant entries are added only as far as the user's words need them. Entries keep
+session order, so a yes stays after the question it answers.
 
-**build-it**: The unit is built, including the rule that an item asserting a hazard needs an observed fact.
+**the-user-checks-the-spec**: The orchestrating session checks the spec with the spec tool and
+opens it in VSCodium for the user to check. The user only removes entries that do not belong;
+nobody types into the file, so every entry stays a quote the tool can verify against its record.
+The main run launches on the file as the user leaves it.
 
-**hazard-needs-observation**: An item whose content asserts that a condition, failure mode or risk exists is valid only
-with source `transcript` or `observation`. A reviewer's claim that something could happen is
-not evidence that it does, and it stays a finding until an observation shows the condition in
-this environment.
+**copies**: A run's spec never changes, and each run starts on its own spec file. Words the user
+adds while a run is going or after it returns go into a copy of the spec, the same file with the
+new entries appended under a new file name, and the next run starts on the copy. A run that comes
+back with nothing built because the implementer flagged the spec continues the same way, on a copy
+that holds the user's answer to the flag.
 
-**record-claim-is-a-claim**: A claim in the work record has the status of a reviewer's claim. Having been written down in
-an earlier pass does not make it observed. A recorded entry that asserts a condition is
-observed again before it justifies an item, and before it becomes a question to the user.
-The simpler route this rules out is citing the work record as a source, which is how an
-unchecked claim became a question once already.
-
-**document-is-generated**: The tracked design document is generated from the YAML by the tool, with the quoted words
-and evidence left out, and is never hand-edited. One source, one rendering. This holds for
-this unit too: its own tracked document is generated from its own spec.
+**tool-is-not-enforcement**: The tool proves the spec is usable: every quote stands in the record
+it cites, as a message of its author. What the user's words require of the change is judged inside
+the workflow, by the reviewers and the finding verifier.
 
 **one-format-definition**: The format is defined once, by what the tool validates, with a committed example spec that
 the tests exercise.
-
-**built-with-itself**: This unit is specified in the format it defines, and what using the format showed is fixed
-in the unit: see `violations-name-the-id`, `render-shape` and `summary-stream`.
 
 **reports-carry-quotations**: The implement workflow skill states, in its section on what the root presents to the user,
 that a problem reported to the user carries two literal quotations, each with its file and
@@ -73,102 +69,57 @@ minimum when it does not, and the README states that minimum.
 stages only and never sits in a block that reviewers receive. A reviewer may not run it, so
 a shared block carrying it orders and forbids the same act.
 
-**file-shape**: The file is a mapping with `unit` (non-empty string), `summary` (non-empty Markdown, the
-preamble of the generated document) and `items` (non-empty list). Every item carries `id`
-(unique, kebab-case), `kind`, `content` (non-empty Markdown) and `source`, plus the fields
-its source kind requires and no others. `kind` is an enum of `requirement`, `criterion`,
-`rejected` (which also requires `reason`) and `boundary`.
+**transcript-resolution**: `file` is a session transcript in JSONL, resolved against the directory
+given with `--transcripts`. `line` is its 1-based line number, and the record on that line must
+carry the entry's `uuid`. Matching collapses runs of whitespace to one space in the quote and in
+the record's text, and the quote must occur in that text.
 
-**source-kinds**: `source` is an enum of exactly four values. `transcript` requires `evidence`, a non-empty
-list of `{ file, line, uuid }`, and `user_words`; every entry must resolve and `user_words`
-must appear in at least one resolved message. `rule` requires `rule: { file, line }` and
-`quote`. `observation` requires `observation: { command, exit, output, date }`. `derivation`
-requires `parents`, a non-empty list of item ids.
+**user-entries**: An entry of author `user` quotes a message the user wrote, typed or queued, or an
+answer the user gave in the question dialog, including a note typed on it, to a question asked
+before the record. A task notification, an injected meta record, command output and the result of
+any other tool are refused. The text of a message is its string body or its text blocks, with any
+`<system-reminder>` block removed.
 
-**transcript-resolution**: `file` is a Claude Code session transcript in JSONL, resolved against the directory given
-with `--transcripts`. `line` is its 1-based line number. That line must parse as a record
-whose `type` is `user` and whose `uuid` equals the entry's. The message text is
-`message.content` when it is a string, otherwise the concatenation of its `type: "text"`
-blocks, with any `<system-reminder>` block removed.
+**assistant-entries**: An entry of author `assistant` cites an assistant record and quotes its text
+blocks, the question text of one of its dialog calls, or the content of one of its Write calls. A
+plan the user answered yes to is therefore quotable when a Write call holds it. A file edited
+afterwards or generated by a command has no record that holds its final text, so it reaches the
+stages only through the message that pointed at it.
 
-**rule-resolution**: A rule's `file` is an absolute path or a path relative to the directory the tool is run
-from, which is the repository root. The file must exist and the line must be within it.
-Matching collapses runs of whitespace, newlines included, to one space in both the `quote`
-and the file text, and the quote must occur in the window that begins at the cited line and
-ends at the first following blank line or after forty lines. A hard-wrapped rule therefore
-quotes faithfully across its lines.
+**entry-order**: Entries of one session file never go back in line order, and two entries may quote
+the same record. The tool compares session files by their real paths, so two names of one file,
+such as a symbolic link beside it, share one order. A spec without an entry of author `user`
+fails.
 
-**mechanism-names-what-it-replaces**: A `derivation` item that mandates a mechanism states in `content` the simpler alternative it
-rules out, and its parents include the item that asks for it or the observation that shows
-the simpler route failing. The simpler alternative this rules out is accepting a mechanism
-because a stage wanted one.
+**width-rule**: The width rule applies to the text of every entry. A line, counted with its
+indentation and markers, holds at most 120 characters, and every line of a paragraph but its last
+is full. A line whose own text is one word too long to fit passes and is named in the summary's
+`unbreakable` list. Quoted words keep their words, punctuation and order, while their line breaks
+are free, because the tool compares them with the record after collapsing whitespace.
 
-**check-tool**: `tools/check-spec.ts` is run as `bun tools/check-spec.ts <spec.yaml> --transcripts <dir>`
-with optional `--json` and with at most one of `--render <path>` and `--check-render <path>`.
-It exits non-zero after reporting every violation it found, one per line, in file order, and
-never stops at the first. Violation classes: unreadable or malformed YAML; a shape breach; a
-transcript or rule reference that does not resolve; an observation missing a field; a parent
-id that does not exist; a derivation whose parent chain never reaches a `transcript`, `rule`
-or `observation` item; a cycle among parents. It executes nothing from the spec: a command
-string in an observation is data. The simpler alternative this rules out is trusting the
-author to keep references correct by hand.
+**size-count**: The `specLines` count behind the 20:1 size gate is the number of non-blank lines of
+the entries' text. The file's keys and an entry's other fields add nothing to it.
 
-**violations-name-the-id**: A violation names the item by its `id`, which is what the author edits, as
-`<file>: <id>.<field>: <message>`. An item with no usable id is named by its 1-based
-position written in words, as `item 3`, never in array notation.
-The simpler alternative this rules out is the array position the first build printed, which
-sends the author counting items to find the one to edit.
+**check-tool**: `tools/check-spec.ts` is run as `bun tools/check-spec.ts <spec.yaml> --transcripts
+<dir>` with optional `--json` and `--base <list>`, and `--partial-base` beside `--base`. The
+`--base` list names every git repository of the tree with its base commit, and the tool fails a
+path that is no repository's top level, a commit the repository does not hold, or a repository the
+list leaves out; with `--partial-base` it skips the search for left-out repositories. The tool exits
+non-zero after reporting every violation it found, one per line, and never stops at the first. It
+executes nothing from the spec.
 
-**render-shape**: The generated document opens with `# <unit>` and the `summary`, then groups items by kind
-under `## Requirements`, `## Boundaries`, `## Rejected alternatives` and
-`## Acceptance criteria`, each group in file order and omitted when empty. A requirement or
-boundary renders as a paragraph led by its id in bold. A rejected item renders its content
-and its reason. Criteria render as a numbered list whose numbers are the ordinals. The
-document carries `id`, `content` and `reason` only: `user_words`, `evidence`, rule file and
-quote, the whole observation and `parents` are left out.
-The heading names and their order are this format's own choice. The simpler alternative
-this rules out is the flat list of one section per item in file order that the first build
-rendered, which was too thin to commit as a design record.
+**violations-name-the-entry**: A violation names the entry by its 1-based position, as
+`<file>: entry 3.text: <message>`, never in array notation. A violation of the whole file names
+the file's key, and it is reported before those of the entries, which follow in entry order.
 
-**summary-stream**: The tool's summary goes to stdout only when neither `--render` nor `--check-render` is
-given. With either of them it goes to stderr, unless `--json` is given, in which case the
-JSON object goes to stdout. The summary carries the counts by kind and by source, the
-ordered criterion list as `{ ordinal, id }` numbered from one in file order, the spec's
-sha256 and its non-blank line count.
+**summary**: A passing run prints its summary on stdout, as JSON with `--json`: the spec's
+`sha256`, its `nonBlankLines`, the `specLines`, the `unbreakable` lines, a fresh random `proof`
+and the spec path. A failing run prints no summary and no proof.
 
-**check-render**: `--check-render <path>` generates the document in memory and fails when it differs from the
-file at the path, or when that file cannot be read. It writes nothing. The simpler
-alternative this rules out is regenerating on every run and reading the Git status, which
-writes into a tree that reviewers must find unchanged.
-
-**provenance-reader**: The spec pre-phase gains a third reader beside the gap-finder and the soundness reader, with
-a template under `agents/`. It receives the spec, the transcript directory and the private
-record. Item by item it judges what the tool cannot: whether the cited words authorize what
-the item claims, whether an item asserting a condition has an observation behind it, and
-whether a mandated mechanism names the simpler route it rules out. It runs each observation's
-command again, reports any mismatch with the recorded output or exit status, and reports any
-observation older than the base commit. Its findings are advisory to the root and use the
-same three-step severity the gap-finder uses.
-
-**where-the-tool-runs**: The root runs the tool before the spec pre-phase and again, with `--check-render`, before
-the implement stage, and launches neither on a failing spec. Every stage receives the spec
-by its path under the main checkout, never a path relative to its worktree, because a
-worktree holds no untracked file.
-
-**criteria-keep-ordinals**: `args.criteriaCount` is the number of `criterion` items, taken from the tool's output and not
-from a hand count, and a verdict's `criterion` is the integer ordinal the tool assigned. The
-soundness reader's prompt states that numbering rule, since the file it reads shows no
-numbers. A stage that maps a choice back to authority names the item `id`: an inverse-spec
-authorization entry names the id that authorizes the choice, or reports that no item does.
-The simpler alternative this rules out is keying verdicts by id, which would renumber every
-stage schema and script check for nothing the ordinal list does not already give.
-
-**size-measures-the-document**: The denominator of the code-to-spec ratio is the non-blank line count of the generated
-document at the candidate commit, which has a blob id. The private YAML is never measured.
-
-**spec-writing-emits-yaml**: The `immaculate-spec-writing` skill emits this format and states the source rules. When a
-unit reaches the implement workflow with only a settled design in prose, the root writes the
-YAML before launching. After any amendment the root regenerates the tracked document.
+**where-the-tool-runs**: The orchestrating session runs the tool before it launches the main run,
+and the run's launch check runs it once more and continues only on the proof it prints. A failing
+spec launches no run. Every stage receives the spec by its path under the main checkout, never a
+path relative to its worktree, because a worktree holds no untracked file.
 
 **stale-wording-removed**: Text in the files this unit edits that still describes a hand-numbered Markdown spec is
 brought in line: the launch paragraph telling the root to state criteria numbered and to make
@@ -202,60 +153,24 @@ ordinals are unchanged.
 **rejected-appendix**: A Markdown spec with a provenance appendix.
 Reason: The appendix drifts from the prose it describes, and nothing binds a sentence to its entry.
 
-**rejected-hand-written-document**: A hand-written tracked document beside the YAML, including for this unit.
-Reason: The same content authored twice drifts, which is the failure this unit exists to end.
-
 **rejected-tracked-yaml**: Tracking the YAML.
 Reason: It quotes the user, and those words stay untracked.
-
-**rejected-tool-runs-commands**: Letting the tool execute observation commands.
-Reason: Running command strings out of a spec file is a hazard of its own. The provenance reader runs them under a reviewer's read-only contract.
 
 **rejected-size-budget**: Anchoring a size budget to a stated expectation.
 Reason: The units that ran away needed nobody inventing requirements. A budget treats the symptom.
 
-**rejected-finding-as-source**: A fifth source kind for a reviewer's finding or for the work record.
-Reason: That is the hole this unit closes. A finding becomes a source only once an observation confirms its condition.
+**rejected-written-spec**: Keeping a spec the model writes, under stricter rules.
+Reason: Text the model writes into a spec invents decisions and bends the user's words, so the spec
+holds quotes and nothing else.
 
-## Acceptance criteria
+**rejected-fixed-end**: A discussion that ends when the workflow starts.
+Reason: The user adds words while a run is going and after it returns.
 
-1. **criterion-parsers**: The tool parses with `Bun.YAML.parse` and `JSON.parse`, adds no dependency, contains no
-   hand-written parsing of YAML or JSON, executes nothing from the spec, and reports every
-   violation it found, in file order, before exiting non-zero.
-2. **criterion-shape**: The tool enforces `file-shape` and `source-kinds`, including the required `summary`, unknown
-   keys, unknown enum values, wrong types and empty required strings.
-3. **criterion-transcripts**: The tool resolves transcript evidence as `transcript-resolution` states: record type, uuid
-   match, string and block-array content, and system-reminder removal.
-4. **criterion-rules**: The tool resolves rule references as `rule-resolution` states, including the
-   whitespace-collapsed window across hard-wrapped lines and both path forms.
-5. **criterion-graph**: The tool validates observations for their four fields, parents for existence, chains for
-   ending in a transcript, rule or observation item, and parents for cycles.
-6. **criterion-violation-names**: Every violation names its item by id in the form `violations-name-the-id` states, and no
-   violation uses array notation.
-7. **criterion-output**: `--json` carries the counts, the ordered criterion list, the sha256 and the non-blank line
-   count. The summary follows `summary-stream`: with `--render` or `--check-render` and without
-   `--json`, stdout is empty.
-8. **criterion-render**: `--render` writes the document in the shape `render-shape` states, and `--check-render`
-   behaves as `check-render` states and writes nothing.
-9. **criterion-own-document**: `docs/structured-unit-specs.md` is byte-identical to what the tool renders from this spec,
-   and it contains no sentence exempting this unit from generation.
-10. **criterion-runtime**: The tool checks for `Bun.YAML` and exits with a diagnostic naming 1.2.21 when it is absent,
-    and the README states that minimum.
-11. **criterion-skill**: The implement workflow skill states: the YAML spec read from its path under the main
-    checkout, the four source kinds, the hazard rule with the work-record rule, the mechanism
-    rule, the provenance reader in the pre-phase and its launch in the pre-phase skeleton, the
-    two points where the tool runs and that a failing spec launches nothing, the criterion
-    ordinals and the numbering rule in the soundness reader's prompt, the size denominator, the
-    regeneration rule, the two-quotation rule for reports to the user, and the writer-only rule
-    for the check command.
-12. **criterion-templates**: The spec-compliance, inverse-spec and finding-verifier templates state the ordinal and id
-    rule of `criteria-keep-ordinals`, a provenance reader template exists under `agents/` and
-    states `provenance-reader`, and the `immaculate-spec-writing` skill emits the format with its
-    source rules.
-13. **criterion-stale-wording**: Every passage `stale-wording-removed` names is corrected, and text this unit adds uses none
-    of the writing-style skill's listed words outside the two stated exemptions.
-14. **criterion-tests**: Tests cover a valid spec exercising every kind and every source, one spec per violation
-    class, one spec carrying several violations reported in file order with a non-zero exit,
-    malformed YAML, a missing file, the `--json`, `--render` and `--check-render` outputs with
-    their streams, and the wording of the skill and the four templates. `bun test tests/` passes,
-    and the README's documented test command includes `tests/check-spec.test.js`.
+**rejected-whole-messages**: A whole message in every unit it touches.
+Reason: An entry quotes the substring of the message that is about its unit.
+
+**rejected-typed-words**: Words typed into the spec file.
+Reason: The user only removes entries in the editor, so every entry stays a quote of its record.
+
+**rejected-file-with-hash**: A file path with a hash for a plan the user approved.
+Reason: The content of a Write call already stands in the transcript.
