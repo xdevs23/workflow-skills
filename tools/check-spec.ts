@@ -305,12 +305,17 @@ async function main() {
           unbreakableLines.push(...unbreakable.map(line => ({ field: `${path}.text`, line })))
         }
         if (!placed) continue
-        const session = resolve(transcripts, entry.file as string), line = entry.line as number
-        const previous = reached.get(session)
-        if (previous !== undefined && line < previous) {
-          fail(index, `${path}.line`, `goes back to line ${line} of ${entry.file} after line ${previous}`)
+        // The order is kept per file on disk, so two names of one session file, such as a symbolic
+        // link beside it, share one position. A file that cannot be resolved fails as a transcript
+        // reference below and has no position.
+        const session = await realpath(resolve(transcripts, entry.file as string)).catch(() => undefined)
+        if (session !== undefined) {
+          const line = entry.line as number, previous = reached.get(session)
+          if (previous !== undefined && line < previous) {
+            fail(index, `${path}.line`, `goes back to line ${line} of ${entry.file} after line ${previous}`)
+          }
+          reached.set(session, Math.max(previous ?? line, line))
         }
-        reached.set(session, Math.max(previous ?? line, line))
         if (!uuidOK || !authorOK) continue
         try {
           const { cited, asked } = await readCited(transcripts, entry)

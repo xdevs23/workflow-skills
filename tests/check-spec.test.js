@@ -1,6 +1,6 @@
 import { afterAll, describe, expect, test } from 'bun:test'
 import { createHash } from 'node:crypto'
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import { mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -151,6 +151,15 @@ describe('unit spec validation', () => {
     writeFileSync(other, JSON.stringify({ type: 'user', uuid: 'later', origin: { kind: 'human' }, message: { content: 'Add a header.' } }) + '\n')
     const mixed = changed(s => { s.entries.splice(3, 0, { file: other, line: 1, uuid: 'later', author: 'user', text: 'Add a header.' }) })
     expect([mixed.exit, mixed.err]).toEqual([0, ''])
+  })
+
+  test('a second name of one session file shares its line order', () => {
+    const link = join(scratch, 'linked-session.jsonl')
+    symlinkSync(join(fixtures, 'session.jsonl'), link)
+    const answer = { file: link, line: 9, uuid: 'answer', author: 'user', text: 'Stream the rows.' }
+    invalid(changed(s => { s.entries.push(answer) }), `entry 10.line: goes back to line 9 of ${link} after line 46`)
+    const approval = changed(s => { s.entries.push({ ...answer, line: 46, uuid: 'plan-approval', text: 'Yes, build it.' }) })
+    expect([approval.exit, approval.err]).toEqual([0, ''])
   })
 
   test.each([
