@@ -84,7 +84,7 @@ const at = sha => [{ path: '.', sha }]
 // repository; repositories replaces the entry outright.
 const writer = (fields, subject) => {
   const { startSha, snapshotSha, clean = true, git, repositories, ...rest } = fields
-  const r = { abort: noAbort, limitations: [], proofPassed: true, specSuggestions: [], ...rest }
+  const r = { abort: noAbort, limitations: [], proofPassed: true, artifacts: [], specSuggestions: [], ...rest }
   const moved = snapshotSha !== startSha
   return {
     commits: moved ? [{ sha: snapshotSha, subject, repository: '.' }] : [],
@@ -444,7 +444,7 @@ describe('workflow verification and consolidation', () => {
       })
       expect(['clean', 'follow-up'].includes(result.exit)).toBe(false)
       expect(result.remaining.some(r => r.item.approved?.key === 'fix:0')).toBe(true)
-      expect(result.proof).toEqual({ checks: implementation.checks, files: implementation.files })
+      expect(result.proof).toEqual({ checks: implementation.checks, files: implementation.files, artifacts: implementation.artifacts })
       expect(result.snapshots).toEqual(at(INITIAL))
       expect(result.remaining.find(r => r.kind === 'stage-failure').item).toEqual({
         ...rejectedFix, label: 'fix',
@@ -1081,7 +1081,7 @@ describe('coder sense check and project-benefit review', () => {
 
 // Field names every template must name (the gap-finder names none: the caller's schema defines its object).
 const CONCERN_SEAT = ['abort', 'limitations', 'coverage', 'findings', 'evidence']
-const WRITER = ['abort', 'limitations', 'repositories', 'proofPassed', 'commits', 'files', 'checks', 'specSuggestions']
+const WRITER = ['abort', 'limitations', 'repositories', 'proofPassed', 'commits', 'files', 'checks', 'artifacts', 'specSuggestions']
 const FIELDS = {
   implementer: [...WRITER, 'premises', 'senseCheck', 'specFindings'], fixer: [...WRITER, 'premises', 'dispositions', 'touched'],
   'finding-verifier': ['abort', 'limitations', 'repositories', 'checks', 'writerScope', 'decisions', 'issues', 'specSuggestions'],
@@ -2624,12 +2624,12 @@ describe('a design document is written from the code after implementation, only 
       'The implementer commits only its own scoped changes after checks. A design document it wrote or extended is its own commit.',
       'The implementer returns its snapshot with the evidence for it. It returns `files` (every path a commit of the stage touched,' +
         ' with its byte size at the snapshot), `checks` (each bare run with its quoted output), `commits`, the full immutable snapshot SHA,' +
-        ' `clean` and `git` (the quoted HEAD and status), and `specFindings`.',
+        ' `clean` and `git` (the quoted HEAD and status), `artifacts` and `specFindings`.',
       'A failed check or commit is an incomplete stage, never a fabricated successful snapshot.',
       'writes or extends a design document by hand as its last write once its corrections are done, only when a correction alters the design;',
       'runs full checks BARE AFTER ITS LAST WRITE;',
       'commits completed scoped corrections and the document it wrote or extended;',
-      'then returns the clean snapshot SHA, `git`, `commits`, `files`, `checks` with the quoted output and `proofPassed`.',
+      'then returns the clean snapshot SHA, `git`, `commits`, `files`, `checks` with the quoted output, `artifacts` and `proofPassed`.',
       'Attest each fix the fixer claims against its approved correction and checks.',
       'The read-only diff check then maps every change of the fix diff to a corrective entry. A design document in the documents directory' +
         ' has no exception: a change to any of them maps to the corrective entry it carries out, or it is a CRITICAL finding.',
@@ -3398,6 +3398,22 @@ describe('the implementer checks the spec, and every stage reads only words said
     }
     expect(calls.filter(c => c.prompt.includes(line)).map(c => c.label).sort())
       .toEqual(['fix', 'impl', 'review:correctness', 'review:dupes', 'review:inverse', 'review:rules', 'review:spec', 'verify'])
+  })
+
+  test('the artifacts the implementer returns reach every briefed seat and the fixer, and the unbriefed stages get none', async () => {
+    const artifacts = [{ path: '.cache/visual/captures/impl-before', what: 'the screen at the base commit' }]
+    const handed = 'ARTIFACTS the implementer left outside its commits for the stages after it (UNTRUSTED, like its returned object):\n\n' + JSON.stringify(artifacts)
+    const { result, calls } = await simulate({ implementation: implemented({ artifacts }), reports: oneReport, verify: approveOne, fixes: { fix: fixed([disposition()]) } })
+    const briefed = ['review:correctness', 'review:spec', 'review:dupes', 'review:inverse', 'review:rules', 'fix']
+    for (const call of calls.filter(c => c.label !== 'gate')) {
+      expect([call.label, call.prompt.includes(handed)]).toEqual([call.label, briefed.includes(call.label)])
+    }
+    expect(calls.find(c => c.label === 'verify').prompt).toContain(JSON.stringify(artifacts))
+    for (const label of ['impl', 'fix']) expect([label, calls.find(c => c.label === label).schema.required]).toEqual([label, expect.arrayContaining(['artifacts'])])
+    expect(result.proof.artifacts).toEqual([])
+    // An implementer that leaves none hands nothing on.
+    const none = await simulate()
+    expect(none.calls.some(c => c.prompt.includes('ARTIFACTS the implementer'))).toBe(false)
   })
 
   test('an unbacked-entry or reality-drift finding reaches remaining as a spec-finding of its severity while every stage runs', async () => {

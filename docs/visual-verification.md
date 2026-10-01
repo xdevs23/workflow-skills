@@ -250,7 +250,7 @@ workflow skills, and covers:
   states, accumulating source exports and file watchers, and fixture drift.
 
 **unit-spec-integration**: The skill file tells the orchestrating session how visual work runs in an
-implement-review-verify unit, with implement-review-verify left unchanged:
+implement-review-verify unit, with nothing specific to visual work in implement-review-verify:
 * what a visual change should do comes from the user's words in the unit spec, and nothing is
   written into the spec for it: no criterion, no capture name and no path; the comparison
   outcome is zero changed pixels, changes only in the checkpoints the user's words concern with
@@ -262,9 +262,10 @@ implement-review-verify unit, with implement-review-verify left unchanged:
   before capture, and returns the comparison with both capture names in its checks; the stage's
   pass or fail proof stays the project's check command, since the comparison exits nonzero for
   every intended change;
-* the capture names travel with the implementer's object to the stages that receive it; a stage
-  without it finds the captures by the commits their receipts record, and a fix run's fixer
-  through a pointer its fix list entry attaches;
+* each writing stage returns its captures, comparison reports and evidence sheets in `artifacts`,
+  and the main script hands the implementer's artifacts to every reading stage that receives the
+  spec and to the fixer; a fix run's fixer reaches them through a pointer its fix list entry
+  attaches to the parent run's implementer result;
 * reading stages that receive the spec open the PNGs, receipts and comparison reports in that
   worktree's project cache and check that each receipt's source revision is the commit it
   claims; stages that receive no spec by design get nothing added; a point that needs a new

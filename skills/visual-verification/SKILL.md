@@ -126,9 +126,9 @@ comparison stays the verdict.
 
 ## Visual work in an implement-review-verify unit
 
-`workflow-skills:implement-review-verify` stays unchanged for visual work. What a visual change
-should do comes from the user's words in the unit spec, and nothing is written into the spec for
-it: no criterion, no capture name and no path.
+`workflow-skills:implement-review-verify` holds nothing specific to visual work. What a visual
+change should do comes from the user's words in the unit spec, and nothing is written into the spec
+for it: no criterion, no capture name and no path.
 
 - Judge a visual change by its comparison outcome, which takes one of three forms: zero changed
   pixels on every checkpoint; changes only in the checkpoints the user's words concern, with every
@@ -142,12 +142,14 @@ it: no criterion, no capture name and no path.
   comparison against the before capture and returns the comparison command and its output, which
   name both captures, in its checks. The stage's pass or fail proof stays the project's check
   command, because the comparison exits nonzero for every intended change.
-- The implementer's returned object reaches the finding verifier and the reviewers that receive it,
-  so the capture names travel with it to the next stages. A stage without that object finds the
-  captures in the harness directory by their receipts: the before capture is the one whose receipt
-  carries the run's base commit, and the after capture the one whose receipt carries the snapshot
-  under review. A fix run's fixer reaches them through a pointer its fix list entry attaches, which
-  names the parent run's implementer result in the journal.
+- Return in `artifacts` every capture, comparison report and evidence sheet a writing stage made,
+  each with its path in the harness directory and what it shows.
+- Expect the main script to hand the implementer's `artifacts` to every reading stage that receives
+  the spec and to the fixer, so each of them opens the captures the implementer compared by their
+  names.
+- Attach to a fix list entry of visual work a pointer to the parent run's implementer result in its
+  journal, with the key path `result`, `artifacts`, so the fix run's fixer reaches the same
+  captures.
 - For a change of the third form, the comparison refuses the pair and stays strict. The writing
   stage returns the refusal together with an evidence sheet of the same two captures, rendered under
   an output name never used before. The comparison is never loosened for the intended input change,

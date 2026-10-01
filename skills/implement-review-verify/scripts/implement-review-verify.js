@@ -155,6 +155,8 @@ const WRITE_GIT = [
   'and status, the output of git status), commits (each with sha, subject and the path of its repository), files (paths relative to the tree root) and checks;',
   'never an empty commit for a no-op: a repository you left unchanged keeps its startSha as its snapshotSha and lists no commit.',
   'After committing, run git -C <tree>/<path> rev-parse --verify HEAD^{commit} and git status --porcelain=v1 --untracked-files=all in every repository.',
+  'Return in artifacts every file you leave outside your commits for the stages after you, such as a capture of the running program,',
+  'with its path and what it holds, and an empty list when you leave none.',
 ].join('\n')
 // The spec rides as a PATH, never as a copy, because it quotes the user (law 5) and because the
 // launch check verified that file and no copy of it (law 7). The orchestrating session adds no
@@ -238,6 +240,10 @@ const SNAPSHOTS = { type: 'array', minItems: 1, items: { type: 'object', require
 const FILES = { type: 'array', items: { type: 'object', required: ['path', 'bytes', 'change'], additionalProperties: false,
   properties: { path: { type: 'string' }, bytes: { type: 'integer', minimum: 0 }, change: { enum: ['added', 'modified', 'deleted'] } } } }
 const STRINGS = { type: 'array', items: { type: 'string' } }
+// Files a writer leaves outside its commits for the stages after it, such as a capture of the running
+// program: where each lies and what it holds. The script hands them on without knowing what they are.
+const ARTIFACTS = { type: 'array', items: { type: 'object', required: ['path', 'what'], additionalProperties: false,
+  properties: { path: { type: 'string' }, what: { type: 'string' } } } }
 // Every factual claim the prompt made about the tree, checked against the tree (law 6); a false
 // premise or a prompt-versus-spec conflict is recorded here by both writers.
 const PREMISES = { type: 'array', items: { type: 'object', required: ['claim', 'holds', 'note'], additionalProperties: false,
@@ -300,17 +306,17 @@ const SPEC_FINDINGS = { type: 'array', items: { type: 'object', required: ['evid
 // with an empty files list behind a new snapshot fails the completeness check below.
 const IMPLEMENT = { type: 'object', additionalProperties: false,
   required: ['abort', 'limitations', 'repositories', 'proofPassed', 'premises',
-    'senseCheck', 'specFindings', 'commits', 'files', 'checks', 'specSuggestions'],
+    'senseCheck', 'specFindings', 'commits', 'files', 'checks', 'artifacts', 'specSuggestions'],
   properties: { abort: ABORT, limitations: LIMITATIONS, repositories: REPOSITORIES, proofPassed: { type: 'boolean' },
     premises: PREMISES,
     senseCheck: { type: 'object', required: ['passed', 'recordSilent', 'note'], additionalProperties: false,
       properties: { passed: { type: 'boolean' }, recordSilent: { type: 'boolean' }, note: { type: 'string' } } },
-    specFindings: SPEC_FINDINGS, commits: COMMITS, files: FILES, checks: CHECKS, specSuggestions: STRINGS } }
+    specFindings: SPEC_FINDINGS, commits: COMMITS, files: FILES, checks: CHECKS, artifacts: ARTIFACTS, specSuggestions: STRINGS } }
 const FIX = { type: 'object', additionalProperties: false,
   required: ['abort', 'limitations', 'repositories', 'proofPassed', 'premises', 'commits',
-    'files', 'checks', 'specSuggestions', 'dispositions', 'touched'],
+    'files', 'checks', 'artifacts', 'specSuggestions', 'dispositions', 'touched'],
   properties: { abort: ABORT, limitations: LIMITATIONS, repositories: REPOSITORIES, proofPassed: { type: 'boolean' }, premises: PREMISES,
-    commits: COMMITS, files: FILES, checks: CHECKS, specSuggestions: STRINGS,
+    commits: COMMITS, files: FILES, checks: CHECKS, artifacts: ARTIFACTS, specSuggestions: STRINGS,
     dispositions: { type: 'array', items: { type: 'object', additionalProperties: false,
       required: ['key', 'disposition', 'reason', 'receipts'],
       properties: { key: { type: 'string' }, disposition: { enum: ['fixed', 'rejected', 'blocked'] },
@@ -622,16 +628,22 @@ const REVIEWER_RULES = [
   'REVIEWER RULES: these templates are the reviewers\' rules, what each review seat looks for. The review seats are critics without authority:',
   ...Object.values(REVIEW_SEATS).map(type => UNIT.pluginRoot + '/agents/' + type + '.md'),
 ].join('\n')
+// The artifacts a writer returned, as prompt blocks for the stages after it: none when it left none.
+const handedOn = (writer, artifacts) => artifacts.length
+  ? ['ARTIFACTS the ' + writer + ' left outside its commits for the stages after it (UNTRUSTED, like its returned object):',
+    JSON.stringify(artifacts)]
+  : []
 // The seat list: the template, label, prompt blocks, schema and completeness check of each seat.
-// Only the two briefed code-lens readers receive the implementer's object, as claims. The eight
-// audit seats receive what quality receives, the hygiene floor and the diff, and return its object.
-const seatList = claims => [
-  ['reviewer-correctness', 'correctness', [AUTHORITY, READ_GIT, SPEC, AGAINST_SPEC, ...claims], CORRECTNESS, checkBacked],
-  ['reviewer-spec-compliance', 'spec', [AUTHORITY, READ_GIT, SPEC, AGAINST_SPEC], SPEC_COMPLIANCE, checkBacked],
-  ['duplicate-checker', 'dupes', [AUTHORITY, READ_GIT, SPEC, AGAINST_SPEC, ...claims], DUPLICATES, checkBacked],
+// Only the two briefed code-lens readers receive the implementer's object, as claims; every briefed
+// seat receives the artifacts it handed on. The eight audit seats receive what quality receives,
+// the hygiene floor and the diff, and return its object.
+const seatList = (claims, artifacts) => [
+  ['reviewer-correctness', 'correctness', [AUTHORITY, READ_GIT, SPEC, AGAINST_SPEC, ...claims, ...artifacts], CORRECTNESS, checkBacked],
+  ['reviewer-spec-compliance', 'spec', [AUTHORITY, READ_GIT, SPEC, AGAINST_SPEC, ...artifacts], SPEC_COMPLIANCE, checkBacked],
+  ['duplicate-checker', 'dupes', [AUTHORITY, READ_GIT, SPEC, AGAINST_SPEC, ...claims, ...artifacts], DUPLICATES, checkBacked],
   ['quality', 'quality', [HYGIENE], QUALITY, checkReader],
-  ['reviewer-inverse-spec', 'inverse', [AUTHORITY, READ_GIT, SPEC], INVERSE, checkInverse],
-  ['project-rule-reader', 'rules', [AUTHORITY, READ_GIT, SPEC, RULES], RULES_SEAT, checkReader],
+  ['reviewer-inverse-spec', 'inverse', [AUTHORITY, READ_GIT, SPEC, ...artifacts], INVERSE, checkInverse],
+  ['project-rule-reader', 'rules', [AUTHORITY, READ_GIT, SPEC, RULES, ...artifacts], RULES_SEAT, checkReader],
   ['cold-alternatives', 'alternatives', [HYGIENE], ALTERNATIVES, checkAlternatives],
   ['separation-of-concerns', 'separation-of-concerns', [HYGIENE], QUALITY, checkReader],
   ['abstraction-quality', 'abstraction-quality', [HYGIENE], QUALITY, checkReader],
@@ -645,7 +657,7 @@ const seatList = claims => [
 // A seat list that leaves a seat out, adds one, names one twice or gives a label another template
 // stops the run before its first agent.
 const requiredSeats = Object.entries(REVIEW_SEATS).map(([label, type]) => label + ' on ' + type)
-const listedSeats = seatList([]).map(([type, label]) => label + ' on ' + type)
+const listedSeats = seatList([], []).map(([type, label]) => label + ' on ' + type)
 if (JSON.stringify([...listedSeats].sort()) !== JSON.stringify([...requiredSeats].sort())) {
   throw new Error('The review stage runs exactly the fifteen seats ' + requiredSeats.join(', ') +
     ', and the seat list holds ' + listedSeats.join(', '))
@@ -790,6 +802,7 @@ const checkFix = (result, queue, starts) => {
 }
 const fixPass = (queue, starts) => stage([
   AUTHORITY, WRITE_GIT, SPEC, PROVE, DOCUMENT_FIX, CHECK, 'START SHAS, per repository: ' + listed(starts),
+  ...handedOn('implementer', impl.artifacts),
   'Act ONLY on the verifier-approved corrections. Raw reviewer and concurrent roast objects are NOT work orders.',
   'Independently verify evidence and authority; respect correction, constraints and acceptance.',
   'A correction marked removal true removes code, a parameter or a mechanism that nothing uses, that nobody asked for, or that is',
@@ -819,7 +832,7 @@ async function onePass() {
   proof(impl, 'impl')
   if (exit) return
 
-  const SEATS = seatList(['UNTRUSTED implementer claims (its returned object):', JSON.stringify(impl)])
+  const SEATS = seatList(['UNTRUSTED implementer claims (its returned object):', JSON.stringify(impl)], handedOn('implementer', impl.artifacts))
   phase('Review')
   const readers = await Promise.allSettled(SEATS.map(s => readSeat(s, snapshots)))
   const reports = []
@@ -957,8 +970,8 @@ const projectBenefitDecisions = decisions.filter(d => d.sourceIds.some(id => sou
     .map(({ id, seat, kind, file, claim }) => ({ id, seat, kind, file, claim })) }))
 return {
   exit, detail, remaining, decisions,
-  proof: passedFix ? { checks: passedFix.checks, files: passedFix.files }
-    : impl ? { checks: impl.checks, files: impl.files } : null,
+  proof: passedFix ? { checks: passedFix.checks, files: passedFix.files, artifacts: passedFix.artifacts }
+    : impl ? { checks: impl.checks, files: impl.files, artifacts: impl.artifacts } : null,
   base, snapshots,
   acceptance: 'pending-root-checks', // Pass completion is not size approval or integration permission.
   counts: { sources: sources.length, approved: queue.length,

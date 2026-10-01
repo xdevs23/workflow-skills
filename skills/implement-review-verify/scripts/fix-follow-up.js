@@ -144,6 +144,8 @@ const WRITE_GIT = [
   'and status, the output of git status), commits (each with sha, subject and the path of its repository), files (paths relative to the tree root) and checks;',
   'never an empty commit for a no-op: a repository you left unchanged keeps its startSha as its snapshotSha and lists no commit.',
   'After committing, run git -C <tree>/<path> rev-parse --verify HEAD^{commit} and git status --porcelain=v1 --untracked-files=all in every repository.',
+  'Return in artifacts every file you leave outside your commits for the stages after you, such as a capture of the running program,',
+  'with its path and what it holds, and an empty list when you leave none.',
 ].join('\n')
 const TREE = 'ASSIGNED TREE: ' + UNIT.worktree + '.'
 // The scope check and the diff check read the fix list itself. Its entries are what the parent run's
@@ -208,6 +210,8 @@ const SNAPSHOTS = { type: 'array', minItems: 1, items: { type: 'object', require
 const FILES = { type: 'array', items: { type: 'object', required: ['path', 'bytes', 'change'], additionalProperties: false,
   properties: { path: { type: 'string' }, bytes: { type: 'integer', minimum: 0 }, change: { enum: ['added', 'modified', 'deleted'] } } } }
 const STRINGS = { type: 'array', items: { type: 'string' } }
+const ARTIFACTS = { type: 'array', items: { type: 'object', required: ['path', 'what'], additionalProperties: false,
+  properties: { path: { type: 'string' }, what: { type: 'string' } } } }
 const PREMISES = { type: 'array', items: { type: 'object', required: ['claim', 'holds', 'note'], additionalProperties: false,
   properties: { claim: { type: 'string' }, holds: { type: 'boolean' }, note: { type: 'string' } } } }
 
@@ -227,9 +231,9 @@ const ROAST = { type: 'object', additionalProperties: false, required: ['limitat
   properties: { limitations: LIMITATIONS, coverage: COVERAGE, findings: FINDINGS, snapshots: SNAPSHOTS } }
 const FIX = { type: 'object', additionalProperties: false,
   required: ['abort', 'limitations', 'repositories', 'proofPassed', 'premises', 'commits',
-    'files', 'checks', 'specSuggestions', 'dispositions', 'touched'],
+    'files', 'checks', 'artifacts', 'specSuggestions', 'dispositions', 'touched'],
   properties: { abort: ABORT, limitations: LIMITATIONS, repositories: REPOSITORIES, proofPassed: { type: 'boolean' }, premises: PREMISES,
-    commits: COMMITS, files: FILES, checks: CHECKS, specSuggestions: STRINGS,
+    commits: COMMITS, files: FILES, checks: CHECKS, artifacts: ARTIFACTS, specSuggestions: STRINGS,
     dispositions: { type: 'array', items: { type: 'object', additionalProperties: false,
       required: ['key', 'disposition', 'reason', 'receipts'],
       properties: { key: { type: 'string' }, disposition: { enum: ['fixed', 'rejected', 'blocked'] },
@@ -676,7 +680,7 @@ return {
   classifications: scope?.classifications ?? [],
   dispositions: reportedFix?.dispositions ?? [],
   mappings: diff?.mappings ?? [],
-  proof: passedFix ? { checks: passedFix.checks, files: passedFix.files } : null,
+  proof: passedFix ? { checks: passedFix.checks, files: passedFix.files, artifacts: passedFix.artifacts } : null,
   base, snapshots,
   acceptance: 'pending-root-checks', // Run completion is not integration permission.
   counts: { entries: entries.length, corrective: queue.length,
