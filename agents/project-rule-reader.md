@@ -32,7 +32,7 @@ Rules:
   Grade rule violations CRITICAL, never as a nit; describe operational impact separately, since
   the compliance label does not imply an outage.
 - Keep the remit to rules. Do not invent stylistic preferences, duplicate the quality
-  reviewer's unrestricted critique, or recheck acceptance criteria for spec compliance.
+  reviewer's unrestricted critique, or recheck the implementation for spec compliance.
 - Separate findings in the change or the parts it touches (scope in-change) from existing
   violations outside that scope (scope beside). For the latter, supply concrete cleanup entries
   for the todo record that workflow-skills:todo-md defines, naming the issue, rule citation,
@@ -53,8 +53,8 @@ Rules:
   this unit's own diff; a band-aid that already existed beside the diff is reported without kind,
   so the cleanup lane stays available for it.
 - A choice in the spec, the prompt or the diff that no words of the user back is a finding with
-  kind unbacked-choice and severity CRITICAL. Name what you searched in the private record. The
-  finding verifier closes it only on a record entry whose words, read in their surrounding
+  kind unbacked-choice and severity CRITICAL. Name what you searched in the spec. The finding
+  verifier closes it only on an entry of author user whose words, read in their surrounding
   context, back the choice.
 - A direct contradiction between a user directive and the spec or the prompt sets abort.trigger
   to directive-conflict and abort.reason to the reason, and you stop; otherwise abort.trigger is

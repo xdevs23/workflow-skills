@@ -1,26 +1,6 @@
 unit: invalid-example
-summary: A synthetic spec that carries several violations.
-record: tests/fixtures/spec-provenance/record.yaml
-items:
-  - id: first
-    kind: criterion
-    content: Preserve row order.
-    source: derivation
-    parents:
-      - missing
-  - id: second
-    kind: unknown
-    content: ""
-    source: observation
-    observation:
-      command: printf ok
-      exit: 0
-      output: ok
-      date: 2026-09-16
-    extra: true
-  - id: third
-    kind: criterion
-    content: Preserve row order.
-    source: observation
-    observation:
-      command: printf ok
+summary: A synthetic spec of the earlier shape, with several violations.
+entries:
+  - { file: session.jsonl, line: 9, uuid: answer, author: assistant, text: Stream the rows. }
+  - { file: session.jsonl, line: 1, uuid: request-string, author: reader, text: Export the selected rows. }
+  - { file: session.jsonl, line: 8, uuid: offer, text: '' }

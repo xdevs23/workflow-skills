@@ -1,8 +1,9 @@
 # workflow-skills
 
 A bundled Claude Code plugin of **multi-agent workflow skills** plus a library of **audit-lens
-subagents**. The skills cover writing a unit spec, implementing and reviewing a change against it,
-copywriting, visual verification and the recovery of an interrupted workflow run.
+subagents**. The skills cover implementing and reviewing a change against a unit spec that quotes
+the discussion of the change, copywriting, visual verification and the recovery of an interrupted
+workflow run.
 
 ## Install
 
@@ -11,7 +12,7 @@ copywriting, visual verification and the recovery of an interrupted workflow run
 /plugin install workflow-skills@workflow-skills
 ```
 
-Then the skills appear in the skill list and each has a matching slash command (e.g. `/spec-writing`,
+Then the skills appear in the skill list and each has a matching slash command (e.g.
 `/implement-review-verify`).
 
 ## What's inside
@@ -19,8 +20,7 @@ Then the skills appear in the skill list and each has a matching slash command (
 ### Skills
 | Skill | What it does |
 |---|---|
-| `spec-writing` | Write a unit spec and its private directive record: the YAML format, the sources every item carries, the directive veto and the validation with the spec tool. |
-| `implement-review-verify` | Implement against the unit spec and commit a clean snapshot, with the implementer's sense check reporting what it finds in the spec, then review and independently consolidate findings. The fixer commits only approved corrections while a mandatory roaster reads the pre-fix Git snapshot and approved list. Roast findings are verified against the resulting snapshot before completion. Only unresolved decisions, disagreements and non-convergence need root resolution. |
+| `implement-review-verify` | Assemble the unit spec from the user's words in the session transcripts and check it with the spec tool, then implement against it and commit a clean snapshot, with the implementer's sense check reporting what it finds in the spec, then review and independently consolidate findings. The fixer commits only approved corrections while a mandatory roaster reads the pre-fix Git snapshot and approved list. Roast findings are verified against the resulting snapshot before completion. Only unresolved decisions, disagreements and non-convergence need root resolution. |
 | `copywriting` | Write an increment's user-visible strings BEFORE implementation: intent catalog + writing system, one agent per item, mechanical gate + source-verify + fresh-context critic, human ships the load-bearing lines. |
 | `resume-interrupted-run` | Recover a workflow run that was stopped while agents were mid-flight: hand each interrupted seat its own prior transcript, leave every completed prompt byte-identical, resume near-losslessly. |
 | `visual-verification` | Check a change to any rendered user interface, in a browser, a native mobile or desktop toolkit or a terminal, with a reproducible visual harness: real screenshots, controlled data, measured checks and strict before and after comparisons. A project without a harness adopts one from the implementation guide bundled with the skill. |
@@ -48,24 +48,28 @@ directly as `agentType`s in your own workflows.
 - **Bun 1.2.21 or newer** for `tools/check-spec.ts`, which uses the built-in `Bun.YAML.parse`
   and the Markdown parser `mdast-util-from-markdown`, whose version 2.0.3 its import names and Bun
   fetches on the tool's first run.
-  Validate a private unit spec with `bun <plugin root>/tools/check-spec.ts <spec.yaml> --transcripts <session-dir>`,
+  Check a private unit spec with `bun <plugin root>/tools/check-spec.ts <spec.yaml> --transcripts <session-dir>`,
   where the plugin root is this repository or the installed plugin's directory under the plugin cache.
+  A unit spec is a YAML file of `unit` and `entries`, and nothing else. Each entry quotes one
+  session transcript record by its `file`, `line` and `uuid`, with its `author`, `user` or
+  `assistant`, and its `text`, a verbatim substring of that record: a message the user wrote or
+  answered in the question dialog, or an assistant text block, the question text of a dialog call
+  or the content of a Write call. The tool fails an entry whose text does not stand in the record
+  it cites as a message of its author, entries of one session file that go back in line order, and
+  a spec without an entry of author `user`.
   Add `--base '<list>'`, a JSON list with one `{ path, sha }` for every git repository of the
-  tree it runs at, so a cited rule file tracked at its repository's commit is read there and not
-  from the working tree, while an untracked file reads from disk. The tool fails a list that
-  names no repository's top level, a commit its repository does not hold, or leaves a repository
-  of the tree out; `--partial-base` accepts a list of only the repositories a unit changes, for a
-  tree too large to list. implement-review-verify runs only in a git repository or a tree of several,
-  such as a repo-tool client. Add `--json` for counts and
-  criterion ordinals. Both output forms carry `specLines`, which the 20:1 size gate divides by:
-  the non-blank lines of the spec's prose, which is `unit`, `summary` and each item's `content`,
-  `user_words`, `answers`, `quote`, `observation.output` and `reason`, plus one line for each
-  distinct item id named as a parent. The tool fails a spec whose prose breaks the width rule: a
-  line, counted with its indentation and markers, holds at most 120 characters, and every line of
-  a paragraph but its last is full. A line of a fenced code block holds at most 120 characters
-  and is never held to the fill rule. A line whose own text is one word too long for the width,
-  such as a long URL, passes and is named in the summary's `unbreakable` list. The YAML spec
-  is the only form of the spec before and during implementation. After the implementation, a
+  tree it runs at. The tool fails a list that names no repository's top level, a commit its
+  repository does not hold, or leaves a repository of the tree out; `--partial-base` accepts a
+  list of only the repositories a unit changes, for a tree too large to list.
+  implement-review-verify runs only in a git repository or a tree of several, such as a repo-tool
+  client. Add `--json` for the summary as JSON. Both output forms carry `specLines`, which the 20:1
+  size gate divides by: the non-blank lines of the entries' text. The tool fails an entry whose
+  text breaks the width rule: a line, counted with its indentation and markers, holds at most 120
+  characters, and every line of a paragraph but its last is full. A line of a fenced code block
+  holds at most 120 characters and is never held to the fill rule. A line whose own text is one
+  word too long for the width, such as a long URL, passes and is named in the summary's
+  `unbreakable` list. The YAML spec is the only form of the spec before and during
+  implementation. After the implementation, a
   writer whose change alters the design writes or extends a tracked design document by hand from
   the code as its last write, before its checks, and commits it: the implementer once its
   implementation is done, the fixer once its corrections are done. A change that alters no design
@@ -73,20 +77,11 @@ directly as `agentType`s in your own workflows.
   allowed.
   A passing run prints a random `proof` that the workflow scripts' launch check returns to prove
   the tool ran.
-  A spec names its private directive record in the `record` key. The record is a YAML file of
-  `unit` and `entries`, each entry quoting the user's `words` with the transcript `file`, `line`
-  and `uuid` they stand at and a non-empty list of quoted `context` from the surrounding
-  conversation, and optionally the `answers` they reply to and the plan text they approve in
-  `approves`. The tool fails when that file is missing, is not of that format, holds a quote the
-  cited transcript record or plan file does not bear out, cites words from a record the user did
-  not write, or lacks any quoted `user_words` of the spec in the words of an entry. Add
-  `--record <path>` to fail when the record path a script received at launch differs from the
-  spec's `record`.
   Its fix-list mode, `--fix-list <file> --transcripts <session-dir>` in place of the spec, checks
-  the fix list of a fix run: it resolves every entry against the parent run's journal and prints
-  the same proof. Add `--expect <json>` to fail when the entries and parent spec a fix script
-  received at launch differ from the list, and `--record <path>` to fail when the record path
-  differs from the parent spec's `record`.
+  the fix list of a fix run, which names a parent run in `run` and findings of it by their source
+  IDs in `findings`: it resolves every source against the parent run's journal and prints each
+  finding as the journal holds it, with the same proof. Add `--expect <json>` to fail when the
+  findings a fix script received at launch differ from what the journal holds.
 - **The pull request watcher `watch-prs` needs Python 3 and the GitHub CLI `gh`, logged in.**
   `babysit-pr` runs it. The watcher is a Python program in the plugin's tools directory, run with
   `python3`. It takes the state file with `--state`, the seconds between polls with `--interval`,
