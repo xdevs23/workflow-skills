@@ -2129,7 +2129,10 @@ describe('fix-only follow-up runs', () => {
         expect(flat(call.prompt)).toContain('FIX LIST: ' + FIX_LIST + '. Its run key names the parent run, and its findings key names findings of that run by their source IDs, and nothing else.')
         expect(flat(call.prompt)).toContain('Each finding below is what a reviewer of the parent run said, as the parent run\'s journal holds it')
         expect(flat(call.prompt)).toContain('A finding is a claim: calling a change a bug, a defect or a fix is a claim to check.')
+        expect(call.prompt).toContain('PARENT UNIT SPEC: ' + PARENT_SPEC + ', the spec the parent run was built against. Read it in full.')
+        expect(call.prompt).not.toContain('SPEC (authority)')
       }
+      if (call.label === 'roast') expect(call.prompt).not.toContain(PARENT_SPEC)
     }
     expect(calls.find(c => c.label === 'scope').prompt).toContain('A finding you cannot place with confidence is a new choice.')
     for (const type of ['scope-check', 'diff-check']) {
