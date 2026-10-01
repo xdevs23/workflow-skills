@@ -107,7 +107,7 @@ const bare = opts => {
 }
 async function simulate({ reports = {}, verify = {}, fixes = {}, fail = {}, implementation, gate = passedGate(),
   beforeRead = async () => {}, beforeFix = async () => {}, beforeRoast = async () => {},
-  args = launchArgs(), calls = [], logs = [] } = {}) {
+  args = launchArgs(), calls = [], logs = [], script = run } = {}) {
   const completed = new Set(), phases = []
   let fixStart = null
   let currentSha = INITIAL
@@ -156,7 +156,7 @@ async function simulate({ reports = {}, verify = {}, fixes = {}, fail = {}, impl
     }
     throw new Error(`Unexpected call: ${opts.label}`)
   }
-  const result = await run(agent, name => phases.push(name), line => logs.push(line), args)
+  const result = await script(agent, name => phases.push(name), line => logs.push(line), args)
   return { result, calls, phases, logs }
 }
 const oneReport = { 'review:correctness': { findings: [backed] } }
@@ -1591,7 +1591,7 @@ describe('one-pass remaining-items handoff', () => {
   test('every other skill requires loading the writing-style skill', async () => {
     const dir = new URL('../skills/', import.meta.url)
     const names = ['babysit-pr', 'copywriting', 'implement-review-verify', 'pr-comment-replies',
-      'resume-interrupted-run']
+      'resume-interrupted-run', 'review-pass']
     for (const name of names) {
       const text = await Bun.file(new URL(`${name}/SKILL.md`, dir)).text()
       expect(text).toContain('Load the `workflow-skills:writing-style` skill first.')
@@ -1938,7 +1938,7 @@ describe('launch check and shipped scripts', () => {
     const marker = '// ---- UNIT VALUES. A unit copies this file and sets the values of this block. ----'
     const end = '// ---- END OF UNIT VALUES ----'
     for (const [script, fields] of [
-      [skeleton, ['mainCheckout', 'worktree', 'specPath', 'transcripts', 'pluginRoot', 'checkCommand', 'base', 'partialBase', 'documents', 'ruleSources', 'fileSizeCap', 'models']],
+      [skeleton, ['mainCheckout', 'worktree', 'specPath', 'transcripts', 'pluginRoot', 'checkCommand', 'base', 'partialBase', 'reviewOnly', 'head', 'documents', 'ruleSources', 'fileSizeCap', 'models']],
       [fixSkeleton, ['mainCheckout', 'worktree', 'fixList', 'transcripts', 'pluginRoot', 'checkCommand', 'base', 'documents', 'entries', 'ruleSources', 'models']],
     ]) {
       const meta = script.indexOf('export const meta =')
@@ -3893,5 +3893,86 @@ describe('the stages receive the quoted discussion and no words of the orchestra
       expect([call.label, flat(call.prompt).includes("An entry of author user is the user's words and the authority. An entry of author assistant is context and never authority")])
         .toEqual([call.label, true])
     }
+  })
+})
+
+// The main script with its marked block switched to a review-only run, launched on a change from base to head.
+const reviewOnly = source => source.replace('  reviewOnly: false,', '  reviewOnly: true,')
+const reviewRun = new AsyncFunction('agent', 'phase', 'log', 'args', reviewOnly(filled(skeleton)).replace('export const meta =', 'const meta ='))
+const reviewArgs = (fields = {}) => launchArgs({ head: at(INITIAL), ...fields })
+
+describe('review-only runs', () => {
+  test('a review-only run starts the launch check and the fifteen seats on base..head, and no other stage', async () => {
+    const { result, calls, phases } = await simulate({ script: reviewRun, args: reviewArgs() })
+    expect(calls.map(c => c.label)).toEqual(['gate', ...readers.map(seat => 'review:' + seat)])
+    expect(phases).toEqual(['Launch', 'Review'])
+    for (const call of calls.filter(c => c.phase === 'Review')) {
+      expect([call.label, call.prompt.includes('.: ' + BASE + '..' + INITIAL)]).toEqual([call.label, true])
+      expect([call.label, call.prompt.includes('implementer claims'), call.prompt.includes('ARTIFACTS the implementer')]).toEqual([call.label, false, false])
+    }
+    expect([result.exit, result.remaining, result.snapshots, result.proof]).toEqual(['clean', [], at(INITIAL), null])
+  })
+
+  test('the findings and limitations of a review-only run go to the root as the seats returned them', async () => {
+    const bandAid = { ...finding, kind: 'band-aid', severity: 'should-fix', claim: 'The catch block hides a defect of the reader.' }
+    const narrows = { what: 'the integration suite', effect: 'narrows' }
+    const unchecked = { what: 'the renderer', checked: false, how: 'no display' }
+    const { result } = await simulate({ script: reviewRun, args: reviewArgs(), reports: {
+      'review:correctness': { findings: [backed] }, 'review:quality': { findings: [bandAid] },
+      'review:code-smell': { limitations: [narrows], coverage: [...coverage, unchecked] } } })
+    expect([result.exit, result.detail]).toEqual(['follow-up', 'The pass completed with items requiring follow-up.'])
+    expect(result.remaining.map(r => [r.kind, r.severity, r.item.id ?? r.item.what])).toEqual([
+      ['review-finding', 'must-fix', 'correctness:0'], ['review-finding', 'CRITICAL', 'quality:0'],
+      ['review-limitation', 'should-fix', 'the integration suite'], ['review-limitation', 'should-fix', 'the renderer']])
+    expect(result.remaining.filter(r => r.kind === 'review-limitation').map(r => r.item.label)).toEqual(['review:code-smell', 'review:code-smell'])
+    // A should-fix finding alone leaves the run clean with the finding in remaining.
+    const minor = await simulate({ script: reviewRun, args: reviewArgs(), reports: { 'review:quality': { findings: [{ ...finding, severity: 'should-fix' }] } } })
+    expect([minor.result.exit, minor.result.remaining.map(r => r.kind)]).toEqual(['clean', ['review-finding']])
+    // A blocking limitation of a seat ends the run for the root.
+    const blocked = await simulate({ script: reviewRun, args: reviewArgs(), reports: { 'review:spec': { limitations: [{ what: 'the spec', effect: 'blocks' }] } } })
+    expect([blocked.result.exit, blocked.result.detail]).toEqual(['root-resolution', 'Blocking limitation from review:spec.'])
+  })
+
+  test('a seat that fails or sets its hard flag ends a review-only run as it ends a main run', async () => {
+    const failing = await simulate({ script: reviewRun, args: reviewArgs(), fail: { 'review:code-smell': 'model unavailable' } })
+    expect([failing.result.exit, failing.result.remaining.map(r => [r.kind, r.item.label])]).toEqual(['failed', [['stage-failure', 'review:code-smell']]])
+    const abort = { trigger: 'directive-conflict', reason: 'The prompt contradicts the user\'s words.' }
+    const aborted = await simulate({ script: reviewRun, args: reviewArgs(), reports: { 'review:inverse': { abort } } })
+    expect([aborted.result.exit, aborted.result.remaining.map(r => r.kind)]).toEqual(['aborted', ['abort']])
+  })
+
+  test('the review mode, its head and its models are checked before any agent', async () => {
+    const reviewSource = reviewOnly(filled(skeleton))
+    for (const [source, args, message] of [
+      [reviewSource, reviewArgs({ head: undefined }), 'args.head must be a non-empty list'],
+      [reviewSource, reviewArgs({ head: [{ path: 'web', sha: INITIAL }] }), 'args.head must name the repositories of args.base, one commit each'],
+      [reviewSource, reviewArgs({ head: at('main') }), 'args.head carries no full immutable commit ID for .'],
+      [filled(skeleton), reviewArgs(), 'args.head is passed only to a review-only run'],
+      [filled(skeleton).replace('  reviewOnly: false,', '  reviewOnly: 1,'), launchArgs(), 'UNIT.reviewOnly must be true or false'],
+      [reviewSource.replace("'gate': { model: 'model-gate'", "'gate': { model: '<explicit>'"), reviewArgs(), 'UNIT.models.gate.model must be set by the root'],
+    ]) {
+      const seen = []
+      const script = new AsyncFunction('agent', 'phase', 'log', 'args', source.replace('export const meta =', 'const meta ='))
+      await expect(script(async prompt => { seen.push(prompt) }, () => {}, () => {}, args)).rejects.toThrow(message)
+      expect([message, seen]).toEqual([message, []])
+    }
+    // The entries of the stages a review-only run never starts may stay as shipped.
+    const shipped = reviewOnly(skeleton).replace(/^(\s+)'?(gate|correctness|spec|dupes|quality|inverse|rules|alternatives|[a-z]+-[a-z-]+)'?: \{ model: '<[^']*>'/gm,
+      (_, indent, key) => `${indent}'${key}': { model: 'model-${key}'`)
+    expect(shipped).toContain("impl: { model: '<explicit>'")
+    const { result } = await simulate({ script: new AsyncFunction('agent', 'phase', 'log', 'args', shipped.replace('export const meta =', 'const meta =')), args: reviewArgs() })
+    expect(result.exit).toBe('clean')
+  })
+
+  test('the review-pass skill runs the main script in review mode and has you judge the findings', async () => {
+    const text = flat(await Bun.file(new URL('../skills/review-pass/SKILL.md', import.meta.url)).text())
+    for (const phrase of ['Load the `workflow-skills:writing-style` skill first.',
+      'Copy the main script of `workflow-skills:implement-review-verify` and set `reviewOnly` to true in its marked block.',
+      'Pass at launch `base` and `head`',
+      'Judge every finding yourself, as the finding verifier of a main run would.',
+      'Never send a finding of a review pass to a fix run.']) {
+      expect([phrase, text.includes(phrase)]).toEqual([phrase, true])
+    }
+    expect(await Bun.file(new URL('../skills/review-pass/scripts/review-pass.js', import.meta.url)).exists()).toBe(false)
   })
 })
