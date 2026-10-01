@@ -3389,6 +3389,23 @@ describe('the implementer checks the spec, and every stage reads only words said
     for (const call of calls.filter(c => c.label !== 'impl')) expect([call.label, 'specFindings' in call.schema.properties]).toEqual([call.label, false])
   })
 
+  test('a later entry replaces what it corrects only where it says it corrects it, in every stage that reads the spec', async () => {
+    const { calls } = await simulate({ reports: oneReport, verify: approveOne, fixes: { fix: fixed([disposition()]) } })
+    const rule = 'A later one replaces what it corrects in an earlier one only where its own words present it as a correction of it:' +
+      ' it says to do it differently instead, that something else was meant, adds to what was said because of it, or forbids what was' +
+      ' asked before. A later user entry that contradicts an earlier one without such words conflicts with it: report it.'
+    for (const call of calls.filter(c => c.label !== 'gate')) {
+      expect([call.label, flat(call.prompt).includes(rule)]).toEqual([call.label, call.prompt.includes('SPEC (authority)')])
+    }
+    // A fix run reads no spec entries, so its prompts carry no such rule.
+    const fix = await simulateFix()
+    for (const call of fix.calls) expect([call.label, call.prompt.includes('as a correction of it')]).toEqual([call.label, false])
+    expect(await template('implementer')).toContain('cannot both hold, the later one not correcting the earlier one as the authority block of' +
+      ' your prompt defines;')
+    expect(flat(skill)).toContain('Expect the implementer to report a later user entry that contradicts an earlier one without such words as a' +
+      ' `joint-impossibility`.')
+  })
+
   test('every stage that reads the spec learns the directory its entries and transcript evidence resolve in', async () => {
     const { calls } = await simulate({ reports: oneReport, verify: approveOne, fixes: { fix: fixed([disposition()]) } })
     const line = 'TRANSCRIPTS: a session file that a spec entry or a transcript evidence entry names by a relative path lies under ' + TRANSCRIPTS + '.'

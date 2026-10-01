@@ -17,7 +17,9 @@ record, the shape the three concern seats use. The main script's schema for the 
 `evidence` with at least one pointer and allows no other field, and its completeness check refuses a
 transcript pointer without a key path and a rule pointer with one. A `joint-impossibility` entry
 points at each statement of the conflict, because two statements of the user that cannot both hold
-are one finding about both.
+are one finding about both. A later statement whose own words present it as a correction of an
+earlier one replaces what it corrects and is no conflict; a later statement that contradicts an
+earlier one without such words is.
 
 The main script adds every entry to `remaining` as a `spec-finding` item after the pass, whatever
 its ending, and the entry travels there as the implementer returned it, `evidence` included. An

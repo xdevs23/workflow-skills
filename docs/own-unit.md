@@ -35,7 +35,8 @@ abort on a failed check and its handling of a silent spec. Before the first edit
 the spec against the code, checking what the spec's entries claim against the code instead of only
 reading them, and it looks for the three classes the removed review looked for:
 
-- `joint-impossibility`: two statements of the user that each hold alone and cannot both hold;
+- `joint-impossibility`: two statements of the user that each hold alone and cannot both hold, the
+  later one contradicting the earlier one without presenting itself as a correction of it;
 - `missing-contract`: an artifact the spec assumes without saying how it is made;
 - `reality-drift`: a recorded fact the code no longer bears out.
 

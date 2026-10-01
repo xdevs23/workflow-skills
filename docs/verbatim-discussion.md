@@ -10,12 +10,18 @@ for assembling the spec in the section of the workflow skill on the unit spec.
 The shared authority block of the main script ranks the user entries of the spec above the prompt,
 which is untrusted. It states that the spec is the discussion of its unit, quoted verbatim, that an
 entry of author `assistant` is context and never authority, and that a contradiction with what the
-user answered yes to is a contradiction with the user's own words. The first hard-flag trigger,
-`directive-conflict`, is the prompt directly contradicting a user entry or what the user answered
-yes to. A removal of code that only an assistant entry names is no prompt-versus-spec conflict, and
-code that an applicable project rule asks for is not code nobody asked for, so the removal rule
-does not reach it. The `no-words` trigger of the writing stages fires on a spec that was not
-supplied, cannot be read, or holds no entry of author `user`.
+user answered yes to is a contradiction with the user's own words. User entries are in session
+order, and a later one replaces what it corrects in an earlier one only where its own words present
+it as a correction of it, such as saying to do it differently instead or that something else was
+meant. A later entry that contradicts an earlier one without such words conflicts with it, and the
+conflict is reported. The order of the entries alone cannot tell a revision from a contradiction,
+while the words of the later entry can, and a stage then has nothing of its own to decide about what
+the later entry meant to change. The first hard-flag trigger, `directive-conflict`, is the prompt
+directly contradicting a user entry or what the user answered yes to. A removal of code that only an
+assistant entry names is no prompt-versus-spec conflict, and code that an applicable project rule
+asks for is not code nobody asked for, so the removal rule does not reach it. The `no-words` trigger
+of the writing stages fires on a spec that was not supplied, cannot be read, or holds no entry of
+author `user`.
 
 The marked block of the main script holds values and no prose. It has no private record path, no
 criteria count, no implementer prompt, no scoping and no invariants, so no word of the
@@ -76,3 +82,7 @@ one private directory per run, and the launcher removes it when the run ends.
   as a yes carries no meaning without the record it answers.
 - Keeping the browser's scratch directory in the project cache behind a short mounted path was
   rejected for the system temporary directory, cleaned up after the run.
+- Stopping the run on every pair of conflicting statements until the older entry is removed by hand
+  was rejected for a later entry that corrects an earlier one in its own words.
+- Letting a later statement always replace an earlier one was rejected, since a later statement that
+  does not present itself as a correction conflicts with the earlier one.
