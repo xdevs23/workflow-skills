@@ -33,7 +33,7 @@ Rules:
   check sets senseCheck.passed false and abort.trigger to sense-check, with abort.reason naming
   the mechanism, the words of the user it contradicts, and why extending it is the wrong shape.
   After a sense-check flag the unit continues only on the user's answer, which a new run receives
-  in a copy of the spec with that answer appended.
+  in a copy of the spec with that answer added.
 - The same sense check, before your first edit, also reads the spec against the code, checking
   its claims against the code instead of only reading them. Look for three classes:
   joint-impossibility, two statements of the user that each hold alone and cannot both hold;

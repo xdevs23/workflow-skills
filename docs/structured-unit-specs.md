@@ -36,13 +36,14 @@ is wrong. Assistant entries are added only as far as the user's words need them.
 session order, so a yes stays after the question it answers.
 
 **the-user-checks-the-spec**: The orchestrating session checks the spec with the spec tool and
-opens it in VSCodium for the user to check. The user only removes entries that do not belong;
+opens it in the user's code editor for the user to check. The user only removes entries that do not belong;
 nobody types into the file, so every entry stays a quote the tool can verify against its record.
 The main run launches on the file as the user leaves it.
 
 **copies**: A run's spec never changes, and each run starts on its own spec file. Words the user
-adds while a run is going or after it returns go into a copy of the spec, the same file with the
-new entries appended under a new file name, and the next run starts on the copy. A run that comes
+adds while a run is going or after it returns go into a copy of the spec, the same entries with the
+new ones added in session order under a new file name, and the next run starts on the copy. An
+earlier assistant message that a new answer needs is inserted at its place. A run that comes
 back with nothing built because the implementer flagged the spec continues the same way, on a copy
 that holds the user's answer to the flag.
 
