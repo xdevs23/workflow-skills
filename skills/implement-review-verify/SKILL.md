@@ -117,7 +117,7 @@ yours the user has seen in the chat.
 `<plugin root>/tools/check-spec.ts` checks the spec. The plugin root is this repository when the
 work is on the plugin itself, and otherwise the installed plugin's directory under the plugin
 cache, the one whose `.claude-plugin/plugin.json` carries the loaded version. The committed,
-synthetic example at `tests/fixtures/spec-provenance/valid.yaml` is exercised by the tool's tests.
+synthetic example at `tests/fixtures/spec/valid.yaml` is exercised by the tool's tests.
 
 ```sh
 bun <plugin root>/tools/check-spec.ts .cache/specs/<unit>.yaml --transcripts <session-dir> --base '<base list>' --json
@@ -1707,8 +1707,8 @@ prompt rule it sees nowhere is a defect.
   diff, the start commits, the check command).
 - **Do NOT modify, reorder, or paraphrase the base rules inline — append only.**
 
-No script of this skill starts the `gap-finder` and `spec-provenance` templates. Both stay in
-`agents/` for use as an `agentType` in other workflows.
+No script of this skill starts the `gap-finder` template. It stays in `agents/` for use as an
+`agentType` in other workflows.
 
 ## Model assignment
 

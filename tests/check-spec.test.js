@@ -5,7 +5,7 @@ import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const root = fileURLToPath(new URL('../', import.meta.url))
-const fixtures = join(root, 'tests/fixtures/spec-provenance')
+const fixtures = join(root, 'tests/fixtures/spec')
 const tool = join(root, 'tools/check-spec.ts')
 mkdirSync(join(root, '.cache'), { recursive: true })
 const scratch = mkdtempSync(join(root, '.cache/check-spec-'))
@@ -126,7 +126,7 @@ describe('unit spec validation', () => {
 
   test('all violations are reported in entry order, the spec-wide ones first', () => {
     const result = fixture('several')
-    const prefix = 'tests/fixtures/spec-provenance/several.yaml: '
+    const prefix = 'tests/fixtures/spec/several.yaml: '
     const messages = result.err.trim().split('\n').map(line => line.slice(line.indexOf(prefix) + prefix.length))
     expect(messages).toEqual([
       'spec.summary: unknown key',

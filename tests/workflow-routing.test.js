@@ -1079,7 +1079,6 @@ const FIELDS = {
   'reviewer-inverse-spec': ['abort', 'limitations', 'coverage', 'findings', 'authorizations'],
   'project-rule-reader': ['abort', 'limitations', 'coverage', 'findings', 'ruleSources', 'scope'],
   'cold-alternatives': ['limitations', 'coverage', 'findings', 'currentShapeRight', 'candidates'], 'gap-finder': [],
-  'spec-provenance': ['limitations', 'coverage', 'findings', 'checks'],
   'scope-check': ['limitations', 'coverage', 'classifications'], 'diff-check': ['limitations', 'coverage', 'mappings', 'findings'],
 }
 const BRIEFED = ['implementer', 'fixer', 'finding-verifier', 'reviewer-correctness', 'reviewer-spec-compliance', 'duplicate-checker', 'reviewer-inverse-spec', 'project-rule-reader']
@@ -1134,7 +1133,7 @@ describe('spec provenance instructions and routing', () => {
     for (const phrase of [
       'Write the spec as `<unit>.yaml` in the private-spec location that `workflow-skills:local-cache` defines, ignored and untracked because it quotes the user.',
       'by its path under the main checkout, never a path relative to its worktree',
-      '`<plugin root>/tools/check-spec.ts` checks the spec.', 'tests/fixtures/spec-provenance/valid.yaml',
+      '`<plugin root>/tools/check-spec.ts` checks the spec.', 'tests/fixtures/spec/valid.yaml',
       'Expect the width rule on the text of every entry.', 'Pass `--base` the run\'s base list as JSON',
     ]) expect([phrase, flat(skill).includes(phrase)]).toEqual([phrase, true])
     for (const stale of ['numbered acceptance criteria in the spec', 'make sure the spec doc carries them',
@@ -1196,24 +1195,7 @@ describe('spec provenance instructions and routing', () => {
     for (const call of calls) expect([call.label, 'verdicts' in (call.schema.properties ?? {})]).toEqual([call.label, false])
   })
 
-  test('the provenance template judges authorization and repeats read-only observations against the base date', async () => {
-    const prose = flat(await template('spec-provenance'))
-    for (const phrase of ['whether the cited words authorize', 'surrounding context', 'each coverage entry and finding',
-      'source transcript or observation', "reviewer's claim that it could happen", "gap-finder's three severities", 'simpler alternative',
-      'parents include the transcript item', "Re-run each observation's command", 'read-only by construction',
-      'report a must-fix finding against that observation item, because an observation in a spec must be re-runnable without writing. ' +
-      'Never report it as a limitation.',
-      'output and exit status', 'older than the newest timestamp of the', 'findings are advisory',
-      'read the assistant message the cited words reply to', 'answer a list, a label or a yes/no question, the item must carry answers',
-      'a missing one is a must-fix finding', 'against question and answer together', 'admit two readings, the finding is must-fix and names both readings',
-      'These findings are advisory, and none of them holds up a run.']) {
-      expect(prose).toContain(phrase)
-    }
-  })
-
-  test('the provenance template has the root amend the YAML, and no template has it generate a document before implementation', async () => {
-    expect(await template('spec-provenance')).toContain(
-      'The root resolves technical decisions from existing authority and amends the YAML. No design document exists before implementation.')
+  test('no template has the root generate a document before implementation', async () => {
     for (const file of new Bun.Glob('*.md').scanSync({ cwd: fileURLToPath(new URL('../agents/', import.meta.url)) })) {
       expect([file, (await template(file.replace(/\.md$/, ''))).includes('publishable artifacts')]).toEqual([file, false])
     }
@@ -1240,22 +1222,6 @@ describe('spec provenance instructions and routing', () => {
       'A question about a premise stops every edit to it.', 'Names follow decisions.']) {
       const found = premise.some(block => block.strong[0] === opener && block.text.startsWith(opener))
       expect([opener, found]).toEqual([opener, true])
-    }
-  })
-
-  test('the provenance template searches the whole record and checks the frame around the items', async () => {
-    const prose = flat(await template('spec-provenance'))
-    for (const phrase of ['Search every message of the user on every subject the spec covers, in every transcript of the transcript directory, queued messages included',
-      'A later statement that refines, narrows or contradicts a cited one outranks it',
-      'An item whose cited words a later statement contradicts or refines is a must-fix finding',
-      'a subject the spec decides with no words of the user on it at all',
-      'the summary sentence by sentence, every boundary item, every comment line of the raw spec file',
-      'every document, branch or earlier unit the spec names or builds on',
-      'A claim there that no item backs is a must-fix finding, and so is a decision found only in a comment',
-      'Comments may carry provenance notes only', 'Read the comments from the raw file',
-      'A hand-written design document cited as the design is a must-fix finding',
-      'lists the decisions it inherits as items with the user\'s words']) {
-      expect([phrase, prose.includes(phrase)]).toEqual([phrase, true])
     }
   })
 
@@ -2832,7 +2798,7 @@ describe('what a limitation is, and the per-commit files check', () => {
   test('every reading-stage template states the rule, the verifier discards a breaking entry, and the skill states it once', async () => {
     const readingTemplates = Object.entries(FIELDS)
       .filter(([name, fields]) => fields.includes('limitations') && !['implementer', 'fixer'].includes(name)).map(([name]) => name)
-    expect(readingTemplates).toHaveLength(12)
+    expect(readingTemplates).toHaveLength(11)
     const rule = flat(LIMITS_RULE.replace(/^a /, 'A '))
     for (const name of readingTemplates) expect([name, (await template(name)).includes(rule)]).toEqual([name, true])
     expect(await template('finding-verifier')).toContain('discard a limitation that names an act the stage\'s own rules forbid ' +
@@ -3034,18 +3000,6 @@ describe('the user\'s words reach every stage', () => {
       expect([name, lower(text).includes('approves field')]).toEqual([name, false])
     }
     expect(lawText(skill, 6)).toContain('this hierarchy and the directive-conflict hard flag of law 8 treat a contradiction with what the user answered yes to like a contradiction with the user\'s own sentence')
-  })
-
-  test('the provenance template states the search for every message of the user, and none of its findings holds up a run', async () => {
-    const search = "every message the user wrote, in every transcript of the directory and queued messages included, on the unit's subject and on the subject of everything the unit extends: documents, earlier units, and existing code the unit changes or builds on, whether or not an item names it"
-    const missing = "A message on those subjects that no record entry holds is a must-fix finding, in the same class as a must-fix finding that an item's words are missing."
-    const provenance = await template('spec-provenance')
-    expect([provenance.includes(search), provenance.includes(missing)]).toEqual([true, true])
-    expect(provenance).toContain('These findings are advisory, and none of them holds up a run.')
-    // No finding delays a run or sends a question to the user before it.
-    for (const pattern of [/blocks? (the (main )?run|it as stated)/i, /before (the main run|code is written)/i, /question before/i, /the block is a rule/i]) {
-      expect([String(pattern), pattern.test(provenance)]).toEqual([String(pattern), false])
-    }
   })
 
   test('the README and the workflow skill describe the spec as entries that quote the session records', async () => {
@@ -3361,12 +3315,12 @@ describe('the implementer checks the spec, and every stage reads only words said
     for (const [path, text] of files) {
       for (const pattern of SPEC_REVIEW) expect([path, String(pattern), pattern.test(text)]).toEqual([path, String(pattern), false])
     }
-    // The gap-finder and spec-provenance templates stay as files, and no script starts them.
-    for (const name of ['gap-finder', 'spec-provenance']) {
-      expect([name, await Bun.file(new URL(`../agents/${name}.md`, import.meta.url)).exists()]).toEqual([name, true])
-      for (const script of [skeleton, fixSkeleton]) expect([name, script.includes(name)]).toEqual([name, false])
-    }
-    expect(flat(skill)).toContain('No script of this skill starts the `gap-finder` and `spec-provenance` templates.')
+    // The gap-finder template stays as a file, and no script starts it. The spec-provenance template is gone.
+    expect(await Bun.file(new URL('../agents/gap-finder.md', import.meta.url)).exists()).toBe(true)
+    for (const script of [skeleton, fixSkeleton]) expect(script.includes('gap-finder')).toBe(false)
+    expect(flat(skill)).toContain('No script of this skill starts the `gap-finder` template.')
+    expect(await Bun.file(new URL('../agents/spec-provenance.md', import.meta.url)).exists()).toBe(false)
+    for (const file of pluginFiles()) expect([file, (await pluginText(file)).includes('spec-provenance')]).toEqual([file, false])
   })
 
   test('every repository entry says its path is the listed one, and its head the commit ID alone', async () => {
