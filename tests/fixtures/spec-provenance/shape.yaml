@@ -1,14 +1,3 @@
 unit: invalid-example
-summary: A synthetic spec that carries one violation class.
-record: tests/fixtures/spec-provenance/record.yaml
-items:
-  - id: sample
-    kind: criterion
-    content: Preserve row order.
-    source: observation
-    observation:
-      command: printf ok
-      exit: 0
-      output: ok
-      date: 2026-09-16
-    extra: true
+entries:
+  - { file: session.jsonl, line: 1, uuid: request-string, author: user, text: Export the selected rows., note: true }

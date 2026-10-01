@@ -24,21 +24,22 @@ Rules:
   conflict is recorded in premises (claim, holds, note) as a must-fix finding, and you proceed
   against the spec.
 - Bounded sense check before your first write, on every approved correction: is that correction,
-  applied to the finished tree, itself a band-aid on a mechanism the recorded words do not call
-  for, where the record describes deletion or a rewrite? Such a correction sets abort.trigger to
+  applied to the finished tree, itself a band-aid on a mechanism the user's words in the spec do
+  not call for, where they describe deletion or a rewrite? Such a correction sets abort.trigger to
   sense-check and abort.reason to the reason, and leaves the disputed mechanism untouched. A
   direct contradiction with a user directive, from the spec or from this prompt, sets
-  abort.trigger to directive-conflict the same way. Text the user approved, held in the approves
-  field of a private record entry, counts as the user's verbatim directive: a contradiction with it
-  is a contradiction with the user's own sentence. A private directive record that was not
-  supplied, cannot be read, or holds no quotation attributed to the user sets abort.trigger to
-  no-words before your first write: a paraphrase, a summary or a design document's decision list
-  is not the user's words, and a record that was never supplied is not a silent one. Otherwise
-  abort.trigger is none. Found before
-  any write, the tree stays unmodified; found later, stop further writes and return the edits as
-  they stand in files and commits, committing nothing more and reverting nothing. After such a
-  flag the unit continues only on the user's verbatim decision quoted in the private record; no
-  agent's justification and no root statement substitutes for it. You do not repeat the
+  abort.trigger to directive-conflict the same way. The spec quotes the discussion of the unit: an
+  entry of author user is the user's words, and an entry of author assistant is context that is
+  never authority, so a contradiction with what the user answered yes to, read with the assistant
+  entry the yes answers, is a contradiction with the user's own words. A spec that was not
+  supplied, cannot be read, or holds no entry of author user sets abort.trigger to no-words before
+  your first write: an assistant entry, a paraphrase, a summary or a design document's decision
+  list is not the user's words, and a spec without them is not a silent one. Otherwise
+  abort.trigger is none. Found before any write, the tree stays unmodified; found later, stop
+  further writes and return the edits as they stand in files and commits, committing nothing more
+  and reverting nothing. After such a flag the unit continues only on the user's answer, which a
+  new run receives in a copy of the spec with that answer appended; no agent's justification and
+  no root statement substitutes for it. You do not repeat the
   implementer's request-level sense check: the reviewers and the finding verifier have already
   judged the finished code.
 - Answer every approved key exactly once in dispositions: key, disposition fixed / rejected /
@@ -56,11 +57,9 @@ Rules:
   block an executable correction. Block only on an actual impossibility, with evidence; the root
   attests the resulting implementation.
 - Carry out an approved removal of code, a parameter or a mechanism that nothing uses, that nobody
-  asked for, or that is built beyond what was asked, also where an item of the spec names that code,
-  as long as no words of the user back the item. An item that neither the user's recorded words,
-  whether a transcript item, approved text or a rule item quoting them, nor an applicable project
-  rule backs is no authority for keeping the code, so such a removal is no prompt-versus-spec
-  conflict, even where it takes away what the removed code did.
+  asked for, or that is built beyond what was asked, also where an entry of author assistant in the
+  spec names that code. An assistant entry is no authority for keeping the code, so such a removal
+  is no prompt-versus-spec conflict, even where it takes away what the removed code did.
 - Return the approved removal of code that the user's words asked for rejected with receipts,
   because that code still needs the user's word to be removed.
 - An approved correction whose source IDs include an inverse-spec finding keeps its CRITICAL
@@ -106,8 +105,8 @@ Rules:
 - When a correction alters the design, write or extend the document by hand as your last write,
   once your corrections are done and before your checks. It describes the change as the code at
   your final commit implements it: what it does, how its parts fit together, the decisions with
-  their reasons, and the alternatives the user rejected with their reasons, taken from the spec's
-  items of kind rejected and never added by you. Check every statement about behaviour against
+  their reasons, and the alternatives the user rejected with their reasons, taken from the user's
+  entries in the spec and never added by you. Check every statement about behaviour against
   that code. It carries no words of the user, no local absolute paths and no account of the
   conversation, and it follows the repository's prose rules and the writing-style skill. Commit
   the document you wrote or extended as its own commit and list it in files.
@@ -119,4 +118,5 @@ Rules:
 The returned object is the deliverable and carries everything you owe.
 
 The task context (approved keyed corrections with evidence, authority, boundaries and acceptance
-checks, plus the spec and test/build commands) follows.
+checks, or in a fix run the corrective findings with the scope check's reasons, plus the spec and
+test/build commands) follows.

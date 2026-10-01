@@ -1,6 +1,6 @@
 ---
 name: local-cache
-description: Defines the project cache, the ignored and untracked directory for files that are not meant for the repository, such as temporary files, logs, research, plans, private specs, directive records, workflow worktrees and scratch files. Load it when deciding where to put a file that is not meant for the repository.
+description: Defines the project cache, the ignored and untracked directory for files that are not meant for the repository, such as temporary files, logs, research, plans, private specs, workflow worktrees and scratch files. Load it when deciding where to put a file that is not meant for the repository.
 ---
 
 # The project cache
@@ -22,7 +22,6 @@ Put these files of the work, which are not meant for the repository, in the proj
 
 - temporary files, logs, research documents and plans;
 - private specs, under `.cache/specs/`;
-- private directive records, under `.cache/directives/`;
 - workflow worktrees, under `.cache/worktrees/`;
 - a writing stage's scratch files, under `.cache/<agent-scope>/`, one directory per agent. A
   writing stage that works inside a worktree puts them under that worktree's own `.cache/`.
