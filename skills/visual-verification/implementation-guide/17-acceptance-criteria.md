@@ -1,9 +1,9 @@
 # Part 17: acceptance criteria
 
-These are the reference harness's acceptance criteria, generalized for any rendered interface. An
-adoption spec cites them, and the verification of an adoption reports a separate verdict with
-artifact and measurement evidence for every criterion. A criterion that was not run is reported as
-not run; "not run" is never "pass".
+These are the reference harness's acceptance criteria, generalized for any rendered interface. The
+runs of an adoption receive them among their rule sources, and the verification of an adoption
+reports a separate verdict with artifact and measurement evidence for every criterion. A criterion
+that was not run is reported as not run; "not run" is never "pass".
 
 ## The criteria
 

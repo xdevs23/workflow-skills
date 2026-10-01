@@ -49,8 +49,8 @@ setting and build values are fixed, and two clean runs of the same scene give ze
 Tolerances are never raised to make a run pass, and nothing is masked.
 
 The comparison stays the strict automatic verdict, even for a change that alters a compatibility
-input on purpose, such as a translation, a fixture, the scene module or a dependency lock. Such a
-change says so in its criterion. When the comparison refuses its pair, the refusal is returned
+input on purpose, such as a translation, a fixture, the scene module or a dependency lock. The
+user's words for the unit of work name such a change. When the comparison refuses its pair, the refusal is returned
 together with an evidence sheet of the same two captures, and the reviewers judge the outcome by
 reading the sheet, the two receipts and the after capture's measured checks.
 
@@ -75,17 +75,10 @@ carry no unchecked type casts.
 Every artifact stays local and private. Captures, reports, comparisons, samples, source exports,
 dependency caches and scratch files live in the harness directory inside the project cache, the
 location `workflow-skills:local-cache` defines, and only scene modules, synthetic fixtures and the
-harness code are tracked. The guide calls that location the harness directory throughout. Scratch
-files leave it only when the scratch directory needs a short path on a setup where no mount or share
-is possible, and the scratch directory then lives in the system temporary directory.
-
-The scratch directory of the rendering engine lives in the project cache as well. When its path is
-too long for the rendering engine, the setup makes the directory reachable at a short path through
-a mount or share, such as a virtual machine's file share or a bind mount, and each run's launcher
-scratch override names that run's own private directory below the short path, never the shared
-short path itself. In a unit spec, the orchestrating session provides that short path to the
-stages. The system temporary directory is used only when no mount or share is possible, and then
-within the user's global rules.
+harness code are tracked. The guide calls that location the harness directory throughout. The one
+exception is the scratch directory of the runtime and the rendering engine: it lives in the system
+temporary directory, one private directory for each run, and the launcher removes it when the run
+ends.
 
 ## Components are examples
 

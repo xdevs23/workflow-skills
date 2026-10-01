@@ -45,16 +45,14 @@ proves the look did not change.
   The guide states what each component of a harness has to do and names concrete components and
   libraries only as examples. The plugin ships no harness code. Each project implements its own
   harness from the guide, so the harness fits the project's language, toolkit and build.
-- Cite the guide part by part in the adoption spec. Each citation is a rule item whose file is the
-  guide file under the plugin root,
-  `<plugin root>/skills/visual-verification/implementation-guide/<file>`, with its line and a quote
-  of the rule. Reviewers of the adoption then check the harness against the guide's own words. The
-  plugin root is the installed plugin's directory under the plugin cache, the one whose manifest
-  carries the loaded version.
-- Decide the split of the adoption per project when the adoption spec is written, and cite in each
-  unit's spec the guide parts it implements. Adoption is likely split into several sequential units,
-  such as the integration survey and the launcher first, then the data boundary, the runtime and the
-  first scene, then comparison, reports and the evidence sheet, then the self-test suite.
+- Give the runs of each adoption unit the guide parts it implements as rule sources, each by its
+  file under the plugin root, `<plugin root>/skills/visual-verification/implementation-guide/<file>`.
+  Reviewers of the adoption then check the harness against the guide's own words, and a finding
+  points at the guide file and line it rests on. The plugin root is the installed plugin's
+  directory under the plugin cache, the one whose manifest carries the loaded version.
+- Split the adoption per project into units. Adoption is likely split into several sequential
+  units, such as the integration survey and the launcher first, then the data boundary, the runtime
+  and the first scene, then comparison, reports and the evidence sheet, then the self-test suite.
 
 ## Verifying a change
 
@@ -126,67 +124,56 @@ A scene is curated when no existing scene exposes the surface a change touches.
 The evidence sheet is a view for a reader. It never passes or fails a pair of captures; the
 comparison stays the verdict.
 
-## Visual work in an implement-review-verify unit spec
+## Visual work in an implement-review-verify unit
 
-`workflow-skills:implement-review-verify` stays unchanged for visual work. Express the visual part
-of a unit in the unit spec, and the stages act on it as the spec states.
+`workflow-skills:implement-review-verify` stays unchanged for visual work. What a visual change
+should do comes from the user's words in the unit spec, and nothing is written into the spec for
+it: no criterion, no capture name and no path.
 
-- Name the scene, the checkpoints and the expected comparison outcome in a criterion for a visual
-  change. The outcome is one of three forms: zero changed pixels on every checkpoint; changes only
-  in the named checkpoints with every measured check passing; or, for a change that alters
-  compatibility inputs on purpose, the intended input change. A criterion of the third form says
-  that its change alters a compatibility input on purpose, such as a translation, a fixture, the
-  scene module or a dependency lock, and names the checkpoints expected to change.
-- Capture the before state once, in the worktree the stages use, from the base commit, before the
-  implement stage starts, and write the capture name into the unit spec. No stage captures the
-  before state again.
-- Keep the scratch directory of the harness in the worktree's project cache. When its path is too
-  long for the rendering engine, the setup makes that directory reachable at a short path through a
-  mount or share, such as a virtual machine's file share or a bind mount, and you provide that short
-  path to the stages in the unit spec. Each run's launcher scratch override names that run's own
-  private directory below the short path, never the shared short path itself. The system temporary
-  directory is used only when no mount or share is possible, and then within the user's global
-  rules.
+- Judge a visual change by its comparison outcome, which takes one of three forms: zero changed
+  pixels on every checkpoint; changes only in the checkpoints the user's words concern, with every
+  measured check passing; or, for a change that alters a compatibility input on purpose, such as a
+  translation, a fixture, the scene module or a dependency lock, the intended input change.
+- The implementer captures the before state in its worktree from its start commit, before its
+  first edit, under a name never used before in that worktree. No other stage captures the before
+  state.
 - Each writing stage, after its last commit, captures the after state under a name never used
   before in that worktree, such as its stage label joined with the run identifier. It runs the
-  comparison against the before capture and returns both capture names with the comparison report
-  as evidence. The stage's pass or fail proof stays the project's check command, because the
-  comparison exits nonzero for every intended change. The outcome is judged from the changed-pixel
-  count of each checkpoint against the checkpoints the criterion names.
-- For a criterion of the third form, the comparison refuses the pair and stays strict. The writing
+  comparison against the before capture and returns the comparison command and its output, which
+  name both captures, in its checks. The stage's pass or fail proof stays the project's check
+  command, because the comparison exits nonzero for every intended change.
+- The implementer's returned object reaches the finding verifier and the reviewers that receive it,
+  so the capture names travel with it to the next stages. A stage without that object finds the
+  captures in the harness directory by their receipts: the before capture is the one whose receipt
+  carries the run's base commit, and the after capture the one whose receipt carries the snapshot
+  under review. A fix run's fixer reaches them through a pointer its fix list entry attaches, which
+  names the parent run's implementer result in the journal.
+- For a change of the third form, the comparison refuses the pair and stays strict. The writing
   stage returns the refusal together with an evidence sheet of the same two captures, rendered under
   an output name never used before. The comparison is never loosened for the intended input change,
   since that would weaken the strict verdict.
 - Reading stages that receive the spec open the PNGs, the receipts and the comparison reports in
   the harness's directory inside that worktree's project cache, the location
-  `workflow-skills:local-cache` defines. For a criterion of the third form they judge the outcome by
+  `workflow-skills:local-cache` defines. For a change of the third form they judge the outcome by
   reading the evidence sheet, the two receipts and the after capture's measured checks in its
   receipt and report.
 - Each reading stage checks that the after capture's receipt carries the snapshot under review as
-  its source revision, and that the before capture's receipt carries the base commit the unit spec
-  names; an after capture of another commit is no evidence for this one.
+  its source revision, and that the before capture's receipt carries the run's base commit; an
+  after capture of another commit is no evidence for this one.
 - A point that needs a new capture goes to the fixer, since reading stages write nothing.
 - Stages that receive no spec by design, such as the fresh-context quality and alternatives reviews
   and the roaster, get nothing added.
-- State in a fix run's fix-list entry for a visual defect, in its correction, the scene, the
-  checkpoints, the expected outcome and the name of the before capture. For a change of the third
-  form, the entry also says that the change alters a compatibility input on purpose, and names the
-  evidence sheet of the two captures that the reading stages judge the outcome from.
 
 ## Known pitfalls
 
-- Reach the rendering engine's scratch directory at a short path when its own path exceeds a path
-  limit. A browser engine binds a local socket under its scratch directory, and a socket path holds
-  at most 107 bytes, so the scratch path of a deep checkout or worktree can exceed the launcher's
-  limit, and the launcher refuses it before the engine starts. The scratch directory still lives in
-  the project cache. The setup makes it reachable at a short path through a mount or share, such as
-  a virtual machine's file share or a bind mount. Each run's launcher scratch override names that
-  run's own private directory below the short path, never the shared short path itself and never a
-  directory of another run. The system temporary directory is used only when no mount or share is
-  possible, and then within the user's global rules.
+- Keep the rendering engine's scratch directory in the system temporary directory. A browser engine
+  binds a local socket under its scratch directory, and a socket path holds at most 107 bytes, so a
+  scratch directory inside a deep checkout or worktree can exceed the launcher's limit, and the
+  launcher refuses it before the engine starts. Each run gets its own private scratch directory
+  there, never one of another run, and the launcher removes it when the run ends. The directory
+  holds only temporary files; captures, receipts and reports stay in the harness directory.
 - Expect every capture to be slow on a slow shared file system. On a network or user-space mounted
-  checkout, every page or screen load can take tens of seconds. A short path that a mount gives the
-  same storage leaves it as slow as before.
+  checkout, every page or screen load can take tens of seconds.
 - Give every stage and every repeated attempt its own capture name. Capture names cannot be reused,
   and a second run under an existing name fails.
 - Never filter harness output through other commands. Piping it through `head`, `tail` or `grep`

@@ -25,8 +25,8 @@ run.
 ## Intended input changes
 
 A change can alter a compatibility input on purpose, such as a translation, a fixture, the scene
-module or a dependency lock. The unit of work says so in its criterion before the change starts. The
-comparison refuses its pair like any other incompatible pair and stays the strict automatic verdict.
+module or a dependency lock. The user's words for the unit of work name such a change before it
+starts. The comparison refuses its pair like any other incompatible pair and stays the strict automatic verdict.
 It is never loosened for an input changed on purpose, since a check that accepts some changed
 inputs is no longer the strict verdict.
 
