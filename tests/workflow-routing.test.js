@@ -1,4 +1,5 @@
 import { describe, expect, test } from 'bun:test'
+import { dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const skill = await Bun.file(new URL('../skills/implement-review-verify/SKILL.md', import.meta.url)).text()
@@ -2344,8 +2345,6 @@ describe('fix-only follow-up runs', () => {
       [{ transcripts: undefined }, 'args.transcripts must name the transcript directory'],
       [{ findings: [] }, malformed],
       [{ findings: undefined }, malformed],
-      [{ findings: [journalFinding('correctness:0'), journalFinding('correctness:0')] }, malformed],
-      [{ findings: [{ source: 'correctness-0', finding: TWO[0].finding }] }, malformed],
       [{ findings: [{ source: 'correctness:0', finding: 'The specified error is swallowed.' }] }, malformed],
       [{ findings: [{ id: 'return-error', source: 'correctness:0', finding: 'x', correction: 'Return the error.' }] }, malformed],
     ]) {
@@ -2360,6 +2359,49 @@ describe('fix-only follow-up runs', () => {
     await expect(new AsyncFunction('agent', 'phase', 'log', 'args', bad.replace('export const meta =', 'const meta ='))(
       async prompt => { calls.push(prompt) }, () => {}, () => {}, fixArgs())).rejects.toThrow('UNIT.parentSpec must name the parent unit spec YAML file')
     expect(calls).toEqual([])
+  })
+
+  test('a duplicate or malformed source reaches the launch command, whose run of the spec tool refuses it', async () => {
+    // The fix script runs on the spec tool's fix-list fixtures, and its launch check runs the tool.
+    const root = fileURLToPath(new URL('../', import.meta.url)).replace(/\/$/, '')
+    const lists = root + '/tests/fixtures/fix-list'
+    const source = filled(fixSkeleton).replace("worktree: '<isolated worktree>'", 'worktree: ' + JSON.stringify(root))
+      .replace("pluginRoot: '<plugin root>'", 'pluginRoot: ' + JSON.stringify(root))
+    expect(source).not.toContain('<isolated worktree>')
+    const script = new AsyncFunction('agent', 'phase', 'log', 'args', source.replace('export const meta =', 'const meta ='))
+    const PATH = dirname(process.execPath) + ':' + process.env.PATH
+    const launch = async findings => {
+      const labels = []
+      const agent = async (prompt, opts) => {
+        labels.push(opts.label)
+        if (opts.label !== 'gate') throw new Error('stop after the launch check')
+        const ran = Bun.spawnSync(['sh', '-c', prompt.split('\n')[0]], { env: { ...process.env, PATH } })
+        const stdout = ran.stdout.toString()
+        return { exitCode: ran.exitCode, stdout, stderr: ran.stderr.toString(), proof: ran.exitCode === 0 ? JSON.parse(stdout).proof : '' }
+      }
+      // A failed launch check rejects the run; a later stage's failure ends it with that cause in detail.
+      const message = await script(agent, () => {}, () => {}, { base: at(BASE), fixList: lists + '/list.yaml', transcripts: lists + '/transcripts', findings })
+        .then(result => result.detail, caught => caught.message)
+      return { labels, message }
+    }
+    // The two findings the fixture list names, as the fixture journal holds them.
+    const held = [
+      { source: 'correctness:1', finding: { file: 'src/example.js', claim: 'The specified error is\n  swallowed by the catch block.',
+        severity: 'must-fix', lane: 'fixer-actionable', receipts: [{ file: 'src/example.js', line: 12, quote: 'catch (error) {}' }] } },
+      { source: 'roaster:0', finding: { file: 'src/reader.js', claim: 'The file handle stays open when the read fails.',
+        severity: 'must-fix', lane: 'fixer-actionable', receipts: [{ file: 'src/reader.js', line: 20, quote: 'open(path)' }] } },
+    ]
+    const passed = await launch(held)
+    expect([passed.labels, passed.message]).toEqual([['gate', 'scope'], 'stop after the launch check'])
+    for (const [findings, refusal] of [
+      [[held[0], held[0], held[1]], 'launch values.findings: expected a mapping with a unique source'],
+      [[{ ...held[0], source: 'correctness-1' }, held[1]], 'launch values.findings: correctness-1 is not a finding of the fix list'],
+    ]) {
+      const refused = await launch(findings)
+      expect(refused.labels).toEqual(['gate', 'gate', 'gate'])
+      expect(refused.message).toContain('FAIL-FAST: gate returned no complete result after 3 attempts: the fix list check did not pass: exit 1')
+      expect(refused.message).toContain(refusal)
+    }
   })
 
   test('the two templates state the classes, the framing of a reviewer\'s claim and the mapping, and the skill states when the fix run applies', async () => {

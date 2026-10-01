@@ -320,14 +320,13 @@ const reported = list => list.map(entry => ({ ...entry, path: listPath(entry.pat
 if (typeof UNIT.fixList !== 'string' || !UNIT.fixList.endsWith('.yaml')) throw new Error('args.fixList must name the fix list YAML file')
 if (typeof UNIT.transcripts !== 'string' || !UNIT.transcripts) throw new Error('args.transcripts must name the transcript directory')
 if (typeof UNIT.parentSpec !== 'string' || !UNIT.parentSpec.endsWith('.yaml')) throw new Error('UNIT.parentSpec must name the parent unit spec YAML file')
-// A source ID names a reader of the parent run and the index of a finding in its list.
-const SOURCE = /^[a-z][a-z0-9]*(?:-[a-z0-9]+)*:(?:0|[1-9][0-9]*)$/
+// The launch check has the tool check each source ID and finding against the parent run's journal.
+// Here the list only needs the shape the launch command and the stages are built from.
 const findings = UNIT.findings
 if (!Array.isArray(findings) || !findings.length ||
-  findings.some(f => f == null || typeof f !== 'object' || typeof f.source !== 'string' || !SOURCE.test(f.source) ||
-    f.finding == null || typeof f.finding !== 'object' || Array.isArray(f.finding)) ||
-  new Set(findings.map(f => f.source)).size !== findings.length) {
-  throw new Error('args.findings must be the findings list from the check tool: non-empty, each with a unique source ID and the finding the journal holds')
+  findings.some(f => f == null || typeof f !== 'object' || typeof f.source !== 'string' ||
+    f.finding == null || typeof f.finding !== 'object' || Array.isArray(f.finding))) {
+  throw new Error('args.findings must be the findings list from the check tool: non-empty, each with a source string and a finding object')
 }
 const sourceIds = findings.map(f => f.source)
 checkModels(UNIT.models, ['gate', 'scope', 'fix', 'roast', 'diff'], 'UNIT.models')
