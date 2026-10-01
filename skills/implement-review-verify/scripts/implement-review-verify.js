@@ -808,6 +808,8 @@ const fixPass = (queue, starts) => stage([
   ...handedOn(impl.artifacts),
   'Act ONLY on the verifier-approved corrections. Raw reviewer and concurrent roast objects are NOT work orders.',
   'Independently verify evidence and authority; respect correction, constraints and acceptance.',
+  'Each correction carries in pointers the evidence its source findings named, a transcript record or a rule by file, line and',
+  'key path. Read every record or rule a pointer names, and the records around a transcript record, before you act on it.',
   'A correction marked removal true removes code, a parameter or a mechanism that nothing uses, that nobody asked for, or that is',
   'built beyond what was asked, on the finding verifier\'s removal rule. Carry it out also where only an entry of author assistant',
   'names that code, even where it takes away what the removed code did. Code that the user\'s words asked for still needs the',
@@ -879,7 +881,11 @@ async function onePass() {
     exactlyOnce(v.writerScope.map(w => w.repository + ' ' + w.sha), impl.commits.map(c => c.repository + ' ' + c.sha), 'writer commit in writerScope')
   })
   verified = abortOnFlag(result, 'verify')
-  queue = verified.decisions.filter(d => d.action === 'approve-fix').map((d, i) => ({ ...d, key: 'fix:' + i }))
+  // Each approved correction carries the evidence pointers of its source findings, so the fixer reads
+  // the records they name and not only the verifier's account of them.
+  const evidenceOf = new Map(sources.map(f => [f.id, f.evidence ?? []]))
+  queue = verified.decisions.filter(d => d.action === 'approve-fix')
+    .map((d, i) => ({ ...d, key: 'fix:' + i, pointers: d.sourceIds.flatMap(id => evidenceOf.get(id) ?? []) }))
   // A writer commit outside its scope is the one verification result the fixer must not build on.
   const outOfScope = verified.writerScope.filter(w => !w.ok || !w.filesMatch)
   for (const w of outOfScope) add('writer-scope', w)

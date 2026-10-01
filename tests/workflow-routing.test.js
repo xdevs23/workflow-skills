@@ -1481,7 +1481,7 @@ describe('one-pass remaining-items handoff', () => {
     expect(result.exit).toBe('root-resolution')
     expect(result.remaining[0]).toEqual({ kind: 'verifier-issue', severity: 'CRITICAL', item: issue })
     expect(result.remaining[1].kind).toBe('unattested-fix')
-    expect(result.remaining[1].item.approved).toEqual({ ...approval, key: 'fix:0' })
+    expect(result.remaining[1].item.approved).toEqual({ ...approval, key: 'fix:0', pointers: backed.evidence })
     expect(result.remaining).toHaveLength(2)
   })
 
@@ -1501,7 +1501,7 @@ describe('one-pass remaining-items handoff', () => {
       fixes: { fix: fixed([disposition()]) } })
     expect(result.exit).toBe('follow-up')
     expect(result.remaining).toEqual([{ kind: 'unattested-fix', severity: 'nit', item: {
-      approved: { ...approval, key: 'fix:0' }, disposition: disposition(), snapshots: at(FIXED),
+      approved: { ...approval, key: 'fix:0', pointers: backed.evidence }, disposition: disposition(), snapshots: at(FIXED),
       commits: [{ sha: FIXED, subject: 'apply the approved corrections', repository: '.' }],
     } }])
     expect(calls.filter(c => c.phase === 'Verify')).toHaveLength(1)
@@ -2937,7 +2937,7 @@ describe('the user\'s words reach every stage', () => {
       const { result, calls } = await simulate({ reports, verify: { verify: verification([approved]) }, fixes: { fix: fixed([disposition()]) } })
       expect(retried(calls, 'verify')).toHaveLength(1)
       expect(calls.find(c => c.label === 'fix').prompt).toContain('APPROVED CORRECTIONS (verify against the tree and authority):\n\n' +
-        JSON.stringify([{ ...approved, key: 'fix:0' }]))
+        JSON.stringify([{ ...approved, key: 'fix:0', pointers: backed.evidence }]))
       expect([result.exit, result.remaining.map(r => r.kind)]).toEqual(['follow-up', ['unattested-fix']])
       expect(result.projectBenefitDecisions.map(d => d.decision)).toEqual([approved])
     }
@@ -3398,6 +3398,16 @@ describe('the implementer checks the spec, and every stage reads only words said
     }
     expect(calls.filter(c => c.prompt.includes(line)).map(c => c.label).sort())
       .toEqual(['fix', 'impl', 'review:correctness', 'review:dupes', 'review:inverse', 'review:rules', 'review:spec', 'verify'])
+  })
+
+  test('an approved correction reaches the fixer with the evidence pointers of its source findings', async () => {
+    const rule = { kind: 'rule', file: 'CLAUDE.md', line: 3, key: [] }
+    const { calls } = await simulate({ reports: { 'review:correctness': { findings: [backed] }, 'review:spec': { findings: [{ ...backed, evidence: [rule] }] } },
+      verify: { verify: verification([decision([source('correctness'), source('spec')])]) }, fixes: { fix: fixed([disposition()]) } })
+    const fix = calls.find(c => c.label === 'fix').prompt
+    const queue = JSON.parse(fix.slice(fix.indexOf('APPROVED CORRECTIONS (verify against the tree and authority):\n\n') + 'APPROVED CORRECTIONS (verify against the tree and authority):\n\n'.length).split('\n\n')[0])
+    expect(queue.map(q => [q.key, q.pointers])).toEqual([['fix:0', [...backed.evidence, rule]]])
+    expect(flat(fix)).toContain('Read every record or rule a pointer names, and the records around a transcript record, before you act on it.')
   })
 
   test('the implementer\'s artifacts reach every briefed stage once, and the unbriefed stages get none', async () => {
