@@ -84,7 +84,7 @@ const at = sha => [{ path: '.', sha }]
 // repository; repositories replaces the entry outright.
 const writer = (fields, subject) => {
   const { startSha, snapshotSha, clean = true, git, repositories, ...rest } = fields
-  const r = { abort: noAbort, limitations: [], proofPassed: true, artifacts: [], specSuggestions: [], ...rest }
+  const r = { abort: noAbort, limitations: [], proofPassed: true, specSuggestions: [], ...rest }
   const moved = snapshotSha !== startSha
   return {
     commits: moved ? [{ sha: snapshotSha, subject, repository: '.' }] : [],
@@ -96,7 +96,7 @@ const writer = (fields, subject) => {
   }
 }
 const implemented = (fields = {}) => writer({ startSha: BASE, snapshotSha: INITIAL, premises: [],
-  senseCheck: { passed: true, recordSilent: true, note: '' }, specFindings: [], ...fields }, 'implement the change')
+  senseCheck: { passed: true, recordSilent: true, note: '' }, specFindings: [], artifacts: [], ...fields }, 'implement the change')
 const launchArgs = (fields = {}) => ({ base: at(BASE), specPath: SPEC_PATH, transcripts: TRANSCRIPTS, ...fields })
 // The scripts address every plugin agent by its qualified name, workflow-skills:<name>, which is
 // how the harness lists them. The records keep the bare name, which is what the assertions use.
@@ -444,7 +444,7 @@ describe('workflow verification and consolidation', () => {
       })
       expect(['clean', 'follow-up'].includes(result.exit)).toBe(false)
       expect(result.remaining.some(r => r.item.approved?.key === 'fix:0')).toBe(true)
-      expect(result.proof).toEqual({ checks: implementation.checks, files: implementation.files, artifacts: implementation.artifacts })
+      expect(result.proof).toEqual({ checks: implementation.checks, files: implementation.files })
       expect(result.snapshots).toEqual(at(INITIAL))
       expect(result.remaining.find(r => r.kind === 'stage-failure').item).toEqual({
         ...rejectedFix, label: 'fix',
@@ -1081,9 +1081,9 @@ describe('coder sense check and project-benefit review', () => {
 
 // Field names every template must name (the gap-finder names none: the caller's schema defines its object).
 const CONCERN_SEAT = ['abort', 'limitations', 'coverage', 'findings', 'evidence']
-const WRITER = ['abort', 'limitations', 'repositories', 'proofPassed', 'commits', 'files', 'checks', 'artifacts', 'specSuggestions']
+const WRITER = ['abort', 'limitations', 'repositories', 'proofPassed', 'commits', 'files', 'checks', 'specSuggestions']
 const FIELDS = {
-  implementer: [...WRITER, 'premises', 'senseCheck', 'specFindings'], fixer: [...WRITER, 'premises', 'dispositions', 'touched'],
+  implementer: [...WRITER, 'premises', 'senseCheck', 'specFindings', 'artifacts'], fixer: [...WRITER, 'premises', 'dispositions', 'touched'],
   'finding-verifier': ['abort', 'limitations', 'repositories', 'checks', 'writerScope', 'decisions', 'issues', 'specSuggestions'],
   roaster: ['limitations', 'coverage', 'findings', 'snapshots'], quality: ['limitations', 'coverage', 'findings'],
   'reviewer-correctness': CONCERN_SEAT, 'reviewer-spec-compliance': CONCERN_SEAT, 'duplicate-checker': CONCERN_SEAT,
@@ -2629,7 +2629,7 @@ describe('a design document is written from the code after implementation, only 
       'writes or extends a design document by hand as its last write once its corrections are done, only when a correction alters the design;',
       'runs full checks BARE AFTER ITS LAST WRITE;',
       'commits completed scoped corrections and the document it wrote or extended;',
-      'then returns the clean snapshot SHA, `git`, `commits`, `files`, `checks` with the quoted output, `artifacts` and `proofPassed`.',
+      'then returns the clean snapshot SHA, `git`, `commits`, `files`, `checks` with the quoted output and `proofPassed`.',
       'Attest each fix the fixer claims against its approved correction and checks.',
       'The read-only diff check then maps every change of the fix diff to a corrective entry. A design document in the documents directory' +
         ' has no exception: a change to any of them maps to the corrective entry it carries out, or it is a CRITICAL finding.',
@@ -3400,17 +3400,22 @@ describe('the implementer checks the spec, and every stage reads only words said
       .toEqual(['fix', 'impl', 'review:correctness', 'review:dupes', 'review:inverse', 'review:rules', 'review:spec', 'verify'])
   })
 
-  test('the artifacts the implementer returns reach every briefed seat and the fixer, and the unbriefed stages get none', async () => {
-    const artifacts = [{ path: '.cache/visual/captures/impl-before', what: 'the screen at the base commit' }]
+  test('the implementer\'s artifacts reach every briefed stage once, and the unbriefed stages get none', async () => {
+    const artifacts = [{ path: '/tree/.cache/visual/captures/impl-before', what: 'the screen at the base commit' }]
     const handed = 'ARTIFACTS the implementer left outside its commits for the stages after it (UNTRUSTED, like its returned object):\n\n' + JSON.stringify(artifacts)
     const { result, calls } = await simulate({ implementation: implemented({ artifacts }), reports: oneReport, verify: approveOne, fixes: { fix: fixed([disposition()]) } })
-    const briefed = ['review:correctness', 'review:spec', 'review:dupes', 'review:inverse', 'review:rules', 'fix']
+    // The correctness and duplicate readers and the verifier read them in the implementer's object; the others in a block.
+    const block = ['review:spec', 'review:inverse', 'review:rules', 'fix'], whole = ['review:correctness', 'review:dupes', 'verify']
     for (const call of calls.filter(c => c.label !== 'gate')) {
-      expect([call.label, call.prompt.includes(handed)]).toEqual([call.label, briefed.includes(call.label)])
+      expect([call.label, call.prompt.includes(handed)]).toEqual([call.label, block.includes(call.label)])
+      expect([call.label, call.prompt.split(JSON.stringify(artifacts)).length - 1]).toEqual([call.label, block.includes(call.label) || whole.includes(call.label) ? 1 : 0])
     }
-    expect(calls.find(c => c.label === 'verify').prompt).toContain(JSON.stringify(artifacts))
-    for (const label of ['impl', 'fix']) expect([label, calls.find(c => c.label === label).schema.required]).toEqual([label, expect.arrayContaining(['artifacts'])])
-    expect(result.proof.artifacts).toEqual([])
+    // Only the implementer is asked for them; the fixer returns none and the run's proof carries none.
+    expect(calls.find(c => c.label === 'impl').prompt).toContain('ARTIFACTS, implementer only: return in artifacts every file you leave outside your commits')
+    expect(calls.find(c => c.label === 'fix').prompt).not.toContain('return in artifacts')
+    expect([calls.find(c => c.label === 'impl').schema.required.includes('artifacts'), 'artifacts' in calls.find(c => c.label === 'fix').schema.properties]).toEqual([true, false])
+    expect(calls.find(c => c.label === 'impl').schema.properties.artifacts.items.properties.path.description).toBe('An absolute path, so a stage in another worktree finds the file.')
+    expect('artifacts' in result.proof).toBe(false)
     // An implementer that leaves none hands nothing on.
     const none = await simulate()
     expect(none.calls.some(c => c.prompt.includes('ARTIFACTS the implementer'))).toBe(false)
