@@ -478,7 +478,10 @@ async function checkFixList(file: string, transcripts: string, json: boolean, ex
         if (Number(position) >= findings.length) {
           fail(index, source, `index ${position} is outside the ${findings.length} findings of ${label}`); continue
         }
-        resolved.set(source, findings[Number(position)])
+        // A finding is a mapping. The fix script refuses any other value, so the tool refuses it too.
+        const selected = findings[Number(position)]
+        if (!mapping(selected)) { fail(index, source, `the element at index ${position} of ${label} is not a mapping`); continue }
+        resolved.set(source, selected)
       }
     }
     // The launch values a fix script received: the findings this check prints. Each must equal the
