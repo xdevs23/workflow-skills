@@ -577,7 +577,7 @@ const DOCUMENT_FIX = [
 const RULES = 'RULE SOURCES: ' + UNIT.ruleSources + '.'
 // The implementer's task is the discussion itself, read from the spec, with no words of the
 // orchestrating session around it.
-const TASK = 'Implement what the following discussion arrived at:\nthe spec at ' + UNIT.specPath + ', every entry in its order.'
+const TASK = 'Implement what the following discussion arrived at:\nthe spec at ' + UNIT.specPath + '.'
 // The unbriefed seats get no writing-style order: the rule reader checks the prose of the diff
 // against the rule sources, and their findings go to the finding verifier only.
 const HYGIENE = [

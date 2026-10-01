@@ -3813,7 +3813,7 @@ describe('the stages receive the quoted discussion and no words of the orchestra
   test('the implementer\'s task is the discussion the spec quotes, with no scoping, invariant or note beside it', async () => {
     const { calls } = await simulate()
     const impl = calls.find(c => c.label === 'impl').prompt
-    expect(impl.endsWith('\n\nImplement what the following discussion arrived at:\nthe spec at ' + SPEC_PATH + ', every entry in its order.')).toBe(true)
+    expect(impl.endsWith('\n\nImplement what the following discussion arrived at:\nthe spec at ' + SPEC_PATH + '.')).toBe(true)
     for (const stale of ['ORCHESTRATOR SCOPING', 'REQUIRED INVARIANTS', 'Implement, run focused checks, and commit only scoped changes.']) {
       expect([stale, impl.includes(stale)]).toEqual([stale, false])
     }
