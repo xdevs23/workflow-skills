@@ -383,8 +383,9 @@ consolidation.
   seats and reports a seat whose object is missing as an issue for you.
 
 Correctness, spec compliance and the duplicate checker are the three seats that judge the change
-against the spec: each reads the spec and flags a problem by quoting the user's words it concerns
-and saying what is wrong with the implementation. There are no acceptance criteria and no verdicts.
+against the spec: each reads the spec, says what is wrong with the implementation and names the
+evidence that backs the finding, the transcript record of the user's words or a rule with its
+source. There are no acceptance criteria and no verdicts.
 - **Correctness** (`agents/reviewer-correctness.md`) — bugs, races, broken invariants, the failure
   modes the change introduces. It hunts the hazards visible in its assigned change, and its
   template forbids invented issues and accepts an empty findings list. This seat
@@ -411,11 +412,15 @@ and saying what is wrong with the implementation. There are no acceptance criter
 Three identical reviewers are worth less than three different lenses. The fifteen seats are the
 lenses of every run, and the main script stops a run whose seat list holds another set.
 
-- **Concern-reviewer output: findings that quote the user's words.** These seats return
-  `findings` rated **must-fix / should-fix / nit**, each with the user's words it is judged against
-  in `words`, verbatim from an entry of author `user`, what is wrong with the implementation in
-  `claim`, and at least one receipt (file, line, quote). Receipts are the only currency that
-  survives triage.
+- **Concern-reviewer output: findings that point at their evidence.** These seats return
+  `findings` rated **must-fix / should-fix / nit**, each with what is wrong with the implementation
+  in `claim`, at least one receipt (file, line, quote), and in `evidence` where its backing stands.
+  For the user's words, an evidence entry has kind `transcript`, the session file and line of the
+  spec entry, and in `key` the JSON key path of the quoted part of that record. Where no words of
+  the user back the finding, it has kind `rule`, the file and line of the global, plugin or project
+  rule, and an empty key. A bare quote is never evidence: a yes says nothing until the record it
+  answers is read, so whoever receives the finding reads the evidence and the records around it.
+  Receipts are the only currency that survives triage.
 - **Only the two code-lens concern seats receive the implementer's object as UNTRUSTED CLAIMS.**
   The code-lens seats (correctness and duplication) get it serialized, explicitly as a list of
   CLAIMS TO VERIFY against the actual tree, never as a source they may review by reading: holding
@@ -482,7 +487,7 @@ lenses of every run, and the main script stops a run whose seat list holds anoth
 - Quality can legitimately return an empty findings list with its coverage.
 - Each seat has its own schema: the inverse reviewer owes a non-empty `authorizations` map, the rule
   reader `ruleSources` and a `scope` on every finding, the alternatives seat a candidate, a finding
-  or `currentShapeRight` true, and the three concern seats the user's words in `words` on every
+  or `currentShapeRight` true, and the three concern seats an `evidence` pointer on every
   finding.
 - **Every review seat also judges whether the diff HELPS THE PROJECT, not only whether it is
   correct.** Two finding kinds, enum-locked as the optional `kind` field of the findings schema,

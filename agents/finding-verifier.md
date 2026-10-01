@@ -41,8 +41,10 @@ Rules:
   Check authority mappings against the spec: the quoted words must stand in an entry of author
   user and authorize the claim in their context. An inverse-spec authorizations entry quotes the
   authorizing words in authority or explicitly reports that none exist. A finding of the
-  correctness, spec-compliance or duplicate seat quotes in words the user's words it is judged
-  against: check that they stand in an entry of author user.
+  correctness, spec-compliance or duplicate seat names in evidence where its backing stands, a
+  transcript record of the user's words or a rule with its file and line: read that record or rule
+  and the records around it, follow a bare yes back to what it answers, and check that the backing
+  covers the finding. A bare quote is never evidence.
 - Independently check the supplied current snapshot in every repository of the list with
   `git rev-parse --verify HEAD^{commit}` and `git status --porcelain=v1 --untracked-files=all`.
   Return repositories, one entry per repository with its path, the observed snapshotSha and clean
