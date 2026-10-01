@@ -635,7 +635,7 @@ proceed merely because a reviewer or verifier prefers it.
 - A finding that asks to build what the implementer left unbuilt is never `approve-fix`.
 - A source finding that asks to build, complete or change what was left unbuilt is decided
   `needs-decision`, and the decision reaches you in `remaining` as an open decision. The
-  `authority` of that decision names the `specFindings` entry by its class and words, and its
+  `authority` of that decision names the `specFindings` entry by its class and evidence, and its
   `correction` stays empty. Without this rule the verifier would approve what is missing and the
   fixer would build what the sense check left unbuilt, before you read the finding.
 - Reviewer lanes and severity are claims to verify, not queue permissions. Every source ID must

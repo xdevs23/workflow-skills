@@ -3340,7 +3340,6 @@ describe('fixed review seats and a model for every agent', () => {
 // so that this file does not match itself; the inverse-spec reviewer is a stage of the main run.
 const SPEC_REVIEW = [/(?<!inverse-)spec[- ]review/i, /pre-?phase/i, /cold[- ]review the spec/i]
 const SPEC_FINDING_CLASSES = ['joint-impossibility', 'missing-contract', 'reality-drift', 'unbacked-entry']
-// A spec finding quotes the words of every spec entry it concerns.
 // A spec finding points at the transcript record of every spec entry it concerns, here by line.
 const POINTER_DIRECTORY = 'TRANSCRIPTS: a transcript or journal file that a pointer names by a relative path lies under ' + TRANSCRIPTS + '.'
 const specFinding = (lines, kind) => ({ evidence: lines.map(line => ({ kind: 'transcript', file: 'session.jsonl', line, key: ['message', 'content'] })),
