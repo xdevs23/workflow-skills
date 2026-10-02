@@ -44,17 +44,15 @@ It checks as well that each user entry holds words said about this unit. Words a
 back nothing in this spec, and a short answer that crossed with a newer message answers the earlier
 message and never approves what the newer message proposed. An entry whose words were said about
 another unit, or are ambiguous or do not match the unit and so have no meaning on their own, is of
-class `unbacked-entry`. The classes `open-question` and `speculation` are described in the design
-document on the quoted discussion.
+class `unbacked-entry`.
 
 The implementer returns each finding in `specFindings`, a field its output schema requires, one
 entry per finding with `evidence`, a pointer to every spec entry it concerns by its session file,
 line and the key path of the quoted part, the `class`, the `claim` and `receipts` with at least one
 receipt. A `joint-impossibility` entry points at each statement of the conflict. The class is an
-enum of the four names above, `open-question` and `speculation`. No finding fails the sense check,
-sets the abort or asks the user. The design document on what the implementer leaves unbuilt
-describes which findings block the run, and what the implementer builds when a finding does not
-block it.
+enum of the four names above. No finding fails the sense check, sets the abort or asks the user. The
+design document on what the implementer leaves unbuilt describes which findings block the run, and
+what the implementer builds when a finding does not block it.
 
 ## How the findings reach the root
 
@@ -68,13 +66,12 @@ is nothing to hand over.
 The script sets no exit and skips no stage because of a spec finding. Because every spec finding is
 must-fix or CRITICAL, a pass that reaches its normal end, with no other exit set before it, and
 whose only remaining items are spec findings exits `follow-up`. The implementer returns a
-`joint-impossibility`, `missing-contract`, `open-question` or `speculation` entry together with a
-limitation of effect `blocks`, and the script's handling of every blocking limitation of the
-implementer ends that run after the implement stage with exit `root-resolution`, before any review,
-so the pass never reaches its normal end. The design document on the items the implementer leaves
-unbuilt describes this block. The finding verifier receives the findings inside the implementer's
-object, which the script hands it as a writer object, and the three code-lens readers see them in
-the same object they receive as claims.
+`joint-impossibility` or `missing-contract` entry together with a limitation of effect `blocks`, and
+the script's handling of every blocking limitation of the implementer ends that run after the
+implement stage with exit `root-resolution`, before any review, so the pass never reaches its normal
+end. The design document on the items the implementer leaves unbuilt describes this block. The
+finding verifier receives the findings inside the implementer's object, which the script hands it as
+a writer object, and the three code-lens readers see them in the same object they receive as claims.
 
 The skill describes all of this in phase 1, lists `specFindings` among what the implementer
 returns, names the spec finding among the kinds of remaining items, and adds the class to the

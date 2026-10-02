@@ -257,9 +257,6 @@ collisions and consistency drift.
   for a different piece of work, are no authority here, and a short answer that crossed with a newer
   message answers the earlier message and never approves what the newer message proposed. An entry
   whose words are such words is class `unbacked-entry`.
-- Expect the implementer to return a question that no later entry answers as class `open-question`.
-- Expect the implementer to return an entry that speculates or asserts something unverified as class
-  `speculation`.
 - Expect the implementer to flag an entry whose words are ambiguous or do not match this unit, and
   so have no meaning on their own, as class `unbacked-entry` too.
 - The implementer returns each finding in `specFindings`, one entry per finding with `evidence`, the
@@ -267,21 +264,18 @@ collisions and consistency drift.
   concerns by the entry's session file, line and the key path of the quoted part, so a
   `joint-impossibility` entry points at each side of the conflict.
 - No spec finding fails the sense check, sets the abort or asks the user.
-- Expect an entry of class `joint-impossibility`, `missing-contract`, `open-question` or
-  `speculation` to block the run. The implementer returns it with a limitation of effect `blocks`
-  that names the entry, and edits and commits nothing, so every repository's snapshot is its start
-  SHA. A spec with such an entry has nothing built, whatever other entries it has. The script
-  refuses an implementer result that carries such an entry without a blocking limitation or with a
-  repository that moved.
+- Expect an entry of class `joint-impossibility` or `missing-contract` to block the run. The
+  implementer returns it with a limitation of effect `blocks` that names the entry, and edits and
+  commits nothing, so every repository's snapshot is its start SHA. A spec with such an entry has
+  nothing built, whatever other entries it has. The script refuses an implementer result that
+  carries such an entry without a blocking limitation or with a repository that moved.
 - The script ends the run after the implement stage with exit `root-resolution` and a
   `blocking-limitation` item, as it does for every blocking limitation of the implementer, and no
   review stage starts. A `joint-impossibility` or `missing-contract` entry blocks because law 13
   has work that genuinely cannot satisfy the applicable requirements report the concrete
   impossibility and block. Building the rest of the spec around it would build one half of two
   statements that cannot both hold, or build around an artifact whose contract nobody defined, and
-  leave a proof that reads as complete. An `open-question` entry blocks because a spec with an
-  unanswered question leaves a decision open. A `speculation` entry blocks because a stage cannot
-  set aside words in its context, so what the entry asserts could still be built.
+  leave a proof that reads as complete.
 - Expect an entry of class `unbacked-entry` not to block the run. The implementer builds nothing its
   words ask for and builds the rest of the spec. Such an entry says only that its words were not
   said about this unit or have no meaning on their own, so the run builds what the user's words
@@ -302,14 +296,23 @@ collisions and consistency drift.
   sense check as silent. The fixer sets the same trigger under the same condition before its first
   write. The simpler alternative this rules out is a limitation entry, which is what let a wordless
   record carry a whole program of units through review.
-- **Prompt scrutiny / abort — three triggers, one abort field.** The implementer also checks the
-  prompt against the spec and the code *before* editing. The abort has exactly three triggers: **a
+- **An invalid spec is not one to build.** Every stage that reads the spec checks it before anything
+  else and sets `abort.trigger` to `invalid-spec` when the spec is invalid, and the implementer does
+  so before any edit and leaves the tree unmodified. A spec is invalid when a question an entry asks
+  has no answer in a later entry; an entry holds speculation or an unverified assertion, such as a
+  cause or a fix called likely, probable, almost certain or assumed; an assistant entry quotes a
+  Write call that no later user entry answers yes to; or an assistant entry decides a product or
+  architecture question that no user entry decides. The `abort.reason` names every such entry and
+  the rule it breaks. A stage cannot set aside words that stand in its context, so building around
+  them would still let them steer what gets built.
+- **Prompt scrutiny / abort — four triggers, one abort field.** The implementer also checks the
+  prompt against the spec and the code *before* editing. The abort has exactly four triggers: **a
   user verbatim directive directly contradicted by either authority document or by this prompt** —
-  directive-versus-spec and directive-versus-prompt are the same trigger — **a failed sense
-  check** as defined above, and **a record without the user's words** (`no-words`) as defined
-  above. The AUTHORITY DOCUMENTS are the user's verbatim directives and the spec; the prompt is
-  UNTRUSTED relative to the spec (law 6), but that ranking does not exempt the prompt from the
-  directive ranked above both. Then everything else falls out:
+  directive-versus-spec and directive-versus-prompt are the same trigger — **a failed sense check**
+  as defined above, **a record without the user's words** (`no-words`) as defined above, and **an
+  invalid spec** (`invalid-spec`) as defined above. The AUTHORITY DOCUMENTS are the user's verbatim
+  directives and the spec; the prompt is UNTRUSTED relative to the spec (law 6), but that ranking
+  does not exempt the prompt from the directive ranked above both. Then everything else falls out:
   - **prompt vs spec, with no directive on either side** → an ordinary MUST-FIX finding, not an
     abort. The prompt loses, the seat proceeds against the spec, and it reports the conflict rather
     than silently picking a side;
@@ -323,17 +326,17 @@ collisions and consistency drift.
   - **a tree that does not yet satisfy the spec** → the NORMAL starting condition. Treating it as a
     contradiction deadlocks the run (law 8).
 - **None of those three sets the abort.** Only a contradiction with a user directive on at least one
-  side (`abort.trigger` `directive-conflict`), a failed sense check (`sense-check`), or a record
-  without the user's words (`no-words`) sets a trigger other than `none`, with the reason in
-  `abort.reason`. Caught before any edit, it stops with the tree UNMODIFIED; caught after
-  some edits already landed, it stops further writes that would extend the conflict or the flagged
-  mechanism and returns the existing changes as they stand in `files` and `commits`, committing
-  nothing and without reverting them. Three triggers, one field, one disposition — an abort class
-  with no trigger of its own is undetectable, and a trigger with more than one disposition
-  deadlocks. The second and third triggers belong to the writing seats: a reading seat reports the
-  sense-check observation as a `band-aid` or `longer-route` finding (phase 2), never as a flag, and
-  a reading seat never sees a wordless record because the implementer stops the run before any
-  reader starts.
+  side (`abort.trigger` `directive-conflict`), a failed sense check (`sense-check`), a record
+  without the user's words (`no-words`), or an invalid spec (`invalid-spec`) sets a trigger other
+  than `none`, with the reason in `abort.reason`. Caught before any edit, it stops with the tree
+  UNMODIFIED; caught after some edits already landed, it stops further writes that would extend the
+  conflict or the flagged mechanism and returns the existing changes as they stand in `files` and
+  `commits`, committing nothing and without reverting them. Four triggers, one field, one
+  disposition — an abort class with no trigger of its own is undetectable, and a trigger with more
+  than one disposition deadlocks. The second and third triggers belong to the writing seats and the
+  fourth to every stage that reads the spec. A reading seat reports the sense-check observation as a
+  `band-aid` or `longer-route` finding (phase 2), never as a flag, and a reading seat never sees a
+  wordless record because the implementer stops the run before any reader starts.
 - **A sense-check flag continues only on the user's words.** After a sense-check flag, check the
   coder's object and its evidence against the existing authority first: the user's words in the
   spec. Where those words already decide the continuation, such as removing behavior nobody
@@ -657,10 +660,10 @@ proceed merely because a reviewer or verifier prefers it.
   spec entry citation.
 - The spec-compliance reviewer never sees the implementer's object, so it reports what the
   implementer left unbuilt as missing required behaviour. The implementer's `specFindings` entry
-  points at its spec entries in `evidence`. A `joint-impossibility`, `missing-contract`,
-  `open-question` or `speculation` entry ends the run after the implement stage, so in a run that
-  reaches review what was left unbuilt is what the words of an entry of class `unbacked-entry` ask
-  for, which points as well at the entries that cannot be built without them.
+  points at its spec entries in `evidence`. A `joint-impossibility` or `missing-contract` entry ends
+  the run after the implement stage, so in a run that reaches review what was left unbuilt is what
+  the words of an entry of class `unbacked-entry` ask for, which points as well at the entries that
+  cannot be built without them.
 - A finding that asks to build what the implementer left unbuilt is never `approve-fix`.
 - A source finding that asks to build, complete or change what was left unbuilt is decided
   `needs-decision`, and the decision reaches you in `remaining` as an open decision. The
@@ -1338,37 +1341,37 @@ These laws are non-negotiable across every run of this skill.
    repeats the finished run's reviews. **Corollary: nobody rewrites the user's words.** A later
    statement of the user stands beside an earlier one in session order, and the user alone removes
    an entry that does not belong.
-8. **HARD-FLAG SEMANTICS.** A hard flag (agent stops, script aborts) has exactly three triggers.
-   The first is a contradiction that puts a user verbatim directive on at least one side —
-   **directive-vs-spec, or directive-vs-this-prompt** — two texts that cannot both be true (law
-   6). The prompt being UNTRUSTED relative to the spec does not exempt it from the directive
-   ranked above both: an assignment overriding a directive is the same conflict class as a spec
-   that does, hard-flagged the same way. The second is a **coder sense-check failure**, and it
-   belongs to the writing seats: the implementer finds, before any edit, that the request extends
-   a mechanism the user's words rule out, or the fixer finds that an approved correction is itself
-   a band-aid where the user's words describe deletion or a rewrite (phases 1 and 4). A reading
-   seat reports the same observation as a kind-bearing finding, never as a flag. The third is a
-   **spec without the user's words**, also the writing seats': the implementer finds, before any
-   edit, that the spec was not supplied, cannot be read, or holds no entry of author `user`, or
-   the fixer finds the same before its first write (phase 1). A spec without the user's words is
-   not a silent one. All three triggers
-   share one disposition: caught before any edit, the tree stays unmodified; caught after edits
-   landed, further writes stop and the coder reports the edits as they stand, committing nothing
-   and reverting nothing. A tree that does not yet satisfy a coherent spec is the NORMAL
-   precondition of review-and-fix and yields ordinary findings; so does an untrusted prompt that
-   merely conflicts with the SPEC with no directive on either side, or one asserting a false
-   premise about the tree — those are verified-and-reported, built to the truth (law 6), never an
-   abort. Getting this wrong deadlocks the run: the fixer that would resolve the finding can never
-   run, because the flag aborts before it. **Three triggers, one field, one disposition** — the
-   `abort` field's `trigger` enum names all three (`directive-conflict`, `sense-check`,
-   `no-words`) beside `none`,
-   with the reason in `abort.reason`; an abort class with no trigger of its own is undetectable,
-   and a trigger with more than one disposition is the deadlock in another costume. The cold
-   seats carry no `abort` field, because its member names would brief them, and an absent field
-   is no abort. And the structural abort lives in the **SCRIPT**, which checks **every consumed
-   stage result** for a trigger other than `none` and throws with the whole object — never
-   delegated to a downstream agent to rediscover. Every required object is consumed by
-   verification; a failed or hard-flagged reader stops the cycle before fixing.
+8. **HARD-FLAG SEMANTICS.** A hard flag (agent stops, script aborts) has exactly four triggers. The
+   first is a contradiction that puts a user verbatim directive on at least one side —
+   **directive-vs-spec, or directive-vs-this-prompt** — two texts that cannot both be true (law 6).
+   The prompt being UNTRUSTED relative to the spec does not exempt it from the directive ranked
+   above both: an assignment overriding a directive is the same conflict class as a spec that does,
+   hard-flagged the same way. The second is a **coder sense-check failure**, and it belongs to the
+   writing seats: the implementer finds, before any edit, that the request extends a mechanism the
+   user's words rule out, or the fixer finds that an approved correction is itself a band-aid where
+   the user's words describe deletion or a rewrite (phases 1 and 4). A reading seat reports the same
+   observation as a kind-bearing finding, never as a flag. The third is a **spec without the user's
+   words**, also the writing seats': the implementer finds, before any edit, that the spec was not
+   supplied, cannot be read, or holds no entry of author `user`, or the fixer finds the same before
+   its first write (phase 1). A spec without the user's words is not a silent one. The fourth is an
+   **invalid spec** as phase 1 defines it, which every stage that reads the spec flags before
+   anything else, the implementer before any edit. All four triggers share one disposition: caught
+   before any edit, the tree stays unmodified; caught after edits landed, further writes stop and
+   the coder reports the edits as they stand, committing nothing and reverting nothing. A tree that
+   does not yet satisfy a coherent spec is the NORMAL precondition of review-and-fix and yields
+   ordinary findings; so does an untrusted prompt that merely conflicts with the SPEC with no
+   directive on either side, or one asserting a false premise about the tree — those are
+   verified-and-reported, built to the truth (law 6), never an abort. Getting this wrong deadlocks
+   the run: the fixer that would resolve the finding can never run, because the flag aborts before
+   it. **Four triggers, one field, one disposition** — the `abort` field's `trigger` enum names all
+   four (`directive-conflict`, `sense-check`, `no-words`, `invalid-spec`) beside `none`, with the
+   reason in `abort.reason`; an abort class with no trigger of its own is undetectable, and a
+   trigger with more than one disposition is the deadlock in another costume. The cold seats carry
+   no `abort` field, because its member names would brief them, and an absent field is no abort. And
+   the structural abort lives in the **SCRIPT**, which checks **every consumed stage result** for a
+   trigger other than `none` and throws with the whole object — never delegated to a downstream
+   agent to rediscover. Every required object is consumed by verification; a failed or hard-flagged
+   reader stops the cycle before fixing.
 9. **ENUM-LOCK ANY VOCABULARY THE SCRIPT BRANCHES ON.** If control flow keys off severity, lock it in
    the output schema as an enum (`must-fix` / `should-fix` / `nit`) with validation-retry — and the
    same for every other vocabulary the script switches on: the actionability **lane**
@@ -1376,13 +1379,13 @@ These laws are non-negotiable across every run of this skill.
    (`fixed` / `rejected` / `blocked`), verifier action (`approve-fix` / `reject` /
    `needs-decision` / `root-action` / `cleanup` / `record`),
    the finding `kind` (`band-aid` / `longer-route` / `unbacked-choice`), the abort `trigger`
-   (`none` / `directive-conflict` / `sense-check` / `no-words`),
-   the limitation `effect` (`blocks` / `narrows`), the authorization `class`, the rule reader's
-   finding `scope` (`in-change` / `beside`), the file `change` (`added` / `modified` / `deleted`)
-   and the spec finding `class` (`joint-impossibility` / `missing-contract` / `open-question` /
-   `speculation` / `reality-drift` / `unbacked-entry`). A seat emitting one word against a check
-   testing for another **silently disables the phase and the run reports success** — the worst
-   possible failure mode, because it looks like a green run.
+   (`none` / `directive-conflict` / `sense-check` / `no-words` / `invalid-spec`), the limitation
+   `effect` (`blocks` / `narrows`), the authorization `class`, the rule reader's finding `scope`
+   (`in-change` / `beside`), the file `change` (`added` / `modified` / `deleted`) and the spec
+   finding `class` (`joint-impossibility` / `missing-contract` / `reality-drift` /
+   `unbacked-entry`). A seat emitting one word against a check testing for another **silently
+   disables the phase and the run reports success** — the worst possible failure mode, because it
+   looks like a green run.
 10. **GROUNDED MEANS OBSERVED.** Code-reading that concludes "it should work" loses to empirical
     observation every time. Verify against real output: real builds, real requests, real rendered
     results. Mechanical gates **RECOMPUTE from the artifacts**; an item's self-report is only a
@@ -1694,14 +1697,14 @@ For the other seats:
   answers, and is never authority. A contradiction with what the user answered yes to is a
   contradiction with the user's own words, hard-flagged the same way. The main script's and the
   fix script's `AUTHORITY` blocks say so.
-- **Hard-flag semantics** (law 8) — the one `abort` field and its three triggers: a contradiction
+- **Hard-flag semantics** (law 8) — the one `abort` field and its four triggers: a contradiction
   with a user directive on at least one side, spec or prompt (`directive-conflict`), a writing
-  seat's failed sense check (`sense-check`), and a writing seat's spec that cannot be read or holds
-  no entry of author `user` (`no-words`), the reason in `abort.reason`. Never report that gap as a
-  limitation and proceed: the shared prompt says so in those words. Spell out the counter-case too,
-  since it is the common one: a tree that does not yet satisfy the spec, or a prompt that merely
-  conflicts with the spec with no directive on either side, yields ordinary must-fix findings, never
-  a flag.
+  seat's failed sense check (`sense-check`), a writing seat's spec that cannot be read or holds no
+  entry of author `user` (`no-words`), and an invalid spec found by any stage that reads it
+  (`invalid-spec`), the reason in `abort.reason`. Never report that gap as a limitation and proceed:
+  the shared prompt says so in those words. Spell out the counter-case too, since it is the common
+  one: a tree that does not yet satisfy the spec, or a prompt that merely conflicts with the spec
+  with no directive on either side, yields ordinary must-fix findings, never a flag.
 - **Premise verification** (law 6) — every factual claim the prompt makes about the tree is
   **VERIFIED against the tree** before anything is built on it, and a false one is
   **VERIFIED-AND-REPORTED**: build to the true state, flag the premise as a must-fix. Say this
@@ -1718,13 +1721,13 @@ For the other seats:
 - **Run checks BARE** — never piped through `head`/`grep`, which hides the error you needed.
 - **No background waits** — never end a turn waiting on a backgrounded check; the returned object
   IS the deliverable.
-- **Abort on three triggers only** — set `abort.trigger` to `directive-conflict` for a contradiction
+- **Abort on four triggers only** — set `abort.trigger` to `directive-conflict` for a contradiction
   with a user directive on at least one side (spec or this prompt on the other side), to
-  `sense-check` for a writing seat's failed sense check, or to `no-words` for a writing seat's
-  wordless spec, with the reason in `abort.reason`; it is
-  `none` otherwise. Everything else (the prompt losing to the spec with no directive on either
-  side, a false prompt premise verified and reported, a tree that does not yet satisfy the spec)
-  is an ordinary must-fix finding and the seat proceeds; see law 8.
+  `sense-check` for a writing seat's failed sense check, to `no-words` for a writing seat's wordless
+  spec, or to `invalid-spec` for an invalid spec, with the reason in `abort.reason`; it is `none`
+  otherwise. Everything else (the prompt losing to the spec with no directive on either side, a
+  false prompt premise verified and reported, a tree that does not yet satisfy the spec) is an
+  ordinary must-fix finding and the seat proceeds; see law 8.
 - **The findings contract** — a source finding is a DEFECT, cites a **repo-relative** FILE and
   carries at least one receipt (`file`, `line`, `quote`); what was inspected goes in `coverage`,
   what could not be checked in `limitations`. Concern reviewers suggest
@@ -1737,13 +1740,12 @@ For the other seats:
   reads full changed files and separates unrelated cleanup. No seat turns cleanup into in-unit scope.
 - **No seat edits an authority document** (law 13). Implement the spec as written unless it
   contradicts a directive (law 8); report suggestions without blocking executable work or normal
-  reviews. Only an actual impossibility or a spec that holds an unanswered question or speculation
-  warrants blocking on the requirements. A run's spec never changes, and the user's new words go
-  into a copy for a new run.
+  reviews. Only an actual impossibility warrants blocking on the requirements. A run's spec never
+  changes, and the user's new words go into a copy for a new run.
 
 One shared authority constant keeps the authority-aware prompts consistent throughout the run.
 
-Some of these (no background waits, abort on three triggers) also appear in the `agents/` templates.
+Some of these (no background waits, abort on four triggers) also appear in the `agents/` templates.
 That overlap is **deliberate reinforcement, not a second source of truth**: the template is the
 authority for that role, `AUTHORITY` is the floor for authority-aware roles even when a project
 swaps in its own template. Unbriefed roles get only their explicitly limited inputs. Changing a rule

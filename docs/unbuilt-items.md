@@ -2,12 +2,11 @@
 
 The implementer of implement-review-verify reads the spec against the code before its first edit and
 returns what it finds in `specFindings`. An entry of that list points at every spec entry it
-concerns. An entry of class `joint-impossibility`, `missing-contract`, `open-question` or
-`speculation` blocks the run before anything is built, and the run ends after the implement stage
-with the finding for the root. An entry of class `unbacked-entry` leaves unbuilt what its words ask
-for, together with everything that needs it, and the run builds the rest of the spec. The finding
-verifier never approves a fix that builds what was left unbuilt and hands such a finding to the root
-as an open decision.
+concerns. An entry of class `joint-impossibility` or `missing-contract` blocks the run before
+anything is built, and the run ends after the implement stage with the finding for the root. An
+entry of class `unbacked-entry` leaves unbuilt what its words ask for, together with everything that
+needs it, and the run builds the rest of the spec. The finding verifier never approves a fix that
+builds what was left unbuilt and hands such a finding to the root as an open decision.
 
 ## The entry points at all its spec entries
 
@@ -26,12 +25,10 @@ The main script adds every entry to `remaining` as a `spec-finding` item after t
 its ending, and the entry travels there as the implementer returned it, `evidence` included. An
 `unbacked-entry` entry is CRITICAL, and every other class is must-fix.
 
-## An impossible or undefined demand, an open question or speculation blocks the run
+## An impossible or undefined demand blocks the run
 
-An entry of class `joint-impossibility`, `missing-contract`, `open-question` or `speculation` blocks
-the run. An `open-question` entry is a question of the spec that no later entry answers, and a
-`speculation` entry is an entry that speculates or asserts something unverified. The implementer
-finds it in its sense check before its first edit and returns it in `specFindings` together with a
+An entry of class `joint-impossibility` or `missing-contract` blocks the run. The implementer finds
+it in its sense check before its first edit and returns it in `specFindings` together with a
 limitation of effect `blocks` that names the entry. It edits and commits nothing, the design
 document included, so the snapshot of every repository is its start SHA. A spec with such an entry
 has nothing built, whatever other entries it has.
@@ -81,11 +78,9 @@ A `joint-impossibility` or `missing-contract` entry blocks, because law 13 of
 implement-review-verify has work that genuinely cannot satisfy the applicable requirements report
 the concrete impossibility and block. Building the rest of the spec around such an entry would build
 one half of two statements that cannot both hold, or build around an artifact whose contract nobody
-defined, and the proof would then read as complete. An `open-question` entry blocks because a spec
-with an unanswered question leaves a decision open. A `speculation` entry blocks because a stage
-cannot set aside words in its context, so what the entry asserts could still be built. The block
-uses the implementer's existing blocking limitation, whose path through the script already ends the
-run with exit `root-resolution` and hands the root the limitation and the finding.
+defined, and the proof would then read as complete. The block uses the implementer's existing
+blocking limitation, whose path through the script already ends the run with exit `root-resolution`
+and hands the root the limitation and the finding.
 
 An `unbacked-entry` entry does not block, because it says only that its words were said about
 another unit or have no meaning on their own. The rest of the spec can still be built from the words

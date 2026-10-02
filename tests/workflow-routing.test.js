@@ -891,6 +891,15 @@ describe('workflow verification and consolidation', () => {
     expect(calls.map(c => c.label)).toEqual(['gate', 'impl'])
   })
 
+  test('an implementer invalid-spec abort ends the run as aborted before any review', async () => {
+    const calls = []
+    const abort = { trigger: 'invalid-spec', reason: 'session.jsonl:44 speculates: it calls a cause likely, which no record verifies.' }
+    const { result } = await simulate({ implementation: implemented({ snapshotSha: BASE, proofPassed: false, abort }), calls })
+    expect([result.exit, result.detail]).toEqual(['aborted', 'Hard flag from impl: ' + abort.reason])
+    expect(result.remaining).toEqual([{ kind: 'abort', severity: 'CRITICAL', item: { ...implemented({ snapshotSha: BASE, proofPassed: false, abort }), label: 'impl' } }])
+    expect(calls.map(c => c.label)).toEqual(['gate', 'impl'])
+  })
+
   test('an empty quality findings list with its coverage is a complete result', async () => {
     const { result, calls } = await simulate({ reports: { 'review:quality': { findings: [] } } })
     expect(['clean', 'follow-up'].includes(result.exit)).toBe(true)
@@ -1097,10 +1106,11 @@ describe('coder sense check and project-benefit review', () => {
     expect(await template('project-rule-reader')).toContain('a band-aid that already existed beside the diff is reported without kind, so the cleanup lane stays available')
   })
 
-  test('the coder and verifier templates, law 8 and the shared authority constant state the three triggers and the kind rules', async () => {
+  test('the coder and verifier templates, law 8 and the shared authority constant state the four triggers and the kind rules', async () => {
     for (const [name, phrases] of [
       ['implementer', ['Sense check before any edit: read the spec and ask two questions.', 'Words that say nothing about the mechanism rule nothing out: the check passes and senseCheck records recordSilent true.',
-        'Hard-flag and stop on one of three triggers, with one abort field and one disposition',
+        'Hard-flag and stop on one of four triggers, with one abort field and one disposition',
+        'or to invalid-spec for an invalid spec, and abort.reason to the reason.',
         "After a sense-check flag the unit continues only on the user's answer, which a new run receives in a copy of the spec with that answer added.",
         'A spec without the user\'s words is not a silent one.', 'set abort.trigger to no-words with the reason in abort.reason and leave the tree unmodified',
         'holds no entry of author user', "An entry of author assistant, a paraphrase, a summary or a design document's decision list is not the user's words."]],
@@ -1115,16 +1125,17 @@ describe('coder sense check and project-benefit review', () => {
     ]) { const text = await template(name); for (const phrase of phrases) expect(text).toContain(phrase) }
     for (const stale of ['approve-fix is then unavailable', 'Approve-fix only for the deletion or rewrite']) expect(await template('finding-verifier')).not.toContain(stale)
     const flatSkill = flat(skill)
-    expect(flatSkill).toContain('8. **HARD-FLAG SEMANTICS.** A hard flag (agent stops, script aborts) has exactly three triggers.')
-    expect(flatSkill).toContain('**Three triggers, one field, one disposition**')
+    expect(flatSkill).toContain('8. **HARD-FLAG SEMANTICS.** A hard flag (agent stops, script aborts) has exactly four triggers.')
+    expect(flatSkill).toContain('**Four triggers, one field, one disposition**')
     for (const phrase of ['exactly one trigger', 'One trigger, one field', 'one trigger only', 'single abort condition',
       'exactly two triggers', 'Two triggers, one field', 'two triggers, one abort field', 'abort on two triggers']) expect(flatSkill).not.toContain(phrase)
     const { calls } = await simulate()
     for (const type of ['implementer', 'fixer', 'finding-verifier', 'reviewer-inverse-spec']) {
-      expect(flat(calls.find(c => c.agentType === type).prompt)).toContain('has THREE triggers, one abort field, one disposition. First:')
+      expect(flat(calls.find(c => c.agentType === type).prompt)).toContain('has FOUR triggers, one abort field, one disposition. First:')
       expect(calls.find(c => c.agentType === type).prompt).toContain('Second, WRITING SEATS ONLY: a failed sense')
       expect(calls.find(c => c.agentType === type).prompt).toContain('Third, WRITING SEATS ONLY: no-words.')
       expect(calls.find(c => c.agentType === type).prompt).toContain('Never report that gap as a limitation and proceed.')
+      expect(calls.find(c => c.agentType === type).prompt).toContain('Fourth, EVERY STAGE THAT READS THE SPEC: invalid-spec.')
       expect(calls.find(c => c.agentType === type).prompt).not.toContain('is a root-action limitation')
     }
     for (const type of ['quality', ...AUDIT, 'cold-alternatives', 'roaster']) expect(calls.find(c => c.agentType === type).prompt).not.toContain('sense check')
@@ -1299,7 +1310,7 @@ describe('structured stage output', () => {
       const briefed = BRIEFED.includes(agentType)
       expect([label, schema.properties.report, schema.additionalProperties, schema.required.includes('abort'), 'abort' in schema.properties])
         .toEqual([label, undefined, false, briefed, briefed])
-      if (briefed) expect(schema.properties.abort.properties.trigger).toEqual({ enum: ['none', 'directive-conflict', 'sense-check', 'no-words'] })
+      if (briefed) expect(schema.properties.abort.properties.trigger).toEqual({ enum: ['none', 'directive-conflict', 'sense-check', 'no-words', 'invalid-spec'] })
     }
     const seats = calls.filter(c => c.phase === 'Review' || c.agentType === 'roaster')
     expect(new Set(seats.map(c => c.schema)).size).toBe(8)
@@ -2063,10 +2074,10 @@ describe('launch check and shipped scripts', () => {
     for (const phrase of ['`--record <path>`', 'the `record` key', 'private directive record']) expect([phrase, readme.includes(phrase)]).toEqual([phrase, false])
   })
 
-  test('the skill states the tool location, the older plugin and three triggers', () => {
+  test('the skill states the tool location, the older plugin and four triggers', () => {
     const text = flat(skill)
     for (const phrase of ['plugin cache', 'carries the loaded version', 'An installed plugin older than this',
-      'checks another spec format, so its launch check fails', '`no-words`', 'Three triggers, one field, one disposition']) {
+      'checks another spec format, so its launch check fails', '`no-words`', '`invalid-spec`', 'Four triggers, one field, one disposition']) {
       expect([phrase, text.includes(phrase)]).toEqual([phrase, true])
     }
   })
@@ -3407,7 +3418,7 @@ describe('fixed review seats and a model for every agent', () => {
 // Wording that sends the root to a review of the spec before the main run. The patterns are written
 // so that this file does not match itself; the inverse-spec reviewer is a stage of the main run.
 const SPEC_REVIEW = [/(?<!inverse-)spec[- ]review/i, /pre-?phase/i, /cold[- ]review the spec/i]
-const SPEC_FINDING_CLASSES = ['joint-impossibility', 'missing-contract', 'open-question', 'speculation', 'reality-drift', 'unbacked-entry']
+const SPEC_FINDING_CLASSES = ['joint-impossibility', 'missing-contract', 'reality-drift', 'unbacked-entry']
 // A spec finding points at the transcript record of every spec entry it concerns, here by line.
 const POINTER_DIRECTORY = 'TRANSCRIPTS: a transcript or journal file that a pointer names by a relative path lies under ' + TRANSCRIPTS + '.'
 const specFinding = (lines, kind) => ({ evidence: lines.map(line => ({ kind: 'transcript', file: 'session.jsonl', line, key: ['message', 'content'] })),
@@ -3534,25 +3545,30 @@ describe('the implementer checks the spec, and every stage reads only words said
       .toEqual(['aborted', [['abort', 'CRITICAL'], ['spec-finding', 'CRITICAL']]])
   })
 
-  test('every stage that reads the spec checks it for open questions and speculation, and the implementer returns them as blocking classes', async () => {
+  test('every stage that reads the spec receives the definition of an invalid spec and hard-aborts on one', async () => {
     const { calls } = await simulate({ reports: oneReport, verify: approveOne, fixes: { fix: fixed([disposition()]) } })
-    const rule = 'Every question an entry asks has its answer in a later entry. No entry holds speculation or an unverified assertion, such as' +
-      ' a cause or a fix called likely, probable, almost certain or assumed. A spec that breaks either is unfit: report it.'
+    const rule = 'A SPEC IS INVALID when a question an entry asks has no answer in a later entry, when an entry holds speculation or an' +
+      ' unverified assertion, such as a cause or a fix called likely, probable, almost certain or assumed, when an entry of author' +
+      ' assistant quotes a Write call that no later user entry answers yes to, or when an entry of author assistant decides a product' +
+      ' or architecture question that no user entry decides.'
+    const trigger = 'Fourth, EVERY STAGE THAT READS THE SPEC: invalid-spec. An invalid spec sets abort.trigger to invalid-spec before anything' +
+      ' else, a writer before any edit, with every entry that makes it invalid and the rule it breaks in abort.reason.'
     for (const call of calls.filter(c => c.label !== 'gate')) {
-      expect([call.label, flat(call.prompt).includes(rule)]).toEqual([call.label, call.prompt.includes('SPEC (authority)')])
+      const briefed = call.prompt.includes('SPEC (authority)')
+      expect([call.label, flat(call.prompt).includes(rule), flat(call.prompt).includes(trigger)]).toEqual([call.label, briefed, briefed])
     }
     const implementer = await template('implementer')
-    for (const phrase of ['An entry of class joint-impossibility, missing-contract, open-question or speculation blocks the run',
-      'The same sense check rejects a spec with a question that no later entry answers, as the authority block of your prompt defines: return each such question as class open-question.',
-      'The same sense check rejects a spec with an entry that speculates or asserts something unverified, as the authority block of your prompt defines: return each such entry as class speculation.',
-      'Block only on an actual impossibility, with evidence, or on a spec that holds an unanswered question or speculation, not on a preference for different requirements.',
+    for (const phrase of ['An entry of class joint-impossibility or missing-contract blocks the run',
+      'An invalid spec is not one to build. Before any edit, check the spec against the definition of an invalid spec in the authority block of your prompt.',
+      'On an invalid spec, set abort.trigger to invalid-spec, name in abort.reason every entry that makes it invalid, by its session file and line, and the rule it breaks, and leave the tree unmodified.',
+      'Block only on an actual impossibility, with evidence, not on a preference for different requirements. The hard flag above, with its four triggers, is the only gate; do not add another.',
       'The same sense check flags an entry whose words are ambiguous or do not match this unit, and so have no meaning on their own, as class unbacked-entry.']) {
       expect([phrase, implementer.includes(phrase)]).toEqual([phrase, true])
     }
   })
 
   test('a blocking spec finding with a blocking limitation and unmoved snapshots ends the run after the implement stage', async () => {
-    for (const [kind, lines] of [['joint-impossibility', [9, 11]], ['missing-contract', [30]], ['open-question', [8]], ['speculation', [44]]]) {
+    for (const [kind, lines] of [['joint-impossibility', [9, 11]], ['missing-contract', [30]]]) {
       const entry = specFinding(lines, kind)
       const limitation = { what: 'The ' + kind + ' finding leaves the spec unbuildable as written.', effect: 'blocks' }
       const { result, calls } = await simulate({ implementation: implemented({ snapshotSha: BASE, limitations: [limitation], specFindings: [entry] }) })
@@ -3565,7 +3581,7 @@ describe('the implementer checks the spec, and every stage reads only words said
 
   test('a blocking spec finding without a blocking limitation, or with moved snapshots, is refused', async () => {
     const limitation = { what: 'The spec cannot be built as written.', effect: 'blocks' }
-    for (const kind of ['joint-impossibility', 'missing-contract', 'open-question', 'speculation']) {
+    for (const kind of ['joint-impossibility', 'missing-contract']) {
       const entry = specFinding([9, 11], kind)
       const unpaired = await simulate({ implementation: implemented({ snapshotSha: BASE, specFindings: [entry] }) })
       expect([kind, unpaired.result.exit, unpaired.result.detail])
@@ -3598,7 +3614,7 @@ describe('the implementer checks the spec, and every stage reads only words said
         'is class unbacked-entry', 'Return every finding in specFindings, one entry per finding with evidence, the class, the claim and receipts.',
         'In evidence, point at every spec entry the finding concerns, each with kind transcript, the entry\'s session file and line, and the key path of the quoted part inside that JSON record;',
         'a joint-impossibility entry points at each side of the conflict.', 'None of them fails the sense check, sets abort.trigger or asks the user.',
-        'An entry of class joint-impossibility, missing-contract, open-question or speculation blocks the run: return it with a limitation of effect blocks that names the entry, and edit and commit nothing',
+        'An entry of class joint-impossibility or missing-contract blocks the run: return it with a limitation of effect blocks that names the entry, and edit and commit nothing',
         "so every repository's snapshot is its start SHA, whatever other entries you return.",
         'An entry of class unbacked-entry does not block: build nothing its words ask for and build the rest of the spec.',
         "What cannot be built without those words rests on the same words, so point at its spec entry in that finding's evidence too and leave it unbuilt.",
@@ -3607,7 +3623,7 @@ describe('the implementer checks the spec, and every stage reads only words said
         'A choice whose cited authority is such words lacks authority: report it as a finding with kind unbacked-choice.']],
       ['finding-verifier', await template('finding-verifier'), ['Reject closes it only on an entry of author user whose words were said about this unit and back the choice',
         other + ', back nothing here even where their subject overlaps.', 'so it never closes such a finding either',
-        'A joint-impossibility, missing-contract, open-question or speculation entry ends the run before any review, so in a run that reaches you what was left unbuilt is what the words of an entry of class unbacked-entry ask for',
+        'A joint-impossibility or missing-contract entry ends the run before any review, so in a run that reaches you what was left unbuilt is what the words of an entry of class unbacked-entry ask for',
         'which points as well at the entries that cannot be built without them.',
         'A source finding that asks to build, complete or change what those words ask for is never approve-fix',
         'decide it needs-decision and name that specFindings entry by its class and evidence in authority.',
@@ -3615,10 +3631,10 @@ describe('the implementer checks the spec, and every stage reads only words said
       ['skill', flat(skill), ['**The sense check also reads the spec against the code.**', 'is class `unbacked-entry`',
         'one entry per finding with `evidence`, the `class`, the `claim` and `receipts`.',
         'so a `joint-impossibility` entry points at each side of the conflict',
-        'Expect an entry of class `joint-impossibility`, `missing-contract`, `open-question` or `speculation` to block the run.',
-        'An `open-question` entry blocks because a spec with an unanswered question leaves a decision open.',
-        'A `speculation` entry blocks because a stage cannot set aside words in its context, so what the entry asserts could still be built.',
-        'Only an actual impossibility or a spec that holds an unanswered question or speculation warrants blocking on the requirements.',
+        'Expect an entry of class `joint-impossibility` or `missing-contract` to block the run.',
+        '**An invalid spec is not one to build.** Every stage that reads the spec checks it before anything else and sets `abort.trigger` to `invalid-spec` when the spec is invalid',
+        'A stage cannot set aside words that stand in its context, so building around them would still let them steer what gets built.',
+        'Only an actual impossibility warrants blocking on the requirements.',
         'returns it with a limitation of effect `blocks` that names the entry, and edits and commits nothing',
         'The script ends the run after the implement stage with exit `root-resolution` and a `blocking-limitation` item',
         'Expect an entry of class `unbacked-entry` not to block the run. The implementer builds nothing its words ask for and builds the rest of the spec.',
@@ -3630,7 +3646,7 @@ describe('the implementer checks the spec, and every stage reads only words said
         'A source finding that asks to build, complete or change what was left unbuilt is decided `needs-decision`',
         'the decision reaches you in `remaining` as an open decision',
         'into `remaining` as a `spec-finding` item, CRITICAL for `unbacked-entry` and must-fix otherwise',
-        'the spec finding `class` (`joint-impossibility` / `missing-contract` / `open-question` / `speculation` / `reality-drift` / `unbacked-entry`)']],
+        'the spec finding `class` (`joint-impossibility` / `missing-contract` / `reality-drift` / `unbacked-entry`)']],
     ]) for (const phrase of phrases) expect([name, phrase, text.includes(phrase)]).toEqual([name, phrase, true])
     for (const [name, text] of [['implementer', await template('implementer')], ['finding-verifier', await template('finding-verifier')], ['skill', flat(skill)]]) {
       for (const stale of ['unbacked-item', 'spec item', 'in items', '`items`', 'quoted in words', 'verbatim in words', 'in `words`']) expect([name, stale, text.includes(stale)]).toEqual([name, stale, false])
