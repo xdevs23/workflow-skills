@@ -15,8 +15,7 @@ over this file.
 
 - Describe in a comment what the code can't express.
 - Name things with plain words, and invent no metaphors.
-- Let nothing internal reach a tracked file: no absolute paths, no facts about a session, no model
-  names, no details of a local setup.
+- Follow `workflow-skills:hygiene` for what may reach a tracked file or leave the machine at all.
 - Address a string meant for a model to the model, and put no repository paths in it.
 - Give an i18n key a comment at its reference site stating the intent of the string.
 
@@ -24,9 +23,6 @@ over this file.
 
 - Write the body from zero, for a reader with no memory of the session, in simple language, without
   mannered speech.
-- Keep process vocabulary, actor words such as owner, founder and admin, and the word "ruled" out of
-  the body.
-- Never put the name of any model in a commit unless the commit is specifically about a model.
 
 ## Documents
 

@@ -1655,7 +1655,7 @@ describe('one-pass remaining-items handoff', () => {
   test('every other skill requires loading the writing-style skill', async () => {
     const dir = new URL('../skills/', import.meta.url)
     const names = ['babysit-pr', 'copywriting', 'implement-review-verify', 'pr-comment-replies',
-      'resume-interrupted-run', 'review-pass', 'visual-decisions', 'wall-of-shame', 'report-plugin-issues']
+      'resume-interrupted-run', 'review-pass', 'visual-decisions', 'wall-of-shame', 'report-plugin-issues', 'hygiene']
     for (const name of names) {
       const text = await Bun.file(new URL(`${name}/SKILL.md`, dir)).text()
       expect(text).toContain('Load the `workflow-skills:writing-style` skill first.')
@@ -1663,9 +1663,9 @@ describe('one-pass remaining-items handoff', () => {
     }
   })
 
-  test('the writers and the briefed seats name the writing-style file under the plugin root, the unbriefed seats and the roaster name none, and nothing tells a stage to load the skill', async () => {
-    const required = 'REQUIRED: before you write, read the file <plugin root>/skills/writing-style/SKILL.md with the Read tool,\n' +
-      'and follow it in every comment, document, commit message and returned string.'
+  test('the writers and the briefed seats name the writing-style and hygiene files under the plugin root, the unbriefed seats and the roaster name none, and nothing tells a stage to load the skill', async () => {
+    const required = 'REQUIRED: before you write, read the files <plugin root>/skills/writing-style/SKILL.md and <plugin root>/skills/hygiene/SKILL.md with the Read tool,\n' +
+      'and follow them in every comment, document, commit message and returned string.'
     const { calls } = await simulate()
     const unbriefed = ['quality', 'alternatives', ...AUDIT].map(seat => 'review:' + seat)
     const stages = calls.filter(c => !['gate', 'roast', ...unbriefed].includes(c.label))
@@ -1680,7 +1680,8 @@ describe('one-pass remaining-items handoff', () => {
     const scope = (await simulateFix()).calls.find(c => c.label === 'scope').prompt
     expect(scope.split(required).length - 1).toBe(1)
     for (const script of [skeleton, fixSkeleton]) {
-      expect(script).toContain("UNIT.pluginRoot + '/skills/writing-style/SKILL.md with the Read tool,'")
+      expect(script).toContain("UNIT.pluginRoot + '/skills/writing-style/SKILL.md and ' + UNIT.pluginRoot +")
+      expect(script).toContain("'/skills/hygiene/SKILL.md with the Read tool,'")
       expect(script).not.toMatch(/load the writing-style skill/i)
     }
     const directory = new URL('../agents/', import.meta.url)
@@ -1688,7 +1689,7 @@ describe('one-pass remaining-items handoff', () => {
       expect([file, /load the writing-style skill/i.test(await Bun.file(new URL(file, directory)).text())]).toEqual([file, false])
     }
     for (const name of ['implementer', 'fixer', 'record', 'copywriter']) {
-      expect(await template(name)).toContain('Read the writing-style file the prompt names before you write')
+      expect(flat(await template(name))).toContain('Read the writing-style and hygiene files the prompt names before you write')
     }
     // The skill that launches the copywriter template names the file in the scripts' wording.
     expect(await readSkill('copywriting')).toContain('Open a copywriter\'s appended string with these two lines, where `<plugin root>` is the plugin\n' +
@@ -2189,7 +2190,7 @@ describe('fix-only follow-up runs', () => {
     for (const call of calls.filter(c => c.label !== 'gate')) {
       expect([call.label, call.prompt.split(RELAYED_LINE).length - 1]).toEqual([call.label, 1])
       expect(call.prompt).toContain('you are one assigned stage, not the orchestrator')
-      expect([call.label, call.prompt.includes('/skills/writing-style/SKILL.md with the Read tool')]).toEqual([call.label, call.label !== 'roast'])
+      expect([call.label, call.prompt.includes('/skills/hygiene/SKILL.md with the Read tool')]).toEqual([call.label, call.label !== 'roast'])
       if (['scope', 'diff'].includes(call.label)) {
         expect(flat(call.prompt)).toContain('FIX LIST: ' + FIX_LIST + '. Its run key names the parent run. Each entry holds, beside its source, a decision of the parent' +
           ' run\'s finding verifier (source verify:<index>) or a finding of its roaster (source roaster:<index>), as the parent run\'s journal holds it,' +

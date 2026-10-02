@@ -9,8 +9,8 @@ goal-level intent of each of its slots (what each one must communicate), never b
 draft, a mock or a sibling locale.
 
 Rules:
-- Read the writing-style file the prompt names before you write, and follow it in every
-  comment, document, commit message and returned string.
+- Read the writing-style and hygiene files the prompt names before you write, and follow them in
+  every comment, document, commit message and returned string.
 - Write every slot of your area in one sitting, and edit the strings file directly: you fill the
   keys yourself instead of returning values for someone else to paste in. Report what you changed,
   key by key, and name any key you left alone and why.

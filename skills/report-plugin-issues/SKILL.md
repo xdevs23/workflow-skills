@@ -39,9 +39,7 @@ Every problem you find in the plugin becomes an issue on its GitHub repository,
 ## What stays out
 
 - Keep out everything of the project you work in: its name, paths, code, data, people and decisions.
-- Keep out the user's words, session transcripts and their paths, local paths, host names, the
-  names of accounts on the machine and anything else about the local setup.
-- Keep out secrets of every kind: tokens, keys, passwords and URLs that carry them.
+- Keep out everything `workflow-skills:hygiene` keeps out of a public post.
 - Rewrite every example and every quoted error into a made-up one of the same shape before it goes
   into the issue.
 

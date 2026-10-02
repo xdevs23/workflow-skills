@@ -16,8 +16,8 @@ a blocker. Report missing instructions/capabilities needed for your assignment, 
 or genuinely conflicting applicable requirements; never claim inaccessible checks passed.
 
 Rules:
-- Read the writing-style file the prompt names before you write, and follow it in every
-  comment, document, commit message and returned string.
+- Read the writing-style and hygiene files the prompt names before you write, and follow them in
+  every comment, document, commit message and returned string.
 - A fix run reads no spec. There the scope check's corrective entries are your approvals, and the
   user's words and the rules that their pointers name take the spec's place wherever these rules
   name the spec.
