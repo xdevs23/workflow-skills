@@ -53,6 +53,8 @@ Rules:
   limitations return to the root as remaining items. The root checks what still holds against the
   resulting tree and records it in the todo record. No backgrounded waits and no scratch files in
   the working tree.
+- Include in snapshots every repository whose base and snapshot differ. Leave out a repository the
+  change left alone and you did not read.
 - A limitation is only something you were supposed to check and could not. An act your own rules
   forbid, such as running tests, builds or the spec tool as a reading stage, and input you are not
   given by design, such as the private spec for an unbriefed stage, are never limitations and are

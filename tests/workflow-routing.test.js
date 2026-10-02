@@ -387,6 +387,52 @@ describe('workflow verification and consolidation', () => {
     ]) await expect(simulate({ args: launchArgs({ base }) })).rejects.toThrow(message)
   })
 
+  test('a roaster that read only the repositories the change moved is accepted, and one that misses a moved repository is refused', async () => {
+    const API = 'd'.repeat(40), API_NEW = 'e'.repeat(40)
+    const base = [{ path: 'api', sha: API }, { path: 'web', sha: BASE }]
+    const repositories = [
+      { path: 'api', startSha: API, snapshotSha: API_NEW, clean: true, git: { head: API_NEW, status: '' } },
+      { path: 'web', startSha: BASE, snapshotSha: BASE, clean: true, git: { head: BASE, status: '' } }]
+    const implementation = implemented({ repositories, commits: [{ sha: API_NEW, subject: 'implement the change', repository: 'api' }] })
+    const unmoved = repositories.map(r => ({ ...r, startSha: r.snapshotSha }))
+    const roastedAt = async snapshots => (await simulate({ args: launchArgs({ base }), implementation, fixes: { fix: fixed([], { repositories: unmoved }) },
+      verify: { verify: verification([], { repositories: repositories.map(({ path, snapshotSha, clean, git }) => ({ path, snapshotSha, clean, git })) }) },
+      reports: { roast: { snapshots, findings: [finding] } } })).result
+    const refused = result => result.remaining.some(r => r.kind === 'stage-failure' && /wrong snapshot/.test(r.item.message))
+    const onlyMoved = await roastedAt([{ path: 'api', sha: API_NEW }])
+    expect([onlyMoved.exit, refused(onlyMoved), onlyMoved.remaining.filter(r => r.kind === 'roast-finding').length]).toEqual(['follow-up', false, 1])
+    expect(refused(await roastedAt([{ path: 'api', sha: API_NEW }, { path: 'web', sha: BASE }]))).toBe(false)
+    for (const [refusal, snapshots] of [['moved repository missing', [{ path: 'web', sha: BASE }]], ['wrong commit', [{ path: 'api', sha: API }]],
+      ['repository twice', [{ path: 'api', sha: API_NEW }, { path: 'api', sha: API_NEW }]]]) {
+      expect([refusal, refused(await roastedAt(snapshots))]).toEqual([refusal, true])
+    }
+    const { calls } = await simulate()
+    expect(calls.find(c => c.label === 'roast').schema.properties.snapshots.minItems).toBe(1)
+  })
+
+  test('a roaster retried over unchecked coverage of unmoved repositories is accepted when the retry leaves them out', async () => {
+    const API = 'd'.repeat(40), API_NEW = 'e'.repeat(40)
+    const base = [{ path: 'api', sha: API }, { path: 'web', sha: BASE }]
+    const repositories = [
+      { path: 'api', startSha: API, snapshotSha: API_NEW, clean: true, git: { head: API_NEW, status: '' } },
+      { path: 'web', startSha: BASE, snapshotSha: BASE, clean: true, git: { head: BASE, status: '' } }]
+    const implementation = implemented({ repositories, commits: [{ sha: API_NEW, subject: 'implement the change', repository: 'api' }] })
+    const unmoved = repositories.map(r => ({ ...r, startSha: r.snapshotSha }))
+    let attempt = 0
+    const first = { snapshots: [{ path: 'api', sha: API_NEW }, { path: 'web', sha: BASE }],
+      coverage: [...coverage, { what: 'web', checked: false, how: 'the change left it alone' }], limitations: [] }
+    const retry = { snapshots: [{ path: 'api', sha: API_NEW }], coverage, limitations: [] }
+    const roast = { get snapshots() { return (attempt === 1 ? first : retry).snapshots },
+      get coverage() { return (attempt === 1 ? first : retry).coverage }, get limitations() { return [] }, findings: [finding] }
+    const { result, calls } = await simulate({ args: launchArgs({ base }), implementation, fixes: { fix: fixed([], { repositories: unmoved }) },
+      verify: { verify: verification([], { repositories: repositories.map(({ path, snapshotSha, clean, git }) => ({ path, snapshotSha, clean, git })) }) },
+      reports: { roast }, beforeRoast: async () => { attempt++ } })
+    expect(retried(calls, 'roast')).toHaveLength(2)
+    expect(calls.filter(c => c.label === 'roast')[1].prompt).toContain('coverage entry not checked and no limitation declared: web')
+    expect([result.exit, result.remaining.filter(r => r.kind === 'roast-finding').length,
+      result.remaining.some(r => r.kind === 'stage-failure')]).toEqual(['follow-up', 1, false])
+  })
+
   test('a tree of several repositories hands every stage one entry per repository', async () => {
     const API = 'd'.repeat(40), API_NEW = 'e'.repeat(40)
     const base = [{ path: 'api', sha: API }, { path: 'web', sha: BASE }]
@@ -2185,9 +2231,24 @@ describe('fix-only follow-up runs', () => {
     }
   })
 
+  test('a fix-run roaster that read only some repositories of the tree is accepted, and a wrong snapshot is refused', async () => {
+    const WEB = 'd'.repeat(40)
+    const base = [{ path: '.', sha: BASE }, { path: 'web', sha: WEB }]
+    const repositories = [
+      { path: '.', startSha: BASE, snapshotSha: FIXED, clean: true, git: { head: FIXED, status: '' } },
+      { path: 'web', startSha: WEB, snapshotSha: WEB, clean: true, git: { head: WEB, status: '' } }]
+    const run = async snapshots => (await simulateFix({ args: fixArgs({ base }), roast: { snapshots },
+      fixes: fixed([disposition('verify:0')], { repositories }) })).result
+    const refused = result => result.remaining.some(r => r.kind === 'stage-failure' && /wrong snapshot/.test(r.item.message))
+    expect(refused(await run([{ path: '.', sha: BASE }]))).toBe(false)
+    expect(refused(await run([{ path: '.', sha: BASE }, { path: 'web', sha: WEB }]))).toBe(false)
+    expect(refused(await run([{ path: '.', sha: FIXED }]))).toBe(true)
+    expect(refused(await run([{ path: '.', sha: BASE }, { path: '.', sha: BASE }]))).toBe(true)
+  })
+
   test('each helper the fix script copies from the main script has the same source text', async () => {
     const copied = ['stage', 'hasHardFlag', 'abortOnFlag', 'checkWriterSnapshot', 'checkWriter', 'withReceipts', 'requireText',
-      'exactlyOnce', 'add', 'end', 'failed', 'proof', 'limited', 'recordBlocking', 'blocking', 'sourceFindings', 'sameSnapshots',
+      'exactlyOnce', 'add', 'end', 'failed', 'proof', 'limited', 'recordBlocking', 'blocking', 'sourceFindings', 'readSnapshots',
       'listPath', 'reported', 'checkModels']
     // The seat map and the prompt blocks built from it and from the marked block are copied values.
     const values = ['REVIEW_SEATS', 'REVIEWER_RULES', 'RULES']
