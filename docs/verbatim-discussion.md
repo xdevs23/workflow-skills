@@ -16,12 +16,14 @@ it as a correction of it, such as saying to do it differently instead or that so
 meant. A later entry that contradicts an earlier one without such words conflicts with it, and the
 conflict is reported. The order of the entries alone cannot tell a revision from a contradiction,
 while the words of the later entry can, and a stage then has nothing of its own to decide about what
-the later entry meant to change. The first hard-flag trigger, `directive-conflict`, is the prompt
-directly contradicting a user entry or what the user answered yes to. A removal of code that only an
-assistant entry names is no prompt-versus-spec conflict, and code that an applicable project rule
-asks for is not code nobody asked for, so the removal rule does not reach it. The `no-words` trigger
-of the writing stages fires on a spec that was not supplied, cannot be read, or holds no entry of
-author `user`.
+the later entry meant to change. The block also states that every question an entry asks has its
+answer in a later entry and that no entry holds speculation or an unverified assertion, and a spec
+that breaks either is unfit and reported. The first hard-flag trigger, `directive-conflict`, is the
+prompt directly contradicting a user entry or what the user answered yes to. A removal of code that
+only an assistant entry names is no prompt-versus-spec conflict, and code that an applicable project
+rule asks for is not code nobody asked for, so the removal rule does not reach it. The `no-words`
+trigger of the writing stages fires on a spec that was not supplied, cannot be read, or holds no
+entry of author `user`.
 
 The marked block of the main script holds values and no prose. It has no private record path, no
 criteria count, no implementer prompt, no scoping and no invariants, so no word of the
@@ -50,11 +52,14 @@ path, so a relative session file in an entry or a pointer resolves where the spe
 
 The implementer's spec findings point at the spec entries they concern in `evidence`, by the same
 rules as a finding of a concern seat. The classes are `joint-impossibility`, two statements of the
-user that cannot both hold, `missing-contract`, `reality-drift`, and `unbacked-entry`, an entry
-whose words were said about another unit. An `unbacked-entry` finding does not block the run and is
-handed to the root as CRITICAL. The finding verifier closes an `unbacked-choice` finding with a
-rejection only on a citation of the form `spec entry <file>:<line>: "<quote>"`, which names the
-entry by its session record.
+user that cannot both hold, `missing-contract`, `open-question`, a question no later entry answers,
+`speculation`, an entry that speculates or asserts something unverified, `reality-drift`, and
+`unbacked-entry`, an entry whose words were said about another unit or have no meaning on their own.
+The first four block the run, and an `unbacked-entry` finding does not block it and is handed to the
+root as CRITICAL. The root then removes the speculation from the spec, makes it a point to research,
+or, as a last resort, puts it to the user as a question. The finding verifier closes an
+`unbacked-choice` finding with a rejection only on a citation of the form `spec entry <file>:<line>:
+"<quote>"`, which names the entry by its session record.
 
 ## Agent templates
 
@@ -86,3 +91,7 @@ one private directory per run, and the launcher removes it when the run ends.
   was rejected for a later entry that corrects an earlier one in its own words.
 - Letting a later statement always replace an earlier one was rejected, since a later statement that
   does not present itself as a correction conflicts with the earlier one.
+- Leaving the check for speculation to the session that assembles the spec was rejected: every stage
+  that reads the spec checks for it.
+- Letting the stages work on as if a speculative entry were removed was rejected, since the entry
+  stays in their context and what it asserts could still be built.

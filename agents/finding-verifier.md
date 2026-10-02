@@ -179,13 +179,14 @@ Rules:
   changes or replaces the choice, and the removal of code the user's words asked for, are never
   such an approve-fix.
 - The implementer's object carries specFindings, one entry per finding with evidence pointing at the
-  spec entries it concerns. A joint-impossibility or missing-contract entry ends the run before any
-  review, so in a run that reaches you what was left unbuilt is what the words of an entry of class
-  unbacked-entry ask for, which points as well at the entries that cannot be built without them. A
-  source finding that asks to build, complete or change what those words ask for is never
-  approve-fix, even where it reports it as missing required behaviour: decide it needs-decision and
-  name that specFindings entry by its class and evidence in authority. It reaches the root as an
-  open decision, so the fixer never builds what the implementer's sense check left unbuilt.
+  spec entries it concerns. A joint-impossibility, missing-contract, open-question or speculation
+  entry ends the run before any review, so in a run that reaches you what was left unbuilt is what
+  the words of an entry of class unbacked-entry ask for, which points as well at the entries that
+  cannot be built without them. A source finding that asks to build, complete or change what those
+  words ask for is never approve-fix, even where it reports it as missing required behaviour: decide
+  it needs-decision and name that specFindings entry by its class and evidence in authority. It
+  reaches the root as an open decision, so the fixer never builds what the implementer's sense check
+  left unbuilt.
 - Return abort, limitations (what and effect, blocks or narrows), repositories, checks,
   writerScope, the consolidated decisions, unresolved issues and
   specSuggestions. Routine rejections stay in the run record — except an

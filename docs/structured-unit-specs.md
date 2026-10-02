@@ -27,13 +27,19 @@ plain Markdown.
 one record of a session transcript, `author` is `user` or `assistant`, and `text` is a verbatim
 substring of that record. Any other key of the file and any other field of an entry fails.
 
-**what-the-spec-holds**: The spec starts at the message that the origin pointer of the unit's todo
-record names, since the todo record is the first thing written when a unit is asked for. From
-there it holds every message of the user about this unit, and of a message about two units only
-the part about this one, which is why an entry quotes a substring and never has to hold a whole
-message. Words about another unit stay out of the spec, and the user corrects the sorting where it
-is wrong. Assistant entries are added only as far as the user's words need them. Entries keep
-session order, so a yes stays after the question it answers.
+**what-the-spec-holds**: The spec holds the message that the origin pointer of the unit's todo
+record names, since the todo record is the first thing written when a unit is asked for, and every
+message of the user about this unit from every session of the project, the records of the current
+session before a compaction included. The todo record and the records of related units point at
+where earlier discussion stands. Of a message about two units the spec holds only the part about
+this one, which is why an entry quotes a substring and never has to hold a whole message. Words
+about another unit stay out of the spec, and the user corrects the sorting where it is wrong.
+Assistant entries are added only as far as the user's words need them. No entry speculates or
+asserts something unverified: a cause or a fix enters only once it was established and verified with
+its evidence in the chat. Speculation found in the discussion or reported by a stage is removed,
+becomes a point to research, or, as a last resort, a question for the user. Every question an entry
+asks has its answer in a later entry. Entries keep session order, so a yes stays after the question
+it answers.
 
 **the-user-checks-the-spec**: The orchestrating session checks the spec with the spec tool and
 opens it in the user's code editor for the user to check. The user only removes entries that do not belong;

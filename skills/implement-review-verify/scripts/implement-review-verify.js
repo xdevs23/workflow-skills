@@ -104,6 +104,8 @@ const AUTHORITY = [                    // authority-aware seats only; quality us
   'User entries are in session order. A later one replaces what it corrects in an earlier one only where its own words present it',
   'as a correction of it: it says to do it differently instead, that something else was meant, adds to what was said because of it,',
   'or forbids what was asked before. A later user entry that contradicts an earlier one without such words conflicts with it: report it.',
+  'Every question an entry asks has its answer in a later entry. No entry holds speculation or an unverified assertion, such as',
+  'a cause or a fix called likely, probable, almost certain or assumed. A spec that breaks either is unfit: report it.',
   'VERIFY every factual claim this prompt makes about the tree, AGAINST THE TREE, before building',
   'on it. A FALSE premise is VERIFIED-AND-REPORTED: build to the TRUE state and flag the premise.',
   'A prompt-vs-spec conflict, and a false premise, are MUST-FIX FINDINGS:',
@@ -129,7 +131,8 @@ const AUTHORITY = [                    // authority-aware seats only; quality us
   'You may NEVER edit a spec or any other AUTHORITY DOCUMENT: report what you find in it. A run\'s spec never changes,',
   'and a spec gains no decision authority merely by being written.',
   'Implement the spec AS WRITTEN. Suggested spec edits do not block executable work or normal reviews.',
-  'Report non-blocking spec suggestions without making them prerequisites; block only on an actual impossibility.',
+  'Report non-blocking spec suggestions without making them prerequisites; block only on an actual impossibility',
+  'or on a spec that is unfit.',
   'A spec that contradicts a directive is the hard-flag case above, never "implement it as written".',
   'An approved removal of code, a parameter or a mechanism that nothing uses, that nobody asked for, or that is built beyond',
   'what was asked is no prompt-vs-spec conflict where only an entry of author assistant names that code: such an entry',
@@ -302,7 +305,7 @@ const ROAST = { type: 'object', additionalProperties: false, required: ['limitat
 // severity of the remaining item, so the class is enum-locked (law 9).
 const SPEC_FINDINGS = { type: 'array', items: { type: 'object', required: ['evidence', 'class', 'claim', 'receipts'], additionalProperties: false,
   properties: { evidence: EVIDENCE,
-    class: { enum: ['joint-impossibility', 'missing-contract', 'reality-drift', 'unbacked-entry'] },
+    class: { enum: ['joint-impossibility', 'missing-contract', 'open-question', 'speculation', 'reality-drift', 'unbacked-entry'] },
     claim: { type: 'string' }, receipts: RECEIPTS } } }
 
 // Writer schemas. The deliverable proof is files together with checks: an account of the work
@@ -753,10 +756,9 @@ const exactlyOnce = (actual, expected, label) => {
 // The citation a rejection of an unbacked-choice finding carries in its authority: the spec entry
 // by its session file and line, then the backing words quoted together with their surrounding context.
 const BACKING = /\bspec entry [^\s:]+:[1-9][0-9]*: "[\s\S]*\S[\s\S]*"/
-// A joint-impossibility or missing-contract finding blocks the run, so the implementer returns it with
-// a blocking limitation and leaves every repository at its start. The script checks the pairing
-// instead of trusting it: without the limitation the run would go on and build what cannot be built.
-const BLOCKING_CLASSES = new Set(['joint-impossibility', 'missing-contract'])
+// The script checks that a blocking finding comes with a blocking limitation instead of trusting it:
+// without the limitation the run would go on and build what cannot be built.
+const BLOCKING_CLASSES = new Set(['joint-impossibility', 'missing-contract', 'open-question', 'speculation'])
 const checkImplementer = r => {
   checkWriter(r)
   for (const f of r.specFindings) checkEvidence(f)
@@ -993,11 +995,8 @@ await stage([GATE_COMMAND,
 ].join('\n'), { label: 'gate', phase: 'Launch', ...UNIT.models.gate, schema: GATE }, checkGate)
 
 try { await onePass() } catch (error) { failed(error, activeLabel) }
-// What the implementer's sense check found in the spec reaches the root after the run, whatever
-// its ending. A joint-impossibility or missing-contract entry comes with the implementer's blocking
-// limitation, which has already ended the run after the implement stage. An unbacked-entry finding
-// lets the run go on without building what its words ask for, and it is CRITICAL because those
-// words were not said about this unit.
+// An unbacked-entry finding is CRITICAL: its words were said about another unit or mean nothing on
+// their own, so nothing was built from them.
 for (const finding of impl?.specFindings ?? []) add('spec-finding', finding, finding.class === 'unbacked-entry' ? 'CRITICAL' : 'must-fix')
 for (const approved of queue) {
   const response = reportedFix?.dispositions?.find(d => d.key === approved.key)
