@@ -451,6 +451,12 @@ const listPath = path => {
   return inside.replace(/^\.\//, '') || '.'
 }
 const reported = list => list.map(entry => ({ ...entry, path: listPath(entry.path) }))
+// A roaster need not read a repository the change left alone.
+const readSnapshots = (read, snaps, required) => {
+  const expected = shaByPath(snaps), paths = read.map(entry => entry.path)
+  return new Set(paths).size === paths.length &&
+    read.every(entry => expected.get(entry.path) === entry.sha) && required.every(path => paths.includes(path))
+}
 if (typeof UNIT.specPath !== 'string' || !UNIT.specPath.endsWith('.yaml')) {
   throw new Error('args.specPath must name the unit spec YAML file')
 }
@@ -718,6 +724,7 @@ const roastPass = async (queue, snaps) => {
     WRITE_NOTHING,
     LIMITS,
     'Cite the repository path, its snapshot SHA and the snapshot file:line in receipts. Return snapshots (the path of each repository you read, exactly as the list above writes it, and its sha), limitations, coverage and findings.',
+    'Include in snapshots every repository whose base and snapshot differ. Leave out a repository the change left alone and you did not read.',
     'APPROVED FIX LIST (planned, not completed):', JSON.stringify(queue),
     'Do not repeat assigned defects; do flag inadequate corrections, interactions and uncovered weaknesses.',
   ].join('\n\n'), {
@@ -725,7 +732,8 @@ const roastPass = async (queue, snaps) => {
     ...UNIT.models.roast, schema: ROAST,
   }, checkReader)
   abortOnFlag(result, 'roast')
-  if (!sameSnapshots(reported(result.snapshots), snaps)) throw new Error('Roaster reviewed the wrong snapshot')
+  const moved = snaps.filter(s => s.sha !== start.get(s.path)).map(s => s.path)
+  if (!readSnapshots(reported(result.snapshots), snaps, moved)) throw new Error('Roaster reviewed the wrong snapshot')
   return { ...result, seat: 'roaster', label: 'roast',
     findings: sourceFindings(result.findings, 'roaster', snaps) }
 }

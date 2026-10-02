@@ -55,8 +55,12 @@ differs from the snapshot in any of them. Each `writerScope` entry names the rep
 commit, and a commit's paths are compared with the writer's files list under the repository's path.
 
 The roaster runs beside the fixer. It receives the base and snapshot commit of every
-repository, reads only Git objects of each repository at those commits, and returns `snapshots`,
-the commit it read per repository, which must equal the ones it was given.
+repository, reads only Git objects of each repository at those commits, and returns `snapshots`: one
+entry for each repository it read, at least one, with the commit it read there. Every entry names a
+repository of the list at the commit given for it, no repository has two entries, and every
+repository whose base and snapshot differ has one, so a repository the change left alone may have
+none. In a fix run, where base and snapshot are one commit, any repository of the list may have
+none, as long as the list holds one entry.
 
 ## The spec tool's --base
 

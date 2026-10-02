@@ -304,7 +304,6 @@ checkRepositories(base, 'args.base, the parent run\'s final snapshots,')
 const shaByPath = list => new Map(list.map(entry => [entry.path, entry.sha]))
 const listed = list => list.map(entry => entry.path + ' ' + entry.sha).join(', ')
 const snapshotsOf = writer => writer.repositories.map(r => ({ path: r.path, sha: r.snapshotSha }))
-const sameSnapshots = (a, b) => a.length === b.length && a.every(entry => shaByPath(b).get(entry.path) === entry.sha)
 // A reader may name a repository by its path inside the worktree instead of the list's path under the
 // tree root; both name the same repository.
 const listPath = path => {
@@ -314,6 +313,12 @@ const listPath = path => {
   return inside.replace(/^\.\//, '') || '.'
 }
 const reported = list => list.map(entry => ({ ...entry, path: listPath(entry.path) }))
+// A roaster need not read a repository the change left alone.
+const readSnapshots = (read, snaps, required) => {
+  const expected = shaByPath(snaps), paths = read.map(entry => entry.path)
+  return new Set(paths).size === paths.length &&
+    read.every(entry => expected.get(entry.path) === entry.sha) && required.every(path => paths.includes(path))
+}
 if (typeof UNIT.fixList !== 'string' || !UNIT.fixList.endsWith('.yaml')) throw new Error('args.fixList must name the fix list YAML file')
 if (typeof UNIT.transcripts !== 'string' || !UNIT.transcripts) throw new Error('args.transcripts must name the transcript directory')
 // The launch check has the tool hold each entry to the parent run's journal and resolve its pointers.
@@ -540,7 +545,7 @@ const roastPass = async queue => {
   ].join('\n\n'), {
     label: 'roast', phase: 'Fix', agentType: 'workflow-skills:roaster', ...UNIT.models.roast, schema: ROAST,
   }, checkReader)
-  if (!sameSnapshots(reported(result.snapshots), base)) throw new Error('Roaster reviewed the wrong snapshot')
+  if (!readSnapshots(reported(result.snapshots), base, [])) throw new Error('Roaster reviewed the wrong snapshot')
   return { ...result, findings: sourceFindings(result.findings, 'roaster', base) }
 }
 const diffPass = (queue, snaps) => stage([
