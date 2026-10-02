@@ -122,9 +122,7 @@ yours the user has seen in the chat.
   words as a `joint-impossibility`.
 - Wrap the text of every entry at 120 characters, as the width rule below says.
 - Check the spec with the spec tool.
-- Open the checked spec in the user's code editor for the user to check. The user only removes
-  entries that do not belong and never types into the file.
-- Launch the main run on the file as the user leaves it.
+- Launch the main run on the checked spec.
 - Give every stage the spec by its path under the main checkout, never a path relative to its
   worktree, because a worktree holds no untracked file.
 - Never change a run's spec.
