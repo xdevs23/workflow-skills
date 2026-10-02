@@ -60,8 +60,9 @@ const STAGE = [
 // Every stage prompt built on STAGE joins this block, except the roaster's: the roaster has no Read
 // tool and reads only Git objects.
 const STYLE = [
-  'REQUIRED: before you write, read the file ' + UNIT.pluginRoot + '/skills/writing-style/SKILL.md with the Read tool,',
-  'and follow it in every comment, document, commit message and returned string.',
+  'REQUIRED: before you write, read the files ' + UNIT.pluginRoot + '/skills/writing-style/SKILL.md and ' + UNIT.pluginRoot +
+    '/skills/hygiene/SKILL.md with the Read tool,',
+  'and follow them in every comment, document, commit message and returned string.',
 ].join('\n')
 // Scratch files by role, as in the main script. WRITE_GIT, which only the fixer receives, carries
 // WRITE_SCRATCH. The reader-only places that carry WRITE_NOTHING are READ_GIT, and HYGIENE through
