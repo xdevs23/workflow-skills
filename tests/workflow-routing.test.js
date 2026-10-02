@@ -1655,7 +1655,7 @@ describe('one-pass remaining-items handoff', () => {
   test('every other skill requires loading the writing-style skill', async () => {
     const dir = new URL('../skills/', import.meta.url)
     const names = ['babysit-pr', 'copywriting', 'implement-review-verify', 'pr-comment-replies',
-      'resume-interrupted-run', 'review-pass', 'visual-decisions']
+      'resume-interrupted-run', 'review-pass', 'visual-decisions', 'wall-of-shame']
     for (const name of names) {
       const text = await Bun.file(new URL(`${name}/SKILL.md`, dir)).text()
       expect(text).toContain('Load the `workflow-skills:writing-style` skill first.')
