@@ -104,13 +104,17 @@ const AUTHORITY = [                    // authority-aware seats only; quality us
   'User entries are in session order. A later one replaces what it corrects in an earlier one only where its own words present it',
   'as a correction of it: it says to do it differently instead, that something else was meant, adds to what was said because of it,',
   'or forbids what was asked before. A later user entry that contradicts an earlier one without such words conflicts with it: report it.',
-  'Every question an entry asks has its answer in a later entry. No entry holds speculation or an unverified assertion, such as',
-  'a cause or a fix called likely, probable, almost certain or assumed. A spec that breaks either is unfit: report it.',
+  'A SPEC IS INVALID when a question an entry asks has no answer in a later entry, when an entry holds speculation or an',
+  'unverified assertion, such as a cause or a fix called likely, probable, almost certain or assumed, when an entry of author',
+  'assistant quotes a Write call that no later user entry answers yes to, or when an entry of author assistant decides a product',
+  'or architecture question that no user entry decides. A product question is about what the user sees and does, what data is',
+  'kept or lost, the product\'s scope and anything public or external. An architecture question is about where code lives, the',
+  'shape of the system, the data model and the contracts between components.',
   'VERIFY every factual claim this prompt makes about the tree, AGAINST THE TREE, before building',
   'on it. A FALSE premise is VERIFIED-AND-REPORTED: build to the TRUE state and flag the premise.',
   'A prompt-vs-spec conflict, and a false premise, are MUST-FIX FINDINGS:',
   'report them and proceed against the spec. Never silently pick one; never stop for them.',
-  'HARD-FLAG (set abort.trigger and abort.reason, then stop) has THREE triggers, one abort field, one',
+  'HARD-FLAG (set abort.trigger and abort.reason, then stop) has FOUR triggers, one abort field, one',
   'disposition. First: this prompt directly contradicting a user entry of the spec, or what the user answered yes to',
   'there - the user veto reaches the prompt (trigger directive-conflict).',
   'Second, WRITING SEATS ONLY: a failed sense check (trigger sense-check; implementer before any edit,',
@@ -131,8 +135,7 @@ const AUTHORITY = [                    // authority-aware seats only; quality us
   'You may NEVER edit a spec or any other AUTHORITY DOCUMENT: report what you find in it. A run\'s spec never changes,',
   'and a spec gains no decision authority merely by being written.',
   'Implement the spec AS WRITTEN. Suggested spec edits do not block executable work or normal reviews.',
-  'Report non-blocking spec suggestions without making them prerequisites; block only on an actual impossibility',
-  'or on a spec that is unfit.',
+  'Report non-blocking spec suggestions without making them prerequisites; block only on an actual impossibility.',
   'A spec that contradicts a directive is the hard-flag case above, never "implement it as written".',
   'An approved removal of code, a parameter or a mechanism that nothing uses, that nobody asked for, or that is built beyond',
   'what was asked is no prompt-vs-spec conflict where only an entry of author assistant names that code: such an entry',
@@ -145,6 +148,8 @@ const AUTHORITY = [                    // authority-aware seats only; quality us
   'sets abort.trigger to no-words before any edit. An entry of author user counts as the user\'s words; an entry',
   'of author assistant, a paraphrase, a summary and a design document\'s decision list do not.',
   'Never report that gap as a limitation and proceed.',
+  'Fourth, EVERY STAGE THAT READS THE SPEC: invalid-spec. An invalid spec sets abort.trigger to invalid-spec before anything',
+  'else, a writer before any edit, with every entry that makes it invalid and the rule it breaks in abort.reason.',
 ].join('\n')
 const READ_GIT = [
   'GIT READ-ONLY: never stage, commit, reset, amend, rebase, merge or switch branches/worktrees.',
@@ -181,7 +186,7 @@ const SPEC = [
 // not stage schemas: every stage declares its own closed object in full, so validation names the
 // seat that omitted a field. No stage schema declares a free-prose field.
 const ABORT = { type: 'object', required: ['trigger', 'reason'], additionalProperties: false,
-  properties: { trigger: { enum: ['none', 'directive-conflict', 'sense-check', 'no-words'] }, reason: { type: 'string' } } }
+  properties: { trigger: { enum: ['none', 'directive-conflict', 'sense-check', 'no-words', 'invalid-spec'] }, reason: { type: 'string' } } }
 const RECEIPT = { type: 'object', required: ['file', 'line', 'quote'], additionalProperties: false,
   properties: { file: { type: 'string' }, line: { type: 'integer', minimum: 1 }, quote: { type: 'string' } } }
 const RECEIPTS = { type: 'array', minItems: 1, items: RECEIPT }
@@ -305,7 +310,7 @@ const ROAST = { type: 'object', additionalProperties: false, required: ['limitat
 // severity of the remaining item, so the class is enum-locked (law 9).
 const SPEC_FINDINGS = { type: 'array', items: { type: 'object', required: ['evidence', 'class', 'claim', 'receipts'], additionalProperties: false,
   properties: { evidence: EVIDENCE,
-    class: { enum: ['joint-impossibility', 'missing-contract', 'open-question', 'speculation', 'reality-drift', 'unbacked-entry'] },
+    class: { enum: ['joint-impossibility', 'missing-contract', 'reality-drift', 'unbacked-entry'] },
     claim: { type: 'string' }, receipts: RECEIPTS } } }
 
 // Writer schemas. The deliverable proof is files together with checks: an account of the work
@@ -758,7 +763,7 @@ const exactlyOnce = (actual, expected, label) => {
 const BACKING = /\bspec entry [^\s:]+:[1-9][0-9]*: "[\s\S]*\S[\s\S]*"/
 // The script checks that a blocking finding comes with a blocking limitation instead of trusting it:
 // without the limitation the run would go on and build what cannot be built.
-const BLOCKING_CLASSES = new Set(['joint-impossibility', 'missing-contract', 'open-question', 'speculation'])
+const BLOCKING_CLASSES = new Set(['joint-impossibility', 'missing-contract'])
 const checkImplementer = r => {
   checkWriter(r)
   for (const f of r.specFindings) checkEvidence(f)

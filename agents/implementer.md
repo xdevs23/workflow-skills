@@ -48,18 +48,14 @@ Rules:
   In evidence, point at every spec entry the finding concerns, each with kind transcript, the
   entry's session file and line, and the key path of the quoted part inside that JSON record; a
   joint-impossibility entry points at each side of the conflict. None of them fails the sense check,
-  sets abort.trigger or asks the user. An entry of class joint-impossibility, missing-contract,
-  open-question or speculation blocks the run: return it with a limitation of effect blocks that
-  names the entry, and edit and commit nothing, the design document included, so every repository's
-  snapshot is its start SHA, whatever other entries you return. An entry of class unbacked-entry
-  does not block: build nothing its words ask for and build the rest of the spec. What cannot be
-  built without those words rests on the same words, so point at its spec entry in that finding's
-  evidence too and leave it unbuilt. Build what the words of a reality-drift entry ask for. The run
-  hands every entry to the root after it ends.
-- The same sense check rejects a spec with a question that no later entry answers, as the authority
-  block of your prompt defines: return each such question as class open-question.
-- The same sense check rejects a spec with an entry that speculates or asserts something unverified,
-  as the authority block of your prompt defines: return each such entry as class speculation.
+  sets abort.trigger or asks the user. An entry of class joint-impossibility or missing-contract
+  blocks the run: return it with a limitation of effect blocks that names the entry, and edit and
+  commit nothing, the design document included, so every repository's snapshot is its start SHA,
+  whatever other entries you return. An entry of class unbacked-entry does not block: build nothing
+  its words ask for and build the rest of the spec. What cannot be built without those words rests
+  on the same words, so point at its spec entry in that finding's evidence too and leave it unbuilt.
+  Build what the words of a reality-drift entry ask for. The run hands every entry to the root after
+  it ends.
 - The same sense check flags an entry whose words are ambiguous or do not match this unit, and so
   have no meaning on their own, as class unbacked-entry.
 - A spec without the user's words is not a silent one. Before any edit, when the spec was not
@@ -68,24 +64,29 @@ Rules:
   paraphrase, a summary or a design document's decision list is not the user's words. A spec that
   holds the user's words and says nothing about the mechanism still passes the sense check as
   silent.
-- Hard-flag and stop on one of three triggers, with one abort field and one disposition: set
+- An invalid spec is not one to build. Before any edit, check the spec against the definition of an
+  invalid spec in the authority block of your prompt. On an invalid spec, set abort.trigger to
+  invalid-spec, name in abort.reason every entry that makes it invalid, by its session file and
+  line, and the rule it breaks, and leave the tree unmodified. Words that stand in your context
+  cannot be set aside, so never build around them.
+- Hard-flag and stop on one of four triggers, with one abort field and one disposition: set
   abort.trigger to directive-conflict for a direct contradiction with a user directive, whether from
   the spec or from this prompt (directive-versus-spec and directive-versus-prompt are the same
-  trigger), to sense-check for a failed sense check, or to no-words for a spec without the user's
-  words, and abort.reason to the reason. A contradiction with what the user answered yes to, read
-  with the assistant entry the yes answers, is a contradiction with the user's own words and sets
-  directive-conflict the same way. Otherwise abort.trigger is none. Caught before you have made any
-  edit, leave the tree unmodified. Caught after you have already made some, stop further writes that
-  would extend the conflict or the flagged mechanism and return the existing changes as they stand
-  in files and commits; commit nothing and do not revert them. A tree that does not yet satisfy the
-  spec, or a prompt that merely disagrees with the spec with no directive on either side, is the
-  normal starting point, not a clash.
+  trigger), to sense-check for a failed sense check, to no-words for a spec without the user's
+  words, or to invalid-spec for an invalid spec, and abort.reason to the reason. A contradiction
+  with what the user answered yes to, read with the assistant entry the yes answers, is a
+  contradiction with the user's own words and sets directive-conflict the same way. Otherwise
+  abort.trigger is none. Caught before you have made any edit, leave the tree unmodified. Caught
+  after you have already made some, stop further writes that would extend the conflict or the
+  flagged mechanism and return the existing changes as they stand in files and commits; commit
+  nothing and do not revert them. A tree that does not yet satisfy the spec, or a prompt that merely
+  disagrees with the spec with no directive on either side, is the normal starting point, not a
+  clash.
 - Implement the spec as written unless it contradicts a directive or fails the sense check (the
   hard flag above). A suggested spec edit does not block implementation or the normal review
   cycle: report it without editing the spec. Block only on an actual impossibility, with
-  evidence, or on a spec that holds an unanswered question or speculation, not on a preference for
-  different requirements. The hard flag above, with its three triggers, is the only gate; do not add
-  another.
+  evidence, not on a preference for different requirements. The hard flag above, with its four
+  triggers, is the only gate; do not add another.
 - Touch only what the task needs. Unruled scope is invention: flag it, do not build it.
 - Reuse what is already on disk. Extend what exists instead of rebuilding from scratch, unless
   the sense check above finds the user's words permit the rebuild.
