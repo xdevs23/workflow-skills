@@ -28,6 +28,7 @@ Then the skills appear in the skill list and each has a matching slash command (
 | `visual-decisions` | Put open product or architecture decisions to the user as one page of side-by-side pictures, Today and After, drawn from the code, with one question to answer per decision. |
 | `babysit-pr` | Watch a submitted pull request until it is closed or merged, and act on every comment, review and failed check that reaches it. |
 | `pr-comment-replies` | Write and post replies on pull requests and issues: the note alert on top, inline replies that start with their outcome and a reason for every declined finding. |
+| `report-plugin-issues` | File every problem found in this plugin as an issue on its repository, or as a comment on the open issue that already describes it, with project details and private data kept out, in place of patching its scripts silently. |
 | `wall-of-shame` | Keep an append-only record of rule violations by coding-agent sessions, each with the words, the rule it broke and the transcript line. |
 | `local-cache` | Define the project cache, the ignored directory for files not meant for the repository, and what reading and writing stages may put there. |
 | `todo-md` | Keep the todo record, the untracked `TODO.md` that holds open work and where each item stands. |
