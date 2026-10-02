@@ -251,8 +251,7 @@ describe('workflow verification and consolidation', () => {
       'Entries of one session file never go back in line order, so a yes stays after the question it answers.',
       'Keep words about another unit out of the spec. Every entry belongs to this unit, so the user can correct the sorting where it is wrong.',
       'Check the spec with the spec tool.',
-      'Open the checked spec in the user\'s code editor for the user to check. The user only removes entries that do not belong and never types into the file.',
-      'Launch the main run on the file as the user leaves it.',
+      'Launch the main run on the checked spec.',
       'Never change a run\'s spec.',
       'Put the words the user adds while a run is going or after it returns with issues in a copy of the spec under a new file name: the same entries, with the new ones added in session order.',
       'Start the next run on the copy.',
@@ -260,7 +259,7 @@ describe('workflow verification and consolidation', () => {
       'Never start a second run on the same spec.']) {
       expect([phrase, text.includes(phrase)]).toEqual([phrase, true])
     }
-    for (const phrase of ['criterion', 'private directive record', '`items`', '`summary`', '`record`', '--record']) {
+    for (const phrase of ['criterion', 'private directive record', '`items`', '`summary`', '`record`', '--record', 'code editor']) {
       expect([phrase, text.includes(phrase)]).toEqual([phrase, false])
     }
   })
@@ -4078,6 +4077,7 @@ describe('review-only runs', () => {
       'Judge every finding yourself, as the finding verifier of a main run would.']) {
       expect([phrase, text.includes(phrase)]).toEqual([phrase, true])
     }
+    expect(text.includes('code editor')).toBe(false)
     expect(await Bun.file(new URL('../skills/review-pass/scripts/review-pass.js', import.meta.url)).exists()).toBe(false)
   })
 })

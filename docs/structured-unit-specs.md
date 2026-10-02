@@ -41,10 +41,9 @@ becomes a point to research, or, as a last resort, a question for the user. Ever
 asks has its answer in a later entry. Entries keep session order, so a yes stays after the question
 it answers.
 
-**the-user-checks-the-spec**: The orchestrating session checks the spec with the spec tool and
-opens it in the user's code editor for the user to check. The user only removes entries that do not belong;
-nobody types into the file, so every entry stays a quote the tool can verify against its record.
-The main run launches on the file as the user leaves it.
+**the-tool-checks-the-spec**: The orchestrating session checks the spec with the spec tool, and the
+main run launches on the checked file. Nobody types into the file, so every entry stays a quote the
+tool can verify against its record.
 
 **copies**: A run's spec never changes, and each run starts on its own spec file. Words the user
 adds while a run is going or after it returns go into a copy of the spec, the same entries with the
@@ -155,7 +154,11 @@ Reason: The user adds words while a run is going and after it returns.
 Reason: An entry quotes the substring of the message that is about its unit.
 
 **rejected-typed-words**: Words typed into the spec file.
-Reason: The user only removes entries in the editor, so every entry stays a quote of its record.
+Reason: Every entry stays a quote the spec tool can verify against its record.
+
+**rejected-editor-check**: Opening the spec in the user's code editor for a check before every run.
+Reason: The spec rules reject an open question and speculation and flag an entry without meaning of
+its own, so the spec needs no check by hand before a run.
 
 **rejected-file-with-hash**: A file path with a hash for a plan the user approved.
 Reason: The content of a Write call already stands in the transcript.

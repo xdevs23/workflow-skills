@@ -18,8 +18,8 @@ head commit, with no implementer, finding verifier or fixer.
 ## Before the run
 
 - Assemble the unit spec of the change as `workflow-skills:implement-review-verify` describes in its
-  section on the unit spec: the discussion of the unit, quoted verbatim, checked with the spec tool
-  and checked by the user in the user's code editor.
+  section on the unit spec: the discussion of the unit, quoted verbatim and checked with the spec
+  tool.
 - Commit the change in its worktree first. The reviewers read the commits from base to head, never
   uncommitted work.
 
