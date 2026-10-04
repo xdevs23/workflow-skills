@@ -214,7 +214,7 @@ describe('workflow verification and consolidation', () => {
     }
   })
 
-  test('fixer and mandatory roaster overlap, with a pinned pre-fix snapshot', async () => {
+  test('fixer and mandatory roaster overlap, with an immutable pre-fix snapshot', async () => {
     const roastEntered = Promise.withResolvers(), releaseRoast = Promise.withResolvers()
     let fixerSawRoaster = false
     const execution = simulate({
@@ -373,7 +373,7 @@ describe('workflow verification and consolidation', () => {
     }
   })
 
-  test('a dirty or wrongly pinned fixer result cannot become the next snapshot', async () => {
+  test('a dirty fixer result, or one on the wrong commit, cannot become the next snapshot', async () => {
     for (const fields of [{ clean: false }, { snapshotSha: 'HEAD' }, { startSha: BASE }]) {
       const response = fixed([disposition()], { ...fields,
         checks: [{ ...check(), output: 'fixer proof' }],
@@ -986,7 +986,7 @@ describe('coder sense check and project-benefit review', () => {
       ['fixer', ['Bounded sense check before your first write, on every approved correction', "itself a band-aid on a mechanism the user's words in the spec do not call for, where they describe deletion or a rewrite",
         "no agent's justification and no root statement substitutes for it", "You do not repeat the implementer's request-level sense check",
         'holds no entry of author user sets abort.trigger to no-words before your first write']],
-      ['finding-verifier', ['is CRITICAL, and neither cleanup nor record is available for it', "supply the quote yourself for a cold seat's finding (quality, cold alternatives, an audit seat)",
+      ['finding-verifier', ['is CRITICAL, and neither cleanup nor record is available for it', "supply the quote yourself for an unbriefed seat's finding (quality, cold alternatives, an audit seat)",
         'Where the spec holds no words of the user about the mechanism, state that silence in plain words in the authority field',
         "Approve-fix a project-benefit finding for the deletion or rewrite the user's words describe, or for a deletion or rewrite that improves code quality without changing anything the spec specifies.",
         'the authority field also names the rule of this template on corrections that improve code quality, and the evidence field quotes the reviewer\'s rule or the project rule the correction serves.',

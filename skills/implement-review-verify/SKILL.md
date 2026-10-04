@@ -3,7 +3,7 @@ name: implement-review-verify
 description: Implements features, larger units, well-specified change requests, cross-sectional work and changes with subtle invariants.
 ---
 
-# Implement → Review → Verify → Fix — a workflow for code changes
+# Implement → Review → Verify → Fix: a workflow for code changes
 
 **Load the `workflow-skills:writing-style` skill first.** It binds every comment, document, commit
 message and reply this skill produces, and it is not optional when working with this plugin.
@@ -51,16 +51,16 @@ each scales to the change.
 Reach for this when at least one is true:
 - the change touches **shared infrastructure** other code depends on (a queue, an executor, a
   base class, a wire format);
-- it carries **subtle invariants** — ordering, idempotency, concurrency, dedup, a "complete only
-  after X lands" guarantee — where a plausible-looking implementation can be quietly wrong;
+- it carries **subtle invariants** (ordering, idempotency, concurrency, dedup, a "complete only
+  after X is stored" guarantee), where a plausible-looking implementation can be quietly wrong;
 - the user explicitly asked for "a workflow" / "with reviewers" / a thorough pass.
 
 The workflow needs git: the project is one git repository, or a tree of several git repositories
 such as a repo-tool client. In a project without git no run starts, and you may ask the user
 whether they want a git repository.
 
-- Do NOT use it for one-off mechanical edits, a rename, or pure research — the overhead (multiple
-  agents reading the codebase) isn't worth it. For those, just do the edit, or use a single agent.
+- Do NOT use it for one-off mechanical edits, a rename, or pure research: the overhead (multiple
+  agents reading the codebase) does not pay off. For those, just do the edit, or use a single agent.
 - Do a simple, direct change whose outcome is very unlikely to change meaningfully, and which has
   no meaningful impact on the overall product, directly, without a workflow. Once such a change is
   committed, still run `workflow-skills:review-pass` on it when it changes code and is more than a
@@ -69,7 +69,7 @@ whether they want a git repository.
   such as one you edited directly: it runs the main script of this skill in review mode, the launch
   check and the fifteen reviewers alone, and their findings go to a fix run.
 
-## Before phase 1 — the unit spec
+## Before phase 1: the unit spec
 
 The unit spec is the discussion of the unit, quoted verbatim from the session transcripts, and
 nothing else. Nothing is written for it: it holds the user's words and, as their context, quoted
@@ -176,7 +176,7 @@ specs.
   can be listed in full never sets it.
 - Run the tool before you launch the main run.
 - Read its summary on stdout, as JSON with `--json`: the spec's `sha256`, `nonBlankLines`, the
-  `specLines` the size gate divides by, the `unbreakable` lines and a `proof`.
+  `specLines` the size check divides by, the `unbreakable` lines and a `proof`.
 - Expect the run's first stage to run the tool once more and return the `proof` it prints only when
   the spec passes.
 - The shipped scripts take the plugin root in their marked block. An installed plugin older than
@@ -220,14 +220,14 @@ The implement-review-verify workflow runs four phases: **Implement → Review �
 Cold alternatives joins Review. The mandatory roaster overlaps Fix on the pre-fix commit plus
 approved fix list; its findings return to you in `remaining`.
 
-### Phase 1 — Implement (1 agent, sequential — `agentType:'workflow-skills:implementer'`)
+### Phase 1: Implement (1 agent, sequential, `agentType:'workflow-skills:implementer'`)
 
-Run ONE implementer (`agents/implementer.md`), working sequentially on the real tree. One agent —
-not a fan-out — because a coupled change mutates shared files and parallel writers collide.
+Run ONE implementer (`agents/implementer.md`), working sequentially on the real tree. One agent,
+not a fan-out, because a coupled change mutates shared files and parallel writers collide.
 Multi-implementer fan-out on a coupled change is **explicitly rejected**: it produced file
 collisions and consistency drift.
 
-- Run parallel implementers only across genuinely disjoint trees/repos — and even then the reviews
+- Run parallel implementers only across genuinely disjoint trees/repos, and even then the reviews
   can be one barrier covering both.
 - Add nothing to the implementer's prompt. The script builds it from the shared blocks, the spec
   path, the start commits, the focused checks and the task itself: "Implement what the following
@@ -310,10 +310,10 @@ collisions and consistency drift.
   architecture question that no user entry decides. The `abort.reason` names every such entry and
   the rule it breaks. A stage cannot set aside words that stand in its context, so building around
   them would still let them steer what gets built.
-- **Prompt scrutiny / abort — four triggers, one abort field.** The implementer also checks the
+- **Prompt scrutiny and abort: four triggers, one abort field.** The implementer also checks the
   prompt against the spec and the code *before* editing. The abort has exactly four triggers: **a
-  user verbatim directive directly contradicted by either authority document or by this prompt** —
-  directive-versus-spec and directive-versus-prompt are the same trigger — **a failed sense check**
+  user verbatim directive directly contradicted by either authority document or by this prompt**
+  (directive-versus-spec and directive-versus-prompt are the same trigger), **a failed sense check**
   as defined above, **a record without the user's words** (`no-words`) as defined above, and **an
   invalid spec** (`invalid-spec`) as defined above. The AUTHORITY DOCUMENTS are the user's verbatim
   directives and the spec; the prompt is UNTRUSTED relative to the spec (law 6), but that ranking
@@ -324,7 +324,7 @@ collisions and consistency drift.
   - **the prompt asserts a plainly false premise about the tree** ("module X already exists") →
     **VERIFIED-AND-REPORTED**. Every factual claim the prompt makes about the tree is CHECKED
     against the tree before anything is built on it; a false one is not merely disregarded but
-    *corrected* — build to the TRUE state of the tree, and flag the premise as a must-fix. That
+    *corrected*: build to the TRUE state of the tree, and flag the premise as a must-fix. That
     beats both stopping and trusting, and it is what "untrusted" is supposed to buy. It is recorded
     in `premises` (claim, holds, note). It is not a contradiction with a directive, so it must not
     set the abort;
@@ -334,10 +334,10 @@ collisions and consistency drift.
   side (`abort.trigger` `directive-conflict`), a failed sense check (`sense-check`), a record
   without the user's words (`no-words`), or an invalid spec (`invalid-spec`) sets a trigger other
   than `none`, with the reason in `abort.reason`. Caught before any edit, it stops with the tree
-  UNMODIFIED; caught after some edits already landed, it stops further writes that would extend the
+  UNMODIFIED; caught after some edits were already made, it stops further writes that would extend the
   conflict or the flagged mechanism and returns the existing changes as they stand in `files` and
   `commits`, committing nothing and without reverting them. Four triggers, one field, one
-  disposition — an abort class with no trigger of its own is undetectable, and a trigger with more
+  disposition: an abort class with no trigger of its own is undetectable, and a trigger with more
   than one disposition deadlocks. The second and third triggers belong to the writing seats and the
   fourth to every stage that reads the spec. A reading seat reports the sense-check observation as a
   `band-aid` or `longer-route` finding (phase 2), never as a flag, and a reading seat never sees a
@@ -347,7 +347,7 @@ collisions and consistency drift.
   user's answer, added to a copy of the spec for the next run. Without that answer the flagged
   mechanism never continues, whatever a stage argues for it.
 - **Scope follows the same rule.** The implementer touches only what the task needs, and flags
-  anything beyond the ruled scope as an invention instead of building it.
+  anything beyond the decided scope as an invention instead of building it.
 - **A design document, when the change alters the design, is the implementer's last write.** It
   writes or extends the document by hand from the code once its implementation is done, as the unit
   spec section above describes, and a change that alters no design writes none.
@@ -409,7 +409,7 @@ All other seats remain Git-read-only.
 ### Phase 2: Review (N agents, parallel seats, split BY CONCERN)
 
 Run independent reviewers in parallel, each owning a DISTINCT lens, each via its own `agentType`.
-This phase is a **genuine barrier** — the finding verifier needs every seat's object before
+This phase is a **genuine barrier**: the finding verifier needs every seat's object before
 consolidation.
 
 - **The review stage has fifteen fixed, mandatory seats.** Every run runs all of them, whatever the
@@ -430,30 +430,30 @@ Correctness, spec compliance and the duplicate checker are the three seats that 
 against the spec: each reads the spec, says what is wrong with the implementation and names the
 evidence that backs the finding, the transcript record of the user's words or a rule with its
 source. There are no acceptance criteria and no verdicts.
-- **Correctness** (`agents/reviewer-correctness.md`) — bugs, races, broken invariants, the failure
+- **Correctness** (`agents/reviewer-correctness.md`): bugs, races, broken invariants, the failure
   modes the change introduces. It hunts the hazards visible in its assigned change, and its
   template forbids invented issues and accepts an empty findings list. This seat
   also owns **ASSERTION GRANULARITY** (law 14): it READS the assertions and checks that each
-  invariant is pinned at the granularity the rule binds at, never aggregated over the artifact —
-  a class the gate structurally cannot catch, because the aggregate assertion is green.
-  When the work must PRESERVE AN INVENTORY — every fact, row, entry or capability carried from a
-  source into a new artifact — this seat also owns **TRUNCATION-WITH-ELLIPSIS**: under content
+  invariant is asserted at the granularity the rule binds at, never aggregated over the artifact,
+  a class the check commands structurally cannot catch, because the aggregate assertion is green.
+  When the work must PRESERVE AN INVENTORY (every fact, row, entry or capability carried from a
+  source into a new artifact), this seat also owns **TRUNCATION-WITH-ELLIPSIS**: under content
   pressure the characteristic failure is to COMPRESS, truncating an entry with an ellipsis,
   collapsing a list, or folding content behind a disclosure device, and the result still reads as
   complete and well-formed. The check is an explicit **inventory diff against the source, item by
-  item**, treating any collapse or truncation device as a FAILURE rather than a formatting choice.
+  item**, treating any collapse or truncation device as a FAILURE and never as a formatting choice.
   It is a seat check for the same reason as the one above: it needs a reader holding both artifacts
-  side by side, and nothing a gate can run goes red.
+  side by side, and nothing a check command can run goes red.
 - **Spec compliance** (`agents/reviewer-spec-compliance.md`) checks the user's words FORWARD
   into the implementation: missing or incorrect behaviour they ask for. The spec, not your
   description, is its reference. It receives NO implementer object. Inverse-spec owns the reverse
   authorization map, excess scope and decisions missing from the spec.
-- **Duplicate checker** (`agents/duplicate-checker.md`) — "one decision path, recorded once": second
+- **Duplicate checker** (`agents/duplicate-checker.md`): "one decision path, recorded once": second
   enforcement sites, parallel decision paths, truth re-derived or re-recorded twice, logic copied
   instead of shared. Cheap, narrow, and catches a class nothing else does.
 
 **A seat earns its place by having a DISTINCT FAILURE-DETECTION MODE, not by adding redundancy.**
-Three identical reviewers are worth less than three different lenses. The fifteen seats are the
+Three identical reviewers find less than three different lenses. The fifteen seats are the
 lenses of every run, and the main script stops a run whose seat list holds another set.
 
 - **Concern-reviewer output: findings that point at their evidence.** These seats return
@@ -471,10 +471,10 @@ lenses of every run, and the main script stops a run whose seat list holds anoth
   the claim in hand is what lets a seat catch a claim that is false, which it cannot do if it never
   saw the claim.
 - **The SPEC-COMPLIANCE seat does not receive it at all.** The seat that judges the code against the
-  AUTHORITY DOCUMENT must not be handed the implementer's account of what it did — its whole job is
+  AUTHORITY DOCUMENT must not be handed the implementer's account of what it did: its whole job is
   the spec versus the tree, and an account of the work is precisely the framing that makes a
-  missing requirement look answered. One briefed verifier plus one cold judge beats both
-  all-briefed and all-cold. This rule governs WHICH INPUT a seat gets, including in a fix run or a
+  missing requirement look answered. One briefed verifier plus one unbriefed judge beats
+  both all-briefed and all-unbriefed. This rule governs WHICH INPUT a seat gets, including in a fix run or a
   new unit's run.
 - **And a FINDING IS A DEFECT, nothing else.** What the seat inspected and how goes in `coverage`,
   what it could not check in `limitations`, never in the findings array, because mixing coverage
@@ -503,21 +503,21 @@ lenses of every run, and the main script stops a run whose seat list holds anoth
 
 ### Additional review seats, parallel with the concern reviewers
 
-- **Quality** (`agents/quality.md`) — a broad, deliberately unbriefed read of the diff and
+- **Quality** (`agents/quality.md`): a broad, deliberately unbriefed read of the diff and
   touched-file context. No spec, directives, project docs, implementer object, or shared
   authority briefing. Its ignorance is the mechanism; use only the hygiene floor and diff.
-- **Inverse-spec** (`agents/reviewer-inverse-spec.md`) — maps the COMPLETE branch diff's
+- **Inverse-spec** (`agents/reviewer-inverse-spec.md`): maps the COMPLETE branch diff's
   choices back to exact authorizing words. Owns excess scope, missing spec decisions,
   deletion/simplification proposals and estimated savings. Spec compliance owns the other
   direction: whether explicit requirements are implemented correctly.
-- **Project rule reader** (`agents/project-rule-reader.md`) — reads complete changed files
+- **Project rule reader** (`agents/project-rule-reader.md`): reads complete changed files
   against applicable project/global rules, including violations beside the diff. Its
   cleanup findings are preserved without expanding this unit's repair scope.
 - **Cold alternatives** (`agents/cold-alternatives.md`): only the diff and the surrounding code,
   never the implementer's object. Returns `candidates` (at most two materially simpler shapes) or
   `currentShapeRight`.
 - **The eight audit seats** (`separation-of-concerns`, `abstraction-quality`, `code-smell`,
-  `type-safety`, `code-cleanliness`, `missing-gaps`, `domain-leakage`, `type-smearing`) — each judges
+  `type-safety`, `code-cleanliness`, `missing-gaps`, `domain-leakage`, `type-smearing`): each judges
   the code through its one lens. Each receives what quality receives, the hygiene floor and the
   diff of every repository that moved, and returns what quality returns: `limitations`, `coverage`
   and `findings`, accepted by the same completeness check. Their templates ask for nothing about
@@ -560,7 +560,7 @@ lenses of every run, and the main script stops a run whose seat list holds anoth
   decision on such a finding is CRITICAL. The unbriefed readers (quality, the eight audit seats,
   `cold-alternatives`, the roaster) never see the spec, so their schemas do not carry that kind.
 
-### Phase 3 — Verify and consolidate (1 read-only `agentType:'workflow-skills:finding-verifier'`)
+### Phase 3: Verify and consolidate (1 read-only `agentType:'workflow-skills:finding-verifier'`)
 
 - The verifier receives every Review seat object serialized, including quality and cold
   alternatives, and the implementer's object.
@@ -607,26 +607,26 @@ reviewer or verifier prefers it, and goes to the next fix run, whose fixer settl
 or raises it as a question for the user.
 
 - **The verifier takes one explicit decision per consolidated group:**
-  - **approve-fix** — verified defect and already-authorized correction. Supply evidence,
+  - **approve-fix**: verified defect and already-authorized correction. Supply evidence,
     authority references with EXACT QUOTES, the correction, constraints and an acceptance check.
-  - **reject** — false positive or unsupported objection, with concrete counterevidence.
+  - **reject**: false positive or unsupported objection, with concrete counterevidence.
     Duplicates are MERGED with all source IDs, not silently rejected or discarded.
-  - **needs-decision** — a choice without which the assigned work cannot satisfy the existing
+  - **needs-decision**: a choice without which the assigned work cannot satisfy the existing
     requirements. Establish the impossibility. The decision carries no correction and goes to the
     next fix run.
-  - **root-action** — a demonstrated impossibility or required investigation the verifier cannot
+  - **root-action**: a demonstrated impossibility or required investigation the verifier cannot
     complete. It goes to the next fix run, whose fixer investigates it. A proposed spec edit alone
     is not a blocker: implement and review the spec as
     written, retaining non-blocking suggestions in `specSuggestions` or as `record`, not as
     prerequisites.
-  - **cleanup** — verified work outside this unit's repair scope, with concrete cleanup
+  - **cleanup**: verified work outside this unit's repair scope, with concrete cleanup
     entries and receipts retained for your end-of-run handoff to the todo record.
-  - **record** — genuinely non-blocking observations, retained in the ledger. Never use it
+  - **record**: genuinely non-blocking observations, retained in the ledger. Never use it
     to dispose of a confirmed must-fix or CRITICAL violation.
 - Every inverse-spec source finding carries CRITICAL severity unconditionally, regardless of the
-  label it arrived with (law 13): `record` and `cleanup` are never available for one — an
+  label it arrived with (law 13): `record` and `cleanup` are never available for one (an
   inverse-spec finding is about a choice made IN this unit's own diff, never work outside its repair
-  scope — and `reject` still needs concrete counterevidence against the finding itself, never
+  scope), and `reject` still needs concrete counterevidence against the finding itself, never
   against an edited spec.
 - A decision on a kind-bearing finding (`band-aid` / `longer-route`) is CRITICAL the same way, and
   every such decision reaches you in `projectBenefitDecisions`.
@@ -697,7 +697,7 @@ or raises it as a question for the user.
   summary, and goes to the next fix run like every other decision, also when the fixer reported it
   fixed. Neither a later spec edit nor a completed run closes it on its own.
 
-### Phase 4 — Fix and roast concurrently
+### Phase 4: Fix and roast concurrently
 
 - Launch ONE fixer and ONE mandatory roaster together after the approved list is finalized.
 - Capture the pre-fix SHAs before starting either.
@@ -780,7 +780,7 @@ or raises it as a question for the user.
   which is reported separately.
 - The verifier approves authorized corrections in this unit's repair scope. Unrelated existing
   violations become concrete cleanup entries: issue, rule citation, code receipts, source finding
-  IDs and the required correction. Existing entries are updated rather than duplicated.
+  IDs and the required correction. Existing entries are updated, never duplicated.
 - Record this consolidated handoff in the todo record that `workflow-skills:todo-md` defines, in the
   SAME RUN, before reporting the task finished, including when the workflow exits with unresolved
   work. Each cleanup entry is recorded as a separate unit, done later; recording an issue is not
@@ -805,7 +805,7 @@ or raises it as a question for the user.
 The enum-locked handoff and the shipped main script implement this contract. The design
 and rejected alternatives are recorded in `docs/workflow-finding-verification.md`.
 
-## Completion checks — timing, size and project-defined integration
+## Completion checks: timing, size and project-defined integration
 
 A completed pass returns its evidence and remaining items for your acceptance. Perform the checks
 below before accepting the unit. They are your responsibilities, not extra workflow seats or a
@@ -970,7 +970,7 @@ second implementer pre-check.
   work is already moving cannot be exercised at all, and it records the user as having approved
   what you chose. Never dress your own call as the user's.
 
-This is an obligation of your PROMPT, not a script gate. An executable test can confirm the
+This is an obligation of your PROMPT and no script check. An executable test can confirm the
 instruction above is wired into your prompt and that `remaining`, `inverseSpecDecisions` and
 `projectBenefitDecisions` reach you intact and unretired;
 it cannot prove a future model actually passed a question on unchanged and decided nothing.
@@ -1023,20 +1023,20 @@ recorded in [work execution rules](../../docs/work-execution-rules.md).
   agent: name its largest time sink and remove the avoidable part at the source. Time spent on
   necessary reasoning or generation is acceptable at any length and is not itself a defect;
   crossing the ceiling obliges the review, and what gets removed is machine wait and rework. Soft
-  means no agent is aborted, killed or timed out for crossing it, and no script gate enforces it. It
+  means no agent is aborted, killed or timed out for crossing it, and no script check enforces it. It
   is an obligation of your prompt like the rest of this section.
 - Remove avoidable cost at its source: reusable prepared artifacts, narrower assignments, missing
-  task context, or redundant checks. Preserve cold-review input boundaries and required checks after
+  task context, or redundant checks. Preserve the input boundaries of the unbriefed reviewers and required checks after
   the last write; do not improve timing by deleting reviewers or trusting stale proof. Apply
   improvements within authorized scope and report any broader follow-up.
 
-### Size report and the 20:1 acceptance gate
+### Size report and the 20:1 acceptance check
 
 Measure the final candidate against its unit spec before integration, using immutable inputs:
 record, for every repository of the tree, the merge-base SHA and the candidate SHA, and the `sha256`
 of the final spec that the spec tool prints. That `sha256` equals the one the launch check of the
 run that produced the candidate printed, so the counted spec is the one the writers and reviewers
-read. The gate reads no design document. For bundle/patch delivery the comparison base is the
+read. The size check reads no design document. For bundle/patch delivery the comparison base is the
 project's declared reconstruction base; do not silently substitute a convenient newer base.
 
 - **Spec lines:** the `specLines` count the spec tool reports for the final spec: the non-blank
@@ -1057,14 +1057,14 @@ project's declared reconstruction base; do not silently substitute a convenient 
   alongside the ratio. Disabling rename detection makes accounting reproducible (a moved file
   counts as delete/add); explain large moves instead of silently changing the measurement.
 - **Ratio:** code added / spec lines, displayed to one decimal. Compare unrounded
-  counts: **above 20:1 blocks acceptance/merge**; exactly 20:1 does not breach the size gate.
-  The size gate passing is not proof of correctness or permission to skip another check.
+  counts: **above 20:1 blocks acceptance/merge**; exactly 20:1 does not breach the size check.
+  The size check passing is not proof of correctness or permission to skip another check.
 - Obtain the counts from Git and the spec tool, retaining receipts. Use established
   libraries/tools for machine-readable Git data, not a hand-written diff or Markdown parser.
 - Missing measurements or an empty required spec leave acceptance incomplete, never a zero ratio.
 - For the separate no-spec targeted-patch path, report the ratio as not applicable and the
   code/test counts anyway; do not manufacture a spec or reclassify a spec-governed unit to evade the
-  gate.
+  check.
 
 This arithmetic helper classifies a measured, spec-governed unit; it does not collect counts or
 authorize integration. Supply the verified counts and handle the result:
@@ -1094,7 +1094,7 @@ const assessSize = ({ specLines, codeAdded }) => {
   every other entry.
 - Never pad the spec to lower the ratio, or use a later amendment to retroactively authorize
   unsupported code.
-- A spec suggestion alone does not stop the implementation/reviewer cycle; this gate applies to the
+- A spec suggestion alone does not stop the implementation/reviewer cycle; this check applies to the
   finished unit.
 - A fix run or a new run that changes the code is measured against the size bar on its own
   candidate. If the implementation still exceeds 20:1, keep acceptance blocked unless the user
@@ -1111,9 +1111,9 @@ const assessSize = ({ specLines, codeAdded }) => {
   before integration; if no route is established, leave a verified candidate and report that
   integration is pending.
 - Never infer merge/push/network-send permission from snapshot commits.
-- Apply the size gate before accepting the candidate for any route, not only direct merges. An
-  explicitly requested draft/review artifact may expose an unresolved gate, but must be labeled
-  unaccepted; producing or sending it does not waive the gate.
+- Apply the size check before accepting the candidate for any route, not only direct merges. An
+  explicitly requested draft/review artifact may expose an unresolved size check, but must be
+  labeled unaccepted; producing or sending it does not waive the check.
 - Keep temporary worktrees where `workflow-skills:local-cache` puts workflow worktrees.
 - Never delete a worktree merely because the workflow finished. First verify that it is clean,
   inspect ignored/untracked contents for material to preserve, and verify the project's handoff:
@@ -1135,44 +1135,44 @@ const assessSize = ({ specLines, codeAdded }) => {
   preservation is incomplete, retain the worktree and report what remains. Respect the project's
   deletion authorization in addition to these checks.
 
-## The QUALITY GATE — three different things, and only two of them BLOCK
+## The QUALITY CHECKS: three different things, and only two of them BLOCK
 
-A gate is not a review seat, and the two words are not interchangeable. Say which of the three a
+A check is not a review seat, and the two words are not interchangeable. Say which of the three a
 given check is, because only two of them stop the run:
 
-- **BLOCKING — committed TOOLS invoked as gate steps.** The repo's own check scripts (tests, lint,
+- **BLOCKING: committed TOOLS invoked as check steps.** The repo's own check scripts (tests, lint,
   format), plus scans of the same objective kind: a banned-vocabulary scanner, an incoming
-  conflict-marker sweep. These are **exit-code gates** — they pass or they fail and nobody
+  conflict-marker sweep. These are **exit-code checks**: they pass or they fail and nobody
   adjudicates the result.
-- **BLOCKING — SCRIPT-LEVEL contract checks.** The workflow SCRIPT throws on a protocol violation:
+- **BLOCKING: SCRIPT-LEVEL contract checks.** The workflow SCRIPT throws on a protocol violation:
   the stage helper's completeness checks (law 2) in the acceptance section below. These stop the
-  run deliberately, and **the decision lives in the script** — never delegated to a downstream
+  run deliberately, and **the decision lives in the script**, never delegated to a downstream
   agent to rediscover, for the same reason the structural abort does not (law 8).
-- **RECORDING — SEATS.** The review seats emit findings for independent verification,
-  not directly into a fix queue. Their judgments are claims, not exit-code gates. A missing
+- **RECORDING: SEATS.** The review seats emit findings for independent verification,
+  not directly into a fix queue. Their judgments are claims and no exit-code checks. A missing
   required report or a verified unresolved decision still prevents the next stage.
 
-**The boundary is the whole taxonomy in one line: MECHANICAL AND OBJECTIVE goes in the GATE as a
-TOOL; JUDGMENT goes in the REVIEW as a SEAT.** A gate that only reports is a seat wearing the wrong
-name, and a seat that stops the run is a gate — either way the run's exit reason is a lie about
+**The boundary is the whole taxonomy in one line: MECHANICAL AND OBJECTIVE goes in the CHECK as a
+TOOL; JUDGMENT goes in the REVIEW as a SEAT.** A check that only reports is a seat wearing the wrong
+name, and a seat that stops the run is a check. Either way the run's exit reason is a lie about
 which mechanism decided it.
 
 - **THE COMPLETION-CLAIM RULE: a fixer's completion claim is only valid off a BARE RERUN AFTER ITS
   LAST WRITE, with the tails quoted VERBATIM.** A claim resting on a run from before the last edit
-  is not evidence — the edit it is offered as proof of is precisely what that run never saw. And
-  piping a check through `head` or `grep` is itself an offense rather than a style question,
-  because it hides the failure the gate exists to surface.
-- **GATE TOOLS ARE VERSIONED AND MATERIALIZED.** A gate tool lives in a REPOSITORY and is
-  materialized into every tree the gate runs in (a link or copy placed at tree creation). A tool
+  is not evidence: the edit it is offered as proof of is precisely what that run never saw. And
+  piping a check through `head` or `grep` is itself an offense and no style question,
+  because it hides the failure the check exists to surface.
+- **CHECK TOOLS ARE VERSIONED AND MATERIALIZED.** A check tool lives in a REPOSITORY and is
+  materialized into every tree the check runs in (a link or copy placed at tree creation). A tool
   kept as a loose file at one workspace root fails not-found in every OTHER tree, and every run then
-  hand-substitutes it — a failure that is silent in the worst way, because it presents as a broken
-  gate rather than as a missing tool, so each run debugs the gate instead of installing the tool.
-- **GATES EXECUTE INSIDE THE FIX PHASE** — the fixer runs them bare after its own last write.
+  hand-substitutes it, a failure that is silent in the worst way, because it presents as a broken
+  check instead of a missing tool, so each run debugs the check instead of installing the tool.
+- **CHECKS EXECUTE INSIDE THE FIX PHASE**: the fixer runs them bare after its own last write.
   A failing required check returns a failed proof, never permission to invent an unapproved fix.
   Do not place checks after the completed workflow and still claim its proof covered them.
   Likewise, do not ask reviewers to judge a result a later stage has not yet produced.
 - **THE RECORDING SEATS RIDE AS TEMPLATE CONSTANTS, not as per-script prose.** Anything retyped per
-  run erodes — audits find standing review lenses silently absent from the large majority of a
+  run erodes: audits find standing review lenses silently absent from the large majority of a
   fleet's scripts, each omission individually reasonable when it was made. A constant resists that;
   retyping does not. Author the constant once for the run and retain it when resuming an
   interrupted run, so completed stages replay from their journaled results.
@@ -1206,11 +1206,11 @@ recorded in [work execution rules](../../docs/work-execution-rules.md).
 ## Why this shape (the rationale that makes it work)
 
 - **Sequential implement, parallel review.** Implementation has write-conflicts; review is
-  read-only and independent — so the parallelism goes in the review phase, not the build.
+  read-only and independent, so the parallelism goes in the review phase, not the build.
 - **Reviewers split by concern, not by file.** Different lenses find different classes of problem;
   pointing them all at "review everything" wastes them on overlap.
 - **Adversarial correctness review is the point.** Brief the correctness reviewer to *try to break*
-  the change — name the hazards and ask "is this actually wrong?". That's what catches the
+  the change: name the hazards and ask "is this actually wrong?". That's what catches the
   plausible-but-broken implementation that tests written by the implementer won't.
 - **Verification precedes mutation.** One read-only verifier checks and consolidates every
   source; the separate fixer rechecks approved corrections, and its disagreements go to the next
@@ -1222,7 +1222,7 @@ recorded in [work execution rules](../../docs/work-execution-rules.md).
 
 These laws are non-negotiable across every run of this skill.
 
-1. **EXPLICIT model AND effort on every stage — never inherited.** Two silent-downgrade paths: a
+1. **EXPLICIT model AND effort on every stage, never inherited.** Two silent-downgrade paths: a
    custom `agentType` resolving its own default, and a cached resume. Either can quietly land a
    stage on the cheapest tier while the run looks healthy.
 2. **FAIL-FAST.** An agent returning null or an incomplete object retries the SAME agent (3 attempts
@@ -1232,7 +1232,7 @@ These laws are non-negotiable across every run of this skill.
    checks the cross-field contracts (an evidence pointer on every finding of a concern seat and
    every spec finding of the implementer, a receipt on every finding, coverage with a limitation
    behind every unchecked entry, files and checks behind a new snapshot, a reason behind an abort;
-   see the acceptance section). The law guards EVERY required reader, including adversaries: the
+   see the acceptance section). The law covers EVERY required reader, including adversaries: the
    verifier consumes them all. A missing object is incomplete verification, never a harmless gap in
    a finished fix.
 3. **Resume interrupted runs only.** A run stopped mid-flight is resumed through
@@ -1244,7 +1244,7 @@ These laws are non-negotiable across every run of this skill.
    Verify consolidates their results. Fix awaits that approval. Only the Git-object-only roaster
    overlaps the fixer, reading the captured pre-fix SHA and approved list. Await both tasks;
    return the roast to you in remaining items. These are data dependencies.
-5. **Premise drift — read the authority, not a relayed gloss.** Point authority-aware stages at
+5. **Premise drift: read the authority, not a relayed gloss.** Point authority-aware stages at
    the current spec path (law 7). The spec quotes the user, so it stays ignored and untracked, and
    its words never enter commit-bound artifacts without explicit permission. Technical design
    documents record decisions and constraints, not conversational appendices.
@@ -1255,7 +1255,7 @@ These laws are non-negotiable across every run of this skill.
    itself a must-fix finding"*. An entry of author `assistant` is context that gives the user
    entries after it their meaning, such as the question a bare yes answers, and is never authority.
    **The prompt is no authority either**, which is what makes a prompt-vs-spec conflict an ordinary
-   finding rather than the hard flag of law 8, **but the user veto still reaches the prompt.** A
+   finding instead of the hard flag of law 8, **but the user veto still reaches the prompt.** A
    prompt that directly contradicts a user entry, or what the user answered yes to, is the hard flag
    `directive-conflict`: this hierarchy and the directive-conflict hard flag of law 8 treat a
    contradiction with what the user answered yes to like a contradiction with the user's own
@@ -1267,8 +1267,8 @@ These laws are non-negotiable across every run of this skill.
    nothing of yours beside it, leaves them no place to enter. A specification gains no
    decision authority merely by being written.
    **Untrusted means VERIFIED, not ignored:** every factual claim the prompt makes about the tree is
-   checked against the tree, and a FALSE one is **verified-and-reported** — build to the true state,
-   flag the premise as a must-fix — which beats both trusting it and stopping on it (law 8).
+   checked against the tree, and a FALSE one is **verified-and-reported** (build to the true state,
+   flag the premise as a must-fix), which beats both trusting it and stopping on it (law 8).
 7. **SPECS ARE READ FROM DISK, AND A RUN'S SPEC NEVER CHANGES.** Every spec-consuming prompt names
    it by PATH and instructs: *"read the current on-disk revision in full; it is the authority, not
    this prompt's description of it."* Never cite a revision number, never restate the spec's
@@ -1280,8 +1280,8 @@ These laws are non-negotiable across every run of this skill.
    statement of the user stands beside an earlier one in session order, and the user alone removes
    an entry that does not belong.
 8. **HARD-FLAG SEMANTICS.** A hard flag (agent stops, script aborts) has exactly four triggers. The
-   first is a contradiction that puts a user verbatim directive on at least one side —
-   **directive-vs-spec, or directive-vs-this-prompt** — two texts that cannot both be true (law 6).
+   first is a contradiction that puts a user verbatim directive on at least one side,
+   **directive-vs-spec, or directive-vs-this-prompt**: two texts that cannot both be true (law 6).
    The prompt being UNTRUSTED relative to the spec does not exempt it from the directive ranked
    above both: an assignment overriding a directive is the same conflict class as a spec that does,
    hard-flagged the same way. The second is a **coder sense-check failure**, and it belongs to the
@@ -1294,24 +1294,24 @@ These laws are non-negotiable across every run of this skill.
    its first write (phase 1). A spec without the user's words is not a silent one. The fourth is an
    **invalid spec** as phase 1 defines it, which every stage that reads the spec flags before
    anything else, the implementer before any edit. All four triggers share one disposition: caught
-   before any edit, the tree stays unmodified; caught after edits landed, further writes stop and
+   before any edit, the tree stays unmodified; caught after edits were made, further writes stop and
    the coder reports the edits as they stand, committing nothing and reverting nothing. A tree that
    does not yet satisfy a coherent spec is the NORMAL precondition of review-and-fix and yields
    ordinary findings; so does an untrusted prompt that merely conflicts with the SPEC with no
-   directive on either side, or one asserting a false premise about the tree — those are
+   directive on either side, or one asserting a false premise about the tree. Those are
    verified-and-reported, built to the truth (law 6), never an abort. Getting this wrong deadlocks
    the run: the fixer that would resolve the finding can never run, because the flag aborts before
-   it. **Four triggers, one field, one disposition** — the `abort` field's `trigger` enum names all
+   it. **Four triggers, one field, one disposition**: the `abort` field's `trigger` enum names all
    four (`directive-conflict`, `sense-check`, `no-words`, `invalid-spec`) beside `none`, with the
    reason in `abort.reason`; an abort class with no trigger of its own is undetectable, and a
-   trigger with more than one disposition is the deadlock in another costume. The cold seats carry
+   trigger with more than one disposition is the deadlock in another costume. The unbriefed seats carry
    no `abort` field, because its member names would brief them, and an absent field is no abort. And
    the structural abort lives in the **SCRIPT**, which checks **every consumed stage result** for a
-   trigger other than `none` and throws with the whole object — never delegated to a downstream
+   trigger other than `none` and throws with the whole object, never delegated to a downstream
    agent to rediscover. Every required object is consumed by verification; a failed or hard-flagged
    reader stops the cycle before fixing.
 9. **ENUM-LOCK ANY VOCABULARY THE SCRIPT BRANCHES ON.** If control flow keys off severity, lock it in
-   the output schema as an enum (`must-fix` / `should-fix` / `nit`) with validation-retry — and the
+   the output schema as an enum (`must-fix` / `should-fix` / `nit`) with validation-retry, and the
    same for every other vocabulary the script switches on: the actionability **lane**
    (`fixer-actionable` / `orchestrator-only` / `later-phase` / `not-a-defect`) and the **disposition**
    (`fixed` / `rejected` / `blocked`), verifier action (`approve-fix` / `reject` /
@@ -1322,11 +1322,11 @@ These laws are non-negotiable across every run of this skill.
    (`in-change` / `beside`), the file `change` (`added` / `modified` / `deleted`) and the spec
    finding `class` (`joint-impossibility` / `missing-contract` / `reality-drift` /
    `unbacked-entry`). A seat emitting one word against a check testing for another **silently
-   disables the phase and the run reports success** — the worst possible failure mode, because it
+   disables the phase and the run reports success**, the worst possible failure mode, because it
    looks like a green run.
-10. **GROUNDED MEANS OBSERVED.** Code-reading that concludes "it should work" loses to empirical
+10. **PROVEN MEANS OBSERVED.** Code-reading that concludes "it should work" loses to empirical
     observation every time. Verify against real output: real builds, real requests, real rendered
-    results. Mechanical gates **RECOMPUTE from the artifacts**; an item's self-report is only a
+    results. Mechanical checks **RECOMPUTE from the artifacts**; an item's self-report is only a
     truncation-and-dishonesty detector, never evidence. **No claim about an external system without
     an observation of it.** A statement that an external system misbehaved requires an observation
     of that system misbehaving, quoted where the claim is made. A symptom is evidence that something
@@ -1337,7 +1337,7 @@ These laws are non-negotiable across every run of this skill.
     entirely?"*. Absences are the worst defect class to ship, and they are invisible to exactly the
     checks that look most thorough.
 12. **HARNESS TOOLS BEAT PER-AGENT IMPROVISATION.** When several seats each hand-roll the same
-    invocation (gate runs, server boots, probe walks), commit a **one-command tool** and put the exact
+    invocation (check runs, server boots, probe walks), commit a **one-command tool** and put the exact
     invocation in every prompt with hand-rolling **forbidden**. Measured effect: seat turn-counts
     roughly halved. Extra rule for models **without prompt caching**, which re-pay their full input
     every turn: point them at tool DUMPS and keep their exploration short-context, since long ad-hoc
@@ -1350,25 +1350,25 @@ These laws are non-negotiable across every run of this skill.
     If the assigned work genuinely cannot satisfy the applicable requirements, report the concrete
     impossibility and block instead of inventing requirements or claiming completion. Contradictions
     between authority documents retain the existing law-10 hard flag; the spec-versus-instructions
-    pre-check already exists and does not need another gate. Reviewers retain their usual checks.
+    pre-check already exists and does not need another check. Reviewers retain their usual checks.
     **NO STAGE EDITS A SPEC OR OTHER AUTHORITY DOCUMENT, AND NEITHER DO YOU.** A run's spec never
     changes: the user's new words go into a copy (law 7), and the user alone removes an entry that
     does not belong. Never retroactively authorize unsupported implementation.
     **Every inverse-spec finding is CRITICAL regardless of the severity or lane it arrived with; the
     finding verifier, the fixer and you all ignore that supplied categorization and must dispose of
-    it explicitly — never leave it implicitly closed.** Every one goes to the next fix run like
+    it explicitly and never leave it implicitly closed.** Every one goes to the next fix run like
     every other decision, and you decide none of them. A copy of the
     spec with new words does not resolve the finding on its own, and the original verbatim
     directives are never erased, rewritten or selectively omitted to make it disappear.
-14. **ASSERT AT THE GRANULARITY AT WHICH THE RULE BINDS** — per row, per section, per item — and
+14. **ASSERT AT THE GRANULARITY AT WHICH THE RULE BINDS** (per row, per section, per item) and
     **never aggregated over the whole artifact**. An aggregate assertion lets a fully DEGENERATE
     part pass on the strength of its neighbours: the property holds across the sample while the
     subsection that matters violates it outright. That is why this class **ships defects THROUGH a
-    green suite**, and why it belongs to a SEAT that READS the assertions rather than to the gate
-    that RUNS them — the gate is green either way, so it cannot be the thing that catches it. When a
-    granularity defect is fixed, the assertion is re-pinned at the binding granularity across every
+    green suite**, and why it belongs to a SEAT that READS the assertions and not to the check
+    that RUNS them: the check is green either way, so it cannot be the thing that catches it. When a
+    granularity defect is fixed, the assertion is asserted again at the binding granularity across every
     case the code can produce, with any genuinely unavoidable exception stated in the assertion
-    itself rather than left as a silent widening.
+    itself, never left as a silent widening.
 
 ## Writing the workflow script
 
@@ -1404,7 +1404,7 @@ The phase shape only holds up if the script is written to hold it up.
   committed work only, through the base list, and never uncommitted changes.
 
 A script is not neutral plumbing: most of it is prompt text, and every line of that text is
-authority to the stage that receives it. A copied script carries the previous unit's authority —
+authority to the stage that receives it. A copied script carries the previous unit's authority:
 an assertion about a record that does not exist here, a boundary that belonged to another spec, a
 validator rule tuned to what a different writer happened to return. Those lines read as true to
 the stage that gets them, and no seat reviews them, because the script is the one artifact that
@@ -1416,7 +1416,7 @@ authority-bearing seat the check command while the same prompt forbade reviewers
 a validator rule rejected an implementer for honestly reporting the iterations that failed before
 its final passing run. All three arrived by inheritance from a script written for something else.
 
-What carries across units is the shipped scripts and the template constants they name —
+What carries across units is the shipped scripts and the template constants they name:
 reviewed text, versioned in one place, changed once. What does not carry across is a file from a
 previous run. Reuse the shipped file, fill the block for the unit.
 
@@ -1472,15 +1472,15 @@ helper, `abortOnFlag()` the structural abort for every consumed stage result, an
 checks, the remaining-items handoff and the exit values are the ones the sections above and below
 describe.
 
-### The backtick hazard — the single most common launch failure
+### The backtick hazard: the single most common launch failure
 
 - Build every prompt as an **array of plain-quoted strings joined with newlines**, with **NO
   backticks anywhere in the text**. The script is parsed as JS: one stray backtick inside a
   template literal closes it early and the whole launch dies with an opaque token error far from
   the real line. The array-join convention eliminates the entire class. (This constraint is about
-  the workflow *scripts* — backticks in this markdown are fine.)
+  the workflow *scripts*. Backticks in this markdown are fine.)
 
-### Accepting a stage result — COMPLETENESS of the object
+### Accepting a stage result: COMPLETENESS of the object
 
 Every stage returns one structured object and nothing else, and the script accepts it on the
 completeness of that object, never on the length of a text. One helper, `stage(prompt, opts,
@@ -1505,7 +1505,7 @@ The completeness checks, by stage kind:
   non-empty `files` and a check whose `passed` equals `proofPassed`, and no new snapshot needs empty
   `files`; every `specFindings` entry of the implementer has evidence by the rules of the concern
   seats; the fixer answers every key once;
-- **finding verifier**: the source-coverage and decision guards, one `repositories` entry per
+- **finding verifier**: the source-coverage and decision checks, one `repositories` entry per
   repository whose quoted `git.head` equals its `snapshotSha`, and one `writerScope` entry per
   implementer commit and repository.
 
@@ -1522,19 +1522,19 @@ and the diff check itself.
   new snapshot fails the check above, and the finding verifier recomputes from the artifact (law
   10) by checking `files` against the paths the commit touched. The stage's own account of itself
   is a truncation-and-dishonesty detector, never evidence.
-- The second line of defense is downstream: **COLD seats refuse to fabricate a review against an
+- The second line of defense is downstream: **UNBRIEFED seats refuse to fabricate a review against an
   artifact that is not there**, and say so in `limitations`.
 - If a completeness check ever rejects a genuinely complete answer, the check was wrong, not the
   agent: correct it, do not delete the mechanism.
 
 ### Deliverables must be DECOMPOSABLE
 
-- Specify a deliverable as **MULTI-FILE OUTPUT — one file per write call, with a stated per-file
-  size cap** — never as one large artifact written in a single call. Every model has an output
-  ceiling, and a single-call artifact sized near it fails **MID-WRITE**: what lands is a TRUNCATED
-  file rather than an error, so nothing downstream can distinguish a finished deliverable from half
+- Specify a deliverable as **MULTI-FILE OUTPUT, one file per write call, with a stated per-file
+  size cap**, never as one large artifact written in a single call. Every model has an output
+  ceiling, and a single-call artifact sized near it fails **MID-WRITE**: what is written is a TRUNCATED
+  file instead of an error, so nothing downstream can distinguish a finished deliverable from half
   of one, and the completeness checks above never fire because the object lists the file with a
-  size. This is a rule about the SHAPE of a deliverable — it is not a property of any particular
+  size. This is a rule about the SHAPE of a deliverable and no property of any particular
   model, and a deliverable that only works below some ceiling is a latent failure waiting for the
   run that sits above it.
 
@@ -1564,7 +1564,7 @@ once in fix dispositions. Unknown, duplicated and unanswered IDs are protocol fa
 ### `label` + `phase` on every `agent()` call
 
 - Give every `agent()` call a `label` and a `phase`. `label` makes the live progress tree and the
-  journal legible (`review:correctness`, `impl:web`); `phase` pins the call to its progress group
+  journal legible (`review:correctness`, `impl:web`); `phase` places the call in its progress group
   even when calls race. Without labels, debugging a failed run means reading raw transcripts to work
   out who was who.
 
@@ -1580,7 +1580,7 @@ keys replay instantly and unfinished stages re-run.
 
 ### Determinism
 
-- Use no `Date.now()`, no `Math.random()`, no argless `new Date()` in scripts — they break replay
+- Use no `Date.now()`, no `Math.random()`, no argless `new Date()` in scripts: they break replay
   determinism and the runtime blocks them.
 - Pass timestamps in via `args`, and stamp results after the workflow returns.
 
@@ -1600,7 +1600,7 @@ one for quality, which the eight audit seats share, one for cold alternatives an
 roaster. The five leaf shapes (abort, receipt, limitation, check, git) are constants reused inside
 them as field shapes. No stage schema declares a free-prose field, and every stage schema root is
 closed with `additionalProperties: false`: a capped summary string beside the fields is the place
-the content drifts back into. The quality seat's schema, like the other cold seats', names field
+the content drifts back into. The quality seat's schema, like the other unbriefed seats', names field
 shapes only and carries no `abort`.
 
 The reviewer, verification and fixer objects carry enum-locked machine fields and typed evidence:
@@ -1612,7 +1612,7 @@ array is **defects only**: what was inspected goes in `coverage`, what was run i
 - **And ENUM-LOCK the vocabulary the script branches on (law 9).** Fixing is authorized by
   `approve-fix`, not a reviewer's free-form lane or severity.
 - Lock verifier actions, severities (including `CRITICAL` for rule violations and, unconditionally,
-  every inverse-spec finding — law 13) and fixer dispositions in the schema.
+  every inverse-spec finding, law 13) and fixer dispositions in the schema.
 - Make an unfamiliar word fail validation, not silently skip a phase and produce success.
 
 ### The AUTHORITY constant
@@ -1633,7 +1633,7 @@ For the other seats:
   answers, and is never authority. A contradiction with what the user answered yes to is a
   contradiction with the user's own words, hard-flagged the same way. The main script's and the
   fix script's `AUTHORITY` blocks say so.
-- **Hard-flag semantics** (law 8) — the one `abort` field and its four triggers: a contradiction
+- **Hard-flag semantics** (law 8): the one `abort` field and its four triggers: a contradiction
   with a user directive on at least one side, spec or prompt (`directive-conflict`), a writing
   seat's failed sense check (`sense-check`), a writing seat's spec that cannot be read or holds no
   entry of author `user` (`no-words`), and an invalid spec found by any stage that reads it
@@ -1641,7 +1641,7 @@ For the other seats:
   the shared prompt says so in those words. Spell out the counter-case too, since it is the common
   one: a tree that does not yet satisfy the spec, or a prompt that merely conflicts with the spec
   with no directive on either side, yields ordinary must-fix findings, never a flag.
-- **Premise verification** (law 6) — every factual claim the prompt makes about the tree is
+- **Premise verification** (law 6): every factual claim the prompt makes about the tree is
   **VERIFIED against the tree** before anything is built on it, and a false one is
   **VERIFIED-AND-REPORTED**: build to the true state, flag the premise as a must-fix. Say this
   explicitly, or "untrusted" degrades into "ignored" and the seat builds against nothing at all.
@@ -1654,17 +1654,17 @@ For the other seats:
   the rule for reading stages. WRITE_GIT, which only writers receive, carries the writing rule. The
   reader-only places carry the reading rule: READ_GIT, and HYGIENE through it, and the roaster's
   prompt line. No block both receive names a place for scratch files.
-- **Run checks BARE** — never piped through `head`/`grep`, which hides the error you needed.
-- **No background waits** — never end a turn waiting on a backgrounded check; the returned object
+- **Run checks BARE**, never piped through `head`/`grep`, which hides the error you needed.
+- **No background waits**: never end a turn waiting on a backgrounded check; the returned object
   IS the deliverable.
-- **Abort on four triggers only** — set `abort.trigger` to `directive-conflict` for a contradiction
+- **Abort on four triggers only**: set `abort.trigger` to `directive-conflict` for a contradiction
   with a user directive on at least one side (spec or this prompt on the other side), to
   `sense-check` for a writing seat's failed sense check, to `no-words` for a writing seat's wordless
   spec, or to `invalid-spec` for an invalid spec, with the reason in `abort.reason`; it is `none`
   otherwise. Everything else (the prompt losing to the spec with no directive on either side, a
   false prompt premise verified and reported, a tree that does not yet satisfy the spec) is an
   ordinary must-fix finding and the seat proceeds; see law 8.
-- **The findings contract** — a source finding is a DEFECT, cites a **repo-relative** FILE and
+- **The findings contract**: a source finding is a DEFECT, cites a **repo-relative** FILE and
   carries at least one receipt (`file`, `line`, `quote`); what was inspected goes in `coverage`,
   what could not be checked in `limitations`. Concern reviewers suggest
   who can close it using their actionability lanes. The verifier checks every source finding,
@@ -1685,7 +1685,7 @@ Some of these (no background waits, abort on four triggers) also appear in the `
 That overlap is **deliberate reinforcement, not a second source of truth**: the template is the
 authority for that role, `AUTHORITY` is the floor for authority-aware roles even when a project
 swaps in its own template. Unbriefed roles get only their explicitly limited inputs. Changing a rule
-means changing both — they are prompt text, and a prompt rule an agent sees twice is cheap; a
+means changing both: they are prompt text, and a prompt rule an agent sees twice is cheap; a
 prompt rule it sees nowhere is a defect.
 
 ### The fixer's prompt must NAME its inputs
@@ -1700,7 +1700,7 @@ prompt rule it sees nowhere is a defect.
 
 ## Agent prompt templates (verbatim base, append-only)
 
-- Every NAMED role this skill spawns has a fixed prompt template in `agents/` —
+- Every NAMED role this skill spawns has a fixed prompt template in `agents/`:
   `agents/implementer.md`, `agents/reviewer-correctness.md`, `agents/reviewer-spec-compliance.md`,
   `agents/duplicate-checker.md`, `agents/roaster.md`, `agents/cold-alternatives.md`,
   `agents/quality.md`, `agents/reviewer-inverse-spec.md`, `agents/project-rule-reader.md`, the eight
@@ -1712,7 +1712,7 @@ prompt rule it sees nowhere is a defect.
 - Invoke the agent by its qualified agent type, `agentType:'workflow-skills:<role>'`.
 - Pass `agent()` **ONLY the task-specific context APPENDED** after that base (the spec path, the
   diff, the start commits, the check command).
-- **Do NOT modify, reorder, or paraphrase the base rules inline — append only.**
+- **Do NOT modify, reorder, or paraphrase the base rules inline: append only.**
 
 No script of this skill starts the `gap-finder` template. It stays in `agents/` for use as an
 `agentType` in other workflows.
@@ -1751,17 +1751,17 @@ fifteen review seats, the finding verifier, the fix or proof pass and the roaste
 silently fail. The main script stops a run whose seat list leaves a seat out.
 
 **The escape hatch: a targeted patch.** The full composition carries a roughly FIXED overhead per
-increment — worth paying for an increment, absurd for a three-file fix. For those, drop out of the
+increment, acceptable for an increment, absurd for a three-file fix. For those, drop out of the
 composition entirely instead of running a thinned version of it: **ONE agent in an ISOLATED GIT
-WORKTREE** (create it manually with `git worktree add` if the runner cannot), the gates run **inside
-that worktree**, and you **inspect the result yourself** — read the diff, look at the actual output
-— before the project's chosen integration or delivery. Apply the completion checks above.
+WORKTREE** (create it manually with `git worktree add` if the runner cannot), the checks run **inside
+that worktree**, and you **inspect the result yourself** (read the diff, look at the actual output)
+before the project's chosen integration or delivery. Apply the completion checks above.
 
 Two rules come with it:
 - **Never run two tree-mutating workflows in one repo at once.** They interleave writes and neither
-  run's gate result means anything afterwards. Worktree-isolate one of them.
-- **When the user says stop, stop AT A PHASE BOUNDARY** — let the in-flight fix record, then stop —
-  so the tree is left landable rather than half-edited. Then record what never ran in the todo
+  run's check result means anything afterwards. Worktree-isolate one of them.
+- **When the user says stop, stop AT A PHASE BOUNDARY**: let the in-flight fix record, then stop,
+  so the tree is left ready to merge instead of half-edited. Then record what never ran in the todo
   record that `workflow-skills:todo-md` defines, as an **explicit unknown** ("the roast did not
   run; its findings are unknown"), never by silently omitting it. An absence presented as a
   completed run is a lie the next reader cannot detect.

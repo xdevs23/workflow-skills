@@ -22,7 +22,7 @@ Then the skills appear in the skill list and each has a matching slash command (
 |---|---|
 | `implement-review-verify` | Assemble the unit spec from the user's words in the session transcripts and check it with the spec tool, then implement against it and commit a clean snapshot, with the implementer's sense check reporting what it finds in the spec, then review and independently consolidate findings. The fixer commits only approved corrections while a mandatory roaster reads the pre-fix Git snapshot and approved list. Everything a run returns to be fixed goes to a fix run, whose fixer resolves it by the user's words and the rules and returns only a product decision as a question for the user. |
 | `review-pass` | Run the launch check and the fifteen reviewers of `implement-review-verify` alone on a change that is already committed, such as one edited directly, with no implementer, verifier or fixer, and send their findings to a fix run. |
-| `copywriting` | Write an increment's user-visible strings BEFORE implementation: intent catalog + writing system, one agent per item, mechanical gate + source-verify + fresh-context critic, human ships the load-bearing lines. |
+| `copywriting` | Write an increment's user-visible strings BEFORE implementation: intent catalog + writing system, one agent per item, mechanical check + source-verify + fresh-context critic, and the user ships the crucial lines. |
 | `resume-interrupted-run` | Recover a workflow run that was stopped while agents were mid-flight: hand each interrupted seat its own prior transcript, leave every completed prompt byte-identical, resume near-losslessly. |
 | `visual-verification` | Check a change to any rendered user interface, in a browser, a native mobile or desktop toolkit or a terminal, with a reproducible visual harness: real screenshots, controlled data, measured checks and strict before and after comparisons. A project without a harness adopts one from the implementation guide bundled with the skill. |
 | `visual-decisions` | Put open product decisions to the user as one page of side-by-side pictures, Today and After, drawn from the code, with one question to answer per decision. |
@@ -70,7 +70,7 @@ directly as `agentType`s in your own workflows.
   list of only the repositories a unit changes, for a tree too large to list.
   implement-review-verify runs only in a git repository or a tree of several, such as a repo-tool
   client. Add `--json` for the summary as JSON. Both output forms carry `specLines`, which the 20:1
-  size gate divides by: the non-blank lines of the entries' text. The tool fails an entry whose
+  size check divides by: the non-blank lines of the entries' text. The tool fails an entry whose
   text breaks the width rule: a line, counted with its indentation and markers, holds at most 120
   characters, and every line of a paragraph but its last is full. A line of a fenced code block
   holds at most 120 characters and is never held to the fill rule. A line whose own text is one
@@ -129,7 +129,7 @@ None of these tests makes model calls or launches workflows.
 The verification/consolidation contract is recorded in
 [`docs/workflow-finding-verification.md`](docs/workflow-finding-verification.md).
 Cycle completion leaves root acceptance pending: inspect stage timings, apply the **20:1**
-code/spec size gate, and follow the project's integration route (PR, merge, bundle or patch).
+code/spec size check, and follow the project's integration route (PR, merge, bundle or patch).
 Worktree cleanup requires separately inspected preservation and handoff evidence.
 
 ## License
