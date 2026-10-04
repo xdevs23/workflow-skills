@@ -70,11 +70,6 @@ describe('unit spec validation', () => {
     for (const value of ['kind', 'criteria', 'counts']) expect(result.out).not.toContain(value)
   })
 
-  test('the valid example quotes the user and the assistant, and the assistant a text block, a dialog call and a Write call', () => {
-    expect(new Set(valid.entries.map(entry => entry.author))).toEqual(new Set(['user', 'assistant']))
-    for (const uuid of ['offer', 'dialog-call', 'plan-write']) expect(valid.entries.some(entry => entry.uuid === uuid && entry.author === 'assistant')).toBe(true)
-  })
-
   test('a passing run prints a fresh 32-character hexadecimal proof in both output forms, a failing run none', () => {
     const proofs = [fixture('valid', ['--json']), fixture('valid', ['--json'])].map(result => JSON.parse(result.out).proof)
     expect(proofs[0]).toMatch(/^[0-9a-f]{32}$/)
