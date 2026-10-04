@@ -65,7 +65,7 @@ whether they want a git repository.
   no meaningful impact on the overall product, directly, without a workflow.
 - Use `workflow-skills:review-pass` for a change already committed that needs only the reviewers,
   such as one you edited directly: it runs the main script of this skill in review mode, the launch
-  check and the fifteen reviewers alone, and you judge their findings yourself.
+  check and the fifteen reviewers alone, and their findings go to a fix run.
 
 ## Before phase 1 — the unit spec
 
@@ -103,8 +103,6 @@ yours the user has seen in the chat.
 - Add assistant entries only as far as the user's words need them, and only their relevant parts,
   such as the explanation and the question a bare yes answers. An assistant entry is context and
   never authority: only the user entries are.
-- Add a message in which you state a decision of your own to the spec as an assistant entry, so the
-  stages read the decision as context.
 - Leave no question open: every question an entry asks has its answer in a later entry of the spec.
 - Launch no run on a spec that holds an unanswered question or speculation.
 - Quote no speculation and no unverified assertion, whoever wrote it. Words such as likely,
@@ -243,10 +241,14 @@ collisions and consistency drift.
   mechanism contradicts; and does growing that mechanism serve the project, or would the request
   stack new behavior onto a mechanism the user's words have already excluded? Words that say
   nothing about the mechanism rule nothing out: the check passes and `senseCheck.recordSilent`
-  records the silence. Where the user's words permit it, the implementer removes the code and
-  rebuilds it to the spec instead of growing it. A failed check sets `abort.trigger` to
-  `sense-check` with the reason in `abort.reason`: the mechanism, the words of the user it
-  contradicts, why extending it is the wrong shape.
+  records the silence. Before it fails the check, the implementer looks for every applicable rule
+  and skill that says what to do or authorizes the change. Where the user's words, a rule or a
+  skill call for it, the implementer removes the code and rebuilds it to the spec instead of
+  growing it, and the rebuilt code does the same thing in the same way as the code it replaces.
+  Only a product decision that none of them decide, a change of the product's scope or of what the
+  user sees and does, fails the check. A failed check sets `abort.trigger` to `sense-check` with the
+  reason in `abort.reason`: the mechanism, the words of the user it contradicts, why extending it is
+  the wrong shape.
 - **The sense check also reads the spec against the code.** Before its first edit the implementer
   checks the spec's claims against the code instead of only reading them, and looks for three
   classes: `joint-impossibility`, two statements of the user that each hold alone and cannot both
@@ -337,15 +339,10 @@ collisions and consistency drift.
   fourth to every stage that reads the spec. A reading seat reports the sense-check observation as a
   `band-aid` or `longer-route` finding (phase 2), never as a flag, and a reading seat never sees a
   wordless record because the implementer stops the run before any reader starts.
-- **A sense-check flag continues only on the user's words.** After a sense-check flag, check the
-  coder's object and its evidence against the existing authority first: the user's words in the
-  spec. Where those words already decide the continuation, such as removing behavior nobody
-  approved or fixing a correction that improves quality without changing the spec, choose that
-  continuation yourself without a new question. Only a product or architecture decision the
-  existing authority leaves genuinely unresolved goes to the user, and the unit then continues
-  only on the user's answer, added to a copy of the spec for the next run. Decide any other
-  unresolved choice as the section on what reaches the user says. Without such authority the
-  flagged mechanism never continues, whatever a stage argues for it.
+- **A sense-check flag continues only on the user's answer.** Show the user the implementer's flag
+  as the implementer wrote it, and decide nothing about it yourself. The unit continues only on the
+  user's answer, added to a copy of the spec for the next run. Without that answer the flagged
+  mechanism never continues, whatever a stage argues for it.
 - **Scope follows the same rule.** The implementer touches only what the task needs, and flags
   anything beyond the ruled scope as an invention instead of building it.
 - **A design document, when the change alters the design, is the implementer's last write.** It
@@ -493,10 +490,11 @@ lenses of every run, and the main script stops a run whose seat list holds anoth
   authorizes, and the user decides anything that changes what the product does. Behavior nobody
   approved is such a decision, whoever proposed it and however small it looks. One of two existing
   paths closes it: behavior added without authority is removed as an unauthorized addition, which
-  the inverse-spec template already prescribes, and only a product or architecture decision that
-  removing the behavior cannot close reaches the user at all. The correctness, spec-compliance and
-  inverse-spec templates each state in their own words that a reviewer proposes and never decides,
-  and that behavior added without authority is removed as an unauthorized addition.
+  the inverse-spec template already prescribes, and only a product decision that removing the
+  behavior cannot close reaches the user at all, raised by the next fix run's fixer. The
+  correctness, spec-compliance and inverse-spec templates each state in their own words that a
+  reviewer proposes and never decides, and that behavior added without authority is removed as an
+  unauthorized addition.
 - **Every seat object goes to the finding verifier.** A lane or severity assigned by a reviewer
   does not authorize a fix; only the verifier's checked, consolidated approval does.
 
@@ -549,8 +547,8 @@ lenses of every run, and the main script stops a run whose seat list holds anoth
   keep their input boundaries, flag by shape and name no words.
 - Expect the verifier to supply the words for a finding of quality, an audit seat or cold
   alternatives.
-- Check a roaster finding against the tree and the recorded words when it returns to you in
-  remaining.
+- Expect a roaster finding to go, with what else the run returned, to the next fix run, whose fixer
+  checks it against the tree and the recorded words.
 - Expect the rule reader to report a pre-existing band-aid beside the diff without a kind, so the
   cleanup lane stays available.
 - **A choice without the user's words is its own finding kind.** A briefed reader reports a choice
@@ -599,10 +597,11 @@ lenses of every run, and the main script stops a run whose seat list holds anoth
   in that list. A path in `files` that no commit of the writer touched is a writer-scope problem,
   reported in the note of the writer's last commit with `ok` false.
 
-This is ordinary workflow work, not a checkpoint of yours: you are the exception handler. A verifier
-is neither a rubber stamp nor a new source of design authority. Corrections already authorized by
-the user's words can proceed regardless of which seat found them; a new necessary choice cannot
-proceed merely because a reviewer or verifier prefers it.
+This is ordinary workflow work, not a checkpoint of yours. A verifier is neither a rubber stamp nor
+a new source of design authority. Corrections already authorized by the user's words can proceed
+regardless of which seat found them; a new necessary choice cannot proceed merely because a
+reviewer or verifier prefers it, and goes to the next fix run, whose fixer settles it by the rules
+or raises it as a question for the user.
 
 - **The verifier takes one explicit decision per consolidated group:**
   - **approve-fix** — verified defect and already-authorized correction. Supply evidence,
@@ -610,14 +609,15 @@ proceed merely because a reviewer or verifier prefers it.
   - **reject** — false positive or unsupported objection, with concrete counterevidence.
     Duplicates are MERGED with all source IDs, not silently rejected or discarded.
   - **needs-decision** — a choice without which the assigned work cannot satisfy the existing
-    requirements. Establish the impossibility. The decision carries no correction and returns to
-    you.
+    requirements. Establish the impossibility. The decision carries no correction and goes to the
+    next fix run.
   - **root-action** — a demonstrated impossibility or required investigation the verifier cannot
-    complete. A proposed spec edit alone is not a blocker: implement and review the spec as
+    complete. It goes to the next fix run, whose fixer investigates it. A proposed spec edit alone
+    is not a blocker: implement and review the spec as
     written, retaining non-blocking suggestions in `specSuggestions` or as `record`, not as
     prerequisites.
   - **cleanup** — verified work outside this unit's repair scope, with concrete cleanup
-    entries and receipts retained for your end-of-run handoff.
+    entries and receipts retained for your end-of-run handoff to the todo record.
   - **record** — genuinely non-blocking observations, retained in the ledger. Never use it
     to dispose of a confirmed must-fix or CRITICAL violation.
 - Every inverse-spec source finding carries CRITICAL severity unconditionally, regardless of the
@@ -644,7 +644,7 @@ proceed merely because a reviewer or verifier prefers it.
 - A decision on an `unbacked-choice` finding is CRITICAL the same way, and three actions answer it:
   `needs-decision`, `reject`, and `approve-fix` for a removal on the removal rule.
 - `needs-decision` on an `unbacked-choice` finding states in `authority` that no recorded words back
-  the choice and reaches you in `remaining` as an open decision.
+  the choice and goes to the next fix run as an open decision.
 - `reject` closes an `unbacked-choice` finding only on an entry of author `user` whose words, said
   about this unit, back the choice: its `authority` reads `spec entry <file>:<line>: "<quote>"`,
   naming the entry by its session file and line and quoting the backing words together with their
@@ -666,10 +666,10 @@ proceed merely because a reviewer or verifier prefers it.
   cannot be built without them.
 - A finding that asks to build what the implementer left unbuilt is never `approve-fix`.
 - A source finding that asks to build, complete or change what was left unbuilt is decided
-  `needs-decision`, and the decision reaches you in `remaining` as an open decision. The
+  `needs-decision`, and the decision goes to the next fix run as an open decision. The
   `authority` of that decision names the `specFindings` entry by its class and evidence, and its
   `correction` stays empty. Without this rule the verifier would approve what is missing and the
-  fixer would build what the sense check left unbuilt, before you read the finding.
+  fixer would build what the sense check left unbuilt.
 - Reviewer lanes and severity are claims to verify, not queue permissions. Every source ID must
   belong to exactly one decision group. The SCRIPT checks coverage, unknown IDs, duplicate IDs and
   approval payloads before mutation.
@@ -681,19 +681,17 @@ proceed merely because a reviewer or verifier prefers it.
   an implicit rejection or a clean empty queue.
 - Only approvals enter the fixer list. Unsettled necessary decisions, required `root-action` items,
   unresolved `issues` and the verifier's own blocking `limitations` do not hold the approved work
-  back: the fixer applies the approved list and runs the checks, and those items reach you in
-  `remaining` with exit `root-resolution`. A read-only verifier can never run a build, a test, a
-  capture or a device, so a stop on every open item would end every run before its fixes. A question
-  only such a check can answer is the acceptance check of the approved correction it concerns. Only
-  a hard flag or a writer commit outside its scope keeps the fixer from running.
+  back: the fixer applies the approved list and runs the checks, and those items return in
+  `remaining` with exit `root-resolution` and go to the next fix run. A read-only verifier can never
+  run a build, a test, a capture or a device, so a stop on every open item would end every run
+  before its fixes. A question only such a check can answer is the acceptance check of the approved
+  correction it concerns. Only a hard flag or a writer commit outside its scope keeps the fixer from
+  running.
 - Routine rejections and successful consolidation remain in the workflow record and final summary;
   they do not interrupt you one by one.
-- Every decision on an inverse-spec source finding, however it resolves, stays visible to you in
-  that summary: an `approve-fix` or a well-evidenced `reject` does not need to interrupt the cycle,
-  but you still owe each one an explicit resolution: recording in the todo record that the user's
-  recorded words back the code's choice, asking the user about a genuinely unsettled product or
-  architecture decision, or deciding any other unsettled choice yourself as the section on what
-  reaches the user says. Neither a later spec edit nor a completed run closes it on its own.
+- Every decision on an inverse-spec source finding, however it resolves, stays visible in that
+  summary, and every one the fixer did not report fixed goes to the next fix run like every other
+  decision. Neither a later spec edit nor a completed run closes it on its own.
 
 ### Phase 4 — Fix and roast concurrently
 
@@ -727,8 +725,8 @@ proceed merely because a reviewer or verifier prefers it.
     duplicated key;
   - applies the approved outcome within its bounds, never broadening scope or editing a
     spec or other authority document to make the correction legal after the fact;
-  - returns disagreements with counterevidence to you, not automatically to the user and not to
-    another automatic fix attempt. A blocked mechanism stays untouched;
+  - returns disagreements with counterevidence in its dispositions, never into another fix
+    attempt inside the run; they go to the next fix run. A blocked mechanism stays untouched;
   - writes or extends a design document by hand as its last write once its corrections are done,
     only when a correction alters the design;
   - runs full checks BARE AFTER ITS LAST WRITE;
@@ -739,7 +737,7 @@ proceed merely because a reviewer or verifier prefers it.
 - With an EMPTY approved list the fix pass owes PROOF ONLY and may not edit or create an empty
   commit. It returns the original SHA. A failing check is reported for independent triage, not
   permission to invent a repair. The concurrent roast is still mandatory and must be returned with
-  the remaining items; you check its claims against the tree.
+  the remaining items, and its findings go to the next fix run.
 
 #### One pass per run
 
@@ -758,8 +756,8 @@ proceed merely because a reviewer or verifier prefers it.
   limitation, unfixed approval, failed proof, roast finding or limitation, unattested fix, spec
   finding, abort or stage failure. Every fixed key carries its disposition, approved correction,
   snapshot and commits. The roast's findings retain their source IDs and snapshot; its limitations
-  and unchecked coverage also return for you to inspect. Record the list in the todo record that
-  `workflow-skills:todo-md` defines and check its claims as the remaining items section below says.
+  and unchecked coverage return as well. Record the list in the todo record that
+  `workflow-skills:todo-md` defines and hand it on as the remaining items section below says.
 - **The run returns `exit` and a one-sentence `detail`:** `clean` for a completed pass with neither
   a must-fix/CRITICAL remaining item nor an unattested fix; `follow-up` for a completed pass with
   such items; `root-resolution` for unresolved verification, a blocking limitation, fixer
@@ -815,94 +813,77 @@ second implementer pre-check.
   defines, each as its own unit, and move on to the next work.
 - The run and its unit are finished: never start a run on the same spec again, never edit a
   finished run's spec, and never hand a new run the previous run's findings as its next round.
-- Remaining items are claims until you read them. Check each `roast-finding` and
-  `roast-limitation` against the tree. Attest each `unattested-fix` by reading its commits against
-  the approved correction and running the checks yourself. Never report a fix as verified on the
-  fixer's claim.
-- A new run starts only for a recorded item that is supposed to be fixed: a confirmed must-fix or
-  CRITICAL defect in code the unit wrote, an unfixed approval, a failed proof, or an open decision
-  once it is decided: by the user for a product or architecture decision, by you for any other.
-- A finding whose fix needs no decision of the user may go to a fix run, described below, whose fix
-  list holds entries of the parent run's review. Every other such item goes to a new implement-review-verify
-  run on a copy of the spec that holds the user's words about it, and such a finding may go there as
-  well when the user's words cover its fix.
-- Make that copy like any copy of a spec: the same entries with the new ones added in session order,
-  as the unit spec section says, and nothing written for it. The previous run's snapshot is the new run's
-  base. Every stage of the main run applies unchanged. Every new run uses new prompts and a new run
-  ID.
-- A new run takes as its work the recorded items it was started for, never the findings its own
-  review raises; those are recorded the same way. Every other item stays in the todo record as a
-  separate unit, done later.
+- Never read a finding, an open decision or a roast finding to sort, check or decide it. What a run
+  returned to be fixed goes, as its journal holds it, to the next fix run, described below. You
+  decide none of it and write nothing beside it.
+- Attest each `unattested-fix` by reading its commits against the approved correction and running
+  the checks yourself. Never report a fix as verified on the fixer's claim.
+- Show the user each question a fix run returns as a `user-question` item, as its fixer wrote it,
+  and each `spec-finding` item of the implementer. Put the user's answer into a copy of the spec:
+  the same entries with the new ones added in session order, as the unit spec section says, and
+  nothing written for it. Start a new implement-review-verify run on it. The previous run's
+  snapshot is the new run's base. Every stage of the main run applies unchanged. Every new run uses
+  new prompts and a new run ID.
+- A new run takes as its work the user's words it was started for, never the findings its own
+  review raises; those go to its own fix run the same way.
 - A run interrupted mid-flight is resumed through `workflow-skills:resume-interrupted-run`, as law 3
   says, and that skill is only for a run that was actually interrupted, never a way around these
   rules. A run that ended any other way, before or after its review, has its items recorded like
   every run, and you never start a run on the same spec again.
-- **A fix run fixes findings that need no decision of the user.** Use it for findings of one named
-  run of a unit whose spec carries the user's words, where the fix needs no decision of the user: a
-  logic error, a crash, a race, a rule violation or another mechanical defect in code that unit
-  wrote. A general instruction to fix findings does not authorize a particular fix, because the
-  user may not agree with the finding, so no unit spec cites such words for one. Never use the fix
-  run for work you want done beyond a finding.
+- **A fix run fixes what a run returned to be fixed.** Start one for every run, a fix run included,
+  that returned a decision or a finding to fix. A general instruction to fix findings does not
+  authorize a particular fix, because the user may not agree with the finding, so no unit spec cites
+  such words for one, and the fix run's fixer judges every entry as a claim.
 - The fix run is `scripts/fix-follow-up.js`, copied and filled in its marked block like the main
   script, `scripts/implement-review-verify.js`. Its copy sets `meta.name` to a kebab-case name of
   the fix run and `meta.description` to one line saying what the run fixes, as a copy of the main
-  script does. It reads no spec: every entry of its fix list points at the records that back it.
+  script does. It reads the parent unit's spec for the user's words, by the path its fix list names.
 - The fix run's input is a fix list, a YAML file in the main checkout's project cache, which
-  `workflow-skills:local-cache` defines, with exactly the keys `run` (the parent run's ID) and
-  `entries`.
-- Write the fix list from scratch with
-  `<plugin root>/tools/check-spec.ts --make-fix-list <run> --transcripts <dir>`, which prints every
-  decision of the parent run's last verify stage and every finding of its last roast stage, each as
-  the journal holds it under its source, `verify:<index>` or `roaster:<index>`, with an empty
-  `attach` list.
-- Delete the entries that do not go to the fix run. Never edit an entry: the check holds each one
-  to the journal.
-- Attach to an entry, in `attach`, the pointers its fix needs and nothing else. A pointer names a
-  session transcript record, a journal record or a rule file by `file`, `line` and `key`, the key
-  path inside a JSON record, one key name per element, and empty for a file that is no JSON lines
-  file. A pointer to the message in which you state a decision is how that decision reaches the fix
-  run. No word of yours enters the list.
+  `workflow-skills:local-cache` defines, with exactly the keys `run` (the parent run's ID), `spec`
+  (the spec the parent run checked) and `entries`.
+- Write the fix list with
+  `<plugin root>/tools/check-spec.ts --make-fix-list <run> --transcripts <dir>`, which prints the
+  spec the parent run checked and every entry the parent run returned to be fixed, each as the
+  journal holds it under its source: every decision of its last verify stage but a `cleanup`
+  decision and an approved correction its fixer reported fixed, as `verify:<index>`; in a run
+  without a verify stage, such as a review pass, every finding of its review seats, as
+  `review:<seat>:<index>`; and every finding of its last roast stage and of its last diff check, as
+  `roaster:<index>` and `diff:<index>`.
+- Save the tool's output as the fix list unchanged. Never add, delete or edit an entry and never
+  attach anything to one: the check holds every entry to the journal, and no word of yours enters
+  the list.
+- Record each `cleanup` decision in the todo record as its own unit, as the section on rule
+  violations says.
 - Never use a spec as a fix list or a fix list as a spec, and never write one from the other. The
   two shapes never mix: the spec tool refuses a spec with the keys of a fix list, and a fix list
   with the keys of a spec.
 - Run `<plugin root>/tools/check-spec.ts --fix-list <file> --transcripts <dir> --json`, which holds
-  every entry to the parent run's journal, resolves every pointer, and prints the entries with the
-  proof only when all of them hold.
-- Pass the tool's `entries` output as `args.entries` and the parent run's final snapshots as
-  `args.base`, the `snapshots` list its run record returns, and fill the parent unit's documents
-  directory and the applicable rule sources, as `ruleSources`, into the block.
-- The launch check runs the same command in the worktree with `--expect` and the JSON of the
-  entries, which the script builds and quotes for the shell. The tool fails when they differ from
-  the list, so every stage receives what the journal holds and the pointers the list attaches.
-- The read-only scope check runs before any edit and classes the correction every entry asks for
-  as corrective or as a new choice, each with a reason and receipts. A new choice is not fixed: it
-  returns as a `new-choice` remaining item with its reason, and when no entry is corrective the run
-  ends there with `root-resolution` and no fixer runs. The fixer receives only the corrective
-  entries, one key per source with the entry as the journal holds it, its pointers, the scope
-  check's reason and its receipts, while the roaster reads the same list.
-- The scope check receives the rule sources and the template path of every review seat of the main
-  script, named as the reviewers' rules, as the finding verifier does.
-- The scope check treats the review seats as critics without authority whose purpose is to improve
-  code quality, so a reviewer's rule is never cited as authority.
-- A correction that improves code quality without changing anything the user's words specify is
-  corrective and needs no words of the user, on a rule of the scope check's own template. Merging
-  duplicated code into one shared function is such a correction, and a function that only holds
-  the merged code is not a new interface.
-- The classification of such a correction names that rule in its reason. Its receipts quote the
-  reviewer's rule or the project rule as evidence of what the correction improves.
-- A correction that adds or changes behavior is a new choice.
-- A removal of code, a parameter or a mechanism that nothing uses, that nobody asked for, or that
-  is built beyond what was asked is corrective and needs no words of the user, on the removal rule
-  of the scope check's own template, even where it takes away what the code did.
-- The removal rule holds also where only an assistant message names the code.
-- The classification of such a removal names the removal rule in its reason, and its receipts show
-  that nothing uses the code or that no words of the user asked for it.
-- The removal of code that the user's words asked for is a new choice.
-- Code that an applicable project rule asks for is not code nobody asked for, so the removal rule
-  does not reach it.
-- The read-only diff check then maps every change of the fix diff to a corrective entry. A design
-  document in the documents directory has no exception: a change to any of them maps to the
-  corrective entry it carries out, or it is a CRITICAL finding.
+  every entry to the parent run's journal and the spec to the one the parent run checked, unchanged
+  since, and prints the spec and the entries with the proof only when all of them hold.
+- Pass the tool's `spec` and `entries` output as `args.spec` and `args.entries` and the parent run's
+  final snapshots as `args.base`, the `snapshots` list its run record returns, and fill the parent
+  unit's documents directory and the applicable rule sources, as `ruleSources`, into the block.
+- The launch check runs the same command in the worktree with `--expect` and the JSON of the spec
+  and the entries, which the script builds and quotes for the shell. The tool fails when they differ
+  from the list, so every stage receives what the journal holds.
+- The fix run's fixer receives every entry, one key per source, and the parent spec. It resolves
+  each entry with the user's words, the rule sources and the plugin's skills as its guide. Before it
+  returns anything but fixed, it looks for every applicable rule and skill that says what to do or
+  authorizes the change. A rule or a skill that calls for ripping code out authorizes the rewrite,
+  and the rewritten code does the same thing in the same way as the code it replaces.
+- The fixer returns a question only for a product decision that no rule, skill or word of the user
+  decides: a change of the product's scope or of what the user sees and does, such as a new user
+  interface element, a new database table or a library swap. It first checks that the question is
+  valid. Whether to keep a known defect, to break a rule because the existing code is already bad,
+  to update many places instead of fixing the one place they should all read from, to tolerate
+  input without a technical reason, to revert an improvement or to reopen approved work is never a
+  valid question: a rule answers it.
+- The roaster reads the same list beside the fixer.
+- The read-only diff check then maps every change of the fix diff to an entry. A design document
+  in the documents directory has no exception: a change to any of them maps to the entry it carries
+  out, or it is a CRITICAL finding.
+- A change that maps to no entry is a CRITICAL finding, and so is a change of the product's scope or
+  of what the user sees and does that neither the entry, the user's words nor a rule calls for.
 - A correction whose only change is a design document is accepted when its entry names that
   document.
 - A fix reported as done needs a commit of the fixer whatever path it touches.
@@ -911,7 +892,7 @@ second implementer pre-check.
 - Each finding of the diff check returns as a CRITICAL `diff-finding` and starts no further fixer.
 - Every entry the fixer reports fixed returns as an `unattested-fix` for you to attest, as in the
   main run, and the run then ends `follow-up`, as it also does when only must-fix or CRITICAL roast
-  findings remain. It ends `root-resolution` when an entry was refused, a fix was not applied, a
+  findings remain. It ends `root-resolution` when a question came back, an entry was not fixed, a
   fix reported as done has no commit or maps to no change in the diff check (an `unproven-fix`), the
   proof failed, or the diff check found a change without an entry. It ends `clean` only when
   nothing at all remains, and ends on an abort or a stage failure as the main script does.
@@ -921,94 +902,42 @@ second implementer pre-check.
   todo record of `workflow-skills:todo-md`, which is amended as the same entry each time the defect
   reappears, never duplicated, since a duplicated entry hides the second move behind a
   fresh-looking first one.
-- Record a disproved item with its counterevidence; a nit or record stays recorded in the todo
-  record of `workflow-skills:todo-md`.
-
 ### What reaches the user
 
-- **Only two kinds of decision reach the user.** A product decision is about what the user sees and
-  does, what data is kept or lost, the product's scope, and anything public or external. An
-  architecture decision is about where code lives, the shape of the system, the data model and the
-  contracts between components. An item of any other kind never reaches the user, whether a stage
-  or a remaining item calls it unsettled, open or undecided: you decide it yourself by the rules
-  of this section.
-- **Fix a correction that improves code quality without changing anything the spec specifies.** It
-  needs no words of the user and no question.
-- **Remove behavior nobody approved.** Behavior added without authority is removed as an
-  unauthorized addition. Never offer it to the user as a choice.
-- **Remove code, a parameter or a mechanism that nothing uses, that nobody asked for, or that is
-  built beyond what was asked, without asking the user.** A hand-written design document that
+- **Only product decisions reach the user.** A product decision is about what the user sees and
+  does, what data is kept or lost, the product's scope, and anything public or external. The
+  writers settle everything else, the shape of the system and where code lives included, by the
+  user's words, the rules and the plugin's skills.
+- **A product decision reaches the user only as a stage raised it.** That is the implementer's
+  sense-check flag or a question a fix run's fixer returned, each raised after the stage looked for
+  every applicable rule and skill and checked that the question is valid. Show it to the user as
+  the stage wrote it.
+- **Decide nothing yourself, and ask no question of your own about the unit's code or product.**
+  What a run returns goes to its fix run, as the section on remaining items says.
+- **Behavior nobody approved is removed.** Behavior added without authority is removed as an
+  unauthorized addition and is never offered to the user as a choice.
+- **Code, a parameter or a mechanism that nothing uses, that nobody asked for, or that is built
+  beyond what was asked is removed without asking the user.** A hand-written design document that
   describes it, such as one written from your own spec, is no reason to keep it, because such a
-  document is never cited as the design. The finding verifier and the fix run's scope check apply
-  the same rule: the verifier decides such a removal `approve-fix` and the scope check classes it
-  corrective, without the user's words.
-- **Make a recommended fix you have checked.** When a stage recommends a correction and your check
-  against the tree and the recorded words finds it correct, make the fix; never present it as an
-  option beside an alternative.
-- **Send any other open item to a new unit.** A `new-choice` item the fix run's scope check refused
-  and an open `unbacked-choice` decision that is neither a product nor an architecture decision go
-  to a new implement-review-verify unit. Never ask the user to decide them. You decide the choice
-  on the authority of the user's recorded delegation of this kind of choice, which this rule
-  carries, and state your decision in the chat, where the user sees it. The message that states it
-  goes into that unit's spec as an assistant entry. The delegation covers only a choice that is
-  neither a product nor an architecture decision.
-- **Decide a split over agreed facts.** When stages or models split on a choice that is neither a
-  product nor an architecture decision while agreeing on the facts, apply the rules to those facts
-  and decide. The split alone is never a reason to ask the user. A product or architecture decision
-  reaches the user whether or not the stages split on it.
+  document is never cited as the design. The finding verifier decides such a removal `approve-fix`
+  and the fix run's fixer carries it out, without the user's words.
 
 ### Question-premise check
 
-- Before presenting any question, trade-off, limitation or acceptance request to the user, check
-  its premises first. Identify the proposed question in plain terms, the premise it rests on, and
-  the exact directive/context reference and any related spec-compliance or inverse-spec finding it
-  touches.
-- Then check the user's recorded words against that premise: when they challenge the premise,
-  investigate the mismatch before asking anything, identify the unsupported scope, and report a
-  discovered implementation deviation from the requested result plainly, and never present the
-  consequence of an invented mechanism as though it were a new choice the user must make.
-- Never ask again a choice the user's recorded words already settle; present only a product or
-  architecture decision they leave genuinely unresolved as a decision request.
-- Give every entry the run returns in `inverseSpecDecisions` this treatment: either record in the
-  todo record that the user's recorded words back the code's choice or, after this check, ask the
-  user about the part that is a genuinely unsettled product or architecture decision, and decide
-  any other unsettled part yourself. A code change the decision needs is a new run under the
-  remaining items rules above.
-- **A decision that changes what a thing is triggers a redesign.** When a decision of the user
-  changes what a thing is, redesign before any unit continues and show the redesign to the user,
-  beginning with what the user sees and then the data model.
+- **A stage checks a question before it raises one.** The implementer and a fix run's fixer look
+  for every applicable rule and skill before they raise a flag or a question, and they never raise
+  one whose answer a rule or a skill gives, such as whether to keep a known defect or whether to
+  break a rule because the existing code is already bad. A question that still comes back reaches
+  the user as the stage wrote it.
 - **A limit is never attached to a decision.** Never add a limit to a decision of the user. A limit
   that seems needed is asked as its own question.
 - **A question about a premise stops every edit to it.** When the user asks a question about a
   premise, every edit that touches that premise stops until the question is answered.
 - **Names follow decisions.** A title, module or heading that contradicts a decision of the user is
   renamed in the same change that carries the decision.
-- **A question is evidence of drift.** Most decisions that reach the user are there because a
-  direction already given was not honored, in letter or in spirit, and the shape that resulted is
-  then presented as a product choice whose options do not match what was asked for. That is why
-  such a question reads as incomprehensible to the person who gave the direction: when a direction
-  is honored the design comes out clean and no question arises. So before any question reaches the
-  user, whether a stage returned it as a needs-decision, a root-action or an open-decision item or
-  your own work raised it, elevate one layer: search the spec and the session transcripts for the
-  question's own terms, re-read the recorded decisions, the design documents
-  and the documentation of the code itself, and check whether the answer is already stated there.
-  The user's words are on disk; answering from memory of them is not a check. Where a recorded
-  direction was broken, repair the design; asking which broken shape is preferred launders the
-  break into an approval. Only a product or architecture decision that genuinely cannot be derived
-  from what is already decided reaches the user.
-- **You are the judge and act on your own conclusion.** A finding from a reviewer or a critic is a
-  claim, not an instruction and not a question to relay. Verify the claim against the tree and the
-  recorded words, then fix it or reject it with a stated reason, and never hand the claim itself to
-  the user as a decision request. Anything headed for the user passes one screen first: is this
-  item in fact a rule violation or an architecture problem that another read of the recorded words
-  would close? Decide an item the screen closes there and then. The boundary above is unchanged by
-  the screen: a choice the recorded words settle is never asked, and a product or architecture
-  decision the recorded words genuinely leave open still reaches the user once the screen has
-  passed it.
-- Accept a rejected `unbacked-choice` decision only after reading the cited spec entry and
-  checking that the quoted words, read in their surrounding context, back the choice. A quote that
-  does not match its context leaves the choice open, and you handle it as every other open
-  `unbacked-choice` decision, as the section on what reaches the user says.
+- **A decision that changes what a thing is starts from the spec.** When an answer of the user
+  changes what a thing is, the answer goes into a copy of the spec, and the next run's implementer
+  redesigns from it before any unit that rests on the thing continues.
 - **A reported problem carries two literal quotations.** A problem reported to the user quotes the
   observed symptom and the line that causes it, each with its file and line or the command that
   produced it. A characterization is not a quotation. When the cause is not identified the report
@@ -1018,41 +947,34 @@ second implementer pre-check.
   up is forbidden. An ambiguous reference is confirmed before anything acts on it, because the wrong
   referent produces work that is internally consistent and answers the wrong question. No reply
   opens with noted, recorded or done before the thing it claims has been verified.
-- **Asking means waiting.** A question you do present stops the work that rests on its answer.
+- **Asking means waiting.** A question you pass on stops the work that rests on its answer.
   Never launch a stage, a fix pass or a new run in the same turn as the question that work would
   answer: pairing them makes the question decorative, because what it asked about has already
-  happened by the time an answer can arrive. Either you are confident enough to proceed without
-  asking, or you wait. Work that does not depend on the answer continues meanwhile.
-- **Decide or ask, and never both.** A decision offered with an escape hatch, standing until the
-  user objects, is worse than a decision you simply take, even when you take it wrongly. A wrong
-  call stated plainly can be interrupted and reversed. A choice offered while the work is already
-  moving cannot be exercised at all, and it records the user as having approved what you chose. So
-  either own the call, say plainly that it is your own, and proceed, or ask and stop. Never dress
-  your own call as the user's.
+  happened by the time an answer can arrive. Work that does not depend on the answer continues
+  meanwhile.
+- **Never decide while you ask.** You make no decision about the unit, so a choice offered with an
+  escape hatch, standing until the user objects, has no place either. A choice offered while the
+  work is already moving cannot be exercised at all, and it records the user as having approved
+  what you chose. Never dress your own call as the user's.
 
 This is an obligation of your PROMPT, not a script gate. An executable test can confirm the
 instruction above is wired into your prompt and that `remaining`, `inverseSpecDecisions` and
 `projectBenefitDecisions` reach you intact and unretired;
-it cannot prove a future model actually performed the conversational premise check correctly.
+it cannot prove a future model actually passed a question on unchanged and decided nothing.
 
 - **An ask is one short sentence, and the question stands alone on its own line.** A question
   buried in a paragraph of context gets answered by the context instead of by the user. An answer
   approves only what it literally names: a later change of scope or of shape spends the previous
   yes and needs a new one, because what was approved is no longer what is being built. The
   construction that pairs a question with a stated intention to proceed anyway is forbidden in
-  every wording of it, since it asks and proceeds at once and so does both of the things the
-  decide-or-ask rule above separates.
-- **Ask a product or architecture decision in your own words, with no recommended option.** Ask
-  only after checking the user's recorded words as this section says, and describe the choice by
-  what the user will see. Label no option as recommended. An option the user's recorded words or
-  the rules already settle is a decision you take yourself, and a choice they leave open is the
-  user's, put without your preference attached. Offer no option that keeps a found defect as it is
-  or leaves the decision for later.
-- Every entry in `projectBenefitDecisions` reaches you whatever its disposition. Close a standing
-  one only by deletion, a rewrite, or the user's verbatim word to keep the shape, added to a copy
-  of the spec; a patch that keeps the flagged mechanism leaves the decision open. A decision the
-  verifier rejected closes once you have checked the counterevidence against the tree and the record
-  and recorded it.
+  every wording of it, since it asks and proceeds at once.
+- **Pass a stage's question on with no recommended option of yours.** Label no option as
+  recommended, add no option, and never offer one that keeps a found defect as it is or leaves the
+  decision for later.
+- Every decision in `projectBenefitDecisions` that the fixer did not report fixed goes to the next
+  fix run like every other decision. A standing one closes only by deletion, a rewrite, or the
+  user's verbatim word to keep the shape, added to a copy of the spec; a patch that keeps the
+  flagged mechanism leaves it open.
 
 ### While a run is in flight
 
@@ -1147,22 +1069,18 @@ const assessSize = ({ specLines, codeAdded }) => {
 }
 ```
 
-- A breach is first **your diagnosis**, not an automatic request for permission or a fixer retry.
-  Read the inverse-spec review and the candidate against the existing requirements. Identify
-  unnecessary mechanisms, duplication and concrete deletion/simplification savings; also identify
-  real missing spec detail or a prerequisite foundation.
-- Excess code is corrected by a new run under the remaining items rules above. Genuinely missing
-  spec detail is work for a new unit with its own spec, consistent with existing authority; new
-  scope still needs authorization.
+- A breach is no automatic request for permission. It goes to the unit's fix run with what the run
+  returned, the inverse-spec findings included, and the fix run's fixer removes the unnecessary
+  mechanisms and duplication the rules call for, or raises the question of genuinely missing scope
+  for the user.
 - Never pad the spec to lower the ratio, or use a later amendment to retroactively authorize
   unsupported code.
 - A spec suggestion alone does not stop the implementation/reviewer cycle; this gate applies to the
   finished unit.
-- A new run that changes the code is measured against the size bar on its own candidate.
-  If the justified implementation still exceeds 20:1, keep acceptance blocked unless the user
-  explicitly approves that remaining size. Before asking once, present the ratio, inverse-spec
-  conclusions, savings already taken or rejected with reasons, real spec gaps and the remaining
-  size traced to requirements.
+- A fix run or a new run that changes the code is measured against the size bar on its own
+  candidate. If the implementation still exceeds 20:1, keep acceptance blocked unless the user
+  explicitly approves that remaining size. Before asking once, present the ratio and what the fix
+  run removed and returned.
 - Keep any verbatim approval private/untracked; record only the technical disposition in
   commit-bound artifacts. Approval is specific to the measured candidate and spec, not a reusable
   waiver. Do not repeat the request without materially new evidence.
@@ -1418,13 +1336,10 @@ These laws are non-negotiable across every run of this skill.
     does not belong. Never retroactively authorize unsupported implementation.
     **Every inverse-spec finding is CRITICAL regardless of the severity or lane it arrived with; the
     finding verifier, the fixer and you all ignore that supplied categorization and must dispose of
-    it explicitly — never leave it implicitly closed.** Resolve it by recording in the todo record
-    that the user's recorded words back the code's choice, by asking the user about a genuinely
-    unsettled product or architecture decision after checking the question's premises against the
-    recorded directives, or by deciding any other unsettled choice yourself; a code change it needs
-    is a new run under the remaining items rules. A copy of the spec with new words does not
-    resolve the finding on its own, and the original verbatim directives are never erased,
-    rewritten or selectively omitted to make it disappear.
+    it explicitly — never leave it implicitly closed.** Every one the fixer did not report fixed
+    goes to the next fix run like every other decision, and you decide none of them. A copy of the
+    spec with new words does not resolve the finding on its own, and the original verbatim
+    directives are never erased, rewritten or selectively omitted to make it disappear.
 14. **ASSERT AT THE GRANULARITY AT WHICH THE RULE BINDS** — per row, per section, per item — and
     **never aggregated over the whole artifact**. An aggregate assertion lets a fully DEGENERATE
     part pass on the strength of its neighbours: the property holds across the sample while the
@@ -1528,7 +1443,7 @@ what the run implements, so each main run appears in the workflow list under its
 ones, `WRITE_GIT` the two writers and `READ_GIT` the readers. `HYGIENE`, the hygiene floor of the
 main script, carries no writing-style order: the unbriefed seats' findings go to the finding verifier only,
 and the rule reader checks the prose of the diff against the rule sources. The writers and the briefed seats receive the order through `AUTHORITY`, and the
-fix run's hygiene floor keeps it, since its scope check and diff check read the tree. The field
+fix run's hygiene floor keeps it, since its diff check reads the tree. The field
 shapes are declared once and reused inside eight reader schemas and the writer, verifier and
 launch check schemas, each a closed object declared in full; the eight audit seats share the
 quality seat's schema, because they return the object it returns. `stage()` is the one acceptance
@@ -1578,7 +1493,7 @@ ends the run after that stage: the script records a `blocking-limitation` item w
 and exits with `root-resolution`. The verifier's own is recorded the same way, and the run ends
 with `root-resolution` after the fix stage has run. The main script records no reading seat's
 limitation: the verifier keeps it as an unresolved issue or discards it. The fix run has no
-verifier, so there the script records the blocking limitations of the scope check, the roaster
+verifier, so there the script records the blocking limitations of the fixer, the roaster
 and the diff check itself.
 
 - **ARTIFACT-PRODUCING STAGES PROVE THE ARTIFACT IN `files` AND `checks`.** A stage can produce a
@@ -1770,7 +1685,7 @@ prompt rule it sees nowhere is a defect.
   `agents/quality.md`, `agents/reviewer-inverse-spec.md`, `agents/project-rule-reader.md`, the eight
   audit templates `separation-of-concerns`, `abstraction-quality`, `code-smell`, `type-safety`,
   `code-cleanliness`, `missing-gaps`, `domain-leakage` and `type-smearing`,
-  `agents/finding-verifier.md`, `agents/fixer.md`, plus `agents/scope-check.md` and
+  `agents/finding-verifier.md`, `agents/fixer.md`, plus
   `agents/diff-check.md` for the fix run. That file's body is the agent's **authoritative rules**
   and is used **VERBATIM** as the start of its prompt.
 - Invoke the agent by its qualified agent type, `agentType:'workflow-skills:<role>'`.
@@ -1778,8 +1693,8 @@ prompt rule it sees nowhere is a defect.
   diff, the start commits, the check command).
 - **Do NOT modify, reorder, or paraphrase the base rules inline — append only.**
 
-No script of this skill starts the `gap-finder` template. It stays in `agents/` for use as an
-`agentType` in other workflows.
+No script of this skill starts the `gap-finder` or the `scope-check` template. They stay in
+`agents/` for use as an `agentType` in other workflows.
 
 ## Model assignment
 
@@ -1841,9 +1756,8 @@ Two rules come with it:
 - Give writing agents and reading agents the rules that `workflow-skills:local-cache` states for
   each of the two roles.
 - Keep routine consolidation, rejections and successful fixes inside the workflow record. Relay
-  a concise result plus genuine exceptions: unsettled product or architecture decisions, authority
-  prerequisites, verifier/fixer disagreements or failed proofs. Preserve source findings and
-  dispositions for inspection; you need not consume every seat object to adjudicate routine work.
+  a concise result plus the questions a stage raised for the user. What the run returned to be
+  fixed goes to its fix run unread. Preserve source findings and dispositions for inspection.
 - Complete the same-run cleanup handoff under **Rule violations and local cleanup records**:
   update the todo record of `workflow-skills:todo-md` without staging or committing it unless
   explicitly requested.

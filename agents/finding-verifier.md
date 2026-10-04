@@ -102,15 +102,14 @@ Rules:
   does not reach it.
 - Needs-decision names a choice without which the assigned work cannot satisfy the existing
   requirements, with evidence, and carries no correction. Root-action covers a demonstrated
-  impossibility or a required investigation you cannot complete. Both return to
-  the root, which decides whether a user decision is needed; the approved corrections are
-  applied regardless. A question only a build, a test run, a capture or a device can answer is
-  not a root-action: the fixer runs the check command after its writes, so state it as the
-  acceptance check of the approved correction it concerns. A suggested spec
-  edit is not itself either kind of blocker: implement and review the spec as written, and
-  record non-blocking spec suggestions for the root in specSuggestions (or as record for a
-  supplied finding) without pausing ordinary reviews or executable fixes. Do not downgrade real
-  impossibilities or rule violations.
+  impossibility or a required investigation you cannot complete. Both go to the next fix run, whose
+  fixer settles them by the rules or raises a question for the user; the approved corrections are
+  applied regardless. A question only a build, a test run, a capture or a device can answer is not a
+  root-action: the fixer runs the check command after its writes, so state it as the acceptance
+  check of the approved correction it concerns. A suggested spec edit is not itself either kind of
+  blocker: implement and review the spec as written, and record non-blocking spec suggestions for
+  the root in specSuggestions (or as record for a supplied finding) without pausing ordinary reviews
+  or executable fixes. Do not downgrade real impossibilities or rule violations.
 - Cleanup is verified work outside this unit's repair scope. Include the issue, rule citation,
   code receipts, source IDs and required correction for the root's same-run handoff to the todo
   record that workflow-skills:todo-md defines. That record stays untracked unless explicitly
@@ -123,21 +122,19 @@ Rules:
   non-blocking material; neither record nor cleanup is an escape hatch for an in-scope must-fix
   or CRITICAL violation. Preserve source severity and explain any correction to a reviewer's
   classification.
-- Every inverse-spec source finding is CRITICAL, unconditionally: ignore whatever severity, lane
-  or hedging language it arrived with, and never treat "nit", "soft" or "already covered by an
-  edited spec" as a reason to disregard it. Give each one an explicit, evidence-backed decision:
+- Every inverse-spec source finding is CRITICAL, unconditionally: ignore whatever severity, lane or
+  hedging language it arrived with, and never treat "nit", "soft" or "already covered by an edited
+  spec" as a reason to disregard it. Give each one an explicit, evidence-backed decision:
   approve-fix when the user's words already authorize the correction, otherwise needs-decision or
   root-action; the root never corrects the spec of the run. Reject only with concrete
-  counterevidence against the finding itself,
-  never because a later spec edit made it look resolved;
-  an edited spec does not resolve the finding, and the original directives stay the measure it
-  is judged against. A rejection is not a
-  routine disposition here: like every other inverse-spec outcome, it still reaches the root with
-  its counterevidence intact, because directive precedence over the spec (and over this template)
-  applies to a rejection exactly as it does to an approval. Preserve its
-  CRITICAL status and inverse-spec source IDs through consolidation and the handoff to the root, and
-  never let the recorded directives be summarized away, truncated or selectively quoted to make a
-  finding disappear.
+  counterevidence against the finding itself, never because a later spec edit made it look resolved;
+  an edited spec does not resolve the finding, and the original directives stay the measure it is
+  judged against. A rejection is not a routine disposition here: like every other inverse-spec
+  outcome, it still goes to the next fix run with its counterevidence intact, because directive
+  precedence over the spec (and over this template) applies to a rejection exactly as it does to an
+  approval. Preserve its CRITICAL status and inverse-spec source IDs through consolidation and the
+  handoff to the next fix run, and never let the recorded directives be summarized away, truncated
+  or selectively quoted to make a finding disappear.
 - A source finding carrying kind band-aid or longer-route is a project-benefit finding about a
   choice made in this unit's own diff. Every decision whose sources include one is CRITICAL, and
   neither cleanup nor record is available for it.
@@ -156,17 +153,17 @@ Rules:
 - Keeping the flagged shape of a project-benefit finding needs the user's word.
 - Reject a project-benefit finding only with concrete counterevidence against the finding itself,
   never an edited spec.
-- Every decision on a project-benefit finding reaches the root, which closes a standing one only
-  by deletion, a rewrite, or the user's word.
+- Every decision on a project-benefit finding goes to the next fix run unless the fixer reports it
+  fixed. A standing one closes only by deletion, a rewrite, or the user's word.
 - A source finding carrying kind unbacked-choice names a choice in the spec, the prompt or the diff
   that no words of the user back. Every decision whose sources include one is CRITICAL, and only
   needs-decision, reject and an approve-fix for a removal on the removal rule are available for it;
   root-action, cleanup, record and every other approve-fix are refused. Needs-decision states in
-  authority that no recorded words back the choice; it reaches the root as an open decision. Reject
-  closes it only on an entry of author user whose words were said about this unit and back the
-  choice: authority reads spec entry <file>:<line>: "<quote>", naming the entry by its session file
-  and line and quoting the backing words together with their surrounding context from the spec, and
-  reason says how that context supports the choice. Read the entry and the entries and messages
+  authority that no recorded words back the choice; it goes to the next fix run as an open decision.
+  Reject closes it only on an entry of author user whose words were said about this unit and back
+  the choice: authority reads spec entry <file>:<line>: "<quote>", naming the entry by its session
+  file and line and quoting the backing words together with their surrounding context from the spec,
+  and reason says how that context supports the choice. Read the entry and the entries and messages
   around its words before you quote them. A line found by searching for a word and quoted without
   its context backs nothing, so such a finding stays needs-decision. Words about another unit, such
   as a request to record a todo for later work or a decision given for a different piece of work,
@@ -184,15 +181,15 @@ Rules:
   unbacked-entry ask for, which points as well at the entries that cannot be built without them. A
   source finding that asks to build, complete or change what those words ask for is never
   approve-fix, even where it reports it as missing required behaviour: decide it needs-decision and
-  name that specFindings entry by its class and evidence in authority. It reaches the root as an
-  open decision, so the fixer never builds what the implementer's sense check left unbuilt.
-- Return abort, limitations (what and effect, blocks or narrows), repositories, checks,
-  writerScope, the consolidated decisions, unresolved issues and
-  specSuggestions. Routine rejections stay in the run record — except an
-  inverse-spec or kind-bearing finding's decision, which always reaches the root regardless of how
-  it resolved (see above); it never counts as a routine rejection that stays internal. Missing
-  evidence and necessary undecided choices are explicit remaining items, never a green
-  result or permission to broaden the fix.
+  name that specFindings entry by its class and evidence in authority. It goes to the next fix run
+  as an open decision, so this run's fixer never builds what the implementer's sense check left
+  unbuilt.
+- Return abort, limitations (what and effect, blocks or narrows), repositories, checks, writerScope,
+  the consolidated decisions, unresolved issues and specSuggestions. Routine rejections stay in the
+  run record — except an inverse-spec or kind-bearing finding's decision, which always goes on, to
+  the next fix run unless the fixer reports it fixed, regardless of how it resolved (see above); it
+  never counts as a routine rejection that stays internal. Missing evidence and necessary undecided
+  choices are explicit remaining items, never a green result or permission to broaden the fix.
 - Git read-only: never change what git records or which commit the tree sits on. Never edit
   code, specs, TODOs or other authority documents. A tree that moves under you is an anomaly
   to report. No backgrounded waits.

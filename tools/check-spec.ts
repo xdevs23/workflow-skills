@@ -353,22 +353,32 @@ async function main() {
     `unbreakable=${JSON.stringify(summary.unbreakable)} proof=${summary.proof} spec=${summary.spec}`)
 }
 
-// A fix list holds entries of one earlier run: the decisions of its finding verifier and the findings
-// of its roaster, each as the run's journal holds it, and the pointers the orchestrating session
-// attached to each, which name records to read and carry no words of the session. --make-fix-list
-// writes such a list from the journal with no pointers; the check holds every entry to the journal
-// and resolves every pointer. A fix list is never written from a spec, and the two never mix: each
-// mode refuses the keys of the other.
-const fixListKeys = ['run', 'entries']
-const pointerKeys = ['file', 'line', 'key']
-// An entry's source: a decision of the finding verifier or a finding of the roaster, by its index in
-// the list of the last result of that stage.
+// A fix list holds what one earlier run returned to be fixed, each item as the run's journal holds
+// it, and names the spec of the unit the run belongs to, which the fix run reads for the user's
+// words. --make-fix-list writes such a list from the journal, and nobody adds, removes or edits an
+// entry; the check holds every entry to the journal and the spec to the one the run checked. A fix
+// list is never written from a spec, and the two never mix: each mode refuses the keys of the other.
+const fixListKeys = ['run', 'spec', 'entries']
+// An entry's source: a decision of the finding verifier, a finding of the roaster or of the diff
+// check, or, in a run without a verify stage such as a review pass, a finding of a review seat, by
+// its index in the list of the last result of that stage.
 const sourceKinds = {
   verify: { label: 'verify', list: 'decisions', field: 'decision' },
   roaster: { label: 'roast', list: 'findings', field: 'finding' },
+  diff: { label: 'diff', list: 'findings', field: 'finding' },
 } as const
 type SourceKind = keyof typeof sourceKinds
-const entrySource = new RegExp(`^(${Object.keys(sourceKinds).join('|')}):(0|[1-9][0-9]*)$`)
+const reviewLabel = /^review:([a-z][a-z-]*)$/
+const entrySource = new RegExp(`^(?:(${Object.keys(sourceKinds).join('|')})|review:([a-z][a-z-]*)):(0|[1-9][0-9]*)$`)
+const sourceNames = [...Object.keys(sourceKinds), 'review:<seat>'].map(kind => `${kind}:<index>`).join(', ')
+// The stage, list and field a source names, and its index, or nothing for a source of another form.
+const sourceOf = (source: unknown) => {
+  const match = typeof source === 'string' ? entrySource.exec(source) : null
+  if (!match) return undefined
+  const [, kind, seat, index] = match
+  const { label, list, field } = kind ? sourceKinds[kind as SourceKind] : { label: `review:${seat}`, list: 'findings', field: 'finding' }
+  return { label, list, field, index: Number(index) }
+}
 // A run id is one directory name under the session's workflow directory.
 const runId = /^[A-Za-z0-9][A-Za-z0-9_.-]*$/
 const isFile = (path: string) => stat(path).then(found => found.isFile(), () => false)
@@ -453,47 +463,60 @@ async function lastResults(journal: string): Promise<Map<string, unknown>> {
   return new Map([...started].map(([label, key]) => [label, results.get(key)]))
 }
 
-// Writes the fix list of a run from its journal: every decision of its last verify stage and every
-// finding of its last roast stage, in that order, each with an empty list of pointers.
+// The spec of the run's unit and its sha256, as the run's launch check printed them: the check of a
+// main run or a review pass prints the spec it passed, and the check of a fix run prints the spec its
+// list names, so a fix run's own leftovers carry the same spec on.
+function parentSpec(results: Map<string, unknown>): { spec: string, sha256: string } {
+  const gate = results.get('gate')
+  let printed: unknown
+  try { printed = mapping(gate) && typeof gate.stdout === 'string' ? JSON.parse(gate.stdout) : undefined } catch { printed = undefined }
+  if (mapping(printed) && Object.hasOwn(printed, 'fixList')) {
+    if (text(printed.spec) && text(printed.specSha256)) return { spec: printed.spec, sha256: printed.specSha256 }
+  } else if (mapping(printed) && text(printed.spec) && text(printed.sha256)) return { spec: printed.spec, sha256: printed.sha256 }
+  throw new Error('the launch check of the run printed no spec')
+}
+
+// Writes the fix list of a run from its journal: every decision of its last verify stage except a
+// cleanup decision, which names work outside the unit, and except an approved correction its fixer
+// reported fixed; in a run without a verify stage, every finding of its review seats; then every
+// finding of its last roast stage and of its last diff check. The spec is the one the run checked.
 async function makeFixList(run: string, transcripts: string) {
   if (!runId.test(run)) throw new Error(`expected a run id: ${run}`)
   const results = await lastResults(await findJournal(transcripts, run))
+  const { spec } = parentSpec(results)
   const entries: Mapping[] = []
-  for (const [kind, { label, list, field }] of Object.entries(sourceKinds)) {
+  const verify = results.get('verify')
+  if (mapping(verify) && Array.isArray(verify.decisions)) {
+    // The main script keys the approved corrections fix:<n>, in the order of the approve-fix decisions.
+    const fix = results.get('fix')
+    const fixed = new Set((mapping(fix) && Array.isArray(fix.dispositions) ? fix.dispositions : [])
+      .filter(d => mapping(d) && d.disposition === 'fixed').map(d => (d as Mapping).key))
+    let approved = 0
+    verify.decisions.forEach((decision, index) => {
+      const key = mapping(decision) && decision.action === 'approve-fix' ? `fix:${approved++}` : undefined
+      if ((mapping(decision) && decision.action === 'cleanup') || (key && fixed.has(key))) return
+      entries.push({ source: `verify:${index}`, decision })
+    })
+  } else {
+    for (const [label, result] of results) {
+      const seat = reviewLabel.exec(label)?.[1]
+      if (seat && mapping(result) && Array.isArray(result.findings)) {
+        result.findings.forEach((finding, index) => entries.push({ source: `review:${seat}:${index}`, finding }))
+      }
+    }
+  }
+  for (const kind of ['roaster', 'diff'] as const) {
+    const { label, list, field } = sourceKinds[kind]
     const result = results.get(label)
     const items = mapping(result) && Array.isArray(result[list]) ? result[list] : []
-    items.forEach((item, index) => entries.push({ source: `${kind}:${index}`, [field]: item, attach: [] }))
+    items.forEach((item, index) => entries.push({ source: `${kind}:${index}`, [field]: item }))
   }
-  if (!entries.length) throw new Error(`run ${run} has no decision of a verify stage and no finding of a roast stage`)
-  console.log(Bun.YAML.stringify({ run, entries }, null, 2))
-}
-
-// What is wrong with a pointer, or nothing. A pointer names a record of a JSON lines file, such as a
-// session transcript or a run journal, by its file, its line and the key path inside the record, or
-// a line of any other file, such as a rule file, with an empty key path. A relative JSON lines file
-// is read from the transcript directory, and any other relative file from the tree the tool runs in.
-async function pointerProblem(pointer: Mapping, transcripts: string): Promise<string | undefined> {
-  const file = pointer.file as string, line = pointer.line as number, key = pointer.key as string[]
-  if (file.endsWith('.jsonl')) {
-    if (!key.length) return 'a record of a JSON lines file needs a key path'
-    let value: unknown
-    try { ({ cited: value } = await readCited(transcripts, pointer)) } catch (error) { return `unreadable record: ${messageOf(error)}` }
-    for (const segment of key) {
-      if (Array.isArray(value) && /^(0|[1-9][0-9]*)$/.test(segment) && Number(segment) < value.length) value = value[Number(segment)]
-      else if (mapping(value) && Object.hasOwn(value, segment)) value = value[segment]
-      else return `the record holds no key path ${JSON.stringify(key)}`
-    }
-    return undefined
-  }
-  if (key.length) return 'a line of a file that is no JSON lines file takes an empty key path'
-  let content: string
-  try { content = await readFile(file, 'utf8') } catch (error) { return `unreadable: ${messageOf(error)}` }
-  const count = lines(content).length - (content.endsWith('\n') ? 1 : 0)
-  return line > count ? `line ${line} is outside the ${count} lines of ${file}` : undefined
+  if (!entries.length) throw new Error(`run ${run} returned no decision or finding to fix`)
+  console.log(Bun.YAML.stringify({ run, spec, entries }, null, 2))
 }
 
 async function checkFixList(file: string, transcripts: string, json: boolean, expected?: string) {
-  const { fail, shape, stringField, list, located, report } = validator(file)
+  const { fail, shape, stringField, list, report } = validator(file)
   let bytes: Buffer | undefined
   let fixList: unknown
   let parsed = false
@@ -504,34 +527,22 @@ async function checkFixList(file: string, transcripts: string, json: boolean, ex
   } catch (error) {
     fail(-1, 'fix list', `unreadable or malformed YAML: ${messageOf(error)}`)
   }
-  // The entries the list holds, in its order. Each keeps the field its source kind names.
-  const entries: { index: number, source: string, kind: SourceKind, value: Mapping }[] = []
+  // The entries the list holds, in its order. Each keeps the field its source names.
+  const entries: { index: number, source: string, value: Mapping }[] = []
+  let specSha256: string | undefined
   if (parsed && shape(fixList, fixListKeys, -1, 'fix list')) {
     const runOK = stringField(fixList, 'run', -1, 'fix list') && runId.test(fixList.run as string)
     if (text(fixList.run) && !runOK) fail(-1, 'fix list.run', 'expected a run id')
+    const specOK = stringField(fixList, 'spec', -1, 'fix list')
     if (list(fixList.entries, -1, 'entries')) {
       for (const [index, value] of fixList.entries.entries()) {
-        const match = mapping(value) && typeof value.source === 'string' ? entrySource.exec(value.source) : null
-        const path = match ? match[0] : `entry ${index + 1}`
-        const kind = match?.[1] as SourceKind | undefined
-        if (!shape(value, ['source', ...(kind ? [sourceKinds[kind].field] : []), 'attach'], index, path)) continue
-        if (!kind) { fail(index, `${path}.source`, `expected ${Object.keys(sourceKinds).map(kind => `${kind}:<index>`).join(' or ')}: ${JSON.stringify(value.source)}`); continue }
+        const named = mapping(value) ? sourceOf(value.source) : undefined
+        const path = named ? value.source as string : `entry ${index + 1}`
+        if (!shape(value, ['source', ...(named ? [named.field] : [])], index, path)) continue
+        if (!named) { fail(index, `${path}.source`, `expected ${sourceNames}: ${JSON.stringify(value.source)}`); continue }
         if (entries.some(entry => entry.source === path)) { fail(index, path, `duplicate source ${path}`); continue }
-        const field = sourceKinds[kind].field
-        if (Object.hasOwn(value, field) && !mapping(value[field])) fail(index, `${path}.${field}`, 'expected a mapping')
-        if (Object.hasOwn(value, 'attach') && !Array.isArray(value.attach)) fail(index, `${path}.attach`, 'expected a list')
-        else if (Array.isArray(value.attach)) {
-          for (const [position, pointer] of value.attach.entries()) {
-            const at = `${path}.attach entry ${position + 1}`
-            if (!shape(pointer, pointerKeys, index, at) || !located(pointer, index, at)) continue
-            if (!Array.isArray(pointer.key) || pointer.key.some(segment => !text(segment))) {
-              fail(index, `${at}.key`, 'expected a list of key names'); continue
-            }
-            const problem = await pointerProblem(pointer, transcripts)
-            if (problem) fail(index, at, problem)
-          }
-        }
-        entries.push({ index, source: path, kind, value })
+        if (Object.hasOwn(value, named.field) && !mapping(value[named.field])) fail(index, `${path}.${named.field}`, 'expected a mapping')
+        entries.push({ index, source: path, value })
       }
     }
     if (runOK) {
@@ -542,26 +553,36 @@ async function checkFixList(file: string, transcripts: string, json: boolean, ex
         if (!entries.length) fail(-1, 'fix list.run', messageOf(error))
         for (const { index, source } of entries) fail(index, source, messageOf(error))
       }
-      if (results) for (const { index, source, kind, value } of entries) {
-        const { label, list: name, field } = sourceKinds[kind]
-        if (!results.has(label)) { fail(index, source, `the parent run has no stage labelled ${label}`); continue }
-        const result = results.get(label)
-        const items = mapping(result) && Array.isArray(result[name]) ? result[name] : undefined
-        if (!items) { fail(index, source, `the last ${label} stage returned no ${name} list`); continue }
-        const position = Number(source.slice(source.indexOf(':') + 1))
-        if (position >= items.length) { fail(index, source, `index ${position} is outside the ${items.length} ${name} of ${label}`); continue }
-        if (Object.hasOwn(value, field) && !Bun.deepEquals(value[field], items[position], true)) {
-          fail(index, `${source}.${field}`, `differs from the parent run's journal`)
+      if (results) {
+        // The spec is the one the parent run checked, unchanged since: same path, same bytes.
+        if (specOK) {
+          try {
+            const checked = parentSpec(results)
+            if (fixList.spec !== checked.spec) fail(-1, 'fix list.spec', `expected the spec the parent run checked, ${checked.spec}`)
+            else if (sha256Of(await readFile(checked.spec)) !== checked.sha256) fail(-1, 'fix list.spec', 'changed since the parent run checked it')
+            else specSha256 = checked.sha256
+          } catch (error) { fail(-1, 'fix list.spec', messageOf(error)) }
+        }
+        for (const { index, source, value } of entries) {
+          const { label, list: name, field, index: position } = sourceOf(source)!
+          if (!results.has(label)) { fail(index, source, `the parent run has no stage labelled ${label}`); continue }
+          const result = results.get(label)
+          const items = mapping(result) && Array.isArray(result[name]) ? result[name] : undefined
+          if (!items) { fail(index, source, `the last ${label} stage returned no ${name} list`); continue }
+          if (position >= items.length) { fail(index, source, `index ${position} is outside the ${items.length} ${name} of ${label}`); continue }
+          if (Object.hasOwn(value, field) && !Bun.deepEquals(value[field], items[position], true)) {
+            fail(index, `${source}.${field}`, `differs from the parent run's journal`)
+          }
         }
       }
     }
-    // The launch values a fix script received: the entries this check prints. Each must equal the
-    // entry of the list, so what the fix run hands its stages is what the journal holds and the
-    // pointers the list attaches.
+    // The launch values a fix script received: the spec and the entries this check prints. Each must
+    // equal the list's, so what the fix run hands its stages is what the journal holds.
     if (expected !== undefined) {
       let launch: unknown
       try { launch = JSON.parse(expected) } catch (error) { fail(-1, 'launch values', `malformed JSON: ${messageOf(error)}`) }
-      if (launch !== undefined && shape(launch, ['entries'], -1, 'launch values')) {
+      if (launch !== undefined && shape(launch, ['spec', 'entries'], -1, 'launch values')) {
+        if (launch.spec !== fixList.spec) fail(-1, 'launch values.spec', 'differs from the spec of the fix list')
         const launched = new Map<string, Mapping>()
         if (!Array.isArray(launch.entries)) fail(-1, 'launch values.entries', 'expected a list')
         else for (const given of launch.entries) {
@@ -582,16 +603,18 @@ async function checkFixList(file: string, transcripts: string, json: boolean, ex
     }
   }
   if (report()) return
-  const { run } = fixList as Mapping
+  const { run, spec } = fixList as Mapping
   const summary = {
     entries: entries.map(({ value }) => value),
     run,
+    spec,
+    specSha256,
     sha256: sha256Of(bytes!),
     proof: freshProof(),
     fixList: file,
   }
   console.log(json ? JSON.stringify(summary) :
-    `entries=${summary.entries.length} run=${summary.run} sha256=${summary.sha256} proof=${summary.proof} fixList=${summary.fixList}`)
+    `entries=${summary.entries.length} run=${summary.run} spec=${summary.spec} sha256=${summary.sha256} proof=${summary.proof} fixList=${summary.fixList}`)
 }
 
 main().catch(error => { console.error(messageOf(error).replace(/[\r\n]+/g, ' ')); process.exitCode = 1 })

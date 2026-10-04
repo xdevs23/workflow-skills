@@ -1,0 +1,7 @@
+{"type":"launched"}
+{"type":"started","key":"fix-gate","agentId":"c1","label":"gate","phase":"Launch"}
+{"type":"result","key":"fix-gate","agentId":"c1","result":{"exitCode":0,"stdout":"{\"entries\": [], \"run\": \"wf_parent-run\", \"spec\": \"tests/fixtures/fix-list/parent.yaml\", \"specSha256\": \"0f9149ee3dba7fd05a8eca471e23a276004a5e49483e52eb40ed607aec6f0cdc\", \"sha256\": \"ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff\", \"proof\": \"fedcba9876543210fedcba9876543210\", \"fixList\": \"list.yaml\"}","stderr":"","proof":"fedcba9876543210fedcba9876543210"}}
+{"type":"started","key":"fix-roast","agentId":"c2","label":"roast","phase":"Fix"}
+{"type":"result","key":"fix-roast","agentId":"c2","result":{"findings":[{"file":"src/reader.js","claim":"The retry reopens the handle without closing it.","severity":"must-fix","lane":"fixer-actionable","receipts":[{"file":"src/reader.js","line":24,"quote":"open(path)"}]}]}}
+{"type":"started","key":"fix-diff","agentId":"c3","label":"diff","phase":"Diff"}
+{"type":"result","key":"fix-diff","agentId":"c3","result":{"mappings":[],"findings":[{"file":"src/reader.js","claim":"A change renames the reader's option, which no entry asks for.","severity":"CRITICAL","lane":"orchestrator-only","receipts":[{"file":"src/reader.js","line":2,"quote":"export function read(source)"}]}]}}

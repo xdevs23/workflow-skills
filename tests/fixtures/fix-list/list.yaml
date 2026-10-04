@@ -1,6 +1,8 @@
-# Synthetic fix list: a decision of the finding verifier with pointers to the user's words and to a
-# rule file, and a finding of the roaster. The verify stage ran twice, and only its last result counts.
+# Synthetic fix list: a decision of the finding verifier and a finding of the roaster, as the parent
+# run's journal holds them, and the spec the parent run checked. The verify stage ran twice, and only
+# its last result counts.
 run: wf_parent-run
+spec: tests/fixtures/fix-list/parent.yaml
 entries:
   - source: verify:1
     decision:
@@ -19,16 +21,6 @@ entries:
         - file: src/example.js
           line: 12
           quote: "catch (error) {}"
-    attach:
-      - file: session-a.jsonl
-        line: 1
-        key:
-          - message
-          - content
-      - file: tests/fixtures/fix-list/rules.md
-        line: 3
-        key:
-          []
   - source: roaster:0
     finding:
       file: src/reader.js
@@ -39,5 +31,3 @@ entries:
         - file: src/reader.js
           line: 20
           quote: open(path)
-    attach:
-      []

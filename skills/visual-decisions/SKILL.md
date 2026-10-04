@@ -1,6 +1,6 @@
 ---
 name: visual-decisions
-description: Applies when one or more product or architecture decisions need the user's answer.
+description: Applies when one or more product decisions need the user's answer.
 ---
 
 # Visual decisions
@@ -15,10 +15,10 @@ rebuilding it from a description.
 
 ## When it applies
 
-- Use this skill when one or more decisions need the user's answer and each changes what someone
-  sees or does, or how the system is shaped.
-- Keep a choice the rules already decide off the page.
-- Decide such a choice yourself and state it in one line in the chat.
+- Use this skill when one or more product decisions need the user's answer, each changing what
+  someone sees or does, the product's scope or what data is kept.
+- Keep a choice the rules already decide off the page. The implementer settles it by the rules,
+  and you decide it neither on the page nor in the chat.
 
 ## Before you draw
 
