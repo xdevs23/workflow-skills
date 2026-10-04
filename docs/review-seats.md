@@ -108,7 +108,7 @@ exactly the fifteen seats with their templates, that each audit seat's prompt eq
 seat's prompt of hygiene floor and diff, and that an audit seat's finding reaches the verifier under
 a source ID of its label. They check that the prompts of quality, cold alternatives and the audit
 seats name no writing-style file, that the prompts of the writers and the briefed seats name it
-once, and that the fix run's scope check still receives it. They check that no file under the
+once, and that the fix run's diff check still receives it. They check that no file under the
 skills, agents, tools and tests directories, and not the README, names the removed template, and
 that the finding verifier's template names the fifteen seats. They check that a copy whose seat
 list leaves out, adds or repeats a seat, or gives a seat's label another template, stops before its

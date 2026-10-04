@@ -30,10 +30,10 @@ choice. `approve-fix` answers it only for a removal on the removal rule. The scr
 checks refuse `record`, `cleanup` and `root-action`, an `approve-fix` that is no removal, and a
 rejection without the spec entry citation.
 
-A line found by searching for a word and quoted without its context backs nothing, so the root
-accepts a rejection only after reading the cited entry in its context. An open `unbacked-choice`
-decision that is a product or architecture decision goes to the user; any other the root decides
-itself, under the user's delegation of such choices, and states the decision in the chat.
+A line found by searching for a word and quoted without its context backs nothing, so a rejection
+stands only on the cited entry read in its context. An open `unbacked-choice` decision goes to the
+run's fix run, whose fixer settles it by the user's words and the rules, or returns it to the user
+as a question when it is a product decision that neither settles.
 
 ## Rejected alternatives
 

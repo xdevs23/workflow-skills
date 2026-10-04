@@ -1,5 +1,10 @@
 # Only product and architecture decisions reach the user
 
+The design record on the root making no decisions replaces the design below. The root decides
+none of the items this record describes: what a run returns goes to its fix run, whose fixer
+settles every choice by the user's words and the rules and returns only a product decision to the
+user as a question. The fix run's scope check this record names was removed with that change.
+
 The implement-review-verify skill puts the root between a workflow run and the user, and the root
 lets two kinds of decision through to the user. A product decision is about what the user sees
 and does, what data is kept or lost, the product's scope, and anything public or external. An

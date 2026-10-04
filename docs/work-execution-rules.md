@@ -8,14 +8,12 @@ is a judgment a reader applies, so each one is prose in the file whose reader ap
 
 ## The twelve rules and where each lives
 
-1. **Screen before escalating.** The root is the judge and acts on its own conclusion. A finding
-   from a reviewer or a critic is a claim: the root verifies it, then fixes it or rejects it with a
-   stated reason, and never passes the claim itself to the user as a question. Anything headed for
-   the user passes one screen first: is the item in fact a rule violation or an architecture
-   problem that another read of the recorded words would close? A choice the recorded words settle
-   is never asked, and a choice the record genuinely leaves open still reaches the user after the
-   screen. It lives in the root question-premise section of the implement-review-verify skill,
-   beside the drift and decide-or-ask material it restates.
+1. **Screen before escalating.** A finding from a reviewer or a critic is a claim: the fix run's
+   fixer verifies it against the tree, then fixes it or rejects it with a stated reason, and never
+   passes the claim itself to the user as a question. A stage that would raise a question passes
+   one screen first: does a rule or the recorded words already answer it? A choice they settle is
+   never asked, and only a product decision they leave open reaches the user. It lives in the
+   question-premise section of the implement-review-verify skill and in the fixer's template.
 2. **A reviewer suggests and never decides.** A review seat proposes, the finding verifier
    authorizes, and the user decides anything that changes what the product does. Behavior nobody
    approved is a decision. Behavior added without authority is removed as an unauthorized addition,

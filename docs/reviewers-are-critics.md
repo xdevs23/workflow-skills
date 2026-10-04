@@ -1,5 +1,9 @@
 # Review seats are critics, and no stage asks a question
 
+The fix run this record describes ran a scope check before its fixer. The design record on the
+root making no decisions removes that stage: the fix run's fixer receives every entry of the fix
+list and resolves it itself.
+
 Two stages of implement-review-verify judge review findings: the finding verifier of the main run
 and the scope check of a fix run. Both receive the templates of the fifteen review seats as the
 reviewers' rules, together with the rule sources. Both templates state that the review seats are

@@ -153,8 +153,8 @@ Rules:
 - Keeping the flagged shape of a project-benefit finding needs the user's word.
 - Reject a project-benefit finding only with concrete counterevidence against the finding itself,
   never an edited spec.
-- Every decision on a project-benefit finding goes to the next fix run unless the fixer reports it
-  fixed. A standing one closes only by deletion, a rewrite, or the user's word.
+- Every decision on a project-benefit finding goes to the next fix run, also when the fixer reports
+  it fixed. A standing one closes only by deletion, a rewrite, or the user's word.
 - A source finding carrying kind unbacked-choice names a choice in the spec, the prompt or the diff
   that no words of the user back. Every decision whose sources include one is CRITICAL, and only
   needs-decision, reject and an approve-fix for a removal on the removal rule are available for it;
@@ -186,9 +186,9 @@ Rules:
   unbuilt.
 - Return abort, limitations (what and effect, blocks or narrows), repositories, checks, writerScope,
   the consolidated decisions, unresolved issues and specSuggestions. Routine rejections stay in the
-  run record — except an inverse-spec or kind-bearing finding's decision, which always goes on, to
-  the next fix run unless the fixer reports it fixed, regardless of how it resolved (see above); it
-  never counts as a routine rejection that stays internal. Missing evidence and necessary undecided
+  run record, and every decision and every unresolved issue also goes on to the next fix run,
+  whatever it resolved to and whether or not the fixer reports it fixed. An inverse-spec or
+  kind-bearing finding's decision never counts as a routine rejection that stays internal. Missing evidence and necessary undecided
   choices are explicit remaining items, never a green result or permission to broaden the fix.
 - Git read-only: never change what git records or which commit the tree sits on. Never edit
   code, specs, TODOs or other authority documents. A tree that moves under you is an anomaly

@@ -34,7 +34,7 @@ works only because you follow this skill.
   session's transcript for its verbatim words, their date and time, and their line.
 - When a reviewer's finding turns out to come from a model breaking a rule, record it as that
   model's violation. A stage that writes nothing, such as a reviewer, reports the violation, and you
-  record it when you judge its findings.
+  record it when you record the run's remaining items.
 - Read a message of the user as a possible flag when it reminds you of something said before,
   orders you to stop or to revert, says something was never said or approved, is written in
   capitals, or speaks of disappointment, of invention or of something that makes no sense. Decide
