@@ -13,11 +13,8 @@ over this file.
 
 ## Code and comments
 
-- Describe in a comment what the code can't express.
-- Name things with plain words, and invent no metaphors.
-- Follow `workflow-skills:hygiene` for what may reach a tracked file or leave the machine at all.
-- Address a string meant for a model to the model, and put no repository paths in it.
-- Give an i18n key a comment at its reference site stating the intent of the string.
+- Follow `workflow-skills:code-writing` for how code, its comments, its names and its strings are
+  written. The vocabulary and patterns of this file apply to comments and strings as to all text.
 
 ## Commits
 

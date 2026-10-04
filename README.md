@@ -30,6 +30,8 @@ Then the skills appear in the skill list and each has a matching slash command (
 | `pr-comment-replies` | Write and post replies on pull requests and issues: the note alert on top, inline replies that start with their outcome and a reason for every declined finding. |
 | `report-plugin-issues` | File every problem found in this plugin as an issue on its repository, or as a comment on the open issue that already describes it, with project details and private data kept out, in place of patching its scripts silently. |
 | `hygiene` | Keep private conversation content, the user's words, setup facts, secrets and third-party material that may not ship out of everything that leaves the machine: commits, posts, documents and packages. |
+| `engineering-principles` | State the principles every design, change, test and debugging session follows: how a system is shaped, how state, input, limits and errors are handled, how tests are built and how the work is done. |
+| `code-writing` | State how code reads in every language: its style, comments, names and strings, with one file of crafts and idioms for each of Kotlin, Rust, C and C++, Go, Nix, TypeScript and Python. |
 | `wall-of-shame` | Keep an append-only record of rule violations by coding-agent sessions, each with the words, the rule it broke and the transcript line. |
 | `local-cache` | Define the project cache, the ignored directory for files not meant for the repository, and what reading and writing stages may put there. |
 | `todo-md` | Keep the todo record, the untracked `TODO.md` that holds open work and where each item stands. |
