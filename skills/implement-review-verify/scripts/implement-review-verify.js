@@ -14,7 +14,7 @@ export const meta = {
 // Everything below the closing line is the reviewed script and is not edited per unit.
 const UNIT = {
   mainCheckout: '<main checkout>',
-  worktree: '<isolated worktree>',
+  worktree: '<isolated worktree>',       // its absolute path with no symbolic link in it, as pwd -P prints it there
   specPath: args.specPath,               // the unit spec under the main checkout, passed at launch; ends in .yaml
   transcripts: args.transcripts,         // the session transcript directory, passed at launch
   pluginRoot: '<plugin root>',           // the directory holding tools/check-spec.ts
@@ -988,26 +988,47 @@ async function onePass() {
   })
   if (leftForRoot) end('root-resolution', 'Review or verification left items for the root.')
 }
-// The launch check. One small stage runs the spec tool on the unit's spec file and returns the
-// proof the tool prints only when the spec passes; a stage that never ran it has no proof to
-// return. The script reads nothing else from the output and checks nothing itself: it continues
-// on exit zero with a filled proof, and otherwise stage() retries and then throws quoting stderr.
+// The spec tool's fingerprint, copied from its module because a workflow script runs without
+// imports. A routing test holds the copy to the module's text.
+const withSortedKeys = value => {
+  if (Array.isArray(value)) return value.map(withSortedKeys)
+  if (value === null || typeof value !== 'object') return value
+  return Object.fromEntries(Object.keys(value).sort().map(key => [key, withSortedKeys(value[key])]))
+}
+const fingerprint = values => {
+  const json = JSON.stringify(withSortedKeys(values))
+  let hash = 0x811c9dc5
+  for (let index = 0; index < json.length; index++) hash = Math.imul(hash ^ json.charCodeAt(index), 0x01000193)
+  return (hash >>> 0).toString(16).padStart(8, '0')
+}
+// The launch check. One small stage runs the spec tool on the unit's spec file, and the tool prints
+// its proof only when the spec passes. The script continues only when that proof is the fingerprint
+// of this run's own launch values and tree, so a failed check, a check of other values or of another
+// tree, and a proof the stage made up stop the run. The comparison shows that the values agree, not
+// that the tool ran: the stage could compute the same fingerprint without it. A failed check is
+// final: another attempt could pass only by changing what the check compares, so the stage helper
+// retries only a stage that returned nothing usable.
 const GATE = { type: 'object', required: ['exitCode', 'stdout', 'stderr', 'proof'], additionalProperties: false,
   properties: { exitCode: { type: 'integer' }, stdout: { type: 'string' }, stderr: { type: 'string' }, proof: { type: 'string' } } }
 // The command runs in the worktree, so the tool checks the base list against the repositories of
-// this run's tree alone.
-const GATE_COMMAND = 'cd ' + UNIT.worktree + ' && bun ' + UNIT.pluginRoot + '/tools/check-spec.ts ' + UNIT.specPath +
-  ' --transcripts ' + UNIT.transcripts + ' --json --base \'' + JSON.stringify(base) + '\'' + (UNIT.partialBase ? ' --partial-base' : '')
+// this run's tree alone. Every value is one quoted word, so a path holding a space, an apostrophe or
+// any other character the shell reads reaches the tool unchanged.
+const shellWord = value => "'" + value.replaceAll("'", "'\\''") + "'"
+const GATE_COMMAND = 'cd ' + shellWord(UNIT.worktree) + ' && bun ' + shellWord(UNIT.pluginRoot + '/tools/check-spec.ts') + ' ' +
+  shellWord(UNIT.specPath) + ' --transcripts ' + shellWord(UNIT.transcripts) + ' --json --base ' + shellWord(JSON.stringify(base)) +
+  (UNIT.partialBase ? ' --partial-base' : '')
+const PROOF = fingerprint({ spec: UNIT.specPath, transcripts: UNIT.transcripts, base, partialBase: Boolean(UNIT.partialBase), tree: UNIT.worktree })
 const checkGate = r => {
-  if (r.exitCode !== 0 || typeof r.proof !== 'string' || !r.proof.trim()) {
-    throw new Error('the spec check did not pass: exit ' + r.exitCode + ', proof ' + JSON.stringify(r.proof) + ', stderr: ' + r.stderr)
+  if (r.exitCode !== 0 || r.proof !== PROOF) {
+    throw new Error('the spec check did not pass: exit ' + r.exitCode + ', proof ' + JSON.stringify(r.proof) +
+      ' where the launch values give ' + PROOF + ', stderr: ' + r.stderr)
   }
 }
 phase('Launch')
-await stage([GATE_COMMAND,
+checkGate(await stage([GATE_COMMAND,
   'Run this exact command once with the Bash tool and return its exit code, stdout, stderr and the proof string it prints on success, with no interpretation, retry or fix.',
   RELAYED,
-].join('\n'), { label: 'gate', phase: 'Launch', ...UNIT.models.gate, schema: GATE }, checkGate)
+].join('\n'), { label: 'gate', phase: 'Launch', ...UNIT.models.gate, schema: GATE }))
 
 try { await onePass() } catch (error) { failed(error, activeLabel) }
 // An unbacked-entry finding is CRITICAL: its words were said about another unit or mean nothing on

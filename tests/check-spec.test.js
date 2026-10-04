@@ -1,8 +1,9 @@
 import { afterAll, describe, expect, test } from 'bun:test'
 import { createHash } from 'node:crypto'
-import { cpSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs'
+import { cpSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, symlinkSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { fingerprint } from '../tools/fingerprint.js'
 
 const root = fileURLToPath(new URL('../', import.meta.url))
 const fixtures = join(root, 'tests/fixtures/spec')
@@ -11,6 +12,8 @@ mkdirSync(join(root, '.cache'), { recursive: true })
 const scratch = mkdtempSync(join(root, '.cache/check-spec-'))
 afterAll(() => rmSync(scratch, { recursive: true, force: true }))
 const valid = Bun.YAML.parse(await Bun.file(join(fixtures, 'valid.yaml')).text())
+// The directory the tool runs in, as the tool reads it.
+const here = realpathSync(root)
 let serial = 0
 const run = (file, options = []) => {
   const result = Bun.spawnSync([process.execPath, tool, file, '--transcripts', fixtures, ...options], { cwd: root })
@@ -58,7 +61,7 @@ describe('unit spec validation', () => {
       nonBlankLines: 13,
       specLines: 9,
       unbreakable: [],
-      proof: expect.stringMatching(/^[0-9a-f]{32}$/),
+      proof: fingerprint({ spec: join(fixtures, 'valid.yaml'), transcripts: fixtures, base: null, partialBase: false, tree: here }),
       spec: join(fixtures, 'valid.yaml'),
     })
     const plain = fixture('valid')
@@ -70,12 +73,14 @@ describe('unit spec validation', () => {
     for (const value of ['kind', 'criteria', 'counts']) expect(result.out).not.toContain(value)
   })
 
-  test('a passing run prints a fresh 32-character hexadecimal proof in both output forms, a failing run none', () => {
-    const proofs = [fixture('valid', ['--json']), fixture('valid', ['--json'])].map(result => JSON.parse(result.out).proof)
-    expect(proofs[0]).toMatch(/^[0-9a-f]{32}$/)
-    expect(proofs[1]).toMatch(/^[0-9a-f]{32}$/)
-    expect(proofs[0]).not.toBe(proofs[1])
-    expect(fixture('valid').out).toMatch(/ proof=[0-9a-f]{32} /)
+  test('a passing run prints the fingerprint of the values it checked as its proof in both output forms, a failing run none', () => {
+    const proof = fingerprint({ spec: join(fixtures, 'valid.yaml'), transcripts: fixtures, base: null, partialBase: false, tree: here })
+    expect([fixture('valid', ['--json']), fixture('valid', ['--json'])].map(result => JSON.parse(result.out).proof)).toEqual([proof, proof])
+    expect(fixture('valid').out).toContain(` proof=${proof} `)
+    const spelled = Bun.spawnSync([process.execPath, tool, join(fixtures, 'valid.yaml'), '--transcripts', fixtures + '/', '--json'], { cwd: root })
+    expect(JSON.parse(spelled.stdout.toString()).proof)
+      .toBe(fingerprint({ spec: join(fixtures, 'valid.yaml'), transcripts: fixtures + '/', base: null, partialBase: false, tree: here }))
+    expect(JSON.parse(spelled.stdout.toString()).proof).not.toBe(proof)
     const failing = fixture('several', ['--json'])
     expect(failing.exit).not.toBe(0)
     expect(failing.out).toBe('')
@@ -280,13 +285,28 @@ describe('unit spec validation', () => {
     }
     const api = repository('api')
     const web = repository('web')
-    const inTree = (list, ...options) => {
+    const checkIn = (directory, list, ...options) => {
       const result = Bun.spawnSync([process.execPath, tool, join(fixtures, 'valid.yaml'), '--transcripts', fixtures,
-        '--base', JSON.stringify(list), ...options], { cwd: tree })
+        '--base', JSON.stringify(list), ...options], { cwd: directory })
       return { exit: result.exitCode, out: result.stdout.toString(), err: result.stderr.toString() }
     }
+    const inTree = (list, ...options) => checkIn(tree, list, ...options)
     const complete = [{ path: 'api', sha: api }, { path: 'web', sha: web }]
     expect(inTree(complete)).toMatchObject({ exit: 0, err: '' })
+    const proofOf = (list, ...options) => JSON.parse(inTree(list, '--json', ...options).out).proof
+    const spec = join(fixtures, 'valid.yaml')
+    expect(proofOf(complete)).toBe(fingerprint({ spec, transcripts: fixtures, base: complete, partialBase: false, tree: realpathSync(tree) }))
+    expect(proofOf(complete.slice(0, 1), '--partial-base'))
+      .toBe(fingerprint({ spec, transcripts: fixtures, base: complete.slice(0, 1), partialBase: true, tree: realpathSync(tree) }))
+    // Another checkout of the same repositories passes the same list with the proof of its own tree.
+    const copy = join(scratch, `${serial++}-copy`)
+    for (const path of ['api', 'web']) {
+      expect(Bun.spawnSync(['git', 'clone', '--quiet', join(tree, path), join(copy, path)]).exitCode).toBe(0)
+    }
+    const copied = checkIn(copy, complete, '--json')
+    expect([copied.exit, copied.err]).toEqual([0, ''])
+    expect(JSON.parse(copied.out).proof).toBe(fingerprint({ spec, transcripts: fixtures, base: complete, partialBase: false, tree: realpathSync(copy) }))
+    expect(JSON.parse(copied.out).proof).not.toBe(proofOf(complete))
     invalid(inTree(complete.slice(0, 1)), '--base leaves out the git repositories at web')
     invalid(inTree([{ path: 'api', sha: web }, complete[1]]), `--base commit ${web} is not in the repository at api`)
     invalid(inTree([...complete, { path: '.', sha: api }]), '--base path . is not the top level of a git repository')
@@ -313,7 +333,8 @@ describe('unit spec validation', () => {
         '--transcripts', fixtures, option, path], { cwd: root })
       expect([list.exitCode, list.stderr.toString().includes(`Unknown option '${option}'`)]).toEqual([1, true])
     }
-    invalid(fixture('valid', ['--expect', '{}']), 'Usage')
+    invalid(fixture('valid', ['--entries']), 'Usage')
+    invalid(fixture('valid', ['--expect', '{}']), "Unknown option '--expect'")
   })
 
   test('specLines counts the non-blank lines of the entries\' text, and nothing else', () => {
@@ -445,21 +466,41 @@ const validEntries = [
 ]
 const sourcesOf = list => list.entries.map(entry => entry.source)
 const measured = { codeAdded: 21, repositories: [{ path: '.', base: 'a'.repeat(40), candidate: 'b'.repeat(40) }] }
+// The proof of the fixture list checked in the repository root without a base list.
+const listProof = (fields = {}) =>
+  fingerprint({ fixList: validPath, transcripts, spec: parentSpecPath, entries: validEntries, base: null, partialBase: false, tree: here, ...fields })
+// A copy of the fixture transcripts in which edit changes the records of the fix run's journal.
+const fixRunJournal = 'session-c/subagents/workflows/wf_fix-run/journal.jsonl'
+const editedTranscripts = edit => {
+  const copy = join(scratch, `${serial++}-transcripts`)
+  cpSync(transcripts, copy, { recursive: true })
+  const path = join(copy, fixRunJournal)
+  const records = readFileSync(path, 'utf8').trim().split('\n').map(line => JSON.parse(line))
+  edit(records)
+  writeFileSync(path, records.map(record => JSON.stringify(record)).join('\n') + '\n')
+  return copy
+}
+const makeIn = (sessions, run, options = []) => {
+  const result = Bun.spawnSync([process.execPath, tool, '--make-fix-list', run, '--transcripts', sessions, ...options], { cwd: root })
+  return { exit: result.exitCode, out: result.stdout.toString(), err: result.stderr.toString() }
+}
 
 describe('fix list validation', () => {
-  test('a valid fix list passes with a fresh proof, its spec and its entries as the list holds them, in both output forms', async () => {
-    const [first, second] = [checkList(validPath, ['--json']), checkList(validPath, ['--json'])]
-    expect([first.exit, first.err]).toEqual([0, ''])
+  test('a valid fix list passes with the proof of its values, its spec, and its entries on request, in both output forms', async () => {
+    const proof = listProof()
     const bytes = await Bun.file(validPath).arrayBuffer()
-    expect(JSON.parse(first.out)).toEqual({
-      entries: validEntries, run: 'wf_parent-run', spec: parentSpecPath, specSha256: parentSpecSha, specLines: 1,
-      sha256: createHash('sha256').update(new Uint8Array(bytes)).digest('hex'),
-      proof: expect.stringMatching(/^[0-9a-f]{32}$/), fixList: validPath,
-    })
-    expect(JSON.parse(first.out).proof).not.toBe(JSON.parse(second.out).proof)
+    const summary = { run: 'wf_parent-run', spec: parentSpecPath, specSha256: parentSpecSha, specLines: 1,
+      sha256: createHash('sha256').update(new Uint8Array(bytes)).digest('hex'), proof, fixList: validPath }
+    const brief = checkList(validPath, ['--json'])
+    expect([brief.exit, brief.err]).toEqual([0, ''])
+    expect(JSON.parse(brief.out)).toEqual(summary)
+    const full = checkList(validPath, ['--json', '--entries'])
+    expect([full.exit, full.err]).toEqual([0, ''])
+    expect(JSON.parse(full.out)).toEqual({ entries: validEntries, ...summary })
     const plain = checkList(validPath)
     expect([plain.exit, plain.err]).toEqual([0, ''])
-    expect(plain.out).toMatch(/^entries=6 run=wf_parent-run spec=tests\/fixtures\/fix-list\/parent\.yaml sha256=[0-9a-f]{64} proof=[0-9a-f]{32} fixList=/)
+    expect(plain.out).toStartWith(`entries=6 run=wf_parent-run spec=${parentSpecPath} sha256=${summary.sha256} proof=${proof} fixList=`)
+    invalid(checkList(validPath, ['--entries']), 'Usage')
   })
 
   test('the generated fix list of a main run holds every spec finding, every decision and issue of the verifier, cleanup and fixed approvals included, and every roast finding', () => {
@@ -477,7 +518,7 @@ describe('fix list validation', () => {
   test('the fix list of a fix run carries on its spec and every entry its fixer left open, beside its roast and diff findings', async () => {
     const records = await journalOf('session-c/subagents/workflows/wf_fix-run/journal.jsonl')
     const answered = new Map(resultOf(records, 'fix-fix').dispositions.map(d => [d.key, d.disposition]))
-    expect(validList.entries.map(e => answered.get(e.source))).toEqual(['question', 'fixed', 'blocked', 'rejected', undefined, 'fixed'])
+    expect(validList.entries.map(e => answered.get(e.source))).toEqual(['question', 'fixed', 'blocked', 'rejected', 'blocked', 'fixed'])
     expect(resultOf(records, 'fix-diff').mappings.map(m => m.source)).toEqual(['verify:0'])
     const made = makeList('wf_fix-run')
     expect([made.exit, made.err]).toEqual([0, ''])
@@ -497,23 +538,42 @@ describe('fix list validation', () => {
   })
 
   test('a fix run whose launch check printed no spec lines still gives its fix list, but no size breach', () => {
-    const older = join(scratch, 'uncounted-transcripts')
-    cpSync(transcripts, older, { recursive: true })
-    const path = join(older, 'session-c/subagents/workflows/wf_fix-run/journal.jsonl')
-    const records = readFileSync(path, 'utf8').trim().split('\n').map(line => JSON.parse(line))
-    for (const record of records.filter(record => record.type === 'result' && record.key === 'fix-gate')) {
-      const { specLines, ...printed } = JSON.parse(record.result.stdout)
-      record.result.stdout = JSON.stringify(printed)
-    }
-    writeFileSync(path, records.map(record => JSON.stringify(record)).join('\n') + '\n')
-    const make = (options = []) =>
-      Bun.spawnSync([process.execPath, tool, '--make-fix-list', 'wf_fix-run', '--transcripts', older, ...options], { cwd: root })
-    const made = make()
-    expect([made.exitCode, made.stderr.toString()]).toEqual([0, ''])
-    expect(sourcesOf(Bun.YAML.parse(made.stdout.toString()))).toEqual(['entry:2', 'entry:4', 'entry:5', 'roaster:0', 'diff:0'])
-    const sized = make(['--size', JSON.stringify(measured)])
-    expect([sized.exitCode, sized.stderr.toString()]).toEqual([1,
+    const older = editedTranscripts(records => {
+      for (const record of records.filter(record => record.type === 'result' && record.key === 'fix-gate')) {
+        const { specLines, ...printed } = JSON.parse(record.result.stdout)
+        record.result.stdout = JSON.stringify(printed)
+      }
+    })
+    const made = makeIn(older, 'wf_fix-run')
+    expect([made.exit, made.err]).toEqual([0, ''])
+    expect(sourcesOf(Bun.YAML.parse(made.out))).toEqual(['entry:2', 'entry:4', 'entry:5', 'roaster:0', 'diff:0'])
+    const sized = makeIn(older, 'wf_fix-run', ['--size', JSON.stringify(measured)])
+    expect([sized.exit, sized.err]).toEqual([1,
       "--size: the parent run's launch check printed no spec lines to measure a size breach against\n"])
+  })
+
+  test('a fix run closes entries only through results it accepted, so a refused or aborted result closes none', () => {
+    const resultOf = (records, key) => records.find(record => record.type === 'result' && record.key === key).result
+    const open = sessions => {
+      const made = makeIn(sessions, 'wf_fix-run')
+      expect([made.exit, made.err]).toEqual([0, ''])
+      return sourcesOf(Bun.YAML.parse(made.out))
+    }
+    const every = [...validList.entries.map((entry, index) => `entry:${index}`), 'roaster:0', 'diff:0']
+    for (const [name, edit] of [
+      ['a fixer result whose tree is not clean', records => { resultOf(records, 'fix-fix').repositories[0].clean = false }],
+      ['a fixer result that leaves an entry unanswered', records => { resultOf(records, 'fix-fix').dispositions.pop() }],
+      ['a fixer result that started from another commit', records => { resultOf(records, 'fix-fix').repositories[0].startSha = 'c'.repeat(40) }],
+      ['an aborted fixer result', records => { resultOf(records, 'fix-fix').abort = { trigger: 'sense-check', reason: 'The entry extends a removed mechanism.' } }],
+      ['a launch output of an earlier tool without the base list', records => {
+        const gate = resultOf(records, 'fix-gate')
+        const { base, ...printed } = JSON.parse(gate.stdout)
+        gate.stdout = JSON.stringify(printed)
+      }],
+    ]) expect([name, open(editedTranscripts(edit))]).toEqual([name, every])
+    // A diff result the run refused maps nothing, while the accepted fixer's rejection and question still close their entries.
+    const unmapped = editedTranscripts(records => { resultOf(records, 'fix-diff').mappings[0].receipts = [] })
+    expect(open(unmapped)).toEqual(['entry:1', 'entry:2', 'entry:4', 'entry:5', 'roaster:0', 'diff:0'])
   })
 
   test('the fix list of a review pass holds the findings of every review seat', async () => {
@@ -619,46 +679,49 @@ describe('fix list validation', () => {
     expect(result.stderr.toString()).toContain('roaster:0: journal line 2 is not JSON')
   })
 
-  describe('launch values', () => {
-    const launch = (edit = () => {}) => {
-      const values = { spec: parentSpecPath, entries: structuredClone(validEntries) }
-      edit(values)
-      return ['--expect', JSON.stringify(values)]
-    }
-
-    test('launch values equal to the entries of the list pass with a proof', () => {
-      const result = checkList(validPath, ['--json', ...launch()])
-      expect([result.exit, result.err]).toEqual([0, ''])
-      expect(JSON.parse(result.out).proof).toMatch(/^[0-9a-f]{32}$/)
-    })
-
-    test.each([
-      ['a changed decision', v => { v.entries[2].decision.correction = 'Log the error and continue.' }, 'verify:1: differs from the launch values'],
-      ['a correction beside the finding', v => { v.entries[5].correction = 'Close the file handle.' }, 'roaster:0: differs from the launch values'],
-      ['another spec', v => { v.spec = 'tests/fixtures/spec/valid.yaml' }, 'launch values.spec: differs from the spec of the fix list'],
-      ['a missing entry', v => { v.entries.pop() }, 'roaster:0: missing from the launch values'],
-      ['an entry the list does not hold', v => { v.entries.push({ ...v.entries[1], source: 'verify:7' }) }, 'launch values.entries: verify:7 is not an entry of the fix list'],
-    ])('%s fails with a violation naming the entry', (name, edit, message) => {
-      const result = checkList(validPath, launch(edit))
-      invalid(result, message)
-      expect(result.err).not.toContain('proof')
-    })
-
-    test('malformed launch values fail', () => {
-      invalid(checkList(validPath, ['--expect', '{"entries": [']), 'launch values: malformed JSON')
-      invalid(checkList(validPath, ['--expect', '[]']), 'launch values: expected a mapping')
-      invalid(checkList(validPath, ['--expect', JSON.stringify({ spec: parentSpecPath, entries: validEntries, findings: [] })]), 'launch values.findings: unknown key')
-    })
+  test.each([
+    ['a changed decision', v => { v.entries[1].decision.correction = 'Log the error and continue.' }],
+    ['a correction beside the finding', v => { v.entries[5].correction = 'Close the file handle.' }],
+    ['another spec', v => { v.spec = 'tests/fixtures/spec/valid.yaml' }],
+    ['a missing entry', v => { v.entries.pop() }],
+    ['reordered entries', v => { v.entries.reverse() }],
+    ['an entry the list does not hold', v => { v.entries.push({ ...v.entries[1], source: 'verify:7' }) }],
+    ['another fix list', v => { v.fixList = join(scratch, 'other-list.yaml') }],
+    ['a base list', v => { v.base = [{ path: '.', sha: 'a'.repeat(40) }] }],
+    ['another tree', v => { v.tree = scratch }],
+  ])('launch values with %s give another proof than the list', (name, edit) => {
+    const values = { fixList: validPath, transcripts, spec: parentSpecPath, entries: structuredClone(validEntries), base: null, partialBase: false, tree: here }
+    const printed = JSON.parse(checkList(validPath, ['--json']).out).proof
+    expect(fingerprint(values)).toBe(printed)
+    edit(values)
+    expect(fingerprint(values)).not.toBe(printed)
   })
 
-  test('a spec argument or a spec option beside --fix-list or --make-fix-list is a usage error, and --size belongs to --make-fix-list alone', () => {
-    for (const options of [[join(fixtures, 'valid.yaml')], ['--base', 'HEAD'], ['--size', JSON.stringify(measured)]]) {
+  test('--base beside --fix-list is checked against the tree, printed, and covered by the proof', () => {
+    const head = Bun.spawnSync(['git', '-C', root, 'rev-parse', '--verify', 'HEAD^{commit}']).stdout.toString().trim()
+    const base = [{ path: '.', sha: head }]
+    const checked = checkList(validPath, ['--json', '--base', JSON.stringify(base)])
+    expect([checked.exit, checked.err]).toEqual([0, ''])
+    expect(JSON.parse(checked.out)).toMatchObject({ base, proof: listProof({ base }) })
+    expect(JSON.parse(checkList(validPath, ['--json', '--base', JSON.stringify(base), '--partial-base']).out).proof)
+      .toBe(listProof({ base, partialBase: true }))
+    expect(JSON.parse(checkList(validPath, ['--json']).out)).not.toHaveProperty('base')
+    invalid(checkList(validPath, ['--base', JSON.stringify([{ path: '.', sha: 'f'.repeat(40) }])]), `--base commit ${'f'.repeat(40)} is not in the repository at .`)
+    invalid(checkList(validPath, ['--base', JSON.stringify([...base, { path: 'tests', sha: head }])]), '--base path tests is not the top level of a git repository')
+  })
+
+  test('the launch values are no option of the tool any more', () => {
+    invalid(checkList(validPath, ['--expect', JSON.stringify({ spec: parentSpecPath, entries: validEntries })]), "Unknown option '--expect'")
+  })
+
+  test('a spec argument beside --fix-list, --partial-base without --base, and a spec option beside --make-fix-list are usage errors, and --size belongs to --make-fix-list alone', () => {
+    for (const options of [[join(fixtures, 'valid.yaml')], ['--partial-base'], ['--size', JSON.stringify(measured)]]) {
       invalid(checkList(validPath, options), 'Usage')
     }
     invalid(run(join(fixtures, 'valid.yaml'), ['--size', JSON.stringify(measured)]), 'Usage')
     const bare = Bun.spawnSync([process.execPath, tool, '--fix-list', validPath], { cwd: root })
     expect([bare.exitCode, bare.stderr.toString().includes('Usage')]).toEqual([1, true])
-    for (const options of [['--json'], ['--fix-list', validPath], ['--expect', '{}'], [join(fixtures, 'valid.yaml')]]) {
+    for (const options of [['--json'], ['--fix-list', validPath], ['--entries'], [join(fixtures, 'valid.yaml')]]) {
       const made = makeList('wf_parent-run', options)
       expect([options.join(' '), made.exit, made.err.includes('Usage')]).toEqual([options.join(' '), 1, true])
     }

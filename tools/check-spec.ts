@@ -5,6 +5,8 @@ import { join, resolve } from 'node:path'
 import { createInterface } from 'node:readline'
 import { parseArgs } from 'node:util'
 import { fromMarkdown } from 'mdast-util-from-markdown@2.0.3'
+import { fingerprint } from './fingerprint.js'
+import { checkDiffResult, checkFixerResult, hasHardFlag } from './fix-run-checks.js'
 
 const minimumBun = '1.2.21'
 // A spec holds the discussion of a unit and nothing else: each entry quotes one session record, the
@@ -101,8 +103,6 @@ const humanOrigin = (value: unknown) => mapping(value) && value.kind === 'human'
 const parseRecord = (line: string): Mapping | undefined => {
   try { const record = JSON.parse(line); return mapping(record) ? record : undefined } catch { return undefined }
 }
-// The random string only a passing run prints, so a stage that returns it has run this tool.
-const freshProof = () => Buffer.from(crypto.getRandomValues(new Uint8Array(16))).toString('hex')
 const sha256Of = (bytes: Buffer) => createHash('sha256').update(bytes).digest('hex')
 
 // The record at a line of a transcript, with the ids of the question-dialog calls asked before it.
@@ -249,33 +249,31 @@ function validator(file: string) {
 
 const usage = 'Usage: bun tools/check-spec.ts <spec.yaml> --transcripts <dir> ' +
   '[--json] [--base <JSON list of { path, sha }> [--partial-base]], ' +
-  'or bun tools/check-spec.ts --fix-list <file> --transcripts <dir> [--json] [--expect <json>], ' +
+  'or bun tools/check-spec.ts --fix-list <file> --transcripts <dir> [--json [--entries]] ' +
+  '[--base <JSON list of { path, sha }> [--partial-base]], ' +
   'or bun tools/check-spec.ts --make-fix-list <run> --transcripts <dir> [--size <json>]'
 
 async function main() {
   if (!Bun.YAML?.parse) throw new Error(`Bun ${minimumBun} or newer is required: Bun.YAML is unavailable`)
   const { values, positionals } = parseArgs({ args: Bun.argv.slice(2), allowPositionals: true,
     options: { transcripts: { type: 'string' }, json: { type: 'boolean' }, base: { type: 'string' }, 'partial-base': { type: 'boolean' },
-      'fix-list': { type: 'string' }, expect: { type: 'string' }, 'make-fix-list': { type: 'string' }, size: { type: 'string' } } })
+      'fix-list': { type: 'string' }, entries: { type: 'boolean' }, 'make-fix-list': { type: 'string' }, size: { type: 'string' } } })
   if (values['make-fix-list'] !== undefined) {
     if (positionals.length || !values['make-fix-list'] || !values.transcripts || values.base || values['partial-base'] ||
-      values['fix-list'] !== undefined || values.expect !== undefined || values.json) {
+      values['fix-list'] !== undefined || values.entries || values.json) {
       throw new Error(usage)
     }
     return makeFixList(values['make-fix-list'], values.transcripts, values.size)
   }
-  if (values.size !== undefined) throw new Error(usage)
+  if (values.size !== undefined || (values['partial-base'] && values.base === undefined)) throw new Error(usage)
+  const partialBase = values['partial-base'] === true
   if (values['fix-list'] !== undefined) {
-    if (positionals.length || !values['fix-list'] || !values.transcripts || values.base || values['partial-base']) {
-      throw new Error(usage)
-    }
-    return checkFixList(values['fix-list'], values.transcripts, values.json === true, values.expect)
+    if (positionals.length || !values['fix-list'] || !values.transcripts || (values.entries && !values.json)) throw new Error(usage)
+    const base = values.base === undefined ? null : await baseRepositories(values.base, partialBase)
+    return checkFixList(values['fix-list'], values.transcripts, { json: values.json === true, withEntries: values.entries === true, base, partialBase })
   }
-  if (positionals.length !== 1 || !values.transcripts || values.expect !== undefined ||
-    (values['partial-base'] && values.base === undefined)) {
-    throw new Error(usage)
-  }
-  if (values.base !== undefined) await baseRepositories(values.base, values['partial-base'] === true)
+  if (positionals.length !== 1 || !values.transcripts || values.entries) throw new Error(usage)
+  const base = values.base === undefined ? null : await baseRepositories(values.base, partialBase)
   const transcripts = values.transcripts
   const specPath = positionals[0]
   const { fail, shape, stringField, list, located, report } = validator(specPath)
@@ -346,7 +344,8 @@ async function main() {
     // The spec lines the size gate divides by: the non-blank lines of the entries' text.
     specLines,
     unbreakable: unbreakableLines,
-    proof: freshProof(),
+    // The base list is checked against the tree the tool runs in, so the proof covers that tree too.
+    proof: fingerprint({ spec: specPath, transcripts, base, partialBase, tree: process.cwd() }),
     spec: specPath,
   }
   console.log(values.json ? JSON.stringify(summary) :
@@ -403,7 +402,7 @@ const repositoryPath = (path: unknown) => typeof path === 'string' && (path === 
 // deeper there, finds no repository the list leaves out, so no repository of the tree goes unread.
 // A partial list names only the repositories a unit changes, in a tree too large to list, and skips
 // the walk: nothing then checks the repositories it leaves out.
-async function baseRepositories(value: string, partial: boolean): Promise<void> {
+async function baseRepositories(value: string, partial: boolean): Promise<unknown[]> {
   let list: unknown
   try { list = JSON.parse(value) } catch (error) { throw new Error(`--base expects a JSON list of { path, sha }: ${messageOf(error)}`) }
   if (!Array.isArray(list) || !list.length) throw new Error('--base expects a non-empty JSON list of { path, sha }, one per git repository of the tree')
@@ -426,7 +425,7 @@ async function baseRepositories(value: string, partial: boolean): Promise<void> 
       throw new Error(`--base commit ${entry.sha} is not in the repository at ${path}`)
     }
   }
-  if (partial) return
+  if (partial) return list
   const found: string[] = []
   const walk = async (directory: string) => {
     if (await exists(join(directory, '.git'))) { found.push(directory); return }
@@ -437,6 +436,7 @@ async function baseRepositories(value: string, partial: boolean): Promise<void> 
   await walk('.')
   const missing = found.filter(path => !listed.has(path))
   if (missing.length) throw new Error(`--base leaves out the git repositories at ${missing.join(', ')}`)
+  return list
 }
 
 // The journal of a run: <transcripts>/<session>/subagents/workflows/<run>/journal.jsonl, in exactly
@@ -468,24 +468,25 @@ async function lastResults(journal: string): Promise<Map<string, unknown>> {
   return new Map([...started].map(([label, key]) => [label, results.get(key)]))
 }
 
-type Launch = { spec: string, specSha256: string, specLines?: number, fixList?: { path: string, sha256: string } }
+type Launch = { spec: string, specSha256: string, specLines?: number, fixList?: { path: string, sha256: string }, base?: unknown[] }
 type Entry = Mapping & { source: string }
 
 // What the launch check of a run printed. The spec check of a main run or a review pass prints the
 // spec it passed; the check of a fix run prints its own fix list and the spec that list names, so the
-// spec carries on from run to run. The fix-list check of an earlier version of this tool printed no
-// spec lines, so a fix run it launched carries none on.
+// spec carries on from run to run, beside the base list the fix run started from. The fix-list check
+// of an earlier version of this tool printed no spec lines and no base list, so a fix run it launched
+// carries no spec lines on and has no base list to check its fixer's result against.
 function launchOf(results: Map<string, unknown>): Launch {
   const gate = results.get('gate')
   let printed: unknown
   try { printed = mapping(gate) && typeof gate.stdout === 'string' ? JSON.parse(gate.stdout) : undefined } catch { printed = undefined }
   if (mapping(printed) && text(printed.spec)) {
-    const { spec, specLines, sha256, specSha256, fixList } = printed
+    const { spec, specLines, sha256, specSha256, fixList, base } = printed
     const counted = Number.isSafeInteger(specLines) ? { specLines: Number(specLines) } : undefined
     if (!Object.hasOwn(printed, 'fixList')) {
       if (text(sha256) && counted) return { spec, specSha256: sha256, ...counted }
     } else if (text(fixList) && text(specSha256) && text(sha256) && (counted || specLines === undefined)) {
-      return { spec, specSha256, ...counted, fixList: { path: fixList, sha256 } }
+      return { spec, specSha256, ...counted, fixList: { path: fixList, sha256 }, ...(Array.isArray(base) ? { base } : {}) }
     }
   }
   throw new Error('the launch check of the run printed no spec')
@@ -504,6 +505,14 @@ async function launchedEntries({ path, sha256 }: { path: string, sha256: string 
 // fix its run's diff check mapped a change to. Every other entry stays open.
 const closed = (disposition: unknown, mapped: boolean) =>
   disposition === 'rejected' || disposition === 'question' || (disposition === 'fixed' && mapped)
+
+// The journal holds the last result of a stage whether or not its run accepted it, so a result counts
+// only when it carries no hard flag and passes the checks the fix run applies to it.
+function acceptedResult(result: unknown, check: (result: unknown) => void): unknown {
+  if (hasHardFlag(result)) return undefined
+  try { check(result) } catch { return undefined }
+  return result
+}
 
 // Everything a run returned to be fixed, as its journal holds it: the implementer's spec findings;
 // every decision and every unresolved issue of the finding verifier, or, in a run without a verify
@@ -529,9 +538,14 @@ async function returned(run: string, transcripts: string): Promise<{ launch: Lau
     }
   }
   if (launch.fixList) {
-    const dispositions = new Map(listIn(results.get('fix'), 'dispositions').filter(mapping).map(d => [d.key, d.disposition]))
-    const mapped = new Set(listIn(results.get('diff'), 'mappings').filter(mapping).map(m => m.source))
     const launched = await launchedEntries(launch.fixList)
+    const keys = launched.map(entry => mapping(entry) ? entry.source : undefined)
+    // Without the base list the fixer started from, its result cannot be checked and closes no entry.
+    const { base } = launch
+    const fix = base && acceptedResult(results.get('fix'), result => checkFixerResult(result, keys, base))
+    const diff = fix && acceptedResult(results.get('diff'), result => checkDiffResult(result, keys))
+    const dispositions = new Map(listIn(fix, 'dispositions').filter(mapping).map(d => [d.key, d.disposition]))
+    const mapped = new Set(listIn(diff, 'mappings').filter(mapping).map(m => m.source))
     launched.forEach((entry, index) => {
       const source = mapping(entry) ? entry.source : undefined
       if (!closed(dispositions.get(source), mapped.has(source))) entries.push({ source: `entry:${index}`, entry })
@@ -657,32 +671,9 @@ async function compareWithRun({ fail }: Validator, transcripts: string, run: str
   return launch
 }
 
-// Holds the launch values a fix script received, the spec and the entries this check prints, to the
-// list, so what the fix run hands its stages is what the list holds.
-function compareWithLaunchValues({ fail, shape }: Validator, expected: string, list: Mapping, entries: ListedEntry[]) {
-  let launch: unknown
-  try { launch = JSON.parse(expected) } catch (error) { fail(-1, 'launch values', `malformed JSON: ${messageOf(error)}`); return }
-  if (!shape(launch, ['spec', 'entries'], -1, 'launch values')) return
-  if (launch.spec !== list.spec) fail(-1, 'launch values.spec', 'differs from the spec of the fix list')
-  const launched = new Map<string, Mapping>()
-  if (!Array.isArray(launch.entries)) fail(-1, 'launch values.entries', 'expected a list')
-  else for (const given of launch.entries) {
-    if (!mapping(given) || !text(given.source) || launched.has(given.source)) {
-      fail(-1, 'launch values.entries', `expected a mapping with a unique source: ${JSON.stringify(given)}`)
-    } else launched.set(given.source, given)
-  }
-  for (const { index, source, value } of entries) {
-    const given = launched.get(source)
-    if (!given) fail(index, source, 'missing from the launch values')
-    else if (!Bun.deepEquals(given, value, true)) fail(index, source, 'differs from the launch values')
-  }
-  const listed = new Set(entries.map(({ source }) => source))
-  for (const source of launched.keys()) {
-    if (!listed.has(source)) fail(-1, 'launch values.entries', `${source} is not an entry of the fix list`)
-  }
-}
+type FixListOptions = { json: boolean, withEntries: boolean, base: unknown[] | null, partialBase: boolean }
 
-async function checkFixList(file: string, transcripts: string, json: boolean, expected?: string) {
+async function checkFixList(file: string, transcripts: string, { json, withEntries, base, partialBase }: FixListOptions) {
   const checks = validator(file)
   const { fail, shape, stringField, list, report } = checks
   let bytes: Buffer | undefined
@@ -709,22 +700,26 @@ async function checkFixList(file: string, transcripts: string, json: boolean, ex
       })
     }
     if (text(run) && runId.test(run)) launch = await compareWithRun(checks, transcripts, run, text(spec) ? spec : undefined, entries)
-    if (expected !== undefined) compareWithLaunchValues(checks, expected, fixList, entries)
   }
   if (report()) return
   if (!launch) throw new Error('the fix list passed without the launch output of its parent run')
+  const listed = entries.map(({ value }) => value)
+  // The entries appear only on request, because the launch check's stage returns the output whole. The
+  // base list was checked against the tree the tool runs in, so the proof covers that tree too, and a
+  // fix run's launch output carries the base list on to the check of its fixer's result.
   const summary = {
-    entries: entries.map(({ value }) => value),
+    ...(withEntries ? { entries: listed } : {}),
     run: (fixList as Mapping).run,
     spec: launch.spec,
     specSha256: launch.specSha256,
     specLines: launch.specLines,
+    ...(base ? { base } : {}),
     sha256: sha256Of(bytes!),
-    proof: freshProof(),
+    proof: fingerprint({ fixList: file, transcripts, spec: launch.spec, entries: listed, base, partialBase, tree: process.cwd() }),
     fixList: file,
   }
   console.log(json ? JSON.stringify(summary) :
-    `entries=${summary.entries.length} run=${summary.run} spec=${summary.spec} sha256=${summary.sha256} proof=${summary.proof} fixList=${summary.fixList}`)
+    `entries=${listed.length} run=${summary.run} spec=${summary.spec} sha256=${summary.sha256} proof=${summary.proof} fixList=${summary.fixList}`)
 }
 
 main().catch(error => { console.error(messageOf(error).replace(/[\r\n]+/g, ' ')); process.exitCode = 1 })

@@ -46,7 +46,10 @@ improvement or to reopen approved work is never a valid question.
 The fixer closes an entry by rejecting it with counterevidence, by returning it as a question, or by
 a fix the fix run's diff check maps a change to. A rejection stays in the run's dispositions and adds
 no remaining item. A blocked entry, and one the fixer never answered, stays open, and the next fix
-list carries it under its index in the fix run's own list.
+list carries it under its index in the fix run's own list. Only a result the fix run accepted closes
+an entry: the spec tool applies the fix script's own checks of the fixer's and the diff check's
+results, defined once in a module the script carries verbatim, so a refused or aborted result leaves
+every entry it answered open.
 
 A read-only diff check maps every change of the fix to an entry. A change that maps to no entry, or
 that changes the product's scope or what the user sees and does where neither the user's words nor a

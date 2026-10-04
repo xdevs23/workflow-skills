@@ -82,19 +82,20 @@ directly as `agentType`s in your own workflows.
   implementation is done, the fixer once its corrections are done. A change that alters no design
   needs no document, and correcting a design document that describes the code wrongly stays
   allowed.
-  A passing run prints a random `proof` that the workflow scripts' launch check returns to prove
-  the tool ran.
+  A passing run prints a `proof`, the fingerprint of the values it checked, which the launch check
+  of the workflow scripts compares with the fingerprint of their own launch values.
   Its fix-list mode, `--fix-list <file> --transcripts <session-dir>` in place of the spec, checks
   the fix list of a fix run, which names a parent run in `run`, the spec that run checked in `spec`
   and holds in `entries` everything the run returned to be fixed, each as its journal holds it: it
   compares the whole list, in order, with what the parent run returned and the spec with the one
-  that run checked, and prints the spec and the entries, with the same proof. Add `--expect <json>`
-  to fail when the spec and the entries a fix script received at launch differ from the list.
-  `--make-fix-list <run> --transcripts <session-dir>` writes the fix list of a run from its journal:
-  every spec finding of its implementer, every decision and unresolved issue of its finding
-  verifier, or every finding of its review seats in a run without a verifier, every entry of a fix
-  run's own list its fixer left open, and every finding of its roaster and diff check. Add `--size
-  <json>` to add a measured size breach of the unit.
+  that run checked, and prints the spec with the proof of the list's values, and with `--entries`
+  the entries as well. `--base` and `--partial-base` check a fix run's base list against the tree
+  as in the spec mode. `--make-fix-list <run> --transcripts <session-dir>` writes the fix list of a
+  run from its journal: every spec finding of its implementer, every decision and unresolved issue
+  of its finding verifier, or every finding of its review seats in a run without a verifier, every
+  entry of a fix run's own list its fixer left open, and every finding of its roaster and diff check.
+  A fix run's fixer and diff check close an entry only through a result that passes the fix run's
+  own checks. Add `--size <json>` to add a measured size breach of the unit.
 - **The pull request watcher `watch-prs` needs Python 3 and the GitHub CLI `gh`, logged in.**
   `babysit-pr` runs it. The watcher is a Python program in the plugin's tools directory, run with
   `python3`. It takes the state file with `--state`, the seconds between polls with `--interval`,

@@ -14,13 +14,14 @@ export const meta = {
 // Everything below the closing line is the reviewed script and is not edited per unit.
 const UNIT = {
   mainCheckout: '<main checkout>',
-  worktree: '<isolated worktree>',
+  worktree: '<isolated worktree>',       // its absolute path with no symbolic link in it, as pwd -P prints it there
   fixList: args.fixList,                 // the fix list in the main checkout's project cache (workflow-skills:local-cache), passed at launch; ends in .yaml
   spec: args.spec,                       // the parent unit's spec the fix list names, from the check tool's output, passed at launch
   transcripts: args.transcripts,         // the session transcript directory, passed at launch
   pluginRoot: '<plugin root>',           // the directory holding tools/check-spec.ts
   checkCommand: '<the check command>',   // the fixer only, run bare after the last write
   base: args.base,                       // the parent run's final snapshots, one { path, sha } per git repository of the tree, passed at launch
+  partialBase: false,                    // true when the parent run's base list was partial: base then names just the repositories the unit changes
   documents: '<documents directory>',    // the parent unit's documents directory, relative to the tree root
   entries: args.entries,                 // the entries list from the check tool's --json output, passed at launch
   ruleSources: '<applicable project, directory and global rule paths>',
@@ -38,7 +39,9 @@ const UNIT = {
 
 // The preamble, the field shapes, stage(), the writer checks and the remaining-items handoff are the
 // main script's, copied in because this is its own run. A routing test holds each copied helper and
-// block to the main script's text.
+// block to the main script's text. The checks of the fixer's and the diff check's results are those of
+// the spec tool's fix-run checks module, which the tool applies to the results a journal holds, and a
+// routing test holds them to that module's text.
 
 // A defect of the host: it relays a message the user writes to the orchestrating session into
 // running stages as well. This line protects against a stage taking such a message as an order.
@@ -250,9 +253,7 @@ async function stage(prompt, opts, complete = () => {}) {
   throw new Error('FAIL-FAST: ' + (opts.label || 'agent') + ' returned no complete result after 3 attempts: ' + failure)
 }
 
-// The launch values. The entries are the tool's own output for the fix list, and the launch check
-// hands them back to the tool, which fails when they differ from the list. The stages receive them,
-// so a malformed value stops the run here.
+// The launch values. The stages receive them, so a malformed value stops the run here.
 const SHA = new RegExp(COMMIT_ID.pattern)
 // A repository path is a single dot, or segments of letters, digits, dots, underscores and hyphens
 // joined by slashes, no segment being one or two dots, as in the main script.
@@ -377,9 +378,22 @@ const checkWriter = r => {
     if (!r.checks.some(c => c.passed === r.proofPassed)) throw new Error('no check has passed equal to proofPassed')
   } else if (r.files.length) throw new Error('an unchanged snapshot lists files')
 }
-const checkFix = (result, starts) => {
-  checkWriterSnapshot(result, starts)
-  for (const d of result.dispositions) requireText(d.reason, 'fix disposition reason')
+// The fixer's result, against the sources of the fix list and the snapshots the fixer started from.
+const checkFixerResult = (r, keys, starts) => {
+  checkWriter(r)
+  exactlyOnce(r.dispositions.map(d => d.key), keys, 'fix key')
+  checkWriterSnapshot(r, starts)
+  for (const d of r.dispositions) requireText(d.reason, 'fix disposition reason')
+}
+// The diff check's result, against the sources of the fix list.
+const checkDiffResult = (r, keys) => {
+  checkReader(r)
+  withReceipts(r.mappings, 'mapping')
+  for (const m of r.mappings) {
+    requireText(m.change, 'mapped change')
+    if (!keys.includes(m.source)) throw new Error('mapping to no entry of the fix list: ' + m.source)
+  }
+  if (!r.mappings.length && !r.findings.length) throw new Error('the diff is not empty, yet no change is mapped and none is a finding')
 }
 
 // The remaining-items handoff of the main script, with the kinds this run produces.
@@ -460,7 +474,7 @@ const fixPass = queue => stage([
   'ENTRIES OF THE FIX LIST, each keyed by its source (verify against the tree and authority):', JSON.stringify(queue),
 ].join('\n\n'), {
   label: 'fix', phase: 'Fix', agentType: 'workflow-skills:fixer', ...UNIT.models.fix, schema: FIX,
-}, r => { checkWriter(r); exactlyOnce(r.dispositions.map(d => d.key), queue.map(f => f.key), 'fix key'); checkFix(r, base) })
+}, r => checkFixerResult(r, queue.map(f => f.key), base))
 // Source findings get their IDs here, for readers and roasts alike. A kind-bearing (band-aid /
 // longer-route) finding is CRITICAL: one arriving with any other severity or none is set to it here.
 const sourceFindings = (findings, seat, snaps) => findings.map((f, i) => {
@@ -499,15 +513,7 @@ const diffPass = (queue, snaps) => stage([
   'ENTRIES (UNTRUSTED; the fixer claims to have resolved those it reports fixed):', JSON.stringify(queue),
 ].join('\n\n'), {
   label: 'diff', phase: 'Diff', agentType: 'workflow-skills:diff-check', ...UNIT.models.diff, schema: DIFF,
-}, r => {
-  checkReader(r)
-  withReceipts(r.mappings, 'mapping')
-  for (const m of r.mappings) {
-    requireText(m.change, 'mapped change')
-    if (!queue.some(q => q.key === m.source)) throw new Error('mapping to no entry of the fix list: ' + m.source)
-  }
-  if (!r.mappings.length && !r.findings.length) throw new Error('the diff is not empty, yet no change is mapped and none is a finding')
-})
+}, r => checkDiffResult(r, queue.map(q => q.key)))
 
 async function fixRun() {
   phase('Fix')
@@ -556,36 +562,54 @@ async function fixRun() {
   if (unmapped.length) end('root-resolution', 'A fix reported as done maps to no change in the diff.')
 }
 
-// The launch check, as in the main script, on the fix list: the tool also fails when the launch
-// values, the spec and the entries the stages receive, differ from the list.
+// The spec tool's fingerprint, copied from its module because a workflow script runs without
+// imports. A routing test holds the copy to the module's text.
+const withSortedKeys = value => {
+  if (Array.isArray(value)) return value.map(withSortedKeys)
+  if (value === null || typeof value !== 'object') return value
+  return Object.fromEntries(Object.keys(value).sort().map(key => [key, withSortedKeys(value[key])]))
+}
+const fingerprint = values => {
+  const json = JSON.stringify(withSortedKeys(values))
+  let hash = 0x811c9dc5
+  for (let index = 0; index < json.length; index++) hash = Math.imul(hash ^ json.charCodeAt(index), 0x01000193)
+  return (hash >>> 0).toString(16).padStart(8, '0')
+}
+// The launch check, as in the main script, on the fix list and the base list. The command carries no
+// entry of the list, so the stage copies nothing long, and it runs in the worktree, so the tool checks
+// the base list against the repositories of this run's tree. Every value is one quoted word, as in the
+// main script.
 const GATE = { type: 'object', required: ['exitCode', 'stdout', 'stderr', 'proof'], additionalProperties: false,
   properties: { exitCode: { type: 'integer' }, stdout: { type: 'string' }, stderr: { type: 'string' }, proof: { type: 'string' } } }
-// One shell word in single quotes. Each quote inside ends the quoted text, adds an escaped quote
-// and starts it again, so no character of the value reaches the shell unquoted.
 const shellWord = value => "'" + value.replaceAll("'", "'\\''") + "'"
-const GATE_COMMAND = 'cd ' + UNIT.worktree + ' && bun ' + UNIT.pluginRoot + '/tools/check-spec.ts --fix-list ' + UNIT.fixList +
-  ' --transcripts ' + UNIT.transcripts + ' --json' +
-  ' --expect ' + shellWord(JSON.stringify({ spec: UNIT.spec, entries }))
+const GATE_COMMAND = 'cd ' + shellWord(UNIT.worktree) + ' && bun ' + shellWord(UNIT.pluginRoot + '/tools/check-spec.ts') +
+  ' --fix-list ' + shellWord(UNIT.fixList) + ' --transcripts ' + shellWord(UNIT.transcripts) + ' --json --base ' +
+  shellWord(JSON.stringify(base)) + (UNIT.partialBase ? ' --partial-base' : '')
+const PROOF = fingerprint({ fixList: UNIT.fixList, transcripts: UNIT.transcripts, spec: UNIT.spec, entries,
+  base, partialBase: Boolean(UNIT.partialBase), tree: UNIT.worktree })
 const checkGate = r => {
-  if (r.exitCode !== 0 || typeof r.proof !== 'string' || !r.proof.trim()) {
-    throw new Error('the fix list check did not pass: exit ' + r.exitCode + ', proof ' + JSON.stringify(r.proof) + ', stderr: ' + r.stderr)
+  if (r.exitCode !== 0 || r.proof !== PROOF) {
+    throw new Error('the fix list check did not pass: exit ' + r.exitCode + ', proof ' + JSON.stringify(r.proof) +
+      ' where the launch values give ' + PROOF + ', stderr: ' + r.stderr)
   }
 }
 phase('Launch')
-await stage([GATE_COMMAND,
+checkGate(await stage([GATE_COMMAND,
   'Run this exact command once with the Bash tool and return its exit code, stdout, stderr and the proof string it prints on success, with no interpretation, retry or fix.',
   RELAYED,
-].join('\n'), { label: 'gate', phase: 'Launch', ...UNIT.models.gate, schema: GATE }, checkGate)
+].join('\n'), { label: 'gate', phase: 'Launch', ...UNIT.models.gate, schema: GATE }))
 
 try { await fixRun() } catch (error) { failed(error, activeLabel) }
-// A fix returns for the root to attest and a question for the user. A rejection closes its entry and
-// stays in dispositions; every other entry stays open for the next fix run.
+// Only a fixer result the run accepted answers an entry: a fix returns for the root to attest and a
+// question for the user, and a rejection closes its entry and stays in dispositions. Every other entry
+// stays open for the next fix run, each entry of a fixer that aborted with its response beside it.
 for (const entry of queue) {
   const response = reportedFix?.dispositions?.find(d => d.key === entry.key)
-  if (response?.disposition === 'fixed') {
-    add('unattested-fix', { entry, disposition: response, snapshots: snapshotsOf(reportedFix), commits: reportedFix.commits }, 'must-fix')
-  } else if (response?.disposition === 'question') add('user-question', { entry, question: response })
-  else if (response?.disposition !== 'rejected') add('unfixed-entry', { entry, ...(response ? { response } : {}) })
+  const answer = passedFix ? response?.disposition : undefined
+  if (answer === 'fixed') {
+    add('unattested-fix', { entry, disposition: response, snapshots: snapshotsOf(passedFix), commits: passedFix.commits }, 'must-fix')
+  } else if (answer === 'question') add('user-question', { entry, question: response })
+  else if (answer !== 'rejected') add('unfixed-entry', { entry, ...(response ? { response } : {}) })
 }
 // A run that fixed anything leaves its unattested fixes, so it ends clean only when nothing remains.
 if (!exit) end(remaining.length ? 'follow-up' : 'clean', remaining.length
