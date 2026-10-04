@@ -66,8 +66,8 @@ whether they want a git repository.
   committed, still run `workflow-skills:review-pass` on it when it changes code and is more than a
   small change that carries no risk.
 - Use `workflow-skills:review-pass` for a change already committed that needs only the reviewers,
-  such as one you edited directly: it runs the main script of this skill in review mode, the launch
-  check and the fifteen reviewers alone, and their findings go to a fix run.
+  such as one you edited directly: it runs the main script of this skill in review mode, without a
+  spec, with the thirteen reviewers that need none, and their findings go to a fix run.
 
 ## Before phase 1: the unit spec
 
@@ -170,7 +170,7 @@ specs.
   `workflow-skills:review-pass` describes, sets it to true and passes `head`.
 - Set `partialBase` to true in the marked block of the main script for a tree too large to list,
   such as a ROM tree of a thousand repositories worked on in place. The base list then names only
-  the repositories the unit changes, the launch check adds `--partial-base`, and the tool checks the
+  the repositories the unit changes, the spec check adds `--partial-base`, and the tool checks the
   listed repositories and their commits and skips the search for the ones the list leaves out.
   Nothing then checks that a writer left the other repositories of the tree alone, so a tree that
   can be listed in full never sets it.
@@ -178,16 +178,16 @@ specs.
 - Read its summary on stdout, as JSON with `--json`: the spec's `sha256`, `nonBlankLines`, the
   `specLines` the size check divides by, the `unbreakable` lines and a `proof`, the fingerprint of
   the values the tool checked.
-- Expect the run's first stage to run the tool once more and return the `proof` it prints only when
-  the spec passes. The run continues only when that proof is the fingerprint of its own launch
-  values and its worktree.
+- Expect the implementer to run the tool once more before anything else and return what it printed.
+  The tool prints its `proof` only when the spec passes, and the run continues only when that proof
+  is the fingerprint of its own launch values and its worktree.
 - Set `worktree` in the marked block of the main script to the worktree's absolute path with no
   symbolic link in it, as `pwd -P` prints it there. The tool's proof covers the directory it runs
   in as the operating system reports it, so another spelling of the same directory stops the run
-  at its launch check.
+  at its spec check.
 - The shipped scripts take the plugin root in their marked block. An installed plugin older than
-  this tool checks another spec format, so its launch check fails and no run launches on it until
-  the plugin is updated; that is the intended effect.
+  this tool checks another spec format, so the spec check fails and no run goes past it until the
+  plugin is updated; that is the intended effect.
 
 The tracked design document is written by hand from the code after the implementation, so it
 records what was built, and only when the change alters the design.
@@ -418,11 +418,14 @@ Run independent reviewers in parallel, each owning a DISTINCT lens, each via its
 This phase is a **genuine barrier**: the finding verifier needs every seat's object before
 consolidation.
 
-- **The review stage has fifteen fixed, mandatory seats.** Every run runs all of them, whatever the
-  size of the change: correctness, spec compliance, the duplicate checker, quality, inverse-spec,
-  the project rule reader, cold alternatives, and the eight audit seats (separation of concerns,
-  abstraction quality, code smell, type safety, code cleanliness, missing gaps, domain leakage and
-  type smearing), each loading the agent template of its name.
+- **The review stage has fifteen fixed, mandatory seats.** Every main run runs all of them, whatever
+  the size of the change: correctness, spec compliance, the duplicate checker, quality,
+  inverse-spec, the project rule reader, cold alternatives, and the eight audit seats (separation of
+  concerns, abstraction quality, code smell, type safety, code cleanliness, missing gaps, domain
+  leakage and type smearing), each loading the agent template of its name.
+- A review pass reads a change made without a spec, so spec compliance and inverse-spec do not run
+  in it, and the other thirteen seats read the change without one, as `workflow-skills:review-pass`
+  describes.
 - Never leave a review seat out, rewrite a seat's template or the prompt text the script gives a
   seat, or remove anything from either. The one exception is the note
   `workflow-skills:resume-interrupted-run` appends to the prompt of an interrupted agent of a run
@@ -848,9 +851,12 @@ second implementer pre-check.
   script, `scripts/implement-review-verify.js`. Its copy sets `meta.name` to a kebab-case name of
   the fix run and `meta.description` to one line saying what the run fixes, as a copy of the main
   script does. It reads the parent unit's spec for the user's words, by the path its fix list names.
+  A fix list that names no spec gives the fix run none to read: its fixer resolves the entries by
+  the rule sources and its guide, and the stops that need a spec, no-words and invalid-spec, do not
+  apply.
 - The fix run's input is a fix list, a YAML file in the main checkout's project cache, which
   `workflow-skills:local-cache` defines, with exactly the keys `run` (the parent run's ID), `spec`
-  (the spec the parent run checked) and `entries`.
+  (the spec the parent run checked, or null after a review pass, which checks none) and `entries`.
 - Write the fix list with
   `<plugin root>/tools/check-spec.ts --make-fix-list <run> --transcripts <dir>`, which prints the
   spec the parent run checked and everything the parent run returned to be fixed, each item as the
@@ -867,8 +873,7 @@ second implementer pre-check.
   result whether or not the run accepted it, so the tool applies the fix run's own checks of the
   fixer's and the diff check's results, which the script carries from the tool's fix-run checks
   module. A refused or aborted fixer result closes no entry, and neither does any result of a fix
-  run whose launch output holds no base list, as a fix run launched by an earlier version of the
-  tool.
+  run whose check printed no base list, as one checked by an earlier version of the tool.
 - Save the tool's output as the fix list unchanged. Never add, delete or edit an entry and never
   attach anything to one: the check compares the whole list with what the parent run returned, and
   no word of yours enters the list.
@@ -885,12 +890,12 @@ second implementer pre-check.
   unit's documents directory and the applicable rule sources, as `ruleSources`, into the block.
 - Set `worktree` in the fix script's marked block to the worktree's absolute path as `pwd -P` prints
   it there, and `partialBase` to true when the parent run's base list was partial.
-- The launch check runs the same command in the worktree without `--entries` and with the base list
-  as `--base`, and `--partial-base` beside it when `partialBase` is set, so the tool checks the base
-  list against the repositories of the tree as in the main run. The run continues only when the
-  proof the tool prints is the fingerprint of the list, the transcript directory, the spec, the
-  entries, the base list and the worktree the script received, so every stage receives what the
-  journal holds and starts from commits the tree holds.
+- The fixer runs the same command in the worktree before anything else, without `--entries` and with
+  the base list as `--base`, and `--partial-base` beside it when `partialBase` is set, so the tool
+  checks the base list against the repositories of the tree as in the main run. The run continues
+  only when the proof the tool prints is the fingerprint of the list, the transcript directory, the
+  spec, the entries, the base list and the worktree the script received, so every stage receives
+  what the journal holds and starts from commits the tree holds.
 - The fix run's fixer receives every entry, one key per source, and the parent spec. It resolves
   each entry with the user's words, the rule sources and the plugin's skills as its guide. Before it
   returns anything but fixed, it looks for every applicable rule and skill that says what to do or
@@ -1051,7 +1056,7 @@ recorded in [work execution rules](../../docs/work-execution-rules.md).
 
 Measure the final candidate against its unit spec before integration, using immutable inputs:
 record, for every repository of the tree, the merge-base SHA and the candidate SHA, and the `sha256`
-of the final spec that the spec tool prints. That `sha256` equals the one the launch check of the
+of the final spec that the spec tool prints. That `sha256` equals the one the spec check of the
 run that produced the candidate printed, so the counted spec is the one the writers and reviewers
 read. The size check reads no design document. For bundle/patch delivery the comparison base is the
 project's declared reconstruction base; do not silently substitute a convenient newer base.
@@ -1106,8 +1111,9 @@ const assessSize = ({ specLines, codeAdded }) => {
 - Hand the breach to the fix list by adding `--size` to `--make-fix-list`, with one JSON mapping of
   `codeAdded`, the measured implementation lines added, and `repositories`, one `{ path, base,
   candidate }` per repository measured, with full commit IDs. The tool adds the measurement as the
-  entry `size`, beside the spec lines the parent run's launch check counted, and the check holds
-  those spec lines to that launch check. The fixer verifies the measurement against the tree like
+  entry `size`, beside the spec lines the parent run's spec check counted, and the check holds
+  those spec lines to that spec check. A parent run that checked no spec, such as a review pass,
+  counted no spec lines, so the tool refuses `--size` for it. The fixer verifies the measurement against the tree like
   every other entry.
 - Never pad the spec to lower the ratio, or use a later amendment to retroactively authorize
   unsupported code.
@@ -1322,7 +1328,10 @@ These laws are non-negotiable across every run of this skill.
    four (`directive-conflict`, `sense-check`, `no-words`, `invalid-spec`) beside `none`, with the
    reason in `abort.reason`; an abort class with no trigger of its own is undetectable, and a
    trigger with more than one disposition is the deadlock in another costume. The unbriefed seats carry
-   no `abort` field, because its member names would brief them, and an absent field is no abort. And
+   no `abort` field, because its member names would brief them, and an absent field is no abort. A
+   change made without a spec gives the third and fourth triggers nothing to read: in a review pass
+   no seat carries an `abort` field, and in a fix run whose list names no spec the `trigger` enum
+   leaves out `no-words` and `invalid-spec`. And
    the structural abort lives in the **SCRIPT**, which checks **every consumed stage result** for a
    trigger other than `none` and throws with the whole object, never delegated to a downstream
    agent to rediscover. Every required object is consumed by verification; a failed or hard-flagged
@@ -1442,44 +1451,46 @@ previous run. Reuse the shipped file, fill the block for the unit.
 - The main script keeps it in `CHECK`, which only the fixer's prompt joins. The implementer's prompt
   joins `FOCUSED` in its place, the order to run only the checks that cover what it changed.
 
-### The launch check
+### The spec check
 
-Both scripts begin with a launch check, before any other agent: a small stage on the model you set
-in the `gate` entry of the marked block, shipped at low effort, whose prompt is one command line and
-one sentence. The command
-changes to the tree the run works on, the worktree from the marked block, so the tool finds the
-repositories of that tree alone. The main checkout of a
-multi-repository project can hold other task trees and cached clones, which the tool would count as
-repositories the base list leaves out.
-It then runs `<plugin root>/tools/check-spec.ts` with `--json`, the spec path from
-`args.specPath`, the transcript directory from `args.transcripts` and `--base` with the base list
-as JSON in single quotes. The sentence tells the stage to run that
-exact command once with the Bash tool and return its exit code, stdout, stderr and the proof string
-printed on success, with no interpretation, retry or fix. Its schema requires `exitCode`,
-`stdout`, `stderr` and `proof`.
+The writer of each script runs the spec tool before anything else, as the first block of its
+prompt: the implementer in a main run, the fixer in a fix run. The command changes to the tree the
+run works on, the worktree from the marked block, so the tool finds the repositories of that tree
+alone. The main checkout of a multi-repository project can hold other task trees and cached clones,
+which the tool would count as repositories the base list leaves out. It then runs
+`<plugin root>/tools/check-spec.ts` with `--json`, the spec path from `args.specPath`, the
+transcript directory from `args.transcripts` and `--base` with the base list as JSON in single
+quotes. The writer runs that exact command once and returns its exit code, its stdout and its
+stderr unchanged in `specCheck`, which its schema requires. On a failed check it edits nothing.
+
 The tool's `proof` is the fingerprint of the values it checked: the 32-bit FNV-1a hash of the spec
 path, the transcript directory, the base list, whether the base list is partial and the directory
-the tool runs in, as JSON with sorted keys. The script computes the same fingerprint of its own
-launch values and its worktree and continues only when `exitCode` is zero and `proof` equals it, so
-a failed check, a check of other values or in another tree, and a proof the stage made up stop the
-run. The comparison shows that the values agree, not that the tool ran: the stage could compute
-the same fingerprint without running it. The script refuses at once when `args.specPath` does not
-end in `.yaml`. A failed check ends the run at once, quoting stderr. The stage helper retries only
-a stage that returned nothing usable, because another attempt could pass only by changing what the
-check compares. The script parses nothing from stdout.
+the tool runs in, as JSON with sorted keys. The script reads the `proof` field from the printed
+JSON, computes the same fingerprint of its own launch values and its worktree, and continues only
+when the exit code is zero and the two are equal. A failed check, a check of other values or in
+another tree, output that is no JSON and a proof that is made up end the run as `failed`, quoting
+stderr, before any review. The comparison shows that the values agree, not that the tool ran: the
+writer could compute the same fingerprint without running it. The script refuses at once when
+`args.specPath` does not end in `.yaml`. A failed check is final: the writer's result comes back
+without the other completeness checks, so the stage helper does not ask it again, because another
+attempt could pass only by changing what the check compares.
 
-The fix run's launch check runs the tool's fix-list mode in place of the spec check: `--fix-list`
-with the fix list from `args.fixList`, the transcript directory and `--json`. The command carries
-no value of the list, so the stage copies nothing long. Its proof is the fingerprint of the list
-path, the transcript directory, the spec and the entries, and the script compares it with the
-fingerprint of its launch values. The script refuses at once when `args.fixList` does not end in
-`.yaml`, and the run stops when the launch values differ from the list, when the list differs from
-what the parent run returned to be fixed, or when the spec changed since the parent run checked it.
+The fix run's fixer runs the tool's fix-list mode in place of the spec check: `--fix-list` with the
+fix list from `args.fixList`, the transcript directory and `--json`. The command carries no value
+of the list, so the fixer copies nothing long. Its proof is the fingerprint of the list path, the
+transcript directory, the spec, which is null for a list that names none, and the entries, and the
+script compares it with the fingerprint of its launch values. The script refuses at once when
+`args.fixList` does not end in `.yaml`, and the run ends when the launch values differ from the list,
+when the list differs from what the parent run returned to be fixed, or when the spec changed since
+the parent run checked it. The roaster starts beside the fixer, and a failed check drops its
+findings with the rest of the run.
+
+A review pass checks no spec and runs no writer, so it has no spec check.
 
 ### The main script
 
-`scripts/implement-review-verify.js` runs the launch check, then Implement, Review, Verify and
-Fix, and returns the run record. Its `meta` is a pure literal whose phase titles match the
+`scripts/implement-review-verify.js` runs Implement, with the spec check first, then Review,
+Verify and Fix, and returns the run record. Its `meta` is a pure literal whose phase titles match the
 `phase()` calls exactly. Its shipped `name` is `kebab-name` and its shipped `description` is
 `one line`, and every copy replaces them with a kebab-case name of the unit and one line saying
 what the run implements, so each main run appears in the workflow list under its own unit.
@@ -1488,8 +1499,8 @@ ones, `WRITE_GIT` the two writers and `READ_GIT` the readers. `HYGIENE`, the hyg
 main script, carries no writing-style order: the unbriefed seats' findings go to the finding verifier only,
 and the rule reader checks the prose of the diff against the rule sources. The writers and the briefed seats receive the order through `AUTHORITY`, and the
 fix run's hygiene floor keeps it, since its diff check reads the tree. The field
-shapes are declared once and reused inside eight reader schemas and the writer, verifier and
-launch check schemas, each a closed object declared in full; the eight audit seats share the
+shapes are declared once and reused inside the reader schemas and the writer and verifier schemas,
+each a closed object declared in full; the eight audit seats share the
 quality seat's schema, because they return the object it returns. `stage()` is the one acceptance
 helper, `abortOnFlag()` the structural abort for every consumed stage result, and the completeness
 checks, the remaining-items handoff and the exit values are the ones the sections above and below
@@ -1743,12 +1754,11 @@ No script of this skill starts the `gap-finder` template. It stays in `agents/` 
 ## Model assignment
 
 The marked block of each shipped script holds one model entry, a model and an effort, for every
-agent the script starts, and you set every one of them, the launch check included, as law 1
-requires. Every
+agent the script starts, and you set every one of them, as law 1 requires. Every
 entry ships with a placeholder in angle brackets as its model, such as `<explicit>`, so no shipped
 script names a model, and no agent template names one either. In the main script, `models.review`
 holds one entry per review seat, keyed by the seat's label, so each of the fifteen seats can run on
-its own model. The script stops before its first agent when an entry is missing, is still a
+its own model. A review pass leaves out the entries of the two seats it does not run. The script stops before its first agent when an entry is missing, is still a
 placeholder, or names an agent or seat the script does not have. It stops as well on an entry that
 holds any field besides the model and the effort, because the stage options take the entry whole
 and such a field would replace the agent's template or another option. A seat that reads whole

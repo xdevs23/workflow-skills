@@ -438,6 +438,7 @@ describe('unit spec validation', () => {
 const fixLists = join(root, 'tests/fixtures/fix-list')
 const transcripts = join(fixLists, 'transcripts')
 const validPath = join(fixLists, 'list.yaml')
+const reviewListPath = join(fixLists, 'review-list.yaml')
 const validList = Bun.YAML.parse(await Bun.file(validPath).text())
 const checkList = (path, options = [], cwd = root) => {
   const result = Bun.spawnSync([process.execPath, tool, '--fix-list', path, '--transcripts', transcripts, ...options], { cwd })
@@ -511,7 +512,7 @@ describe('fix list validation', () => {
     const checked = checkList(written(made.out), ['--json'])
     expect([checked.exit, checked.err]).toEqual([0, ''])
     invalid(makeList('wf_missing-run'), 'run wf_missing-run has no journal under the transcript directory')
-    invalid(makeList('wf_other-run'), 'the launch check of the run printed no spec')
+    invalid(makeList('wf_other-run'), 'the spec check of the run printed no passing result')
     invalid(makeList('../wf_parent-run'), 'expected a run id')
   })
 
@@ -530,26 +531,25 @@ describe('fix list validation', () => {
       { source: 'diff:0', finding: resultOf(records, 'fix-diff').findings[0] }] })
     const checked = checkList(written(made.out), ['--json'])
     expect([checked.exit, checked.err, JSON.parse(checked.out).specSha256, JSON.parse(checked.out).specLines]).toEqual([0, '', parentSpecSha, 1])
-    // The list the fix run launched on is read where its launch check read it, and must hold the same bytes.
+    // The list the fix run launched on is read where its fixer's check read it, and must hold the same bytes.
     const copy = join(scratch, 'fix-run-copy')
     mkdirSync(join(copy, 'tests/fixtures/fix-list'), { recursive: true })
     writeFileSync(join(copy, 'tests/fixtures/fix-list/list.yaml'), 'run: changed\n')
-    invalid(makeList('wf_fix-run', [], copy), "the fix list tests/fixtures/fix-list/list.yaml changed since the run's launch check read it")
+    invalid(makeList('wf_fix-run', [], copy), "the fix list tests/fixtures/fix-list/list.yaml changed since the run's check read it")
   })
 
-  test('a fix run whose launch check printed no spec lines still gives its fix list, but no size breach', () => {
+  test('a fix run whose check printed no spec lines still gives its fix list, but no size breach', () => {
     const older = editedTranscripts(records => {
-      for (const record of records.filter(record => record.type === 'result' && record.key === 'fix-gate')) {
-        const { specLines, ...printed } = JSON.parse(record.result.stdout)
-        record.result.stdout = JSON.stringify(printed)
+      for (const record of records.filter(record => record.type === 'result' && record.key === 'fix-fix')) {
+        const { specLines, ...printed } = JSON.parse(record.result.specCheck.stdout)
+        record.result.specCheck.stdout = JSON.stringify(printed)
       }
     })
     const made = makeIn(older, 'wf_fix-run')
     expect([made.exit, made.err]).toEqual([0, ''])
     expect(sourcesOf(Bun.YAML.parse(made.out))).toEqual(['entry:2', 'entry:4', 'entry:5', 'roaster:0', 'diff:0'])
     const sized = makeIn(older, 'wf_fix-run', ['--size', JSON.stringify(measured)])
-    expect([sized.exit, sized.err]).toEqual([1,
-      "--size: the parent run's launch check printed no spec lines to measure a size breach against\n"])
+    expect([sized.exit, sized.err]).toEqual([1, '--size: the parent run counted no spec lines to measure a size breach against\n'])
   })
 
   test('a fix run closes entries only through results it accepted, so a refused or aborted result closes none', () => {
@@ -565,10 +565,10 @@ describe('fix list validation', () => {
       ['a fixer result that leaves an entry unanswered', records => { resultOf(records, 'fix-fix').dispositions.pop() }],
       ['a fixer result that started from another commit', records => { resultOf(records, 'fix-fix').repositories[0].startSha = 'c'.repeat(40) }],
       ['an aborted fixer result', records => { resultOf(records, 'fix-fix').abort = { trigger: 'sense-check', reason: 'The entry extends a removed mechanism.' } }],
-      ['a launch output of an earlier tool without the base list', records => {
-        const gate = resultOf(records, 'fix-gate')
-        const { base, ...printed } = JSON.parse(gate.stdout)
-        gate.stdout = JSON.stringify(printed)
+      ['a check output of an earlier tool without the base list', records => {
+        const { specCheck } = resultOf(records, 'fix-fix')
+        const { base, ...printed } = JSON.parse(specCheck.stdout)
+        specCheck.stdout = JSON.stringify(printed)
       }],
     ]) expect([name, open(editedTranscripts(edit))]).toEqual([name, every])
     // A diff result the run refused maps nothing, while the accepted fixer's rejection and question still close their entries.
@@ -576,7 +576,7 @@ describe('fix list validation', () => {
     expect(open(unmapped)).toEqual(['entry:1', 'entry:2', 'entry:4', 'entry:5', 'roaster:0', 'diff:0'])
   })
 
-  test('the fix list of a review pass holds the findings of every review seat', async () => {
+  test('the fix list of a review pass of an earlier version, which ran a launch check, carries the spec it printed', async () => {
     const records = await journalOf('session-c/subagents/workflows/wf_review-run/journal.jsonl')
     const made = makeList('wf_review-run')
     expect([made.exit, made.err]).toEqual([0, ''])
@@ -589,6 +589,34 @@ describe('fix list validation', () => {
       'review:quality:0: the parent run returned no item to fix under this source')
   })
 
+  test('the fix list of a review pass holds the findings of every review seat and names no spec', async () => {
+    const records = await journalOf('session-c/subagents/workflows/wf_review-pass/journal.jsonl')
+    const made = makeList('wf_review-pass')
+    expect([made.exit, made.err]).toEqual([0, ''])
+    const list = Bun.YAML.parse(made.out)
+    expect(list).toEqual({ run: 'wf_review-pass', spec: null, entries: [
+      { source: 'review:correctness:0', finding: resultOf(records, 'pass-correctness').findings[0] },
+      { source: 'review:rules:0', finding: resultOf(records, 'pass-rules').findings[0] }] })
+    expect(list).toEqual(Bun.YAML.parse(await Bun.file(reviewListPath).text()))
+    const checked = checkList(reviewListPath, ['--json'])
+    expect([checked.exit, checked.err]).toEqual([0, ''])
+    const bytes = await Bun.file(reviewListPath).arrayBuffer()
+    expect(JSON.parse(checked.out)).toEqual({ run: 'wf_review-pass', spec: null,
+      sha256: createHash('sha256').update(new Uint8Array(bytes)).digest('hex'),
+      proof: listProof({ fixList: reviewListPath, spec: null, entries: list.entries }), fixList: reviewListPath })
+    invalid(checkList(written({ ...list, spec: parentSpecPath })), 'fix list.spec: expected null, because the parent run checked no spec')
+    invalid(makeList('wf_review-pass', ['--size', JSON.stringify(measured)]), '--size: the parent run counted no spec lines to measure a size breach against')
+  })
+
+  test('the fix list of a fix run on a list without a spec names no spec either', () => {
+    const made = makeList('wf_review-fix')
+    expect([made.exit, made.err]).toEqual([0, ''])
+    const reviewList = Bun.YAML.parse(readFileSync(reviewListPath, 'utf8'))
+    expect(Bun.YAML.parse(made.out)).toEqual({ run: 'wf_review-fix', spec: null, entries: [{ source: 'entry:1', entry: reviewList.entries[1] }] })
+    const checked = checkList(written(made.out), ['--json'])
+    expect([checked.exit, checked.err, JSON.parse(checked.out).spec]).toEqual([0, '', null])
+  })
+
   test('a measured size breach joins the generated list beside the spec lines the parent run counted', () => {
     const made = makeList('wf_parent-run', ['--size', JSON.stringify(measured)])
     expect([made.exit, made.err]).toEqual([0, ''])
@@ -599,13 +627,13 @@ describe('fix list validation', () => {
     invalid(checkList(written({ ...list, entries: [list.entries.at(-1), ...list.entries.slice(0, -1)] })),
       'size: out of order: the parent run returned impl:0 in this place')
     invalid(checkList(written({ ...list, entries: list.entries.map(e => e.source === 'size' ? { ...e, size: { ...e.size, specLines: 2 } } : e) })),
-      "size: specLines: expected 1, the spec lines the parent run's launch check counted")
+      "size: specLines: expected 1, the spec lines the parent run's spec check counted")
     for (const [size, message] of [
       ['{', '--size expects a JSON mapping of codeAdded and repositories: '],
       ['[]', '--size expects a JSON mapping of codeAdded and repositories'],
       [JSON.stringify({ ...measured, codeAdded: -1 }), 'codeAdded: expected the count of implementation lines added'],
       [JSON.stringify({ ...measured, repositories: [{ path: '.', base: 'main', candidate: 'b'.repeat(40) }] }), 'repositories: expected a non-empty list'],
-      [JSON.stringify({ ...measured, specLines: 3 }), "specLines: expected 1, the spec lines the parent run's launch check counted"],
+      [JSON.stringify({ ...measured, specLines: 3 }), "specLines: expected 1, the spec lines the parent run's spec check counted"],
       [JSON.stringify({ codeAdded: 21 }), 'repositories: missing field'],
     ]) invalid(makeList('wf_parent-run', ['--size', size]), message)
   })
@@ -640,6 +668,7 @@ describe('fix list validation', () => {
 
   test('the spec is the one the parent run checked, unchanged', () => {
     invalid(changedList(l => { l.spec = 'tests/fixtures/spec/valid.yaml' }), 'fix list.spec: expected the spec the parent run checked, tests/fixtures/fix-list/parent.yaml')
+    invalid(changedList(l => { l.spec = null }), 'fix list.spec: expected the spec the parent run checked, tests/fixtures/fix-list/parent.yaml')
     const copy = join(scratch, 'parent-copy')
     mkdirSync(join(copy, 'tests/fixtures/fix-list'), { recursive: true })
     writeFileSync(join(copy, parentSpecPath), 'unit: changed\n')

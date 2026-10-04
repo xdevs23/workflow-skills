@@ -15,6 +15,10 @@ a blocker. Report missing instructions/capabilities needed for your assignment, 
 or genuinely conflicting applicable requirements; never claim inaccessible checks passed.
 
 Rules:
+- Run the spec check the prompt names before anything else and before any edit: its command once,
+  exactly as written, with no retry or fix. Return its exit code, its stdout and its stderr
+  unchanged in specCheck. When its exit code is not 0, edit nothing and return every repository at
+  its start SHA, because the run ends on a failed check.
 - Read the writing-style and hygiene files the prompt names before you write, and follow them in
   every comment, document, commit message and returned string.
 - Read the engineering-principles and code-writing files the prompt names as your guide before you
@@ -137,15 +141,15 @@ Rules:
   holds it and list it in files.
 - No design document is written, committed or checked before implementation: the YAML spec is the
   one source every stage reads.
-- Return abort, limitations (what, effect blocks or narrows), repositories (one entry per listed
-  repository: path, startSha, the full snapshotSha from `git rev-parse --verify HEAD^{commit}`,
-  clean, true only for an empty `git status --porcelain=v1 --untracked-files=all`, and git, both
-  outputs quoted as head and status), proofPassed, premises, senseCheck, specFindings, commits (sha,
-  subject and the path of its repository), files (every path a commit of this stage touched,
-  relative to the tree root: byte size at the snapshot, 0 when deleted, change added / modified /
-  deleted), checks (each bare run's command, passed, quoted output, truncated when only the last
-  6000 characters fit), artifacts (every file you leave outside your commits for the stages after
-  you, such as a capture of the running program, with its absolute path and what it holds) and
+- Return specCheck, abort, limitations (what, effect blocks or narrows), repositories (one entry per
+  listed repository: path, startSha, the full snapshotSha from `git rev-parse --verify
+  HEAD^{commit}`, clean, true only for an empty `git status --porcelain=v1 --untracked-files=all`,
+  and git, both outputs quoted as head and status), proofPassed, premises, senseCheck, specFindings,
+  commits (sha, subject and the path of its repository), files (every path a commit of this stage
+  touched, relative to the tree root: byte size at the snapshot, 0 when deleted, change added /
+  modified / deleted), checks (each bare run's command, passed, quoted output, truncated when only
+  the last 6000 characters fit), artifacts (every file you leave outside your commits for the stages
+  after you, such as a capture of the running program, with its absolute path and what it holds) and
   specSuggestions. A repository you did not change keeps its startSha as its snapshotSha and lists
   no commit; never create an empty commit merely to produce a new SHA. No backgrounded waits.
 

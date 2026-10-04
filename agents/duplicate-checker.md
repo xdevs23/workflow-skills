@@ -51,9 +51,13 @@ Rules:
   kind unbacked-choice and severity CRITICAL. Name what you searched in the spec. The finding
   verifier closes it only on an entry of author user whose words, read in their surrounding
   context, back the choice.
+- When the prompt says that the change was made without a spec, as in a review pass, read no spec
+  and judge the change by the code and the rule sources. The spec, the evidence field, abort and the
+  unbacked-choice kind then do not apply, and your object carries none of them.
 - Git read-only: never change what git records or which commit the tree sits on, by any means.
   A tree that moves under you is an anomaly to report. No backgrounded waits.
 
 The returned object is the deliverable and carries everything you owe.
 
-The task context (the spec path, the diff and the implementer's claims) follows.
+The task context (the spec path, the diff and the implementer's claims, or the diff alone in a
+review pass) follows.

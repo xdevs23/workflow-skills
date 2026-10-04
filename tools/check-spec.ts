@@ -355,8 +355,8 @@ async function main() {
 
 // A fix list holds everything one earlier run returned to be fixed, each item as the run's journal
 // holds it, and names the spec of the unit the run belongs to, which the fix run reads for the user's
-// words. A fix list is never written from a spec, and the two never mix: each mode refuses the keys
-// of the other.
+// words, or null when the run checked none, as a review pass does. A fix list is never written from a
+// spec, and the two never mix: each mode refuses the keys of the other.
 const fixListKeys = ['run', 'spec', 'entries']
 // The sources that name an item in the last result of one stage of the run: the stage label, the
 // list in that result and the field an entry holds the item under.
@@ -468,34 +468,55 @@ async function lastResults(journal: string): Promise<Map<string, unknown>> {
   return new Map([...started].map(([label, key]) => [label, results.get(key)]))
 }
 
-type Launch = { spec: string, specSha256: string, specLines?: number, fixList?: { path: string, sha256: string }, base?: unknown[] }
+// The spec a run checked: its path, its SHA-256 and the spec lines the size gate divides by.
+type CheckedSpec = { path: string, sha256: string, lines?: number }
+type Launch = { spec: CheckedSpec | null, fixList?: { path: string, sha256: string }, base?: unknown[] }
 type Entry = Mapping & { source: string }
 
-// What the launch check of a run printed. The spec check of a main run or a review pass prints the
-// spec it passed; the check of a fix run prints its own fix list and the spec that list names, so the
-// spec carries on from run to run, beside the base list the fix run started from. The fix-list check
-// of an earlier version of this tool printed no spec lines and no base list, so a fix run it launched
-// carries no spec lines on and has no base list to check its fixer's result against.
-function launchOf(results: Map<string, unknown>): Launch {
-  const gate = results.get('gate')
-  let printed: unknown
-  try { printed = mapping(gate) && typeof gate.stdout === 'string' ? JSON.parse(gate.stdout) : undefined } catch { printed = undefined }
-  if (mapping(printed) && text(printed.spec)) {
-    const { spec, specLines, sha256, specSha256, fixList, base } = printed
-    const counted = Number.isSafeInteger(specLines) ? { specLines: Number(specLines) } : undefined
-    if (!Object.hasOwn(printed, 'fixList')) {
-      if (text(sha256) && counted) return { spec, specSha256: sha256, ...counted }
-    } else if (text(fixList) && text(specSha256) && text(sha256) && (counted || specLines === undefined)) {
-      return { spec, specSha256, ...counted, fixList: { path: fixList, sha256 }, ...(Array.isArray(base) ? { base } : {}) }
-    }
+// What the spec tool printed for a run's check. The stage that ran it is the launch check of an
+// earlier version of the scripts, else the implementer of a main run, else the fixer of a fix run,
+// which returns it in specCheck. A review pass checks no spec and runs none of these stages, so its
+// output is null.
+function checkOutput(results: Map<string, unknown>): string | undefined | null {
+  const stdout = (value: unknown) => mapping(value) && typeof value.stdout === 'string' ? value.stdout : undefined
+  if (results.has('gate')) return stdout(results.get('gate'))
+  for (const label of ['impl', 'fix']) {
+    const result = results.get(label)
+    if (results.has(label)) return stdout(mapping(result) ? result.specCheck : undefined)
   }
-  throw new Error('the launch check of the run printed no spec')
+  return null
 }
 
-// The entries of the fix list a fix run launched on, unchanged since its launch check read them.
+// What a run checked. The spec check of a main run prints the spec it passed; the check of a fix run
+// prints its own fix list and the spec that list names, or null, so the spec carries on from run to
+// run, beside the base list the fix run started from. The fix-list check of an earlier version of
+// this tool printed no spec lines and no base list, so a fix run it launched carries no spec lines on
+// and has no base list to check its fixer's result against.
+function launchOf(results: Map<string, unknown>): Launch {
+  const output = checkOutput(results)
+  if (output === null) return { spec: null }
+  let printed: unknown
+  try { printed = output === undefined ? undefined : JSON.parse(output) } catch { printed = undefined }
+  if (mapping(printed)) {
+    const { spec, specLines, sha256, specSha256, fixList, base } = printed
+    const counted = Number.isSafeInteger(specLines) ? { lines: Number(specLines) } : undefined
+    if (!Object.hasOwn(printed, 'fixList')) {
+      if (text(spec) && text(sha256) && counted) return { spec: { path: spec, sha256, ...counted } }
+    } else if (text(fixList) && text(sha256)) {
+      const listed = { fixList: { path: fixList, sha256 }, ...(Array.isArray(base) ? { base } : {}) }
+      if (spec === null) return { spec: null, ...listed }
+      if (text(spec) && text(specSha256) && (counted || specLines === undefined)) {
+        return { spec: { path: spec, sha256: specSha256, ...counted }, ...listed }
+      }
+    }
+  }
+  throw new Error('the spec check of the run printed no passing result')
+}
+
+// The entries of the fix list a fix run launched on, unchanged since its check read them.
 async function launchedEntries({ path, sha256 }: { path: string, sha256: string }): Promise<unknown[]> {
   const bytes = await readFile(path)
-  if (sha256Of(bytes) !== sha256) throw new Error(`the fix list ${path} changed since the run's launch check read it`)
+  if (sha256Of(bytes) !== sha256) throw new Error(`the fix list ${path} changed since the run's check read it`)
   const list: unknown = Bun.YAML.parse(bytes.toString('utf8'))
   if (!mapping(list) || !Array.isArray(list.entries)) throw new Error(`the fix list ${path} holds no entries`)
   return list.entries
@@ -557,7 +578,7 @@ async function returned(run: string, transcripts: string): Promise<{ launch: Lau
 }
 
 // A size breach of the unit, measured after the run: the implementation lines its candidate added
-// over the base in each repository, beside the spec lines the parent run's launch check counted.
+// over the base in each repository, beside the spec lines the parent run's spec check counted.
 const sizeKeys = ['specLines', 'codeAdded', 'repositories']
 const measuredKeys = ['path', 'base', 'candidate']
 const commitId = /^(?:[0-9a-f]{40}|[0-9a-f]{64})$/
@@ -565,7 +586,7 @@ const measuredRepository = (value: unknown) => mapping(value) &&
   Object.keys(value).length === measuredKeys.length && measuredKeys.every(key => Object.hasOwn(value, key)) &&
   repositoryPath(value.path) && typeof value.base === 'string' && commitId.test(value.base) &&
   typeof value.candidate === 'string' && commitId.test(value.candidate)
-const uncounted = "the parent run's launch check printed no spec lines to measure a size breach against"
+const uncounted = 'the parent run counted no spec lines to measure a size breach against'
 function sizeProblems(size: unknown, specLines: number): string[] {
   if (!mapping(size)) return ['expected a mapping']
   const problems = [
@@ -573,7 +594,7 @@ function sizeProblems(size: unknown, specLines: number): string[] {
     ...sizeKeys.filter(key => !Object.hasOwn(size, key)).map(key => `${key}: missing field`),
   ]
   if (Object.hasOwn(size, 'specLines') && size.specLines !== specLines) {
-    problems.push(`specLines: expected ${specLines}, the spec lines the parent run's launch check counted`)
+    problems.push(`specLines: expected ${specLines}, the spec lines the parent run's spec check counted`)
   }
   if (Object.hasOwn(size, 'codeAdded') && !(Number.isSafeInteger(size.codeAdded) && Number(size.codeAdded) >= 0)) {
     problems.push('codeAdded: expected the count of implementation lines added')
@@ -593,14 +614,15 @@ async function makeFixList(run: string, transcripts: string, size?: string) {
     let measured: unknown
     try { measured = JSON.parse(size) } catch (error) { throw new Error(`${expects}: ${messageOf(error)}`) }
     if (!mapping(measured)) throw new Error(expects)
-    if (launch.specLines === undefined) throw new Error(`--size: ${uncounted}`)
-    const breach = { specLines: launch.specLines, ...measured }
-    const problems = sizeProblems(breach, launch.specLines)
+    const specLines = launch.spec?.lines
+    if (specLines === undefined) throw new Error(`--size: ${uncounted}`)
+    const breach = { specLines, ...measured }
+    const problems = sizeProblems(breach, specLines)
     if (problems.length) throw new Error(`--size: ${problems.join('; ')}`)
     entries.push({ source: 'size', size: breach })
   }
   if (!entries.length) throw new Error(`run ${run} returned nothing to fix`)
-  console.log(Bun.YAML.stringify({ run, spec: launch.spec, entries }, null, 2))
+  console.log(Bun.YAML.stringify({ run, spec: launch.spec?.path ?? null, entries }, null, 2))
 }
 
 type Validator = ReturnType<typeof validator>
@@ -626,9 +648,10 @@ function listedEntry({ fail, shape }: Validator, value: unknown, index: number, 
 
 // Holds the list to what the parent run returned to be fixed: every entry the run returned, each as
 // its journal holds it and in the order the generator writes it, nothing else beside a size breach of
-// the unit, which comes last, and the spec the run checked, unchanged since. Returns what the run's
-// launch check printed.
-async function compareWithRun({ fail }: Validator, transcripts: string, run: string, spec: string | undefined, entries: ListedEntry[]) {
+// the unit, which comes last, and the spec the run checked, unchanged since, or null when it checked
+// none. A spec of undefined failed its shape and is not compared. Returns what the run checked.
+async function compareWithRun({ fail }: Validator, transcripts: string, run: string, spec: string | null | undefined,
+  entries: ListedEntry[]) {
   let held: Awaited<ReturnType<typeof returned>>
   try { held = await returned(run, transcripts) } catch (error) {
     // Every entry rests on the parent run, so its failure is reported against each entry, or against
@@ -638,17 +661,21 @@ async function compareWithRun({ fail }: Validator, transcripts: string, run: str
     return
   }
   const { launch } = held
-  if (spec !== undefined && spec !== launch.spec) fail(-1, 'fix list.spec', `expected the spec the parent run checked, ${launch.spec}`)
-  else if (spec !== undefined) {
+  const checked = launch.spec?.path ?? null
+  if (spec !== undefined && spec !== checked) {
+    fail(-1, 'fix list.spec', checked === null ? 'expected null, because the parent run checked no spec'
+      : `expected the spec the parent run checked, ${checked}`)
+  } else if (spec !== undefined && launch.spec) {
     try {
-      if (sha256Of(await readFile(launch.spec)) !== launch.specSha256) fail(-1, 'fix list.spec', 'changed since the parent run checked it')
+      if (sha256Of(await readFile(launch.spec.path)) !== launch.spec.sha256) fail(-1, 'fix list.spec', 'changed since the parent run checked it')
     } catch (error) { fail(-1, 'fix list.spec', messageOf(error)) }
   }
   const items = new Map(held.entries.map(entry => [entry.source, entry]))
   for (const { index, source, field, value } of entries) {
     if (source === 'size') {
-      if (launch.specLines === undefined) fail(index, 'size', uncounted)
-      else for (const problem of sizeProblems(value.size, launch.specLines)) fail(index, 'size', problem)
+      const specLines = launch.spec?.lines
+      if (specLines === undefined) fail(index, 'size', uncounted)
+      else for (const problem of sizeProblems(value.size, specLines)) fail(index, 'size', problem)
       continue
     }
     const item = items.get(source)
@@ -691,7 +718,7 @@ async function checkFixList(file: string, transcripts: string, { json, withEntri
   if (parsed && shape(fixList, fixListKeys, -1, 'fix list')) {
     const { run, spec } = fixList
     if (stringField(fixList, 'run', -1, 'fix list') && text(run) && !runId.test(run)) fail(-1, 'fix list.run', 'expected a run id')
-    stringField(fixList, 'spec', -1, 'fix list')
+    if (spec !== null) stringField(fixList, 'spec', -1, 'fix list')
     if (list(fixList.entries, -1, 'entries')) {
       const seen = new Set<string>()
       fixList.entries.forEach((value, index) => {
@@ -699,23 +726,25 @@ async function checkFixList(file: string, transcripts: string, { json, withEntri
         if (listed) entries.push(listed)
       })
     }
-    if (text(run) && runId.test(run)) launch = await compareWithRun(checks, transcripts, run, text(spec) ? spec : undefined, entries)
+    if (text(run) && runId.test(run)) {
+      launch = await compareWithRun(checks, transcripts, run, spec === null || text(spec) ? spec : undefined, entries)
+    }
   }
   if (report()) return
-  if (!launch) throw new Error('the fix list passed without the launch output of its parent run')
+  if (!launch) throw new Error('the fix list passed without what its parent run checked')
   const listed = entries.map(({ value }) => value)
-  // The entries appear only on request, because the launch check's stage returns the output whole. The
-  // base list was checked against the tree the tool runs in, so the proof covers that tree too, and a
-  // fix run's launch output carries the base list on to the check of its fixer's result.
+  const spec = launch.spec?.path ?? null
+  // The entries appear only on request, because the fixer returns the output whole. The base list was
+  // checked against the tree the tool runs in, so the proof covers that tree too, and a fix run's
+  // output carries the base list on to the check of its fixer's result.
   const summary = {
     ...(withEntries ? { entries: listed } : {}),
     run: (fixList as Mapping).run,
-    spec: launch.spec,
-    specSha256: launch.specSha256,
-    specLines: launch.specLines,
+    spec,
+    ...(launch.spec ? { specSha256: launch.spec.sha256, specLines: launch.spec.lines } : {}),
     ...(base ? { base } : {}),
     sha256: sha256Of(bytes!),
-    proof: fingerprint({ fixList: file, transcripts, spec: launch.spec, entries: listed, base, partialBase, tree: process.cwd() }),
+    proof: fingerprint({ fixList: file, transcripts, spec, entries: listed, base, partialBase, tree: process.cwd() }),
     fixList: file,
   }
   console.log(json ? JSON.stringify(summary) :
