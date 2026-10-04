@@ -431,50 +431,77 @@ const makeList = (run, sessions = transcripts) => {
   const result = Bun.spawnSync([process.execPath, tool, '--make-fix-list', run, '--transcripts', sessions], { cwd: root })
   return { exit: result.exitCode, out: result.stdout.toString(), err: result.stderr.toString() }
 }
-// The parent run's journal as the fixture holds it: the last verify stage's decisions and the roast's finding.
-const journal = (await Bun.file(join(transcripts, 'session-a/subagents/workflows/wf_parent-run/journal.jsonl')).text())
-  .trim().split('\n').map(line => JSON.parse(line))
-const decisions = journal.find(record => record.type === 'result' && record.key === 'parent-verify-2').result.decisions
-const roastFinding = journal.find(record => record.type === 'result' && record.key === 'parent-roast').result.findings[0]
-const pointers = [{ file: 'session-a.jsonl', line: 1, key: ['message', 'content'] }, { file: 'tests/fixtures/fix-list/rules.md', line: 3, key: [] }]
-const validEntries = [{ source: 'verify:1', decision: decisions[1], attach: pointers }, { source: 'roaster:0', finding: roastFinding, attach: [] }]
+// The parent run's journal as the fixture holds it: the last verify stage's decisions, the fixer's
+// dispositions and the roast's finding.
+const journalOf = path => Bun.file(join(transcripts, path)).text().then(body => body.trim().split('\n').map(line => JSON.parse(line)))
+const journal = await journalOf('session-a/subagents/workflows/wf_parent-run/journal.jsonl')
+const resultOf = (records, key) => records.find(record => record.type === 'result' && record.key === key).result
+const decisions = resultOf(journal, 'parent-verify-2').decisions
+const roastFinding = resultOf(journal, 'parent-roast').findings[0]
+const parentSpecPath = 'tests/fixtures/fix-list/parent.yaml'
+const parentSpecSha = createHash('sha256').update(new Uint8Array(await Bun.file(join(root, parentSpecPath)).arrayBuffer())).digest('hex')
+const validEntries = [{ source: 'verify:1', decision: decisions[1] }, { source: 'roaster:0', finding: roastFinding }]
 
 describe('fix list validation', () => {
-  test('a valid fix list passes with a fresh proof and its entries as the list holds them, in both output forms', async () => {
+  test('a valid fix list passes with a fresh proof, its spec and its entries as the list holds them, in both output forms', async () => {
     const [first, second] = [checkList(validPath, ['--json']), checkList(validPath, ['--json'])]
     expect([first.exit, first.err]).toEqual([0, ''])
     const bytes = await Bun.file(validPath).arrayBuffer()
     expect(JSON.parse(first.out)).toEqual({
-      entries: validEntries, run: 'wf_parent-run',
+      entries: validEntries, run: 'wf_parent-run', spec: parentSpecPath, specSha256: parentSpecSha,
       sha256: createHash('sha256').update(new Uint8Array(bytes)).digest('hex'),
       proof: expect.stringMatching(/^[0-9a-f]{32}$/), fixList: validPath,
     })
     expect(JSON.parse(first.out).proof).not.toBe(JSON.parse(second.out).proof)
     const plain = checkList(validPath)
     expect([plain.exit, plain.err]).toEqual([0, ''])
-    expect(plain.out).toMatch(/^entries=2 run=wf_parent-run sha256=[0-9a-f]{64} proof=[0-9a-f]{32} fixList=/)
+    expect(plain.out).toMatch(/^entries=2 run=wf_parent-run spec=tests\/fixtures\/fix-list\/parent\.yaml sha256=[0-9a-f]{64} proof=[0-9a-f]{32} fixList=/)
   })
 
-  test('the generated fix list holds every decision of the last verify stage and every roast finding, with no pointers, and passes', () => {
+  test('the generated fix list holds every decision but cleanup and reported fixes, every roast finding and the checked spec, and passes', () => {
     const made = makeList('wf_parent-run')
     expect([made.exit, made.err]).toEqual([0, ''])
-    expect(Bun.YAML.parse(made.out)).toEqual({ run: 'wf_parent-run', entries: [
-      { source: 'verify:0', decision: decisions[0], attach: [] }, { source: 'verify:1', decision: decisions[1], attach: [] },
-      { source: 'roaster:0', finding: roastFinding, attach: [] }] })
+    // verify:0 is the approved correction its fixer reported fixed, and verify:2 a cleanup decision.
+    expect(decisions.map(d => d.action)).toEqual(['approve-fix', 'needs-decision', 'cleanup'])
+    expect(Bun.YAML.parse(made.out)).toEqual({ run: 'wf_parent-run', spec: parentSpecPath, entries: validEntries })
     const checked = checkList(written(made.out), ['--json'])
     expect([checked.exit, checked.err]).toEqual([0, ''])
     invalid(makeList('wf_missing-run'), 'run wf_missing-run has no journal under the transcript directory')
-    invalid(makeList('wf_other-run'), 'run wf_other-run has no decision of a verify stage and no finding of a roast stage')
+    invalid(makeList('wf_other-run'), 'the launch check of the run printed no spec')
     invalid(makeList('../wf_parent-run'), 'expected a run id')
+  })
+
+  test('the fix list of a fix run carries its spec on and holds its roast and diff findings', async () => {
+    const records = await journalOf('session-c/subagents/workflows/wf_fix-run/journal.jsonl')
+    const made = makeList('wf_fix-run')
+    expect([made.exit, made.err]).toEqual([0, ''])
+    expect(Bun.YAML.parse(made.out)).toEqual({ run: 'wf_fix-run', spec: parentSpecPath, entries: [
+      { source: 'roaster:0', finding: resultOf(records, 'fix-roast').findings[0] },
+      { source: 'diff:0', finding: resultOf(records, 'fix-diff').findings[0] }] })
+    const checked = checkList(written(made.out), ['--json'])
+    expect([checked.exit, checked.err, JSON.parse(checked.out).specSha256]).toEqual([0, '', parentSpecSha])
+  })
+
+  test('the fix list of a review pass holds the findings of every review seat', async () => {
+    const records = await journalOf('session-c/subagents/workflows/wf_review-run/journal.jsonl')
+    const made = makeList('wf_review-run')
+    expect([made.exit, made.err]).toEqual([0, ''])
+    expect(Bun.YAML.parse(made.out)).toEqual({ run: 'wf_review-run', spec: parentSpecPath, entries: [
+      { source: 'review:correctness:0', finding: resultOf(records, 'review-correctness').findings[0] },
+      { source: 'review:code-smell:0', finding: resultOf(records, 'review-code-smell').findings[0] }] })
+    const checked = checkList(written(made.out), ['--json'])
+    expect([checked.exit, checked.err]).toEqual([0, ''])
+    invalid(checkList(written({ run: 'wf_review-run', spec: parentSpecPath, entries: [{ source: 'review:quality:0', finding: {} }] })),
+      'review:quality:0: the parent run has no stage labelled review:quality')
   })
 
   test.each([
     ['an unknown run', l => { l.run = 'wf_missing-run' }, 'verify:1: run wf_missing-run has no journal under the transcript directory'],
-    ['a stage the parent run lacks', l => { l.run = 'wf_other-run' }, 'verify:1: the parent run has no stage labelled verify'],
-    ['an index out of range', l => { l.entries[0].source = 'verify:2' }, 'verify:2: index 2 is outside the 2 decisions of verify'],
+    ['a stage the parent run lacks', l => { l.run = 'wf_review-run' }, 'verify:1: the parent run has no stage labelled verify'],
+    ['an index out of range', l => { l.entries[0].source = 'verify:3' }, 'verify:3: index 3 is outside the 3 decisions of verify'],
     ['an edited decision', l => { l.entries[0].decision.correction = 'Return the error to the caller.' }, 'verify:1.decision: differs from the parent run\'s journal'],
     ['an edited finding', l => { l.entries[1].finding.claim = 'The handle leaks.' }, 'roaster:0.finding: differs from the parent run\'s journal'],
-    ['a decision under a roaster source', l => { l.entries[1] = { source: 'roaster:0', decision: roastFinding, attach: [] } }, 'roaster:0.decision: unknown key'],
+    ['a decision under a roaster source', l => { l.entries[1] = { source: 'roaster:0', decision: roastFinding } }, 'roaster:0.decision: unknown key'],
   ])('%s fails with a violation naming the entry', (name, edit, message) => {
     const result = changedList(edit)
     invalid(result, message)
@@ -488,44 +515,34 @@ describe('fix list validation', () => {
   })
 
   test('a retried stage resolves against its last result only', () => {
-    const first = journal.find(record => record.type === 'result' && record.key === 'parent-verify-1').result.decisions[0]
-    invalid(changedList(l => { l.entries = [{ source: 'verify:0', decision: first, attach: [] }] }), 'verify:0.decision: differs from the parent run\'s journal')
-    const last = changedList(l => { l.entries = [{ source: 'verify:0', decision: decisions[0], attach: [] }] }, ['--json'])
+    const first = resultOf(journal, 'parent-verify-1').decisions[0]
+    invalid(changedList(l => { l.entries = [{ source: 'verify:0', decision: first }] }), 'verify:0.decision: differs from the parent run\'s journal')
+    const last = changedList(l => { l.entries = [{ source: 'verify:0', decision: decisions[0] }] }, ['--json'])
     expect([last.exit, last.err]).toEqual([0, ''])
   })
 
-  test.each([
-    ['a JSON lines record without a key path', p => { p.key = [] }, 'a record of a JSON lines file needs a key path'],
-    ['a key path the record lacks', p => { p.key = ['message', 'text'] }, 'the record holds no key path ["message","text"]'],
-    ['a line past the transcript', p => { p.line = 9 }, 'unreadable record: line is outside the transcript'],
-    ['a key name that is empty', p => { p.key = ['message', ' '] }, 'expected a list of key names'],
-    ['an unknown pointer key', p => { p.quote = 'A session transcript.' }, 'attach entry 1.quote: unknown key'],
-  ])('a transcript pointer with %s fails', (name, edit, message) => {
-    invalid(changedList(l => { edit(l.entries[0].attach[0]) }), message)
-  })
-
-  test.each([
-    ['a key path', p => { p.key = ['rules'] }, 'a line of a file that is no JSON lines file takes an empty key path'],
-    ['a line past the file', p => { p.line = 5 }, 'line 5 is outside the 4 lines of tests/fixtures/fix-list/rules.md'],
-    ['a missing file', p => { p.file = 'tests/fixtures/fix-list/missing.md' }, 'unreadable:'],
-  ])('a rule pointer with %s fails', (name, edit, message) => {
-    invalid(changedList(l => { edit(l.entries[0].attach[1]) }), message)
+  test('the spec is the one the parent run checked, unchanged', () => {
+    invalid(changedList(l => { l.spec = 'tests/fixtures/spec/valid.yaml' }), 'fix list.spec: expected the spec the parent run checked, tests/fixtures/fix-list/parent.yaml')
+    const copy = join(scratch, 'parent-copy')
+    mkdirSync(join(copy, 'tests/fixtures/fix-list'), { recursive: true })
+    writeFileSync(join(copy, parentSpecPath), 'unit: changed\n')
+    const result = Bun.spawnSync([process.execPath, tool, '--fix-list', validPath, '--transcripts', transcripts], { cwd: copy })
+    expect([result.exitCode, result.stderr.toString().includes('fix list.spec: changed since the parent run checked it')]).toEqual([1, true])
   })
 
   test.each([
     ['an unknown list key', l => { l.extra = true }, 'fix list.extra: unknown key'],
-    ['a parentSpec key', l => { l.parentSpec = join(fixLists, 'parent.yaml') }, 'fix list.parentSpec: unknown key'],
     ['a findings key', l => { l.findings = ['correctness:1'] }, 'fix list.findings: unknown key'],
     ['the keys of a spec', l => { l.unit = 'example' }, 'fix list.unit: unknown key'],
     ['a missing run', l => { delete l.run }, 'fix list.run: missing field'],
+    ['a missing spec', l => { delete l.spec }, 'fix list.spec: missing field'],
     ['missing entries', l => { delete l.entries }, 'fix list.entries: missing field'],
     ['a run id with a path in it', l => { l.run = '../wf_parent-run' }, 'fix list.run: expected a run id'],
     ['empty entries', l => { l.entries = [] }, 'entries: expected a non-empty list'],
     ['an entry with a correction', l => { l.entries[1].correction = 'Close the handle.' }, 'roaster:0.correction: unknown key'],
-    ['a reviewer source', l => { l.entries[1].source = 'correctness:1' }, 'entry 2.source: expected verify:<index> or roaster:<index>: "correctness:1"'],
+    ['an entry with pointers', l => { l.entries[1].attach = [] }, 'roaster:0.attach: unknown key'],
+    ['a reviewer source', l => { l.entries[1].source = 'correctness:1' }, 'entry 2.source: expected verify:<index>, roaster:<index>, diff:<index>, review:<seat>:<index>: "correctness:1"'],
     ['a duplicate source', l => { l.entries.push(structuredClone(l.entries[0])) }, 'verify:1: duplicate source verify:1'],
-    ['a missing attach list', l => { delete l.entries[1].attach }, 'roaster:0.attach: missing field'],
-    ['an attach that is no list', l => { l.entries[1].attach = 'session-a.jsonl:1' }, 'roaster:0.attach: expected a list'],
   ])('%s fails shape validation', (name, edit, message) => invalid(changedList(edit), message))
 
   test('a spec is no fix list, and a fix list is no spec', () => {
@@ -546,7 +563,7 @@ describe('fix list validation', () => {
 
   describe('launch values', () => {
     const launch = (edit = () => {}) => {
-      const values = { entries: structuredClone(validEntries) }
+      const values = { spec: parentSpecPath, entries: structuredClone(validEntries) }
       edit(values)
       return ['--expect', JSON.stringify(values)]
     }
@@ -560,7 +577,7 @@ describe('fix list validation', () => {
     test.each([
       ['a changed decision', v => { v.entries[0].decision.correction = 'Log the error and continue.' }, 'verify:1: differs from the launch values'],
       ['a correction beside the finding', v => { v.entries[1].correction = 'Close the file handle.' }, 'roaster:0: differs from the launch values'],
-      ['a pointer the list does not attach', v => { v.entries[1].attach.push(pointers[0]) }, 'roaster:0: differs from the launch values'],
+      ['another spec', v => { v.spec = 'tests/fixtures/spec/valid.yaml' }, 'launch values.spec: differs from the spec of the fix list'],
       ['a missing entry', v => { v.entries.pop() }, 'roaster:0: missing from the launch values'],
       ['an entry the list does not hold', v => { v.entries.push({ ...v.entries[0], source: 'verify:0' }) }, 'launch values.entries: verify:0 is not an entry of the fix list'],
     ])('%s fails with a violation naming the entry', (name, edit, message) => {
@@ -572,7 +589,7 @@ describe('fix list validation', () => {
     test('malformed launch values fail', () => {
       invalid(checkList(validPath, ['--expect', '{"entries": [']), 'launch values: malformed JSON')
       invalid(checkList(validPath, ['--expect', '[]']), 'launch values: expected a mapping')
-      invalid(checkList(validPath, ['--expect', JSON.stringify({ entries: validEntries, findings: [] })]), 'launch values.findings: unknown key')
+      invalid(checkList(validPath, ['--expect', JSON.stringify({ spec: parentSpecPath, entries: validEntries, findings: [] })]), 'launch values.findings: unknown key')
     })
   })
 

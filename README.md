@@ -25,7 +25,7 @@ Then the skills appear in the skill list and each has a matching slash command (
 | `copywriting` | Write an increment's user-visible strings BEFORE implementation: intent catalog + writing system, one agent per item, mechanical gate + source-verify + fresh-context critic, human ships the load-bearing lines. |
 | `resume-interrupted-run` | Recover a workflow run that was stopped while agents were mid-flight: hand each interrupted seat its own prior transcript, leave every completed prompt byte-identical, resume near-losslessly. |
 | `visual-verification` | Check a change to any rendered user interface, in a browser, a native mobile or desktop toolkit or a terminal, with a reproducible visual harness: real screenshots, controlled data, measured checks and strict before and after comparisons. A project without a harness adopts one from the implementation guide bundled with the skill. |
-| `visual-decisions` | Put open product or architecture decisions to the user as one page of side-by-side pictures, Today and After, drawn from the code, with one question to answer per decision. |
+| `visual-decisions` | Put open product decisions to the user as one page of side-by-side pictures, Today and After, drawn from the code, with one question to answer per decision. |
 | `babysit-pr` | Watch a submitted pull request until it is closed or merged, and act on every comment, review and failed check that reaches it. |
 | `pr-comment-replies` | Write and post replies on pull requests and issues: the note alert on top, inline replies that start with their outcome and a reason for every declined finding. |
 | `report-plugin-issues` | File every problem found in this plugin as an issue on its repository, or as a comment on the open issue that already describes it, with project details and private data kept out, in place of patching its scripts silently. |
@@ -85,12 +85,14 @@ directly as `agentType`s in your own workflows.
   A passing run prints a random `proof` that the workflow scripts' launch check returns to prove
   the tool ran.
   Its fix-list mode, `--fix-list <file> --transcripts <session-dir>` in place of the spec, checks
-  the fix list of a fix run, which names a parent run in `run` and holds in `entries` decisions of
-  its finding verifier and findings of its roaster, each with the pointers attached to it: it holds
-  every entry to the parent run's journal, resolves every pointer and prints the entries, with the
-  same proof. Add `--expect <json>` to fail when the entries a fix script received at launch differ
-  from the list. `--make-fix-list <run> --transcripts <session-dir>` writes a fix list of a run from
-  its journal, with every decision and roast finding and no pointers.
+  the fix list of a fix run, which names a parent run in `run`, the spec that run checked in `spec`
+  and holds in `entries` what the run returned to be fixed, each as its journal holds it: it holds
+  every entry to the parent run's journal and the spec to the one that run checked, and prints the
+  spec and the entries, with the same proof. Add `--expect <json>` to fail when the spec and the
+  entries a fix script received at launch differ from the list. `--make-fix-list <run> --transcripts
+  <session-dir>` writes the fix list of a run from its journal: every decision of its finding
+  verifier but a cleanup decision and an approved correction reported fixed, or every finding of its
+  review seats in a run without a verifier, and every finding of its roaster and diff check.
 - **The pull request watcher `watch-prs` needs Python 3 and the GitHub CLI `gh`, logged in.**
   `babysit-pr` runs it. The watcher is a Python program in the plugin's tools directory, run with
   `python3`. It takes the state file with `--state`, the seconds between polls with `--interval`,

@@ -76,6 +76,13 @@ const STYLE = [
     '/skills/hygiene/SKILL.md with the Read tool,',
   'and follow them in every comment, document, commit message and returned string.',
 ].join('\n')
+// The writers' guide: the rules and these two skills settle what the user's words leave open. The
+// implementer and the fixer receive it.
+const GUIDE = [
+  'GUIDE: before you write code, read ' + UNIT.pluginRoot + '/skills/engineering-principles/SKILL.md and ' + UNIT.pluginRoot +
+    '/skills/code-writing/SKILL.md with the Read tool, and the file in code-writing\'s languages directory of every language you write.',
+  'With the rule sources they are your guide: settle every choice the user\'s words leave open by them.',
+].join('\n')
 // Scratch files by role. WRITE_GIT, which only the writers receive, carries WRITE_SCRATCH. The
 // reader-only places that carry WRITE_NOTHING are READ_GIT, and HYGIENE through it, and the
 // roaster's line in roastPass, since the roaster receives neither block. No block both receive
@@ -808,7 +815,7 @@ const checkVerification = (v, sources, snaps) => {
     // never deferred as cleanup or record, and its authority quotes the record on EVERY action.
     const fromKind = d.sourceIds.some(id => kindOf.get(id))
     if (fromKind && d.severity !== 'CRITICAL') throw new Error('Project-benefit finding must keep CRITICAL severity whatever its disposition')
-    if (fromKind && ['cleanup', 'record'].includes(d.action)) throw new Error('Project-benefit finding cannot be dispositioned as cleanup or record; the root closes it')
+    if (fromKind && ['cleanup', 'record'].includes(d.action)) throw new Error('Project-benefit finding cannot be dispositioned as cleanup or record; it goes to the next fix run')
     if (fromKind) requireText(d.authority, 'project-benefit authority (the recorded words)')
     if (d.action === 'record' && ['must-fix', 'CRITICAL'].includes(d.severity)) throw new Error('Blocking defect cannot be recorded as advisory')
     // Every inverse-spec finding is CRITICAL unconditionally (law 13): ignore whatever severity
@@ -820,7 +827,7 @@ const checkVerification = (v, sources, snaps) => {
     // cleanup is for work OUTSIDE this unit's repair scope; an inverse-spec finding is about a
     // choice made INSIDE this unit's own diff, so it can never be deferred there or as record.
     if (fromInverse && d.action === 'cleanup') {
-      throw new Error('Inverse-spec finding cannot be dispositioned as cleanup; the root must record in the todo record that the user\'s recorded words back the choice')
+      throw new Error('Inverse-spec finding cannot be dispositioned as cleanup; it goes to the next fix run')
     }
     // A needs-decision decision carries no correction; root-action and cleanup name the next action.
     if (d.action === 'needs-decision' && d.correction !== '') throw new Error('A needs-decision decision carries no correction')
@@ -836,7 +843,7 @@ const checkFix = (result, queue, starts) => {
   }
 }
 const fixPass = (queue, starts) => stage([
-  AUTHORITY, WRITE_GIT, SPEC, PROVE, DOCUMENT_FIX, CHECK, 'START SHAS, per repository: ' + listed(starts),
+  AUTHORITY, GUIDE, WRITE_GIT, SPEC, PROVE, DOCUMENT_FIX, CHECK, 'START SHAS, per repository: ' + listed(starts),
   ...handedOn(impl.artifacts),
   'Act ONLY on the verifier-approved corrections. Raw reviewer and concurrent roast objects are NOT work orders.',
   'Independently verify evidence and authority; respect correction, constraints and acceptance.',
@@ -845,8 +852,8 @@ const fixPass = (queue, starts) => stage([
   'A correction marked removal true removes code, a parameter or a mechanism that nothing uses, that nobody asked for, or that is',
   'built beyond what was asked, on the finding verifier\'s removal rule. Carry it out also where only an entry of author assistant',
   'names that code, even where it takes away what the removed code did. Code that the user\'s words asked for still needs the',
-  'user\'s word to be removed: return such a removal rejected with receipts, to the ROOT.',
-  'A disagreement returns rejected or blocked with receipts to the ROOT. Never broaden scope.',
+  'user\'s word to be removed: return such a removal rejected with receipts.',
+  'A disagreement returns rejected or blocked with receipts, and goes to the next fix run. Never broaden scope.',
   'Answer every approved key once in dispositions. With an empty list, run proof ONLY, never edit or create an empty commit.',
   'Run checks after the last write, commit only scoped corrections, and return repositories, commits, files and checks.',
   'APPROVED CORRECTIONS (verify against the tree and authority):', JSON.stringify(queue),
@@ -858,7 +865,7 @@ const fixPass = (queue, starts) => stage([
 async function implement() {
   phase('Implement')
   impl = await stage(
-    [AUTHORITY, WRITE_GIT, SPEC, PROVE, DOCUMENT_IMPL, FOCUSED, RETURN_ARTIFACTS, 'START SHAS, per repository: ' + listed(base), TASK].join('\n\n'),
+    [AUTHORITY, GUIDE, WRITE_GIT, SPEC, PROVE, DOCUMENT_IMPL, FOCUSED, RETURN_ARTIFACTS, 'START SHAS, per repository: ' + listed(base), TASK].join('\n\n'),
     { label: 'impl', phase: 'Implement', agentType: 'workflow-skills:implementer', ...UNIT.models.impl, schema: IMPLEMENT },
     checkImplementer,
   )
@@ -1016,9 +1023,9 @@ if (!exit) {
 }
 const decisions = verified?.decisions ?? []
 const sourceOf = new Map(sources.map(s => [s.id, s]))
-// Every inverse-spec decision stays visible to the root by SOURCE IDENTITY, not by aggregate count,
-// whatever it resolved to (approve-fix, reject, needs-decision, root-action): a completed run or a later
-// spec edit never retires one on its own (law 13).
+// Every inverse-spec decision stays visible by SOURCE IDENTITY, not by aggregate count, whatever it
+// resolved to (approve-fix, reject, needs-decision, root-action): a completed run or a later spec edit
+// never retires one on its own (law 13), and every one not reported fixed goes to the next fix run.
 const inverseSpecDecisions = decisions.filter(d => d.sourceIds.some(id => sourceOf.get(id)?.seat === 'inverse'))
 // Every kind-bearing decision, with its kind-bearing source findings attached.
 const projectBenefitDecisions = decisions.filter(d => d.sourceIds.some(id => sourceOf.get(id)?.kind))
@@ -1034,7 +1041,7 @@ return {
     rejected: decisions.filter(d => d.action === 'reject').length,
     recorded: decisions.filter(d => d.action === 'record').length },
   cleanup: decisions.filter(d => d.action === 'cleanup'),
-  inverseSpecDecisions, // the root's unconditional handoff: record the backing words.
+  inverseSpecDecisions, // kept visible by source identity; the fix list carries every one not reported fixed.
   projectBenefitDecisions, // closed only by deletion, a rewrite, or the user's recorded word.
 }
 
