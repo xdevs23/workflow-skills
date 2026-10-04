@@ -1645,7 +1645,9 @@ describe('one-pass remaining-items handoff', () => {
       expect(style).toContain(word)
     }
     expect(style).toContain('Delete announcement preambles')
-    expect(style).toContain('Describe in a comment what the code can\'t express')
+    expect(style).toContain('Follow `workflow-skills:code-writing` for how code, its comments, its names and its strings')
+    const codeWriting = await Bun.file(new URL('../skills/code-writing/SKILL.md', import.meta.url)).text()
+    expect(flat(codeWriting)).toContain('A comment states a constraint or reason the code can\'t show')
     expect(flat(style)).toContain('Never write scoped-out work, project decisions, shortcuts or broken rules as limitations')
     expect(style).toContain('Do not rewrite existing text in passing')
     expect(style).toContain('Write paths, commands and identifiers in monospace')
@@ -1655,7 +1657,8 @@ describe('one-pass remaining-items handoff', () => {
   test('every other skill requires loading the writing-style skill', async () => {
     const dir = new URL('../skills/', import.meta.url)
     const names = ['babysit-pr', 'copywriting', 'implement-review-verify', 'pr-comment-replies',
-      'resume-interrupted-run', 'review-pass', 'visual-decisions', 'wall-of-shame', 'report-plugin-issues', 'hygiene']
+      'resume-interrupted-run', 'review-pass', 'visual-decisions', 'wall-of-shame', 'report-plugin-issues', 'hygiene',
+      'engineering-principles', 'code-writing']
     for (const name of names) {
       const text = await Bun.file(new URL(`${name}/SKILL.md`, dir)).text()
       expect(text).toContain('Load the `workflow-skills:writing-style` skill first.')
