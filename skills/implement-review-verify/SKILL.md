@@ -1693,8 +1693,8 @@ prompt rule it sees nowhere is a defect.
   diff, the start commits, the check command).
 - **Do NOT modify, reorder, or paraphrase the base rules inline — append only.**
 
-No script of this skill starts the `gap-finder` or the `scope-check` template. They stay in
-`agents/` for use as an `agentType` in other workflows.
+No script of this skill starts the `gap-finder` template. It stays in `agents/` for use as an
+`agentType` in other workflows.
 
 ## Model assignment
 

@@ -1666,7 +1666,6 @@ describe('fix-only follow-up runs', () => {
     expect(calls[1].agentType).toBe('fixer')
     expect(calls[1].prompt).toContain('START SHAS, per repository: . ' + BASE)
     expect([result.exit, result.remaining]).toEqual(['follow-up', [unattested('verify:0')]])
-    expect(fixSkeleton).not.toMatch(/scope-check|label: 'scope'/)
   })
 
   test('the launch values reach the tool as one shell word that reads back as the spec and the entries', async () => {
@@ -2273,7 +2272,7 @@ describe('the user\'s words reach every stage', () => {
       expect([name, (await template(name)).includes(rule)]).toEqual([name, true])
     }
     expect(await template('reviewer-inverse-spec')).toContain('A missing-decision finding carries kind unbacked-choice.')
-    for (const name of ['quality', 'cold-alternatives', 'roaster', 'gap-finder', 'scope-check', 'diff-check']) {
+    for (const name of ['quality', 'cold-alternatives', 'roaster', 'gap-finder', 'diff-check']) {
       expect([name, (await template(name)).includes('unbacked-choice')]).toEqual([name, false])
     }
     const line = 'A READING STAGE reports a choice in the spec, this prompt or the diff that no words of the user back as a finding with kind unbacked-choice.'
@@ -2587,8 +2586,8 @@ describe('the implementer checks the spec, and every stage reads only words said
   })
 })
 
-// The finding verifier and the fix run's scope check judge findings of critics whose purpose is code
-// quality, and no stage is told to put a question to the user.
+// The finding verifier judges findings of critics whose purpose is code quality, and no stage is
+// told to put a question to the user.
 describe('review seats are critics, and no stage asks the user a question', () => {
   const TEMPLATES = ['reviewer-correctness', 'reviewer-spec-compliance', 'duplicate-checker', 'quality', 'reviewer-inverse-spec',
     'project-rule-reader', 'cold-alternatives', ...AUDIT].map(type => '<plugin root>/agents/' + type + '.md')
