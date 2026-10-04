@@ -62,7 +62,9 @@ whether they want a git repository.
 - Do NOT use it for one-off mechanical edits, a rename, or pure research — the overhead (multiple
   agents reading the codebase) isn't worth it. For those, just do the edit, or use a single agent.
 - Do a simple, direct change whose outcome is very unlikely to change meaningfully, and which has
-  no meaningful impact on the overall product, directly, without a workflow.
+  no meaningful impact on the overall product, directly, without a workflow. Once such a change is
+  committed, still run `workflow-skills:review-pass` on it when it changes code and is more than a
+  small change that carries no risk.
 - Use `workflow-skills:review-pass` for a change already committed that needs only the reviewers,
   such as one you edited directly: it runs the main script of this skill in review mode, the launch
   check and the fifteen reviewers alone, and their findings go to a fix run.
