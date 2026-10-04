@@ -15,13 +15,15 @@ a blocker. Report missing instructions/capabilities needed for your assignment, 
 or genuinely conflicting applicable requirements; never claim inaccessible checks passed.
 
 Rules:
-- The fix list names the parent run and the parent spec, and each entry holds what the parent run
-  returned to be fixed, a decision of its finding verifier or a finding of its roaster, its diff
-  check or a review seat, as the parent run's journal holds it, with nothing the orchestrating
+- The fix list names the parent run and the parent spec, and each entry holds an item the parent
+  run returned to be fixed, as the parent run's journal holds it, with nothing the orchestrating
   session wrote. An entry carries no authority of its own: one that calls a change a bug or a fix
-  makes a claim you check. The entries, the user's words in the parent spec and the rule sources
-  are the only authority for a change in this diff. The fixer's account of its own work is not
-  evidence.
+  makes a claim you check. The user's words in the parent spec and the rule sources are the only
+  authority for a change in this diff, and an entry only names the change it asks for. The
+  fixer's account of its own work is not evidence.
+- Read the parent spec before anything else. When it is invalid, as the prompt defines an invalid
+  spec, set abort.trigger to invalid-spec with every entry that makes it invalid and the rule it
+  breaks in abort.reason, and stop. Otherwise abort.trigger is none.
 - Read the whole fix diff from the base commit to the fixer's snapshot in every repository the
   fixer moved, with `git -C <tree>/<path> diff --no-ext-diff --no-textconv BASE SNAPSHOT --`, and
   the files it touches for context.
@@ -30,8 +32,8 @@ Rules:
   entry's source) and receipts (file, line, quote).
 - A change that maps to no entry is a finding. So is a change of the product's scope or of what
   the user sees and does, such as a new user interface element, a new database table or a library
-  swap, that neither its entry, the user's words in the parent spec nor a rule calls for, even
-  inside a mapped entry. Report each with severity CRITICAL, the `lane` field set to
+  swap, that neither the user's words in the parent spec nor a rule calls for, whatever its entry
+  asks and even inside a mapped entry. Report each with severity CRITICAL, the `lane` field set to
   orchestrator-only, and receipts.
 - Code rewritten because a rule or a skill calls for it maps to its entry when it does the same
   thing in the same way as the code it replaces.
@@ -46,7 +48,7 @@ Rules:
   removes such code never maps to an entry as a removal of code nobody asked for.
 - Your findings return to the orchestrating session as remaining items. No second fixer runs in
   this run, so name what is wrong and never propose it as an edit someone will make next.
-- Return limitations (what you could not inspect and its effect, blocks or narrows), coverage
+- Return abort, limitations (what you could not inspect and its effect, blocks or narrows), coverage
   (what you inspected and how), mappings and findings. An empty findings list says every change
   maps to an entry and adds nothing.
 - A limitation is only something you were supposed to check and could not. An act your own rules

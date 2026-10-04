@@ -13,8 +13,8 @@ confidence. It *builds* what the user's discussion of the change arrived at and 
 the result before it is accepted. Scoped commits provide immutable review snapshots, not approval to
 merge or push.
 
-This skill is only meant for the orchestrator – that is, the root agent the user is talking to.
-Subagents and workflow agents never invoke this skill and must reject any attempt to do so.
+Only you, the session the user talks to, use this skill. Subagents and workflow agents never invoke
+this skill and must reject any attempt to do so.
 
 Run it as a `Workflow()` (deterministic fan-out/sequence). The phases are fixed; the breadth inside
 each scales to the change.
@@ -283,13 +283,14 @@ collisions and consistency drift.
 - Expect an entry of class `unbacked-entry` not to block the run. The implementer builds nothing its
   words ask for and builds the rest of the spec. Such an entry says only that its words were not
   said about this unit or have no meaning on their own, so the run builds what the user's words
-  about this unit ask for and you read the finding after the run.
+  about this unit ask for, and the finding goes to the run's fix run.
 - What cannot be built without the words of an `unbacked-entry` entry rests on the same words, so
   the entry points at it in `evidence` too and it stays unbuilt.
 - What the words of a `reality-drift` entry ask for is built.
 - The script puts every entry into `remaining` as a `spec-finding` item, CRITICAL for
-  `unbacked-entry` and must-fix otherwise, so you read each one after the run, however the run
-  ended, and record it.
+  `unbacked-entry` and must-fix otherwise, however the run ended. You record each one, and the fix
+  list of the run carries it to its fix run, whose fixer resolves it or raises the question it
+  needs.
 - The finding verifier receives the entries with the implementer's object and never approves a fix
   that builds what the implementer left unbuilt, as phase 3 describes.
 - **A spec without the user's words is not a silent one.** Before any edit, the implementer sets
@@ -599,7 +600,7 @@ lenses of every run, and the main script stops a run whose seat list holds anoth
   in that list. A path in `files` that no commit of the writer touched is a writer-scope problem,
   reported in the note of the writer's last commit with `ok` false.
 
-This is ordinary workflow work, not a checkpoint of yours. A verifier is neither a rubber stamp nor
+This is ordinary workflow work and no checkpoint of yours. A verifier is neither a rubber stamp nor
 a new source of design authority. Corrections already authorized by the user's words can proceed
 regardless of which seat found them; a new necessary choice cannot proceed merely because a
 reviewer or verifier prefers it, and goes to the next fix run, whose fixer settles it by the rules
@@ -684,7 +685,8 @@ or raises it as a question for the user.
 - Only approvals enter the fixer list. Unsettled necessary decisions, required `root-action` items,
   unresolved `issues` and the verifier's own blocking `limitations` do not hold the approved work
   back: the fixer applies the approved list and runs the checks, and those items return in
-  `remaining` with exit `root-resolution` and go to the next fix run. A read-only verifier can never
+  `remaining` with exit `root-resolution`. The decisions and the issues go to the next fix run. A
+  blocking limitation is a failure of the process and no finding, so no fix list carries it. A read-only verifier can never
   run a build, a test, a capture or a device, so a stop on every open item would end every run
   before its fixes. A question only such a check can answer is the acceptance check of the approved
   correction it concerns. Only a hard flag or a writer commit outside its scope keeps the fixer from
@@ -692,8 +694,8 @@ or raises it as a question for the user.
 - Routine rejections and successful consolidation remain in the workflow record and final summary;
   they do not interrupt you one by one.
 - Every decision on an inverse-spec source finding, however it resolves, stays visible in that
-  summary, and every one the fixer did not report fixed goes to the next fix run like every other
-  decision. Neither a later spec edit nor a completed run closes it on its own.
+  summary, and goes to the next fix run like every other decision, also when the fixer reported it
+  fixed. Neither a later spec edit nor a completed run closes it on its own.
 
 ### Phase 4 — Fix and roast concurrently
 
@@ -820,8 +822,8 @@ second implementer pre-check.
   decide none of it and write nothing beside it.
 - Attest each `unattested-fix` by reading its commits against the approved correction and running
   the checks yourself. Never report a fix as verified on the fixer's claim.
-- Show the user each question a fix run returns as a `user-question` item, as its fixer wrote it,
-  and each `spec-finding` item of the implementer. Put the user's answer into a copy of the spec:
+- Show the user each question a fix run returns as a `user-question` item, as its fixer wrote it.
+  Put the user's answer into a copy of the spec:
   the same entries with the new ones added in session order, as the unit spec section says, and
   nothing written for it. Start a new implement-review-verify run on it. The previous run's
   snapshot is the new run's base. Every stage of the main run applies unchanged. Every new run uses
@@ -845,23 +847,27 @@ second implementer pre-check.
   (the spec the parent run checked) and `entries`.
 - Write the fix list with
   `<plugin root>/tools/check-spec.ts --make-fix-list <run> --transcripts <dir>`, which prints the
-  spec the parent run checked and every entry the parent run returned to be fixed, each as the
-  journal holds it under its source: every decision of its last verify stage but a `cleanup`
-  decision and an approved correction its fixer reported fixed, as `verify:<index>`; in a run
-  without a verify stage, such as a review pass, every finding of its review seats, as
-  `review:<seat>:<index>`; and every finding of its last roast stage and of its last diff check, as
-  `roaster:<index>` and `diff:<index>`.
+  spec the parent run checked and everything the parent run returned to be fixed, each item as the
+  journal holds it under its source: every spec finding of its implementer, as `impl:<index>`;
+  every decision of its last verify stage, as `verify:<index>`, and every unresolved issue of it, as
+  `issue:<index>`; in a run without a verify stage, such as a review pass, every finding of its
+  review seats, as `review:<seat>:<index>`; in a fix run, every entry of its own list that its fixer
+  left open, as `entry:<index>`; and every finding of its last roast stage and of its last diff
+  check, as `roaster:<index>` and `diff:<index>`.
+- Expect a fix run's fixer to close an entry by rejecting it, by raising it as a question, or by a
+  fix its diff check mapped a change to. Every other entry of the fix run, a blocked one or one the
+  fixer never answered, stays open, and the next fix list carries it.
 - Save the tool's output as the fix list unchanged. Never add, delete or edit an entry and never
-  attach anything to one: the check holds every entry to the journal, and no word of yours enters
-  the list.
-- Record each `cleanup` decision in the todo record as its own unit, as the section on rule
-  violations says.
+  attach anything to one: the check compares the whole list with what the parent run returned, and
+  no word of yours enters the list.
 - Never use a spec as a fix list or a fix list as a spec, and never write one from the other. The
   two shapes never mix: the spec tool refuses a spec with the keys of a fix list, and a fix list
   with the keys of a spec.
-- Run `<plugin root>/tools/check-spec.ts --fix-list <file> --transcripts <dir> --json`, which holds
-  every entry to the parent run's journal and the spec to the one the parent run checked, unchanged
-  since, and prints the spec and the entries with the proof only when all of them hold.
+- Run `<plugin root>/tools/check-spec.ts --fix-list <file> --transcripts <dir> --json`, which
+  compares the whole list with everything the parent run returned to be fixed, in the order the
+  generator writes it, so an entry that differs, is missing, was added or stands out of order fails,
+  holds the spec to the one the parent run checked, unchanged since, and prints the spec and the
+  entries with the proof only when all of them hold.
 - Pass the tool's `spec` and `entries` output as `args.spec` and `args.entries` and the parent run's
   final snapshots as `args.base`, the `snapshots` list its run record returns, and fill the parent
   unit's documents directory and the applicable rule sources, as `ruleSources`, into the block.
@@ -881,11 +887,14 @@ second implementer pre-check.
   input without a technical reason, to revert an improvement or to reopen approved work is never a
   valid question: a rule answers it.
 - The roaster reads the same list beside the fixer.
-- The read-only diff check then maps every change of the fix diff to an entry. A design document
-  in the documents directory has no exception: a change to any of them maps to the entry it carries
-  out, or it is a CRITICAL finding.
+- The read-only diff check then maps every change of the fix diff to an entry, with the parent spec
+  and the rule sources the fixer received. A design document in the documents directory has no
+  exception: a change to any of them maps to the entry it carries out, or it is a CRITICAL finding.
 - A change that maps to no entry is a CRITICAL finding, and so is a change of the product's scope or
-  of what the user sees and does that neither the entry, the user's words nor a rule calls for.
+  of what the user sees and does that neither the user's words nor a rule calls for, whatever its
+  entry asks.
+- The fixer and the diff check read the parent spec, and each sets `abort.trigger` to
+  `invalid-spec` on an invalid one before anything else, as every stage that reads a spec does.
 - A correction whose only change is a design document is accepted when its entry names that
   document.
 - A fix reported as done needs a commit of the fixer whatever path it touches.
@@ -894,10 +903,11 @@ second implementer pre-check.
 - Each finding of the diff check returns as a CRITICAL `diff-finding` and starts no further fixer.
 - Every entry the fixer reports fixed returns as an `unattested-fix` for you to attest, as in the
   main run, and the run then ends `follow-up`, as it also does when only must-fix or CRITICAL roast
-  findings remain. It ends `root-resolution` when a question came back, an entry was not fixed, a
-  fix reported as done has no commit or maps to no change in the diff check (an `unproven-fix`), the
-  proof failed, or the diff check found a change without an entry. It ends `clean` only when
-  nothing at all remains, and ends on an abort or a stage failure as the main script does.
+  findings remain. A rejected entry stays in the run's `dispositions` and adds no remaining item.
+  The run ends `root-resolution` when a question came back, an entry was blocked, a fix reported as
+  done has no commit or maps to no change in the diff check (an `unproven-fix`), the proof failed,
+  or the diff check found a change without an entry. It ends `clean` only when nothing at all
+  remains, and ends on an abort or a stage failure as the main script does.
 - **Two relocations mean the cause is untouched.** When the todo record shows the same defect moved
   twice, the third change fixes the cause instead of moving it a third time, and a third relocation
   is refused with the cause reported to the user. The count lives in that defect's entry in the
@@ -939,7 +949,8 @@ second implementer pre-check.
   renamed in the same change that carries the decision.
 - **A decision that changes what a thing is starts from the spec.** When an answer of the user
   changes what a thing is, the answer goes into a copy of the spec, and the next run's implementer
-  redesigns from it before any unit that rests on the thing continues.
+  redesigns from it before any unit that rests on the thing continues. Show the user the redesign
+  that run returns, beginning with what the user sees and then the data model.
 - **A reported problem carries two literal quotations.** A problem reported to the user quotes the
   observed symptom and the line that causes it, each with its file and line or the command that
   produced it. A characterization is not a quotation. When the cause is not identified the report
@@ -973,8 +984,8 @@ it cannot prove a future model actually passed a question on unchanged and decid
 - **Pass a stage's question on with no recommended option of yours.** Label no option as
   recommended, add no option, and never offer one that keeps a found defect as it is or leaves the
   decision for later.
-- Every decision in `projectBenefitDecisions` that the fixer did not report fixed goes to the next
-  fix run like every other decision. A standing one closes only by deletion, a rewrite, or the
+- Every decision in `projectBenefitDecisions` goes to the next fix run like every other decision.
+  A standing one closes only by deletion, a rewrite, or the
   user's verbatim word to keep the shape, added to a copy of the spec; a patch that keeps the
   flagged mechanism leaves it open.
 
@@ -1075,6 +1086,12 @@ const assessSize = ({ specLines, codeAdded }) => {
   returned, the inverse-spec findings included, and the fix run's fixer removes the unnecessary
   mechanisms and duplication the rules call for, or raises the question of genuinely missing scope
   for the user.
+- Hand the breach to the fix list by adding `--size` to `--make-fix-list`, with one JSON mapping of
+  `codeAdded`, the measured implementation lines added, and `repositories`, one `{ path, base,
+  candidate }` per repository measured, with full commit IDs. The tool adds the measurement as the
+  entry `size`, beside the spec lines the parent run's launch check counted, and the check holds
+  those spec lines to that launch check. The fixer verifies the measurement against the tree like
+  every other entry.
 - Never pad the spec to lower the ratio, or use a later amendment to retroactively authorize
   unsupported code.
 - A spec suggestion alone does not stop the implementation/reviewer cycle; this gate applies to the
@@ -1196,7 +1213,8 @@ recorded in [work execution rules](../../docs/work-execution-rules.md).
   the change — name the hazards and ask "is this actually wrong?". That's what catches the
   plausible-but-broken implementation that tests written by the implementer won't.
 - **Verification precedes mutation.** One read-only verifier checks and consolidates every
-  source; the separate fixer rechecks approved corrections and returns disagreements to you.
+  source; the separate fixer rechecks approved corrections, and its disagreements go to the next
+  fix run.
   You attest fixed keys by reading their commits and running the checks.
 - **The biggest wall-clock win is killing redundant stages, not parallelizing bad ones.**
 
@@ -1338,8 +1356,8 @@ These laws are non-negotiable across every run of this skill.
     does not belong. Never retroactively authorize unsupported implementation.
     **Every inverse-spec finding is CRITICAL regardless of the severity or lane it arrived with; the
     finding verifier, the fixer and you all ignore that supplied categorization and must dispose of
-    it explicitly — never leave it implicitly closed.** Every one the fixer did not report fixed
-    goes to the next fix run like every other decision, and you decide none of them. A copy of the
+    it explicitly — never leave it implicitly closed.** Every one goes to the next fix run like
+    every other decision, and you decide none of them. A copy of the
     spec with new words does not resolve the finding on its own, and the original verbatim
     directives are never erased, rewritten or selectively omitted to make it disappear.
 14. **ASSERT AT THE GRANULARITY AT WHICH THE RULE BINDS** — per row, per section, per item — and
@@ -1376,7 +1394,8 @@ The phase shape only holds up if the script is written to hold it up.
   `docs` for a tree that is one repository. It holds the design documents a writer extends, and the
   scripts join it with the spec's file name to name a new one. The writers commit a document they
   wrote or extended in that repository.
-- The fix run's block holds the fix list path and the entries in place of the spec.
+- The fix run's block holds the fix list path, the parent spec and the entries in place of the
+  spec.
 - Everything below the block is the reviewed script and is not edited per unit. Never copy a
   previous unit's script and edit it, and never generalize one that already ran into a runner
   several units share.
@@ -1429,10 +1448,10 @@ prompt names, and the script does nothing else with it.
 
 The fix run's launch check runs the tool's fix-list mode in place of the spec check:
 `--fix-list` with the fix list from `args.fixList`, the transcript directory, `--json` and
-`--expect` with the entries from the launch values as one JSON argument. The script refuses at
-once when `args.fixList` does not end in `.yaml`, and the tool fails when the launch values differ
-from the list, when an entry differs from the parent run's journal, or when a pointer does not
-resolve.
+`--expect` with the spec and the entries from the launch values as one JSON argument. The script
+refuses at once when `args.fixList` does not end in `.yaml`, and the tool fails when the launch
+values differ from the list, when the list differs from what the parent run returned to be fixed,
+or when the spec is not the one the parent run checked.
 
 ### The main script
 
@@ -1529,7 +1548,7 @@ const fixPrompt = [
   AUTHORITY, WRITE_GIT, SPEC, PROVE, CHECK, 'START SHAS, per repository: ' + listed(snapshots),
   'Act ONLY on the verifier-approved corrections. Independently verify their evidence and authority.',
   'Respect each correction, constraints and acceptance check. Never broaden scope.',
-  'Answer each key in dispositions: fixed / rejected / blocked with receipts. Disagreements go to the ROOT.',
+  'Answer each key in dispositions: fixed / rejected / blocked with receipts. Disagreements go to the next fix run.',
   'APPROVED CORRECTIONS:', JSON.stringify(queue),
 ].join('\n\n')
 ```
@@ -1675,7 +1694,7 @@ prompt rule it sees nowhere is a defect.
   objects.
 - Each item carries its source IDs, verified evidence, authority references and exact quotes, the
   permitted correction, constraints and acceptance check. The fixer owes one disposition per key.
-- Rejected or blocked corrections return to you with counterevidence.
+- Rejected or blocked corrections go to the next fix run with their counterevidence.
 - A new necessary choice is not the fixer's to make; no scope expansion or authority-document edits
   are allowed.
 

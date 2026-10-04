@@ -250,20 +250,21 @@ function validator(file: string) {
 const usage = 'Usage: bun tools/check-spec.ts <spec.yaml> --transcripts <dir> ' +
   '[--json] [--base <JSON list of { path, sha }> [--partial-base]], ' +
   'or bun tools/check-spec.ts --fix-list <file> --transcripts <dir> [--json] [--expect <json>], ' +
-  'or bun tools/check-spec.ts --make-fix-list <run> --transcripts <dir>'
+  'or bun tools/check-spec.ts --make-fix-list <run> --transcripts <dir> [--size <json>]'
 
 async function main() {
   if (!Bun.YAML?.parse) throw new Error(`Bun ${minimumBun} or newer is required: Bun.YAML is unavailable`)
   const { values, positionals } = parseArgs({ args: Bun.argv.slice(2), allowPositionals: true,
     options: { transcripts: { type: 'string' }, json: { type: 'boolean' }, base: { type: 'string' }, 'partial-base': { type: 'boolean' },
-      'fix-list': { type: 'string' }, expect: { type: 'string' }, 'make-fix-list': { type: 'string' } } })
+      'fix-list': { type: 'string' }, expect: { type: 'string' }, 'make-fix-list': { type: 'string' }, size: { type: 'string' } } })
   if (values['make-fix-list'] !== undefined) {
     if (positionals.length || !values['make-fix-list'] || !values.transcripts || values.base || values['partial-base'] ||
       values['fix-list'] !== undefined || values.expect !== undefined || values.json) {
       throw new Error(usage)
     }
-    return makeFixList(values['make-fix-list'], values.transcripts)
+    return makeFixList(values['make-fix-list'], values.transcripts, values.size)
   }
+  if (values.size !== undefined) throw new Error(usage)
   if (values['fix-list'] !== undefined) {
     if (positionals.length || !values['fix-list'] || !values.transcripts || values.base || values['partial-base']) {
       throw new Error(usage)
@@ -353,32 +354,36 @@ async function main() {
     `unbreakable=${JSON.stringify(summary.unbreakable)} proof=${summary.proof} spec=${summary.spec}`)
 }
 
-// A fix list holds what one earlier run returned to be fixed, each item as the run's journal holds
-// it, and names the spec of the unit the run belongs to, which the fix run reads for the user's
-// words. --make-fix-list writes such a list from the journal, and nobody adds, removes or edits an
-// entry; the check holds every entry to the journal and the spec to the one the run checked. A fix
-// list is never written from a spec, and the two never mix: each mode refuses the keys of the other.
+// A fix list holds everything one earlier run returned to be fixed, each item as the run's journal
+// holds it, and names the spec of the unit the run belongs to, which the fix run reads for the user's
+// words. A fix list is never written from a spec, and the two never mix: each mode refuses the keys
+// of the other.
 const fixListKeys = ['run', 'spec', 'entries']
-// An entry's source: a decision of the finding verifier, a finding of the roaster or of the diff
-// check, or, in a run without a verify stage such as a review pass, a finding of a review seat, by
-// its index in the list of the last result of that stage.
-const sourceKinds = {
+// The sources that name an item in the last result of one stage of the run: the stage label, the
+// list in that result and the field an entry holds the item under.
+const stageSources = {
+  impl: { label: 'impl', list: 'specFindings', field: 'finding' },
   verify: { label: 'verify', list: 'decisions', field: 'decision' },
+  issue: { label: 'verify', list: 'issues', field: 'issue' },
   roaster: { label: 'roast', list: 'findings', field: 'finding' },
   diff: { label: 'diff', list: 'findings', field: 'finding' },
 } as const
-type SourceKind = keyof typeof sourceKinds
+type StageSource = keyof typeof stageSources
 const reviewLabel = /^review:([a-z][a-z-]*)$/
-const entrySource = new RegExp(`^(?:(${Object.keys(sourceKinds).join('|')})|review:([a-z][a-z-]*)):(0|[1-9][0-9]*)$`)
-const sourceNames = [...Object.keys(sourceKinds), 'review:<seat>'].map(kind => `${kind}:<index>`).join(', ')
-// The stage, list and field a source names, and its index, or nothing for a source of another form.
-const sourceOf = (source: unknown) => {
-  const match = typeof source === 'string' ? entrySource.exec(source) : null
-  if (!match) return undefined
-  const [, kind, seat, index] = match
-  const { label, list, field } = kind ? sourceKinds[kind as SourceKind] : { label: `review:${seat}`, list: 'findings', field: 'finding' }
-  return { label, list, field, index: Number(index) }
+// Beside the stage sources, review:<seat>:<index> names a finding of a review seat, entry:<index> an
+// entry of a fix run's own list that its fixer left open, and size the measured size breach of the
+// unit, which no stage returns.
+const entrySource = new RegExp(`^(?:(?<kind>${Object.keys(stageSources).join('|')}|entry|review:[a-z][a-z-]*):(?:0|[1-9][0-9]*)|size)$`)
+const sourceNames = [...Object.keys(stageSources), 'review:<seat>', 'entry'].map(kind => `${kind}:<index>`).concat('size').join(', ')
+// The field an entry holds its item under, by the kind of its source.
+const fields: Record<string, string> = {
+  ...Object.fromEntries(Object.entries(stageSources).map(([kind, { field }]) => [kind, field])), entry: 'entry', size: 'size' }
+const sourceOf = (source: unknown): { source: string, field: string } | undefined => {
+  const kind = typeof source === 'string' ? (entrySource.exec(source)?.groups?.kind ?? (source === 'size' ? 'size' : undefined)) : undefined
+  if (typeof source !== 'string' || kind === undefined) return undefined
+  return { source, field: kind.startsWith('review:') ? 'finding' : fields[kind] }
 }
+const listIn = (result: unknown, list: string): unknown[] => mapping(result) && Array.isArray(result[list]) ? result[list] : []
 // A run id is one directory name under the session's workflow directory.
 const runId = /^[A-Za-z0-9][A-Za-z0-9_.-]*$/
 const isFile = (path: string) => stat(path).then(found => found.isFile(), () => false)
@@ -463,60 +468,223 @@ async function lastResults(journal: string): Promise<Map<string, unknown>> {
   return new Map([...started].map(([label, key]) => [label, results.get(key)]))
 }
 
-// The spec of the run's unit and its sha256, as the run's launch check printed them: the check of a
-// main run or a review pass prints the spec it passed, and the check of a fix run prints the spec its
-// list names, so a fix run's own leftovers carry the same spec on.
-function parentSpec(results: Map<string, unknown>): { spec: string, sha256: string } {
+type Launch = { spec: string, specSha256: string, specLines?: number, fixList?: { path: string, sha256: string } }
+type Entry = Mapping & { source: string }
+
+// What the launch check of a run printed. The spec check of a main run or a review pass prints the
+// spec it passed; the check of a fix run prints its own fix list and the spec that list names, so the
+// spec carries on from run to run. The fix-list check of an earlier version of this tool printed no
+// spec lines, so a fix run it launched carries none on.
+function launchOf(results: Map<string, unknown>): Launch {
   const gate = results.get('gate')
   let printed: unknown
   try { printed = mapping(gate) && typeof gate.stdout === 'string' ? JSON.parse(gate.stdout) : undefined } catch { printed = undefined }
-  if (mapping(printed) && Object.hasOwn(printed, 'fixList')) {
-    if (text(printed.spec) && text(printed.specSha256)) return { spec: printed.spec, sha256: printed.specSha256 }
-  } else if (mapping(printed) && text(printed.spec) && text(printed.sha256)) return { spec: printed.spec, sha256: printed.sha256 }
+  if (mapping(printed) && text(printed.spec)) {
+    const { spec, specLines, sha256, specSha256, fixList } = printed
+    const counted = Number.isSafeInteger(specLines) ? { specLines: Number(specLines) } : undefined
+    if (!Object.hasOwn(printed, 'fixList')) {
+      if (text(sha256) && counted) return { spec, specSha256: sha256, ...counted }
+    } else if (text(fixList) && text(specSha256) && text(sha256) && (counted || specLines === undefined)) {
+      return { spec, specSha256, ...counted, fixList: { path: fixList, sha256 } }
+    }
+  }
   throw new Error('the launch check of the run printed no spec')
 }
 
-// Writes the fix list of a run from its journal: every decision of its last verify stage except a
-// cleanup decision, which names work outside the unit, and except an approved correction its fixer
-// reported fixed; in a run without a verify stage, every finding of its review seats; then every
-// finding of its last roast stage and of its last diff check. The spec is the one the run checked.
-async function makeFixList(run: string, transcripts: string) {
-  if (!runId.test(run)) throw new Error(`expected a run id: ${run}`)
+// The entries of the fix list a fix run launched on, unchanged since its launch check read them.
+async function launchedEntries({ path, sha256 }: { path: string, sha256: string }): Promise<unknown[]> {
+  const bytes = await readFile(path)
+  if (sha256Of(bytes) !== sha256) throw new Error(`the fix list ${path} changed since the run's launch check read it`)
+  const list: unknown = Bun.YAML.parse(bytes.toString('utf8'))
+  if (!mapping(list) || !Array.isArray(list.entries)) throw new Error(`the fix list ${path} holds no entries`)
+  return list.entries
+}
+
+// A fix run's fixer closes an entry by rejecting it, by raising it as a question for the user, or by a
+// fix its run's diff check mapped a change to. Every other entry stays open.
+const closed = (disposition: unknown, mapped: boolean) =>
+  disposition === 'rejected' || disposition === 'question' || (disposition === 'fixed' && mapped)
+
+// Everything a run returned to be fixed, as its journal holds it: the implementer's spec findings;
+// every decision and every unresolved issue of the finding verifier, or, in a run without a verify
+// stage such as a review pass, every finding of the review seats; in a fix run, every entry of its own
+// list its fixer left open; and every finding of the roaster and of the diff check.
+async function returned(run: string, transcripts: string): Promise<{ launch: Launch, entries: Entry[] }> {
   const results = await lastResults(await findJournal(transcripts, run))
-  const { spec } = parentSpec(results)
-  const entries: Mapping[] = []
-  const verify = results.get('verify')
-  if (mapping(verify) && Array.isArray(verify.decisions)) {
-    // The main script keys the approved corrections fix:<n>, in the order of the approve-fix decisions.
-    const fix = results.get('fix')
-    const fixed = new Set((mapping(fix) && Array.isArray(fix.dispositions) ? fix.dispositions : [])
-      .filter(d => mapping(d) && d.disposition === 'fixed').map(d => (d as Mapping).key))
-    let approved = 0
-    verify.decisions.forEach((decision, index) => {
-      const key = mapping(decision) && decision.action === 'approve-fix' ? `fix:${approved++}` : undefined
-      if ((mapping(decision) && decision.action === 'cleanup') || (key && fixed.has(key))) return
-      entries.push({ source: `verify:${index}`, decision })
-    })
-  } else {
+  const launch = launchOf(results)
+  const entries: Entry[] = []
+  const take = (kind: string, field: string, items: unknown[]) =>
+    items.forEach((item, index) => entries.push({ source: `${kind}:${index}`, [field]: item }))
+  const fromStage = (kind: StageSource) => {
+    const { label, list, field } = stageSources[kind]
+    take(kind, field, listIn(results.get(label), list))
+  }
+  fromStage('impl')
+  fromStage('verify')
+  fromStage('issue')
+  if (!results.has('verify')) {
     for (const [label, result] of results) {
       const seat = reviewLabel.exec(label)?.[1]
-      if (seat && mapping(result) && Array.isArray(result.findings)) {
-        result.findings.forEach((finding, index) => entries.push({ source: `review:${seat}:${index}`, finding }))
-      }
+      if (seat) take(`review:${seat}`, 'finding', listIn(result, 'findings'))
     }
   }
-  for (const kind of ['roaster', 'diff'] as const) {
-    const { label, list, field } = sourceKinds[kind]
-    const result = results.get(label)
-    const items = mapping(result) && Array.isArray(result[list]) ? result[list] : []
-    items.forEach((item, index) => entries.push({ source: `${kind}:${index}`, [field]: item }))
+  if (launch.fixList) {
+    const dispositions = new Map(listIn(results.get('fix'), 'dispositions').filter(mapping).map(d => [d.key, d.disposition]))
+    const mapped = new Set(listIn(results.get('diff'), 'mappings').filter(mapping).map(m => m.source))
+    const launched = await launchedEntries(launch.fixList)
+    launched.forEach((entry, index) => {
+      const source = mapping(entry) ? entry.source : undefined
+      if (!closed(dispositions.get(source), mapped.has(source))) entries.push({ source: `entry:${index}`, entry })
+    })
   }
-  if (!entries.length) throw new Error(`run ${run} returned no decision or finding to fix`)
-  console.log(Bun.YAML.stringify({ run, spec, entries }, null, 2))
+  fromStage('roaster')
+  fromStage('diff')
+  return { launch, entries }
+}
+
+// A size breach of the unit, measured after the run: the implementation lines its candidate added
+// over the base in each repository, beside the spec lines the parent run's launch check counted.
+const sizeKeys = ['specLines', 'codeAdded', 'repositories']
+const measuredKeys = ['path', 'base', 'candidate']
+const commitId = /^(?:[0-9a-f]{40}|[0-9a-f]{64})$/
+const measuredRepository = (value: unknown) => mapping(value) &&
+  Object.keys(value).length === measuredKeys.length && measuredKeys.every(key => Object.hasOwn(value, key)) &&
+  repositoryPath(value.path) && typeof value.base === 'string' && commitId.test(value.base) &&
+  typeof value.candidate === 'string' && commitId.test(value.candidate)
+const uncounted = "the parent run's launch check printed no spec lines to measure a size breach against"
+function sizeProblems(size: unknown, specLines: number): string[] {
+  if (!mapping(size)) return ['expected a mapping']
+  const problems = [
+    ...Object.keys(size).filter(key => !sizeKeys.includes(key)).map(key => `${key}: unknown key`),
+    ...sizeKeys.filter(key => !Object.hasOwn(size, key)).map(key => `${key}: missing field`),
+  ]
+  if (Object.hasOwn(size, 'specLines') && size.specLines !== specLines) {
+    problems.push(`specLines: expected ${specLines}, the spec lines the parent run's launch check counted`)
+  }
+  if (Object.hasOwn(size, 'codeAdded') && !(Number.isSafeInteger(size.codeAdded) && Number(size.codeAdded) >= 0)) {
+    problems.push('codeAdded: expected the count of implementation lines added')
+  }
+  if (Object.hasOwn(size, 'repositories') && !(Array.isArray(size.repositories) && size.repositories.length &&
+    size.repositories.every(measuredRepository))) {
+    problems.push('repositories: expected a non-empty list of { path, base, candidate } with full commit IDs')
+  }
+  return problems
+}
+
+async function makeFixList(run: string, transcripts: string, size?: string) {
+  if (!runId.test(run)) throw new Error(`expected a run id: ${run}`)
+  const { launch, entries } = await returned(run, transcripts)
+  if (size !== undefined) {
+    const expects = '--size expects a JSON mapping of codeAdded and repositories'
+    let measured: unknown
+    try { measured = JSON.parse(size) } catch (error) { throw new Error(`${expects}: ${messageOf(error)}`) }
+    if (!mapping(measured)) throw new Error(expects)
+    if (launch.specLines === undefined) throw new Error(`--size: ${uncounted}`)
+    const breach = { specLines: launch.specLines, ...measured }
+    const problems = sizeProblems(breach, launch.specLines)
+    if (problems.length) throw new Error(`--size: ${problems.join('; ')}`)
+    entries.push({ source: 'size', size: breach })
+  }
+  if (!entries.length) throw new Error(`run ${run} returned nothing to fix`)
+  console.log(Bun.YAML.stringify({ run, spec: launch.spec, entries }, null, 2))
+}
+
+type Validator = ReturnType<typeof validator>
+type ListedEntry = { index: number, source: string, field: string, value: Mapping }
+
+// One entry of the list by its shape alone: a mapping with a source of a known form, the one field
+// that source names and no source a former entry already holds.
+function listedEntry({ fail, shape }: Validator, value: unknown, index: number, seen: Set<string>): ListedEntry | undefined {
+  if (!mapping(value)) { fail(index, `entry ${index + 1}`, 'expected a mapping'); return }
+  const named = sourceOf(value.source)
+  if (!named) {
+    shape(value, ['source'], index, `entry ${index + 1}`)
+    fail(index, `entry ${index + 1}.source`, `expected ${sourceNames}: ${JSON.stringify(value.source)}`)
+    return
+  }
+  const { source, field } = named
+  shape(value, ['source', field], index, source)
+  if (seen.has(source)) { fail(index, source, `duplicate source ${source}`); return }
+  seen.add(source)
+  if (Object.hasOwn(value, field) && !mapping(value[field])) fail(index, `${source}.${field}`, 'expected a mapping')
+  return { index, source, field, value }
+}
+
+// Holds the list to what the parent run returned to be fixed: every entry the run returned, each as
+// its journal holds it and in the order the generator writes it, nothing else beside a size breach of
+// the unit, which comes last, and the spec the run checked, unchanged since. Returns what the run's
+// launch check printed.
+async function compareWithRun({ fail }: Validator, transcripts: string, run: string, spec: string | undefined, entries: ListedEntry[]) {
+  let held: Awaited<ReturnType<typeof returned>>
+  try { held = await returned(run, transcripts) } catch (error) {
+    // Every entry rests on the parent run, so its failure is reported against each entry, or against
+    // the run itself when no entry could be read.
+    if (!entries.length) fail(-1, 'fix list.run', messageOf(error))
+    for (const { index, source } of entries) fail(index, source, messageOf(error))
+    return
+  }
+  const { launch } = held
+  if (spec !== undefined && spec !== launch.spec) fail(-1, 'fix list.spec', `expected the spec the parent run checked, ${launch.spec}`)
+  else if (spec !== undefined) {
+    try {
+      if (sha256Of(await readFile(launch.spec)) !== launch.specSha256) fail(-1, 'fix list.spec', 'changed since the parent run checked it')
+    } catch (error) { fail(-1, 'fix list.spec', messageOf(error)) }
+  }
+  const items = new Map(held.entries.map(entry => [entry.source, entry]))
+  for (const { index, source, field, value } of entries) {
+    if (source === 'size') {
+      if (launch.specLines === undefined) fail(index, 'size', uncounted)
+      else for (const problem of sizeProblems(value.size, launch.specLines)) fail(index, 'size', problem)
+      continue
+    }
+    const item = items.get(source)
+    if (!item) fail(index, source, 'the parent run returned no item to fix under this source')
+    else if (Object.hasOwn(value, field) && !Bun.deepEquals(value[field], item[field], true)) {
+      fail(index, `${source}.${field}`, "differs from the parent run's journal")
+    }
+  }
+  const listed = new Set(entries.map(({ source }) => source))
+  for (const { source } of held.entries) {
+    if (!listed.has(source)) fail(entries.length, source, 'missing, and the parent run returned it to be fixed')
+  }
+  const order = [...held.entries.map(({ source }) => source), 'size']
+  const expected = order.filter(source => listed.has(source))
+  const known = entries.filter(({ source }) => order.includes(source))
+  const position = known.findIndex(({ source }, at) => source !== expected[at])
+  if (position >= 0) {
+    fail(known[position].index, known[position].source, `out of order: the parent run returned ${expected[position]} in this place`)
+  }
+  return launch
+}
+
+// Holds the launch values a fix script received, the spec and the entries this check prints, to the
+// list, so what the fix run hands its stages is what the list holds.
+function compareWithLaunchValues({ fail, shape }: Validator, expected: string, list: Mapping, entries: ListedEntry[]) {
+  let launch: unknown
+  try { launch = JSON.parse(expected) } catch (error) { fail(-1, 'launch values', `malformed JSON: ${messageOf(error)}`); return }
+  if (!shape(launch, ['spec', 'entries'], -1, 'launch values')) return
+  if (launch.spec !== list.spec) fail(-1, 'launch values.spec', 'differs from the spec of the fix list')
+  const launched = new Map<string, Mapping>()
+  if (!Array.isArray(launch.entries)) fail(-1, 'launch values.entries', 'expected a list')
+  else for (const given of launch.entries) {
+    if (!mapping(given) || !text(given.source) || launched.has(given.source)) {
+      fail(-1, 'launch values.entries', `expected a mapping with a unique source: ${JSON.stringify(given)}`)
+    } else launched.set(given.source, given)
+  }
+  for (const { index, source, value } of entries) {
+    const given = launched.get(source)
+    if (!given) fail(index, source, 'missing from the launch values')
+    else if (!Bun.deepEquals(given, value, true)) fail(index, source, 'differs from the launch values')
+  }
+  const listed = new Set(entries.map(({ source }) => source))
+  for (const source of launched.keys()) {
+    if (!listed.has(source)) fail(-1, 'launch values.entries', `${source} is not an entry of the fix list`)
+  }
 }
 
 async function checkFixList(file: string, transcripts: string, json: boolean, expected?: string) {
-  const { fail, shape, stringField, list, report } = validator(file)
+  const checks = validator(file)
+  const { fail, shape, stringField, list, report } = checks
   let bytes: Buffer | undefined
   let fixList: unknown
   let parsed = false
@@ -527,88 +695,30 @@ async function checkFixList(file: string, transcripts: string, json: boolean, ex
   } catch (error) {
     fail(-1, 'fix list', `unreadable or malformed YAML: ${messageOf(error)}`)
   }
-  // The entries the list holds, in its order. Each keeps the field its source names.
-  const entries: { index: number, source: string, value: Mapping }[] = []
-  let specSha256: string | undefined
+  const entries: ListedEntry[] = []
+  let launch: Launch | undefined
   if (parsed && shape(fixList, fixListKeys, -1, 'fix list')) {
-    const runOK = stringField(fixList, 'run', -1, 'fix list') && runId.test(fixList.run as string)
-    if (text(fixList.run) && !runOK) fail(-1, 'fix list.run', 'expected a run id')
-    const specOK = stringField(fixList, 'spec', -1, 'fix list')
+    const { run, spec } = fixList
+    if (stringField(fixList, 'run', -1, 'fix list') && text(run) && !runId.test(run)) fail(-1, 'fix list.run', 'expected a run id')
+    stringField(fixList, 'spec', -1, 'fix list')
     if (list(fixList.entries, -1, 'entries')) {
-      for (const [index, value] of fixList.entries.entries()) {
-        const named = mapping(value) ? sourceOf(value.source) : undefined
-        const path = named ? value.source as string : `entry ${index + 1}`
-        if (!shape(value, ['source', ...(named ? [named.field] : [])], index, path)) continue
-        if (!named) { fail(index, `${path}.source`, `expected ${sourceNames}: ${JSON.stringify(value.source)}`); continue }
-        if (entries.some(entry => entry.source === path)) { fail(index, path, `duplicate source ${path}`); continue }
-        if (Object.hasOwn(value, named.field) && !mapping(value[named.field])) fail(index, `${path}.${named.field}`, 'expected a mapping')
-        entries.push({ index, source: path, value })
-      }
+      const seen = new Set<string>()
+      fixList.entries.forEach((value, index) => {
+        const listed = listedEntry(checks, value, index, seen)
+        if (listed) entries.push(listed)
+      })
     }
-    if (runOK) {
-      let results: Map<string, unknown> | undefined
-      try { results = await lastResults(await findJournal(transcripts, fixList.run as string)) } catch (error) {
-        // Every entry rests on the parent run, so its failure is reported against each entry, or
-        // against the run itself when no entry could be read.
-        if (!entries.length) fail(-1, 'fix list.run', messageOf(error))
-        for (const { index, source } of entries) fail(index, source, messageOf(error))
-      }
-      if (results) {
-        // The spec is the one the parent run checked, unchanged since: same path, same bytes.
-        if (specOK) {
-          try {
-            const checked = parentSpec(results)
-            if (fixList.spec !== checked.spec) fail(-1, 'fix list.spec', `expected the spec the parent run checked, ${checked.spec}`)
-            else if (sha256Of(await readFile(checked.spec)) !== checked.sha256) fail(-1, 'fix list.spec', 'changed since the parent run checked it')
-            else specSha256 = checked.sha256
-          } catch (error) { fail(-1, 'fix list.spec', messageOf(error)) }
-        }
-        for (const { index, source, value } of entries) {
-          const { label, list: name, field, index: position } = sourceOf(source)!
-          if (!results.has(label)) { fail(index, source, `the parent run has no stage labelled ${label}`); continue }
-          const result = results.get(label)
-          const items = mapping(result) && Array.isArray(result[name]) ? result[name] : undefined
-          if (!items) { fail(index, source, `the last ${label} stage returned no ${name} list`); continue }
-          if (position >= items.length) { fail(index, source, `index ${position} is outside the ${items.length} ${name} of ${label}`); continue }
-          if (Object.hasOwn(value, field) && !Bun.deepEquals(value[field], items[position], true)) {
-            fail(index, `${source}.${field}`, `differs from the parent run's journal`)
-          }
-        }
-      }
-    }
-    // The launch values a fix script received: the spec and the entries this check prints. Each must
-    // equal the list's, so what the fix run hands its stages is what the journal holds.
-    if (expected !== undefined) {
-      let launch: unknown
-      try { launch = JSON.parse(expected) } catch (error) { fail(-1, 'launch values', `malformed JSON: ${messageOf(error)}`) }
-      if (launch !== undefined && shape(launch, ['spec', 'entries'], -1, 'launch values')) {
-        if (launch.spec !== fixList.spec) fail(-1, 'launch values.spec', 'differs from the spec of the fix list')
-        const launched = new Map<string, Mapping>()
-        if (!Array.isArray(launch.entries)) fail(-1, 'launch values.entries', 'expected a list')
-        else for (const given of launch.entries) {
-          if (!mapping(given) || !text(given.source) || launched.has(given.source)) {
-            fail(-1, 'launch values.entries', `expected a mapping with a unique source: ${JSON.stringify(given)}`)
-          } else launched.set(given.source, given)
-        }
-        for (const { index, source, value } of entries) {
-          const given = launched.get(source)
-          if (!given) fail(index, source, 'missing from the launch values')
-          else if (!Bun.deepEquals(given, value, true)) fail(index, source, 'differs from the launch values')
-        }
-        const listed = new Set(entries.map(({ source }) => source))
-        for (const source of launched.keys()) {
-          if (!listed.has(source)) fail(-1, 'launch values.entries', `${source} is not an entry of the fix list`)
-        }
-      }
-    }
+    if (text(run) && runId.test(run)) launch = await compareWithRun(checks, transcripts, run, text(spec) ? spec : undefined, entries)
+    if (expected !== undefined) compareWithLaunchValues(checks, expected, fixList, entries)
   }
   if (report()) return
-  const { run, spec } = fixList as Mapping
+  if (!launch) throw new Error('the fix list passed without the launch output of its parent run')
   const summary = {
     entries: entries.map(({ value }) => value),
-    run,
-    spec,
-    specSha256,
+    run: (fixList as Mapping).run,
+    spec: launch.spec,
+    specSha256: launch.specSha256,
+    specLines: launch.specLines,
     sha256: sha256Of(bytes!),
     proof: freshProof(),
     fixList: file,
