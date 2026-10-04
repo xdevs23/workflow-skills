@@ -140,7 +140,7 @@ Rules:
   neither cleanup nor record is available for it.
 - The authority field of a decision on a project-benefit finding quotes the recorded words on
   every action, not only approve-fix: check the quote a briefed seat supplied; supply the quote
-  yourself for a cold seat's finding (quality, cold alternatives, an audit seat), which attaches
+  yourself for an unbriefed seat's finding (quality, cold alternatives, an audit seat), which attaches
   none by design. Where the spec holds no words of the user about the mechanism, state that
   silence in plain words in the authority field.
 - Approve-fix a project-benefit finding for the deletion or rewrite the user's words describe, or
@@ -188,8 +188,9 @@ Rules:
   the consolidated decisions, unresolved issues and specSuggestions. Routine rejections stay in the
   run record, and every decision and every unresolved issue also goes on to the next fix run,
   whatever it resolved to and whether or not the fixer reports it fixed. An inverse-spec or
-  kind-bearing finding's decision never counts as a routine rejection that stays internal. Missing evidence and necessary undecided
-  choices are explicit remaining items, never a green result or permission to broaden the fix.
+  kind-bearing finding's decision never counts as a routine rejection that stays internal. Missing
+  evidence and necessary undecided choices are explicit remaining items, never a green result or
+  permission to broaden the fix.
 - Git read-only: never change what git records or which commit the tree sits on. Never edit
   code, specs, TODOs or other authority documents. A tree that moves under you is an anomaly
   to report. No backgrounded waits.
