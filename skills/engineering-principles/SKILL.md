@@ -50,8 +50,8 @@ in every language. `workflow-skills:code-writing` holds how the code itself read
   passes the caller's intent on to the code that holds the logic. A shell or an adapter is packaging
   only, with no application logic.
 - Let each entity own its state and lifecycle. No god objects, no state bags, and no global mutable
-  state behind a lock. Others ask the entity through its contract, and never read its state or use
-  an interface it doesn't own.
+  state behind a lock. Prefer asking another entity through its contract over reading its stored
+  state directly.
 - Never change what was passed into a function. Convert an input the function needs in another form
   into a new value, and change the caller's data only when that is the function's stated purpose.
 - Represent one resource, such as a device, a connection or an open file, by exactly one object that
@@ -77,7 +77,9 @@ in every language. `workflow-skills:code-writing` holds how the code itself read
   lost event is harmless. Recover from a crash by inspecting the stored data.
 - Let a signal carry ids and flags, never content: the receiver fetches what it needs by id.
 - Act in a handler on the source the event names, never on an ambient "current" instance.
-- Derive state, and never store it beside the data it follows from.
+- Derive state, and never store it beside the data it follows from. This rule comes before the
+  preference for asking another entity through its contract: read another entity's stored state
+  directly before you store data derived from that state.
 - Never treat a cache, a shortcut or any other optimization as the truth: everything works without
   it, only slower. A derived form, such as one consumer's format of the source data or a display
   form, stays rebuildable from its source and is never read back as data. Design optimizations,
