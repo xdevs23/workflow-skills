@@ -176,9 +176,15 @@ specs.
   can be listed in full never sets it.
 - Run the tool before you launch the main run.
 - Read its summary on stdout, as JSON with `--json`: the spec's `sha256`, `nonBlankLines`, the
-  `specLines` the size check divides by, the `unbreakable` lines and a `proof`.
+  `specLines` the size check divides by, the `unbreakable` lines and a `proof`, the fingerprint of
+  the values the tool checked.
 - Expect the run's first stage to run the tool once more and return the `proof` it prints only when
-  the spec passes.
+  the spec passes. The run continues only when that proof is the fingerprint of its own launch
+  values and its worktree.
+- Set `worktree` in the marked block of the main script to the worktree's absolute path with no
+  symbolic link in it, as `pwd -P` prints it there. The tool's proof covers the directory it runs
+  in as the operating system reports it, so another spelling of the same directory stops the run
+  at its launch check.
 - The shipped scripts take the plugin root in their marked block. An installed plugin older than
   this tool checks another spec format, so its launch check fails and no run launches on it until
   the plugin is updated; that is the intended effect.
@@ -857,23 +863,34 @@ second implementer pre-check.
 - Expect a fix run's fixer to close an entry by rejecting it, by raising it as a question, or by a
   fix its diff check mapped a change to. Every other entry of the fix run, a blocked one or one the
   fixer never answered, stays open, and the next fix list carries it.
+- Expect only a result the fix run accepted to close an entry. The journal holds a stage's last
+  result whether or not the run accepted it, so the tool applies the fix run's own checks of the
+  fixer's and the diff check's results, which the script carries from the tool's fix-run checks
+  module. A refused or aborted fixer result closes no entry, and neither does any result of a fix
+  run whose launch output holds no base list, as a fix run launched by an earlier version of the
+  tool.
 - Save the tool's output as the fix list unchanged. Never add, delete or edit an entry and never
   attach anything to one: the check compares the whole list with what the parent run returned, and
   no word of yours enters the list.
 - Never use a spec as a fix list or a fix list as a spec, and never write one from the other. The
   two shapes never mix: the spec tool refuses a spec with the keys of a fix list, and a fix list
   with the keys of a spec.
-- Run `<plugin root>/tools/check-spec.ts --fix-list <file> --transcripts <dir> --json`, which
-  compares the whole list with everything the parent run returned to be fixed, in the order the
-  generator writes it, so an entry that differs, is missing, was added or stands out of order fails,
-  holds the spec to the one the parent run checked, unchanged since, and prints the spec and the
-  entries with the proof only when all of them hold.
+- Run `<plugin root>/tools/check-spec.ts --fix-list <file> --transcripts <dir> --json --entries`,
+  which compares the whole list with everything the parent run returned to be fixed, in the order
+  the generator writes it, so an entry that differs, is missing, was added or stands out of order
+  fails, holds the spec to the one the parent run checked, unchanged since, and prints the spec and
+  the entries with the proof only when all of them hold.
 - Pass the tool's `spec` and `entries` output as `args.spec` and `args.entries` and the parent run's
   final snapshots as `args.base`, the `snapshots` list its run record returns, and fill the parent
   unit's documents directory and the applicable rule sources, as `ruleSources`, into the block.
-- The launch check runs the same command in the worktree with `--expect` and the JSON of the spec
-  and the entries, which the script builds and quotes for the shell. The tool fails when they differ
-  from the list, so every stage receives what the journal holds.
+- Set `worktree` in the fix script's marked block to the worktree's absolute path as `pwd -P` prints
+  it there, and `partialBase` to true when the parent run's base list was partial.
+- The launch check runs the same command in the worktree without `--entries` and with the base list
+  as `--base`, and `--partial-base` beside it when `partialBase` is set, so the tool checks the base
+  list against the repositories of the tree as in the main run. The run continues only when the
+  proof the tool prints is the fingerprint of the list, the transcript directory, the spec, the
+  entries, the base list and the worktree the script received, so every stage receives what the
+  journal holds and starts from commits the tree holds.
 - The fix run's fixer receives every entry, one key per source, and the parent spec. It resolves
   each entry with the user's words, the rule sources and the plugin's skills as its guide. Before it
   returns anything but fixed, it looks for every applicable rule and skill that says what to do or
@@ -1440,18 +1457,24 @@ as JSON in single quotes. The sentence tells the stage to run that
 exact command once with the Bash tool and return its exit code, stdout, stderr and the proof string
 printed on success, with no interpretation, retry or fix. Its schema requires `exitCode`,
 `stdout`, `stderr` and `proof`.
-The script continues when `exitCode` is zero and `proof` is a non-empty string; otherwise the
-stage helper retries up to three times and then throws, quoting stderr. The script refuses at
-once when `args.specPath` does not end in `.yaml`. The script parses nothing from stdout and
-inlines no check: the tool's own random string proves the tool ran on the one spec file the
-prompt names, and the script does nothing else with it.
+The tool's `proof` is the fingerprint of the values it checked: the 32-bit FNV-1a hash of the spec
+path, the transcript directory, the base list, whether the base list is partial and the directory
+the tool runs in, as JSON with sorted keys. The script computes the same fingerprint of its own
+launch values and its worktree and continues only when `exitCode` is zero and `proof` equals it, so
+a failed check, a check of other values or in another tree, and a proof the stage made up stop the
+run. The comparison shows that the values agree, not that the tool ran: the stage could compute
+the same fingerprint without running it. The script refuses at once when `args.specPath` does not
+end in `.yaml`. A failed check ends the run at once, quoting stderr. The stage helper retries only
+a stage that returned nothing usable, because another attempt could pass only by changing what the
+check compares. The script parses nothing from stdout.
 
-The fix run's launch check runs the tool's fix-list mode in place of the spec check:
-`--fix-list` with the fix list from `args.fixList`, the transcript directory, `--json` and
-`--expect` with the spec and the entries from the launch values as one JSON argument. The script
-refuses at once when `args.fixList` does not end in `.yaml`, and the tool fails when the launch
-values differ from the list, when the list differs from what the parent run returned to be fixed,
-or when the spec is not the one the parent run checked.
+The fix run's launch check runs the tool's fix-list mode in place of the spec check: `--fix-list`
+with the fix list from `args.fixList`, the transcript directory and `--json`. The command carries
+no value of the list, so the stage copies nothing long. Its proof is the fingerprint of the list
+path, the transcript directory, the spec and the entries, and the script compares it with the
+fingerprint of its launch values. The script refuses at once when `args.fixList` does not end in
+`.yaml`, and the run stops when the launch values differ from the list, when the list differs from
+what the parent run returned to be fixed, or when the spec changed since the parent run checked it.
 
 ### The main script
 

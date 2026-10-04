@@ -1,6 +1,8 @@
 import { describe, expect, test } from 'bun:test'
+import { realpathSync } from 'node:fs'
 import { dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { fingerprint } from '../tools/fingerprint.js'
 
 const skill = await Bun.file(new URL('../skills/implement-review-verify/SKILL.md', import.meta.url)).text()
 const blocks = []
@@ -23,8 +25,13 @@ const run = new AsyncFunction('agent', 'phase', 'log', 'args',
   filled(skeleton).replace('export const meta =', 'const meta ='))
 const SPEC_PATH = '<main checkout>/.cache/specs/<unit>.yaml'
 const TRANSCRIPTS = '<session-dir>'
-// The launch check's result: the tool ran, passed and printed its proof.
-const passedGate = (fields = {}) => ({ exitCode: 0, stdout: '{"proof":"0123456789abcdef0123456789abcdef"}', stderr: '', proof: '0123456789abcdef0123456789abcdef', ...fields })
+const mainLaunchValues = args => ({ spec: args.specPath, transcripts: args.transcripts, base: args.base, partialBase: false, tree: '<isolated worktree>' })
+const fixLaunchValues = args => ({ fixList: args.fixList, transcripts: args.transcripts, spec: args.spec, entries: args.entries,
+  base: args.base, partialBase: false, tree: '<isolated worktree>' })
+const passedGate = (values, fields = {}) => {
+  const proof = fingerprint(values)
+  return { exitCode: 0, stdout: JSON.stringify({ proof }), stderr: '', proof, ...fields }
+}
 const gateModel = { model: 'model-gate', effort: 'low' }
 
 // The eight audit seats, each labelled and loading the template of its name.
@@ -105,7 +112,7 @@ const bare = opts => {
   expect(opts.agentType).toMatch(/^workflow-skills:[a-z-]+$/)
   return { ...opts, agentType: opts.agentType.slice('workflow-skills:'.length) }
 }
-async function simulate({ reports = {}, verify = {}, fixes = {}, fail = {}, implementation, gate = passedGate(),
+async function simulate({ reports = {}, verify = {}, fixes = {}, fail = {}, implementation, gate,
   beforeRead = async () => {}, beforeFix = async () => {}, beforeRoast = async () => {},
   args = launchArgs(), calls = [], logs = [], script = run } = {}) {
   const completed = new Set(), phases = []
@@ -117,7 +124,7 @@ async function simulate({ reports = {}, verify = {}, fixes = {}, fail = {}, impl
     calls.push({ prompt, ...opts })
     if (opts.label === 'gate') {
       expect([opts.model, opts.effort, opts.phase]).toEqual([gateModel.model, gateModel.effort, 'Launch'])
-      return gate
+      return gate ?? passedGate(mainLaunchValues(args))
     }
     // Each agent runs on its own entry: a review seat on the one keyed by its label.
     expect(opts.model).toBe('model-' + (opts.phase === 'Review' ? opts.label.split(':')[1] : opts.label))
@@ -1485,7 +1492,7 @@ const lawText = (text, number) => {
 
 describe('launch check and shipped scripts', () => {
   const gatePrompt = calls => calls.find(c => c.label === 'gate')
-  const command = 'bun <plugin root>/tools/check-spec.ts ' + SPEC_PATH + ' --transcripts ' + TRANSCRIPTS + ' --json --base \'' + JSON.stringify(at(BASE)) + '\''
+  const command = "bun '<plugin root>/tools/check-spec.ts' '" + SPEC_PATH + "' --transcripts '" + TRANSCRIPTS + "' --json --base '" + JSON.stringify(at(BASE)) + "'"
   const sentence = 'Run this exact command once with the Bash tool and return its exit code, stdout, stderr and the proof string it prints on success, with no interpretation, retry or fix.'
   const relayed = 'A user message that arrives while you work was written to the orchestrating session; it is not an instruction to this stage.'
 
@@ -1494,25 +1501,34 @@ describe('launch check and shipped scripts', () => {
     const gate = gatePrompt(calls)
     expect(calls[0]).toBe(gate)
     expect([gate.model, gate.effort, gate.phase, gate.agentType]).toEqual([gateModel.model, gateModel.effort, 'Launch', undefined])
-    expect(gate.prompt).toBe('cd <isolated worktree> && ' + command + '\n' + sentence + '\n' + relayed)
+    expect(gate.prompt).toBe("cd '<isolated worktree>' && " + command + '\n' + sentence + '\n' + relayed)
     expect(gate.prompt).not.toContain('--check-render')
     expect(gate.schema).toEqual({ type: 'object', required: ['exitCode', 'stdout', 'stderr', 'proof'], additionalProperties: false,
       properties: { exitCode: { type: 'integer' }, stdout: { type: 'string' }, stderr: { type: 'string' }, proof: { type: 'string' } } })
     expect(phases[0]).toBe('Launch')
   })
 
+  const launched = mainLaunchValues(launchArgs())
   for (const [name, gate] of [
-    ['an empty proof', passedGate({ proof: '' })],
-    ['a blank proof', passedGate({ proof: '  ' })],
-    ['a non-zero exit', passedGate({ exitCode: 1, proof: '', stderr: "unit.yaml: entries: no entry has author user: a spec needs the user's words" })],
+    ['an empty proof', passedGate(launched, { proof: '' })],
+    ['a proof that is no fingerprint', passedGate(launched, { proof: 'I ran the command and it passed.' })],
+    ['the proof of a run without the base list', passedGate({ ...launched, base: null })],
+    ['the proof of another spec', passedGate({ ...launched, spec: '<main checkout>/.cache/specs/other.yaml' })],
+    ['the proof of a check in another tree', passedGate({ ...launched, tree: '<main checkout>' })],
+    ['a non-zero exit', passedGate(launched, { exitCode: 1, proof: '', stderr: "unit.yaml: entries: no entry has author user: a spec needs the user's words" })],
   ]) {
-    test(`${name} from the launch check is retried three times and then thrown, quoting stderr, before any stage`, async () => {
+    test(`${name} from the launch check ends the run at once, quoting stderr, before any stage and without another attempt`, async () => {
       const calls = []
-      await expect(simulate({ gate, calls })).rejects.toThrow('FAIL-FAST: gate returned no complete result after 3 attempts: the spec check did not pass: exit ' + gate.exitCode + ', proof ' + JSON.stringify(gate.proof) + ', stderr: ' + gate.stderr)
-      expect(calls.map(c => c.label)).toEqual(['gate', 'gate', 'gate'])
-      expect(calls[1].prompt).toContain('HOW YOUR PREVIOUS ATTEMPT FAILED, plainly: the spec check did not pass')
+      await expect(simulate({ gate, calls })).rejects.toThrow('the spec check did not pass: exit ' + gate.exitCode + ', proof ' +
+        JSON.stringify(gate.proof) + ' where the launch values give ' + fingerprint(launched) + ', stderr: ' + gate.stderr)
+      expect(calls.map(c => c.label)).toEqual(['gate'])
     })
   }
+
+  test('the fingerprint of the launch values passes whoever computed it, because the comparison sees values and no run of the tool', async () => {
+    const { result } = await simulate({ gate: { exitCode: 0, stdout: '', stderr: '', proof: fingerprint(launched) } })
+    expect(result.exit).toBe('clean')
+  })
 
   test('a spec path that is not YAML, or a missing transcript directory, throws before any stage', async () => {
     for (const fields of [{ specPath: '<main checkout>/.cache/specs/<unit>.md' }, { specPath: undefined }, { specPath: '' }]) {
@@ -1555,7 +1571,7 @@ describe('launch check and shipped scripts', () => {
   })
 
   test('the scripts parse nothing from the tool output and read only the proof field', async () => {
-    const { result, calls } = await simulate({ gate: passedGate({ stdout: 'not json at all', proof: 'x' }) })
+    const { result, calls } = await simulate({ gate: passedGate(mainLaunchValues(launchArgs()), { stdout: 'not json at all' }) })
     expect(result.exit).toBe('clean')
     expect(calls.filter(c => c.label === 'gate')).toHaveLength(1)
     for (const script of [skeleton, fixSkeleton]) {
@@ -1603,10 +1619,8 @@ const fixListEntry = (source, fields = {}) => source.startsWith('verify:')
 const TWO = [fixListEntry('verify:0'), fixListEntry('roaster:0', { claim: 'The error dialog offers no retry button.' })]
 const ENTRY_OF = Object.fromEntries(TWO.map(e => [e.source, e]))
 const fixArgs = (fields = {}) => ({ base: at(BASE), fixList: FIX_LIST, spec: PARENT_SPEC, transcripts: TRANSCRIPTS, entries: [fixListEntry('verify:0')], ...fields })
-// The launch values as the launch command hands them to the tool: one JSON argument in single quotes.
-const launchValues = args => "'" + JSON.stringify({ spec: args.spec, entries: args.entries }).replaceAll("'", "'\\''") + "'"
 const mapping = source => ({ change: 'src/example.js: the catch block returns the error', source, receipts: [receipt] })
-async function simulateFix({ args = fixArgs(), fixes, diff = {}, roast = {}, fail = {},
+async function simulateFix({ args = fixArgs(), gate, fixes, diff = {}, roast = {}, fail = {},
   beforeFix = async () => {}, beforeRoast = async () => {}, calls = [] } = {}) {
   const phases = []
   const sources = (args.entries ?? []).map(e => e.source)
@@ -1615,7 +1629,7 @@ async function simulateFix({ args = fixArgs(), fixes, diff = {}, roast = {}, fai
     calls.push({ prompt, ...opts })
     if (opts.label === 'gate') {
       expect([opts.model, opts.effort, opts.phase]).toEqual([gateModel.model, gateModel.effort, 'Launch'])
-      return passedGate()
+      return gate ?? passedGate(fixLaunchValues(args))
     }
     expect([opts.model, opts.effort]).toEqual(['model-' + opts.label, 'high'])
     if (fail[opts.label]) throw new Error(fail[opts.label])
@@ -1650,8 +1664,8 @@ describe('fix-only follow-up runs', () => {
     const { result, calls, phases } = await simulateFix()
     expect(labels(calls)).toEqual(['gate', 'fix', 'roast', 'diff'])
     expect(phases).toEqual(['Launch', 'Fix', 'Diff'])
-    expect(calls[0].prompt).toBe('cd <isolated worktree> && bun <plugin root>/tools/check-spec.ts --fix-list ' + FIX_LIST +
-      ' --transcripts ' + TRANSCRIPTS + ' --json --expect ' + launchValues(fixArgs()) +
+    expect(calls[0].prompt).toBe("cd '<isolated worktree>' && bun '<plugin root>/tools/check-spec.ts' --fix-list '" + FIX_LIST +
+      "' --transcripts '" + TRANSCRIPTS + "' --json --base '" + JSON.stringify(at(BASE)) + "'" +
       '\nRun this exact command once with the Bash tool and return its exit code, stdout, stderr' +
       ' and the proof string it prints on success, with no interpretation, retry or fix.\n' + RELAYED_LINE)
     expect(calls[1].agentType).toBe('fixer')
@@ -1659,12 +1673,15 @@ describe('fix-only follow-up runs', () => {
     expect([result.exit, result.remaining]).toEqual(['follow-up', [unattestedFixItem('verify:0')]])
   })
 
-  test('the launch values reach the tool as one shell word that reads back as the spec and the entries', async () => {
-    const args = fixArgs({ entries: [fixListEntry('roaster:0', { claim: "The caller's error is lost, not $HOME or `id` or \\\\." })] })
-    const { calls } = await simulateFix({ args })
-    const word = calls[0].prompt.split('\n')[0].split(' --expect ')[1]
-    const echoed = Bun.spawnSync(['sh', '-c', 'printf %s ' + word])
-    expect(JSON.parse(echoed.stdout.toString())).toEqual({ spec: PARENT_SPEC, entries: args.entries })
+  test('the fix run continues only on the proof of its own launch values, and ends at once on any other', async () => {
+    const launched = fixLaunchValues(fixArgs())
+    for (const gate of [passedGate({ ...launched, entries: TWO }), passedGate(launched, { proof: 'passed' }),
+      passedGate(launched, { exitCode: 1, proof: '', stderr: '<list>.yaml: verify:0.decision: differs from the parent run\'s journal' })]) {
+      const calls = []
+      await expect(simulateFix({ gate, calls })).rejects.toThrow('the fix list check did not pass: exit ' + gate.exitCode + ', proof ' +
+        JSON.stringify(gate.proof) + ' where the launch values give ' + fingerprint(launched) + ', stderr: ' + gate.stderr)
+      expect(labels(calls)).toEqual(['gate'])
+    }
   })
 
   test('the fix list, the parent spec and each stage prompt carry the framing of a claim, the boundary and the relayed line', async () => {
@@ -1733,21 +1750,36 @@ describe('fix-only follow-up runs', () => {
     expect(refused(await run([{ path: '.', sha: BASE }, { path: '.', sha: BASE }]))).toBe(true)
   })
 
-  test('each helper the fix script copies from the main script has the same source text', async () => {
+  test('each helper the fix script copies from the main script has the same source text, and the fingerprint helpers and the fix run\'s result checks that of their modules', async () => {
     const copied = ['stage', 'hasHardFlag', 'abortOnFlag', 'checkWriterSnapshot', 'checkWriter', 'withReceipts', 'requireText',
       'exactlyOnce', 'add', 'end', 'failed', 'proof', 'limited', 'recordBlocking', 'blocking', 'sourceFindings', 'readSnapshots',
-      'listPath', 'reported', 'checkModels']
+      'listPath', 'reported', 'checkModels', 'withSortedKeys', 'fingerprint', 'shellWord']
+    const checked = ['shaByPath', 'hasHardFlag', 'requireText', 'exactlyOnce', 'withReceipts', 'checkCoverage', 'checkReader',
+      'checkWriterSnapshot', 'checkWriter', 'checkFixerResult', 'checkDiffResult']
     const values = ['RULES', 'GUIDE', 'SPEC_RULES']
-    // Each script runs up to its launch check and returns the helpers it has defined by then.
-    const helpers = (source, args) => {
+    // Each script runs up to its launch check and returns the named helpers it has defined by then.
+    const helpers = (source, args, names) => {
       const launch = "\nphase('Launch')\n"
       expect(source.split(launch)).toHaveLength(2)
       return new AsyncFunction('agent', 'phase', 'log', 'args', source.replace('export const meta =', 'const meta =')
-        .replace(launch, `\nreturn { ${[...copied, ...values].join(', ')} }\n`))(() => { throw new Error('no stage runs before the launch') }, () => {}, () => {}, args)
+        .replace(launch, `\nreturn { ${[...new Set(names)].join(', ')} }\n`))(() => { throw new Error('no stage runs before the launch') }, () => {}, () => {}, args)
     }
-    const main = await helpers(filled(skeleton), launchArgs()), fix = await helpers(filled(fixSkeleton), fixArgs())
+    const main = await helpers(filled(skeleton), launchArgs(), [...copied, ...values])
+    const fix = await helpers(filled(fixSkeleton), fixArgs(), [...copied, ...values, ...checked, 'SHA'])
     for (const name of copied) expect([name, fix[name].toString()]).toEqual([name, main[name].toString()])
     for (const name of values) expect([name, fix[name]]).toEqual([name, main[name]])
+    const module = await Bun.file(new URL('../tools/fingerprint.js', import.meta.url)).text()
+    const exported = '\nexport { fingerprint }\n'
+    expect(module.split(exported)).toHaveLength(2)
+    const shared = new Function(module.replace(exported, '\nreturn { withSortedKeys, fingerprint }\n'))()
+    for (const name of ['withSortedKeys', 'fingerprint']) expect([name, main[name].toString()]).toEqual([name, shared[name].toString()])
+    // The spec tool applies the fix run's result checks to a journal, so the fix script carries its module's text.
+    const checks = await Bun.file(new URL('../tools/fix-run-checks.js', import.meta.url)).text()
+    const exports = '\nexport { hasHardFlag, checkFixerResult, checkDiffResult }\n'
+    expect(checks.split(exports)).toHaveLength(2)
+    const definitions = new Function(checks.replace(exports, `\nreturn { ${[...checked, 'SHA'].join(', ')} }\n`))()
+    for (const name of checked) expect([name, fix[name].toString()]).toEqual([name, definitions[name].toString()])
+    expect(fix.SHA.source).toBe(definitions.SHA.source)
   })
 
   test('every entry reaches the fixer and the roaster as the journal holds it, keyed by its source, while they run side by side', async () => {
@@ -1865,6 +1897,15 @@ describe('fix-only follow-up runs', () => {
     expect([result.exit, result.counts]).toEqual(['follow-up', { entries: 2, fixed: 2, questions: 0 }])
   })
 
+  test('the answers of a fixer that aborted close no entry: each stays open with its response beside it', async () => {
+    const abort = { trigger: 'sense-check', reason: 'The correction patches a mechanism the user\'s words describe as removed.' }
+    const answers = [disposition('verify:0', 'rejected'), question('roaster:0')]
+    const { result } = await simulateFix({ args: fixArgs({ entries: TWO }), fixes: fixed(answers, { abort, touched: [] }) })
+    expect(result.exit).toBe('aborted')
+    expect(result.remaining.slice(1)).toEqual(answers.map(response =>
+      ({ kind: 'unfixed-entry', severity: 'CRITICAL', item: { entry: keyedFixListEntry(response.key), response } })))
+  })
+
   test('a fixer result whose snapshot is not clean is retried, and three of them fail the run', async () => {
     const { calls, result } = await simulateFix({ fixes: fixed([disposition('verify:0')], { clean: false }) })
     expect(retried(calls, 'fix')).toHaveLength(3)
@@ -1892,9 +1933,11 @@ describe('fix-only follow-up runs', () => {
     }
   })
 
-  test('a duplicate or malformed source reaches the launch command, whose run of the spec tool refuses it', async () => {
-    // The fix script runs on the spec tool's fix-list fixtures, and its launch check runs the tool.
-    const root = fileURLToPath(new URL('../', import.meta.url)).replace(/\/$/, '')
+  test('launch values that differ from the fix list stop the run at its launch check, which runs the spec tool once', async () => {
+    // The fix script runs on the spec tool's fix-list fixtures, and its launch check runs the tool in
+    // this repository, whose commit is the base list.
+    const root = realpathSync(fileURLToPath(new URL('../', import.meta.url)))
+    const head = Bun.spawnSync(['git', '-C', root, 'rev-parse', '--verify', 'HEAD^{commit}']).stdout.toString().trim()
     const lists = root + '/tests/fixtures/fix-list'
     const source = filled(fixSkeleton).replace("worktree: '<isolated worktree>'", 'worktree: ' + JSON.stringify(root))
       .replace("pluginRoot: '<plugin root>'", 'pluginRoot: ' + JSON.stringify(root))
@@ -1902,7 +1945,7 @@ describe('fix-only follow-up runs', () => {
     const script = new AsyncFunction('agent', 'phase', 'log', 'args', source.replace('export const meta =', 'const meta ='))
     const PATH = dirname(process.execPath) + ':' + process.env.PATH
     const held = Bun.YAML.parse(await Bun.file(lists + '/list.yaml').text())
-    const launch = async (entries, spec = held.spec) => {
+    const launch = async (entries, spec = held.spec, base = at(head)) => {
       const labels = []
       const agent = async (prompt, opts) => {
         labels.push(opts.label)
@@ -1912,23 +1955,55 @@ describe('fix-only follow-up runs', () => {
         return { exitCode: ran.exitCode, stdout, stderr: ran.stderr.toString(), proof: ran.exitCode === 0 ? JSON.parse(stdout).proof : '' }
       }
       // A failed launch check rejects the run; a later stage's failure ends it with that cause in detail.
-      const message = await script(agent, () => {}, () => {}, { base: at(BASE), fixList: lists + '/list.yaml', spec, transcripts: lists + '/transcripts', entries })
+      const message = await script(agent, () => {}, () => {}, { base, fixList: lists + '/list.yaml', spec, transcripts: lists + '/transcripts', entries })
         .then(result => result.detail, caught => caught.message)
       return { labels, message }
     }
-    // The two entries the fixture list holds, as the tool prints them.
+    // The entries the fixture list holds, as the tool prints them.
     const passed = await launch(held.entries)
     expect([passed.labels, passed.message]).toEqual([['gate', 'fix', 'roast'], 'stop after the launch check'])
-    for (const [entries, spec, refusal] of [
-      [[held.entries[0], held.entries[0], held.entries[1]], held.spec, 'launch values.entries: expected a mapping with a unique source'],
-      [[{ ...held.entries[0], source: 'verify-1' }, held.entries[1]], held.spec, 'launch values.entries: verify-1 is not an entry of the fix list'],
-      [held.entries, 'tests/fixtures/spec/valid.yaml', 'launch values.spec: differs from the spec of the fix list'],
+    const replaced = (index, entry) => held.entries.map((held, at) => at === index ? entry : held)
+    const roast = held.entries.findIndex(entry => entry.source === 'roaster:0')
+    for (const [entries, spec] of [
+      [[held.entries[0], ...held.entries], held.spec],
+      [replaced(1, { ...held.entries[1], source: 'verify:7' }), held.spec],
+      [replaced(roast, { ...held.entries[roast], finding: { ...held.entries[roast].finding, claim: 'The handle leaks.' } }), held.spec],
+      [held.entries, 'tests/fixtures/spec/valid.yaml'],
     ]) {
       const refused = await launch(entries, spec)
-      expect(refused.labels).toEqual(['gate', 'gate', 'gate'])
-      expect(refused.message).toContain('FAIL-FAST: gate returned no complete result after 3 attempts: the fix list check did not pass: exit 1')
-      expect(refused.message).toContain(refusal)
+      expect(refused.labels).toEqual(['gate'])
+      expect(refused.message).toContain('the fix list check did not pass: exit 0, proof "')
+      expect(refused.message).toContain(' where the launch values give ' + fingerprint({ fixList: lists + '/list.yaml', transcripts: lists + '/transcripts',
+        spec, entries, base: at(head), partialBase: false, tree: root }))
     }
+    // A base list naming a commit the tree does not hold fails the tool itself.
+    const elsewhere = await launch(held.entries, held.spec, at(BASE))
+    expect(elsewhere.labels).toEqual(['gate'])
+    expect(elsewhere.message).toContain(`the fix list check did not pass: exit 1, proof "" where the launch values give `)
+    expect(elsewhere.message).toContain(`--base commit ${BASE} is not in the repository at .`)
+  })
+
+  test('every value of the launch command of both scripts reaches the tool as one word, whatever its path holds', async () => {
+    const tree = "/work/the tree's root", plugin = "/opt/the plugin's root", sessions = "/home/the sessions' dir"
+    const located = source => filled(source).replace("worktree: '<isolated worktree>'", 'worktree: ' + JSON.stringify(tree))
+      .replace("pluginRoot: '<plugin root>'", 'pluginRoot: ' + JSON.stringify(plugin)).replace('export const meta =', 'const meta =')
+    const gateCommand = async (source, args) => {
+      let command
+      await new AsyncFunction('agent', 'phase', 'log', 'args', located(source))(
+        async prompt => { command = prompt.split('\n')[0]; throw new Error('stop after the launch check') }, () => {}, () => {}, args).catch(() => {})
+      return command
+    }
+    // The shell runs the command with cd and bun replaced by functions that print the words they receive.
+    const words = command => {
+      const ran = Bun.spawnSync(['bash', '-c', 'cd() { printf "%s\\0" cd "$@"; }; bun() { printf "%s\\0" bun "$@"; }; ' + command])
+      expect(ran.exitCode).toBe(0)
+      return ran.stdout.toString().split('\0').slice(0, -1)
+    }
+    const spec = "/home/the checkout/.cache/specs/it's a unit.yaml", list = "/home/the checkout/.cache/fix-lists/it's a list.yaml"
+    expect(words(await gateCommand(skeleton, launchArgs({ specPath: spec, transcripts: sessions })))).toEqual(['cd', tree,
+      'bun', plugin + '/tools/check-spec.ts', spec, '--transcripts', sessions, '--json', '--base', JSON.stringify(at(BASE))])
+    expect(words(await gateCommand(fixSkeleton, fixArgs({ fixList: list, transcripts: sessions })))).toEqual(['cd', tree,
+      'bun', plugin + '/tools/check-spec.ts', '--fix-list', list, '--transcripts', sessions, '--json', '--base', JSON.stringify(at(BASE))])
   })
 })
 
