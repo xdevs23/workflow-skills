@@ -98,10 +98,12 @@ in every language. `workflow-skills:code-writing` holds how the code itself read
 - Let a mutation answer success or failure only. Read the data afresh when a notification says that
   the data changed, and let side effects react to that notification instead of running inside the
   mutation. This means that a frontend sends the new data but doesn't read it back through the
-  response. Rather, the frontend triggers a reload, either a full one or a partial one where supported,
-  to obtain the new data through the same codepath as a full frontend reload or restart. Where
-  the subscriber pattern can be used (websockets, HTTP long-polling, event streams, ...), use it.
-- Prefer reactive, event-driven and data-driven designs over chains of calls in which each step explicitly starts the next step.
+  response. Rather, the frontend triggers a reload, either a full one or a partial one where
+  supported, to obtain the new data through the same codepath as a full frontend reload or restart.
+  Where the subscriber pattern can be used (websockets, HTTP long-polling, event streams, ...), use
+  it.
+- Prefer reactive, event-driven and data-driven designs over chains of calls in which each step
+  explicitly starts the next step.
 - Never synchronize by time: no sleep, delay or polling loop stands in for waiting on the event or
   state that signals readiness.
 - Count progress in the unit of the work: ticks, frames or samples. Use wall time only when the
