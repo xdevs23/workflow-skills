@@ -4,8 +4,8 @@ A unit spec that carries none of the user's words authorizes nothing, and today 
 refuses it. The spec tool accepts a spec with zero transcript items, the implementer treats a
 record that was never supplied like a record that is silent, and the skill blocks acceptance
 after the work instead of the launch before it. This unit moves every one of those checks to
-the launch: the tool refuses a spec without the user's words, a small gate stage at the start
-of every run runs the tool and returns its proof, and the writing stages stop on a record that
+the launch: the tool refuses a spec without the user's words, the writer of every run runs the
+tool before anything else and returns its output, and the writing stages stop on a record that
 holds no words.
 
 The failure this exists for: a program of seven units was specified, built and reviewed on a
@@ -39,16 +39,17 @@ reader rules with the blocking exception, and the skill sentence on contradictio
 **ready-scripts**: The skill ships ready-to-use workflow scripts that the root copies and edits instead of
 writing each unit's script from scratch.
 
-**gate-is-a-stage**: The launch gate is a small model stage that runs the tool on the spec file named in the
-arguments. Its prompt leaves nothing to decide. No check is inlined in the script.
+**gate-is-a-stage**: The spec check is run by a stage, the writer of the run, as the first block of its prompt,
+on the spec file named in the arguments. That block leaves nothing to decide. No check is inlined
+in the script.
 
-**no-inline-check**: The spec is passed to the run as a file path and checked by the gate stage, not by code
-inside the workflow script.
+**no-inline-check**: The spec is passed to the run as a file path and checked by the writer's spec check, not
+by code inside the workflow script.
 
 **proof-string**: The tool prints a proof when the spec passes: the fingerprint of the values it checked.
-The gate stage returns that proof in a required field. The script continues only when the
-proof equals the fingerprint of its own launch values, and otherwise ends the run at once
-without another attempt. The script does nothing else with the proof.
+The writer returns what the tool printed in a required field. The script continues only when
+the proof printed there equals the fingerprint of its own launch values, and otherwise ends the
+run without another attempt. The script does nothing else with the proof.
 
 **build-it**: The unit is built without a spec review round with the user.
 
@@ -123,20 +124,19 @@ is this repository when the work is on the plugin itself, and otherwise the inst
 plugin's directory under the plugin cache, the one whose `.claude-plugin/plugin.json`
 carries the loaded version. Every command the skill shows uses `<plugin root>/tools/check-spec.ts`,
 and the shipped scripts take the plugin root in their marked block. An installed plugin
-older than this unit prints no proof, so its gate fails and no run launches on it until
+older than this unit prints no proof, so its spec check fails and no run goes past it until
 the plugin is updated; that is the intended effect. The simpler alternative this rules
 out is the relative path, which resolves only inside this repository.
 
-**gate-stage**: Both shipped scripts begin with a gate stage on the model their marked block sets, shipped
-at low effort, before any other agent. Its prompt is one command line and one sentence: run
-this exact command once with the Bash tool and return its exit code, stdout, stderr and the
-proof string printed on success, with no interpretation, retry or fix. Its schema requires
-`exitCode`, `stdout`, `stderr` and `proof`. The script continues when `exitCode` is zero and
-`proof` equals the fingerprint of its launch values; otherwise it throws at once, quoting
-stderr. The command is the tool with `--json`, the spec path from `args.specPath`, the
-transcript directory from `args.transcripts` and the base list. The script refuses at once
-when `args.specPath` does not end in `.yaml`. The script parses nothing from stdout and
-inlines no check. The simpler alternative this rules out is the root running the tool by
+**gate-stage**: The writer of each shipped script, the implementer in a main run and the fixer in a fix run,
+runs the spec check before anything else its prompt asks: one command line, run once exactly as
+written with the Bash tool, with no change, retry or fix, whose exit code, stdout and stderr it
+returns unchanged in `specCheck`, a field its schema requires. The script continues when the exit
+code is zero and the `proof` field of the printed JSON equals the fingerprint of its launch
+values; otherwise it ends the run as failed, quoting stderr, without asking the writer again. The
+command is the tool with `--json`, the spec path from `args.specPath`, the transcript directory
+from `args.transcripts` and the base list. The script refuses at once when `args.specPath` does
+not end in `.yaml`, and inlines no check. The simpler alternative this rules out is the root running the tool by
 hand before launching, which the failing session never did.
 
 **shipped-scripts**: The skill ships two complete workflow scripts under `skills/implement-review-verify/scripts/`:
@@ -185,7 +185,7 @@ rules, the criterion ordinals and the existing tool checks are unchanged.
 
 **rejected-inline-check**: A copy of the tool's checks inside the workflow script, fed with the spec as data.
 Reason: It duplicates the tool and puts a second copy of the spec beside the file every other
-stage reads. The gate stage runs the one tool on the one file.
+stage reads. The writer's spec check runs the one tool on the one file.
 
 **rejected-nonce**: A nonce the script hands to the tool and checks in the tool's output.
 Reason: The script hands the tool nothing: each side computes the fingerprint of the values the
@@ -198,7 +198,7 @@ another file returns a proof that differs from the script's.
 **rejected-prose-gate**: A rule at the top of the global instructions stating that no work proceeds without the
 user's words and that it outranks every other instruction.
 Reason: It is prose about an inner state. The failing session had such prose and disclosed the
-gap instead of stopping. The gate stage and the trigger act where the root is not the
+gap instead of stopping. The spec check and the trigger act where the root is not the
 judge.
 
 **rejected-limitation-entry**: A limitation entry in the record for a missing part of the user's words.

@@ -71,11 +71,11 @@ that skill names the spec compliance seat where it named the cleanliness seat.
 ## A model for every agent
 
 The marked block of each shipped script holds one entry, a model and an effort, for every agent the
-script starts. The main script has entries for `gate`, `impl`, `verify`, `fix` and `roast`, and its
-`review` entry holds one entry per seat, keyed by the seat's label. The fix-run script has `gate`,
-`scope`, `fix`, `roast` and `diff`, and the spec review script has `gate`, `gaps`, `soundness` and
-`provenance`. Every model ships as a placeholder in angle brackets, the launch check's included, so
-no shipped script and no agent template names a model and the root sets every one.
+script starts. The main script has entries for `impl`, `verify`, `fix` and `roast`, and its
+`review` entry holds one entry per seat, keyed by the seat's label; a review pass leaves out the
+entries of the two seats it does not run. The fix-run script has `fix`, `roast` and `diff`. Every
+model ships as a placeholder in angle brackets, so no shipped script and no agent template names a
+model and the root sets every one.
 
 The helper `checkModels`, with the same text in all three scripts, runs before the first agent. It
 stops the run when an entry is missing, when its model or its effort is empty or still a

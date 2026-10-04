@@ -21,7 +21,7 @@ Then the skills appear in the skill list and each has a matching slash command (
 | Skill | What it does |
 |---|---|
 | `implement-review-verify` | Assemble the unit spec from the user's words in the session transcripts and check it with the spec tool, then implement against it and commit a clean snapshot, with the implementer's sense check reporting what it finds in the spec, then review and independently consolidate findings. The fixer commits only approved corrections while a mandatory roaster reads the pre-fix Git snapshot and approved list. Everything a run returns to be fixed goes to a fix run, whose fixer resolves it by the user's words and the rules and returns only a product decision as a question for the user. |
-| `review-pass` | Run the launch check and the fifteen reviewers of `implement-review-verify` alone on a change that is already committed, such as one edited directly, with no implementer, verifier or fixer, and send their findings to a fix run. |
+| `review-pass` | Run the thirteen reviewers of `implement-review-verify` that need no spec alone on a change that is already committed, such as one edited directly, with no spec, implementer, verifier or fixer, and send their findings to a fix run. |
 | `copywriting` | Write an increment's user-visible strings BEFORE implementation: intent catalog + writing system, one agent per item, mechanical check + source-verify + fresh-context critic, and the user ships the crucial lines. |
 | `resume-interrupted-run` | Recover a workflow run that was stopped while agents were mid-flight: hand each interrupted seat its own prior transcript, leave every completed prompt byte-identical, resume near-losslessly. |
 | `visual-verification` | Check a change to any rendered user interface, in a browser, a native mobile or desktop toolkit or a terminal, with a reproducible visual harness: real screenshots, controlled data, measured checks and strict before and after comparisons. A project without a harness adopts one from the implementation guide bundled with the skill. |
@@ -82,20 +82,21 @@ directly as `agentType`s in your own workflows.
   implementation is done, the fixer once its corrections are done. A change that alters no design
   needs no document, and correcting a design document that describes the code wrongly stays
   allowed.
-  A passing run prints a `proof`, the fingerprint of the values it checked, which the launch check
-  of the workflow scripts compares with the fingerprint of their own launch values.
+  A passing run prints a `proof`, the fingerprint of the values it checked. The writer of each
+  workflow script runs the tool before anything else, and the script compares that proof with the
+  fingerprint of its own launch values.
   Its fix-list mode, `--fix-list <file> --transcripts <session-dir>` in place of the spec, checks
-  the fix list of a fix run, which names a parent run in `run`, the spec that run checked in `spec`
-  and holds in `entries` everything the run returned to be fixed, each as its journal holds it: it
-  compares the whole list, in order, with what the parent run returned and the spec with the one
-  that run checked, and prints the spec with the proof of the list's values, and with `--entries`
-  the entries as well. `--base` and `--partial-base` check a fix run's base list against the tree
-  as in the spec mode. `--make-fix-list <run> --transcripts <session-dir>` writes the fix list of a
-  run from its journal: every spec finding of its implementer, every decision and unresolved issue
-  of its finding verifier, or every finding of its review seats in a run without a verifier, every
-  entry of a fix run's own list its fixer left open, and every finding of its roaster and diff check.
-  A fix run's fixer and diff check close an entry only through a result that passes the fix run's
-  own checks. Add `--size <json>` to add a measured size breach of the unit.
+  the fix list of a fix run, which names a parent run in `run`, the spec that run checked in `spec`,
+  null after a review pass, and holds in `entries` everything the run returned to be fixed, each as
+  its journal holds it: it compares the whole list, in order, with what the parent run returned and
+  the spec with the one that run checked, and prints the spec with the proof of the list's values,
+  and with `--entries` the entries as well. `--base` and `--partial-base` check a fix run's base list
+  against the tree as in the spec mode. `--make-fix-list <run> --transcripts <session-dir>` writes the
+  fix list of a run from its journal: every spec finding of its implementer, every decision and
+  unresolved issue of its finding verifier, or every finding of its review seats in a run without a
+  verifier, every entry of a fix run's own list its fixer left open, and every finding of its roaster
+  and diff check. A fix run's fixer and diff check close an entry only through a result that passes
+  the fix run's own checks. Add `--size <json>` to add a measured size breach of the unit.
 - **The pull request watcher `watch-prs` needs Python 3 and the GitHub CLI `gh`, logged in.**
   `babysit-pr` runs it. The watcher is a Python program in the plugin's tools directory, run with
   `python3`. It takes the state file with `--state`, the seconds between polls with `--interval`,
@@ -120,7 +121,7 @@ bun test tests/workflow-routing.test.js tests/git-snapshot.test.js tests/check-s
 The routing tests execute the two shipped workflow scripts under
 `skills/implement-review-verify/scripts/`, the main script also in review mode, with deterministic
 fake stage results, including the
-launch check and execution boundaries for every stage, and read the skill's Markdown with Bun's
+writers' spec check and execution boundaries for every stage, and read the skill's Markdown with Bun's
 built-in parser for the prose and helper they check.
 The Git integration test creates scoped commits in a disposable repository under the project
 cache that `workflow-skills:local-cache` defines, and verifies reads at a fixed commit while HEAD

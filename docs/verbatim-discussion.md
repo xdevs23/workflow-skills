@@ -69,8 +69,7 @@ against these rules before anything else and, on an invalid spec, sets `abort.tr
 `invalid-spec` with every entry that makes it invalid and the rule it breaks in `abort.reason`. The
 implementer, which reads the spec first, does so before its first edit and leaves the tree
 unmodified. The script ends the run as aborted, as it does for every hard flag, so no review,
-verify, fix or roast stage starts. In a review pass, which runs without an implementer, the
-reviewers flag an invalid spec the same way.
+verify, fix or roast stage starts. A review pass reads no spec, so none of its reviewers flags one.
 
 The session that assembles the spec keeps it valid: it leaves no question open, quotes no
 speculation, quotes a Write call only for a plan the user answered yes to, and states its own

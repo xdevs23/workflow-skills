@@ -17,13 +17,19 @@ a blocker. Report missing instructions/capabilities needed for your assignment, 
 or genuinely conflicting applicable requirements; never claim inaccessible checks passed.
 
 Rules:
+- In a fix run, run the fix list check the prompt names before anything else and before any edit:
+  its command once, exactly as written, with no retry or fix. Return its exit code, its stdout and
+  its stderr unchanged in specCheck. When its exit code is not 0, edit nothing and return every
+  repository at its start SHA, because the run ends on a failed check.
 - Read the writing-style and hygiene files the prompt names before you write, and follow them in
   every comment, document, commit message and returned string.
 - Read the engineering-principles and code-writing files the prompt names as your guide before you
   write code. With the rule sources they settle every choice the user's words leave open.
 - In a fix run, the entries the prompt lists are your work, each a decision or a finding as the
   parent run's journal holds it, with nothing the orchestrating session wrote beside it, and the
-  parent spec the prompt names is the spec wherever these rules name the spec. Treat every entry as
+  parent spec the prompt names is the spec wherever these rules name the spec. A fix list made from
+  a review pass names no spec, because that change was made without one, and the prompt says so:
+  read none, and resolve its entries by the rule sources and your guide. Treat every entry as
   a claim and resolve it yourself, with the user's words, the rule sources and your guide as your
   manual. Before you return anything but fixed, look for every applicable rule and skill that says
   what to do about the entry or authorizes the change. A rule or a skill that calls for ripping
@@ -63,18 +69,20 @@ Rules:
   abort.trigger to directive-conflict the same way. The spec quotes the discussion of the unit: an
   entry of author user is the user's words, and an entry of author assistant is context that is
   never authority, so a contradiction with what the user answered yes to, read with the assistant
-  entry the yes answers, is a contradiction with the user's own words. A spec that was not supplied,
-  cannot be read, or holds no entry of author user sets abort.trigger to no-words before your first
-  write: an assistant entry, a paraphrase, a summary or a design document's decision list is not the
-  user's words, and a spec without them is not a silent one. A spec that is invalid, as the
-  authority block of your prompt defines an invalid spec, sets abort.trigger to invalid-spec before
-  your first write, with every entry that makes it invalid and the rule it breaks in abort.reason.
-  Otherwise abort.trigger is none. Found before any write, the tree stays unmodified; found later,
-  stop further writes and return the edits as they stand in files and commits, committing nothing
-  more and reverting nothing. After such a flag the unit continues only on the user's answer, which
-  a new run receives in a copy of the spec with that answer added; no agent's justification and no
-  root statement substitutes for it. You do not repeat the implementer's request-level sense check:
-  the reviewers and the finding verifier have already judged the finished code.
+  entry the yes answers, is a contradiction with the user's own words. In a main run, and in a fix
+  run whose fix list names a spec, a spec that was not supplied, cannot be read, or holds no entry
+  of author user sets abort.trigger to no-words before your first write: an assistant entry, a
+  paraphrase, a summary or a design document's decision list is not the user's words, and a spec
+  without them is not a silent one. There, a spec that is invalid, as the authority block of your
+  prompt defines an invalid spec, sets abort.trigger to invalid-spec before your first write, with
+  every entry that makes it invalid and the rule it breaks in abort.reason. A fix list that names no
+  spec sets neither trigger, because no spec belongs to it. Otherwise abort.trigger is none. Found
+  before any write, the tree stays unmodified; found later, stop further writes and return the edits
+  as they stand in files and commits, committing nothing more and reverting nothing. After such a
+  flag the unit continues only on the user's answer, which a new run receives in a copy of the spec
+  with that answer added; no agent's justification and no root statement substitutes for it. You do
+  not repeat the implementer's request-level sense check: the reviewers and the finding verifier
+  have already judged the finished code.
 - In a main run, answer every approved key exactly once in dispositions: key, disposition fixed /
   rejected / blocked, reason and receipts (file, line, quote). If the premise is false, return
   rejected with counterevidence. If a necessary decision is unresolved or the permitted correction
@@ -121,14 +129,14 @@ Rules:
   made its full run stale. Quote each run in checks (command, passed, quoted output, truncated when
   only the last 6000 characters fit). After committing, check clean status and the final SHA of
   every repository again. If hooks changed content, rerun the checks against the committed content.
-  No backgrounded waits. Return abort, limitations (what, effect blocks or narrows), repositories
-  (one entry per listed repository: path, startSha, the full snapshotSha from `git rev-parse
-  --verify HEAD^{commit}`, clean, an empty `git status --porcelain=v1 --untracked-files=all`, and
-  git, both outputs quoted as head and status), proofPassed, premises, commits (sha, subject and the
-  path of its repository), files (every path a commit of this stage touched, relative to the tree
-  root: byte size at the snapshot, 0 when deleted, change added / modified / deleted), checks,
-  dispositions, touched paths and specSuggestions. Never claim a successful snapshot if checks or
-  the commit failed.
+  No backgrounded waits. Return specCheck in a fix run, abort, limitations (what, effect blocks or
+  narrows), repositories (one entry per listed repository: path, startSha, the full snapshotSha from
+  `git rev-parse --verify HEAD^{commit}`, clean, an empty `git status --porcelain=v1
+  --untracked-files=all`, and git, both outputs quoted as head and status), proofPassed, premises,
+  commits (sha, subject and the path of its repository), files (every path a commit of this stage
+  touched, relative to the tree root: byte size at the snapshot, 0 when deleted, change added /
+  modified / deleted), checks, dispositions, touched paths and specSuggestions. Never claim a
+  successful snapshot if checks or the commit failed.
 - Write or extend a design document when a correction alters the design: what the code does, how its
   parts fit together, a decision with its reason, or a rejected alternative. A correction that
   alters none of these needs no document, and that is not an incomplete stage. Correcting a design

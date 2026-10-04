@@ -74,7 +74,7 @@ A cited rule file is read at the commit of the entry whose path is the longest o
 file, with `git show` in that repository. It is read from disk only when no entry contains it or
 when `git ls-tree` shows that the file is not tracked at that commit. Any other git failure fails
 the check, so a failed lookup can never pass off the working copy as the committed text. The fix
-run's launch check keeps the fix-list mode, which takes no `--base` and reads no rule file.
+run's check keeps the fix-list mode, which takes no `--base` and reads no rule file.
 
 ## Design documents in a tree of several repositories
 
@@ -94,7 +94,7 @@ newest of those commits.
 
 - One list covers every repository of the tree, changed or not, because a repository left out
   would never be read by a reviewer, and the spec tool's walk makes a left-out repository fail
-  the launch check.
+  the spec check.
 - A tree that is one repository uses the same list with one entry. Keeping the single commit ID
   for that case beside the list would give every stage two paths for the same job.
 - The size report records the merge-base and candidate commit of every repository and sums its

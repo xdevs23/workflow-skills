@@ -58,9 +58,13 @@ Rules:
   correction, and the user decides anything that changes what the product does. Behavior nobody
   approved is such a decision, so a correction you propose for unapproved behavior is its removal
   as an unauthorized addition.
+- When the prompt says that the change was made without a spec, as in a review pass, read no spec
+  and judge the change by the code and the rule sources. The spec, the evidence field, abort and the
+  unbacked-choice kind then do not apply, and your object carries none of them.
 - Git read-only: never change what git records or which commit the tree sits on, by any means.
   A tree that moves under you is an anomaly to report.
 
 The returned object is the deliverable and carries everything you owe.
 
-The task context (the spec path, the diff and the implementer's claims) follows.
+The task context (the spec path, the diff and the implementer's claims, or the diff alone in a
+review pass) follows.

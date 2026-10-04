@@ -1,7 +1,7 @@
 export const meta = {
   name: 'kebab-name',
   description: 'one line',
-  phases: [{ title: 'Launch' }, { title: 'Fix' }, { title: 'Diff' }],
+  phases: [{ title: 'Fix' }, { title: 'Diff' }],
 }
 // meta must be a PURE LITERAL: no variables, no interpolation. Phase titles here must
 // match the phase() calls EXACTLY or the progress grouping silently degrades.
@@ -16,7 +16,7 @@ const UNIT = {
   mainCheckout: '<main checkout>',
   worktree: '<isolated worktree>',       // its absolute path with no symbolic link in it, as pwd -P prints it there
   fixList: args.fixList,                 // the fix list in the main checkout's project cache (workflow-skills:local-cache), passed at launch; ends in .yaml
-  spec: args.spec,                       // the parent unit's spec the fix list names, from the check tool's output, passed at launch
+  spec: args.spec,                       // the parent unit's spec the fix list names, from the check tool's output, passed at launch; null when it names none
   transcripts: args.transcripts,         // the session transcript directory, passed at launch
   pluginRoot: '<plugin root>',           // the directory holding tools/check-spec.ts
   checkCommand: '<the check command>',   // the fixer only, run bare after the last write
@@ -29,7 +29,6 @@ const UNIT = {
   // its first agent on an entry that is missing, still a placeholder in angle brackets, named for no
   // agent of the script, or holding any field besides model and effort.
   models: {
-    gate: { model: '<explicit>', effort: 'low' },
     fix: { model: '<explicit>', effort: 'high' },
     roast: { model: '<explicit>', effort: 'high' },
     diff: { model: '<explicit>', effort: 'high' },
@@ -85,13 +84,17 @@ const GUIDE = [
     '/skills/code-writing/SKILL.md with the Read tool, and the file in code-writing\'s languages directory of every language you write.',
   'With the rule sources they are your guide: settle every choice the user\'s words leave open by them.',
 ].join('\n')
-const PARENT_SPEC = [
-  'PARENT SPEC: ' + UNIT.spec + ', the spec of the parent run\'s unit, which the launch check confirmed unchanged since that run.',
-  'It is the discussion of the unit, quoted verbatim: an entry of author user is the user\'s words and the authority, and an entry of',
-  'author assistant is context that gives the user entries after it their meaning, such as the question a bare yes answers, and is',
-  'never authority. Read it in full. A session transcript an entry names by a relative path lies under ' + UNIT.transcripts + ',',
-  'and a bare yes means nothing until the record it answers is read.',
-].join('\n')
+// A fix list made from a review pass names no spec, because that change was made without one.
+const WITHOUT_SPEC = UNIT.spec === null
+const PARENT_SPEC = WITHOUT_SPEC
+  ? 'NO SPEC: the fix list names no spec, because the change of the parent run was made without one. Read none.'
+  : [
+    'PARENT SPEC: ' + UNIT.spec + ', the spec of the parent run\'s unit, which the fix list check confirms unchanged since that run.',
+    'It is the discussion of the unit, quoted verbatim: an entry of author user is the user\'s words and the authority, and an entry of',
+    'author assistant is context that gives the user entries after it their meaning, such as the question a bare yes answers, and is',
+    'never authority. Read it in full. A session transcript an entry names by a relative path lies under ' + UNIT.transcripts + ',',
+    'and a bare yes means nothing until the record it answers is read.',
+  ].join('\n')
 // How a stage that reads a spec orders its user entries, and when the spec is invalid.
 const SPEC_RULES = [
   'User entries are in session order. A later one replaces what it corrects in an earlier one only where its own words present it',
@@ -104,18 +107,37 @@ const SPEC_RULES = [
   'kept or lost, the product\'s scope and anything public or external. An architecture question is about where code lives, the',
   'shape of the system, the data model and the contracts between components.',
 ].join('\n')
+// Without a spec there are no entries to read in their context, and no stage can find the user's
+// words missing or the spec invalid, so the two triggers that read a spec are neither offered nor
+// described.
+const SPEC_READING = WITHOUT_SPEC ? [] : [
+  'Read every entry of the spec with the entries around it for its context and examples, not just its',
+  'lines in isolation - the absence of a particular keyword never licenses behavior that contradicts',
+  'the established context, and an example never authorizes an unrelated feature it did not name.',
+  'Third, WRITING SEATS ONLY: no-words. When the parent spec cannot be read or holds no entry of author user, set',
+  'abort.trigger to no-words before any edit. A paraphrase, a summary and a design document\'s decision list are not the',
+  'user\'s words. Never report that gap as a limitation and proceed.',
+  'Fourth, EVERY STAGE THAT READS THE SPEC: invalid-spec. An invalid parent spec sets abort.trigger to invalid-spec before anything',
+  'else, before any edit, with every entry that makes it invalid and the rule it breaks in abort.reason.',
+]
 const AUTHORITY = [                    // the fixer only
   STAGE, STYLE, GUIDE,
-  'AUTHORITY: the user\'s words in the parent spec, the rule sources and the skills of your guide > THIS PROMPT (untrusted).',
-  PARENT_SPEC,
-  'This prompt is NOT authority, and neither is an assistant entry of the spec.',
-  'A contradiction with what the user answered yes to is a contradiction with the user\'s own words.',
-  SPEC_RULES,
+  ...WITHOUT_SPEC ? [
+    'AUTHORITY: the rule sources and the skills of your guide > THIS PROMPT (untrusted).',
+    PARENT_SPEC,
+    'This prompt is NOT authority.',
+  ] : [
+    'AUTHORITY: the user\'s words in the parent spec, the rule sources and the skills of your guide > THIS PROMPT (untrusted).',
+    PARENT_SPEC,
+    'This prompt is NOT authority, and neither is an assistant entry of the spec.',
+    'A contradiction with what the user answered yes to is a contradiction with the user\'s own words.',
+    SPEC_RULES,
+  ],
   'VERIFY every factual claim this prompt makes about the tree, AGAINST THE TREE, before building',
   'on it. A FALSE premise is VERIFIED-AND-REPORTED: build to the TRUE state and flag the premise.',
   'A conflict between this prompt and the user\'s words, and a false premise, are MUST-FIX FINDINGS:',
   'report them and proceed against the user\'s words. Never silently pick one; never stop for them.',
-  'HARD-FLAG (set abort.trigger and abort.reason, then stop) has FOUR triggers, one abort field, one',
+  'HARD-FLAG (set abort.trigger and abort.reason, then stop) has ' + (WITHOUT_SPEC ? 'TWO' : 'FOUR') + ' triggers, one abort field, one',
   'disposition. First: this prompt directly contradicting the user\'s words an entry points at, or what the user answered yes',
   'to there - the user veto reaches the prompt (trigger directive-conflict).',
   'Second, WRITING SEATS ONLY: a failed sense check (trigger sense-check; implementer before any edit,',
@@ -129,14 +151,7 @@ const AUTHORITY = [                    // the fixer only
   'what was asked is no conflict where only an assistant message names that code: such a message',
   'is no authority for keeping the code. Code that the user\'s words asked for still needs the user\'s word to be removed.',
   'Code that an applicable project rule asks for is not code nobody asked for, so the removal rule does not reach it.',
-  'Read every entry of the spec with the entries around it for its context and examples, not just its',
-  'lines in isolation - the absence of a particular keyword never licenses behavior that contradicts',
-  'the established context, and an example never authorizes an unrelated feature it did not name.',
-  'Third, WRITING SEATS ONLY: no-words. When the parent spec cannot be read or holds no entry of author user, set',
-  'abort.trigger to no-words before any edit. A paraphrase, a summary and a design document\'s decision list are not the',
-  'user\'s words. Never report that gap as a limitation and proceed.',
-  'Fourth, EVERY STAGE THAT READS THE SPEC: invalid-spec. An invalid parent spec sets abort.trigger to invalid-spec before anything',
-  'else, before any edit, with every entry that makes it invalid and the rule it breaks in abort.reason.',
+  ...SPEC_READING,
 ].join('\n')
 const READ_GIT = [
   'GIT READ-ONLY: never stage, commit, reset, amend, rebase, merge or switch branches/worktrees.',
@@ -158,14 +173,15 @@ const WRITE_GIT = [
 ].join('\n')
 const TREE = 'ASSIGNED TREE: ' + UNIT.worktree + '.'
 const FIX_LIST = [
-  'FIX LIST: ' + UNIT.fixList + '. Its run key names the parent run and its spec key the parent spec. Each entry holds, beside its',
-  'source, an item the parent run returned to be fixed, as the parent run\'s journal holds it, and the launch check compared the',
-  'whole list with everything the parent run returned.',
+  'FIX LIST: ' + UNIT.fixList + '. Its run key names the parent run and its spec key the parent spec, or null where there is none.',
+  'Each entry holds, beside its source, an item the parent run returned to be fixed, as the parent run\'s journal holds it, and the',
+  'fixer\'s fix list check compared the whole list with everything the parent run returned.',
 ].join('\n')
 
 // Field shapes, as in the main script. Every stage declares its own closed object in full.
 const ABORT = { type: 'object', required: ['trigger', 'reason'], additionalProperties: false,
-  properties: { trigger: { enum: ['none', 'directive-conflict', 'sense-check', 'no-words', 'invalid-spec'] }, reason: { type: 'string' } } }
+  properties: { trigger: { enum: ['none', 'directive-conflict', 'sense-check', ...WITHOUT_SPEC ? [] : ['no-words', 'invalid-spec']] },
+    reason: { type: 'string' } } }
 const RECEIPT = { type: 'object', required: ['file', 'line', 'quote'], additionalProperties: false,
   properties: { file: { type: 'string' }, line: { type: 'integer', minimum: 1 }, quote: { type: 'string' } } }
 const RECEIPTS = { type: 'array', minItems: 1, items: RECEIPT }
@@ -216,10 +232,13 @@ const DIFF = { type: 'object', additionalProperties: false, required: ['abort', 
       properties: { change: { type: 'string' }, source: { type: 'string' }, receipts: RECEIPTS } } } } }
 const ROAST = { type: 'object', additionalProperties: false, required: ['limitations', 'coverage', 'findings', 'snapshots'],
   properties: { limitations: LIMITATIONS, coverage: COVERAGE, findings: FINDINGS, snapshots: SNAPSHOTS } }
+// What the spec tool's run returned, unchanged: its exit code and what it printed.
+const SPEC_CHECK = { type: 'object', required: ['exitCode', 'stdout', 'stderr'], additionalProperties: false,
+  properties: { exitCode: { type: 'integer' }, stdout: { type: 'string' }, stderr: { type: 'string' } } }
 const FIX = { type: 'object', additionalProperties: false,
-  required: ['abort', 'limitations', 'repositories', 'proofPassed', 'premises', 'commits',
+  required: ['specCheck', 'abort', 'limitations', 'repositories', 'proofPassed', 'premises', 'commits',
     'files', 'checks', 'specSuggestions', 'dispositions', 'touched'],
-  properties: { abort: ABORT, limitations: LIMITATIONS, repositories: REPOSITORIES, proofPassed: { type: 'boolean' }, premises: PREMISES,
+  properties: { specCheck: SPEC_CHECK, abort: ABORT, limitations: LIMITATIONS, repositories: REPOSITORIES, proofPassed: { type: 'boolean' }, premises: PREMISES,
     commits: COMMITS, files: FILES, checks: CHECKS, specSuggestions: STRINGS,
     dispositions: { type: 'array', items: { type: 'object', additionalProperties: false,
       required: ['key', 'disposition', 'reason', 'receipts'],
@@ -310,15 +329,17 @@ const readSnapshots = (read, snaps, required) => {
 }
 if (typeof UNIT.fixList !== 'string' || !UNIT.fixList.endsWith('.yaml')) throw new Error('args.fixList must name the fix list YAML file')
 if (typeof UNIT.transcripts !== 'string' || !UNIT.transcripts) throw new Error('args.transcripts must name the transcript directory')
-if (typeof UNIT.spec !== 'string' || !UNIT.spec.trim()) throw new Error('args.spec must name the parent spec the fix list names')
-// The launch check holds the list to the parent run; here it only needs the shape the stages are built from.
+if (!WITHOUT_SPEC && (typeof UNIT.spec !== 'string' || !UNIT.spec.trim())) {
+  throw new Error('args.spec must name the parent spec the fix list names, or be null when it names none')
+}
+// The fixer's fix list check holds the list to the parent run; here it only needs the shape the stages are built from.
 const isObject = value => value != null && typeof value === 'object' && !Array.isArray(value)
 const holdsOneItem = ({ source, ...held }) => typeof source === 'string' && Object.keys(held).length === 1 && isObject(Object.values(held)[0])
 const entries = UNIT.entries
 if (!Array.isArray(entries) || !entries.length || entries.some(e => !isObject(e) || !holdsOneItem(e))) {
   throw new Error('args.entries must be the entries list from the check tool: non-empty, each with a source string and the one object it holds')
 }
-checkModels(UNIT.models, ['gate', 'fix', 'roast', 'diff'], 'UNIT.models')
+checkModels(UNIT.models, ['fix', 'roast', 'diff'], 'UNIT.models')
 
 // Completeness checks; each throws naming what is missing.
 const requireText = (value, label) => {
@@ -470,11 +491,14 @@ const DOCUMENT_FIX = [
 const HYGIENE = [STAGE, STYLE, READ_GIT, TREE, 'No background waits.'].join('\n')
 const RULES = 'RULE SOURCES: ' + UNIT.ruleSources + '.'
 const fixPass = queue => stage([
-  AUTHORITY, WRITE_GIT, TREE, PROVE, RULES, DOCUMENT_FIX, CHECK, 'START SHAS, per repository: ' + listed(base),
+  LIST_CHECK_FIRST, AUTHORITY, WRITE_GIT, TREE, PROVE, RULES, DOCUMENT_FIX, CHECK, 'START SHAS, per repository: ' + listed(base),
   'ENTRIES OF THE FIX LIST, each keyed by its source (verify against the tree and authority):', JSON.stringify(queue),
 ].join('\n\n'), {
   label: 'fix', phase: 'Fix', agentType: 'workflow-skills:fixer', ...UNIT.models.fix, schema: FIX,
-}, r => checkFixerResult(r, queue.map(f => f.key), base))
+}, r => {
+  // A failed fix list check returns as it is: fixRun ends the run on it, without another attempt.
+  if (listCheckPassed(r.specCheck)) checkFixerResult(r, queue.map(f => f.key), base)
+})
 // Source findings get their IDs here, for readers and roasts alike. A kind-bearing (band-aid /
 // longer-route) finding is CRITICAL: one arriving with any other severity or none is set to it here.
 const sourceFindings = (findings, seat, snaps) => findings.map((f, i) => {
@@ -504,7 +528,7 @@ const roastPass = async queue => {
   return { ...result, findings: sourceFindings(result.findings, 'roaster', base) }
 }
 const diffPass = (queue, snaps) => stage([
-  HYGIENE, FIX_LIST, PARENT_SPEC, SPEC_RULES, RULES,
+  HYGIENE, FIX_LIST, PARENT_SPEC, ...WITHOUT_SPEC ? [] : [SPEC_RULES], RULES,
   ['DIFFS, from the parent run\'s final snapshot to the fixer\'s, one per repository the fixer moved, read with git -C ' + UNIT.worktree + '/<path>:',
     ...snaps.filter(s => s.sha !== shaByPath(base).get(s.path)).map(s => s.path + ': ' + shaByPath(base).get(s.path) + '..' + s.sha),
     'Every repository must remain clean at its snapshot: ' + listed(snaps) + '.'].join('\n'),
@@ -518,6 +542,7 @@ const diffPass = (queue, snaps) => stage([
 async function fixRun() {
   phase('Fix')
   const pair = await Promise.allSettled([fixPass(queue), roastPass(queue)])
+  if (pair[0].status === 'fulfilled') checkListRun(pair[0].value.specCheck)
   // Process the fixer first so its cause names detail when both tasks end the run.
   pair.forEach((r, i) => {
     const label = i === 0 ? 'fix' : 'roast'
@@ -575,29 +600,31 @@ const fingerprint = values => {
   for (let index = 0; index < json.length; index++) hash = Math.imul(hash ^ json.charCodeAt(index), 0x01000193)
   return (hash >>> 0).toString(16).padStart(8, '0')
 }
-// The launch check, as in the main script, on the fix list and the base list. The command carries no
-// entry of the list, so the stage copies nothing long, and it runs in the worktree, so the tool checks
-// the base list against the repositories of this run's tree. Every value is one quoted word, as in the
-// main script.
-const GATE = { type: 'object', required: ['exitCode', 'stdout', 'stderr', 'proof'], additionalProperties: false,
-  properties: { exitCode: { type: 'integer' }, stdout: { type: 'string' }, stderr: { type: 'string' }, proof: { type: 'string' } } }
+// The fix list check, as the spec check of the main script. The fixer runs the spec tool on the fix
+// list and the base list before any edit and returns what the tool printed, and the run goes on only
+// when the proof printed there is the fingerprint of this run's own launch values. The command
+// carries no entry of the list, so the fixer copies nothing long, and it runs in the worktree, so the
+// tool checks the base list against the repositories of this run's tree. Every value is one quoted
+// word, as in the main script.
 const shellWord = value => "'" + value.replaceAll("'", "'\\''") + "'"
-const GATE_COMMAND = 'cd ' + shellWord(UNIT.worktree) + ' && bun ' + shellWord(UNIT.pluginRoot + '/tools/check-spec.ts') +
-  ' --fix-list ' + shellWord(UNIT.fixList) + ' --transcripts ' + shellWord(UNIT.transcripts) + ' --json --base ' +
-  shellWord(JSON.stringify(base)) + (UNIT.partialBase ? ' --partial-base' : '')
+const LIST_CHECK_FIRST = [
+  'FIX LIST CHECK, before anything else and before any edit: run this exact command once with the Bash tool, with no change, retry or fix:',
+  'cd ' + shellWord(UNIT.worktree) + ' && bun ' + shellWord(UNIT.pluginRoot + '/tools/check-spec.ts') + ' --fix-list ' +
+    shellWord(UNIT.fixList) + ' --transcripts ' + shellWord(UNIT.transcripts) + ' --json --base ' + shellWord(JSON.stringify(base)) +
+    (UNIT.partialBase ? ' --partial-base' : ''),
+  'Return its exit code, its stdout and its stderr in specCheck, unchanged. When its exit code is not 0, make no edit and',
+  'return your object with every repository at its start SHA.',
+].join('\n')
 const PROOF = fingerprint({ fixList: UNIT.fixList, transcripts: UNIT.transcripts, spec: UNIT.spec, entries,
   base, partialBase: Boolean(UNIT.partialBase), tree: UNIT.worktree })
-const checkGate = r => {
-  if (r.exitCode !== 0 || r.proof !== PROOF) {
-    throw new Error('the fix list check did not pass: exit ' + r.exitCode + ', proof ' + JSON.stringify(r.proof) +
-      ' where the launch values give ' + PROOF + ', stderr: ' + r.stderr)
+const printedProof = stdout => { try { return JSON.parse(stdout)?.proof } catch { return undefined } }
+const listCheckPassed = ({ exitCode, stdout }) => exitCode === 0 && printedProof(stdout) === PROOF
+const checkListRun = check => {
+  if (!listCheckPassed(check)) {
+    throw new Error('the fix list check did not pass: exit ' + check.exitCode + ', proof ' + JSON.stringify(printedProof(check.stdout) ?? null) +
+      ' where the launch values give ' + PROOF + ', stderr: ' + check.stderr)
   }
 }
-phase('Launch')
-checkGate(await stage([GATE_COMMAND,
-  'Run this exact command once with the Bash tool and return its exit code, stdout, stderr and the proof string it prints on success, with no interpretation, retry or fix.',
-  RELAYED,
-].join('\n'), { label: 'gate', phase: 'Launch', ...UNIT.models.gate, schema: GATE }))
 
 try { await fixRun() } catch (error) { failed(error, activeLabel) }
 // Only a fixer result the run accepted answers an entry: a fix returns for the root to attest and a

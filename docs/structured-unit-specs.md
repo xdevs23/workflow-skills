@@ -123,7 +123,8 @@ the file's key, and it is reported before those of the entries, which follow in 
 and the spec path. A failing run prints no summary and no proof.
 
 **where-the-tool-runs**: The orchestrating session runs the tool before it launches the main run,
-and the run's launch check runs it once more and continues only on the proof it prints. A failing
+and the run's implementer runs it once more before anything else, and the run continues only on
+the proof it prints. A failing
 spec launches no run. Every stage receives the spec by its path under the main checkout, never a
 path relative to its worktree, because a worktree holds no untracked file.
 

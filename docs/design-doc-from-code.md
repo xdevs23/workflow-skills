@@ -120,7 +120,7 @@ and they change `nonBlankLines` but not `specLines`.
 The 20:1 size check of the implement-review-verify skill divides the added code lines by the
 `specLines` count the tool reports for the final spec, and it reads no design document. It records
 the merge-base and candidate commit of each repository and the spec's `sha256` from the tool. That
-`sha256` equals the one the launch check of the run that produced the candidate printed, so the
+`sha256` equals the one the spec check of the run that produced the candidate printed, so the
 counted spec is the one the writers and reviewers read.
 
 ## Decisions and their reasons

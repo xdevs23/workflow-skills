@@ -1,7 +1,7 @@
 export const meta = {
   name: 'kebab-name',
   description: 'one line',
-  phases: [{ title: 'Launch' }, { title: 'Implement' }, { title: 'Review' }, { title: 'Verify' }, { title: 'Fix' }],
+  phases: [{ title: 'Implement' }, { title: 'Review' }, { title: 'Verify' }, { title: 'Fix' }],
 }
 // meta must be a PURE LITERAL: no variables, no interpolation. Phase titles here must
 // match the phase() calls EXACTLY or the progress grouping silently degrades.
@@ -15,13 +15,13 @@ export const meta = {
 const UNIT = {
   mainCheckout: '<main checkout>',
   worktree: '<isolated worktree>',       // its absolute path with no symbolic link in it, as pwd -P prints it there
-  specPath: args.specPath,               // the unit spec under the main checkout, passed at launch; ends in .yaml
-  transcripts: args.transcripts,         // the session transcript directory, passed at launch
+  specPath: args.specPath,               // the unit spec under the main checkout, passed at launch; ends in .yaml; none in a review-only run
+  transcripts: args.transcripts,         // the session transcript directory, passed at launch; none in a review-only run
   pluginRoot: '<plugin root>',           // the directory holding tools/check-spec.ts
   checkCommand: '<the check command>',   // the fixer only, run bare after its last write
   base: args.base,                       // one { path, sha } per git repository of the tree: its path under the tree root and starting commit, passed at launch
   partialBase: false,                    // true only in a tree too large to list, where base names just the repositories the unit changes
-  reviewOnly: false,                     // true runs the launch check and the review stage alone, on a change already committed from base to head
+  reviewOnly: false,                     // true runs the review stage alone, without a spec, on a change already committed from base to head
   head: args.head,                       // a review-only run's end: one { path, sha } per repository of base, the commit the change ends at, passed at launch
   documents: '<documents directory>',    // design documents, relative to the tree root and inside one repository of base; docs for a one-repository tree
   ruleSources: '<applicable project, directory and global rule paths>',
@@ -30,7 +30,6 @@ const UNIT = {
   // its first agent on an entry that is missing, still a placeholder in angle brackets, named for no
   // agent of the script, or holding any field besides model and effort.
   models: {
-    gate: { model: '<explicit>', effort: 'low' },
     impl: { model: '<explicit>', effort: 'high' },
     review: {                            // one entry per review seat, keyed by the seat's label
       correctness: { model: '<explicit>', effort: 'high' },
@@ -180,7 +179,7 @@ const WRITE_GIT = [
   'After committing, run git -C <tree>/<path> rev-parse --verify HEAD^{commit} and git status --porcelain=v1 --untracked-files=all in every repository.',
 ].join('\n')
 // The spec rides as a PATH, never as a copy, because it quotes the user (law 5) and because the
-// launch check verified that file and no copy of it (law 7). The orchestrating session adds no
+// implementer's spec check verifies that file and no copy of it (law 7). The orchestrating session adds no
 // words of its own to any stage: no scoping, no invariants and no note.
 // The check command never sits here: reviewers receive this block and may not run it.
 // The unbriefed seats receive the tree line alone, through HYGIENE below.
@@ -292,17 +291,22 @@ const INVERSE = { type: 'object', additionalProperties: false,
       properties: { choice: { type: 'string' }, receipts: RECEIPTS, authority: { type: 'string' }, saving: { type: 'string' },
         class: { enum: ['authorized', 'derivation', 'excess', 'missing-decision', 'directive-conflict'] } } } } } }
 // The rule reader's finding also carries scope: in the change, or an existing violation beside it.
+const ruleFindings = kinds => ({ type: 'array', items: { type: 'object', additionalProperties: false,
+  required: ['file', 'claim', 'severity', 'lane', 'receipts', 'scope'],
+  properties: { file: { type: 'string' }, claim: { type: 'string' },
+    severity: { enum: ['must-fix', 'should-fix', 'nit', 'CRITICAL'] },
+    lane: { enum: ['fixer-actionable', 'orchestrator-only', 'later-phase', 'not-a-defect'] },
+    kind: kinds, receipts: RECEIPTS, scope: { enum: ['in-change', 'beside'] } } } })
+const RULE_SOURCES = { type: 'array', items: { type: 'object', required: ['path', 'read'], additionalProperties: false,
+  properties: { path: { type: 'string' }, read: { type: 'boolean' } } } }
 const RULES_SEAT = { type: 'object', additionalProperties: false,
   required: ['abort', 'limitations', 'coverage', 'findings', 'ruleSources'],
-  properties: { abort: ABORT, limitations: LIMITATIONS, coverage: COVERAGE,
-    findings: { type: 'array', items: { type: 'object', additionalProperties: false,
-      required: ['file', 'claim', 'severity', 'lane', 'receipts', 'scope'],
-      properties: { file: { type: 'string' }, claim: { type: 'string' },
-        severity: { enum: ['must-fix', 'should-fix', 'nit', 'CRITICAL'] },
-        lane: { enum: ['fixer-actionable', 'orchestrator-only', 'later-phase', 'not-a-defect'] },
-        kind: BRIEFED_KINDS, receipts: RECEIPTS, scope: { enum: ['in-change', 'beside'] } } } },
-    ruleSources: { type: 'array', items: { type: 'object', required: ['path', 'read'], additionalProperties: false,
-      properties: { path: { type: 'string' }, read: { type: 'boolean' } } } } } }
+  properties: { abort: ABORT, limitations: LIMITATIONS, coverage: COVERAGE, findings: ruleFindings(BRIEFED_KINDS), ruleSources: RULE_SOURCES } }
+// Without a spec the rule reader has no words of the user to hold a choice to, so it carries no
+// abort field and no unbacked-choice kind.
+const RULES_WITHOUT_SPEC = { type: 'object', additionalProperties: false,
+  required: ['limitations', 'coverage', 'findings', 'ruleSources'],
+  properties: { limitations: LIMITATIONS, coverage: COVERAGE, findings: ruleFindings(FINDING.properties.kind), ruleSources: RULE_SOURCES } }
 const QUALITY = { type: 'object', additionalProperties: false, required: ['limitations', 'coverage', 'findings'],
   properties: { limitations: LIMITATIONS, coverage: COVERAGE, findings: FINDINGS } }
 const ALTERNATIVES = { type: 'object', additionalProperties: false,
@@ -323,12 +327,16 @@ const SPEC_FINDINGS = { type: 'array', items: { type: 'object', required: ['evid
     class: { enum: ['joint-impossibility', 'missing-contract', 'reality-drift', 'unbacked-entry'] },
     claim: { type: 'string' }, receipts: RECEIPTS } } }
 
+// What the spec tool's run returned, unchanged: its exit code and what it printed.
+const SPEC_CHECK = { type: 'object', required: ['exitCode', 'stdout', 'stderr'], additionalProperties: false,
+  properties: { exitCode: { type: 'integer' }, stdout: { type: 'string' }, stderr: { type: 'string' } } }
+
 // Writer schemas. The deliverable proof is files together with checks: an account of the work
 // with an empty files list behind a new snapshot fails the completeness check below.
 const IMPLEMENT = { type: 'object', additionalProperties: false,
-  required: ['abort', 'limitations', 'repositories', 'proofPassed', 'premises',
+  required: ['specCheck', 'abort', 'limitations', 'repositories', 'proofPassed', 'premises',
     'senseCheck', 'specFindings', 'commits', 'files', 'checks', 'artifacts', 'specSuggestions'],
-  properties: { abort: ABORT, limitations: LIMITATIONS, repositories: REPOSITORIES, proofPassed: { type: 'boolean' },
+  properties: { specCheck: SPEC_CHECK, abort: ABORT, limitations: LIMITATIONS, repositories: REPOSITORIES, proofPassed: { type: 'boolean' },
     premises: PREMISES,
     senseCheck: { type: 'object', required: ['passed', 'recordSilent', 'note'], additionalProperties: false,
       properties: { passed: { type: 'boolean' }, recordSilent: { type: 'boolean' }, note: { type: 'string' } } },
@@ -475,10 +483,16 @@ const readSnapshots = (read, snaps, required) => {
   return new Set(paths).size === paths.length &&
     read.every(entry => expected.get(entry.path) === entry.sha) && required.every(path => paths.includes(path))
 }
-if (typeof UNIT.specPath !== 'string' || !UNIT.specPath.endsWith('.yaml')) {
-  throw new Error('args.specPath must name the unit spec YAML file')
+// A review-only run reads a change made without a spec, so it takes none, and no transcript
+// directory, which only the spec's entries are read from.
+if (UNIT.reviewOnly) {
+  if (UNIT.specPath !== undefined || UNIT.transcripts !== undefined) {
+    throw new Error('a review-only run takes no spec: leave args.specPath and args.transcripts out')
+  }
+} else {
+  if (typeof UNIT.specPath !== 'string' || !UNIT.specPath.endsWith('.yaml')) throw new Error('args.specPath must name the unit spec YAML file')
+  if (typeof UNIT.transcripts !== 'string' || !UNIT.transcripts) throw new Error('args.transcripts must name the transcript directory')
 }
-if (typeof UNIT.transcripts !== 'string' || !UNIT.transcripts) throw new Error('args.transcripts must name the transcript directory')
 const AGAINST_SPEC = [
   'FINDINGS AGAINST THE SPEC: read the spec and flag what is wrong with the implementation, saying it in claim. Never quote the',
   'user bare: each finding names in evidence where its backing stands. For the user\'s words, kind transcript: the session file',
@@ -620,7 +634,8 @@ const FOCUSED = [
   'bare and once: its tests, and its type check or build where the project has one. Never run the full check:',
   'the fixer runs it once after its corrections, and a full run here goes stale when the fixer changes a file.',
 ].join('\n')
-const NEW_DOCUMENT = UNIT.documents + '/' + UNIT.specPath.split('/').pop().replace(/\.yaml$/, '') + '.md'
+// A review-only run starts no writer, so it names no document.
+const NEW_DOCUMENT = UNIT.reviewOnly ? null : UNIT.documents + '/' + UNIT.specPath.split('/').pop().replace(/\.yaml$/, '') + '.md'
 const DOCUMENT_WHEN = [
   'DESIGN DOCUMENT, writer only: write or extend a design document when your change alters the design: what the code does,',
   'how its parts fit together, a decision with its reason, or a rejected alternative. A change that alters none of these',
@@ -705,9 +720,19 @@ if (JSON.stringify([...listedSeats].sort()) !== JSON.stringify([...requiredSeats
   throw new Error('The review stage runs exactly the fifteen seats ' + requiredSeats.join(', ') +
     ', and the seat list holds ' + listedSeats.join(', '))
 }
+// A review-only run reads a change made without a spec. The two seats that judge a change against
+// the spec do not run, and the other seats that read the spec read the change without one: the rule
+// reader with its rule sources, the others on the hygiene floor of the unbriefed seats.
+const SPEC_SEATS = ['spec', 'inverse']
+const NO_SPEC = 'NO SPEC: this change was made without a spec. Read none, and judge the change by the code and the rule sources.'
+const withoutSpec = ([type, label, inputs, schema, complete]) => {
+  if (label === 'rules') return [type, label, [HYGIENE, NO_SPEC, RULES], RULES_WITHOUT_SPEC, checkReader]
+  return inputs.includes(SPEC) ? [type, label, [HYGIENE, NO_SPEC], QUALITY, checkReader] : [type, label, inputs, schema, complete]
+}
+const reviewOnlySeats = () => seatList([], []).filter(([, label]) => !SPEC_SEATS.includes(label)).map(withoutSpec)
 const { review: seatModels, ...stageModels } = UNIT.models ?? {}
-checkModels(stageModels, ['gate', 'impl', 'verify', 'fix', 'roast'], 'UNIT.models')
-checkModels(seatModels, Object.keys(REVIEW_SEATS), 'UNIT.models.review')
+checkModels(stageModels, ['impl', 'verify', 'fix', 'roast'], 'UNIT.models')
+checkModels(seatModels, UNIT.reviewOnly ? reviewOnlySeats().map(([, label]) => label) : Object.keys(REVIEW_SEATS), 'UNIT.models.review')
 // One diff range per repository whose snapshot moved from base, each read in its own repository.
 const diffInput = snaps => {
   const start = shaByPath(base), moved = snaps.filter(s => s.sha !== start.get(s.path))
@@ -866,11 +891,14 @@ const fixPass = (queue, starts) => stage([
 
 async function implement() {
   phase('Implement')
-  impl = await stage(
-    [AUTHORITY, GUIDE, WRITE_GIT, SPEC, RULES, PROVE, DOCUMENT_IMPL, FOCUSED, RETURN_ARTIFACTS, 'START SHAS, per repository: ' + listed(base), TASK].join('\n\n'),
+  // A failed spec check returns as it is, and the run ends on it without another attempt.
+  const result = await stage(
+    [specCheckFirst(), AUTHORITY, GUIDE, WRITE_GIT, SPEC, RULES, PROVE, DOCUMENT_IMPL, FOCUSED, RETURN_ARTIFACTS, 'START SHAS, per repository: ' + listed(base), TASK].join('\n\n'),
     { label: 'impl', phase: 'Implement', agentType: 'workflow-skills:implementer', ...UNIT.models.impl, schema: IMPLEMENT },
-    checkImplementer,
+    r => { if (specCheckPassed(r.specCheck)) checkImplementer(r) },
   )
+  checkSpecRun(result.specCheck)
+  impl = result
   abortOnFlag(impl, 'impl')
   checkWriterSnapshot(impl, base)
   snapshots = snapshotsOf(impl)
@@ -883,9 +911,9 @@ async function onePass() {
   else await implement()
   if (exit) return
 
-  const SEATS = impl
-    ? seatList(['UNTRUSTED implementer claims (its returned object):', JSON.stringify(impl)], handedOn(impl.artifacts))
-    : seatList([], [])
+  const SEATS = UNIT.reviewOnly
+    ? reviewOnlySeats()
+    : seatList(['UNTRUSTED implementer claims (its returned object):', JSON.stringify(impl)], handedOn(impl.artifacts))
   phase('Review')
   const readers = await Promise.allSettled(SEATS.map(s => readSeat(s, snapshots)))
   const reports = []
@@ -901,14 +929,10 @@ async function onePass() {
   })
   sources = reports.flatMap(r => r.findings)
   // A review-only run has no finding verifier, so every finding and every limitation of a reviewer that
-  // returned goes to the root, also when another reviewer failed. An inverse-spec finding is CRITICAL
-  // whatever its reviewer said, as the verifier holds it in a main run.
+  // returned goes to the root, also when another reviewer failed.
   if (UNIT.reviewOnly) {
     for (const report of reports) {
-      for (const f of report.findings) {
-        const severity = report.seat === 'inverse' ? 'CRITICAL' : f.severity
-        add('review-finding', { ...f, severity }, severity)
-      }
+      for (const f of report.findings) add('review-finding', f, f.severity)
       for (const l of uncovered(report)) add('review-limitation', { ...l, label: report.label }, 'should-fix')
       limited(report, report.label)
     }
@@ -1001,34 +1025,33 @@ const fingerprint = values => {
   for (let index = 0; index < json.length; index++) hash = Math.imul(hash ^ json.charCodeAt(index), 0x01000193)
   return (hash >>> 0).toString(16).padStart(8, '0')
 }
-// The launch check. One small stage runs the spec tool on the unit's spec file, and the tool prints
-// its proof only when the spec passes. The script continues only when that proof is the fingerprint
-// of this run's own launch values and tree, so a failed check, a check of other values or of another
-// tree, and a proof the stage made up stop the run. The comparison shows that the values agree, not
-// that the tool ran: the stage could compute the same fingerprint without it. A failed check is
-// final: another attempt could pass only by changing what the check compares, so the stage helper
-// retries only a stage that returned nothing usable.
-const GATE = { type: 'object', required: ['exitCode', 'stdout', 'stderr', 'proof'], additionalProperties: false,
-  properties: { exitCode: { type: 'integer' }, stdout: { type: 'string' }, stderr: { type: 'string' }, proof: { type: 'string' } } }
+// The spec check. The implementer runs the spec tool on the unit's spec file before any edit and
+// returns what the tool printed, and the tool prints its proof only when the spec passes. The run
+// goes on only when that proof is the fingerprint of this run's own launch values and tree, so a
+// failed check, a check of other values or of another tree, and a proof that is made up stop the
+// run. The comparison shows that the values agree, not that the tool ran.
 // The command runs in the worktree, so the tool checks the base list against the repositories of
 // this run's tree alone. Every value is one quoted word, so a path holding a space, an apostrophe or
-// any other character the shell reads reaches the tool unchanged.
+// any other character the shell reads reaches the tool unchanged. A review-only run has no spec and
+// no writer, so the block is built only for the implementer.
 const shellWord = value => "'" + value.replaceAll("'", "'\\''") + "'"
-const GATE_COMMAND = 'cd ' + shellWord(UNIT.worktree) + ' && bun ' + shellWord(UNIT.pluginRoot + '/tools/check-spec.ts') + ' ' +
-  shellWord(UNIT.specPath) + ' --transcripts ' + shellWord(UNIT.transcripts) + ' --json --base ' + shellWord(JSON.stringify(base)) +
-  (UNIT.partialBase ? ' --partial-base' : '')
+const specCheckFirst = () => [
+  'SPEC CHECK, before anything else and before any edit: run this exact command once with the Bash tool, with no change, retry or fix:',
+  'cd ' + shellWord(UNIT.worktree) + ' && bun ' + shellWord(UNIT.pluginRoot + '/tools/check-spec.ts') + ' ' +
+    shellWord(UNIT.specPath) + ' --transcripts ' + shellWord(UNIT.transcripts) + ' --json --base ' + shellWord(JSON.stringify(base)) +
+    (UNIT.partialBase ? ' --partial-base' : ''),
+  'Return its exit code, its stdout and its stderr in specCheck, unchanged. When its exit code is not 0, make no edit and',
+  'return your object with every repository at its start SHA.',
+].join('\n')
 const PROOF = fingerprint({ spec: UNIT.specPath, transcripts: UNIT.transcripts, base, partialBase: Boolean(UNIT.partialBase), tree: UNIT.worktree })
-const checkGate = r => {
-  if (r.exitCode !== 0 || r.proof !== PROOF) {
-    throw new Error('the spec check did not pass: exit ' + r.exitCode + ', proof ' + JSON.stringify(r.proof) +
-      ' where the launch values give ' + PROOF + ', stderr: ' + r.stderr)
+const printedProof = stdout => { try { return JSON.parse(stdout)?.proof } catch { return undefined } }
+const specCheckPassed = ({ exitCode, stdout }) => exitCode === 0 && printedProof(stdout) === PROOF
+const checkSpecRun = check => {
+  if (!specCheckPassed(check)) {
+    throw new Error('the spec check did not pass: exit ' + check.exitCode + ', proof ' + JSON.stringify(printedProof(check.stdout) ?? null) +
+      ' where the launch values give ' + PROOF + ', stderr: ' + check.stderr)
   }
 }
-phase('Launch')
-checkGate(await stage([GATE_COMMAND,
-  'Run this exact command once with the Bash tool and return its exit code, stdout, stderr and the proof string it prints on success, with no interpretation, retry or fix.',
-  RELAYED,
-].join('\n'), { label: 'gate', phase: 'Launch', ...UNIT.models.gate, schema: GATE }))
 
 try { await onePass() } catch (error) { failed(error, activeLabel) }
 // An unbacked-entry finding is CRITICAL: its words were said about another unit or mean nothing on

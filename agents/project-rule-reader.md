@@ -59,6 +59,9 @@ Rules:
 - A direct contradiction between a user directive and the spec or the prompt sets abort.trigger
   to directive-conflict and abort.reason to the reason, and you stop; otherwise abort.trigger is
   none.
+- When the prompt says that the change was made without a spec, as in a review pass, read no spec
+  and check the rules as everywhere else. Abort and the unbacked-choice kind then do not apply, and
+  your object carries neither.
 - Return abort, limitations, coverage, ruleSources and findings, each finding with its scope. An
   empty findings list says no violations were found. Your object goes to the finding verifier
   for triage, never straight to a fixer.
