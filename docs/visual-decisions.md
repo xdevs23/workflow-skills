@@ -13,19 +13,22 @@ of the code: the merged code by its branch or deployment, such as the main branc
 branch or production, and work that is not merged yet as unmerged, with its branch in the label. A
 decision shows the state it starts from and After, or, when it helps, three pictures: the merged
 code, the unmerged work and After. Before drawing, the assistant reads in full the code behind every
-state it draws that has a commit, at the commit that state names, so each picture of such a state
-shows what that code does. A statement about a state that its code contradicts is drawn as the code
-has it, with a line starting `CORRECTION:` under the decision, and an After that the code does not
-define yet is drawn as a proposal whose caption names any layout the assistant chose.
+state it draws, at the version that state shows, so each picture of a state that has code shows
+what that code does. That version is the commit of a committed state, and for changes nobody has
+committed yet it is the working tree that holds them, so unmerged work that is not committed is read
+like any other state. Only an After that the code does not define yet has no code to read. It is
+drawn as a proposal whose caption names any layout the assistant chose. A statement about a state
+that its code contradicts is drawn as the code has it, with a line starting `CORRECTION:` under the
+decision.
 
 The page is one standalone HTML file in the project cache, with its CSS inside it and no external
 resources. It holds no paragraphs. A visible change imitates the real screen, a change nobody sees
 is drawn as boxes and arrows, and one realistic sample runs through every decision of the page. The
 drawing can go to one agent when the code to read is large. That agent's prompt carries, for every
-state with a commit, the repository and the full commit ID the state names, and the agent reads the
-files of that state at that commit, because its own checkout can hold a different version. The
-assistant renders the page once in a headless browser and looks at the screenshot before showing
-it.
+state that has code, the repository and either the full commit ID the state names or the path of
+the working tree that holds its changes not committed yet, and the agent reads the files of that
+state at that version, because its own checkout can hold a different version. The assistant
+renders the page once in a headless browser and looks at the screenshot before showing it.
 
 The chat message holds the page path, one line per decision and one question. An answer is taken
 exactly as written. A choice the rules already decide stays off the page and is stated in one line
