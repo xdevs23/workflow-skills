@@ -8,13 +8,11 @@ description: Resumes a workflow run interrupted after agents did substantial wor
 **Load the `workflow-skills:writing-style` skill first.** It binds every comment, document, commit
 message and reply this skill produces, and it is not optional when working with this plugin.
 
-A run's journal records every `agent()` call under a key made from its prompt, its options and the
-calls the script made before it, in the order it made them, and holds the result of every call that
-finished. A resume replays each call whose key the journal holds with a result and runs every other
-call live. An agent that was still working when the run stopped has **no journaled result**, so the
-resume starts it from an empty context: every file it read, every finding it had already
-established, gone, re-derived from scratch on the resumed run's budget. Meanwhile its transcript is
-sitting on disk, complete up to the moment of the stop.
+A run's journal holds the result of every `agent()` call that finished, and a resume replays those
+results as far as the next section describes. An agent that was still working when the run stopped
+has **no journaled result**, so the resume starts it from an empty context: every file it read,
+every finding it had already established, gone, re-derived from scratch on the resumed run's
+budget. Meanwhile its transcript is sitting on disk, complete up to the moment of the stop.
 
 This skill is that one move: **give each interrupted seat its own prior transcript back, inside its own
 prompt, before resuming.** Everything else here exists to keep that move from damaging the run it is
@@ -22,17 +20,32 @@ rescuing.
 
 ## What a resume runs again
 
-- Expect an interrupted call whose prompt and options you leave unchanged to keep its key: it runs
-  live, and every finished call replays, also one the script made after it.
-- Expect any edit of a call's prompt or options, a resume note or a switched model alike, to give
-  that call and every call the script makes after it a new key. All of them run live, the finished
-  ones included, such as the roaster that starts beside the fixer or the reviewers listed after an
-  edited reviewer.
+- Expect the journal key of a call to come from its prompt, from its options `schema`, `model`,
+  `effort`, `isolation`, `agentType`, `disallowedTools` and `bashCommandClamp`, and from the key of
+  the call the script made just before it. A new key for one call therefore gives every call the
+  script makes after it a new key as well.
+- Expect an edit of a call's prompt, a word or a space, or of one of those options, a resume note
+  or a switched model alike, to give that call a new key. An edit of any other option, such as
+  `label`, `phase` or `stallMs`, leaves the key as it was.
+- Expect a resume to replay journaled results, in the order the script makes its calls, up to the
+  first call that has no journaled result and was not interrupted. The journal shows an interrupted
+  call as started, with no failure recorded for it. From that call on, every call runs live, also
+  one whose key the journal holds with a result.
+- Expect each of these calls to end the replay: a call whose key the journal does not hold, such as
+  an edited one, a call that failed or returned no result, such as an attempt that a retry follows,
+  and a call that had not started when the run stopped. After an edited call this means, for
+  example, that the roaster that starts beside the fixer or the reviewers listed after an edited
+  reviewer run again.
+- Expect an interrupted call whose prompt and options you leave unchanged to run live without
+  ending the replay, so the finished calls made after it replay until one of the calls above ends
+  the replay.
 - Expect a call the script makes only once an earlier result arrives, such as a retry, to take its
-  place in that order from when the result arrived. A resume can hand replayed results back in
-  another order than the live run received them, so such a call can get a new key and run live
-  together with every call after it, even when nothing was edited. A later resume of the same run
-  replays them, because the journal then holds the order the earlier resume produced.
+  place in the order from when that result arrived. A resume can hand replayed results back in
+  another order than the live run received them, so such a call can get a key the journal does not
+  hold and end the replay, even when nothing was edited.
+- Expect a later resume of the same run to replay the calls an earlier resume ran live only when it
+  makes them in the same order with the same keys and no call before them ends the replay. The
+  order depends on when results arrive, so one resume does not settle it for the next.
 - Expect a call that runs live again to receive other input than its earlier attempt saw whenever a
   call before it returned something new, such as a verifier reading reviewer reports that were
   written again.
@@ -48,8 +61,8 @@ rescuing.
 - The run died **before any agent produced substantial work**. There is nothing to carry forward;
   resume plainly.
 - **Every agent completed** and the run failed after them (an error in the workflow script, a throw
-  between phases). Their results are journaled; a plain resume replays them, apart from calls whose
-  order changes as the section above describes, and this procedure buys nothing.
+  between phases). Their results are journaled; a plain resume replays them as far as the section
+  above describes, and this procedure buys nothing.
 - An agent **completed with a bad result**. That is the opposite problem — see the boundary section
   at the end.
 - The run **ended on its own**, whatever its exit. Its remaining items are recorded, and a new run
@@ -94,36 +107,39 @@ prevent.
 
 - List the finished calls the script makes after the first interrupted call you would edit, before
   you edit it. Each of them runs live again, so a note saves the interrupted agent's work at the
-  price of theirs. Add the notes only when the interrupted work they save outweighs the finished
-  work they re-run, and resume plainly otherwise.
+  price of theirs.
+- Add the notes only when the interrupted work they save outweighs the finished work they re-run,
+  and resume plainly otherwise.
 - Edit **the persisted script file**, whose path is also returned at launch, and append the resume
   note to the prompts of the interrupted agents and nothing else.
-- Make the note tell the interrupted agent all six things:
+- Make the note tell the interrupted agent all seven things:
   - an earlier attempt **of this exact seat** was interrupted **through no fault of its own** — the
     seat has to know the transcript is its own sound work, not output handed to it under suspicion;
   - its complete transcript is at `<absolute path>`;
   - **read it first**, then pick up where it left off;
-  - carry every finding it already made **forward verbatim**;
-  - **re-verify only if the code changed underneath** (rule 4 — not optional), and treat its
-    prompt as the authority on its input: where an input differs from what the transcript shows,
-    carry forward only the findings that input does not touch;
-  - do not redo investigation it already completed; spend the effort on what it had **not yet
-    covered**.
+  - its prompt is the authority on its input, where an input differs from what the transcript
+    shows;
+  - **re-verify only what the code or an input that differs from the transcript changed
+    underneath**, the findings that rest on it included (rule 4, not optional);
+  - carry every other finding it already made **forward verbatim**;
+  - do not redo any other investigation it already completed; spend the effort on what it had **not
+    yet covered**.
 
 ### 4. Leave every COMPLETED stage prompt byte-identical
 
-- Leave every completed stage's prompt and options byte-identical. **Any** edit, a word or a space,
-  gives that call and every call made after it a new key, so all of them run live, and its own
-  result is thrown away as well. One stray edit early in the script can re-execute most of the run
-  you were trying to salvage.
+- Leave every completed stage's prompt byte-identical, and leave the options its key covers
+  unchanged. **Any** edit of either, a word or a space, gives that call a new key and ends the
+  replay there, as the first section describes, and its own result is thrown away as well. One
+  stray edit early in the script can re-execute most of the run you were trying to salvage.
 - Never reach a single seat by editing a shared constant either — see
   `workflow-skills:implement-review-verify`, law 3(a).
 
 ### 5. Re-invoke
 
 - Re-invoke the workflow with the persisted script path and the **prior run id**. Finished calls
-  made before the first edited or reordered call replay from the journal. That call and every call
-  after it run live, the interrupted ones with their own transcript in hand.
+  replay from the journal up to the first call that ends the replay, as the first section
+  describes. That call and every call after it run live, the interrupted ones with their own
+  transcript in hand.
 
 ## The resume note — where it goes in a prompt
 
@@ -134,15 +150,16 @@ Append the resume note last, after the shared blocks, on that seat's prompt alon
 const RESUME_NOTE = [
   'RESUME NOTE. An earlier attempt at THIS EXACT SEAT was interrupted mid-flight, through no',
   'fault of its own. Its complete transcript is at <ABS>/agent-<id>.jsonl.',
-  'READ IT FIRST and pick up where it left off. Carry every finding it already made forward',
-  'VERBATIM, except where an input in this prompt differs from what the transcript shows: this',
-  'prompt is the authority on its input. RE-VERIFY ONLY IF THE CODE CHANGED UNDERNEATH. Do not',
-  'redo investigation it already completed - spend your effort on what it had not yet covered.',
+  'READ IT FIRST and pick up where it left off. Where an input in this prompt differs from what',
+  'the transcript shows, this prompt is the authority on that input. RE-VERIFY ONLY WHAT THE CODE',
+  'OR SUCH A DIFFERING INPUT CHANGED UNDERNEATH, the findings that rest on it included. Carry',
+  'every other finding it already made forward VERBATIM. Do not redo any other investigation it',
+  'already completed - spend your effort on what it had not yet covered.',
 ].join('\n')
 
-// Interrupted agent: note appended. Its key changes, and so do the keys of every later call.
+// Editing this call also changes every later call's key.
 const correctnessPrompt = [AUTHORITY, SPEC, SEAT_BRIEF, RESUME_NOTE].join('\n\n')
-// Completed agent: untouched, byte for byte. Made before the first edited call, it replays.
+// Replays only when made before the first call that ends the replay.
 const specCompliancePrompt = [AUTHORITY, SPEC, SEAT_BRIEF].join('\n\n')
 ```
 
@@ -170,9 +187,9 @@ const specCompliancePrompt = [AUTHORITY, SPEC, SEAT_BRIEF].join('\n\n')
    interrupted set.
 4. **Always include the re-verify-only-if-the-code-or-input-changed clause.** Without it, a resumed
    seat treats its own prior findings as unproven and burns its budget re-proving what was already
-   established — which is the exact cost this procedure exists to avoid. With it, the seat re-checks
-   only what the tree or its input changed underneath it and spends the rest of its effort on
-   uncovered ground.
+   established, which is the exact cost this procedure exists to avoid. With it, the seat re-checks
+   what the tree or a differing input changed underneath it, the findings that rest on that
+   included, and spends the rest of its effort on what it had not yet covered.
 
 ## What to expect
 
@@ -180,8 +197,8 @@ A seat that had effectively finished before the stop reads its transcript and re
 almost immediately, instead of redoing the work. A partially-done seat continues from where it was.
 The recovery is near-lossless, not lossless — the note is an instruction to the resumed agent, not a
 restored context, so treat a resumed seat's output as its own work product and hold it to the same
-contract as any other seat. The finished calls made after the first edited call run again as well,
-and their results can differ from the ones they returned before the stop.
+contract as any other seat. The finished calls after the first call that ends the replay run again
+as well, and their results can differ from the ones they returned before the stop.
 
 ## Boundary — this is NOT the poisoned-result case
 
