@@ -1525,6 +1525,21 @@ describe('one-pass remaining-items handoff', () => {
     expect(calls.find(c => c.phase === 'Verify').prompt).toContain(premise.note)
   })
 
+  test('an implementer that ends the run returns its narrowing limitations with its label; one that goes on hands them to the verifier', async () => {
+    const narrows = { what: 'The integration check could read only the request handlers.', effect: 'narrows' }
+    const blocks = { what: 'A required resource is unavailable.', effect: 'blocks' }
+    for (const [ending, fields] of [['failed-proof', { proofPassed: false, limitations: [narrows] }],
+      ['blocking-limitation', { limitations: [blocks, narrows] }]]) {
+      const { result, calls } = await simulate({ implementation: implemented(fields) })
+      expect([ending, result.exit, calls.map(c => c.label)]).toEqual([ending, 'root-resolution', ['impl']])
+      expect([ending, result.remaining.map(r => r.kind)]).toEqual([ending, [ending, 'impl-limitation']])
+      expect([ending, result.remaining[1]]).toEqual([ending, { kind: 'impl-limitation', severity: 'should-fix', item: { ...narrows, label: 'impl' } }])
+    }
+    const { result, calls } = await simulate({ implementation: implemented({ limitations: [narrows] }) })
+    expect([result.exit, result.remaining]).toEqual(['clean', []])
+    expect(calls.find(c => c.phase === 'Verify').prompt).toContain(narrows.what)
+  })
+
   test('verifier issues retain their full objects beside the approvals the fixer applied', async () => {
     const issue = { kind: 'root-action', detail: 'Required evidence is unavailable.' }
     const approval = decision([source('correctness')])
