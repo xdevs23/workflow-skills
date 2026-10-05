@@ -466,6 +466,11 @@ async function readSavedRunResult(file: string): Promise<Returned> {
   const items: unknown[] = result.toFix
   const malformed = items.findIndex(item => !returnedItem(item))
   if (malformed >= 0) throw new Error(`the run result holds item ${malformed + 1} of toFix in another form`)
+  const seen = new Set<string>()
+  for (const { source } of items as Entry[]) {
+    if (seen.has(source)) throw new Error(`the run result holds the source ${source} twice in toFix`)
+    seen.add(source)
+  }
   return { spec: checkedSpec(result.spec), entries: items as Entry[] }
 }
 

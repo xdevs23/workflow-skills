@@ -552,6 +552,13 @@ describe('fix list validation', () => {
     ]) invalid(makeList(writeEditedParentResult(edit)), message)
   })
 
+  test('a run result that holds a source twice gives no fix list and fails the check of its list', () => {
+    const saved = writeEditedParentResult(result => { result.toFix.push(structuredClone(result.toFix[5])) })
+    const refusal = 'the run result holds the source roaster:0 twice in toFix'
+    invalid(makeList(saved), refusal)
+    invalid(checkList(written({ ...validList, result: saved })), `roaster:0: ${refusal}`)
+  })
+
   test('the fix list of a review pass holds the findings of every review seat and names no spec', async () => {
     const made = makeList(reviewResultPath)
     expect([made.exit, made.err]).toEqual([0, ''])
