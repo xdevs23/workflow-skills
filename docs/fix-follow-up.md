@@ -47,27 +47,38 @@ copies into the project cache unchanged. The list names that file by its absolut
 run's check passed on, or null when it checked none, as a review pass does, and holds the run's
 `toFix` list. Each script builds that list from the results it accepted: every spec finding of its
 implementer, every decision and unresolved issue of its verify stage apart from an approved
-correction its fixer fixed or rejected that decides no inverse-spec finding, in a run without a
-verify stage every finding of its reviewers, in a fix run every entry of its own list its fixer left
-open, and every finding of its roast stage and diff check. A fix run's fixer closes an entry by
-rejecting it, by raising it as a question or by a fix its diff check mapped a change to; a blocked
-entry and one the fixer never answered stay open. A result the run refused or that carries a hard
-flag closes nothing. A run in which a stage failed gets no fix list, whatever exit it ended with:
-the exit names only the first cause that ended the run, so a roaster that failed after the fixer
-blocked an entry shows only as the `stage-failure` item it left in `remaining`, and the tool refuses
-any result that holds one. Such a run is incomplete, and it ended on its own, so the orchestrating
-session shows its stage failures to the user instead of resuming it. A run in which a stage raised a
-hard flag gets no fix list either, whatever exit it ended with: every hard flag leaves an `abort`
-item in `remaining`, the tool refuses any result that holds one, and the unit continues only on the
-user's answer, added to a copy of the spec for a new run. The tool also refuses a result without a
-list of the implementer's artifacts, each a path and what it holds, a result that holds one source
-twice in `toFix`, or whose `spec` carries a sha256 other than 64 lowercase hexadecimal digits or a
-line count that is no positive integer, since a spec that passed its check counts at least one line.
-`--size <json>` adds a size breach the orchestrating session measured, with the implementation lines
-added and the commits measured, beside the spec lines the parent run's spec check counted. The
-orchestrating session saves the list unchanged and adds, deletes and edits nothing. A fix list is
-never made from a spec, a spec is never made from a fix list, and neither is used for the other kind
-of run.
+correction its fixer fixed or rejected that decides neither an inverse-spec finding nor a
+kind-bearing one, in a run without a verify stage every finding of its reviewers, in a fix run every
+entry of its own list its fixer left open, and every finding of its roast stage and diff check. A
+decision on a kind-bearing finding, a project-benefit decision, carries those findings in
+`projectBenefit`, because the decision alone names its sources only by their IDs and the fix run
+needs to know its kind. A fix run's fixer closes an entry by rejecting it, by raising it as a
+question or by a fix its diff check mapped a change to; a blocked entry and one the fixer never
+answered stay open. A fix closes no project-benefit entry, which holds a finding with a kind, a
+decision with `projectBenefit`, or an earlier entry that holds either: a patch that keeps the
+flagged mechanism resolves nothing, so the entry goes to the next fix run, whose fixer checks the
+tree again and rejects the entry once the mechanism is gone. A result the run refused or that
+carries a hard flag closes nothing. A run in which a stage failed gets no fix list, whatever exit it
+ended with: the exit names only the first cause that ended the run, so a roaster that failed after
+the fixer blocked an entry shows only as the `stage-failure` item it left in `remaining`, and the
+tool refuses any result that holds one. Such a run is incomplete, and it ended on its own, so the
+orchestrating session shows its stage failures to the user instead of resuming it. A run in which a
+stage raised a hard flag gets no fix list either, whatever exit it ended with: every hard flag
+leaves an `abort` item in `remaining`, the tool refuses any result that holds one, and the unit
+continues only on the user's answer, added to a copy of the spec for a new run. A run whose finding
+verifier found a writer commit outside its scope gets no fix list either: the main script ends such
+a run before its fixer, because no correction may build on that commit, and a fix run would apply
+the approvals it left open on the same snapshot. The tool refuses any result that holds a
+`writer-scope` item, and the orchestrating session shows each one to the user. The tool also refuses
+a result without a list of the implementer's artifacts, each a path and what it holds, a result
+whose final snapshots are neither null nor one `{ path, sha }` per repository, a result that holds
+one source twice in `toFix`, or whose `spec` carries a sha256 other than 64 lowercase hexadecimal
+digits or a line count that is no positive integer, since a spec that passed its check counts at
+least one line. `--size <json>` adds a size breach the orchestrating session measured, with the
+implementation lines added and the commits measured, beside the spec lines the parent run's spec
+check counted. The orchestrating session saves the list unchanged and adds, deletes and edits
+nothing. A fix list is never made from a spec, a spec is never made from a fix list, and neither is
+used for the other kind of run.
 
 **fix-list-check**: The spec tool has a mode that takes a fix list in place of the spec argument,
 with the existing `--json`. It validates the list's shape strictly, as it does a spec, and refuses
@@ -77,14 +88,18 @@ whole fix list with that list, in the generator's order with a size breach last,
 missing, an added and a misplaced entry fail alike. A size entry is held to the spec lines the
 parent run's spec check counted. It requires the spec to be the one the parent run's check printed,
 with the same sha256, or null when that run checked none. With `--base`, and `--partial-base` beside
-it, it checks a base list against the tree it runs in as the spec mode does. A passing list prints
-its spec, the spec's sha256 and spec lines beside the saved result where it names a spec, the base
-list it checked, the list's `sha256`, the implementer's artifacts the saved result holds, and as its
-proof the fingerprint of the list path, the spec, the entries, the artifacts, the base list, whether
-it is partial and the directory the tool runs in, as the record of the spec check describes, so the
-output of a fix run's own check carries the spec, the list and the base list on to the next fix
-list. With `--entries` it prints the entries as well. Every failure is reported as a violation
-naming the entry's source. The result is parsed as JSON, never by hand.
+it, it checks a base list against the tree it runs in as the spec mode does, and requires it to name
+exactly the final snapshot of each repository the saved result holds, so an earlier commit the tree
+also holds fails as well. A review pass returns null as its snapshots, since it reviews the tree as
+it is, and the fix run of one starts from the commit each repository is at, which only the check
+against the tree covers. A passing list prints its spec, the spec's sha256 and spec lines beside the
+saved result where it names a spec, the base list it checked, the list's `sha256`, the implementer's
+artifacts the saved result holds, and as its proof the fingerprint of the list path, the spec, the
+entries, the artifacts, the base list, whether it is partial and the directory the tool runs in, as
+the record of the spec check describes, so the output of a fix run's own check carries the spec, the
+list and the base list on to the next fix list. With `--entries` it prints the entries as well.
+Every failure is reported as a violation naming the entry's source. The result is parsed as JSON,
+never by hand.
 
 **fix-script**: The skill ships a fix script beside the main script, in its shape: a marked block of
 unit values on top (main checkout, worktree, fix list path, parent spec, transcript directory,
@@ -118,11 +133,14 @@ dispositions per key: fixed, rejected with counterevidence, blocked with evidenc
 the user. A rejection closes its entry, and a blocked entry stays open for the next fix list. It
 returns a question only for a product decision that no rule, skill or word of the user decides,
 after checking that the question is valid; the design of that rule is recorded in the document on
-the root making no decisions. The policy of these dispositions lives in the fixer's template, and
-the script's prompt carries only the inputs it needs. Where the list names a parent spec, the fixer
-checks it and sets `invalid-spec` on an invalid one before its first write. A list that names no
-spec gives the fixer and the diff check none to read, and their `abort` offers neither `no-words`
-nor `invalid-spec`. The roaster runs alongside it on the same list, as in the main script.
+the root making no decisions. A project-benefit entry is resolved by deleting or rewriting the
+flagged mechanism, and the fixer rejects it once the tree no longer holds that mechanism, when the
+user's words in the spec keep its shape, or when the finding is false. The policy of these
+dispositions lives in the fixer's template, and the script's prompt carries only the inputs it
+needs. Where the list names a parent spec, the fixer checks it and sets `invalid-spec` on an invalid
+one before its first write. A list that names no spec gives the fixer and the diff check none to
+read, and their `abort` offers neither `no-words` nor `invalid-spec`. The roaster runs alongside it
+on the same list, as in the main script.
 
 **diff-check**: After the fixer, one read-only stage, with its own agent template, reads the fix
 diff from the parent run's final snapshot to the fixer's snapshot, with the fix list, the parent

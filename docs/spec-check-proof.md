@@ -29,6 +29,13 @@ script therefore names the worktree by its absolute path without symbolic links.
 check's command is one single-quoted shell word, so a path holding a space or an apostrophe reaches
 the tool unchanged.
 
+The base list of a fix run takes part in the proof, so the script and the tool agree on it, and that
+agreement alone would pass a list that consistently names an earlier commit the tree holds. The
+fix-list check therefore also holds the base list to the final snapshots the parent run's saved
+result names, one commit per repository, and fails on any other commit. A review pass returns no
+snapshots, and the fix run of one starts from the commit each repository is at, which only the check
+against the tree covers.
+
 The hash has one definition, the spec tool's fingerprint module, with two helpers, `withSortedKeys`
 and `fingerprint`. The spec tool imports it. A workflow script runs without imports and has no hash
 library to call, so each script carries the two helpers as the module writes them, and the routing
@@ -90,10 +97,14 @@ limitations or its failure reach the run's remaining items beside the failed che
 
 The generator refuses every run in which a stage failed or raised a hard flag, whatever exit the run
 ended with, because the exit names only the first cause that ended the run, and a later stage that
-failed or raised a hard flag shows only in `remaining`. Such a run ended on its own, so it is shown to the user
-and never followed by a fix run. A flagged unit continues only on the user's answer, added to a copy
-of the spec for a new run. A fix run whose fix list check failed launched on other values than it
-was given, and it is launched again with the right ones.
+failed or raised a hard flag shows only in `remaining`. Such a run ended on its own, so it is shown
+to the user and never followed by a fix run. A flagged unit continues only on the user's answer,
+added to a copy of the spec for a new run. The generator refuses a run whose finding verifier found
+a writer commit outside its scope as well, because the main script ends that run before its fixer so
+that no correction builds on the commit, and a fix run would apply the open approvals on the same
+snapshot. The spec tool keeps these three kinds of remaining items in one table, each with its
+refusal. A fix run whose fix list check failed launched on other values than it was given, and it is
+launched again with the right ones.
 
 ## What it replaces
 
