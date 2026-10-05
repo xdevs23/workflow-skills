@@ -2201,6 +2201,26 @@ describe('fix-only follow-up runs', () => {
     } finally { rmSync(scratch, { recursive: true, force: true }) }
   })
 
+  test('a run in which a stage raised a hard flag gives no fix list, whatever exit it ended with', async () => {
+    mkdirSync(TREE + '/.cache', { recursive: true })
+    const scratch = mkdtempSync(TREE + '/.cache/workflow-routing-')
+    try {
+      const abort = { trigger: 'sense-check', reason: 'The correction patches a mechanism the user\'s words describe as removed.' }
+      const main = await simulate({ reports: oneReport, verify: approveOne, fixes: { fix: fixed([disposition()], { abort, touched: [] }) } })
+      const fix = await simulateFix({ args: fixArgs({ entries: TWO }), fixes: fixed([disposition('verify:0'), disposition('roaster:0', 'blocked')]),
+        diff: { abort } })
+      for (const [name, { result }, exit, label] of [['main', main, 'aborted', 'fix'], ['fix', fix, 'root-resolution', 'diff']]) {
+        expect([name, result.exit, result.remaining.filter(r => r.kind === 'abort').map(r => r.item.label)]).toEqual([name, exit, [label]])
+        const saved = scratch + '/' + name + '.json'
+        writeFileSync(saved, JSON.stringify({ result }))
+        const made = Bun.spawnSync([process.execPath, TREE + '/tools/check-spec.ts', '--make-fix-list', saved], { cwd: TREE })
+        expect([name, made.exitCode, made.stdout.toString()]).toEqual([name, 1, ''])
+        expect(made.stderr.toString()).toContain('a stage of the run raised a hard flag, and only a new run that receives the user\'s answer' +
+          ' continues the unit: ' + label + ': ' + abort.reason)
+      }
+    } finally { rmSync(scratch, { recursive: true, force: true }) }
+  })
+
   test('every value of the check command of both scripts reaches the tool as one word, whatever its path holds', async () => {
     const tree = "/work/the tree's root", plugin = "/opt/the plugin's root", sessions = "/home/the sessions' dir"
     const located = source => filled(source).replace("worktree: '<isolated worktree>'", 'worktree: ' + JSON.stringify(tree))

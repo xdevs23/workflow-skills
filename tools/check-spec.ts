@@ -450,11 +450,11 @@ const returnedItem = (value: unknown) => {
   return named !== undefined && named.source !== 'size' && Object.keys(value).length === 2 && mapping(value[named.field])
 }
 
-// The exit of a run names only the first cause that ended it, so a stage that failed after another
-// cause shows only as its stage-failure item in remaining.
-const stageFailures = (remaining: unknown[]) => remaining
-  .filter((entry): entry is Mapping => mapping(entry) && entry.kind === 'stage-failure')
-  .map(({ item }) => mapping(item) ? `${String(item.label)}: ${String(item.message)}` : JSON.stringify(item))
+// The exit of a run names only the first cause that ended it, so a stage that failed or raised a
+// hard flag after another cause shows only as its item in remaining.
+const remainingOfKind = (remaining: unknown[], kind: string, describe: (item: Mapping) => string) => remaining
+  .filter((entry): entry is Mapping => mapping(entry) && entry.kind === kind)
+  .map(({ item }) => mapping(item) ? describe(item) : JSON.stringify(item))
 
 // The workflow tool saves what a script returns in its output file under the key result.
 async function readSavedRunResult(file: string): Promise<Returned> {
@@ -466,8 +466,13 @@ async function readSavedRunResult(file: string): Promise<Returned> {
   if (!mapping(result)) throw new Error(`${file} holds no run result`)
   if (!Array.isArray(result.toFix)) throw new Error('the run result holds no toFix list, as a run of an earlier version of the scripts')
   if (!Array.isArray(result.remaining)) throw new Error('the run result holds no remaining list')
-  const failures = stageFailures(result.remaining)
+  const failures = remainingOfKind(result.remaining, 'stage-failure', item => `${String(item.label)}: ${String(item.message)}`)
   if (failures.length) throw new Error(`a stage of the run failed, and an incomplete run gets no fix list: ${failures.join('; ')}`)
+  const flags = remainingOfKind(result.remaining, 'abort',
+    item => `${String(item.label)}: ${String(mapping(item.abort) ? item.abort.reason : item.abort)}`)
+  if (flags.length) {
+    throw new Error(`a stage of the run raised a hard flag, and only a new run that receives the user's answer continues the unit: ${flags.join('; ')}`)
+  }
   const items: unknown[] = result.toFix
   const malformed = items.findIndex(item => !returnedItem(item))
   if (malformed >= 0) throw new Error(`the run result holds item ${malformed + 1} of toFix in another form`)

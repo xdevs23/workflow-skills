@@ -528,6 +528,17 @@ describe('fix list validation', () => {
     invalid(makeList(writeEditedParentResult(result => { delete result.remaining })), 'the run result holds no remaining list')
   })
 
+  test('a run in which a stage raised a hard flag gives no fix list and fails the check of its list, whatever its exit', () => {
+    const reason = 'The correction patches a mechanism the user\'s words describe as removed.'
+    const flag = { kind: 'abort', severity: 'CRITICAL', item: { label: 'fix', abort: { trigger: 'sense-check', reason } } }
+    const refusal = `a stage of the run raised a hard flag, and only a new run that receives the user's answer continues the unit: fix: ${reason}`
+    for (const exit of ['aborted', 'root-resolution']) {
+      const saved = writeEditedParentResult(result => { result.exit = exit; result.remaining = [flag] })
+      invalid(makeList(saved), refusal)
+      invalid(checkList(written({ ...validList, result: saved })), `impl:0: ${refusal}`)
+    }
+  })
+
   test('a file without a run result and a result of an earlier version give no fix list', () => {
     invalid(makeList(writeEditedParentResult(result => { delete result.toFix })), 'the run result holds no toFix list, as a run of an earlier version of the scripts')
     invalid(makeList(writeEditedParentResult(result => { result.toFix = [] })), 'the run returned nothing to fix')
