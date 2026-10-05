@@ -109,7 +109,9 @@ Rules:
   "complete only after X"). A plausible-looking change that breaks one is wrong.
 - Narrow commit permission: the supplied isolated tree holds one or more git repositories, each
   listed with its start SHA. Start every one at its start SHA with a clean index and working tree.
-  If unrelated or pre-existing changes exist, stop; never stage, discard or absorb them. Stage
+  If unrelated or pre-existing changes exist, stop; never stage, discard or absorb them. On a
+  retry of your stage, start where its earlier attempts left the tree: their commits and changes
+  are this stage's own work, which the prompt's retry rule tells you to continue. Stage
   only the explicit paths you changed for this task, inspect the staged diff, and create new
   commits after checks in the repositories you changed. No broad add, amend, reset,
   rebase, merge, cherry-pick, branch switching or push. Never bypass commit hooks or signing,

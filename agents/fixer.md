@@ -125,7 +125,9 @@ Rules:
   corrections, inspect the staged diff, and commit completed corrections after checks. No
   broad add, unrelated changes, amend, reset, rebase, merge, cherry-pick, branch switching or
   push. Never bypass hooks or signing; honor project commit-message rules. A pre-existing dirty
-  tree or an unexpected writer is an anomaly, not yours to clean up.
+  tree or an unexpected writer is an anomaly, not yours to clean up. On a retry of your stage,
+  start where its earlier attempts left the tree: their commits and changes are this stage's own
+  work, which the prompt's retry rule tells you to continue, and no unexpected writer.
 - Put scratch files where workflow-skills:local-cache says, and leave them and the local todo
   record of workflow-skills:todo-md untracked and out of commits unless explicitly requested
   otherwise. The concurrent roaster reads immutable Git objects only; the snapshot it was given

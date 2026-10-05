@@ -1582,7 +1582,12 @@ cross-field contracts, and the helper returns at once an object whose `abort.tri
 with a non-empty `abort.reason` (law 8). A null result or a failed check retries the SAME agent up
 to three times, each retry stating plainly HOW the previous attempt failed; the third miss throws
 with the last failure named, so its cause is visible, and with every object an attempt returned
-and a check refused, which the `stage-failure` item of the run keeps in `refused`.
+and a check refused, which the `stage-failure` item of the run keeps in `refused`. Each retry also
+receives the objects refused so far. A writer may have committed before its report was refused,
+so the writers' prompt makes a retry continue from the tree as the earlier attempts left it: it
+never resets, reverts or repeats their commits, does only what remains, and reports the whole
+stage from its start SHAs. The refused objects stay unaccepted, and only the object a check
+accepts sets the run's snapshots and proof.
 
 The completeness checks, by stage kind:
 - **every briefed stage**: `abort.reason` non-empty when the trigger is not `none`;
