@@ -882,6 +882,12 @@ second implementer pre-check.
   and build nothing on its result until the user answers. The run ended on its own after the
   stage's three attempts, so it is no interrupted run, and `workflow-skills:resume-interrupted-run`
   does not apply to it.
+- Expect the tool to refuse the fix list of a run in which a stage raised a hard flag, whatever exit
+  the run ended with. Every hard flag leaves an `abort` item in `remaining`, also when an earlier
+  cause named the exit, and a flagged unit continues only on the user's answer, added to a copy of
+  the spec for a new run.
+- Show the user each `abort` item of such a run with its reason, as the stage wrote it, and start
+  nothing on the unit until the user answers.
 - Expect a fix run's fixer to close an entry by rejecting it, by raising it as a question, or by a
   fix its diff check mapped a change to. Every other entry of the fix run, a blocked one or one the
   fixer never answered, stays open, and the next fix list carries it.
