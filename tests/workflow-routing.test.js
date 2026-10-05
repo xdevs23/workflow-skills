@@ -2024,7 +2024,7 @@ describe('fix-only follow-up runs', () => {
     const copied = ['stage', 'hasHardFlag', 'abortOnFlag', 'checkWriterSnapshot', 'checkWriter', 'checkFullRun', 'withReceipts', 'requireText',
       'exactlyOnce', 'add', 'end', 'failed', 'proof', 'limited', 'recordBlocking', 'blocking', 'sourceFindings', 'readSnapshots',
       'listPath', 'reported', 'checkModels', 'withSortedKeys', 'fingerprint', 'shellWord', 'printedProof', 'handedOn']
-    const values = ['RULES', 'GUIDE', 'SPEC_RULES']
+    const values = ['RULES', 'GUIDE', 'SPEC_RULES', 'WRITE_GIT']
     const helpersBeforeRun = (source, args, names) => {
       const first = /\ntry \{ await (?:onePass|fixRun)\(\) \}.*\n/
       expect(source.split(first)).toHaveLength(2)
@@ -2160,6 +2160,45 @@ describe('fix-only follow-up runs', () => {
       expect([result.exit, result.remaining.map(r => r.kind)]).toEqual(proofPassed ? ['clean', []] : ['root-resolution', ['failed-proof']])
     })
   }
+
+  // The simulated repository keeps the commit of the first attempt, as a real tree does. A retry
+  // that carries the retry rule continues from that commit; one told only to start clean at the
+  // START SHA reports where it found the repository, and the check refuses that start.
+  test('a fix-run fixer retried after it committed continues from its commit and repairs the report of the whole stage', async () => {
+    const RETRY_RULE = 'RETRY: a prompt that ends with how your previous attempt failed is a retry of this stage.'
+    const commit = { sha: FIXED, subject: 'return the swallowed error', repository: '.' }
+    let head = BASE
+    const history = [], fixPrompts = [], returned = []
+    const report = fields => {
+      const r = { specCheck: passedCheck(fixLaunchValues(fixArgs())), ...writer({ startSha: BASE, snapshotSha: head, ...fixed([disposition('verify:0')]),
+        commits: [...history], ...fields }) }
+      returned.push(r)
+      return r
+    }
+    const agent = async (prompt, { label }) => {
+      if (label === 'roast') return { snapshots: at(BASE), ...cold() }
+      if (label === 'diff') { fixPrompts.push(prompt); return { limitations: [], coverage, mappings: [mapping('verify:0')], findings: [] } }
+      if (!fixPrompts.length) {
+        fixPrompts.push(prompt)
+        history.push(commit)
+        head = FIXED
+        return report({ checks: [check(true)] })
+      }
+      fixPrompts.push(prompt)
+      return prompt.includes(RETRY_RULE) ? report({}) : report({ startSha: head, commits: [], files: [] })
+    }
+    const result = await runFix(agent, () => {}, () => {}, fixArgs())
+    expect([fixPrompts.length, history, result.exit, result.snapshots, result.proof?.checks])
+      .toEqual([3, [commit], 'follow-up', at(FIXED), [fullCheck(true)]])
+    const [first, retry, diff] = fixPrompts
+    expect(first).toContain(RETRY_RULE)
+    expect(first).not.toContain('WHAT YOUR PREVIOUS ATTEMPTS RETURNED')
+    expect(retry).toContain('WHAT YOUR PREVIOUS ATTEMPTS RETURNED, each object with the failure that refused it: ' +
+      JSON.stringify([{ failure: NO_FULL_RUN, result: returned[0] }]))
+    expect(retry.endsWith(FAILED + NO_FULL_RUN)).toBe(true)
+    expect(diff).toContain('.: ' + BASE + '..' + FIXED)
+    expect(result.remaining).toEqual([unattestedFixItem('verify:0')])
+  })
 
   test('a fix reported as done without a commit, or mapped to no change, returns as an unproven fix', async () => {
     const uncommitted = await simulateFix({ fixes: fixed([disposition('verify:0')], { touched: [] }) })

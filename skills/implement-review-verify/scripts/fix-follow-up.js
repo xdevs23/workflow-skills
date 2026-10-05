@@ -155,7 +155,8 @@ const READ_GIT = [
   LIMITS,
 ].join('\n')
 const WRITE_GIT = [
-  'NARROW COMMIT PERMISSION: start clean in every repository of the list at its START SHA, inside the isolated tree.',
+  'NARROW COMMIT PERMISSION: start clean in every repository of the list at its START SHA, inside the isolated tree, or on a retry where',
+  'the earlier attempts of this stage left it.',
   'Stage explicit paths for only your scoped changes, inspect the staged diff, check, and create new commits in the repositories you changed.',
   'No broad add, unrelated changes, amend, reset, rebase, merge, branch switching or push.',
   'Never bypass signing or hooks. Follow project commit style. Recheck proof if hooks change content.',
@@ -165,6 +166,11 @@ const WRITE_GIT = [
   'and status, the output of git status), commits (each with sha, subject and the path of its repository), files (paths relative to the tree root) and checks;',
   'never an empty commit for a no-op: a repository you left unchanged keeps its startSha as its snapshotSha and lists no commit.',
   'After committing, run git -C <tree>/<path> rev-parse --verify HEAD^{commit} and git status --porcelain=v1 --untracked-files=all in every repository.',
+  'RETRY: a prompt that ends with how your previous attempt failed is a retry of this stage. The commits and changes its earlier attempts left in',
+  'the tree are this stage\'s own work: never reset, revert or repeat them. Read each repository from its START SHA to its HEAD beside the objects',
+  'the earlier attempts returned, do only what remains of your assignment, and return the report of the whole stage: startSha is the START SHA',
+  'the stage started from, snapshotSha the commit you leave, and commits and files cover every commit since the START SHA, those of the earlier',
+  'attempts included.',
 ].join('\n')
 const TREE = 'ASSIGNED TREE: ' + UNIT.worktree + '.'
 const FIX_LIST = [
@@ -251,14 +257,16 @@ const abortOnFlag = (r, label) => {
 }
 // ONE acceptance helper for every stage, as in the main script: a failed agent call, a null result or
 // a failed check retries the SAME agent with the failure named plainly, three attempts in all. The
-// throw carries in refused every object an attempt returned and the check refused, with its failure.
+// throw carries in refused every object an attempt returned and the check refused, with its failure,
+// and every retry receives those objects, so a writer's retry repairs its report over what it committed.
 async function stage(prompt, opts, complete = () => {}) {
   let failure = ''
   const refused = []
   for (let i = 0; i < 3; i++) {
+    const returned = refused.length ? '\n\nWHAT YOUR PREVIOUS ATTEMPTS RETURNED, each object with the failure that refused it: ' + JSON.stringify(refused) : ''
     let r
     try {
-      r = await agent(prompt + (failure ? '\n\nHOW YOUR PREVIOUS ATTEMPT FAILED, plainly: ' + failure : ''), opts)
+      r = await agent(prompt + returned + (failure ? '\n\nHOW YOUR PREVIOUS ATTEMPT FAILED, plainly: ' + failure : ''), opts)
       if (hasHardFlag(r) && typeof r.abort.reason === 'string' && r.abort.reason.trim()) return r
       if (r == null) throw new Error('it returned nothing usable at all')
       if (hasHardFlag(r)) throw new Error('abort.trigger is set but abort.reason is empty')
