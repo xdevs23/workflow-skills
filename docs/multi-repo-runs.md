@@ -74,7 +74,8 @@ A cited rule file is read at the commit of the entry whose path is the longest o
 file, with `git show` in that repository. It is read from disk only when no entry contains it or
 when `git ls-tree` shows that the file is not tracked at that commit. Any other git failure fails
 the check, so a failed lookup can never pass off the working copy as the committed text. The fix
-run's check keeps the fix-list mode, which takes no `--base` and reads no rule file.
+run's check uses the fix-list mode, which checks its `--base` list against the tree as the spec
+mode does and reads no rule file.
 
 ## Design documents in a tree of several repositories
 
