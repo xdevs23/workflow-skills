@@ -42,9 +42,10 @@ no loop. This builds on [finding verification](workflow-finding-verification.md)
    follow a fixer object only when it passed the writer checks; a fixer object that failed them
    after its stage returned is the item of its `stage-failure` entry, each fixer object the stage
    itself refused is an entry of that item's `refused` list, an aborting one is the item of its
-   `abort` entry, and `proof` is then the implementer's. The keys an aborting fixer reported `fixed` were committed,
-   so they return as unattested fixes carrying that fixer's commits. The fields `complete`, `exceptions`, `unverified`,
-   `treeUnreviewed`, `unverifiedRoasts`, `roastComplete` and `rounds` are removed.
+   `abort` entry, and `proof` is then the implementer's. The keys reported `fixed` by an
+   aborting fixer that committed return as unattested fixes carrying that fixer's commits. The
+   fields `complete`, `exceptions`, `unverified`, `treeUnreviewed`, `unverifiedRoasts`,
+   `roastComplete` and `rounds` are removed.
 4. **Remaining items.** `remaining` is an array of `{ kind, severity, item }`, one entry per
    item, where `kind` is an enum of:
    * `open-decision`: a `needs-decision` or `root-action` decision; severity `CRITICAL`;
@@ -52,9 +53,10 @@ no loop. This builds on [finding verification](workflow-finding-verification.md)
    * `writer-scope`: a `writerScope` entry with `ok` or `filesMatch` false; `CRITICAL`;
    * `blocking-limitation`: a `blocks` limitation with its stage label; `CRITICAL`;
    * `unfixed-approval`: an approved correction the fixer blocked, one a fixer whose result the
-     run did not accept rejected, or one that no fix pass reached because the run ended first;
-     `CRITICAL`. A rejection from an accepted fixer result closes its correction, adds no item
-     and stays in the `dispositions` the run returns;
+     run did not accept rejected, one reported `fixed` by a fixer that committed nothing, with
+     that answer, or one that no fix pass reached because the run ended first; `CRITICAL`. A
+     rejection from an accepted fixer result closes its correction, adds no item and stays in
+     the `dispositions` the run returns;
    * `failed-proof`: a writer's `checks` when its `proofPassed` is false, the implementer's or
      the fixer's, with the writer's label; `CRITICAL`;
    * `roast-finding`: every roaster finding, with the roast's snapshot SHA; the finding's own
@@ -63,8 +65,9 @@ no loop. This builds on [finding verification](workflow-finding-verification.md)
      coverage entry with `checked` false, since no verifier of this run reads the roast;
      severity `should-fix`; a roaster limitation of effect `blocks` is a
      `blocking-limitation` only;
-   * `unattested-fix`: every key the fixer reported `fixed`, with the disposition, the fix
-     pass's `snapshotSha` and its `commits`; the approved correction's severity;
+   * `unattested-fix`: every key reported `fixed` by a fixer that committed, with the
+     disposition, the fix pass's `snapshotSha` and its `commits`; the approved correction's
+     severity;
    * `abort`: the aborting stage's whole object with its label; `CRITICAL`;
    * `stage-failure`: a protocol or stage failure with its message, and for a stage that failed
      its three attempts `refused`, each object an attempt returned and a check refused, with the

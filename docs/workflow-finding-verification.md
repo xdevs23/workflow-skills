@@ -130,8 +130,9 @@ The roaster is deliberately informed by the current approved fix list. Each sour
 its snapshot. Consolidation happens in the verifier, not through heuristic string matching or
 silent retirement of a reworded finding.
 
-Every fixed key returns as an unattested fix among the run's remaining items. A proof-only
-pass has no approval to write. A green suite is necessary evidence, not proof that every
+Every key reported fixed by a fixer that committed returns as an unattested fix among the run's
+remaining items, and a key reported fixed without a commit returns as an unfixed approval. A
+proof-only pass has no approval to write. A green suite is necessary evidence, not proof that every
 requirement has been independently checked.
 Reports and structured results remain in workflow journal artifacts. The final return carries
 counts, proof, cleanup entries and the remaining items with stage labels for retrieving details,

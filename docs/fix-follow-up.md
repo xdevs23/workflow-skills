@@ -48,23 +48,23 @@ copies into the project cache unchanged. The list names that file by its absolut
 run's check passed on, or null when it checked none, as a review pass does, and holds the run's
 `toFix` list. Each script builds that list from the results it accepted: every spec finding of its
 implementer, every decision and unresolved issue of its verify stage apart from an approved
-correction its fixer fixed or rejected that decides neither an inverse-spec finding nor a
-kind-bearing one, in a run without a verify stage every finding of its reviewers, in a fix run every
-entry of its own list its fixer left open, every finding of its roast stage and diff check, and
-every `failed-proof` item of its remaining list with the writer's label and quoted checks. A failed
-proof stays open whatever the fixer answered: its fixes and rejections close their entries, and the
-failing check goes to the next fix run, so a run whose fixer closed every entry, or a main run that
-approved nothing, still hands its failed check on instead of giving the generator nothing to fix. A
-decision on a kind-bearing finding, a project-benefit decision, carries those findings in
+correction its fixer rejected, or fixed with a commit, that decides neither an inverse-spec finding
+nor a kind-bearing one, in a run without a verify stage every finding of its reviewers, in a fix run
+every entry of its own list its fixer left open, every finding of its roast stage and diff check,
+and every `failed-proof` item of its remaining list with the writer's label and quoted checks. A
+failed proof stays open whatever the fixer answered: its fixes and rejections close their entries,
+and the failing check goes to the next fix run, so a run whose fixer closed every entry, or a main
+run that approved nothing, still hands its failed check on instead of giving the generator nothing
+to fix. A decision on a kind-bearing finding, a project-benefit decision, carries those findings in
 `projectBenefit`, because the decision alone names its sources only by their IDs and the fix run
 needs to know its kind. A decision the main run's accepted fixer answered carries that answer in
-`disposition`, so the fix run's fixer reads the reason and receipts of a blocked correction beside
-it. A fix run's fixer closes an entry by rejecting it, by raising it as a
-question or by a fix its diff check mapped a change to; a blocked entry and one the fixer never
-answered stay open. A fix closes no project-benefit entry, which holds a finding with a kind, a
-decision with `projectBenefit`, or an earlier entry that holds either: a patch that keeps the
-flagged mechanism resolves nothing, so the entry goes to the next fix run, whose fixer checks the
-tree again and rejects the entry once the mechanism is gone. A result the run refused or that
+`disposition`, so the fix run's fixer reads the reason and receipts of a blocked correction, or of a
+fix reported without a commit, beside it. A fix run's fixer closes an entry by rejecting it, by
+raising it as a question or by a fix its diff check mapped a change to; a blocked entry and one the
+fixer never answered stay open. A fix closes no project-benefit entry, which holds a finding with a
+kind, a decision with `projectBenefit`, or an earlier entry that holds either: a patch that keeps
+the flagged mechanism resolves nothing, so the entry goes to the next fix run, whose fixer checks
+the tree again and rejects the entry once the mechanism is gone. A result the run refused or that
 carries a hard flag closes nothing. A run in which a stage failed gets no fix list, whatever exit it
 ended with: the exit names only the first cause that ended the run, so a roaster that failed after
 the fixer blocked an entry shows only as the `stage-failure` item it left in `remaining`, and the
