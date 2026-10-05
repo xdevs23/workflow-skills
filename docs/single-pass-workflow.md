@@ -30,12 +30,12 @@ no loop. This builds on [finding verification](workflow-finding-verification.md)
    completed and `remaining` holds no entry of severity `must-fix` or `CRITICAL` and no
    unattested fix), `follow-up` (the pass completed and `remaining` holds such an entry),
    `root-resolution` (the run ended before completing: a verifier issue, an open decision, a
-   writer-scope violation, a blocking limitation, a fixer disagreement or a failed proof),
+   writer-scope violation, a blocking limitation, a blocked correction or a failed proof),
    `aborted` (a hard flag) and `failed` (a protocol or stage failure); `detail`, one sentence
    naming the cause; `remaining`, decision 4; `decisions`, `inverseSpecDecisions`,
    `projectBenefitDecisions`, `cleanup` and `counts` as today, built from the one
-   verification; `proof` (the fixer's checks and files when a fix pass ran, else the
-   implementer's), `baseSha`, `snapshotSha` and `acceptance` as today. A pass has completed
+   verification; `dispositions`, every answer of the fixer; `proof` (the fixer's checks and
+   files when a fix pass ran, else the implementer's), `baseSha`, `snapshotSha` and `acceptance` as today. A pass has completed
    when the verifier returned, the fix pass and the roaster both settled without ending the
    run, and the proof passed. When several causes end the run, the first one processed sets
    `exit` and `detail`, and every cause is an item in `remaining`. `proof` and `snapshotSha`
@@ -51,8 +51,10 @@ no loop. This builds on [finding verification](workflow-finding-verification.md)
    * `verifier-issue`: a report-level issue of the verifier; severity `CRITICAL`;
    * `writer-scope`: a `writerScope` entry with `ok` or `filesMatch` false; `CRITICAL`;
    * `blocking-limitation`: a `blocks` limitation with its stage label; `CRITICAL`;
-   * `unfixed-approval`: an approved correction the fixer rejected or blocked, or that no fix
-     pass reached because the run ended first; `CRITICAL`;
+   * `unfixed-approval`: an approved correction the fixer blocked, one a fixer whose result the
+     run did not accept rejected, or one that no fix pass reached because the run ended first;
+     `CRITICAL`. A rejection from an accepted fixer result closes its correction, adds no item
+     and stays in the `dispositions` the run returns;
    * `failed-proof`: a writer's `checks` when its `proofPassed` is false, the implementer's or
      the fixer's, with the writer's label; `CRITICAL`;
    * `roast-finding`: every roaster finding, with the roast's snapshot SHA; the finding's own

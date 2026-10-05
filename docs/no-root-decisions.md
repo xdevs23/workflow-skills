@@ -84,6 +84,16 @@ or rejected, because the fixer is the stage that knows what it left undone. A de
 inverse-spec finding goes on even then, because every inverse-spec decision goes to the next fix
 run like every other decision and no completed run closes it on its own.
 
+**A main run's rejection closes its approval the same way everywhere.** A rejection from a fixer
+result the main run accepted adds no `unfixed-approval` item and does not end the run
+`root-resolution`; it stays in the `dispositions` the run returns. A run record that treated a
+rejection as open while the fix list left it out would hand the generator nothing to fix and ask
+for a resolution that no stage gives, so the run record and the fix list follow the one decision.
+A blocked correction ends the run `root-resolution` and goes on, and every decision the accepted
+fixer answered carries that answer in `disposition` within the fix list, so the next fixer reads
+the reason and receipts that blocked it, or that fixed or rejected an inverse-spec or kind-bearing
+decision, beside the decision.
+
 **A rejection closes an entry.** A fixer that disproves a claim with counterevidence has resolved
 it. Carrying the claim into every later fix run would ask each fixer to argue the same point again.
 

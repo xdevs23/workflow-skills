@@ -57,7 +57,9 @@ failing check goes to the next fix run, so a run whose fixer closed every entry,
 approved nothing, still hands its failed check on instead of giving the generator nothing to fix. A
 decision on a kind-bearing finding, a project-benefit decision, carries those findings in
 `projectBenefit`, because the decision alone names its sources only by their IDs and the fix run
-needs to know its kind. A fix run's fixer closes an entry by rejecting it, by raising it as a
+needs to know its kind. A decision the main run's accepted fixer answered carries that answer in
+`disposition`, so the fix run's fixer reads the reason and receipts of a blocked correction beside
+it. A fix run's fixer closes an entry by rejecting it, by raising it as a
 question or by a fix its diff check mapped a change to; a blocked entry and one the fixer never
 answered stay open. A fix closes no project-benefit entry, which holds a finding with a kind, a
 decision with `projectBenefit`, or an earlier entry that holds either: a patch that keeps the
