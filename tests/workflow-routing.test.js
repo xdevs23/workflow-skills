@@ -1226,6 +1226,22 @@ describe('structured stage output', () => {
     })
   }
 
+  test('a proof-only fixer that quotes no check, or only checks that disagree with its proofPassed, is retried and then thrown', async () => {
+    for (const checks of [[], [check(false)]]) {
+      const calls = []
+      const { result } = await simulate({ fixes: { fix: fixed([], { checks }) }, calls })
+      expect([checks, result.exit, retried(calls, 'fix').length]).toEqual([checks, 'failed', 3])
+      expect(result.detail).toContain('no check has passed equal to proofPassed')
+    }
+  })
+
+  test('an implementer that committed nothing owes no check, so a blocking spec finding needs none quoted', async () => {
+    const limitation = { what: 'The joint-impossibility finding leaves the spec unbuildable as written.', effect: 'blocks' }
+    const { result, calls } = await simulate({ implementation: implemented({ snapshotSha: BASE, checks: [], limitations: [limitation],
+      specFindings: [specFinding([9, 11], 'joint-impossibility')] }) })
+    expect([retried(calls, 'impl').length, result.exit, result.detail]).toEqual([1, 'root-resolution', 'Blocking limitation from impl.'])
+  })
+
   test('a fixer with a commit but no files preserves the unfixed approvals', async () => {
     const { result, calls } = await simulate({ reports: oneReport, verify: approveOne, fixes: { 'fix': fixed([disposition()], { files: [] }) } })
     expect([result.exit, retried(calls, 'fix').length]).toEqual(['failed', 3])
@@ -1952,7 +1968,7 @@ describe('fix-only follow-up runs', () => {
   })
 
   test('each helper the fix script copies from the main script has the same source text, and the fingerprint helpers that of their module', async () => {
-    const copied = ['stage', 'hasHardFlag', 'abortOnFlag', 'checkWriterSnapshot', 'checkWriter', 'withReceipts', 'requireText',
+    const copied = ['stage', 'hasHardFlag', 'abortOnFlag', 'checkWriterSnapshot', 'checkWriter', 'checkProof', 'withReceipts', 'requireText',
       'exactlyOnce', 'add', 'end', 'failed', 'proof', 'limited', 'recordBlocking', 'blocking', 'sourceFindings', 'readSnapshots',
       'listPath', 'reported', 'checkModels', 'withSortedKeys', 'fingerprint', 'shellWord', 'printedProof', 'handedOn']
     const values = ['RULES', 'GUIDE', 'SPEC_RULES']
@@ -2052,6 +2068,15 @@ describe('fix-only follow-up runs', () => {
     ]) {
       const { result } = await simulateFix(options)
       expect([exit, result.exit, result.detail, result.remaining.map(r => r.kind)]).toEqual([exit, exit, detail, kinds])
+    }
+  })
+
+  test('a fixer that rejects every entry and quotes no check, or only checks that disagree with its proofPassed, is retried and then thrown', async () => {
+    for (const checks of [[], [check(false)]]) {
+      const calls = []
+      const { result } = await simulateFix({ fixes: fixed([disposition('verify:0', 'rejected')], { touched: [], checks }), calls })
+      expect([checks, result.exit, labels(calls).filter(label => label === 'fix').length]).toEqual([checks, 'failed', 3])
+      expect(result.detail).toContain('no check has passed equal to proofPassed')
     }
   })
 

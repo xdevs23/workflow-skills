@@ -397,6 +397,8 @@ collisions and consistency drift.
   expected start, each quoted `git.head` equals its `snapshotSha`, each `clean` agrees with an empty
   `git.status`, a repository whose snapshot moved has commits in it and an unchanged one none, and a
   new snapshot anywhere lists files with a check whose `passed` equals `proofPassed`.
+- Expect the script to require such a check of every fixer result, a proof-only pass and one that
+  leaves every repository unchanged included, and of an implementer only once it moved a snapshot.
 - Scratch files, which go where `workflow-skills:local-cache` says, and the todo record of
   `workflow-skills:todo-md` remain ignored and untracked; clean status is not permission to commit
   them.
@@ -1582,9 +1584,10 @@ The completeness checks, by stage kind:
 - **writers**: one `repositories` entry per repository of the list; in each, a `snapshotSha` other
   than `startSha` needs commits in that repository and an unchanged one none, the quoted `git.head`
   equals `snapshotSha` and `clean` equals `git.status` being empty; a new snapshot anywhere needs
-  non-empty `files` and a check whose `passed` equals `proofPassed`, and no new snapshot needs empty
-  `files`; every `specFindings` entry of the implementer has evidence by the rules of the concern
-  seats; the fixer answers every key once;
+  non-empty `files`, and no new snapshot needs empty `files`; a check whose `passed` equals
+  `proofPassed` is needed in every fixer result and in an implementer result with a new snapshot;
+  every `specFindings` entry of the implementer has evidence by the rules of the concern seats; the
+  fixer answers every key once;
 - **finding verifier**: the source-coverage and decision checks, one `repositories` entry per
   repository whose quoted `git.head` equals its `snapshotSha`, and one `writerScope` entry per
   implementer commit and repository.
