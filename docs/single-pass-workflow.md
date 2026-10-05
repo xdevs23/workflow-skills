@@ -66,6 +66,9 @@ no loop. This builds on [finding verification](workflow-finding-verification.md)
      `follow-up`. The implementer's false premises return the same way, with the label `impl`,
      only when its failed proof or its blocking limitation ends the run, because on every other
      path the verifier receives the implementer's object and decides on them;
+   * `impl-limitation`: each limitation of effect `narrows` of the implementer, a check it could
+     run only in part, with the label `impl`, only when its failed proof or its blocking
+     limitation ends the run, for the same reason as its false premises; `should-fix`;
    * `fix-limitation`: each limitation of effect `narrows` of an accepted fixer result, a check
      its proof covers only in part, with the fixer's label, since no verifier of this run reads
      the fixer's object; `should-fix`; a fixer limitation of effect `blocks` is a

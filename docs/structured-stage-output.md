@@ -121,10 +121,12 @@ on the completeness of its object, never on the length of a text. This builds on
      the command its prompt gives, and the last such run has `passed` equal to `proofPassed`.
      The full check after the fixer's last write is the proof the fixer owes, so a passing
      check of another command beside a failed or missing full check does not satisfy it. An
-     implementer result whose snapshot moved has some check with `passed` equal to
-     `proofPassed`, since the implementer runs focused checks of its own choice and an
-     implementer that edits nothing, such as one stopped by a blocking spec finding, has no
-     change to check; the fixer answers every key once;
+     implementer result whose snapshot moved quotes at least one check, and its `proofPassed`
+     is true exactly when the last quoted run of every check command passed. The implementer
+     runs focused checks of its own choice, so each command it ran counts, a passed rerun
+     supersedes an earlier failure of the same command, and a passing type check does not
+     cover failed tests. An implementer that edits nothing, such as one stopped by a blocking
+     spec finding, has no change to check; the fixer answers every key once;
    * finding verifier: today's checks, plus `git.head` equal to its `snapshotSha` and one
      `writerScope` entry per writer commit of the run;
    * pre-phase seats: `categories` non-empty and every gap with a receipt; `criteria` with
