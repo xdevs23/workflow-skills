@@ -89,7 +89,12 @@ on the completeness of its object, never on the length of a text. This builds on
    retry helpers: it calls the agent, returns at once an object whose `abort.trigger` is not
    `none` and whose `reason` is non-empty, retries up to three times on a failed agent call, a null
    result or a failed completeness check, and throws after the third attempt with the last failure
-   named.
+   named. The thrown error carries `refused`, every object an attempt returned and a check
+   refused, each with the failure that refused it, and the run keeps that list in the item of its
+   `stage-failure` entry. A refused writer may have committed before it reported, so its quoted
+   checks, commits and dispositions are what explains the failure. They stay readable there as
+   evidence the run did not accept: the run's snapshots and proof do not follow them, and no entry
+   or approval closes on them.
    The completeness checks:
    * every briefed stage: `abort.reason` non-empty when the trigger is not `none`;
    * the three concern seats: every finding has a receipt, a lane and evidence, every evidence

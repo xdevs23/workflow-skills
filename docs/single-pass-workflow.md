@@ -40,8 +40,9 @@ no loop. This builds on [finding verification](workflow-finding-verification.md)
    run, and the proof passed. When several causes end the run, the first one processed sets
    `exit` and `detail`, and every cause is an item in `remaining`. `proof` and `snapshotSha`
    follow a fixer object only when it passed the writer checks; a fixer object that failed them
-   is the item of its `stage-failure` entry, an aborting one the item of its `abort` entry, and
-   `proof` is then the implementer's. The keys an aborting fixer reported `fixed` were committed,
+   after its stage returned is the item of its `stage-failure` entry, each fixer object the stage
+   itself refused is an entry of that item's `refused` list, an aborting one is the item of its
+   `abort` entry, and `proof` is then the implementer's. The keys an aborting fixer reported `fixed` were committed,
    so they return as unattested fixes carrying that fixer's commits. The fields `complete`, `exceptions`, `unverified`,
    `treeUnreviewed`, `unverifiedRoasts`, `roastComplete` and `rounds` are removed.
 4. **Remaining items.** `remaining` is an array of `{ kind, severity, item }`, one entry per
@@ -63,7 +64,9 @@ no loop. This builds on [finding verification](workflow-finding-verification.md)
    * `unattested-fix`: every key the fixer reported `fixed`, with the disposition, the fix
      pass's `snapshotSha` and its `commits`; the approved correction's severity;
    * `abort`: the aborting stage's whole object with its label; `CRITICAL`;
-   * `stage-failure`: a protocol or stage failure with its message; `CRITICAL`.
+   * `stage-failure`: a protocol or stage failure with its message, and for a stage that failed
+     its three attempts `refused`, each object an attempt returned and a check refused, with the
+     failure that refused it; `CRITICAL`.
    `item` is the object the entry came from, with the label where one is named.
 5. **Removed machinery.** The skeleton loses the round loop, the fix budget, the multi-round
    history, the read cache, the pending-fix list, the closure verdicts, the roast bookkeeping
