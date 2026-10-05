@@ -399,8 +399,20 @@ const checkWriter = r => {
     if (!r.checks.some(c => c.passed === r.proofPassed)) throw new Error('no check has passed equal to proofPassed')
   } else if (r.files.length) throw new Error('an unchanged snapshot lists files')
 }
-// The fixer's result, against the sources of the fix list and the snapshots the fixer started from.
-const checkFixerResult = (r, keys, starts) => {
+const printedProof = stdout => { try { return JSON.parse(stdout)?.proof } catch { return undefined } }
+// The fixer runs the fix list check before its first edit, with the proof of the run's launch values
+// in its command, and the spec tool exits non-zero when the values it checked give another proof.
+const listCheckPassed = (check, proof) => check.exitCode === 0 && printedProof(check.stdout) === proof
+const checkListRun = (check, proof) => {
+  if (!listCheckPassed(check, proof)) {
+    throw new Error('the fix list check did not pass: exit ' + check.exitCode + ', proof ' + JSON.stringify(printedProof(check.stdout) ?? null) +
+      ' where the launch values give ' + proof + ', stderr: ' + check.stderr)
+  }
+}
+// The fixer's result, against the proof of the run's launch values, the sources of the fix list and
+// the snapshots the fixer started from.
+const checkFixerResult = (r, proof, keys, starts) => {
+  checkListRun(r.specCheck, proof)
   checkWriter(r)
   exactlyOnce(r.dispositions.map(d => d.key), keys, 'fix key')
   checkWriterSnapshot(r, starts)
@@ -495,10 +507,7 @@ const fixPass = queue => stage([
   'ENTRIES OF THE FIX LIST, each keyed by its source (verify against the tree and authority):', JSON.stringify(queue),
 ].join('\n\n'), {
   label: 'fix', phase: 'Fix', agentType: 'workflow-skills:fixer', ...UNIT.models.fix, schema: FIX,
-}, r => {
-  // A failed fix list check returns as it is: fixRun ends the run on it, without another attempt.
-  if (listCheckPassed(r.specCheck)) checkFixerResult(r, queue.map(f => f.key), base)
-})
+}, r => { if (listCheckPassed(r.specCheck, PROOF)) checkFixerResult(r, PROOF, queue.map(f => f.key), base) })
 // Source findings get their IDs here, for readers and roasts alike. A kind-bearing (band-aid /
 // longer-route) finding is CRITICAL: one arriving with any other severity or none is set to it here.
 const sourceFindings = (findings, seat, snaps) => findings.map((f, i) => {
@@ -542,12 +551,12 @@ const diffPass = (queue, snaps) => stage([
 async function fixRun() {
   phase('Fix')
   const pair = await Promise.allSettled([fixPass(queue), roastPass(queue)])
-  if (pair[0].status === 'fulfilled') checkListRun(pair[0].value.specCheck)
   // Process the fixer first so its cause names detail when both tasks end the run.
   pair.forEach((r, i) => {
     const label = i === 0 ? 'fix' : 'roast'
     try {
       if (r.status === 'rejected') throw r.reason
+      if (i === 0) checkListRun(r.value.specCheck, PROOF)
       if (i === 0 && hasHardFlag(r.value)) reportedFix = r.value
       const result = abortOnFlag(r.value, label)
       if (i === 0) {
@@ -600,31 +609,20 @@ const fingerprint = values => {
   for (let index = 0; index < json.length; index++) hash = Math.imul(hash ^ json.charCodeAt(index), 0x01000193)
   return (hash >>> 0).toString(16).padStart(8, '0')
 }
-// The fix list check, as the spec check of the main script. The fixer runs the spec tool on the fix
-// list and the base list before any edit and returns what the tool printed, and the run goes on only
-// when the proof printed there is the fingerprint of this run's own launch values. The command
-// carries no entry of the list, so the fixer copies nothing long, and it runs in the worktree, so the
-// tool checks the base list against the repositories of this run's tree. Every value is one quoted
-// word, as in the main script.
+// The command runs in the worktree, so the tool checks the base list against this run's tree, and
+// each value is one quoted shell word. It carries no entry of the list, so the fixer copies nothing
+// long: the proof of the launch values stands for the entries.
 const shellWord = value => "'" + value.replaceAll("'", "'\\''") + "'"
+const PROOF = fingerprint({ fixList: UNIT.fixList, transcripts: UNIT.transcripts, spec: UNIT.spec, entries,
+  base, partialBase: Boolean(UNIT.partialBase), tree: UNIT.worktree })
 const LIST_CHECK_FIRST = [
   'FIX LIST CHECK, before anything else and before any edit: run this exact command once with the Bash tool, with no change, retry or fix:',
   'cd ' + shellWord(UNIT.worktree) + ' && bun ' + shellWord(UNIT.pluginRoot + '/tools/check-spec.ts') + ' --fix-list ' +
     shellWord(UNIT.fixList) + ' --transcripts ' + shellWord(UNIT.transcripts) + ' --json --base ' + shellWord(JSON.stringify(base)) +
-    (UNIT.partialBase ? ' --partial-base' : ''),
+    (UNIT.partialBase ? ' --partial-base' : '') + ' --proof ' + shellWord(PROOF),
   'Return its exit code, its stdout and its stderr in specCheck, unchanged. When its exit code is not 0, make no edit and',
   'return your object with every repository at its start SHA.',
 ].join('\n')
-const PROOF = fingerprint({ fixList: UNIT.fixList, transcripts: UNIT.transcripts, spec: UNIT.spec, entries,
-  base, partialBase: Boolean(UNIT.partialBase), tree: UNIT.worktree })
-const printedProof = stdout => { try { return JSON.parse(stdout)?.proof } catch { return undefined } }
-const listCheckPassed = ({ exitCode, stdout }) => exitCode === 0 && printedProof(stdout) === PROOF
-const checkListRun = check => {
-  if (!listCheckPassed(check)) {
-    throw new Error('the fix list check did not pass: exit ' + check.exitCode + ', proof ' + JSON.stringify(printedProof(check.stdout) ?? null) +
-      ' where the launch values give ' + PROOF + ', stderr: ' + check.stderr)
-  }
-}
 
 try { await fixRun() } catch (error) { failed(error, activeLabel) }
 // Only a fixer result the run accepted answers an entry: a fix returns for the root to attest and a

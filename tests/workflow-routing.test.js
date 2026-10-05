@@ -1493,7 +1493,8 @@ const SPEC_CHECK_SCHEMA = { type: 'object', required: ['exitCode', 'stdout', 'st
   properties: { exitCode: { type: 'integer' }, stdout: { type: 'string' }, stderr: { type: 'string' } } }
 
 describe('spec check and shipped scripts', () => {
-  const command = "bun '<plugin root>/tools/check-spec.ts' '" + SPEC_PATH + "' --transcripts '" + TRANSCRIPTS + "' --json --base '" + JSON.stringify(at(BASE)) + "'"
+  const command = "bun '<plugin root>/tools/check-spec.ts' '" + SPEC_PATH + "' --transcripts '" + TRANSCRIPTS + "' --json --base '" +
+    JSON.stringify(at(BASE)) + "' --proof '" + fingerprint(mainLaunchValues(launchArgs())) + "'"
 
   test('the implementer runs the spec check before anything else its prompt asks, and returns what the tool printed', async () => {
     const { calls, phases } = await simulate()
@@ -1524,7 +1525,7 @@ describe('spec check and shipped scripts', () => {
       const message = 'the spec check did not pass: exit ' + specCheck.exitCode + ', proof ' + JSON.stringify(printed) +
         ' where the launch values give ' + fingerprint(launched) + ', stderr: ' + specCheck.stderr
       expect([result.exit, result.detail]).toEqual(['failed', message])
-      expect(result.remaining).toEqual([{ kind: 'stage-failure', severity: 'CRITICAL', item: { label: 'impl', message } }])
+      expect(result.remaining).toEqual([{ kind: 'stage-failure', severity: 'CRITICAL', item: { ...implemented({ specCheck }), label: 'impl', message } }])
       expect(calls.map(c => c.label)).toEqual(['impl'])
     })
   }
@@ -1675,7 +1676,8 @@ describe('fix-only follow-up runs', () => {
     const fix = calls[0]
     expect(fix.agentType).toBe('fixer')
     expect(fix.prompt.startsWith(checkFirst('FIX LIST CHECK', "bun '<plugin root>/tools/check-spec.ts' --fix-list '" + FIX_LIST +
-      "' --transcripts '" + TRANSCRIPTS + "' --json --base '" + JSON.stringify(at(BASE)) + "'") + '\n\n')).toBe(true)
+      "' --transcripts '" + TRANSCRIPTS + "' --json --base '" + JSON.stringify(at(BASE)) + "' --proof '" + fingerprint(fixLaunchValues(fixArgs())) + "'") +
+      '\n\n')).toBe(true)
     expect([fix.schema.required[0], fix.schema.properties.specCheck]).toEqual(['specCheck', SPEC_CHECK_SCHEMA])
     expect(fix.prompt).toContain('START SHAS, per repository: . ' + BASE)
     expect(calls.filter(c => c.prompt.includes('check-spec.ts')).map(c => c.label)).toEqual(['fix'])
@@ -1694,10 +1696,22 @@ describe('fix-only follow-up runs', () => {
       const message = 'the fix list check did not pass: exit ' + specCheck.exitCode + ', proof ' + JSON.stringify(printed) +
         ' where the launch values give ' + fingerprint(launched) + ', stderr: ' + specCheck.stderr
       expect([result.exit, result.detail]).toEqual(['failed', message])
-      expect(result.remaining).toEqual([{ kind: 'stage-failure', severity: 'CRITICAL', item: { label: 'fix', message } },
-        { kind: 'unfixed-entry', severity: 'CRITICAL', item: { entry: keyedFixListEntry('verify:0') } }])
+      expect(result.remaining.map(r => [r.kind, r.severity])).toEqual([['stage-failure', 'CRITICAL'], ['unfixed-entry', 'CRITICAL']])
+      expect(result.remaining[0].item).toMatchObject({ specCheck, label: 'fix', message })
+      expect(result.remaining[1].item).toEqual({ entry: keyedFixListEntry('verify:0') })
       expect(labels(calls)).toEqual(['fix', 'roast'])
     }
+  })
+
+  test('a failed fix list check keeps what the roaster returned beside it, its findings or its failure', async () => {
+    const specCheck = passedCheck(fixLaunchValues(fixArgs()), { exitCode: 1, stdout: '', stderr: 'the checked values give another proof' })
+    const found = await simulateFix({ specCheck, roast: { findings: [finding] } })
+    expect([found.result.exit, found.result.remaining.map(r => r.kind)]).toEqual(['failed', ['stage-failure', 'roast-finding', 'unfixed-entry']])
+    expect(found.result.remaining[1].item).toMatchObject({ ...finding, id: 'roaster:0', seat: 'roaster' })
+    const both = await simulateFix({ specCheck, fail: { roast: 'roaster unavailable' } })
+    expect(both.result.remaining.map(r => [r.kind, r.item.label, r.item.message]).slice(0, 2)).toEqual([
+      ['stage-failure', 'fix', expect.stringContaining('the fix list check did not pass: exit 1')],
+      ['stage-failure', 'roast', 'roaster unavailable']])
   })
 
   test('a fixer whose fix list check failed is not asked again, even when the rest of its object is incomplete', async () => {
@@ -1778,7 +1792,7 @@ describe('fix-only follow-up runs', () => {
       return prompts[0]
     }
     const source = filled(skeleton)
-    expect(await firstPrompt(source, launchArgs())).toContain('\' --partial-base\n')
+    expect(await firstPrompt(source, launchArgs())).toContain("' --partial-base --proof '")
     expect(source).toContain("  partialBase: false,")
   })
 
@@ -1800,9 +1814,9 @@ describe('fix-only follow-up runs', () => {
   test('each helper the fix script copies from the main script has the same source text, and the fingerprint helpers and the fix run\'s result checks that of their modules', async () => {
     const copied = ['stage', 'hasHardFlag', 'abortOnFlag', 'checkWriterSnapshot', 'checkWriter', 'withReceipts', 'requireText',
       'exactlyOnce', 'add', 'end', 'failed', 'proof', 'limited', 'recordBlocking', 'blocking', 'sourceFindings', 'readSnapshots',
-      'listPath', 'reported', 'checkModels', 'withSortedKeys', 'fingerprint', 'shellWord']
+      'listPath', 'reported', 'checkModels', 'withSortedKeys', 'fingerprint', 'shellWord', 'printedProof']
     const checked = ['shaByPath', 'hasHardFlag', 'requireText', 'exactlyOnce', 'withReceipts', 'checkCoverage', 'checkReader',
-      'checkWriterSnapshot', 'checkWriter', 'checkFixerResult', 'checkDiffResult']
+      'checkWriterSnapshot', 'checkWriter', 'printedProof', 'listCheckPassed', 'checkListRun', 'checkFixerResult', 'checkDiffResult']
     const values = ['RULES', 'GUIDE', 'SPEC_RULES']
     // Each script runs up to its first stage and returns the named helpers it has defined by then.
     const helpers = (source, args, names) => {
@@ -1980,9 +1994,7 @@ describe('fix-only follow-up runs', () => {
     }
   })
 
-  test('launch values that differ from the fix list stop the run at the fixer\'s fix list check, which runs the spec tool once', async () => {
-    // The fix script runs on the spec tool's fix-list fixtures, and its fixer runs the tool in this
-    // repository, whose commit is the base list.
+  test('launch values that differ from the fix list make the spec tool fail the fixer\'s fix list check before any edit', async () => {
     const root = realpathSync(fileURLToPath(new URL('../', import.meta.url)))
     const head = Bun.spawnSync(['git', '-C', root, 'rev-parse', '--verify', 'HEAD^{commit}']).stdout.toString().trim()
     const lists = root + '/tests/fixtures/fix-list'
@@ -1993,22 +2005,22 @@ describe('fix-only follow-up runs', () => {
     const PATH = dirname(process.execPath) + ':' + process.env.PATH
     const held = Bun.YAML.parse(await Bun.file(lists + '/list.yaml').text())
     const launch = async (entries, spec = held.spec, base = at(head)) => {
-      const labels = []
-      // The fixer runs the command its prompt names and rejects every entry, so the run ends without a commit.
+      const labels = [], exits = []
       const agent = async (prompt, opts) => {
         labels.push(opts.label)
         if (opts.label === 'roast') return { snapshots: base, ...cold() }
         const ran = Bun.spawnSync(['sh', '-c', prompt.split('\n').find(line => line.includes('check-spec.ts'))], { env: { ...process.env, PATH } })
         const specCheck = { exitCode: ran.exitCode, stdout: ran.stdout.toString(), stderr: ran.stderr.toString() }
+        exits.push(ran.exitCode)
         const start = base[0].sha
         return { specCheck, ...writer({ startSha: start, snapshotSha: start, ...fixed(entries.map(e => disposition(e.source, 'rejected'))) }) }
       }
       const result = await script(agent, () => {}, () => {}, { base, fixList: lists + '/list.yaml', spec, transcripts: lists + '/transcripts', entries })
-      return { labels, result }
+      return { labels, exits, result }
     }
     // The entries the fixture list holds, as the tool prints them.
     const passed = await launch(held.entries)
-    expect([passed.labels, passed.result.exit]).toEqual([['fix', 'roast'], 'clean'])
+    expect([passed.labels, passed.exits, passed.result.exit]).toEqual([['fix', 'roast'], [0], 'clean'])
     const replaced = (index, entry) => held.entries.map((held, at) => at === index ? entry : held)
     const roast = held.entries.findIndex(entry => entry.source === 'roaster:0')
     for (const [entries, spec] of [
@@ -2018,10 +2030,10 @@ describe('fix-only follow-up runs', () => {
       [held.entries, 'tests/fixtures/spec/valid.yaml'],
     ]) {
       const refused = await launch(entries, spec)
-      expect([refused.labels, refused.result.exit]).toEqual([['fix', 'roast'], 'failed'])
-      expect(refused.result.detail).toContain('the fix list check did not pass: exit 0, proof "')
-      expect(refused.result.detail).toContain(' where the launch values give ' + fingerprint({ fixList: lists + '/list.yaml',
-        transcripts: lists + '/transcripts', spec, entries, base: at(head), partialBase: false, tree: root }))
+      expect([refused.labels, refused.exits, refused.result.exit]).toEqual([['fix', 'roast'], [1], 'failed'])
+      const launched = fingerprint({ fixList: lists + '/list.yaml', transcripts: lists + '/transcripts', spec, entries, base: at(head), partialBase: false, tree: root })
+      expect(refused.result.detail).toContain('the fix list check did not pass: exit 1, proof null where the launch values give ' + launched)
+      expect(refused.result.detail).toContain('and the run launched with the proof ' + launched)
     }
     // A base list naming a commit the tree does not hold fails the tool itself.
     const elsewhere = await launch(held.entries, held.spec, at(BASE))
@@ -2050,10 +2062,13 @@ describe('fix-only follow-up runs', () => {
       return ran.stdout.toString().split('\0').slice(0, -1)
     }
     const spec = "/home/the checkout/.cache/specs/it's a unit.yaml", list = "/home/the checkout/.cache/fix-lists/it's a list.yaml"
-    expect(words(await checkCommand(skeleton, launchArgs({ specPath: spec, transcripts: sessions })))).toEqual(['cd', tree,
-      'bun', plugin + '/tools/check-spec.ts', spec, '--transcripts', sessions, '--json', '--base', JSON.stringify(at(BASE))])
-    expect(words(await checkCommand(fixSkeleton, fixArgs({ fixList: list, transcripts: sessions })))).toEqual(['cd', tree,
-      'bun', plugin + '/tools/check-spec.ts', '--fix-list', list, '--transcripts', sessions, '--json', '--base', JSON.stringify(at(BASE))])
+    const mainArgs = launchArgs({ specPath: spec, transcripts: sessions }), listArgs = fixArgs({ fixList: list, transcripts: sessions })
+    expect(words(await checkCommand(skeleton, mainArgs))).toEqual(['cd', tree,
+      'bun', plugin + '/tools/check-spec.ts', spec, '--transcripts', sessions, '--json', '--base', JSON.stringify(at(BASE)),
+      '--proof', fingerprint({ ...mainLaunchValues(mainArgs), tree })])
+    expect(words(await checkCommand(fixSkeleton, listArgs))).toEqual(['cd', tree,
+      'bun', plugin + '/tools/check-spec.ts', '--fix-list', list, '--transcripts', sessions, '--json', '--base', JSON.stringify(at(BASE)),
+      '--proof', fingerprint({ ...fixLaunchValues(listArgs), tree })])
   })
 })
 

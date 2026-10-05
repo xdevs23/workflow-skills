@@ -88,6 +88,13 @@ describe('unit spec validation', () => {
     expect(failing.err).not.toContain('spec=')
   })
 
+  test('a passed proof that the checked values do not give fails the check before it prints anything', () => {
+    const proof = fingerprint({ spec: join(fixtures, 'valid.yaml'), transcripts: fixtures, base: null, partialBase: false, tree: here })
+    expect(JSON.parse(fixture('valid', ['--json', '--proof', proof]).out).proof).toBe(proof)
+    const other = fingerprint({ spec: join(fixtures, 'other.yaml'), transcripts: fixtures, base: null, partialBase: false, tree: here })
+    invalid(fixture('valid', ['--json', '--proof', other]), `the checked values give the proof ${proof}, and the run launched with the proof ${other}`)
+  })
+
   test('a spec without an entry of author user fails, whatever its assistant entries quote', () => {
     const message = "entries: no entry has author user: a spec needs the user's words"
     invalid(changed(s => { s.entries = s.entries.filter(entry => entry.author === 'assistant') }), message)
@@ -472,10 +479,10 @@ const listProof = (fields = {}) =>
   fingerprint({ fixList: validPath, transcripts, spec: parentSpecPath, entries: validEntries, base: null, partialBase: false, tree: here, ...fields })
 // A copy of the fixture transcripts in which edit changes the records of the fix run's journal.
 const fixRunJournal = 'session-c/subagents/workflows/wf_fix-run/journal.jsonl'
-const editedTranscripts = edit => {
+const editedTranscripts = (edit, journal = fixRunJournal) => {
   const copy = join(scratch, `${serial++}-transcripts`)
   cpSync(transcripts, copy, { recursive: true })
-  const path = join(copy, fixRunJournal)
+  const path = join(copy, journal)
   const records = readFileSync(path, 'utf8').trim().split('\n').map(line => JSON.parse(line))
   edit(records)
   writeFileSync(path, records.map(record => JSON.stringify(record)).join('\n') + '\n')
@@ -531,7 +538,6 @@ describe('fix list validation', () => {
       { source: 'diff:0', finding: resultOf(records, 'fix-diff').findings[0] }] })
     const checked = checkList(written(made.out), ['--json'])
     expect([checked.exit, checked.err, JSON.parse(checked.out).specSha256, JSON.parse(checked.out).specLines]).toEqual([0, '', parentSpecSha, 1])
-    // The list the fix run launched on is read where its fixer's check read it, and must hold the same bytes.
     const copy = join(scratch, 'fix-run-copy')
     mkdirSync(join(copy, 'tests/fixtures/fix-list'), { recursive: true })
     writeFileSync(join(copy, 'tests/fixtures/fix-list/list.yaml'), 'run: changed\n')
@@ -552,6 +558,14 @@ describe('fix list validation', () => {
     expect([sized.exit, sized.err]).toEqual([1, '--size: the parent run counted no spec lines to measure a size breach against\n'])
   })
 
+  test('a run whose check exited non-zero gives no fix list, whatever its check printed', () => {
+    const failedFix = editedTranscripts(records => { resultOf(records, 'fix-fix').specCheck.exitCode = 1 })
+    invalid(makeIn(failedFix, 'wf_fix-run'), 'the spec check of the run printed no passing result')
+    const failedImpl = editedTranscripts(records => { resultOf(records, 'parent-impl').specCheck.exitCode = 1 },
+      'session-a/subagents/workflows/wf_parent-run/journal.jsonl')
+    invalid(makeIn(failedImpl, 'wf_parent-run'), 'the spec check of the run printed no passing result')
+  })
+
   test('a fix run closes entries only through results it accepted, so a refused or aborted result closes none', () => {
     const resultOf = (records, key) => records.find(record => record.type === 'result' && record.key === key).result
     const open = sessions => {
@@ -565,6 +579,12 @@ describe('fix list validation', () => {
       ['a fixer result that leaves an entry unanswered', records => { resultOf(records, 'fix-fix').dispositions.pop() }],
       ['a fixer result that started from another commit', records => { resultOf(records, 'fix-fix').repositories[0].startSha = 'c'.repeat(40) }],
       ['an aborted fixer result', records => { resultOf(records, 'fix-fix').abort = { trigger: 'sense-check', reason: 'The entry extends a removed mechanism.' } }],
+      ['a fixer result without a fix list check of its own, as in a run of an earlier version', records => {
+        const fixer = resultOf(records, 'fix-fix'), { stdout } = fixer.specCheck
+        delete fixer.specCheck
+        records.unshift({ type: 'started', key: 'fix-gate', label: 'gate' },
+          { type: 'result', key: 'fix-gate', result: { exitCode: 0, stdout, stderr: '', proof: JSON.parse(stdout).proof } })
+      }],
       ['a check output of an earlier tool without the base list', records => {
         const { specCheck } = resultOf(records, 'fix-fix')
         const { base, ...printed } = JSON.parse(specCheck.stdout)
@@ -739,8 +759,11 @@ describe('fix list validation', () => {
     invalid(checkList(validPath, ['--base', JSON.stringify([...base, { path: 'tests', sha: head }])]), '--base path tests is not the top level of a git repository')
   })
 
-  test('the launch values are no option of the tool any more', () => {
+  test('the launch values are no option of the tool any more, and only their proof is', () => {
     invalid(checkList(validPath, ['--expect', JSON.stringify({ spec: parentSpecPath, entries: validEntries })]), "Unknown option '--expect'")
+    expect(JSON.parse(checkList(validPath, ['--json', '--proof', listProof()]).out).proof).toBe(listProof())
+    const launched = listProof({ entries: validEntries.slice(1) })
+    invalid(checkList(validPath, ['--json', '--proof', launched]), `the checked values give the proof ${listProof()}, and the run launched with the proof ${launched}`)
   })
 
   test('a spec argument beside --fix-list, --partial-base without --base, and a spec option beside --make-fix-list are usage errors, and --size belongs to --make-fix-list alone', () => {
@@ -750,7 +773,7 @@ describe('fix list validation', () => {
     invalid(run(join(fixtures, 'valid.yaml'), ['--size', JSON.stringify(measured)]), 'Usage')
     const bare = Bun.spawnSync([process.execPath, tool, '--fix-list', validPath], { cwd: root })
     expect([bare.exitCode, bare.stderr.toString().includes('Usage')]).toEqual([1, true])
-    for (const options of [['--json'], ['--fix-list', validPath], ['--entries'], [join(fixtures, 'valid.yaml')]]) {
+    for (const options of [['--json'], ['--fix-list', validPath], ['--entries'], [join(fixtures, 'valid.yaml')], ['--proof', listProof()]]) {
       const made = makeList('wf_parent-run', options)
       expect([options.join(' '), made.exit, made.err.includes('Usage')]).toEqual([options.join(' '), 1, true])
     }

@@ -1,7 +1,8 @@
 // The checks a fix run applies to the results of its fixer and of its diff check before it builds on
-// them. A run's journal holds every result a stage returned, the ones the run refused included, so
-// the spec tool applies the same checks to the results it reads there. A workflow script runs without
-// imports, so the fix script carries these definitions exactly as written here.
+// them, its fixer's fix list check included. A run's journal holds every result a stage returned, the
+// ones the run refused included, so the spec tool applies the same checks to the results it reads
+// there. A workflow script runs without imports, so the fix script carries these definitions exactly
+// as written here.
 const SHA = /^(?:[0-9a-f]{40}|[0-9a-f]{64})$/
 const shaByPath = list => new Map(list.map(entry => [entry.path, entry.sha]))
 const hasHardFlag = r => r?.abort != null && r.abort.trigger !== 'none'
@@ -62,8 +63,20 @@ const checkWriter = r => {
     if (!r.checks.some(c => c.passed === r.proofPassed)) throw new Error('no check has passed equal to proofPassed')
   } else if (r.files.length) throw new Error('an unchanged snapshot lists files')
 }
-// The fixer's result, against the sources of the fix list and the snapshots the fixer started from.
-const checkFixerResult = (r, keys, starts) => {
+const printedProof = stdout => { try { return JSON.parse(stdout)?.proof } catch { return undefined } }
+// The fixer runs the fix list check before its first edit, with the proof of the run's launch values
+// in its command, and the spec tool exits non-zero when the values it checked give another proof.
+const listCheckPassed = (check, proof) => check.exitCode === 0 && printedProof(check.stdout) === proof
+const checkListRun = (check, proof) => {
+  if (!listCheckPassed(check, proof)) {
+    throw new Error('the fix list check did not pass: exit ' + check.exitCode + ', proof ' + JSON.stringify(printedProof(check.stdout) ?? null) +
+      ' where the launch values give ' + proof + ', stderr: ' + check.stderr)
+  }
+}
+// The fixer's result, against the proof of the run's launch values, the sources of the fix list and
+// the snapshots the fixer started from.
+const checkFixerResult = (r, proof, keys, starts) => {
+  checkListRun(r.specCheck, proof)
   checkWriter(r)
   exactlyOnce(r.dispositions.map(d => d.key), keys, 'fix key')
   checkWriterSnapshot(r, starts)
