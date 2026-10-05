@@ -427,14 +427,19 @@ async function baseRepositories(value: string, partial: boolean): Promise<unknow
   return list
 }
 
-type CheckedSpec = { path: string, sha256: string, lines: number }
+type Sha256 = string & { readonly brand: 'Sha256' }
+type SpecLineCount = number & { readonly brand: 'SpecLineCount' }
+const sha256Form = (value: unknown): value is Sha256 => typeof value === 'string' && /^[0-9a-f]{64}$/.test(value)
+// A spec that passes its check holds at least one user entry with text, so it counts at least one line.
+const specLineCount = (value: unknown): value is SpecLineCount => Number.isSafeInteger(value) && Number(value) > 0
+type CheckedSpec = { path: string, sha256: Sha256, lines: SpecLineCount }
 type Entry = Mapping & { source: string }
 type Returned = { spec: CheckedSpec | null, entries: Entry[] }
 
 function checkedSpec(spec: unknown): CheckedSpec | null {
   if (spec === null) return null
-  if (mapping(spec) && text(spec.path) && text(spec.sha256) && Number.isSafeInteger(spec.lines)) {
-    return { path: spec.path, sha256: spec.sha256, lines: Number(spec.lines) }
+  if (mapping(spec) && text(spec.path) && sha256Form(spec.sha256) && specLineCount(spec.lines)) {
+    return { path: spec.path, sha256: spec.sha256, lines: spec.lines }
   }
   throw new Error('the run result names the spec its check passed on in another form')
 }

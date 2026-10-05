@@ -548,6 +548,10 @@ describe('fix list validation', () => {
       [result => { result.toFix[5].finding = 'The handle leaks.' }, 'the run result holds item 6 of toFix in another form'],
       [result => { result.toFix.push({ source: 'size', size: { specLines: 1, ...measured } }) }, 'the run result holds item 7 of toFix in another form'],
       [result => { delete result.spec.lines }, 'the run result names the spec its check passed on in another form'],
+      [result => { result.spec.lines = -1 }, 'the run result names the spec its check passed on in another form'],
+      [result => { result.spec.lines = 0 }, 'the run result names the spec its check passed on in another form'],
+      [result => { result.spec.sha256 = 'abc' }, 'the run result names the spec its check passed on in another form'],
+      [result => { result.spec.sha256 = result.spec.sha256.toUpperCase() }, 'the run result names the spec its check passed on in another form'],
       [result => { result.spec = parentSpecPath }, 'the run result names the spec its check passed on in another form'],
     ]) invalid(makeList(writeEditedParentResult(edit)), message)
   })
