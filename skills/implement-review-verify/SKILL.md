@@ -178,9 +178,10 @@ specs.
 - Read its summary on stdout, as JSON with `--json`: the spec's `sha256`, `nonBlankLines`, the
   `specLines` the size check divides by, the `unbreakable` lines and a `proof`, the fingerprint of
   the values the tool checked.
-- Expect the implementer to run the tool once more before anything else and return what it printed.
-  The tool prints its `proof` only when the spec passes, and the run continues only when that proof
-  is the fingerprint of its own launch values and its worktree.
+- Expect the implementer to run the tool once more before anything else, with `--proof` and the
+  fingerprint of the run's launch values and its worktree, and return what it printed. The tool
+  prints its `proof` only when the spec passes and the values it checked give that fingerprint, and
+  the run continues only when the printed proof is that fingerprint.
 - Set `worktree` in the marked block of the main script to the worktree's absolute path with no
   symbolic link in it, as `pwd -P` prints it there. The tool's proof covers the directory it runs
   in as the operating system reports it, so another spelling of the same directory stops the run
@@ -872,8 +873,10 @@ second implementer pre-check.
 - Expect only a result the fix run accepted to close an entry. The journal holds a stage's last
   result whether or not the run accepted it, so the tool applies the fix run's own checks of the
   fixer's and the diff check's results, which the script carries from the tool's fix-run checks
-  module. A refused or aborted fixer result closes no entry, and neither does any result of a fix
-  run whose check printed no base list, as one checked by an earlier version of the tool.
+  module, the fixer's fix list check among them. A refused or aborted fixer result closes no entry,
+  and neither does a fixer result without a fix list check of its own or any result of a fix run
+  whose check printed no base list, as in runs of earlier versions. A run whose check exited
+  non-zero gives no fix list at all.
 - Save the tool's output as the fix list unchanged. Never add, delete or edit an entry and never
   attach anything to one: the check compares the whole list with what the parent run returned, and
   no word of yours enters the list.
@@ -892,10 +895,12 @@ second implementer pre-check.
   it there, and `partialBase` to true when the parent run's base list was partial.
 - The fixer runs the same command in the worktree before anything else, without `--entries` and with
   the base list as `--base`, and `--partial-base` beside it when `partialBase` is set, so the tool
-  checks the base list against the repositories of the tree as in the main run. The run continues
-  only when the proof the tool prints is the fingerprint of the list, the transcript directory, the
-  spec, the entries, the base list and the worktree the script received, so every stage receives
-  what the journal holds and starts from commits the tree holds.
+  checks the base list against the repositories of the tree as in the main run, and with `--proof`
+  set to the fingerprint of the list, the transcript directory, the spec, the entries, the base list
+  and the worktree the script received. The tool fails before the fixer's first edit when the list
+  gives another proof, and the run continues only when the proof the tool prints is that
+  fingerprint, so every stage receives what the journal holds and starts from commits the tree
+  holds.
 - The fix run's fixer receives every entry, one key per source, and the parent spec. It resolves
   each entry with the user's words, the rule sources and the plugin's skills as its guide. Before it
   returns anything but fixed, it looks for every applicable rule and skill that says what to do or
@@ -1459,31 +1464,37 @@ run works on, the worktree from the marked block, so the tool finds the reposito
 alone. The main checkout of a multi-repository project can hold other task trees and cached clones,
 which the tool would count as repositories the base list leaves out. It then runs
 `<plugin root>/tools/check-spec.ts` with `--json`, the spec path from `args.specPath`, the
-transcript directory from `args.transcripts` and `--base` with the base list as JSON in single
-quotes. The writer runs that exact command once and returns its exit code, its stdout and its
-stderr unchanged in `specCheck`, which its schema requires. On a failed check it edits nothing.
+transcript directory from `args.transcripts`, `--base` with the base list as JSON in single quotes
+and `--proof` with the fingerprint of the run's launch values and its worktree. The writer runs
+that exact command once and returns its exit code, its stdout and its stderr unchanged in
+`specCheck`, which its schema requires. On a failed check it edits nothing.
 
 The tool's `proof` is the fingerprint of the values it checked: the 32-bit FNV-1a hash of the spec
 path, the transcript directory, the base list, whether the base list is partial and the directory
-the tool runs in, as JSON with sorted keys. The script reads the `proof` field from the printed
-JSON, computes the same fingerprint of its own launch values and its worktree, and continues only
-when the exit code is zero and the two are equal. A failed check, a check of other values or in
-another tree, output that is no JSON and a proof that is made up end the run as `failed`, quoting
-stderr, before any review. The comparison shows that the values agree, not that the tool ran: the
-writer could compute the same fingerprint without running it. The script refuses at once when
-`args.specPath` does not end in `.yaml`. A failed check is final: the writer's result comes back
-without the other completeness checks, so the stage helper does not ask it again, because another
-attempt could pass only by changing what the check compares.
+the tool runs in, as JSON with sorted keys. When the values it checked give another proof than the
+one `--proof` passes, the tool fails, so the values the writer works with agree with the values the
+tool checked before the writer's first edit. The script then reads the `proof` field from the
+printed JSON and continues only when the exit code is zero and the proof equals the fingerprint of
+its launch values. A failed check, a check of other values or in another tree, output that is no
+JSON and a missing or another proof end the run as `failed`, quoting stderr, before any review, and
+the stage failure carries the writer's result. The comparison cannot tell a proof the tool printed
+from one the writer wrote itself, since the command names the proof. The script refuses at once
+when `args.specPath` does not end in `.yaml`. A failed check is final: the writer's result comes
+back without the other completeness checks, so the stage helper does not ask it again, because
+another attempt could pass only by changing what the check compares.
 
 The fix run's fixer runs the tool's fix-list mode in place of the spec check: `--fix-list` with the
-fix list from `args.fixList`, the transcript directory and `--json`. The command carries no value
-of the list, so the fixer copies nothing long. Its proof is the fingerprint of the list path, the
-transcript directory, the spec, which is null for a list that names none, and the entries, and the
-script compares it with the fingerprint of its launch values. The script refuses at once when
-`args.fixList` does not end in `.yaml`, and the run ends when the launch values differ from the list,
-when the list differs from what the parent run returned to be fixed, or when the spec changed since
-the parent run checked it. The roaster starts beside the fixer, and a failed check drops its
-findings with the rest of the run.
+fix list from `args.fixList`, the transcript directory, `--json`, the base list and `--proof`. The
+command carries no value of the list, so the fixer copies nothing long. Its proof is the
+fingerprint of the list path, the transcript directory, the spec, which is null for a list that
+names none, the entries, the base list, whether it is partial and the worktree, so a launched spec
+or entry that differs from the list fails the tool before the fixer's first edit. The script
+refuses at once when `args.fixList` does not end in `.yaml`, and the run ends when the launch values
+differ from the list, when the list differs from what the parent run returned to be fixed, or when
+the spec changed since the parent run checked it. The fix run's checks of a fixer result, in the
+tool's fix-run checks module, include this check, so the next fix list closes no entry through a
+fixer whose check failed. The roaster starts beside the fixer, and its findings, its limitations or
+its failure reach `remaining` also when the fixer's check failed.
 
 A review pass checks no spec and runs no writer, so it has no spec check.
 

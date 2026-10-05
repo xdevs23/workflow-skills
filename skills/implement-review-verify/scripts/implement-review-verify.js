@@ -891,13 +891,12 @@ const fixPass = (queue, starts) => stage([
 
 async function implement() {
   phase('Implement')
-  // A failed spec check returns as it is, and the run ends on it without another attempt.
   const result = await stage(
     [specCheckFirst(), AUTHORITY, GUIDE, WRITE_GIT, SPEC, RULES, PROVE, DOCUMENT_IMPL, FOCUSED, RETURN_ARTIFACTS, 'START SHAS, per repository: ' + listed(base), TASK].join('\n\n'),
     { label: 'impl', phase: 'Implement', agentType: 'workflow-skills:implementer', ...UNIT.models.impl, schema: IMPLEMENT },
     r => { if (specCheckPassed(r.specCheck)) checkImplementer(r) },
   )
-  checkSpecRun(result.specCheck)
+  try { checkSpecRun(result.specCheck) } catch (error) { failed(error, 'impl', result); return }
   impl = result
   abortOnFlag(impl, 'impl')
   checkWriterSnapshot(impl, base)
@@ -1025,25 +1024,23 @@ const fingerprint = values => {
   for (let index = 0; index < json.length; index++) hash = Math.imul(hash ^ json.charCodeAt(index), 0x01000193)
   return (hash >>> 0).toString(16).padStart(8, '0')
 }
-// The spec check. The implementer runs the spec tool on the unit's spec file before any edit and
-// returns what the tool printed, and the tool prints its proof only when the spec passes. The run
-// goes on only when that proof is the fingerprint of this run's own launch values and tree, so a
-// failed check, a check of other values or of another tree, and a proof that is made up stop the
-// run. The comparison shows that the values agree, not that the tool ran.
-// The command runs in the worktree, so the tool checks the base list against the repositories of
-// this run's tree alone. Every value is one quoted word, so a path holding a space, an apostrophe or
-// any other character the shell reads reaches the tool unchanged. A review-only run has no spec and
-// no writer, so the block is built only for the implementer.
+// The command passes the proof of this run's launch values and tree, and the spec tool exits
+// non-zero when the values it checked give another proof, so the writer edits nothing on a check of
+// other values. The script then requires a zero exit and that proof in the printed JSON. A missing or
+// another proof fails the run. A writer that prints the proof itself without running the tool cannot
+// be told apart from the tool.
+// The command runs in the worktree, so the tool checks the base list against this run's tree, and
+// each value is one quoted shell word.
 const shellWord = value => "'" + value.replaceAll("'", "'\\''") + "'"
+const PROOF = fingerprint({ spec: UNIT.specPath, transcripts: UNIT.transcripts, base, partialBase: Boolean(UNIT.partialBase), tree: UNIT.worktree })
 const specCheckFirst = () => [
   'SPEC CHECK, before anything else and before any edit: run this exact command once with the Bash tool, with no change, retry or fix:',
   'cd ' + shellWord(UNIT.worktree) + ' && bun ' + shellWord(UNIT.pluginRoot + '/tools/check-spec.ts') + ' ' +
     shellWord(UNIT.specPath) + ' --transcripts ' + shellWord(UNIT.transcripts) + ' --json --base ' + shellWord(JSON.stringify(base)) +
-    (UNIT.partialBase ? ' --partial-base' : ''),
+    (UNIT.partialBase ? ' --partial-base' : '') + ' --proof ' + shellWord(PROOF),
   'Return its exit code, its stdout and its stderr in specCheck, unchanged. When its exit code is not 0, make no edit and',
   'return your object with every repository at its start SHA.',
 ].join('\n')
-const PROOF = fingerprint({ spec: UNIT.specPath, transcripts: UNIT.transcripts, base, partialBase: Boolean(UNIT.partialBase), tree: UNIT.worktree })
 const printedProof = stdout => { try { return JSON.parse(stdout)?.proof } catch { return undefined } }
 const specCheckPassed = ({ exitCode, stdout }) => exitCode === 0 && printedProof(stdout) === PROOF
 const checkSpecRun = check => {

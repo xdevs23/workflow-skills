@@ -248,19 +248,30 @@ function validator(file: string) {
 }
 
 const usage = 'Usage: bun tools/check-spec.ts <spec.yaml> --transcripts <dir> ' +
-  '[--json] [--base <JSON list of { path, sha }> [--partial-base]], ' +
+  '[--json] [--base <JSON list of { path, sha }> [--partial-base]] [--proof <proof>], ' +
   'or bun tools/check-spec.ts --fix-list <file> --transcripts <dir> [--json [--entries]] ' +
-  '[--base <JSON list of { path, sha }> [--partial-base]], ' +
+  '[--base <JSON list of { path, sha }> [--partial-base]] [--proof <proof>], ' +
   'or bun tools/check-spec.ts --make-fix-list <run> --transcripts <dir> [--size <json>]'
+
+// The proof of the checked values. A workflow script passes the proof of its own launch values, so a
+// check of other values fails before the stage that runs it edits anything.
+function proven(values: Mapping, expected: string | undefined) {
+  const proof = fingerprint(values)
+  if (expected !== undefined && expected !== proof) {
+    throw new Error(`the checked values give the proof ${proof}, and the run launched with the proof ${expected}`)
+  }
+  return proof
+}
 
 async function main() {
   if (!Bun.YAML?.parse) throw new Error(`Bun ${minimumBun} or newer is required: Bun.YAML is unavailable`)
   const { values, positionals } = parseArgs({ args: Bun.argv.slice(2), allowPositionals: true,
     options: { transcripts: { type: 'string' }, json: { type: 'boolean' }, base: { type: 'string' }, 'partial-base': { type: 'boolean' },
-      'fix-list': { type: 'string' }, entries: { type: 'boolean' }, 'make-fix-list': { type: 'string' }, size: { type: 'string' } } })
+      'fix-list': { type: 'string' }, entries: { type: 'boolean' }, 'make-fix-list': { type: 'string' }, size: { type: 'string' },
+      proof: { type: 'string' } } })
   if (values['make-fix-list'] !== undefined) {
     if (positionals.length || !values['make-fix-list'] || !values.transcripts || values.base || values['partial-base'] ||
-      values['fix-list'] !== undefined || values.entries || values.json) {
+      values['fix-list'] !== undefined || values.entries || values.json || values.proof !== undefined) {
       throw new Error(usage)
     }
     return makeFixList(values['make-fix-list'], values.transcripts, values.size)
@@ -270,7 +281,8 @@ async function main() {
   if (values['fix-list'] !== undefined) {
     if (positionals.length || !values['fix-list'] || !values.transcripts || (values.entries && !values.json)) throw new Error(usage)
     const base = values.base === undefined ? null : await baseRepositories(values.base, partialBase)
-    return checkFixList(values['fix-list'], values.transcripts, { json: values.json === true, withEntries: values.entries === true, base, partialBase })
+    return checkFixList(values['fix-list'], values.transcripts,
+      { json: values.json === true, withEntries: values.entries === true, base, partialBase, expected: values.proof })
   }
   if (positionals.length !== 1 || !values.transcripts || values.entries) throw new Error(usage)
   const base = values.base === undefined ? null : await baseRepositories(values.base, partialBase)
@@ -345,7 +357,7 @@ async function main() {
     specLines,
     unbreakable: unbreakableLines,
     // The base list is checked against the tree the tool runs in, so the proof covers that tree too.
-    proof: fingerprint({ spec: specPath, transcripts, base, partialBase, tree: process.cwd() }),
+    proof: proven({ spec: specPath, transcripts, base, partialBase, tree: process.cwd() }, values.proof),
     spec: specPath,
   }
   console.log(values.json ? JSON.stringify(summary) :
@@ -468,42 +480,37 @@ async function lastResults(journal: string): Promise<Map<string, unknown>> {
   return new Map([...started].map(([label, key]) => [label, results.get(key)]))
 }
 
-// The spec a run checked: its path, its SHA-256 and the spec lines the size gate divides by.
 type CheckedSpec = { path: string, sha256: string, lines?: number }
-type Launch = { spec: CheckedSpec | null, fixList?: { path: string, sha256: string }, base?: unknown[] }
+type Launch = { spec: CheckedSpec | null, fixList?: { path: string, sha256: string, proof: string }, base?: unknown[] }
 type Entry = Mapping & { source: string }
 
-// What the spec tool printed for a run's check. The stage that ran it is the launch check of an
-// earlier version of the scripts, else the implementer of a main run, else the fixer of a fix run,
-// which returns it in specCheck. A review pass checks no spec and runs none of these stages, so its
-// output is null.
+// What the spec tool printed for a run's check that exited 0. A run of an earlier version of the
+// scripts recorded the check under the label gate; the implementer and the fixer return it in
+// specCheck. A review pass records none.
 function checkOutput(results: Map<string, unknown>): string | undefined | null {
-  const stdout = (value: unknown) => mapping(value) && typeof value.stdout === 'string' ? value.stdout : undefined
-  if (results.has('gate')) return stdout(results.get('gate'))
+  const passed = (value: unknown) =>
+    mapping(value) && value.exitCode === 0 && typeof value.stdout === 'string' ? value.stdout : undefined
+  if (results.has('gate')) return passed(results.get('gate'))
   for (const label of ['impl', 'fix']) {
     const result = results.get(label)
-    if (results.has(label)) return stdout(mapping(result) ? result.specCheck : undefined)
+    if (results.has(label)) return passed(mapping(result) ? result.specCheck : undefined)
   }
   return null
 }
 
-// What a run checked. The spec check of a main run prints the spec it passed; the check of a fix run
-// prints its own fix list and the spec that list names, or null, so the spec carries on from run to
-// run, beside the base list the fix run started from. The fix-list check of an earlier version of
-// this tool printed no spec lines and no base list, so a fix run it launched carries no spec lines on
-// and has no base list to check its fixer's result against.
+// The fix-list check of an earlier version of this tool printed no spec lines and no base list.
 function launchOf(results: Map<string, unknown>): Launch {
   const output = checkOutput(results)
   if (output === null) return { spec: null }
   let printed: unknown
   try { printed = output === undefined ? undefined : JSON.parse(output) } catch { printed = undefined }
   if (mapping(printed)) {
-    const { spec, specLines, sha256, specSha256, fixList, base } = printed
+    const { spec, specLines, sha256, specSha256, fixList, base, proof } = printed
     const counted = Number.isSafeInteger(specLines) ? { lines: Number(specLines) } : undefined
     if (!Object.hasOwn(printed, 'fixList')) {
       if (text(spec) && text(sha256) && counted) return { spec: { path: spec, sha256, ...counted } }
-    } else if (text(fixList) && text(sha256)) {
-      const listed = { fixList: { path: fixList, sha256 }, ...(Array.isArray(base) ? { base } : {}) }
+    } else if (text(fixList) && text(sha256) && text(proof)) {
+      const listed = { fixList: { path: fixList, sha256, proof }, ...(Array.isArray(base) ? { base } : {}) }
       if (spec === null) return { spec: null, ...listed }
       if (text(spec) && text(specSha256) && (counted || specLines === undefined)) {
         return { spec: { path: spec, sha256: specSha256, ...counted }, ...listed }
@@ -513,7 +520,6 @@ function launchOf(results: Map<string, unknown>): Launch {
   throw new Error('the spec check of the run printed no passing result')
 }
 
-// The entries of the fix list a fix run launched on, unchanged since its check read them.
 async function launchedEntries({ path, sha256 }: { path: string, sha256: string }): Promise<unknown[]> {
   const bytes = await readFile(path)
   if (sha256Of(bytes) !== sha256) throw new Error(`the fix list ${path} changed since the run's check read it`)
@@ -559,11 +565,14 @@ async function returned(run: string, transcripts: string): Promise<{ launch: Lau
     }
   }
   if (launch.fixList) {
-    const launched = await launchedEntries(launch.fixList)
+    const { fixList } = launch
+    const launched = await launchedEntries(fixList)
     const keys = launched.map(entry => mapping(entry) ? entry.source : undefined)
     // Without the base list the fixer started from, its result cannot be checked and closes no entry.
+    // The journal holds no launch values, so the proof the fixer's check printed stands for them: the
+    // tool compared it with the proof the fixer's command passed in before it printed it.
     const { base } = launch
-    const fix = base && acceptedResult(results.get('fix'), result => checkFixerResult(result, keys, base))
+    const fix = base && acceptedResult(results.get('fix'), result => checkFixerResult(result, fixList.proof, keys, base))
     const diff = fix && acceptedResult(results.get('diff'), result => checkDiffResult(result, keys))
     const dispositions = new Map(listIn(fix, 'dispositions').filter(mapping).map(d => [d.key, d.disposition]))
     const mapped = new Set(listIn(diff, 'mappings').filter(mapping).map(m => m.source))
@@ -698,9 +707,9 @@ async function compareWithRun({ fail }: Validator, transcripts: string, run: str
   return launch
 }
 
-type FixListOptions = { json: boolean, withEntries: boolean, base: unknown[] | null, partialBase: boolean }
+type FixListOptions = { json: boolean, withEntries: boolean, base: unknown[] | null, partialBase: boolean, expected?: string }
 
-async function checkFixList(file: string, transcripts: string, { json, withEntries, base, partialBase }: FixListOptions) {
+async function checkFixList(file: string, transcripts: string, { json, withEntries, base, partialBase, expected }: FixListOptions) {
   const checks = validator(file)
   const { fail, shape, stringField, list, report } = checks
   let bytes: Buffer | undefined
@@ -744,7 +753,7 @@ async function checkFixList(file: string, transcripts: string, { json, withEntri
     ...(launch.spec ? { specSha256: launch.spec.sha256, specLines: launch.spec.lines } : {}),
     ...(base ? { base } : {}),
     sha256: sha256Of(bytes!),
-    proof: fingerprint({ fixList: file, transcripts, spec, entries: listed, base, partialBase, tree: process.cwd() }),
+    proof: proven({ fixList: file, transcripts, spec, entries: listed, base, partialBase, tree: process.cwd() }, expected),
     fixList: file,
   }
   console.log(json ? JSON.stringify(summary) :

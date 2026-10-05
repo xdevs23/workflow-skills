@@ -82,9 +82,10 @@ directly as `agentType`s in your own workflows.
   implementation is done, the fixer once its corrections are done. A change that alters no design
   needs no document, and correcting a design document that describes the code wrongly stays
   allowed.
-  A passing run prints a `proof`, the fingerprint of the values it checked. The writer of each
-  workflow script runs the tool before anything else, and the script compares that proof with the
-  fingerprint of its own launch values.
+  A passing run prints a `proof`, the fingerprint of the values it checked, and `--proof <proof>`
+  fails the check when the values give another. The writer of each workflow script runs the tool
+  before anything else with `--proof` set to the fingerprint of the script's own launch values, and
+  the script compares the printed proof with that fingerprint.
   Its fix-list mode, `--fix-list <file> --transcripts <session-dir>` in place of the spec, checks
   the fix list of a fix run, which names a parent run in `run`, the spec that run checked in `spec`,
   null after a review pass, and holds in `entries` everything the run returned to be fixed, each as
@@ -96,7 +97,8 @@ directly as `agentType`s in your own workflows.
   unresolved issue of its finding verifier, or every finding of its review seats in a run without a
   verifier, every entry of a fix run's own list its fixer left open, and every finding of its roaster
   and diff check. A fix run's fixer and diff check close an entry only through a result that passes
-  the fix run's own checks. Add `--size <json>` to add a measured size breach of the unit.
+  the fix run's own checks, the fixer's fix list check among them, and a run whose check exited
+  non-zero gives no fix list. Add `--size <json>` to add a measured size breach of the unit.
 - **The pull request watcher `watch-prs` needs Python 3 and the GitHub CLI `gh`, logged in.**
   `babysit-pr` runs it. The watcher is a Python program in the plugin's tools directory, run with
   `python3`. It takes the state file with `--state`, the seconds between polls with `--interval`,
