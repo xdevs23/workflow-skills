@@ -1296,7 +1296,14 @@ describe('structured stage output', () => {
     ['clean disagreeing with its status output', { git: { head: INITIAL, status: ' M src/example.js' } }, 'clean disagrees with git.status in .'],
     ['an empty git.head', { git: { head: '', status: '' } }, 'git.head "" of . differs from snapshotSha "' + INITIAL + '"'],
     ['git.head disagreeing with snapshotSha', { git: { head: BASE, status: '' } }, 'git.head "' + BASE + '" of . differs from snapshotSha "' + INITIAL + '"'],
-    ['no check matching proofPassed', { checks: [check(false)] }, 'no check has passed equal to proofPassed'],
+    ['no quoted check', { checks: [] }, 'no check is quoted'],
+    ['proofPassed true and a failed check', { checks: [check(false)] }, 'proofPassed is true, but the last quoted run of "bun test tests/example.test.js" failed'],
+    ['proofPassed true, a passed type check and failed focused tests', { checks: [check(true, 'tsc --noEmit'), check(false)] },
+      'proofPassed is true, but the last quoted run of "bun test tests/example.test.js" failed'],
+    ['proofPassed true and a passed run followed by a failed rerun', { checks: [check(true), check(false)] },
+      'proofPassed is true, but the last quoted run of "bun test tests/example.test.js" failed'],
+    ['proofPassed false and every last run passed', { proofPassed: false, checks: [check(false), check(true)] },
+      'proofPassed is false, but the last quoted run of every check command passed'],
     ['an unchanged snapshot listing files', { snapshotSha: BASE, files: [{ path: 'src/example.js', bytes: 1, change: 'added' }] }, 'an unchanged snapshot lists files'],
   ]) {
     test(`an implementer with ${name} is retried and then thrown`, async () => {
@@ -1305,6 +1312,21 @@ describe('structured stage output', () => {
       expect(result.exit).toBe('failed')
       expect(result.detail).toContain(message)
       expect([retried(calls, 'impl').length, calls.some(c => c.phase === 'Review')]).toEqual([3, false])
+    })
+  }
+
+  // The last run of each focused check command decides that command, so a passed rerun supersedes a
+  // failure, and a failed command beside a passed one reaches the run as a failed proof.
+  for (const [name, checks, proofPassed] of [
+    ['a failed check followed by a passed rerun', [check(false), check(true)], true],
+    ['a passed type check and failed focused tests', [check(true, 'tsc --noEmit'), check(false)], false],
+    ['a passed type check and focused tests whose last rerun failed', [check(true, 'tsc --noEmit'), check(true), check(false)], false],
+  ]) {
+    test(`an implementer with ${name} is accepted on the first attempt`, async () => {
+      const calls = []
+      const { result } = await simulate({ implementation: implemented({ checks, proofPassed }), calls })
+      expect(retried(calls, 'impl')).toHaveLength(1)
+      expect([result.exit, result.remaining.map(r => r.kind)]).toEqual(proofPassed ? ['clean', []] : ['root-resolution', ['failed-proof']])
     })
   }
 

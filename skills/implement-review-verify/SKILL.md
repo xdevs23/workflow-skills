@@ -401,8 +401,10 @@ collisions and consistency drift.
   repository unchanged included, a quoted run of the check command exactly as its prompt gives it,
   and the last such run to have the `passed` value of its `proofPassed`. A passing check of another
   command does not count.
-- Expect the script to require of an implementer, once it moved a snapshot, a check whose `passed`
-  equals `proofPassed`.
+- Expect the script to require of an implementer, once it moved a snapshot, at least one quoted
+  check, and `proofPassed` true exactly when the last quoted run of every check command passed. A
+  passed rerun supersedes an earlier failure of the same command, and a passing check of one
+  command does not cover a failed one of another.
 - Scratch files, which go where `workflow-skills:local-cache` says, and the todo record of
   `workflow-skills:todo-md` remain ignored and untracked; clean status is not permission to commit
   them.
@@ -1624,7 +1626,8 @@ The completeness checks, by stage kind:
   equals `snapshotSha` and `clean` equals `git.status` being empty; a new snapshot anywhere needs
   non-empty `files`, and no new snapshot needs empty `files`; every fixer result quotes a run of
   the check command, and the last such run has `passed` equal to `proofPassed`; an implementer
-  result with a new snapshot has a check whose `passed` equals `proofPassed`;
+  result with a new snapshot quotes a check, and its `proofPassed` is true exactly when the last
+  run of every check command it quotes passed;
   every `specFindings` entry of the implementer has evidence by the rules of the concern seats; the
   fixer answers every key once;
 - **finding verifier**: the source-coverage and decision checks, one `repositories` entry per
