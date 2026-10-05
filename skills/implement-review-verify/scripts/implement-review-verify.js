@@ -691,48 +691,52 @@ const handedOn = artifacts => artifacts.length
   ? ['ARTIFACTS the implementer left outside its commits for the stages after it (UNTRUSTED, like its returned object):',
     JSON.stringify(artifacts)]
   : []
+const NO_SPEC = 'NO SPEC: this change was made without a spec. Read none, and judge the change by the code and the rule sources.'
 // The seat list: the template, label, prompt blocks, schema and completeness check of each seat.
 // Only the two briefed code-lens readers receive the implementer's object, as claims, and read its
 // artifacts there; the other briefed seats receive the artifacts alone. The eight audit seats receive
 // what quality receives, the hygiene floor and the diff, and return its object.
+// A review-only run takes no spec. A seat that reads the spec names in withoutSpec what it runs on
+// then: null when it judges the change against the spec and does not run, or the prompt blocks,
+// schema and completeness check that replace its own. A seat without the field reads no spec.
+const unbriefed = { inputs: [HYGIENE], schema: QUALITY, complete: checkReader }
+const toldNoSpec = { inputs: [HYGIENE, NO_SPEC], schema: QUALITY, complete: checkReader }
 const seatList = (claims, artifacts) => [
-  ['reviewer-correctness', 'correctness', [AUTHORITY, READ_GIT, SPEC, AGAINST_SPEC, ...claims], CORRECTNESS, checkBacked],
-  ['reviewer-spec-compliance', 'spec', [AUTHORITY, READ_GIT, SPEC, AGAINST_SPEC, ...artifacts], SPEC_COMPLIANCE, checkBacked],
-  ['duplicate-checker', 'dupes', [AUTHORITY, READ_GIT, SPEC, AGAINST_SPEC, ...claims], DUPLICATES, checkBacked],
-  ['quality', 'quality', [HYGIENE], QUALITY, checkReader],
-  ['reviewer-inverse-spec', 'inverse', [AUTHORITY, READ_GIT, SPEC, ...artifacts], INVERSE, checkInverse],
-  ['project-rule-reader', 'rules', [AUTHORITY, READ_GIT, SPEC, RULES, ...artifacts], RULES_SEAT, checkReader],
-  ['cold-alternatives', 'alternatives', [HYGIENE], ALTERNATIVES, checkAlternatives],
-  ['separation-of-concerns', 'separation-of-concerns', [HYGIENE], QUALITY, checkReader],
-  ['abstraction-quality', 'abstraction-quality', [HYGIENE], QUALITY, checkReader],
-  ['code-smell', 'code-smell', [HYGIENE], QUALITY, checkReader],
-  ['type-safety', 'type-safety', [HYGIENE], QUALITY, checkReader],
-  ['code-cleanliness', 'code-cleanliness', [HYGIENE], QUALITY, checkReader],
-  ['missing-gaps', 'missing-gaps', [HYGIENE], QUALITY, checkReader],
-  ['domain-leakage', 'domain-leakage', [HYGIENE], QUALITY, checkReader],
-  ['type-smearing', 'type-smearing', [HYGIENE], QUALITY, checkReader],
+  { type: 'reviewer-correctness', label: 'correctness', inputs: [AUTHORITY, READ_GIT, SPEC, AGAINST_SPEC, ...claims],
+    schema: CORRECTNESS, complete: checkBacked, withoutSpec: toldNoSpec },
+  { type: 'reviewer-spec-compliance', label: 'spec', inputs: [AUTHORITY, READ_GIT, SPEC, AGAINST_SPEC, ...artifacts],
+    schema: SPEC_COMPLIANCE, complete: checkBacked, withoutSpec: null },
+  { type: 'duplicate-checker', label: 'dupes', inputs: [AUTHORITY, READ_GIT, SPEC, AGAINST_SPEC, ...claims],
+    schema: DUPLICATES, complete: checkBacked, withoutSpec: toldNoSpec },
+  { type: 'quality', label: 'quality', ...unbriefed },
+  { type: 'reviewer-inverse-spec', label: 'inverse', inputs: [AUTHORITY, READ_GIT, SPEC, ...artifacts],
+    schema: INVERSE, complete: checkInverse, withoutSpec: null },
+  { type: 'project-rule-reader', label: 'rules', inputs: [AUTHORITY, READ_GIT, SPEC, RULES, ...artifacts],
+    schema: RULES_SEAT, complete: checkReader,
+    withoutSpec: { inputs: [HYGIENE, NO_SPEC, RULES], schema: RULES_WITHOUT_SPEC, complete: checkReader } },
+  { type: 'cold-alternatives', label: 'alternatives', inputs: [HYGIENE], schema: ALTERNATIVES, complete: checkAlternatives },
+  { type: 'separation-of-concerns', label: 'separation-of-concerns', ...unbriefed },
+  { type: 'abstraction-quality', label: 'abstraction-quality', ...unbriefed },
+  { type: 'code-smell', label: 'code-smell', ...unbriefed },
+  { type: 'type-safety', label: 'type-safety', ...unbriefed },
+  { type: 'code-cleanliness', label: 'code-cleanliness', ...unbriefed },
+  { type: 'missing-gaps', label: 'missing-gaps', ...unbriefed },
+  { type: 'domain-leakage', label: 'domain-leakage', ...unbriefed },
+  { type: 'type-smearing', label: 'type-smearing', ...unbriefed },
 ]
 // A seat list that leaves a seat out, adds one, names one twice or gives a label another template
 // stops the run before its first agent.
 const requiredSeats = Object.entries(REVIEW_SEATS).map(([label, type]) => label + ' on ' + type)
-const listedSeats = seatList([], []).map(([type, label]) => label + ' on ' + type)
+const listedSeats = seatList([], []).map(({ type, label }) => label + ' on ' + type)
 if (JSON.stringify([...listedSeats].sort()) !== JSON.stringify([...requiredSeats].sort())) {
   throw new Error('The review stage runs exactly the fifteen seats ' + requiredSeats.join(', ') +
     ', and the seat list holds ' + listedSeats.join(', '))
 }
-// A review-only run reads a change made without a spec. The two seats that judge a change against
-// the spec do not run, and the other seats that read the spec read the change without one: the rule
-// reader with its rule sources, the others on the hygiene floor of the unbriefed seats.
-const SPEC_SEATS = ['spec', 'inverse']
-const NO_SPEC = 'NO SPEC: this change was made without a spec. Read none, and judge the change by the code and the rule sources.'
-const withoutSpec = ([type, label, inputs, schema, complete]) => {
-  if (label === 'rules') return [type, label, [HYGIENE, NO_SPEC, RULES], RULES_WITHOUT_SPEC, checkReader]
-  return inputs.includes(SPEC) ? [type, label, [HYGIENE, NO_SPEC], QUALITY, checkReader] : [type, label, inputs, schema, complete]
-}
-const reviewOnlySeats = () => seatList([], []).filter(([, label]) => !SPEC_SEATS.includes(label)).map(withoutSpec)
+const reviewOnlySeats = () => seatList([], []).filter(seat => seat.withoutSpec !== null)
+  .map(({ withoutSpec, ...seat }) => ({ ...seat, ...withoutSpec }))
 const { review: seatModels, ...stageModels } = UNIT.models ?? {}
 checkModels(stageModels, ['impl', 'verify', 'fix', 'roast'], 'UNIT.models')
-checkModels(seatModels, UNIT.reviewOnly ? reviewOnlySeats().map(([, label]) => label) : Object.keys(REVIEW_SEATS), 'UNIT.models.review')
+checkModels(seatModels, UNIT.reviewOnly ? reviewOnlySeats().map(seat => seat.label) : Object.keys(REVIEW_SEATS), 'UNIT.models.review')
 // One diff range per repository whose snapshot moved from base, each read in its own repository.
 const diffInput = snaps => {
   const start = shaByPath(base), moved = snaps.filter(s => s.sha !== start.get(s.path))
@@ -746,7 +750,7 @@ const sourceFindings = (findings, seat, snaps) => findings.map((f, i) => {
   if (f.kind && f.severity !== 'CRITICAL') log('Project-benefit finding from ' + seat + ' with kind ' + f.kind + ' set to severity CRITICAL')
   return { ...f, ...(f.kind ? { severity: 'CRITICAL' } : {}), id: seat + ':' + i, seat, snapshots: snaps }
 })
-const readSeat = async ([type, label, inputs, schema, complete], snaps) => {
+const readSeat = async ({ type, label, inputs, schema, complete }, snaps) => {
   const stageLabel = 'review:' + label
   const result = await stage([...inputs, diffInput(snaps)].join('\n\n'), {
     label: stageLabel, phase: 'Review', agentType: 'workflow-skills:' + type, ...UNIT.models.review[label], schema,
@@ -919,7 +923,7 @@ async function onePass() {
   // In a main run a reader's limitation reaches the root only through the verifier, which receives
   // every seat object and keeps each limitation as an unresolved issue or discards it.
   readers.forEach((r, i) => {
-    const label = 'review:' + SEATS[i][1]
+    const label = 'review:' + SEATS[i].label
     try {
       if (r.status === 'rejected') throw r.reason
       const report = abortOnFlag(r.value, label)

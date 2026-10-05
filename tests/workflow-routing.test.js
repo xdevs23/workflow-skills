@@ -104,14 +104,55 @@ const implemented = (fields = {}) => writer({ startSha: BASE, snapshotSha: INITI
 const launchArgs = (fields = {}) => ({ base: at(BASE), specPath: SPEC_PATH, transcripts: TRANSCRIPTS, ...fields })
 // The scripts address every plugin agent by its qualified name, workflow-skills:<name>, which is
 // how the harness lists them. The records keep the bare name, which is what the assertions use.
+// The harness hands a script only an object that matches the schema its stage passes. This check
+// knows the keywords the shipped schemas use and fails on a schema that uses any other.
+const KEYWORDS = new Set(['type', 'required', 'additionalProperties', 'properties', 'items', 'enum', 'minItems', 'maxItems',
+  'minimum', 'maxLength', 'pattern', 'description'])
+const TYPES = { object: v => v !== null && typeof v === 'object' && !Array.isArray(v), array: Array.isArray,
+  string: v => typeof v === 'string', integer: Number.isInteger, boolean: v => typeof v === 'boolean' }
+const schemaErrors = (schema, value, path = 'result') => {
+  const unknown = Object.keys(schema).filter(keyword => !KEYWORDS.has(keyword))
+  if (unknown.length) throw new Error(`${path}: the schema uses ${unknown.join(', ')}, which the test harness does not check`)
+  if (schema.enum && !schema.enum.includes(value)) return [`${path}: ${JSON.stringify(value)} is none of ${schema.enum.join(', ')}`]
+  if (schema.type && !TYPES[schema.type](value)) return [`${path}: expected ${schema.type}`]
+  if (schema.type === 'object') {
+    const properties = schema.properties ?? {}
+    return [
+      ...(schema.required ?? []).filter(key => !Object.hasOwn(value, key)).map(key => `${path}.${key}: missing`),
+      ...(schema.additionalProperties === false ? Object.keys(value).filter(key => !Object.hasOwn(properties, key)).map(key => `${path}.${key}: not allowed`) : []),
+      ...Object.keys(value).filter(key => Object.hasOwn(properties, key)).flatMap(key => schemaErrors(properties[key], value[key], `${path}.${key}`)),
+    ]
+  }
+  if (schema.type === 'array') {
+    return [
+      ...(value.length < (schema.minItems ?? 0) ? [`${path}: fewer than ${schema.minItems} items`] : []),
+      ...(value.length > (schema.maxItems ?? Infinity) ? [`${path}: more than ${schema.maxItems} items`] : []),
+      ...(schema.items ? value.flatMap((item, index) => schemaErrors(schema.items, item, `${path}[${index}]`)) : []),
+    ]
+  }
+  if (schema.type === 'string') {
+    return [...(value.length > (schema.maxLength ?? Infinity) ? [`${path}: longer than ${schema.maxLength}`] : []),
+      ...(schema.pattern && !new RegExp(schema.pattern).test(value) ? [`${path}: does not match ${schema.pattern}`] : [])]
+  }
+  if (schema.type === 'integer' && value < (schema.minimum ?? -Infinity)) return [`${path}: below ${schema.minimum}`]
+  return []
+}
+// Wraps a simulated agent so every object it returns is held to the schema its stage passed.
+const schemaChecked = agent => async (prompt, opts) => {
+  const result = await agent(prompt, opts)
+  if (result != null) expect([opts.label, schemaErrors(opts.schema, result)]).toEqual([opts.label, []])
+  return result
+}
 const bare = opts => {
   if (opts.agentType === undefined) return opts
   expect(opts.agentType).toMatch(/^workflow-skills:[a-z-]+$/)
   return { ...opts, agentType: opts.agentType.slice('workflow-skills:'.length) }
 }
+// seats holds the object of each review seat, and harness stands between the script and the
+// simulated agents, passing their objects on unchecked unless a test asks for the schema check.
 async function simulate({ reports = {}, verify = {}, fixes = {}, fail = {}, implementation, specCheck,
   beforeRead = async () => {}, beforeFix = async () => {}, beforeRoast = async () => {},
-  args = launchArgs(), calls = [], logs = [], script = run } = {}) {
+  args = launchArgs(), calls = [], logs = [], script = run, seats = seatObject, harness = agent => agent } = {}) {
   const completed = new Set(), phases = []
   let fixStart = null
   let currentSha = INITIAL
@@ -129,7 +170,7 @@ async function simulate({ reports = {}, verify = {}, fixes = {}, fail = {}, impl
     if (opts.phase === 'Review') {
       await beforeRead(opts)
       completed.add(opts.label)
-      return { ...seatObject[opts.label.split(':')[1]](), ...reports[opts.label] }
+      return { ...seats[opts.label.split(':')[1]](), ...reports[opts.label] }
     }
     if (opts.phase === 'Verify') {
       for (const seat of readers) expect(completed.has(`review:${seat}`)).toBe(true)
@@ -158,7 +199,7 @@ async function simulate({ reports = {}, verify = {}, fixes = {}, fail = {}, impl
     }
     throw new Error(`Unexpected call: ${opts.label}`)
   }
-  const result = await script(agent, name => phases.push(name), line => logs.push(line), args)
+  const result = await script(harness(agent), name => phases.push(name), line => logs.push(line), args)
   return { result, calls, phases, logs }
 }
 const oneReport = { 'review:correctness': { findings: [backed] } }
@@ -2501,13 +2542,14 @@ describe('fixed review seats and a model for every agent', () => {
   })
 
   test('a copy whose seat list leaves out, adds or repeats a seat, or gives one another template, stops before its first agent', async () => {
-    const line = "  ['code-smell', 'code-smell', [HYGIENE], QUALITY, checkReader],\n"
+    const line = "  { type: 'code-smell', label: 'code-smell', ...unbriefed },\n"
     const copy = filled(skeleton)
     expect(copy.split(line)).toHaveLength(2)
-    const extra = "  ['code-smell', 'code-smell', [HYGIENE], QUALITY, checkReader],\n  ['roaster', 'extra', [HYGIENE], QUALITY, checkReader],\n"
-    const retemplated = "  ['quality', 'code-smell', [HYGIENE], QUALITY, checkReader],\n"
+    const extra = line + "  { type: 'roaster', label: 'extra', ...unbriefed },\n"
+    const retemplated = "  { type: 'quality', label: 'code-smell', ...unbriefed },\n"
     for (const edited of [copy.replace(line, ''), copy.replace(line, line + line), copy.replace(line, extra),
-      copy.replace("  ['reviewer-correctness', 'correctness',", "  ['reviewer-correctness', 'correct',"), copy.replace(line, retemplated)]) {
+      copy.replace("  { type: 'reviewer-correctness', label: 'correctness',", "  { type: 'reviewer-correctness', label: 'correct',"),
+      copy.replace(line, retemplated)]) {
       expect(edited).not.toBe(copy)
       const { message, calls } = await stopsBeforeAnyAgent(edited, launchArgs())
       expect([message?.startsWith('The review stage runs exactly the fifteen seats correctness on reviewer-correctness, ' +
@@ -2808,20 +2850,23 @@ describe('the stages receive the quoted discussion and no words of the orchestra
   })
 })
 
-// The main script with its marked block switched to a review-only run, launched on a change from base to head.
-// A review-only copy of a filled script: the mode switched on and the model entries of the two seats
-// that judge a change against its spec left out, since a review-only run takes no spec.
+// A review-only copy of a filled script leaves out the model entries of the two reviewers that judge
+// a change against its spec.
 const SPEC_SEAT_MODELS = ["      'spec': { model: 'model-spec', effort: 'high' },\n", "      'inverse': { model: 'model-inverse', effort: 'high' },\n"]
 const reviewOnly = source => SPEC_SEAT_MODELS.reduce((copy, line) => copy.replace(line, ''), source.replace('  reviewOnly: false,', '  reviewOnly: true,'))
 const reviewRun = new AsyncFunction('agent', 'phase', 'log', 'args', reviewOnly(filled(skeleton)).replace('export const meta =', 'const meta ='))
 const reviewArgs = (fields = {}) => ({ base: at(BASE), head: at(INITIAL), ...fields })
-// The seats of a review-only run: every seat but the two that need a spec.
 const reviewSeats = readers.filter(seat => !['spec', 'inverse'].includes(seat))
+// Without a spec the correctness reviewer, the duplicate checker and the rule reader return no abort.
+const specFreeSeats = { ...seatObject, correctness: () => cold(), dupes: () => cold(),
+  rules: () => cold({ ruleSources: [{ path: 'CLAUDE.md', read: true }] }) }
+const simulateReview = (options = {}) =>
+  simulate({ script: reviewRun, args: reviewArgs(), seats: specFreeSeats, harness: schemaChecked, ...options })
 const NO_SPEC_LINE = 'NO SPEC: this change was made without a spec. Read none, and judge the change by the code and the rule sources.'
 
 describe('review-only runs', () => {
   test('a review-only run starts the thirteen reviewers that need no spec on base..head, and no other stage', async () => {
-    const { result, calls, phases } = await simulate({ script: reviewRun, args: reviewArgs() })
+    const { result, calls, phases } = await simulateReview()
     expect(calls.map(c => c.label)).toEqual(reviewSeats.map(seat => 'review:' + seat))
     expect(phases).toEqual(['Review'])
     for (const call of calls) {
@@ -2834,7 +2879,7 @@ describe('review-only runs', () => {
   })
 
   test('the reviewers that read the spec in a main run are told that the change has none, and the rule reader keeps its rule sources', async () => {
-    const { calls } = await simulate({ script: reviewRun, args: reviewArgs() })
+    const { calls } = await simulateReview()
     const main = await simulate()
     for (const call of calls) {
       const briefed = main.calls.find(c => c.label === call.label).prompt.includes('SPEC (authority)')
@@ -2853,8 +2898,8 @@ describe('review-only runs', () => {
     const bandAid = { ...finding, kind: 'band-aid', severity: 'should-fix', claim: 'The catch block hides a defect of the reader.' }
     const narrows = { what: 'the integration suite', effect: 'narrows' }
     const unchecked = { what: 'the renderer', checked: false, how: 'no display' }
-    const { result } = await simulate({ script: reviewRun, args: reviewArgs(), reports: {
-      'review:correctness': { findings: [backed] }, 'review:quality': { findings: [bandAid] },
+    const { result } = await simulateReview({ reports: {
+      'review:correctness': { findings: [finding] }, 'review:quality': { findings: [bandAid] },
       'review:code-smell': { limitations: [narrows], coverage: [...coverage, unchecked] } } })
     expect([result.exit, result.detail]).toEqual(['follow-up', 'The pass completed with items requiring follow-up.'])
     expect(result.remaining.map(r => [r.kind, r.severity, r.item.id ?? r.item.what])).toEqual([
@@ -2862,15 +2907,15 @@ describe('review-only runs', () => {
       ['review-limitation', 'should-fix', 'the integration suite'], ['review-limitation', 'should-fix', 'the renderer']])
     expect(result.remaining.filter(r => r.kind === 'review-limitation').map(r => r.item.label)).toEqual(['review:code-smell', 'review:code-smell'])
     // A should-fix finding alone leaves the run clean with the finding in remaining.
-    const minor = await simulate({ script: reviewRun, args: reviewArgs(), reports: { 'review:quality': { findings: [{ ...finding, severity: 'should-fix' }] } } })
+    const minor = await simulateReview({ reports: { 'review:quality': { findings: [{ ...finding, severity: 'should-fix' }] } } })
     expect([minor.result.exit, minor.result.remaining.map(r => r.kind)]).toEqual(['clean', ['review-finding']])
     // A blocking limitation of a reviewer ends the run for the root.
-    const blocked = await simulate({ script: reviewRun, args: reviewArgs(), reports: { 'review:rules': { limitations: [{ what: 'CLAUDE.md', effect: 'blocks' }] } } })
+    const blocked = await simulateReview({ reports: { 'review:rules': { limitations: [{ what: 'CLAUDE.md', effect: 'blocks' }] } } })
     expect([blocked.result.exit, blocked.result.detail]).toEqual(['root-resolution', 'Blocking limitation from review:rules.'])
   })
 
   test('a reviewer that fails ends a review-only run, and the others\' findings still reach the root', async () => {
-    const failing = await simulate({ script: reviewRun, args: reviewArgs(), reports: { 'review:correctness': { findings: [finding] } },
+    const failing = await simulateReview({ reports: { 'review:correctness': { findings: [finding] } },
       fail: { 'review:code-smell': 'model unavailable' } })
     expect([failing.result.exit, failing.result.remaining.map(r => [r.kind, r.item.label ?? r.item.id])])
       .toEqual(['failed', [['stage-failure', 'review:code-smell'], ['review-finding', 'correctness:0']]])
