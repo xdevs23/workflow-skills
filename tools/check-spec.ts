@@ -454,8 +454,16 @@ const returnedItem = (value: unknown) => {
 const artifact = (value: unknown): value is Artifact => mapping(value) && Object.keys(value).length === 2 &&
   typeof value.path === 'string' && typeof value.what === 'string'
 
-// The exit of a run names only the first cause that ended it, so a stage that failed or raised a
-// hard flag after another cause shows only as its item in remaining.
+// The exit of a run names only the first cause that ended it, so a later cause shows only as its item
+// in remaining. A run whose remaining list holds an item of one of these kinds gets no fix list.
+const refusedKinds: { kind: string, refusal: string, describe: (item: Mapping) => string }[] = [
+  { kind: 'stage-failure', refusal: 'a stage of the run failed, and an incomplete run gets no fix list',
+    describe: item => `${String(item.label)}: ${String(item.message)}` },
+  { kind: 'abort', refusal: "a stage of the run raised a hard flag, and only a new run that receives the user's answer continues the unit",
+    describe: item => `${String(item.label)}: ${String(mapping(item.abort) ? item.abort.reason : item.abort)}` },
+  { kind: 'writer-scope', refusal: 'a writer commit left its scope, and no fix run builds on the snapshot that holds it',
+    describe: item => `${String(item.repository)} ${String(item.sha)}: ${String(item.note)}` },
+]
 const remainingOfKind = (remaining: unknown[], kind: string, describe: (item: Mapping) => string) => remaining
   .filter((entry): entry is Mapping => mapping(entry) && entry.kind === kind)
   .map(({ item }) => mapping(item) ? describe(item) : JSON.stringify(item))
@@ -470,12 +478,9 @@ async function readSavedRunResult(file: string): Promise<Returned> {
   if (!mapping(result)) throw new Error(`${file} holds no run result`)
   if (!Array.isArray(result.toFix)) throw new Error('the run result holds no toFix list, as a run of an earlier version of the scripts')
   if (!Array.isArray(result.remaining)) throw new Error('the run result holds no remaining list')
-  const failures = remainingOfKind(result.remaining, 'stage-failure', item => `${String(item.label)}: ${String(item.message)}`)
-  if (failures.length) throw new Error(`a stage of the run failed, and an incomplete run gets no fix list: ${failures.join('; ')}`)
-  const flags = remainingOfKind(result.remaining, 'abort',
-    item => `${String(item.label)}: ${String(mapping(item.abort) ? item.abort.reason : item.abort)}`)
-  if (flags.length) {
-    throw new Error(`a stage of the run raised a hard flag, and only a new run that receives the user's answer continues the unit: ${flags.join('; ')}`)
+  for (const { kind, refusal, describe } of refusedKinds) {
+    const found = remainingOfKind(result.remaining, kind, describe)
+    if (found.length) throw new Error(`${refusal}: ${found.join('; ')}`)
   }
   if (!Array.isArray(result.artifacts)) throw new Error('the run result holds no artifacts list')
   const strange = result.artifacts.findIndex(item => !artifact(item))
