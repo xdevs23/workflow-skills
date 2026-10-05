@@ -187,10 +187,10 @@ Rules:
 - Return abort, limitations (what and effect, blocks or narrows), repositories, checks, writerScope,
   the consolidated decisions, unresolved issues and specSuggestions. Routine rejections stay in the
   run record, and every decision and every unresolved issue also goes on to the next fix run,
-  whatever it resolved to and whether or not the fixer reports it fixed. An inverse-spec or
-  kind-bearing finding's decision never counts as a routine rejection that stays internal. Missing
-  evidence and necessary undecided choices are explicit remaining items, never a green result or
-  permission to broaden the fix.
+  whatever it resolved to, apart from an approved correction the fixer fixed or rejected. An
+  inverse-spec or kind-bearing finding's decision never counts as a routine rejection that stays
+  internal. Missing evidence and necessary undecided choices are explicit remaining items, never a
+  green result or permission to broaden the fix.
 - Git read-only: never change what git records or which commit the tree sits on. Never edit
   code, specs, TODOs or other authority documents. A tree that moves under you is an anomaly
   to report. No backgrounded waits.

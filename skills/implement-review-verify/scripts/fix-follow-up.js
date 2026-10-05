@@ -249,14 +249,14 @@ const abortOnFlag = (r, label) => {
     { exit: 'aborted', result: r, label })
   return r
 }
-// ONE acceptance helper for every stage, as in the main script: a null result or a failed check
-// retries the SAME agent with the failure named plainly, three attempts in all.
+// ONE acceptance helper for every stage, as in the main script: a failed agent call, a null result or
+// a failed check retries the SAME agent with the failure named plainly, three attempts in all.
 async function stage(prompt, opts, complete = () => {}) {
   let failure = ''
   for (let i = 0; i < 3; i++) {
-    const r = await agent(prompt + (failure ? '\n\nHOW YOUR PREVIOUS ATTEMPT FAILED, plainly: ' + failure : ''), opts)
-    if (hasHardFlag(r) && typeof r.abort.reason === 'string' && r.abort.reason.trim()) return r
     try {
+      const r = await agent(prompt + (failure ? '\n\nHOW YOUR PREVIOUS ATTEMPT FAILED, plainly: ' + failure : ''), opts)
+      if (hasHardFlag(r) && typeof r.abort.reason === 'string' && r.abort.reason.trim()) return r
       if (r == null) throw new Error('it returned nothing usable at all')
       if (hasHardFlag(r)) throw new Error('abort.trigger is set but abort.reason is empty')
       complete(r)

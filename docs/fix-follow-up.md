@@ -44,20 +44,21 @@ correction and no pointer.
 **written-from-scratch**: The spec tool writes a fix list with `--make-fix-list <run>` and the
 existing `--transcripts <dir>`: the spec the parent run's check printed, or null when it checked
 none, as a review pass does, and everything the run returned to be fixed. That is every spec finding
-of its implementer, every decision and unresolved issue of its last verify stage, in a run without a
-verify stage every finding of its review seats, in a fix run every entry of its own list its fixer
-left open, and every finding of its last roast stage and diff check. A fix run's fixer closes an
-entry by rejecting it, by raising it as a question or by a fix its diff check mapped a change to; a
-blocked entry and one the fixer never answered stay open. The journal holds a stage's last result
-whether or not the run accepted it, so only a result that passes the checks the fix script applies
-to it closes an entry: the fixer's and the diff check's result checks live in one module beside the
-spec tool, which the tool imports and the fix script carries verbatim. A result with a hard flag
-closes nothing, and neither does any result of a fix run whose check output holds no base list,
-since the fixer's result is checked against that list. `--size <json>` adds a size breach the
-orchestrating session measured, with the implementation lines added and the commits measured, beside
-the spec lines the parent run's spec check counted. The orchestrating session saves the list
-unchanged and adds, deletes and edits nothing. A fix list is never made from a spec, a spec is never
-made from a fix list, and neither is used for the other kind of run.
+of its implementer, every decision and unresolved issue of its last verify stage apart from an
+approved correction its fixer fixed or rejected, in a run without a verify stage every finding of
+its review seats, in a fix run every entry of its own list its fixer left open, and every finding of
+its last roast stage and diff check. A fix run's fixer closes an entry by rejecting it, by raising
+it as a question or by a fix its diff check mapped a change to; a blocked entry and one the fixer
+never answered stay open. The journal holds a stage's last result whether or not the run accepted
+it, so only a result that passes the checks the fix script applies to it closes an entry: the
+fixer's and the diff check's result checks live in one module beside the spec tool, which the tool
+imports and the fix script carries verbatim. A result with a hard flag closes nothing, and neither
+does any result of a fix run whose check output holds no base list, since the fixer's result is
+checked against that list. `--size <json>` adds a size breach the orchestrating session measured,
+with the implementation lines added and the commits measured, beside the spec lines the parent run's
+spec check counted. The orchestrating session saves the list unchanged and adds, deletes and edits
+nothing. A fix list is never made from a spec, a spec is never made from a fix list, and neither is
+used for the other kind of run.
 
 **fix-list-check**: The spec tool has a mode that takes a fix list in place of the spec argument,
 with the existing `--transcripts <dir>` and `--json`. It validates the list's shape strictly, as it

@@ -87,9 +87,10 @@ so the stage helper never asks the writer again: another attempt could pass only
 the check compares. In a fix run the roaster runs beside the fixer, and its findings, its
 limitations or its failure reach the run's remaining items beside the failed check.
 
-OPEN: the fixer's result is the only record of the fix list a fix run launched on. A fix run whose
-fixer returned no result, or whose fix list check failed, leaves the generator no list to read, so
-the generator fails for that run and the roaster's findings reach no next fix list.
+The fixer's result is the only record of the fix list a fix run launched on. A fix run whose fixer
+returned no result did not finish, and the generator refuses every such run, which is resumed and
+never followed by a fix run. A fix run whose fix list check failed launched on other values than
+it was given, and it is launched again with the right ones.
 
 ## What it replaces
 

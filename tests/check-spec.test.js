@@ -511,7 +511,7 @@ describe('fix list validation', () => {
     invalid(checkList(validPath, ['--entries']), 'Usage')
   })
 
-  test('the generated fix list of a main run holds every spec finding, every decision and issue of the verifier, cleanup and fixed approvals included, and every roast finding', () => {
+  test('the generated fix list of a main run holds every spec finding, every decision and issue of the verifier, cleanup and approvals its fixer left open included, and every roast finding', () => {
     const made = makeList('wf_parent-run')
     expect([made.exit, made.err]).toEqual([0, ''])
     expect(parentVerify.decisions.map(d => d.action)).toEqual(['approve-fix', 'needs-decision', 'cleanup'])
@@ -519,7 +519,7 @@ describe('fix list validation', () => {
     const checked = checkList(written(made.out), ['--json'])
     expect([checked.exit, checked.err]).toEqual([0, ''])
     invalid(makeList('wf_missing-run'), 'run wf_missing-run has no journal under the transcript directory')
-    invalid(makeList('wf_other-run'), 'the spec check of the run printed no passing result')
+    invalid(makeList('wf_other-run'), 'run wf_other-run did not finish: impl returned no result, so resume the run')
     invalid(makeList('../wf_parent-run'), 'expected a run id')
   })
 
@@ -715,6 +715,26 @@ describe('fix list validation', () => {
   test('a spec is no fix list, and a fix list is no spec', () => {
     invalid(checkList(join(fixtures, 'valid.yaml')), 'fix list.unit: unknown key')
     invalid(run(validPath), 'spec.run: unknown key')
+  })
+
+  test('the fix list of a main run leaves out an approved correction its fixer fixed or disproved', () => {
+    const run = 'wf_fixed-run', sessions = join(scratch, 'fixed-transcripts')
+    const at = join(sessions, 'session/subagents/workflows', run)
+    mkdirSync(at, { recursive: true })
+    const fixer = dispositions => JSON.stringify({ type: 'started', label: 'fix', key: 'parent-fix' }) + '\n' +
+      JSON.stringify({ type: 'result', key: 'parent-fix', result: { dispositions } }) + '\n'
+    const sources = dispositions => {
+      writeFileSync(join(at, 'journal.jsonl'), journal.map(record => JSON.stringify(record)).join('\n') + '\n' + fixer(dispositions))
+      const result = Bun.spawnSync([process.execPath, tool, '--make-fix-list', run, '--transcripts', sessions], { cwd: root })
+      expect([result.exitCode, result.stderr.toString()]).toEqual([0, ''])
+      return Bun.YAML.parse(result.stdout.toString()).entries.map(entry => entry.source)
+    }
+    const all = validEntries.map(entry => entry.source)
+    for (const disposition of ['fixed', 'rejected']) {
+      expect(sources([{ key: 'fix:0', disposition }])).toEqual(all.filter(source => source !== 'verify:0'))
+    }
+    expect(sources([{ key: 'fix:0', disposition: 'blocked' }])).toEqual(all)
+    expect(sources([])).toEqual(all)
   })
 
   test('an unreadable fix list or a malformed journal line fails', () => {

@@ -15,14 +15,14 @@ without them.
 
 ## The base list
 
-The launch value `base` of all three shipped scripts is a list with one `{ path, sha }` for every
-git repository of the tree, changed or not: the path of the
+The launch value `base` of the shipped scripts, apart from a review pass, which takes none, is a
+list with one `{ path, sha }` for every git repository of the tree, changed or not: the path of the
 repository relative to the tree root and its full starting commit. A tree that is one repository is
 a list of one entry whose path is a single dot, and the worktree in the marked block is the tree
-root. Each script refuses at once an empty list, a path named twice, a commit ID that is not a
-full one, and a path of another form than a single dot or segments of letters, digits, dots,
-underscores and hyphens joined by slashes, with no segment of one or two dots. That path form keeps
-quotes out of the list, so the scripts can pass it to the spec tool as JSON inside single quotes.
+root. Each script refuses at once an empty list, a path named twice, a commit ID that is not a full
+one, and a path of another form than a single dot or segments of letters, digits, dots, underscores
+and hyphens joined by slashes, with no segment of one or two dots. That path form keeps quotes out
+of the list, so the scripts can pass it to the spec tool as JSON inside single quotes.
 
 The run record of the main and fix-run scripts returns `base` and `snapshots`, both lists of
 `{ path, sha }` in the order of `base`. A fix run's `base` is the parent run's `snapshots`.

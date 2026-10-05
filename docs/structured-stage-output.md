@@ -87,8 +87,9 @@ on the completeness of its object, never on the length of a text. This builds on
    working.
 6. **Acceptance in the script.** One helper, `stage(prompt, opts, complete)`, replaces the two
    retry helpers: it calls the agent, returns at once an object whose `abort.trigger` is not
-   `none` and whose `reason` is non-empty, retries up to three times on a null result or a
-   failed completeness check, and throws after the third attempt with the last failure named.
+   `none` and whose `reason` is non-empty, retries up to three times on a failed agent call, a null
+   result or a failed completeness check, and throws after the third attempt with the last failure
+   named.
    The completeness checks:
    * every briefed stage: `abort.reason` non-empty when the trigger is not `none`;
    * the three concern seats: every finding has a receipt, a lane and evidence, every evidence

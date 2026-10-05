@@ -149,6 +149,8 @@ const bare = opts => {
 }
 // seats holds the object each reviewer returns, and harness stands between the script and the
 // simulated agents, passing their objects on unchecked unless a test asks for the schema check.
+// The message of a stage whose agent failed on all three attempts.
+const failedThrice = (label, message) => 'FAIL-FAST: ' + label + ' returned no complete result after 3 attempts: ' + message
 async function simulate({ reports = {}, verify = {}, fixes = {}, fail = {}, implementation, specCheck,
   beforeRead = async () => {}, beforeFix = async () => {}, beforeRoast = async () => {},
   args = launchArgs(), calls = [], logs = [], script = run, seats = seatObject, harness = agent => agent } = {}) {
@@ -309,11 +311,22 @@ describe('workflow verification and consolidation', () => {
         throw Object.assign(new Error('provider unavailable'), { exit: 'provider-error' })
       }
     } })
-    expect([result.exit, result.detail]).toEqual(['failed', 'provider unavailable'])
+    const message = failedThrice('review:correctness', 'provider unavailable')
+    expect([result.exit, result.detail]).toEqual(['failed', message])
     expect(result.remaining).toEqual([{
       kind: 'stage-failure', severity: 'CRITICAL',
-      item: { label: 'review:correctness', message: 'provider unavailable' },
+      item: { label: 'review:correctness', message },
     }])
+  })
+
+  test('a stage whose agent call fails is retried, and the run goes on when a later attempt returns', async () => {
+    let failures = 0
+    const { result, calls } = await simulate({ beforeRead: async ({ label }) => {
+      if (label === 'review:correctness' && failures++ === 0) throw new Error('provider unavailable')
+    } })
+    const attempts = calls.filter(c => c.label === 'review:correctness')
+    expect([attempts.length, attempts[1].prompt.endsWith('HOW YOUR PREVIOUS ATTEMPT FAILED, plainly: provider unavailable')]).toEqual([2, true])
+    expect(result.exit).not.toBe('failed')
   })
 
   test('requires a launch base list of immutable commits, one per repository, not a branch name', async () => {
@@ -1352,7 +1365,7 @@ describe('one-pass remaining-items handoff', () => {
       verify: approveOne, fail: { fix: 'writer interrupted' } })
     expect(result.exit).toBe('failed')
     expect(result.remaining.map(r => r.kind)).toEqual(['stage-failure', 'roast-finding', 'unfixed-approval'])
-    expect(result.remaining[0].item).toEqual({ label: 'fix', message: 'writer interrupted' })
+    expect(result.remaining[0].item).toEqual({ label: 'fix', message: failedThrice('fix', 'writer interrupted') })
     expect(result.remaining[1].item.snapshots).toEqual(at(INITIAL))
   })
 
@@ -1385,9 +1398,9 @@ describe('one-pass remaining-items handoff', () => {
 
   test('both concurrent failures survive, with the fixer naming the cause', async () => {
     const { result } = await simulate({ fail: { fix: 'writer unavailable', roast: 'roaster unavailable' } })
-    expect([result.exit, result.detail]).toEqual(['failed', 'writer unavailable'])
+    expect([result.exit, result.detail]).toEqual(['failed', failedThrice('fix', 'writer unavailable')])
     expect(result.remaining).toEqual(['fix', 'roast'].map(label => ({ kind: 'stage-failure', severity: 'CRITICAL',
-      item: { label, message: label === 'fix' ? 'writer unavailable' : 'roaster unavailable' } })))
+      item: { label, message: failedThrice(label, label === 'fix' ? 'writer unavailable' : 'roaster unavailable') } })))
   })
 
   test('an aborting fixer keeps the settled roast and its whole abort object', async () => {
@@ -1750,7 +1763,7 @@ describe('fix-only follow-up runs', () => {
     const both = await simulateFix({ specCheck, fail: { roast: 'roaster unavailable' } })
     expect(both.result.remaining.map(r => [r.kind, r.item.label, r.item.message]).slice(0, 2)).toEqual([
       ['stage-failure', 'fix', expect.stringContaining('the fix list check did not pass: exit 1')],
-      ['stage-failure', 'roast', 'roaster unavailable']])
+      ['stage-failure', 'roast', failedThrice('roast', 'roaster unavailable')]])
   })
 
   test('a fixer whose fix list check failed is not asked again, even when the rest of its object is incomplete', async () => {
@@ -1951,7 +1964,7 @@ describe('fix-only follow-up runs', () => {
       ['root-resolution', 'The diff check found a change that no entry covers.', { diff: { findings: [finding] } }, ['diff-finding', 'unattested-fix']],
       ['aborted', 'Hard flag from fix: ' + abort.reason, { fixes: fixed([], { abort, touched: [] }) }, ['abort', 'unfixed-entry']],
       ['aborted', 'Hard flag from diff: ' + invalid.reason, { diff: { abort: invalid } }, ['abort', 'unattested-fix']],
-      ['failed', 'fixer unavailable', { fail: { fix: 'fixer unavailable' } }, ['stage-failure', 'unfixed-entry']],
+      ['failed', failedThrice('fix', 'fixer unavailable'), { fail: { fix: 'fixer unavailable' } }, ['stage-failure', 'unfixed-entry']],
     ]) {
       const { result } = await simulateFix(options)
       expect([exit, result.exit, result.detail, result.remaining.map(r => r.kind)]).toEqual([exit, exit, detail, kinds])
@@ -2848,7 +2861,8 @@ describe('the stages receive the quoted discussion and no words of the orchestra
 const SPEC_SEAT_MODELS = ["      'spec': { model: 'model-spec', effort: 'high' },\n", "      'inverse': { model: 'model-inverse', effort: 'high' },\n"]
 const reviewOnly = source => SPEC_SEAT_MODELS.reduce((copy, line) => copy.replace(line, ''), source.replace('  reviewOnly: false,', '  reviewOnly: true,'))
 const reviewRun = new AsyncFunction('agent', 'phase', 'log', 'args', reviewOnly(filled(skeleton)).replace('export const meta =', 'const meta ='))
-const reviewArgs = (fields = {}) => ({ base: at(BASE), head: at(INITIAL), ...fields })
+const REVIEW = 'Review the commits ' + BASE + '..' + INITIAL + ' of the repository at the tree root.'
+const reviewArgs = (fields = {}) => ({ review: REVIEW, ...fields })
 const reviewSeats = readers.filter(seat => !['spec', 'inverse'].includes(seat))
 // Without a spec the correctness reviewer, the duplicate checker and the rule reader return no abort.
 const specFreeSeats = { ...seatObject, correctness: () => cold(), dupes: () => cold(),
@@ -2858,17 +2872,23 @@ const simulateReview = (options = {}) =>
 const NO_SPEC_LINE = 'NO SPEC: this change was made without a spec. Read none, and judge the change by the code and the rule sources.'
 
 describe('review-only runs', () => {
-  test('a review-only run starts the thirteen reviewers that need no spec on base..head, and no other stage', async () => {
+  test('a review-only run starts the thirteen reviewers that need no spec on its request, and no other stage', async () => {
     const { result, calls, phases } = await simulateReview()
     expect(calls.map(c => c.label)).toEqual(reviewSeats.map(seat => 'review:' + seat))
     expect(phases).toEqual(['Review'])
     for (const call of calls) {
-      expect([call.label, call.prompt.includes('.: ' + BASE + '..' + INITIAL)]).toEqual([call.label, true])
+      expect([call.label, call.prompt.endsWith('REVIEW REQUEST, from the session that started this review: ' + REVIEW)]).toEqual([call.label, true])
       expect([call.label, call.prompt.includes('implementer claims'), call.prompt.includes('ARTIFACTS the implementer')]).toEqual([call.label, false, false])
       expect([call.label, call.prompt.includes('check-spec.ts'), call.prompt.includes('SPEC (authority)'), 'abort' in call.schema.properties])
         .toEqual([call.label, false, false, false])
     }
-    expect([result.exit, result.remaining, result.snapshots, result.proof]).toEqual(['clean', [], at(INITIAL), null])
+    expect([result.exit, result.remaining, result.snapshots, result.proof]).toEqual(['clean', [], null, null])
+  })
+
+  test('a review request in any form reaches every reviewer as the session wrote it', async () => {
+    const review = [{ path: '.', from: BASE, to: INITIAL }, { path: 'web', note: 'the uncommitted edit of the login form' }]
+    const { calls } = await simulateReview({ args: reviewArgs({ review }) })
+    for (const call of calls) expect([call.label, call.prompt.endsWith(JSON.stringify(review))]).toEqual([call.label, true])
   })
 
   test('the reviewers that read the spec in a main run are told that the change has none, and the rule reader keeps its rule sources', async () => {
@@ -2914,15 +2934,14 @@ describe('review-only runs', () => {
       .toEqual(['failed', [['stage-failure', 'review:code-smell'], ['review-finding', 'correctness:0']]])
   })
 
-  test('the review mode, its head and every model entry are checked before any agent', async () => {
+  test('the review mode, its request and every model entry are checked before any agent', async () => {
     const reviewSource = reviewOnly(filled(skeleton))
     for (const [source, args, message] of [
-      [reviewSource, reviewArgs({ head: undefined }), 'args.head must be a non-empty list'],
-      [reviewSource, reviewArgs({ head: [{ path: 'web', sha: INITIAL }] }), 'args.head must name the repositories of args.base, one commit each'],
-      [reviewSource, reviewArgs({ head: at('main') }), 'args.head carries no full immutable commit ID for .'],
+      [reviewSource, reviewArgs({ review: undefined }), 'args.review must say what to review'],
+      [reviewSource, reviewArgs({ base: at(BASE) }), 'a review-only run takes args.review alone: leave args.specPath, args.transcripts and args.base out'],
       [filled(skeleton).replace('  reviewOnly: false,', '  reviewOnly: 1,'), launchArgs(), 'UNIT.reviewOnly must be true or false'],
-      [reviewSource, reviewArgs({ specPath: SPEC_PATH }), 'a review-only run takes no spec: leave args.specPath and args.transcripts out'],
-      [reviewSource, reviewArgs({ transcripts: TRANSCRIPTS }), 'a review-only run takes no spec: leave args.specPath and args.transcripts out'],
+      [reviewSource, reviewArgs({ specPath: SPEC_PATH }), 'a review-only run takes args.review alone: leave args.specPath, args.transcripts and args.base out'],
+      [reviewSource, reviewArgs({ transcripts: TRANSCRIPTS }), 'a review-only run takes args.review alone: leave args.specPath, args.transcripts and args.base out'],
       [reviewOnly(filled(skeleton).replace(SPEC_SEAT_MODELS[0], SPEC_SEAT_MODELS[0] + SPEC_SEAT_MODELS[0])), reviewArgs(),
         'UNIT.models.review.spec names no agent of this script'],
       [reviewSource.replace("'impl': { model: 'model-impl'", "'impl': { model: '<explicit>'"), reviewArgs(), 'UNIT.models.impl.model must be set by the root'],
