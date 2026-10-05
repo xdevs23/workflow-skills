@@ -24,9 +24,10 @@ glance instead of rebuilding it from a description.
 
 - Label every picture of a state by what that state is, as `workflow-skills:writing-style` names a
   state of the code, and put the branch of unmerged work into its label.
-- Read in full the code behind every state you draw that has a commit, at the commit that state
-  names.
-- Draw each picture of such a state from what its code does.
+- Read in full the code behind every state you draw, except an After that the code does not define
+  yet, at the version that state shows: its commit, or, for changes nobody has committed yet, the
+  working tree that holds them.
+- Draw the picture of every state that has code from what that code does.
 - Where a statement about a state turns out wrong in its code, draw what the code really does and
   put one line starting `CORRECTION:` under that decision.
 - Draw an After that the code does not define yet as a proposal, and name in its caption any layout
@@ -59,9 +60,10 @@ glance instead of rebuilding it from a description.
   the file of `workflow-skills:writing-style` to read before writing, every decision with the
   statement of each state it shows, the rules of the page and the output path, and says that it
   writes exactly that one file and nothing else.
-- Give that agent, for every state it draws that has a commit, the repository and the full commit ID
-  that state names, and tell it to read every file of that state at that commit, since its own
-  checkout can hold a different version.
+- Give that agent, for every state it draws that has code, the repository and either the full commit
+  ID that state names or, for changes nobody has committed yet, the path of the working tree that
+  holds them, and tell it to read every file of that state at that version, since its own checkout
+  can hold a different version.
 - Render the page once in a headless browser the machine has, and look at the screenshot before you
   show the page. A page that only passed a check of its markup has not been seen.
 - Open the page for the user.
