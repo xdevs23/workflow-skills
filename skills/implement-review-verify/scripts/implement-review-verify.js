@@ -564,7 +564,7 @@ const REMAINING = ['open-decision', 'verifier-issue', 'writer-scope', 'blocking-
   'spec-finding', 'review-finding', 'review-limitation', 'abort', 'stage-failure']
 const remaining = []
 let snapshots = null, impl = null, verified = null
-let sources = [], queue = []
+let sources = [], queue = [], approvalKeys = new Map()
 let exit = null, detail = '', activeLabel = 'impl'
 let passedFix = null, reportedFix = null, roast = null
 const add = (kind, item, severity = 'CRITICAL') => {
@@ -961,8 +961,9 @@ async function onePass() {
   // Each approved correction carries the evidence pointers of its source findings, so the fixer reads
   // the records they name and not only the verifier's account of them.
   const evidenceOf = new Map(sources.map(f => [f.id, f.evidence ?? []]))
-  queue = verified.decisions.filter(d => d.action === 'approve-fix')
-    .map((d, i) => ({ ...d, key: 'fix:' + i, pointers: d.sourceIds.flatMap(id => evidenceOf.get(id) ?? []) }))
+  const approvals = verified.decisions.filter(d => d.action === 'approve-fix')
+  approvalKeys = new Map(approvals.map((d, i) => [d, 'fix:' + i]))
+  queue = approvals.map(d => ({ ...d, key: approvalKeys.get(d), pointers: d.sourceIds.flatMap(id => evidenceOf.get(id) ?? []) }))
   // A writer commit outside its scope is the one verification result the fixer must not build on.
   const outOfScope = verified.writerScope.filter(w => !w.ok || !w.filesMatch)
   for (const w of outOfScope) add('writer-scope', w)
@@ -1070,11 +1071,10 @@ const projectBenefitDecisions = decisions.filter(d => d.sourceIds.some(id => sou
 // in the order of the decisions, and one it fixed or disproved goes no further. A run without a verify
 // stage, such as a review pass, returns the findings of its review seats in place of decisions.
 const numbered = (kind, field, items) => items.map((item, i) => ({ source: kind + ':' + i, [field]: item }))
-const approvals = decisions.filter(d => d.action === 'approve-fix')
 const settled = new Set((passedFix?.dispositions ?? []).filter(d => ['fixed', 'rejected'].includes(d.disposition)).map(d => d.key))
 const toFix = [
   ...numbered('impl', 'finding', impl?.specFindings ?? []),
-  ...numbered('verify', 'decision', decisions).filter(({ decision }) => !settled.has('fix:' + approvals.indexOf(decision))),
+  ...numbered('verify', 'decision', decisions).filter(({ decision }) => !settled.has(approvalKeys.get(decision))),
   ...numbered('issue', 'issue', verified?.issues ?? []),
   ...verified ? [] : sources.map(finding => ({ source: 'review:' + finding.id, finding })),
   ...numbered('roaster', 'finding', roast?.findings ?? []),
