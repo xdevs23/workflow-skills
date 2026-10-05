@@ -688,13 +688,19 @@ const projectBenefit = item => Boolean(item.finding?.kind || item.decision?.proj
 const entryOf = new Map(entries.map(entry => [entry.source, entry]))
 const closesEntry = ({ key, disposition }) => ['rejected', 'question'].includes(disposition) ||
   (provenFixes.has(key) && !projectBenefit(entryOf.get(key)))
-const closedSources = new Set((passedFix?.dispositions ?? []).filter(closesEntry).map(d => d.key))
+const accepted = new Map((passedFix?.dispositions ?? []).map(d => [d.key, d]))
+const closedSources = new Set([...accepted.values()].filter(closesEntry).map(d => d.key))
 const numbered = (kind, field, items) => items.map((item, i) => ({ source: kind + ':' + i, [field]: item }))
+// An open entry the accepted fixer answered carries that answer in disposition, as an open decision
+// of the main run does, so the next fixer reads the reason and receipts of a blocked entry, or of a
+// fix no change proved, beside it. An answer an earlier fix run gave stays inside the entry it wraps.
+const openEntries = numbered('entry', 'entry', entries).filter(({ entry }) => !closedSources.has(entry.source))
+  .map(({ source, entry }) => ({ source, entry: { ...entry, ...(accepted.has(entry.source) ? { disposition: accepted.get(entry.source) } : {}) } }))
 // A failed proof is work for the next fix run like a finding, with the checks that failed, whatever
 // the fixer answered: its fixes and rejections close their entries, and the failing check stays open.
 const failedProofs = remaining.filter(r => r.kind === 'failed-proof').map(r => r.item)
 const toFix = [
-  ...numbered('entry', 'entry', entries).filter(({ entry }) => !closedSources.has(entry.source)),
+  ...openEntries,
   ...numbered('roaster', 'finding', roast?.findings ?? []),
   ...numbered('diff', 'finding', diff?.findings ?? []),
   ...numbered('proof', 'proof', failedProofs),
