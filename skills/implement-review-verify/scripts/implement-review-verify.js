@@ -1080,16 +1080,20 @@ try { await onePass() } catch (error) { failed(error, activeLabel) }
 // An unbacked-entry finding is CRITICAL: its words were said about another unit or mean nothing on
 // their own, so nothing was built from them.
 for (const finding of impl?.specFindings ?? []) add('spec-finding', finding, finding.class === 'unbacked-entry' ? 'CRITICAL' : 'must-fix')
-// A key reported fixed returns for the root to attest, also from a fixer that aborted, because its
-// commit exists. Only a fixer result the run accepted closes a correction by rejecting it: the
+// A fix reported as done needs a commit behind it. A key reported fixed by a fixer that committed
+// returns for the root to attest, also from a fixer that aborted, because its commit exists. Only a
+// fixer result the run accepted closes a correction, by such a fix or by rejecting it: the
 // rejection stays in dispositions and adds no remaining item. Every other approval returns unfixed,
-// with the response of a fixer that answered it beside it.
+// a key reported fixed without a commit among them, with the response of a fixer that answered it
+// beside it.
+const committedFix = (fix, answer) => answer?.disposition === 'fixed' && fix.commits.length > 0
 const accepted = new Map((passedFix?.dispositions ?? []).map(d => [d.key, d]))
+const closed = new Set([...accepted.values()].filter(d => d.disposition === 'rejected' || committedFix(passedFix, d)).map(d => d.key))
 for (const approved of queue) {
   const response = reportedFix?.dispositions?.find(d => d.key === approved.key)
-  if (response?.disposition === 'fixed') {
+  if (committedFix(reportedFix, response)) {
     add('unattested-fix', { approved, disposition: response, snapshots: snapshotsOf(reportedFix), commits: reportedFix.commits }, approved.severity)
-  } else if (accepted.get(approved.key)?.disposition !== 'rejected') add('unfixed-approval', { approved, ...(response ? { response } : {}) })
+  } else if (!closed.has(approved.key)) add('unfixed-approval', { approved, ...(response ? { response } : {}) })
 }
 if (!exit) {
   const followUp = remaining.some(r => r.kind === 'unattested-fix' || ['must-fix', 'CRITICAL'].includes(r.severity))
@@ -1104,16 +1108,15 @@ const projectBenefitDecisions = decisions.filter(d => d.sourceIds.some(id => sou
   .map(d => ({ decision: d, findings: d.sourceIds.map(id => sourceOf.get(id)).filter(f => f?.kind)
     .map(({ id, seat, kind, file, claim }) => ({ id, seat, kind, file, claim })) }))
 const numbered = (kind, field, items) => items.map((item, i) => ({ source: kind + ':' + i, [field]: item }))
-const settled = new Set([...accepted.values()].filter(d => ['fixed', 'rejected'].includes(d.disposition)).map(d => d.key))
 // An inverse-spec decision (law 13) and a project-benefit decision go to the next fix run also when
-// the fixer settled them. A project-benefit decision carries its kind-bearing findings there, so
+// the fixer closed them. A project-benefit decision carries its kind-bearing findings there, so
 // that a fix of it in that run cannot close it while the flagged mechanism may remain. A decision
 // the accepted fixer answered carries that answer in disposition, so the next fixer reads the reason
-// and receipts of a blocked correction beside it.
+// and receipts of a blocked correction, or of a fix reported without a commit, beside it.
 const benefitFindings = new Map(projectBenefitDecisions.map(({ decision, findings }) => [decision, findings]))
 const keptOpen = new Set([...inverseSpecDecisions, ...benefitFindings.keys()])
 const openDecisions = numbered('verify', 'decision', decisions)
-  .filter(({ decision }) => keptOpen.has(decision) || !settled.has(approvalKeys.get(decision)))
+  .filter(({ decision }) => keptOpen.has(decision) || !closed.has(approvalKeys.get(decision)))
   .map(({ source, decision }) => {
     const answer = accepted.get(approvalKeys.get(decision))
     return { source, decision: { ...decision,

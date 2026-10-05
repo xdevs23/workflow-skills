@@ -855,6 +855,16 @@ describe('workflow verification and consolidation', () => {
     expect(await fixListOf(result)).toEqual({ made: [0, ''], checked: [0, ''], entries: result.toFix })
   })
 
+  test('a fix reported without a commit leaves its approval unfixed and reaches the next fix list with the fixer\'s disposition beside it', async () => {
+    const uncommitted = disposition('fix:0')
+    const { result } = await simulate({ specCheck: await parentSpec(), reports: oneReport, verify: approveOne,
+      fixes: { fix: fixed([uncommitted], { touched: [] }) } })
+    expect([result.exit, result.remaining.map(r => r.kind)]).toEqual(['follow-up', ['unfixed-approval']])
+    expect(result.remaining[0].item.response).toEqual(uncommitted)
+    expect(result.toFix).toEqual([{ source: 'verify:0', decision: { ...approveOne.verify.decisions[0], disposition: uncommitted } }])
+    expect(await fixListOf(result)).toEqual({ made: [0, ''], checked: [0, ''], entries: result.toFix })
+  })
+
   for (const answers of [[], [disposition('unknown')], [disposition(), disposition()]]) {
     test(`invalid fixer answers preserve unfixed approvals: ${JSON.stringify(answers)}`, async () => {
       const { result } = await simulate({ reports: oneReport, verify: approveOne, fixes: { 'fix': fixed(answers) } })

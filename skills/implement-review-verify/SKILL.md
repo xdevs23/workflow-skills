@@ -779,11 +779,14 @@ or raises it as a question for the user.
 - **Every ending returns remaining items.** The run's single handoff is `remaining`, one
   `{ kind, severity, item }` per open decision, verifier issue, writer-scope violation, blocking
   limitation, unfixed approval, failed proof, roast finding or limitation, unattested fix, spec
-  finding, abort or stage failure. Every fixed key carries its disposition, approved correction,
-  snapshot and commits. A key that an accepted fixer result rejected adds no item: the rejection
-  stays in the run's `dispositions`, which hold every answer of the fixer. The roast's findings retain their source IDs and snapshot; its limitations
-  and unchecked coverage return as well. Record the list in the todo record that
-  `workflow-skills:todo-md` defines and hand it on as the remaining items section below says.
+  finding, abort or stage failure. Every key reported fixed by a fixer that committed carries its
+  disposition, approved correction, snapshot and commits; a key reported fixed by a fixer that
+  committed nothing returns as an unfixed approval with that answer, because no commit stands behind
+  the fix. A key that an accepted fixer result rejected adds no item: the rejection stays in the
+  run's `dispositions`, which hold every answer of the fixer. The roast's findings retain their
+  source IDs and snapshot; its limitations and unchecked coverage return as well. Record the list in
+  the todo record that `workflow-skills:todo-md` defines and hand it on as the remaining items
+  section below says.
 - **The run returns `exit` and a one-sentence `detail`:** `clean` for a completed pass with neither
   a must-fix/CRITICAL remaining item nor an unattested fix; `follow-up` for a completed pass with
   such items; `root-resolution` for unresolved verification, a blocking limitation, a blocked
@@ -880,16 +883,16 @@ second implementer pre-check.
   item the run returned to be fixed in its `toFix` list, in that order and each under its source.
 - Expect each script to build its `toFix` list from the results it accepted: every spec finding of
   its implementer, as `impl:<index>`; every decision of its verify stage, as `verify:<index>`, apart
-  from an approved correction its fixer reported fixed or rejected that decides neither an
-  inverse-spec finding nor a kind-bearing one, a decision on a kind-bearing finding with those
-  findings in `projectBenefit`, a decision the fixer answered with that answer in `disposition`,
-  and every unresolved issue of it, as `issue:<index>`; in a run
-  without a verify stage, such as a review pass, every finding of its reviewers, as
-  `review:<seat>:<index>`; in a fix run, every entry of its own list that its fixer left open, as
-  `entry:<index>`; every finding of its roast stage and of its diff check, as `roaster:<index>`
-  and `diff:<index>`; and every `failed-proof` item of its `remaining` list, its writer's label and
-  quoted checks, as `proof:<index>`. A failed proof stays work for the next fix run whatever the
-  fixer answered: the fixes and rejections close their entries, and the failing check stays open.
+  from an approved correction its fixer rejected, or reported fixed with a commit, that decides
+  neither an inverse-spec finding nor a kind-bearing one, a decision on a kind-bearing finding with
+  those findings in `projectBenefit`, a decision the fixer answered with that answer in
+  `disposition`, and every unresolved issue of it, as `issue:<index>`; in a run without a verify
+  stage, such as a review pass, every finding of its reviewers, as `review:<seat>:<index>`; in a fix
+  run, every entry of its own list that its fixer left open, as `entry:<index>`; every finding of
+  its roast stage and of its diff check, as `roaster:<index>` and `diff:<index>`; and every
+  `failed-proof` item of its `remaining` list, its writer's label and quoted checks, as
+  `proof:<index>`. A failed proof stays work for the next fix run whatever the fixer answered: the
+  fixes and rejections close their entries, and the failing check stays open.
 - Expect the tool to refuse the fix list of a run in which a stage failed, whatever exit the run
   ended with. A stage either returns, is retried or ends the run, and every stage that failed leaves
   a `stage-failure` item in `remaining`, also when an earlier cause, such as a blocked correction,
