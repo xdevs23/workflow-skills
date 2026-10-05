@@ -131,6 +131,12 @@
       "path": "tests/fixtures/fix-list/parent.yaml",
       "sha256": "0f9149ee3dba7fd05a8eca471e23a276004a5e49483e52eb40ed607aec6f0cdc",
       "lines": 1
-    }
+    },
+    "snapshots": [
+      {
+        "path": ".",
+        "sha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      }
+    ]
   }
 }

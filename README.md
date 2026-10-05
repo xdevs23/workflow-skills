@@ -92,7 +92,8 @@ directly as `agentType`s in your own workflows.
   that result holds it: it compares the whole list, in order, with what the parent run returned and
   the spec with the one that run checked, and prints the spec and the implementer artifacts the
   result holds, with the proof of the list's values, and with `--entries` the entries as well.
-  `--base` and `--partial-base` check a fix run's base list against the tree as in the spec mode.
+  `--base` and `--partial-base` check a fix run's base list against the tree as in the spec mode,
+  and against the final snapshots the parent run returned, which a review pass leaves null.
   `--make-fix-list <saved result>` writes the fix list of a run from the output file the workflow
   tool saved its result in, copied into the project cache: the spec its check passed on and the
   `toFix` list the run returns. Each workflow script builds that list from the results it

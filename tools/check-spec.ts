@@ -435,7 +435,10 @@ const specLineCount = (value: unknown): value is SpecLineCount => Number.isSafeI
 type CheckedSpec = { path: string, sha256: Sha256, lines: SpecLineCount }
 type Entry = Mapping & { source: string }
 type Artifact = { path: string, what: string }
-type Returned = { spec: CheckedSpec | null, entries: Entry[], artifacts: Artifact[] }
+type Snapshot = { path: string, sha: string }
+// snapshots is null after a review pass, which reviews the tree as it is and leaves no snapshot.
+type Returned = { spec: CheckedSpec | null, entries: Entry[], artifacts: Artifact[], snapshots: Snapshot[] | null }
+const commitId = /^(?:[0-9a-f]{40}|[0-9a-f]{64})$/
 
 function checkedSpec(spec: unknown): CheckedSpec | null {
   if (spec === null) return null
@@ -453,6 +456,10 @@ const returnedItem = (value: unknown) => {
 
 const artifact = (value: unknown): value is Artifact => mapping(value) && Object.keys(value).length === 2 &&
   typeof value.path === 'string' && typeof value.what === 'string'
+const snapshot = (value: unknown): value is Snapshot => mapping(value) && Object.keys(value).length === 2 &&
+  repositoryPath(value.path) && typeof value.sha === 'string' && commitId.test(value.sha)
+const snapshotList = (value: unknown): value is Snapshot[] => Array.isArray(value) && value.length > 0 &&
+  value.every(snapshot) && new Set(value.map(({ path }) => path)).size === value.length
 
 // The exit of a run names only the first cause that ended it, so a later cause shows only as its item
 // in remaining. A run whose remaining list holds an item of one of these kinds gets no fix list.
@@ -485,6 +492,10 @@ async function readSavedRunResult(file: string): Promise<Returned> {
   if (!Array.isArray(result.artifacts)) throw new Error('the run result holds no artifacts list')
   const strange = result.artifacts.findIndex(item => !artifact(item))
   if (strange >= 0) throw new Error(`the run result holds artifact ${strange + 1} in another form`)
+  const snapshots: unknown = result.snapshots
+  if (snapshots !== null && !snapshotList(snapshots)) {
+    throw new Error('the run result holds its final snapshots in another form: null, or one { path, sha } per repository')
+  }
   const items: unknown[] = result.toFix
   const malformed = items.findIndex(item => !returnedItem(item))
   if (malformed >= 0) throw new Error(`the run result holds item ${malformed + 1} of toFix in another form`)
@@ -493,13 +504,29 @@ async function readSavedRunResult(file: string): Promise<Returned> {
     if (seen.has(source)) throw new Error(`the run result holds the source ${source} twice in toFix`)
     seen.add(source)
   }
-  return { spec: checkedSpec(result.spec), entries: items as Entry[], artifacts: result.artifacts as Artifact[] }
+  return { spec: checkedSpec(result.spec), entries: items as Entry[], artifacts: result.artifacts as Artifact[], snapshots }
+}
+
+// A fix run starts from the parent run's final snapshots, so a base list naming any other commit,
+// even one the tree holds, is refused. A review pass returns no snapshots: the fix run of one starts
+// from the commit each repository is at, and only the check against the tree covers its base list.
+function baseProblems(base: Snapshot[], snapshots: Snapshot[] | null): string[] {
+  if (snapshots === null) return []
+  const final = new Map(snapshots.map(({ path, sha }) => [path, sha]))
+  const listed = new Set(base.map(({ path }) => path))
+  return [
+    ...base.filter(({ path }) => !final.has(path))
+      .map(({ path }) => `--base names the repository at ${path}, of which the parent run returned no final snapshot`),
+    ...base.filter(({ path, sha }) => final.has(path) && final.get(path) !== sha)
+      .map(({ path, sha }) => `--base names commit ${sha} at ${path}, and the parent run's final snapshot there is ${final.get(path)}`),
+    ...snapshots.filter(({ path }) => !listed.has(path))
+      .map(({ path }) => `--base leaves out the repository at ${path}, of which the parent run returned its final snapshot`),
+  ]
 }
 
 // A size breach is measured after the run, against the spec lines the parent run's spec check counted.
 const sizeKeys = ['specLines', 'codeAdded', 'repositories']
 const measuredKeys = ['path', 'base', 'candidate']
-const commitId = /^(?:[0-9a-f]{40}|[0-9a-f]{64})$/
 const measuredRepository = (value: unknown) => mapping(value) &&
   Object.keys(value).length === measuredKeys.length && measuredKeys.every(key => Object.hasOwn(value, key)) &&
   repositoryPath(value.path) && typeof value.base === 'string' && commitId.test(value.base) &&
@@ -640,6 +667,8 @@ async function checkFixList(file: string, { json, withEntries, base, partialBase
   }
   if (report()) return
   if (!parent) throw new Error('the fix list passed without what its parent run checked')
+  const mismatches = base ? baseProblems(base as Snapshot[], parent.snapshots) : []
+  if (mismatches.length) throw new Error(mismatches.join('; '))
   const listed = entries.map(({ value }) => value)
   const spec = parent.spec?.path ?? null
   const { artifacts } = parent

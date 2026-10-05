@@ -926,6 +926,10 @@ second implementer pre-check.
   worktree the script received. The tool fails before the fixer's first edit when the list gives
   another proof, and the run continues only when the proof the tool prints is that fingerprint, so
   every stage receives what the parent run returned and starts from commits the tree holds.
+- Expect the tool to fail the same check when the base list names other commits than the final
+  snapshots the parent run's saved result holds, even commits the tree holds. A review pass returns
+  no snapshots, so the fix run of one starts from the commit each repository is at, and only the
+  check against the tree covers its base list.
 - The fix run's fixer receives every entry, one key per source, and the parent spec. It resolves
   each entry with the user's words, the rule sources and the plugin's skills as its guide. Before it
   returns anything but fixed, it looks for every applicable rule and skill that says what to do or
