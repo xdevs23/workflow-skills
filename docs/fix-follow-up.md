@@ -117,11 +117,12 @@ nor `invalid-spec`. The roaster runs alongside it on the same list, as in the ma
 
 **diff-check**: After the fixer, one read-only stage, with its own agent template, reads the fix
 diff from the parent run's final snapshot to the fixer's snapshot, with the fix list, the parent
-spec and the rule sources its prompt names, and maps every change in it to the source of an entry. A
-change that maps to no entry, or that changes the product's scope or what the user sees and does
-where neither the user's words nor a rule calls for it, whatever the entry asks, is a CRITICAL
-finding. It checks the parent spec first and sets `invalid-spec` on an invalid one, which ends the
-run as an abort. Its findings go to the remaining items and start no further fixer in the run.
+spec and the rule sources its prompt names, and maps every change in it to the key of an entry, with
+one mapping for each entry a change carries out. A change that maps to no entry, or that changes the
+product's scope or what the user sees and does where neither the user's words nor a rule calls for
+it, whatever the entry asks, is a CRITICAL finding. It checks the parent spec first and sets
+`invalid-spec` on an invalid one, which ends the run as an abort. Its findings go to the remaining
+items and start no further fixer in the run.
 
 **fix-run-exit**: Every entry the fixer reports fixed returns as an unattested fix for the
 orchestrating session to attest, as in the main script, and the run then ends `follow-up`, as it
