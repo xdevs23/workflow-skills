@@ -842,6 +842,16 @@ describe('workflow verification and consolidation', () => {
     expect(await fixListOf(result)).toEqual({ made: [1, 'the run returned nothing to fix\n'] })
   })
 
+  test('a premise the fixer reported false returns as a must-fix item with its label, and a run it alone leaves open ends follow-up', async () => {
+    const rejection = disposition('fix:0', 'rejected')
+    const holding = { claim: 'The tree holds src/example.js.', holds: true, note: 'It does.' }
+    const premise = { claim: 'The prompt says src/example.js already returns the error.', holds: false, note: 'src/example.js:12 still catches it.' }
+    const { result } = await simulate({ reports: oneReport, verify: approveOne,
+      fixes: { fix: fixed([rejection], { touched: [], premises: [holding, premise] }) } })
+    expect([result.exit, result.remaining, result.toFix])
+      .toEqual(['follow-up', [{ kind: 'false-premise', severity: 'must-fix', item: { ...premise, label: 'fix' } }], []])
+  })
+
   test('a blocked approval returns to the root and reaches the next fix list with the fixer\'s disposition beside it', async () => {
     const blocked = disposition('fix:0', 'blocked')
     const { result, calls } = await simulate({ specCheck: await parentSpec(), reports: oneReport, verify: approveOne,
@@ -2065,7 +2075,7 @@ describe('fix-only follow-up runs', () => {
 
   test('each helper the fix script copies from the main script has the same source text, and the fingerprint helpers that of their module', async () => {
     const copied = ['stage', 'hasHardFlag', 'abortOnFlag', 'checkWriterSnapshot', 'checkWriter', 'checkFullRun', 'withReceipts', 'requireText',
-      'exactlyOnce', 'add', 'end', 'failed', 'proof', 'limited', 'recordBlocking', 'blocking', 'sourceFindings', 'readSnapshots',
+      'exactlyOnce', 'add', 'end', 'failed', 'proof', 'limited', 'recordBlocking', 'recordFalsePremises', 'blocking', 'sourceFindings', 'readSnapshots',
       'listPath', 'reported', 'checkModels', 'withSortedKeys', 'fingerprint', 'shellWord', 'printedProof', 'handedOn']
     const values = ['RULES', 'GUIDE', 'SPEC_RULES', 'WRITE_GIT']
     const helpersBeforeRun = (source, args, names) => {
@@ -2295,6 +2305,13 @@ describe('fix-only follow-up runs', () => {
     expect(result.remaining).toEqual([unattestedFixItem('verify:0')])
     expect(result.dispositions).toEqual([disposition('verify:0')])
     expect([result.snapshots, result.mappings]).toEqual([at(FIXED), [mapping('verify:0')]])
+  })
+
+  test('a premise the fixer reported false returns as a must-fix item with its label, and a fix run it alone leaves open ends follow-up', async () => {
+    const premise = { claim: 'The entry says src/example.js already returns the error.', holds: false, note: 'src/example.js:12 still catches it.' }
+    const { result } = await simulateFix({ fixes: fixed([disposition('verify:0', 'rejected')], { touched: [], premises: [premise] }) })
+    expect([result.exit, result.remaining, result.toFix])
+      .toEqual(['follow-up', [{ kind: 'false-premise', severity: 'must-fix', item: { ...premise, label: 'fix' } }], []])
   })
 
   test('an entry a parent fix run left open and a size breach reach the fixer as the list holds them, keyed by their sources', async () => {

@@ -778,15 +778,16 @@ or raises it as a question for the user.
   checks. Stage labels are `review:<seat>`, `verify`, `fix` and `roast`.
 - **Every ending returns remaining items.** The run's single handoff is `remaining`, one
   `{ kind, severity, item }` per open decision, verifier issue, writer-scope violation, blocking
-  limitation, unfixed approval, failed proof, roast finding or limitation, unattested fix, spec
-  finding, abort or stage failure. Every key reported fixed by a fixer that committed carries its
-  disposition, approved correction, snapshot and commits; a key reported fixed by a fixer that
-  committed nothing returns as an unfixed approval with that answer, because no commit stands behind
-  the fix. A key that an accepted fixer result rejected adds no item: the rejection stays in the
-  run's `dispositions`, which hold every answer of the fixer. The roast's findings retain their
-  source IDs and snapshot; its limitations and unchecked coverage return as well. Record the list in
-  the todo record that `workflow-skills:todo-md` defines and hand it on as the remaining items
-  section below says.
+  limitation, unfixed approval, failed proof, false premise, roast finding or limitation, unattested
+  fix, spec finding, abort or stage failure. Each premise an accepted fixer result reports false
+  returns as a must-fix `false-premise` item with the fixer's label. Every key reported fixed by a
+  fixer that committed carries its disposition, approved correction, snapshot and commits; a key
+  reported fixed by a fixer that committed nothing returns as an unfixed approval with that answer,
+  because no commit stands behind the fix. A key that an accepted fixer result rejected adds no
+  item: the rejection stays in the run's `dispositions`, which hold every answer of the fixer. The
+  roast's findings retain their source IDs and snapshot; its limitations and unchecked coverage
+  return as well. Record the list in the todo record that `workflow-skills:todo-md` defines and
+  hand it on as the remaining items section below says.
 - **The run returns `exit` and a one-sentence `detail`:** `clean` for a completed pass with neither
   a must-fix/CRITICAL remaining item nor an unattested fix; `follow-up` for a completed pass with
   such items; `root-resolution` for unresolved verification, a blocking limitation, a blocked
