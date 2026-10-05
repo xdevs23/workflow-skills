@@ -89,8 +89,8 @@ the check compares. In a fix run the roaster runs beside the fixer, and its find
 limitations or its failure reach the run's remaining items beside the failed check.
 
 The generator refuses every run in which a stage failed or raised a hard flag, whatever exit the run
-ended with, because the exit names only the first cause that ended the run and a failed or flagging
-stage after it shows only in `remaining`. Such a run ended on its own, so it is shown to the user
+ended with, because the exit names only the first cause that ended the run, and a later stage that
+failed or raised a hard flag shows only in `remaining`. Such a run ended on its own, so it is shown to the user
 and never followed by a fix run. A flagged unit continues only on the user's answer, added to a copy
 of the spec for a new run. A fix run whose fix list check failed launched on other values than it
 was given, and it is launched again with the right ones.
