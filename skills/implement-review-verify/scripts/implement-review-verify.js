@@ -587,10 +587,11 @@ const checkFullRun = r => {
   }
 }
 const blocking = r => r.limitations.filter(l => l.effect === 'blocks')
+const narrowing = r => r.limitations.filter(l => l.effect === 'narrows')
 // Every stage ending uses the same run record and remaining-items handoff.
 const EXIT = ['clean', 'follow-up', 'root-resolution', 'aborted', 'failed']
 const REMAINING = ['open-decision', 'verifier-issue', 'writer-scope', 'blocking-limitation',
-  'unfixed-approval', 'failed-proof', 'false-premise', 'roast-finding', 'roast-limitation', 'unattested-fix',
+  'unfixed-approval', 'failed-proof', 'false-premise', 'fix-limitation', 'roast-finding', 'roast-limitation', 'unattested-fix',
   'spec-finding', 'review-finding', 'review-limitation', 'abort', 'stage-failure']
 const remaining = []
 let snapshots = null, impl = null, verified = null
@@ -624,8 +625,12 @@ const limited = (result, label) => {
 const recordFalsePremises = (writer, label) => {
   for (const premise of writer.premises.filter(p => !p.holds)) add('false-premise', { ...premise, label }, 'must-fix')
 }
+// Records each narrowing limitation of a fixer, a check it could run only in part, with its stage label.
+const recordFixLimitations = (fixer, label) => {
+  for (const limitation of narrowing(fixer)) add('fix-limitation', { ...limitation, label }, 'should-fix')
+}
 // What a reader could check only in part: its narrowing limitations and its unchecked coverage entries.
-const uncovered = r => [...r.limitations.filter(l => l.effect === 'narrows'), ...r.coverage.filter(c => !c.checked)]
+const uncovered = r => [...narrowing(r), ...r.coverage.filter(c => !c.checked)]
 const proof = (writer, label) => {
   if (!writer.proofPassed) {
     add('failed-proof', { label, checks: writer.checks })
@@ -1030,6 +1035,7 @@ async function onePass() {
         reportedFix = passedFix
         snapshots = snapshotsOf(passedFix)
         limited(passedFix, label)
+        recordFixLimitations(passedFix, label)
         recordFalsePremises(passedFix, label)
         if (passedFix.dispositions.some(d => d.disposition === 'blocked')) end('root-resolution', 'The fixer blocked an approved correction.')
         proof(passedFix, label)
@@ -1145,6 +1151,8 @@ const checkedSpec = specCheckOutput && { path: specCheckOutput.spec, sha256: spe
 return {
   exit, detail, remaining, toFix, decisions,
   dispositions: reportedFix?.dispositions ?? [],
+  // The accepted fixer's suggestions about the spec, for consideration: neither a blocker nor a spec edit.
+  specSuggestions: passedFix?.specSuggestions ?? [],
   proof: passedFix ? { checks: passedFix.checks, files: passedFix.files }
     : impl ? { checks: impl.checks, files: impl.files } : null,
   spec: checkedSpec, base, snapshots,
