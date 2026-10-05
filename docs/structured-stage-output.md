@@ -100,11 +100,15 @@ on the completeness of its object, never on the length of a text. This builds on
      `currentShapeRight` true;
    * writers: when `snapshotSha` differs from `startSha`, `commits` and `files` are non-empty;
      when they are equal, `commits` and `files` are empty; `git.head` equal to `snapshotSha`
-     and `clean` equal to `git.status` being empty; some check has `passed` equal to
-     `proofPassed` in every fixer result, a proof-only pass and a fixer that changed nothing
-     included, and in an implementer result whose snapshot moved, since an implementer that
-     edits nothing, such as one stopped by a blocking spec finding, has no change to check; the
-     fixer answers every key once;
+     and `clean` equal to `git.status` being empty; every fixer result, a proof-only pass and
+     a fixer that changed nothing included, quotes a run of the check command under exactly
+     the command its prompt gives, and the last such run has `passed` equal to `proofPassed`.
+     The full check after the fixer's last write is the proof the fixer owes, so a passing
+     check of another command beside a failed or missing full check does not satisfy it. An
+     implementer result whose snapshot moved has some check with `passed` equal to
+     `proofPassed`, since the implementer runs focused checks of its own choice and an
+     implementer that edits nothing, such as one stopped by a blocking spec finding, has no
+     change to check; the fixer answers every key once;
    * finding verifier: today's checks, plus `git.head` equal to its `snapshotSha` and one
      `writerScope` entry per writer commit of the run;
    * pre-phase seats: `categories` non-empty and every gap with a receipt; `criteria` with

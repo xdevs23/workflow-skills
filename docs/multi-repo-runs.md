@@ -38,11 +38,12 @@ its repository, and `files` lists paths relative to the tree root.
 The script accepts a writer only when every repository of the list appears exactly once at its
 expected start, each quoted head equals that repository's snapshot, each `clean` agrees with an
 empty status, a repository whose snapshot moved has commits in it and an unchanged one none, and a
-new snapshot anywhere lists files. A fixer result always quotes a check whose `passed` equals
-`proofPassed`, also when it left every repository unchanged, and an implementer result does so once
-its snapshot moved in any repository. A repository a writer left unchanged keeps its start as its
-snapshot. The shipped main script has one implementer stage, and the skill allows parallel
-implementers only across genuinely disjoint repositories.
+new snapshot anywhere lists files. A fixer result always quotes a run of the check command its
+prompt gives, under exactly that command, also when it left every repository unchanged, and the last
+such run has `passed` equal to `proofPassed`. An implementer result quotes a check whose `passed`
+equals `proofPassed` once its snapshot moved in any repository. A repository a writer left
+unchanged keeps its start as its snapshot. The shipped main script has one implementer stage, and
+the skill allows parallel implementers only across genuinely disjoint repositories.
 
 ## Readers, the verifier and the roaster
 
