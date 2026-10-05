@@ -2142,32 +2142,44 @@ describe('fix-only follow-up runs', () => {
   })
 
   test('launch values that differ from the fix list make the spec tool fail the fixer\'s fix list check before any edit', async () => {
-    const head = Bun.spawnSync(['git', '-C', TREE, 'rev-parse', '--verify', 'HEAD^{commit}']).stdout.toString().trim()
-    const fixList = TREE + '/tests/fixtures/fix-list/list.yaml'
-    const held = Bun.YAML.parse(await Bun.file(fixList).text())
+    const [head, earlier] = Bun.spawnSync(['git', '-C', TREE, 'rev-list', '--max-count=2', 'HEAD']).stdout.toString().trim().split('\n')
+    mkdirSync(TREE + '/.cache', { recursive: true })
+    const scratch = mkdtempSync(TREE + '/.cache/workflow-routing-')
+    // The fixture list, with a saved result whose run ended on the commit the tree is at.
+    const parent = await Bun.file(TREE + '/tests/fixtures/fix-list/results/parent-run.json').json()
+    const saved = scratch + '/parent-run.json', fixList = scratch + '/list.yaml'
+    writeFileSync(saved, JSON.stringify({ ...parent, result: { ...parent.result, snapshots: at(head) } }))
+    const held = { ...Bun.YAML.parse(await Bun.file(TREE + '/tests/fixtures/fix-list/list.yaml').text()), result: saved }
+    writeFileSync(fixList, Bun.YAML.stringify(held, null, 2))
     const launch = (entries, spec = held.spec, base = at(head)) => fixRunRejectingAllEntries({ fixList, spec, entries, base })
-    // The entries the fixture list holds, as the tool prints them.
-    const passed = await launch(held.entries)
-    expect([passed.labels, passed.exits, passed.result.exit]).toEqual([['fix', 'roast'], [0], 'clean'])
-    const replaced = (index, entry) => held.entries.map((held, at) => at === index ? entry : held)
-    const roast = held.entries.findIndex(entry => entry.source === 'roaster:0')
-    for (const [entries, spec] of [
-      [[held.entries[0], ...held.entries], held.spec],
-      [replaced(1, { ...held.entries[1], source: 'verify:7' }), held.spec],
-      [replaced(roast, { ...held.entries[roast], finding: { ...held.entries[roast].finding, claim: 'The handle leaks.' } }), held.spec],
-      [held.entries, 'tests/fixtures/spec/valid.yaml'],
-    ]) {
-      const refused = await launch(entries, spec)
-      expect([refused.labels, refused.exits, refused.result.exit]).toEqual([['fix', 'roast'], [1], 'failed'])
-      const launched = fingerprint({ fixList, spec, entries, artifacts: [], base: at(head), partialBase: false, tree: TREE })
-      expect(refused.result.detail).toContain('the fix list check did not pass: exit 1, proof null where the launch values give ' + launched)
-      expect(refused.result.detail).toContain('and the run launched with the proof ' + launched)
-    }
-    // A base list naming a commit the tree does not hold fails the tool itself.
-    const elsewhere = await launch(held.entries, held.spec, at(BASE))
-    expect([elsewhere.labels, elsewhere.result.exit]).toEqual([['fix', 'roast'], 'failed'])
-    expect(elsewhere.result.detail).toContain('the fix list check did not pass: exit 1, proof null where the launch values give ')
-    expect(elsewhere.result.detail).toContain(`--base commit ${BASE} is not in the repository at .`)
+    try {
+      // The entries the fixture list holds, as the tool prints them.
+      const passed = await launch(held.entries)
+      expect([passed.labels, passed.exits, passed.result.exit]).toEqual([['fix', 'roast'], [0], 'clean'])
+      const replaced = (index, entry) => held.entries.map((held, at) => at === index ? entry : held)
+      const roast = held.entries.findIndex(entry => entry.source === 'roaster:0')
+      for (const [entries, spec] of [
+        [[held.entries[0], ...held.entries], held.spec],
+        [replaced(1, { ...held.entries[1], source: 'verify:7' }), held.spec],
+        [replaced(roast, { ...held.entries[roast], finding: { ...held.entries[roast].finding, claim: 'The handle leaks.' } }), held.spec],
+        [held.entries, 'tests/fixtures/spec/valid.yaml'],
+      ]) {
+        const refused = await launch(entries, spec)
+        expect([refused.labels, refused.exits, refused.result.exit]).toEqual([['fix', 'roast'], [1], 'failed'])
+        const launched = fingerprint({ fixList, spec, entries, artifacts: [], base: at(head), partialBase: false, tree: TREE })
+        expect(refused.result.detail).toContain('the fix list check did not pass: exit 1, proof null where the launch values give ' + launched)
+        expect(refused.result.detail).toContain('and the run launched with the proof ' + launched)
+      }
+      // A base list naming a commit the tree does not hold fails the tool itself.
+      const elsewhere = await launch(held.entries, held.spec, at(BASE))
+      expect([elsewhere.labels, elsewhere.result.exit]).toEqual([['fix', 'roast'], 'failed'])
+      expect(elsewhere.result.detail).toContain('the fix list check did not pass: exit 1, proof null where the launch values give ')
+      expect(elsewhere.result.detail).toContain(`--base commit ${BASE} is not in the repository at .`)
+      // So does an earlier commit the tree holds, which is not where the parent run ended.
+      const older = await launch(held.entries, held.spec, at(earlier))
+      expect([older.labels, older.result.exit]).toEqual([['fix', 'roast'], 'failed'])
+      expect(older.result.detail).toContain(`--base names commit ${earlier} at ., and the parent run's final snapshot there is ${head}`)
+    } finally { rmSync(scratch, { recursive: true, force: true }) }
   })
 
   test('a run\'s saved result gives a fix list that passes the fix list check, and a fix run launched on it passes its fixer\'s check', async () => {
@@ -2182,9 +2194,10 @@ describe('fix-only follow-up runs', () => {
         implementation: implemented({ artifacts }),
         reports: { 'review:correctness': { findings: [backed] }, roast: { findings: [finding] } },
         verify: { verify: verification([decision([source('correctness')], { action: 'needs-decision', correction: '' })]) } })
-      // Workflow output wraps the script return in result.
+      // Workflow output wraps the script return in result. The simulated commits are not in this
+      // repository, so the saved run ends on the commit the tree is at, which the fix run starts from.
       const saved = scratch + '/result.json', fixList = scratch + '/list.yaml'
-      writeFileSync(saved, JSON.stringify({ summary: 'A main run.', result }))
+      writeFileSync(saved, JSON.stringify({ summary: 'A main run.', result: { ...result, snapshots: at(head) } }))
       const tool = (...options) => Bun.spawnSync([process.execPath, TREE + '/tools/check-spec.ts', ...options], { cwd: TREE })
       const made = tool('--make-fix-list', saved)
       expect([made.exitCode, made.stderr.toString()]).toEqual([0, ''])

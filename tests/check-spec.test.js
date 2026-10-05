@@ -728,14 +728,47 @@ describe('fix list validation', () => {
   test('--base beside --fix-list is checked against the tree, printed, and covered by the proof', () => {
     const head = Bun.spawnSync(['git', '-C', root, 'rev-parse', '--verify', 'HEAD^{commit}']).stdout.toString().trim()
     const base = [{ path: '.', sha: head }]
-    const checked = checkList(validPath, ['--json', '--base', JSON.stringify(base)])
+    // The parent run ended on the commit the tree is at.
+    const list = written({ ...validList, result: writeEditedParentResult(result => { result.snapshots = base }) })
+    const checked = checkList(list, ['--json', '--base', JSON.stringify(base)])
     expect([checked.exit, checked.err]).toEqual([0, ''])
-    expect(JSON.parse(checked.out)).toMatchObject({ base, proof: listProof({ base }) })
-    expect(JSON.parse(checkList(validPath, ['--json', '--base', JSON.stringify(base), '--partial-base']).out).proof)
-      .toBe(listProof({ base, partialBase: true }))
-    expect(JSON.parse(checkList(validPath, ['--json']).out)).not.toHaveProperty('base')
-    invalid(checkList(validPath, ['--base', JSON.stringify([{ path: '.', sha: 'f'.repeat(40) }])]), `--base commit ${'f'.repeat(40)} is not in the repository at .`)
-    invalid(checkList(validPath, ['--base', JSON.stringify([...base, { path: 'tests', sha: head }])]), '--base path tests is not the top level of a git repository')
+    expect(JSON.parse(checked.out)).toMatchObject({ base, proof: listProof({ fixList: list, base }) })
+    expect(JSON.parse(checkList(list, ['--json', '--base', JSON.stringify(base), '--partial-base']).out).proof)
+      .toBe(listProof({ fixList: list, base, partialBase: true }))
+    expect(JSON.parse(checkList(list, ['--json']).out)).not.toHaveProperty('base')
+    invalid(checkList(list, ['--base', JSON.stringify([{ path: '.', sha: 'f'.repeat(40) }])]), `--base commit ${'f'.repeat(40)} is not in the repository at .`)
+    invalid(checkList(list, ['--base', JSON.stringify([...base, { path: 'tests', sha: head }])]), '--base path tests is not the top level of a git repository')
+  })
+
+  test('--base beside --fix-list names the final snapshots the parent run returned, and any commit the tree holds after a review pass', () => {
+    const [head, earlier] = Bun.spawnSync(['git', '-C', root, 'rev-list', '--max-count=2', 'HEAD']).stdout.toString().trim().split('\n')
+    const list = written({ ...validList, result: writeEditedParentResult(result => { result.snapshots = [{ path: '.', sha: head }] }) })
+    // Both commits are in the tree, so only the parent run's final snapshot tells them apart.
+    const older = checkList(list, ['--json', '--base', JSON.stringify([{ path: '.', sha: earlier }])])
+    invalid(older, `--base names commit ${earlier} at ., and the parent run's final snapshot there is ${head}`)
+    expect(older.out).toBe('')
+    invalid(checkList(list, ['--base', JSON.stringify([{ path: '.', sha: earlier }]), '--partial-base']),
+      `--base names commit ${earlier} at ., and the parent run's final snapshot there is ${head}`)
+    const elsewhere = written({ ...validList, result: writeEditedParentResult(result => { result.snapshots = [{ path: 'api', sha: head }] }) })
+    invalid(checkList(elsewhere, ['--base', JSON.stringify([{ path: '.', sha: head }])]),
+      '--base names the repository at ., of which the parent run returned no final snapshot; ' +
+      '--base leaves out the repository at api, of which the parent run returned its final snapshot')
+    for (const sha of [head, earlier]) {
+      const reviewed = checkList(reviewListPath, ['--json', '--base', JSON.stringify([{ path: '.', sha }])])
+      expect([sha, reviewed.exit, reviewed.err]).toEqual([sha, 0, ''])
+    }
+  })
+
+  test('a run result holds its final snapshots as null or one { path, sha } per repository', () => {
+    const message = 'the run result holds its final snapshots in another form: null, or one { path, sha } per repository'
+    for (const edit of [
+      result => { delete result.snapshots },
+      result => { result.snapshots = [] },
+      result => { result.snapshots = [{ path: '.', sha: 'main' }] },
+      result => { result.snapshots = [{ path: '/tree', sha: 'b'.repeat(40) }] },
+      result => { result.snapshots = [{ path: '.', sha: 'b'.repeat(40), clean: true }] },
+      result => { result.snapshots = [{ path: '.', sha: 'b'.repeat(40) }, { path: '.', sha: 'c'.repeat(40) }] },
+    ]) invalid(makeList(writeEditedParentResult(edit)), message)
   })
 
   test('the launch values are no option of the tool any more, and only their proof is', () => {
