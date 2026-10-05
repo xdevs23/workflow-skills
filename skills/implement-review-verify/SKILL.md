@@ -889,11 +889,12 @@ second implementer pre-check.
   those findings in `projectBenefit`, a decision the fixer answered with that answer in
   `disposition`, and every unresolved issue of it, as `issue:<index>`; in a run without a verify
   stage, such as a review pass, every finding of its reviewers, as `review:<seat>:<index>`; in a fix
-  run, every entry of its own list that its fixer left open, as `entry:<index>`; every finding of
-  its roast stage and of its diff check, as `roaster:<index>` and `diff:<index>`; and every
-  `failed-proof` item of its `remaining` list, its writer's label and quoted checks, as
-  `proof:<index>`. A failed proof stays work for the next fix run whatever the fixer answered: the
-  fixes and rejections close their entries, and the failing check stays open.
+  run, every entry of its own list that its fixer left open, as `entry:<index>`, with the answer of
+  a fixer result the run accepted in `disposition` inside the entry; every finding of its roast
+  stage and of its diff check, as `roaster:<index>` and `diff:<index>`; and every `failed-proof`
+  item of its `remaining` list, its writer's label and quoted checks, as `proof:<index>`. A failed
+  proof stays work for the next fix run whatever the fixer answered: the fixes and rejections close
+  their entries, and the failing check stays open.
 - Expect the tool to refuse the fix list of a run in which a stage failed, whatever exit the run
   ended with. A stage either returns, is retried or ends the run, and every stage that failed leaves
   a `stage-failure` item in `remaining`, also when an earlier cause, such as a blocked correction,
@@ -923,7 +924,9 @@ second implementer pre-check.
   build nothing on its result until the user answers.
 - Expect a fix run's fixer to close an entry by rejecting it, by raising it as a question, or by a
   fix its diff check mapped a change to. Every other entry of the fix run, a blocked one or one the
-  fixer never answered, stays open, and the next fix list carries it.
+  fixer never answered, stays open, and the next fix list carries it. An open entry that an
+  accepted fixer result answered holds that answer in `disposition`, so the next fixer reads its
+  reason and receipts, and an answer of an earlier fix run stays inside the entry it wraps.
 - Expect a fix to leave a project-benefit entry open: one that holds a finding with a kind, a
   decision with `projectBenefit`, or an earlier entry that holds either. The next fix run's fixer
   checks the tree for the flagged mechanism and rejects the entry once it is gone, so a patch that

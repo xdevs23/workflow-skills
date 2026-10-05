@@ -2307,6 +2307,15 @@ describe('fix-only follow-up runs', () => {
     expect([result.snapshots, result.mappings]).toEqual([at(FIXED), [mapping('verify:0')]])
   })
 
+  test('a blocked entry reaches the next fix list with the fixer\'s answer beside it, and an earlier answer stays inside the entry it wraps', async () => {
+    const earlier = disposition('verify:0', 'blocked')
+    const carried = { source: 'entry:0', entry: { ...fixListEntry('verify:0'), disposition: earlier } }
+    const blocked = { ...disposition('entry:0', 'blocked'), reason: 'The acceptance check names a caller the tree no longer has.' }
+    const { calls, result } = await simulateFix({ args: fixArgs({ entries: [carried] }), fixes: fixed([blocked], { touched: [] }) })
+    expect(handed(calls, 'fix')).toEqual([{ key: 'entry:0', entry: carried.entry }])
+    expect(result.toFix).toEqual([{ source: 'entry:0', entry: { ...carried, disposition: blocked } }])
+  })
+
   test('a premise the fixer reported false returns as a must-fix item with its label, and a fix run it alone leaves open ends follow-up', async () => {
     const premise = { claim: 'The entry says src/example.js already returns the error.', holds: false, note: 'src/example.js:12 still catches it.' }
     const { result } = await simulateFix({ fixes: fixed([disposition('verify:0', 'rejected')], { touched: [], premises: [premise] }) })
@@ -2342,7 +2351,9 @@ describe('fix-only follow-up runs', () => {
     const extra = { ...finding, severity: 'should-fix', claim: 'The change also renames an exported helper.' }
     const { result } = await simulateFix({ args: fiveEntryArgs, specCheck: fiveEntryCheck, fixes: fixed(fixedMappedUnmappedRejectedAskedBlocked),
       roast: { findings: [finding] }, diff: { mappings: [mapping('verify:0')], findings: [extra] } })
-    expect(result.toFix).toEqual([{ source: 'entry:1', entry: fiveEntries[1] }, { source: 'entry:4', entry: fiveEntries[4] },
+    // The unproven fix of verify:1 and the blocked roaster:0 stay open, each with the fixer's answer beside it.
+    const answered = index => ({ ...fiveEntries[index], disposition: fixedMappedUnmappedRejectedAskedBlocked[index] })
+    expect(result.toFix).toEqual([{ source: 'entry:1', entry: answered(1) }, { source: 'entry:4', entry: answered(4) },
       { source: 'roaster:0', finding: { ...finding, id: 'roaster:0', seat: 'roaster', snapshots: at(BASE) } },
       { source: 'diff:0', finding: { ...extra, severity: 'CRITICAL' } }])
     expect(result.spec).toEqual({ path: PARENT_SPEC, sha256: 'e'.repeat(64), lines: 4 })
@@ -2360,8 +2371,9 @@ describe('fix-only follow-up runs', () => {
     const args = fixArgs({ entries })
     const { result } = await simulateFix({ args, fixes: fixed([...entries.slice(0, 4).map(e => disposition(e.source)), disposition('diff:0', 'rejected')]) })
     expect(result.mappings.map(m => m.source)).toEqual(['verify:0', 'verify:1', 'roaster:0', 'entry:3', 'diff:0'])
-    expect(result.toFix).toEqual([{ source: 'entry:0', entry: entries[0] }, { source: 'entry:2', entry: entries[2] },
-      { source: 'entry:3', entry: entries[3] }])
+    const answered = index => ({ ...entries[index], disposition: disposition(entries[index].source) })
+    expect(result.toFix).toEqual([{ source: 'entry:0', entry: answered(0) }, { source: 'entry:2', entry: answered(2) },
+      { source: 'entry:3', entry: answered(3) }])
     expect(await template('fixer')).toContain('Your fix leaves the entry open for the next fix run, whose fixer checks the tree again.')
   })
 
