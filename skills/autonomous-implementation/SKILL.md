@@ -20,11 +20,14 @@ milestone until its stop condition holds and the evidence shows it.
 - Never read a grant into a request that does not give one.
 - Record the grant in the run file: its scope, when it was given, the end of its timeframe, and the
   revocation once one comes.
-- Check the grant before every decision. Once it has lapsed or was revoked, let no subagent decide
-  anything more: stop at the next milestone boundary, report, and ask the user as the global rules
+- Check the grant before every decision. Once it has lapsed or was revoked, stop the run at once:
+  start no further agent, stop the running workflow, report, and ask the user as the global rules
   say.
-- Keep everything outward-facing out of the grant. Pushing, publishing, posting and any system-wide
-  modification still need the user's consent.
+- Keep everything outward-facing out of the grant, such as pushing, publishing and posting: it still
+  needs the user's consent.
+- Within the grant, use this skill in place of `workflow-skills:implement-review-verify` for the
+  granted work. The user chose it for that work, and the global rule to implement through
+  `workflow-skills:implement-review-verify` covers every other work.
 
 ## What turns around
 
@@ -38,6 +41,10 @@ milestone until its stop condition holds and the evidence shows it.
   `workflow-skills:local-cache`, `workflow-skills:writing-style`, and
   `workflow-skills:copywriting` for every text the product shows. Name the rules that bind each
   agent in its prompt.
+- Let the decision panel pick among the copy variants where `workflow-skills:copywriting` asks the
+  user to pick, log each pick as a decision, and list the strings that carry the product in the
+  final report, because the user reads them before anything ships and shipping lies outside the
+  grant.
 
 ## Intake
 
@@ -55,8 +62,11 @@ milestone until its stop condition holds and the evidence shows it.
 
 - Write the run file at intake into the project cache that `workflow-skills:local-cache` defines,
   and keep it current: the grant, the description, the intent, the goal, the technologies, the
-  constraints, the jurisdiction, the milestones, the decision log, the open questions and the index
-  of the evidence.
+  constraints, the jurisdiction, the milestones with the state of each, the decision log and the
+  index of the evidence.
+- Record in the run file, for the milestone that is running, its workflow's run ID, the paths of its
+  script and its journal, its worktree, and the commit each repository was at when it started, so a
+  resume finds the run and its state.
 - Reload the whole run from the run file after a crash, a compaction or a resume.
 
 ## Milestones
@@ -70,11 +80,13 @@ milestone until its stop condition holds and the evidence shows it.
   Shape the workflow however the milestone needs: no script enforces it, and every agent in it
   keeps the rules.
 - Commit each milestone's work in the commit style.
-- Never push without the user's consent.
+- Run the milestone's checks again and capture its evidence again after the last fix, and close the
+  milestone only on that result.
 - Re-plan a milestone that failed three times, or stop the run with a report.
 - Stop with a report instead of looping when the model plan's limits run low.
-- Record findings outside the current milestone in the todo record that `workflow-skills:todo-md`
-  defines, and never chase them.
+- Fix every defect the run itself introduced, in whichever milestone it shows up.
+- Record defects that were there before the run, and findings beyond the granted work, in the todo
+  record that `workflow-skills:todo-md` defines, and never chase them.
 
 ## Decisions
 
@@ -88,8 +100,9 @@ milestone until its stop condition holds and the evidence shows it.
 
 - Never wait for an answer. Use the harness's asynchronous question where it has one, a dialog the
   user answers while you keep working.
-- Where the harness has none, record the question in the run file, go on with the decision the
-  subagents made, and name the question in your next message to the user.
+- Where the harness has none, record the question in the todo record as `workflow-skills:todo-md`
+  says, go on with the decision the subagents made, and name the question in your next message to
+  the user.
 
 ## Reviews
 
@@ -99,7 +112,7 @@ milestone until its stop condition holds and the evidence shows it.
   `workflow-skills:cold-alternatives`, `workflow-skills:separation-of-concerns`,
   `workflow-skills:abstraction-quality` and `workflow-skills:missing-gaps`.
 - Run `workflow-skills:roaster` beside every fixer.
-- Have a fixer agent fix a milestone's findings within that milestone.
+- Have `workflow-skills:fixer` fix a milestone's findings within that milestone.
 
 ## Hard rules
 
@@ -133,10 +146,10 @@ milestone until its stop condition holds and the evidence shows it.
 - Build the Android SDK from nixpkgs `androidenv.composeAndroidPackages` in the flake, with
   `allowUnfree` and `android_sdk.accept_license` set in its nixpkgs configuration, and every
   platform and build-tools version the build needs listed there.
-- Link the SDK into a `.cache` directory outside the repository with
-  `nix build .#android-sdk -o ../.cache/android-sdk`, because a `path:` flake reference copies the
-  whole tree into the Nix store, and point a committed `local.properties` at it with the relative
-  line `sdk.dir=../.cache/android-sdk/libexec/android-sdk`.
+- Link the SDK into a `.cache` directory outside the repository with `nix build path:.#android-sdk
+  -o ../.cache/android-sdk`, because a `path:` flake reference copies the whole tree into the Nix
+  store, and point a committed `local.properties` at it with the relative line
+  `sdk.dir=../.cache/android-sdk/libexec/android-sdk`.
 - Populate `../.cache/android-sdk` as a symlink forest instead, with an app of the flake, where a
   tool refuses to follow the single top-level link. The SDK root is then that directory itself.
 - Run `./gradlew --stop` after the link moves, because a running Gradle daemon keeps the old SDK

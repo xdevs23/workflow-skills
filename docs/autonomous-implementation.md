@@ -10,8 +10,8 @@ experiments and novel approaches that have no settled architecture yet.
 
 The skill applies only on the user's grant, and the user chooses its scope: one task, the whole
 session until revoked, or a timeframe. The grant is recorded in the run file and checked before
-every decision, and outward-facing actions such as pushing, publishing or system-wide changes stay
-with the user inside a grant as well. Without a grant, the global rules apply unchanged and
+every decision, a revocation stops the run at once, and outward-facing actions such as pushing,
+publishing or system-wide changes stay with the user inside a grant as well. Without a grant, the global rules apply unchanged and
 decisions go to the user.
 
 ## What the skill holds
@@ -26,8 +26,9 @@ subagents' decision.
 Each milestone states what it contains, what it delivers, the evidence that proves it and when it
 stops. A milestone runs as one workflow that the session shapes as it needs, reviewed at the latest
 at its end by a subset of the plugin's reviewers, with the roaster beside every fixer. A milestone
-that fails three times is re-planned or ends the run with a report, and findings outside the
-milestone are recorded instead of chased.
+that fails three times is re-planned or ends the run with a report. Defects the run introduced are
+fixed wherever they show up, and older defects and findings beyond the granted work are recorded
+instead of chased.
 
 The hard rules keep the result libre, legal and local. What the product ships and what is
 committed is libre, while a non-free build toolchain such as the Android SDK is allowed, and the
