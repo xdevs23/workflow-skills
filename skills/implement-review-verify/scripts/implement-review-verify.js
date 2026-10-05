@@ -938,6 +938,9 @@ async function implement() {
   snapshots = snapshotsOf(impl)
   limited(impl, 'impl')
   proof(impl, 'impl')
+  // The verifier reads the implementer's object on every path that goes on, so only a run that ends
+  // here records the implementer's false premises itself.
+  if (exit) recordFalsePremises(impl, 'impl')
 }
 
 async function onePass() {
