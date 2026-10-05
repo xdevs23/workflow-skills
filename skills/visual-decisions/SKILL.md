@@ -9,9 +9,9 @@ description: Applies when one or more product decisions need the user's answer.
 message and reply this skill produces, and it is not optional when working with this plugin.
 
 A visual decision page puts open decisions to the user as one HTML page on which every decision is a
-pair of pictures: Today, what the user sees or what happens now, and After, what the user would see
-or what would happen after the change. The user sees the difference at a glance instead of
-rebuilding it from a description.
+set of pictures side by side: the code as it stands, labelled by what that code is, and After, what
+the user would see or what would happen with the proposed change. The user sees the difference at a
+glance instead of rebuilding it from a description.
 
 ## When it applies
 
@@ -22,10 +22,14 @@ rebuilding it from a description.
 
 ## Before you draw
 
-- Read in full the code that renders or runs today's state, for every decision.
-- Draw each Today picture from what that code does.
-- Where a statement about today turns out wrong in the code, draw what the code really does and put
-  one line starting `CORRECTION:` under that decision.
+- Name every state you draw by what it is: the merged code by its branch or deployment, such as the
+  main branch, the develop branch or production, and work that is not merged yet as unmerged, with
+  its branch. Never label a state Today, Now or Current, since those words read as the state the
+  work started from, while the code behind them is often unmerged work.
+- Read in full the code behind every state you draw, at the commit that state names.
+- Draw each picture of a state from what its code does.
+- Where a statement about a state turns out wrong in its code, draw what the code really does and
+  put one line starting `CORRECTION:` under that decision.
 - Draw an After that the code does not define yet as a proposal, and name in its caption any layout
   you chose yourself.
 
@@ -34,27 +38,28 @@ rebuilding it from a description.
 - Write one standalone HTML file with all its CSS inside it and no external resources, so it opens
   anywhere.
 - Put the file in the project cache that `workflow-skills:local-cache` defines.
-- Open the page with one line saying what the decisions are about and that each shows Today and
-  After.
+- Open the page with one line saying what the decisions are about and which states the pictures
+  show.
 - Give every decision:
   - its number and a title of at most eight words;
-  - two pictures side by side, labelled Today and After;
+  - its pictures side by side, each labelled by the state it shows: the state the decision starts
+    from and After, or, when it helps, the merged code, the unmerged work and After, in that order;
   - a caption of at most fifteen words under each picture;
   - a subtle highlight on the part that changes, so the eye finds the difference first.
 - Put no paragraph on the page. A picture that needs a sentence to explain it is not clear yet.
 - Draw a visible change as an imitation of the real screen, with its structure, its labels and its
   look.
 - Draw a change nobody sees, such as where in the code a decision is made, as boxes and arrows:
-  which part asks which, and what passes between them, Today and After.
+  which part asks which, and what passes between them, in each state.
 - Use one realistic sample for every decision on a page, with real-looking names, texts and values,
   and at least one long value where length matters.
 
 ## Making the page
 
 - Hand the drawing to one agent when the code to read is large. Its prompt names the files to read,
-  the file of `workflow-skills:writing-style` to read before writing, every decision with its Today
-  and After statements, the rules of the page and the output path, and says that it writes exactly
-  that one file and nothing else.
+  the file of `workflow-skills:writing-style` to read before writing, every decision with the
+  statement of each state it shows, the rules of the page and the output path, and says that it
+  writes exactly that one file and nothing else.
 - Render the page once in a headless browser the machine has, and look at the screenshot before you
   show the page. A page that only passed a check of its markup has not been seen.
 - Open the page for the user.

@@ -38,6 +38,10 @@ over this file.
 - Write no preamble, no passage explaining why the thing matters, and no offer or next-step
   commentary at the end.
 - Write no walls of text.
+- Name a state of the code by what it is, in a question, a page or a picture alike: the main branch,
+  the develop branch, production, the merged code, or the unmerged work on a branch. Never call a
+  state today, now or current, since those words read as the state the work started from and hide
+  whether it is merged. Call the shape nobody has built yet After or the proposed shape.
 - Write no mannered speech.
 
 ## Words to avoid
