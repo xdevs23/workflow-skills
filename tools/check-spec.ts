@@ -488,12 +488,12 @@ async function readSavedRunResult(file: string): Promise<Returned> {
   }
   const result = mapping(output) ? output.result : undefined
   if (!mapping(result)) throw new Error(`${file} holds no run result`)
-  if (!Array.isArray(result.toFix)) throw new Error(`the run result holds no toFix list, ${earlierVersion}`)
   if (!Array.isArray(result.remaining)) throw new Error('the run result holds no remaining list')
   for (const { kind, refusal, describe } of refusedKinds) {
     const found = remainingOfKind(result.remaining, kind, describe)
     if (found.length) throw new Error(`${refusal}: ${found.join('; ')}`)
   }
+  if (!Array.isArray(result.toFix)) throw new Error(`the run result holds no toFix list, ${earlierVersion}`)
   if (!Array.isArray(result.artifacts)) throw new Error(`the run result holds no artifacts list, ${earlierVersion}`)
   const strange = result.artifacts.findIndex(item => !artifact(item))
   if (strange >= 0) throw new Error(`the run result holds artifact ${strange + 1} in another form`)
