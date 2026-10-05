@@ -1488,6 +1488,21 @@ describe('one-pass remaining-items handoff', () => {
     }
   })
 
+  test('an implementer that ends the run returns its false premises with its label; one that goes on hands them to the verifier', async () => {
+    const holding = { claim: 'The tree holds src/example.js.', holds: true, note: 'It does.' }
+    const premise = { claim: 'The prompt says src/example.js already returns the error.', holds: false, note: 'src/example.js:12 still catches it.' }
+    const limitation = { what: 'A required resource is unavailable.', effect: 'blocks' }
+    for (const [ending, fields] of [['failed-proof', { proofPassed: false }], ['blocking-limitation', { limitations: [limitation] }]]) {
+      const { result, calls } = await simulate({ implementation: implemented({ ...fields, premises: [holding, premise] }) })
+      expect([ending, result.exit, calls.map(c => c.label)]).toEqual([ending, 'root-resolution', ['impl']])
+      expect([ending, result.remaining.map(r => r.kind)]).toEqual([ending, [ending, 'false-premise']])
+      expect([ending, result.remaining[1]]).toEqual([ending, { kind: 'false-premise', severity: 'must-fix', item: { ...premise, label: 'impl' } }])
+    }
+    const { result, calls } = await simulate({ implementation: implemented({ premises: [holding, premise] }) })
+    expect([result.exit, result.remaining]).toEqual(['clean', []])
+    expect(calls.find(c => c.phase === 'Verify').prompt).toContain(premise.note)
+  })
+
   test('verifier issues retain their full objects beside the approvals the fixer applied', async () => {
     const issue = { kind: 'root-action', detail: 'Required evidence is unavailable.' }
     const approval = decision([source('correctness')])

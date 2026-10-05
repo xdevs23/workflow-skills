@@ -782,8 +782,10 @@ or raises it as a question for the user.
   limitation, unattested fix, spec finding, abort or stage failure. Each premise an accepted fixer
   result reports false returns as a must-fix `false-premise` item with the fixer's label, and each
   of its limitations of effect `narrows` as a should-fix `fix-limitation` item with that label, so
-  you know which check its proof covers only in part. Every key reported fixed by a
-  fixer that committed carries its disposition, approved correction, snapshot and commits; a key
+  you know which check its proof covers only in part. An implementer that ends the run with a
+  failed proof or a blocking limitation reaches no verifier, so each premise it reports false
+  returns the same way with the label `impl`. Every key reported fixed by a fixer that committed
+  carries its disposition, approved correction, snapshot and commits; a key
   reported fixed by a fixer that committed nothing returns as an unfixed approval with that answer,
   because no commit stands behind the fix. A key that an accepted fixer result rejected adds no
   item: the rejection stays in the run's `dispositions`, which hold every answer of the fixer. The
