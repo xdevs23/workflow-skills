@@ -38,9 +38,7 @@ const UNIT = {
 
 // The preamble, the field shapes, stage(), the writer checks and the remaining-items handoff are the
 // main script's, copied in because this is its own run. A routing test holds each copied helper and
-// block to the main script's text. The checks of the fixer's and the diff check's results are those of
-// the spec tool's fix-run checks module, which the tool applies to the results a journal holds, and a
-// routing test holds them to that module's text.
+// block to the main script's text.
 
 // A defect of the host: it relays a message the user writes to the orchestrating session into
 // running stages as well. This line protects against a stage taking such a message as an order.
@@ -169,9 +167,9 @@ const WRITE_GIT = [
 ].join('\n')
 const TREE = 'ASSIGNED TREE: ' + UNIT.worktree + '.'
 const FIX_LIST = [
-  'FIX LIST: ' + UNIT.fixList + '. Its run key names the parent run and its spec key the parent spec, or null where there is none.',
-  'Each entry holds, beside its source, an item the parent run returned to be fixed, as the parent run\'s journal holds it, and the',
-  'fixer\'s fix list check compared the whole list with everything the parent run returned.',
+  'FIX LIST: ' + UNIT.fixList + '. Its result key names the saved result of the parent run and its spec key the parent spec, or null',
+  'where there is none. Each entry holds, beside its source, an item the parent run returned to be fixed, as that result holds it,',
+  'and the fixer\'s fix list check compared the whole list with everything the parent run returned.',
 ].join('\n')
 
 // Field shapes, as in the main script. Every stage declares its own closed object in full.
@@ -432,7 +430,7 @@ const remaining = []
 let diff = null, snapshots = base
 let exit = null, detail = '', activeLabel = 'fix'
 const queue = entries.map(({ source, ...entry }) => ({ key: source, ...entry }))
-let passedFix = null, reportedFix = null
+let passedFix = null, reportedFix = null, roast = null
 const add = (kind, item, severity = 'CRITICAL') => {
   if (!REMAINING.includes(kind)) throw new Error('Unknown remaining kind: ' + kind)
   remaining.push({ kind, severity, item })
@@ -561,6 +559,7 @@ async function fixRun() {
         if (result.dispositions.some(d => d.disposition === 'blocked')) end('root-resolution', 'An entry was blocked.')
         proof(result, label)
       } else {
+        roast = result
         for (const f of result.findings) add('roast-finding', f, f.severity)
         narrowed(result, 'roast-limitation')
         limited(result, label)
@@ -579,8 +578,10 @@ async function fixRun() {
 
   phase('Diff')
   activeLabel = 'diff'
-  diff = abortOnFlag(await diffPass(queue, snapshotsOf(passedFix)), 'diff')
-  for (const f of diff.findings) add('diff-finding', { ...f, severity: 'CRITICAL' })
+  const checked = abortOnFlag(await diffPass(queue, snapshotsOf(passedFix)), 'diff')
+  // A change that no entry covers is CRITICAL, whatever severity the diff check gave it.
+  diff = { ...checked, findings: checked.findings.map(f => ({ ...f, severity: 'CRITICAL' })) }
+  for (const f of diff.findings) add('diff-finding', f)
   narrowed(diff, 'diff-limitation')
   limited(diff, 'diff')
   if (diff.findings.length) end('root-resolution', 'The diff check found a change that no entry covers.')
@@ -607,12 +608,11 @@ const fingerprint = values => {
 // each value is one quoted shell word. It carries no entry of the list, so the fixer copies nothing
 // long: the proof of the launch values stands for the entries.
 const shellWord = value => "'" + value.replaceAll("'", "'\\''") + "'"
-const PROOF = fingerprint({ fixList: UNIT.fixList, transcripts: UNIT.transcripts, spec: UNIT.spec, entries,
-  base, partialBase: Boolean(UNIT.partialBase), tree: UNIT.worktree })
+const PROOF = fingerprint({ fixList: UNIT.fixList, spec: UNIT.spec, entries, base, partialBase: Boolean(UNIT.partialBase), tree: UNIT.worktree })
 const LIST_CHECK_FIRST = [
   'FIX LIST CHECK, before anything else and before any edit: run this exact command once with the Bash tool, with no change, retry or fix:',
   'cd ' + shellWord(UNIT.worktree) + ' && bun ' + shellWord(UNIT.pluginRoot + '/tools/check-spec.ts') + ' --fix-list ' +
-    shellWord(UNIT.fixList) + ' --transcripts ' + shellWord(UNIT.transcripts) + ' --json --base ' + shellWord(JSON.stringify(base)) +
+    shellWord(UNIT.fixList) + ' --json --base ' + shellWord(JSON.stringify(base)) +
     (UNIT.partialBase ? ' --partial-base' : '') + ' --proof ' + shellWord(PROOF),
   'Return its exit code, its stdout and its stderr in specCheck, unchanged. When its exit code is not 0, make no edit and',
   'return your object with every repository at its start SHA.',
@@ -633,12 +633,29 @@ for (const entry of queue) {
 // A run that fixed anything leaves its unattested fixes, so it ends clean only when nothing remains.
 if (!exit) end(remaining.length ? 'follow-up' : 'clean', remaining.length
   ? 'The fix run completed with items requiring follow-up.' : 'The fix run completed and nothing remains.')
+// Everything the run returns to be fixed, in the order of a fix list, which is written from it
+// unchanged: every entry the accepted fixer left open, then the findings of the roaster and of the
+// diff check. The fixer closes an entry by rejecting it, by raising it as a question for the user, or
+// by a fix the diff check mapped a change to.
+const mapped = new Set((diff?.mappings ?? []).map(m => m.source))
+const closes = ({ key, disposition }) => ['rejected', 'question'].includes(disposition) || (disposition === 'fixed' && mapped.has(key))
+const closed = new Set((passedFix?.dispositions ?? []).filter(closes).map(d => d.key))
+const numbered = (kind, field, items) => items.map((item, i) => ({ source: kind + ':' + i, [field]: item }))
+const toFix = [
+  ...numbered('entry', 'entry', entries).filter(({ entry }) => !closed.has(entry.source)),
+  ...numbered('roaster', 'finding', roast?.findings ?? []),
+  ...numbered('diff', 'finding', diff?.findings ?? []),
+]
+// The parent spec the fixer's check confirmed unchanged, as the spec tool printed it, or null when the
+// list names none or no check passed.
+const printed = reportedFix ? JSON.parse(reportedFix.specCheck.stdout) : null
+const spec = printed?.spec ? { path: printed.spec, sha256: printed.specSha256, lines: printed.specLines } : null
 return {
-  exit, detail, remaining,
+  exit, detail, remaining, toFix,
   dispositions: reportedFix?.dispositions ?? [],
   mappings: diff?.mappings ?? [],
   proof: passedFix ? { checks: passedFix.checks, files: passedFix.files } : null,
-  base, snapshots,
+  spec, base, snapshots,
   acceptance: 'pending-root-checks', // Run completion is not integration permission.
   counts: { entries: entries.length,
     fixed: (reportedFix?.dispositions ?? []).filter(d => d.disposition === 'fixed').length,

@@ -31,51 +31,48 @@ calls for, whatever its entry asks. No wish of the orchestrating session reaches
 **build-agreed**: The proposed shape is written as a spec and built.
 
 **fix-list-format**: A fix run takes a fix list instead of a spec: a YAML file in the project's
-ignored private directory with exactly three keys, `run`, the parent run's id, `spec`, the spec the
-parent run checked, and `entries`. Each entry holds its `source` and one item the parent run returned
-to be fixed, as the journal holds it: a spec finding of its implementer, `impl:<index>`, a finding
-of its roaster, `roaster:<index>`, of its diff check, `diff:<index>`, or of one of its review seats,
-`review:<seat>:<index>`, under `finding`; a decision of its finding verifier, `verify:<index>`,
-under `decision`; an unresolved issue of the verifier, `issue:<index>`, under `issue`; an entry of
-a fix run's own list that its fixer left open, `entry:<index>`, under `entry`; or a measured size
-breach of the unit, `size`, under `size`. The list holds no word of the orchestrating session, no
-correction and no pointer.
+ignored private directory with exactly three keys, `result`, the saved result of the parent run,
+`spec`, the spec the parent run checked, and `entries`. Each entry holds its `source` and one item
+the parent run returned to be fixed, as that result holds it: a spec finding of its implementer,
+`impl:<index>`, a finding of its roaster, `roaster:<index>`, of its diff check, `diff:<index>`, or
+of one of its review seats, `review:<seat>:<index>`, under `finding`; a decision of its finding
+verifier, `verify:<index>`, under `decision`; an unresolved issue of the verifier, `issue:<index>`,
+under `issue`; an entry of a fix run's own list that its fixer left open, `entry:<index>`, under
+`entry`; or a measured size breach of the unit, `size`, under `size`. The list holds no word of the
+orchestrating session, no correction and no pointer.
 
-**written-from-scratch**: The spec tool writes a fix list with `--make-fix-list <run>` and the
-existing `--transcripts <dir>`: the spec the parent run's check printed, or null when it checked
-none, as a review pass does, and everything the run returned to be fixed. That is every spec finding
-of its implementer, every decision and unresolved issue of its last verify stage apart from an
-approved correction its fixer fixed or rejected, in a run without a verify stage every finding of
-its review seats, in a fix run every entry of its own list its fixer left open, and every finding of
-its last roast stage and diff check. A fix run's fixer closes an entry by rejecting it, by raising
-it as a question or by a fix its diff check mapped a change to; a blocked entry and one the fixer
-never answered stay open. The journal holds a stage's last result whether or not the run accepted
-it, so only a result that passes the checks the fix script applies to it closes an entry: the
-fixer's and the diff check's result checks live in one module beside the spec tool, which the tool
-imports and the fix script carries verbatim. A result with a hard flag closes nothing, and neither
-does any result of a fix run whose check output holds no base list, since the fixer's result is
-checked against that list. `--size <json>` adds a size breach the orchestrating session measured,
+**written-from-scratch**: The spec tool writes a fix list with `--make-fix-list <saved result>`, the
+output file the workflow tool saved the parent run's result in, which the orchestrating session
+copies into the project cache unchanged. The list names that file by its absolute path, the spec the
+run's check passed on, or null when it checked none, as a review pass does, and holds the run's
+`toFix` list. Each script builds that list from the results it accepted: every spec finding of its
+implementer, every decision and unresolved issue of its verify stage apart from an approved
+correction its fixer fixed or rejected, in a run without a verify stage every finding of its review
+seats, in a fix run every entry of its own list its fixer left open, and every finding of its roast
+stage and diff check. A fix run's fixer closes an entry by rejecting it, by raising it as a question
+or by a fix its diff check mapped a change to; a blocked entry and one the fixer never answered stay
+open. A result the run refused or that carries a hard flag closes nothing, and a run that ended
+`failed` gets no fix list. `--size <json>` adds a size breach the orchestrating session measured,
 with the implementation lines added and the commits measured, beside the spec lines the parent run's
 spec check counted. The orchestrating session saves the list unchanged and adds, deletes and edits
 nothing. A fix list is never made from a spec, a spec is never made from a fix list, and neither is
 used for the other kind of run.
 
 **fix-list-check**: The spec tool has a mode that takes a fix list in place of the spec argument,
-with the existing `--transcripts <dir>` and `--json`. It validates the list's shape strictly, as it
-does a spec, and refuses the keys of a spec, as the spec mode refuses the keys of a fix list. It
-finds the run's journal in exactly one session of the transcript directory, lists what the run
-returned to be fixed the way the generator does, and compares the whole fix list with that list, in
-the generator's order with a size breach last, so an edited, a missing, an added and a misplaced
-entry fail alike. A size entry is held to the spec lines the parent run's spec check counted. It
-requires the spec to be the one the parent run's check printed, with the same sha256, or null when
-that run checked none. With `--base`, and `--partial-base` beside it, it checks a base list against
-the tree it runs in as the spec mode does. A passing list prints its spec, the spec's sha256 and
-spec lines beside the run where it names a spec, the base list it checked, the list's `sha256`, and
-as its proof the fingerprint of the list path, the transcript directory, the spec, the entries, the
-base list, whether it is partial and the directory the tool runs in, as the record of the spec check
-describes, so the output of a fix run's own check carries the spec, the list and the base list on to
-the next fix list. With `--entries` it prints the entries as well. Every failure is reported as a
-violation naming the entry's source. The journal is parsed as JSON lines, never by hand.
+with the existing `--json`. It validates the list's shape strictly, as it does a spec, and refuses
+the keys of a spec, as the spec mode refuses the keys of a fix list. It reads the saved result the
+list names, lists what the run returned to be fixed the way the generator does, and compares the
+whole fix list with that list, in the generator's order with a size breach last, so an edited, a
+missing, an added and a misplaced entry fail alike. A size entry is held to the spec lines the
+parent run's spec check counted. It requires the spec to be the one the parent run's check printed,
+with the same sha256, or null when that run checked none. With `--base`, and `--partial-base` beside
+it, it checks a base list against the tree it runs in as the spec mode does. A passing list prints
+its spec, the spec's sha256 and spec lines beside the saved result where it names a spec, the base
+list it checked, the list's `sha256`, and as its proof the fingerprint of the list path, the spec,
+the entries, the base list, whether it is partial and the directory the tool runs in, as the record
+of the spec check describes, so the output of a fix run's own check carries the spec, the list and
+the base list on to the next fix list. With `--entries` it prints the entries as well. Every failure
+is reported as a violation naming the entry's source. The result is parsed as JSON, never by hand.
 
 **fix-script**: The skill ships a fix script beside the main script, in its shape: a marked block of
 unit values on top (main checkout, worktree, fix list path, parent spec, transcript directory,
@@ -90,27 +87,26 @@ string and the one object it holds.
 
 **list-check**: The fixer runs the spec tool on the fix list and the base list before anything else,
 as the implementer of the main script runs the spec check. Its command changes to the worktree,
-carries no entry of the list, and quotes every value as one shell word. The tool fails when the
-list differs from what the parent run returned or the base list does not match the tree. The script
-computes the fingerprint of the list path, the transcript directory, the spec, the entries, the base
-list, whether it is partial and the worktree it received at launch, and the run continues only when
-the proof the tool printed equals it. A launched spec or entry that differs from the list, a missing
-or an added entry, and a check that failed all end the run as failed, without asking the fixer
-again. So every stage receives what the journal holds.
+carries no entry of the list, and quotes every value as one shell word. The tool fails when the list
+differs from what the parent run returned or the base list does not match the tree. The script
+computes the fingerprint of the list path, the spec, the entries, the base list, whether it is
+partial and the worktree it received at launch, and the run continues only when the proof the tool
+printed equals it. A launched spec or entry that differs from the list, a missing or an added entry,
+and a check that failed all end the run as failed, without asking the fixer again. So every stage
+receives what the parent run returned.
 
-**fixer-on-every-entry**: The fixer receives every entry, one key per source, as the journal holds
-it, and the parent spec. It resolves each entry with the user's words, the rule sources and the
-engineering-principles and code-writing skills as its guide, and returns one of four dispositions
-per key: fixed, rejected with counterevidence, blocked with evidence, or a question for the user.
-A rejection closes its entry, and a blocked entry stays open for the next fix list. It returns a
-question only for a product decision that no rule, skill or word of the user decides, after
-checking that the question is valid; the design of that rule is recorded in the document on the
-root making no decisions. The policy of these dispositions lives in the fixer's template, and the
-script's prompt carries only the inputs it needs. Where the list names a parent spec, the fixer
+**fixer-on-every-entry**: The fixer receives every entry, one key per source, as the parent run
+returned it, and the parent spec. It resolves each entry with the user's words, the rule sources and
+the engineering-principles and code-writing skills as its guide, and returns one of four
+dispositions per key: fixed, rejected with counterevidence, blocked with evidence, or a question for
+the user. A rejection closes its entry, and a blocked entry stays open for the next fix list. It
+returns a question only for a product decision that no rule, skill or word of the user decides,
+after checking that the question is valid; the design of that rule is recorded in the document on
+the root making no decisions. The policy of these dispositions lives in the fixer's template, and
+the script's prompt carries only the inputs it needs. Where the list names a parent spec, the fixer
 checks it and sets `invalid-spec` on an invalid one before its first write. A list that names no
 spec gives the fixer and the diff check none to read, and their `abort` offers neither `no-words`
-nor `invalid-spec`. The roaster runs alongside it on the same
-list, as in the main script.
+nor `invalid-spec`. The roaster runs alongside it on the same list, as in the main script.
 
 **diff-check**: After the fixer, one read-only stage, with its own agent template, reads the fix
 diff from the parent run's final snapshot to the fixer's snapshot, with the fix list, the parent
@@ -159,3 +155,7 @@ Reason: The fix run passes on what the reviewer said.
 **rejected-spec-copy**: A fix list made from a copy of the spec.
 Reason: The fix run takes its own YAML shape, written from scratch, and a spec and a fix list never
 mix.
+
+**rejected-journal**: Reading what a run returned from the journal the workflow tool keeps for the
+run. Reason: the journal serves resuming and diagnosing a run, and what a run hands on is the result
+its script returns, so the script returns everything its fix list needs.

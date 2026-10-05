@@ -1,6 +1,6 @@
 # Synthetic fix list of a review pass: the findings of its review seats, and no spec, because the
 # change it reviewed was made without one.
-run: wf_review-pass
+result: tests/fixtures/fix-list/results/review-pass.json
 spec: null
 entries:
   - source: review:correctness:0

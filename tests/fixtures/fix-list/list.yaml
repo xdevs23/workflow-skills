@@ -1,6 +1,6 @@
-# Synthetic fix list: everything the parent run returned to be fixed, as its journal holds it, and the
-# spec the parent run checked. The verify stage ran twice, and only its last result counts.
-run: wf_parent-run
+# Synthetic fix list: everything the parent run returned to be fixed, as its saved result holds it,
+# and the spec the parent run checked.
+result: tests/fixtures/fix-list/results/parent-run.json
 spec: tests/fixtures/fix-list/parent.yaml
 entries:
   - source: impl:0

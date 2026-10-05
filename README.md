@@ -86,21 +86,21 @@ directly as `agentType`s in your own workflows.
   fails the check when the values give another. The writer of each workflow script runs the tool
   before anything else with `--proof` set to the fingerprint of the script's own launch values, and
   the script compares the printed proof with that fingerprint.
-  Its fix-list mode, `--fix-list <file> --transcripts <session-dir>` in place of the spec, checks
-  the fix list of a fix run, which names a parent run in `run`, the spec that run checked in `spec`,
+  Its fix-list mode, `--fix-list <file>` in place of the spec, checks the fix list of a fix run,
+  which names the saved result of a parent run in `result`, the spec that run checked in `spec`,
   null after a review pass, and holds in `entries` everything the run returned to be fixed, each as
-  its journal holds it: it compares the whole list, in order, with what the parent run returned and
+  that result holds it: it compares the whole list, in order, with what the parent run returned and
   the spec with the one that run checked, and prints the spec with the proof of the list's values,
-  and with `--entries` the entries as well. `--base` and `--partial-base` check a fix run's base list
-  against the tree as in the spec mode. `--make-fix-list <run> --transcripts <session-dir>` writes
-  the fix list of a run from its journal: every spec finding of its implementer, every decision and
+  and with `--entries` the entries as well. `--base` and `--partial-base` check a fix run's base
+  list against the tree as in the spec mode. `--make-fix-list <saved result>` writes the fix list of
+  a run from the output file the workflow tool saved its result in, copied into the project cache:
+  the spec its check passed on and the `toFix` list the run returns. Each workflow script builds
+  that list from the results it accepted: every spec finding of its implementer, every decision and
   unresolved issue of its finding verifier apart from an approved correction its fixer fixed or
-  rejected, or every finding of its reviewers in a run without a
-  verifier, every entry of a fix run's own list its fixer left open, and every finding of its
-  roaster and diff check. A fix run's fixer and diff check close an entry only through a result that
-  passes the fix run's own checks, the fixer's fix list check among them. A run whose check exited
-  non-zero, or in which a stage returned no result, gives no fix list and is resumed instead. Add
-  `--size <json>` to add a measured size breach of the unit.
+  rejected, or every finding of its reviewers in a run without a verifier, every entry of a fix
+  run's own list its fixer left open, and every finding of its roaster and diff check. A run that
+  ended `failed` gives no fix list and is resumed instead. Add `--size <json>` to add a measured
+  size breach of the unit.
 - **The pull request watcher `watch-prs` needs Python 3 and the GitHub CLI `gh`, logged in.**
   `babysit-pr` runs it. The watcher is a Python program in the plugin's tools directory, run with
   `python3`. It takes the state file with `--state`, the seconds between polls with `--interval`,

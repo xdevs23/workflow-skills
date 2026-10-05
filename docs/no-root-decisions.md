@@ -16,16 +16,17 @@ option of its own.
 
 ## How findings are handled
 
-What a run returns to be fixed goes, as its journal holds it, to a fix run. The spec tool writes the
-fix list from the parent run's journal with `--make-fix-list`: every spec finding of the
-implementer, every decision of the finding verifier, cleanup decisions included, apart from an
-approved correction its fixer reported fixed or rejected, every unresolved issue of the verifier,
-every finding of the review seats in a run without a verifier, such as a review pass, every entry a
-fix run's fixer left open, and every finding of the roaster and the diff check. The list names the
-spec the parent run checked. Nobody adds, removes or edits an entry, and nothing is attached to one,
-so no reading of the orchestrating session steers the fix. One function of the spec tool lists what
-a run returned, and both the generator and the check use it: the check compares the whole list with
-that list, so a deleted, an added and an edited entry fail alike.
+What a run returns to be fixed goes, as its result holds it, to a fix run. The run returns it in its
+`toFix` list, and the spec tool writes the fix list from the parent run's saved result with
+`--make-fix-list`: every spec finding of the implementer, every decision of the finding verifier,
+cleanup decisions included, apart from an approved correction its fixer reported fixed or rejected,
+every unresolved issue of the verifier, every finding of the review seats in a run without a
+verifier, such as a review pass, every entry a fix run's fixer left open, and every finding of the
+roaster and the diff check. The list names the spec the parent run checked. Nobody adds, removes or
+edits an entry, and nothing is attached to one, so no reading of the orchestrating session steers
+the fix. One function of the spec tool reads what a run returned, and both the generator and the
+check use it: the check compares the whole list with that list, so a deleted, an added and an edited
+entry fail alike.
 
 A size breach of the unit is measured after the run. The orchestrating session passes its
 measurement, the implementation lines added and the commits measured, to `--make-fix-list` with
