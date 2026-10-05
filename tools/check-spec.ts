@@ -475,6 +475,11 @@ const remainingOfKind = (remaining: unknown[], kind: string, describe: (item: Ma
   .filter((entry): entry is Mapping => mapping(entry) && entry.kind === kind)
   .map(({ item }) => mapping(item) ? describe(item) : JSON.stringify(item))
 
+// A run of an earlier version of the scripts returns neither list. Its chain of fix runs ends on
+// that version, whose spec tool and scripts stay in the plugin cache.
+const earlierVersion = 'as a run of an earlier version of the scripts returns: finish its chain of fix runs with the spec tool ' +
+  'and the scripts of the plugin version that ran it, from the plugin cache'
+
 // The workflow tool saves what a script returns in its output file under the key result.
 async function readSavedRunResult(file: string): Promise<Returned> {
   let output: unknown
@@ -483,13 +488,13 @@ async function readSavedRunResult(file: string): Promise<Returned> {
   }
   const result = mapping(output) ? output.result : undefined
   if (!mapping(result)) throw new Error(`${file} holds no run result`)
-  if (!Array.isArray(result.toFix)) throw new Error('the run result holds no toFix list, as a run of an earlier version of the scripts')
+  if (!Array.isArray(result.toFix)) throw new Error(`the run result holds no toFix list, ${earlierVersion}`)
   if (!Array.isArray(result.remaining)) throw new Error('the run result holds no remaining list')
   for (const { kind, refusal, describe } of refusedKinds) {
     const found = remainingOfKind(result.remaining, kind, describe)
     if (found.length) throw new Error(`${refusal}: ${found.join('; ')}`)
   }
-  if (!Array.isArray(result.artifacts)) throw new Error('the run result holds no artifacts list')
+  if (!Array.isArray(result.artifacts)) throw new Error(`the run result holds no artifacts list, ${earlierVersion}`)
   const strange = result.artifacts.findIndex(item => !artifact(item))
   if (strange >= 0) throw new Error(`the run result holds artifact ${strange + 1} in another form`)
   const snapshots: unknown = result.snapshots

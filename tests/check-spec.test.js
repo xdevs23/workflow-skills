@@ -449,6 +449,8 @@ const validList = Bun.YAML.parse(await Bun.file(validPath).text())
 const parentResultPath = 'tests/fixtures/fix-list/results/parent-run.json'
 const reviewResultPath = 'tests/fixtures/fix-list/results/review-pass.json'
 const parentOutput = await Bun.file(join(root, parentResultPath)).json()
+const EARLIER_VERSION = 'as a run of an earlier version of the scripts returns: finish its chain of fix runs with the ' +
+  'spec tool and the scripts of the plugin version that ran it, from the plugin cache'
 const validEntries = parentOutput.result.toFix
 const checkList = (path, options = [], cwd = root) => {
   const result = Bun.spawnSync([process.execPath, tool, '--fix-list', path, ...options], { cwd })
@@ -559,14 +561,14 @@ describe('fix list validation', () => {
       base: null, partialBase: false, tree: here }))
     expect(printed.proof).toBe(fingerprint({ fixList: printed.fixList, spec: parentSpecPath, entries: validEntries, artifacts,
       base: null, partialBase: false, tree: here }))
-    invalid(makeList(writeEditedParentResult(result => { delete result.artifacts })), 'the run result holds no artifacts list')
+    invalid(makeList(writeEditedParentResult(result => { delete result.artifacts })), 'the run result holds no artifacts list, ' + EARLIER_VERSION)
     for (const strange of [{ path: '/tree/capture' }, { ...artifacts[0], kind: 'capture' }, { path: 7, what: 'a capture' }, 'capture']) {
       invalid(makeList(writeEditedParentResult(result => { result.artifacts = [...artifacts, strange] })), 'the run result holds artifact 2 in another form')
     }
   })
 
   test('a file without a run result and a result of an earlier version give no fix list', () => {
-    invalid(makeList(writeEditedParentResult(result => { delete result.toFix })), 'the run result holds no toFix list, as a run of an earlier version of the scripts')
+    invalid(makeList(writeEditedParentResult(result => { delete result.toFix })), 'the run result holds no toFix list, ' + EARLIER_VERSION)
     invalid(makeList(writeEditedParentResult(result => { result.toFix = [] })), 'the run returned nothing to fix')
     const absent = join(scratch, 'absent-result.json')
     invalid(makeList(absent), `the run result ${absent} is unreadable or no JSON`)
