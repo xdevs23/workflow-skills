@@ -1109,12 +1109,15 @@ const openDecisions = numbered('verify', 'decision', decisions)
   .map(({ source, decision }) => ({ source,
     decision: benefitFindings.has(decision) ? { ...decision, projectBenefit: benefitFindings.get(decision) } : decision }))
 const unverifiedFindings = verified ? [] : sources.map(finding => ({ source: 'review:' + finding.id, finding }))
+// A failed proof is work for the next fix run like a finding, with the checks that failed.
+const failedProofs = remaining.filter(r => r.kind === 'failed-proof').map(r => r.item)
 const toFix = [
   ...numbered('impl', 'finding', impl?.specFindings ?? []),
   ...openDecisions,
   ...numbered('issue', 'issue', verified?.issues ?? []),
   ...unverifiedFindings,
   ...numbered('roaster', 'finding', roast?.findings ?? []),
+  ...numbered('proof', 'proof', failedProofs),
 ]
 const specCheckOutput = impl ? JSON.parse(impl.specCheck.stdout) : null
 const checkedSpec = specCheckOutput && { path: specCheckOutput.spec, sha256: specCheckOutput.sha256, lines: specCheckOutput.specLines }

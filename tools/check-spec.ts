@@ -365,7 +365,7 @@ async function main() {
 }
 
 const fixListKeys = ['result', 'spec', 'entries']
-const itemFields = { impl: 'finding', verify: 'decision', issue: 'issue', roaster: 'finding', diff: 'finding' } as const
+const itemFields = { impl: 'finding', verify: 'decision', issue: 'issue', roaster: 'finding', diff: 'finding', proof: 'proof' } as const
 const entrySource = new RegExp(`^(?:(?<kind>${Object.keys(itemFields).join('|')}|entry|review:[a-z][a-z-]*):(?:0|[1-9][0-9]*)|size)$`)
 const sourceNames = [...Object.keys(itemFields), 'review:<seat>', 'entry'].map(kind => `${kind}:<index>`).concat('size').join(', ')
 const fields: Record<string, string> = { ...itemFields, entry: 'entry', size: 'size' }

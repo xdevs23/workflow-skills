@@ -854,9 +854,9 @@ second implementer pre-check.
   rules. A run that ended any other way, before or after its review, has its items recorded like
   every run, and you never start a run on the same spec again.
 - **A fix run fixes what a run returned to be fixed.** Start one for every run, a fix run included,
-  that returned a decision or a finding to fix. A general instruction to fix findings does not
-  authorize a particular fix, because the user may not agree with the finding, so no unit spec cites
-  such words for one, and the fix run's fixer judges every entry as a claim.
+  that returned a decision, a finding or a failed proof to fix. A general instruction to fix
+  findings does not authorize a particular fix, because the user may not agree with the finding,
+  so no unit spec cites such words for one, and the fix run's fixer judges every entry as a claim.
 - The fix run is `scripts/fix-follow-up.js`, copied and filled in its marked block like the main
   script, `scripts/implement-review-verify.js`. Its copy sets `meta.name` to a kebab-case name of
   the fix run and `meta.description` to one line saying what the run fixes, as a copy of the main
@@ -882,8 +882,10 @@ second implementer pre-check.
   findings in `projectBenefit`, and every unresolved issue of it, as `issue:<index>`; in a run
   without a verify stage, such as a review pass, every finding of its reviewers, as
   `review:<seat>:<index>`; in a fix run, every entry of its own list that its fixer left open, as
-  `entry:<index>`; and every finding of its roast stage and of its diff check, as `roaster:<index>`
-  and `diff:<index>`.
+  `entry:<index>`; every finding of its roast stage and of its diff check, as `roaster:<index>`
+  and `diff:<index>`; and every `failed-proof` item of its `remaining` list, its writer's label and
+  quoted checks, as `proof:<index>`. A failed proof stays work for the next fix run whatever the
+  fixer answered: the fixes and rejections close their entries, and the failing check stays open.
 - Expect the tool to refuse the fix list of a run in which a stage failed, whatever exit the run
   ended with. A stage either returns, is retried or ends the run, and every stage that failed leaves
   a `stage-failure` item in `remaining`, also when an earlier cause, such as a blocked correction,

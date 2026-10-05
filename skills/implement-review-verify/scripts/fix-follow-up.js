@@ -685,10 +685,14 @@ const closesEntry = ({ key, disposition }) => ['rejected', 'question'].includes(
   (provenFixes.has(key) && !projectBenefit(entryOf.get(key)))
 const closedSources = new Set((passedFix?.dispositions ?? []).filter(closesEntry).map(d => d.key))
 const numbered = (kind, field, items) => items.map((item, i) => ({ source: kind + ':' + i, [field]: item }))
+// A failed proof is work for the next fix run like a finding, with the checks that failed, whatever
+// the fixer answered: its fixes and rejections close their entries, and the failing check stays open.
+const failedProofs = remaining.filter(r => r.kind === 'failed-proof').map(r => r.item)
 const toFix = [
   ...numbered('entry', 'entry', entries).filter(({ entry }) => !closedSources.has(entry.source)),
   ...numbered('roaster', 'finding', roast?.findings ?? []),
   ...numbered('diff', 'finding', diff?.findings ?? []),
+  ...numbered('proof', 'proof', failedProofs),
 ]
 const listCheckOutput = reportedFix ? JSON.parse(reportedFix.specCheck.stdout) : null
 const checkedParentSpec = listCheckOutput?.spec
