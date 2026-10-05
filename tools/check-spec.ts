@@ -434,7 +434,8 @@ const sha256Form = (value: unknown): value is Sha256 => typeof value === 'string
 const specLineCount = (value: unknown): value is SpecLineCount => Number.isSafeInteger(value) && Number(value) > 0
 type CheckedSpec = { path: string, sha256: Sha256, lines: SpecLineCount }
 type Entry = Mapping & { source: string }
-type Returned = { spec: CheckedSpec | null, entries: Entry[] }
+type Artifact = { path: string, what: string }
+type Returned = { spec: CheckedSpec | null, entries: Entry[], artifacts: Artifact[] }
 
 function checkedSpec(spec: unknown): CheckedSpec | null {
   if (spec === null) return null
@@ -449,6 +450,9 @@ const returnedItem = (value: unknown) => {
   const named = sourceOf(value.source)
   return named !== undefined && named.source !== 'size' && Object.keys(value).length === 2 && mapping(value[named.field])
 }
+
+const artifact = (value: unknown): value is Artifact => mapping(value) && Object.keys(value).length === 2 &&
+  typeof value.path === 'string' && typeof value.what === 'string'
 
 // The exit of a run names only the first cause that ended it, so a stage that failed or raised a
 // hard flag after another cause shows only as its item in remaining.
@@ -473,6 +477,9 @@ async function readSavedRunResult(file: string): Promise<Returned> {
   if (flags.length) {
     throw new Error(`a stage of the run raised a hard flag, and only a new run that receives the user's answer continues the unit: ${flags.join('; ')}`)
   }
+  if (!Array.isArray(result.artifacts)) throw new Error('the run result holds no artifacts list')
+  const strange = result.artifacts.findIndex(item => !artifact(item))
+  if (strange >= 0) throw new Error(`the run result holds artifact ${strange + 1} in another form`)
   const items: unknown[] = result.toFix
   const malformed = items.findIndex(item => !returnedItem(item))
   if (malformed >= 0) throw new Error(`the run result holds item ${malformed + 1} of toFix in another form`)
@@ -481,7 +488,7 @@ async function readSavedRunResult(file: string): Promise<Returned> {
     if (seen.has(source)) throw new Error(`the run result holds the source ${source} twice in toFix`)
     seen.add(source)
   }
-  return { spec: checkedSpec(result.spec), entries: items as Entry[] }
+  return { spec: checkedSpec(result.spec), entries: items as Entry[], artifacts: result.artifacts as Artifact[] }
 }
 
 // A size breach is measured after the run, against the spec lines the parent run's spec check counted.
@@ -630,15 +637,17 @@ async function checkFixList(file: string, { json, withEntries, base, partialBase
   if (!parent) throw new Error('the fix list passed without what its parent run checked')
   const listed = entries.map(({ value }) => value)
   const spec = parent.spec?.path ?? null
+  const { artifacts } = parent
   // The entries appear only with --entries, because the fixer returns the output whole.
   const summary = {
     ...(withEntries ? { entries: listed } : {}),
     result: (fixList as Mapping).result,
     spec,
     ...(parent.spec ? { specSha256: parent.spec.sha256, specLines: parent.spec.lines } : {}),
+    artifacts,
     ...(base ? { base } : {}),
     sha256: sha256Of(bytes!),
-    proof: proven({ fixList: file, spec, entries: listed, base, partialBase, tree: process.cwd() }, expected),
+    proof: proven({ fixList: file, spec, entries: listed, artifacts, base, partialBase, tree: process.cwd() }, expected),
     fixList: file,
   }
   console.log(json ? JSON.stringify(summary) :

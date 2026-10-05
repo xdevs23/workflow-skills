@@ -158,5 +158,5 @@ Rules:
 The returned object is the deliverable and carries everything you owe.
 
 The task context (approved keyed corrections with evidence, authority, boundaries and acceptance
-checks, or in a fix run the entries of the fix list and the parent spec, plus the spec and the
-implementer's artifacts in a main run and the test/build commands) follows.
+checks, or in a fix run the entries of the fix list and the parent spec, plus the spec in a main
+run, the implementer's artifacts when it left any, and the test/build commands) follows.

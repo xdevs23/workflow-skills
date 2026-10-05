@@ -1087,6 +1087,7 @@ return {
   proof: passedFix ? { checks: passedFix.checks, files: passedFix.files }
     : impl ? { checks: impl.checks, files: impl.files } : null,
   spec: checkedSpec, base, snapshots,
+  artifacts: impl?.artifacts ?? [], // every fix run of the unit hands them to its fixer and diff check
   acceptance: 'pending-root-checks', // Pass completion is not size approval or integration permission.
   counts: { sources: sources.length, approved: queue.length,
     rejected: decisions.filter(d => d.action === 'reject').length,

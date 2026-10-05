@@ -67,5 +67,5 @@ Rules:
 
 The returned object is the deliverable and carries everything you owe.
 
-The task context (the fix list, the parent spec where it names one, the base and snapshot commits
-and the entries) follows.
+The task context (the fix list, the parent spec where it names one, the base and snapshot commits,
+the parent unit's implementer artifacts when it left any, and the entries) follows.

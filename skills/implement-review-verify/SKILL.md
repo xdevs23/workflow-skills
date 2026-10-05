@@ -390,6 +390,9 @@ collisions and consistency drift.
 - Expect the correctness and duplicate readers and the finding verifier to read the artifacts in the
   implementer's object, which they receive whole.
 - Expect the unbriefed reviewers and the roaster to receive no artifacts.
+- Expect each script to return the implementer's `artifacts` in its result, an empty list when there
+  are none, and the fix script to hand the artifacts it received at launch to its fixer and its diff
+  check, so every fix run of the unit reaches the same files.
 - The script accepts a writer only when every repository of the list appears exactly once at its
   expected start, each quoted `git.head` equals its `snapshotSha`, each `clean` agrees with an empty
   `git.status`, a repository whose snapshot moved has commits in it and an unchanged one none, and a
@@ -902,21 +905,22 @@ second implementer pre-check.
 - Run `<plugin root>/tools/check-spec.ts --fix-list <file> --json --entries`, which compares the
   whole list with everything the saved result of the parent run returned to be fixed, in its order,
   so an entry that differs, is missing, was added or stands out of order fails, holds the spec to
-  the one the parent run checked, unchanged since, and prints the spec and the entries with the
-  proof only when all of them hold.
-- Pass the tool's `spec` and `entries` output as `args.spec` and `args.entries` and the parent run's
-  final snapshots as `args.base`, the `snapshots` list its run record returns, or after a review
-  pass, which returns none, the commit each repository is at, and fill the parent
-  unit's documents directory and the applicable rule sources, as `ruleSources`, into the block.
+  the one the parent run checked, unchanged since, and only when all of them hold prints the spec,
+  the entries and the implementer `artifacts` the saved result holds, with the proof.
+- Pass the tool's `spec`, `entries` and `artifacts` output as `args.spec`, `args.entries` and
+  `args.artifacts` and the parent run's final snapshots as `args.base`, the `snapshots` list its
+  run record returns, or after a review pass, which returns none, the commit each repository is
+  at, and fill the parent unit's documents directory and the applicable rule sources, as
+  `ruleSources`, into the block.
 - Set `worktree` in the fix script's marked block to the worktree's absolute path as `pwd -P` prints
   it there, and `partialBase` to true when the parent run's base list was partial.
 - The fixer runs the same command in the worktree before anything else, without `--entries` and with
   the base list as `--base`, and `--partial-base` beside it when `partialBase` is set, so the tool
   checks the base list against the repositories of the tree as in the main run, and with `--proof`
-  set to the fingerprint of the list, the spec, the entries, the base list and the worktree the
-  script received. The tool fails before the fixer's first edit when the list gives another proof,
-  and the run continues only when the proof the tool prints is that fingerprint, so every stage
-  receives what the parent run returned and starts from commits the tree holds.
+  set to the fingerprint of the list, the spec, the entries, the artifacts, the base list and the
+  worktree the script received. The tool fails before the fixer's first edit when the list gives
+  another proof, and the run continues only when the proof the tool prints is that fingerprint, so
+  every stage receives what the parent run returned and starts from commits the tree holds.
 - The fix run's fixer receives every entry, one key per source, and the parent spec. It resolves
   each entry with the user's words, the rule sources and the plugin's skills as its guide. Before it
   returns anything but fixed, it looks for every applicable rule and skill that says what to do or
@@ -1502,11 +1506,12 @@ another attempt could pass only by changing what the check compares.
 The fix run's fixer runs the tool's fix-list mode in place of the spec check: `--fix-list` with the
 fix list from `args.fixList`, `--json`, the base list and `--proof`. The command carries no value of
 the list, so the fixer copies nothing long. Its proof is the fingerprint of the list path, the spec,
-which is null for a list that names none, the entries, the base list, whether it is partial and the
-worktree, so a launched spec or entry that differs from the list fails the tool before the fixer's
-first edit. The script refuses at once when `args.fixList` does not end in `.yaml`, and the run ends
-when the launch values differ from the list, when the list differs from what the parent run returned
-to be fixed, or when the spec changed since the parent run checked it. A failed check ends the run
+which is null for a list that names none, the entries, the artifacts of the parent run, the base
+list, whether it is partial and the worktree, so a launched spec, entry or artifact that differs
+from what the list and the parent run's result hold fails the tool before the fixer's first edit.
+The script refuses at once when `args.fixList` does not end in `.yaml`, and the run ends when the
+launch values differ from the list, when the list differs from what the parent run returned to be
+fixed, or when the spec changed since the parent run checked it. A failed check ends the run
 as `failed`, and a failed run gets no fix list. The roaster starts beside the fixer, and its
 findings, its limitations or its failure reach `remaining` also when the fixer's check failed.
 
