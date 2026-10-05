@@ -146,16 +146,9 @@ milestone until its stop condition holds and the evidence shows it.
 - Build the Android SDK from nixpkgs `androidenv.composeAndroidPackages` in the flake, with
   `allowUnfree` and `android_sdk.accept_license` set in its nixpkgs configuration, and every
   platform and build-tools version the build needs listed there.
-- Link the SDK into a `.cache` directory outside the repository with `nix build path:.#android-sdk
-  -o ../.cache/android-sdk`, because a `path:` flake reference copies the whole tree into the Nix
-  store, and point a committed `local.properties` at it with the relative line
-  `sdk.dir=../.cache/android-sdk/libexec/android-sdk`.
-- Populate `../.cache/android-sdk` as a symlink forest instead, with an app of the flake, where a
-  tool refuses to follow the single top-level link. The SDK root is then that directory itself.
-- Run `./gradlew --stop` after the link moves, because a running Gradle daemon keeps the old SDK
-  location.
-- Point Gradle at the patched `aapt2` of the SDK with `-Pandroid.aapt2FromMavenOverride` on a NixOS
-  machine without nix-ld, where the `aapt2` that Gradle downloads cannot run.
+- Link the built SDK into a `.cache` directory with `nix build` and its `-o` option, through a
+  `path:` flake reference. The project decides where that directory lies.
+- Set `ANDROID_HOME` to that shared link, and leave `sdk.dir` out of `local.properties`.
 
 ## Code
 

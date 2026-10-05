@@ -11,8 +11,8 @@ experiments and novel approaches that have no settled architecture yet.
 The skill applies only on the user's grant, and the user chooses its scope: one task, the whole
 session until revoked, or a timeframe. The grant is recorded in the run file and checked before
 every decision, a revocation stops the run at once, and outward-facing actions such as pushing,
-publishing or system-wide changes stay with the user inside a grant as well. Without a grant, the global rules apply unchanged and
-decisions go to the user.
+publishing or system-wide changes stay with the user inside a grant as well. Without a grant, the
+global rules apply unchanged and decisions go to the user.
 
 ## What the skill holds
 
@@ -40,8 +40,8 @@ harmed, and nothing system-wide changes without consent.
 
 Every project has a pure, source-buildable `flake.nix` whose checks run the licence and advisory
 checks, and tools that are missing come from Nix. The Android SDK is built from nixpkgs
-`androidenv` and linked into a `.cache` directory outside the repository, because a `path:` flake
-reference copies the whole tree into the Nix store.
+`androidenv` and linked into a `.cache` directory that each project chooses, and `ANDROID_HOME`
+points at that link, so no `sdk.dir` is needed.
 
 ## Decisions
 
