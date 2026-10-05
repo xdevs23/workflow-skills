@@ -59,7 +59,10 @@ to fix. A decision on a kind-bearing finding, a project-benefit decision, carrie
 `projectBenefit`, because the decision alone names its sources only by their IDs and the fix run
 needs to know its kind. A decision the main run's accepted fixer answered carries that answer in
 `disposition`, so the fix run's fixer reads the reason and receipts of a blocked correction, or of a
-fix reported without a commit, beside it. A fix run's fixer closes an entry by rejecting it, by
+fix reported without a commit, beside it. An entry of a fix run's own list that its accepted fixer
+answered and left open carries that answer the same way, in `disposition` inside the entry, and an
+answer of an earlier fix run stays inside the entry it wraps, so the newest answer is outermost and a
+blocking reason survives every later handoff. A fix run's fixer closes an entry by rejecting it, by
 raising it as a question or by a fix its diff check mapped a change to; a blocked entry and one the
 fixer never answered stay open. A fix closes no project-benefit entry, which holds a finding with a
 kind, a decision with `projectBenefit`, or an earlier entry that holds either: a patch that keeps
@@ -164,9 +167,11 @@ also does when only roast findings remain. A rejected entry stays in the run's d
 no remaining item. Only a fixer result the run accepted answers an entry: after an abort, every
 entry stays open with the fixer's response beside it. A question returns as a user question and ends
 the run `root-resolution`, as does a blocked entry, a fix reported as done that has no commit or
-maps to no change in the diff check, a failed proof, or a change the diff check maps to no entry. It
-ends `clean` only when nothing at all remains. Aborts and stage failures end it as in the main
-script.
+maps to no change in the diff check, a failed proof, or a change the diff check maps to no entry.
+Each premise the accepted fixer result reports false returns as a must-fix `false-premise` item with
+the fixer's label, as in the main script, because the fixer's template counts a false prompt premise
+as a must-fix finding. It ends `clean` only when nothing at all remains. Aborts and stage failures
+end it as in the main script.
 
 **fix-document**: A fixer whose correction alters the design extends the design document that
 already describes the part it changed, and writes a new one, named after the fix list, only when no

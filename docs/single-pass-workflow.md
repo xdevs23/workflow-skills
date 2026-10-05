@@ -59,6 +59,9 @@ no loop. This builds on [finding verification](workflow-finding-verification.md)
      the `dispositions` the run returns;
    * `failed-proof`: a writer's `checks` when its `proofPassed` is false, the implementer's or
      the fixer's, with the writer's label; `CRITICAL`;
+   * `false-premise`: each premise an accepted fixer result reports with `holds` false, its
+     claim and note with the fixer's label; `must-fix`, so a run it alone leaves open ends
+     `follow-up`;
    * `roast-finding`: every roaster finding, with the roast's snapshot SHA; the finding's own
      severity;
    * `roast-limitation`: every roaster limitation of effect `narrows` and every roaster
