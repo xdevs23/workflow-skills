@@ -1,16 +1,21 @@
 # Decisions as pictures
 
 The visual decisions skill, `workflow-skills:visual-decisions`, puts open product or architecture
-decisions to the user as one HTML page. Every decision on the page is a pair of pictures, Today and
-After, with a short caption under each and a highlight on the part that changes, and the message
-that opens the page ends with one question the user can answer per decision.
+decisions to the user as one HTML page. Every decision on the page is a set of pictures side by
+side, the code as it stands and After, with a short caption under each and a highlight on the part
+that changes, and the message that opens the page ends with one question the user can answer per
+decision.
 
 ## What the skill asks for
 
-Before drawing, the assistant reads in full the code behind today's state of every decision, so a
-Today picture shows what the code does. A statement about today that the code contradicts is drawn
-as the code has it, with a line starting `CORRECTION:` under the decision, and an After that the
-code does not define yet is drawn as a proposal whose caption names any layout the assistant chose.
+Every picture of a state is labelled by what that state is: the merged code by its branch or
+deployment, such as the main branch, the develop branch or production, and work that is not merged
+yet as unmerged, with its branch. A decision shows the state it starts from and After, or, when it
+helps, three pictures: the merged code, the unmerged work and After. Before drawing, the assistant
+reads in full the code behind every state it draws, at the commit that state names, so each picture
+shows what that code does. A statement about a state that its code contradicts is drawn as the code
+has it, with a line starting `CORRECTION:` under the decision, and an After that the code does not
+define yet is drawn as a proposal whose caption names any layout the assistant chose.
 
 The page is one standalone HTML file in the project cache, with its CSS inside it and no external
 resources. It holds no paragraphs. A visible change imitates the real screen, a change nobody sees
@@ -35,3 +40,13 @@ The skill's description says only when it applies, as the repository's rules for
 Scratch files follow the project cache skill, so the page goes where every other file not meant for
 the repository goes. The skill names no browser, because the plugin ships no general renderer for a
 page, and the visual verification skill is a harness for a project's own interface.
+
+No picture is labelled Today, Now or Current. The assistant usually draws from a worktree whose
+changes are not merged yet, and such a label reads as the state the work started from, so the user
+took unmerged work for the code that was already in place. A label that names the branch, the
+deployment or the unmerged work says which code the picture shows.
+
+## Rejected alternatives
+
+**rejected-today-label**: A pair of pictures labelled Today and After. Reason: Today hides whether
+the picture shows the merged code or the assistant's own unmerged work.
