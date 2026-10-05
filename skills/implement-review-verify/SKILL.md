@@ -425,8 +425,8 @@ consolidation.
   concerns, abstraction quality, code smell, type safety, code cleanliness, missing gaps, domain
   leakage and type smearing), each loading the agent template of its name.
 - A review pass reads a change made without a spec, so spec compliance and inverse-spec do not run
-  in it, and the other thirteen seats read the change without one, as `workflow-skills:review-pass`
-  describes.
+  in it, and the other thirteen reviewers read the change without one, as
+  `workflow-skills:review-pass` describes.
 - Never leave a review seat out, rewrite a seat's template or the prompt text the script gives a
   seat, or remove anything from either. The one exception is the note
   `workflow-skills:resume-interrupted-run` appends to the prompt of an interrupted agent of a run
@@ -1335,7 +1335,7 @@ These laws are non-negotiable across every run of this skill.
    trigger with more than one disposition is the deadlock in another costume. The unbriefed seats carry
    no `abort` field, because its member names would brief them, and an absent field is no abort. A
    change made without a spec gives the third and fourth triggers nothing to read: in a review pass
-   no seat carries an `abort` field, and in a fix run whose list names no spec the `trigger` enum
+   no reviewer carries an `abort` field, and in a fix run whose list names no spec the `trigger` enum
    leaves out `no-words` and `invalid-spec`. And
    the structural abort lives in the **SCRIPT**, which checks **every consumed stage result** for a
    trigger other than `none` and throws with the whole object, never delegated to a downstream
@@ -1769,8 +1769,9 @@ agent the script starts, and you set every one of them, as law 1 requires. Every
 entry ships with a placeholder in angle brackets as its model, such as `<explicit>`, so no shipped
 script names a model, and no agent template names one either. In the main script, `models.review`
 holds one entry per review seat, keyed by the seat's label, so each of the fifteen seats can run on
-its own model. A review pass leaves out the entries of the two seats it does not run. The script stops before its first agent when an entry is missing, is still a
-placeholder, or names an agent or seat the script does not have. It stops as well on an entry that
+its own model. A review pass leaves out the entries of the two reviewers it does not run. The
+script stops before its first agent when an entry is missing, is still a placeholder, or names an
+agent or seat the script does not have. It stops as well on an entry that
 holds any field besides the model and the effort, because the stage options take the entry whole
 and such a field would replace the agent's template or another option. A seat that reads whole
 files, such as the rule reader, may need a model with a larger context than the others.

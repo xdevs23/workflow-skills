@@ -28,8 +28,8 @@ and the rule sources.
 - Copy the main script of `workflow-skills:implement-review-verify` and set `reviewOnly` to true in
   its marked block.
 - Fill the rest of the marked block as for a main run, every model entry included apart from the
-  `spec` and `inverse` entries of `models.review`. Leave those two out: their seats do not run, and
-  the script stops on an entry that names no seat it runs.
+  `spec` and `inverse` entries of `models.review`. Leave those two out: those reviewers do not run,
+  and the script stops on an entry that names no reviewer it runs.
 - Set `meta.name` to a kebab-case name of the review and `meta.description` to one line saying what
   it reviews.
 - Pass at launch `base` and `head`, one `{ path, sha }` per git repository of the tree each: the

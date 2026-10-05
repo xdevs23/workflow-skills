@@ -365,10 +365,8 @@ async function main() {
     `unbreakable=${JSON.stringify(summary.unbreakable)} proof=${summary.proof} spec=${summary.spec}`)
 }
 
-// A fix list holds everything one earlier run returned to be fixed, each item as the run's journal
-// holds it, and names the spec of the unit the run belongs to, which the fix run reads for the user's
-// words, or null when the run checked none, as a review pass does. A fix list is never written from a
-// spec, and the two never mix: each mode refuses the keys of the other.
+// A fix list names its parent run and the spec that run checked, or null, and holds the items the run
+// returned as its journal holds them. Each mode refuses the keys of the other.
 const fixListKeys = ['run', 'spec', 'entries']
 // The sources that name an item in the last result of one stage of the run: the stage label, the
 // list in that result and the field an entry holds the item under.
@@ -586,8 +584,7 @@ async function returned(run: string, transcripts: string): Promise<{ launch: Lau
   return { launch, entries }
 }
 
-// A size breach of the unit, measured after the run: the implementation lines its candidate added
-// over the base in each repository, beside the spec lines the parent run's spec check counted.
+// A size breach is measured after the run, against the spec lines the parent run's spec check counted.
 const sizeKeys = ['specLines', 'codeAdded', 'repositories']
 const measuredKeys = ['path', 'base', 'candidate']
 const commitId = /^(?:[0-9a-f]{40}|[0-9a-f]{64})$/
@@ -655,10 +652,8 @@ function listedEntry({ fail, shape }: Validator, value: unknown, index: number, 
   return { index, source, field, value }
 }
 
-// Holds the list to what the parent run returned to be fixed: every entry the run returned, each as
-// its journal holds it and in the order the generator writes it, nothing else beside a size breach of
-// the unit, which comes last, and the spec the run checked, unchanged since, or null when it checked
-// none. A spec of undefined failed its shape and is not compared. Returns what the run checked.
+// The list holds every item the parent run returned, in the generator's order, with a size breach
+// last, and the spec that run checked, unchanged since, or null when it checked none.
 async function compareWithRun({ fail }: Validator, transcripts: string, run: string, spec: string | null | undefined,
   entries: ListedEntry[]) {
   let held: Awaited<ReturnType<typeof returned>>
@@ -743,9 +738,7 @@ async function checkFixList(file: string, transcripts: string, { json, withEntri
   if (!launch) throw new Error('the fix list passed without what its parent run checked')
   const listed = entries.map(({ value }) => value)
   const spec = launch.spec?.path ?? null
-  // The entries appear only on request, because the fixer returns the output whole. The base list was
-  // checked against the tree the tool runs in, so the proof covers that tree too, and a fix run's
-  // output carries the base list on to the check of its fixer's result.
+  // The entries appear only with --entries, because the fixer returns the output whole.
   const summary = {
     ...(withEntries ? { entries: listed } : {}),
     run: (fixList as Mapping).run,
