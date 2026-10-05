@@ -1068,7 +1068,10 @@ const projectBenefitDecisions = decisions.filter(d => d.sourceIds.some(id => sou
     .map(({ id, seat, kind, file, claim }) => ({ id, seat, kind, file, claim })) }))
 const numbered = (kind, field, items) => items.map((item, i) => ({ source: kind + ':' + i, [field]: item }))
 const settled = new Set((passedFix?.dispositions ?? []).filter(d => ['fixed', 'rejected'].includes(d.disposition)).map(d => d.key))
-const openDecisions = numbered('verify', 'decision', decisions).filter(({ decision }) => !settled.has(approvalKeys.get(decision)))
+// An inverse-spec decision goes to the next fix run also when the fixer settled it (law 13).
+const fromInverse = new Set(inverseSpecDecisions)
+const openDecisions = numbered('verify', 'decision', decisions)
+  .filter(({ decision }) => fromInverse.has(decision) || !settled.has(approvalKeys.get(decision)))
 const unverifiedFindings = verified ? [] : sources.map(finding => ({ source: 'review:' + finding.id, finding }))
 const toFix = [
   ...numbered('impl', 'finding', impl?.specFindings ?? []),
