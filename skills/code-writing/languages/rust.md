@@ -18,7 +18,10 @@
   the `# Safety` contract of every unsafe entry point, and give each allocation handed out a
   matching free function.
 - Forbid `unsafe_code` and turn on clippy `all` and `pedantic` in the workspace lints, and let
-  warnings fail the check.
+  warnings fail the check. `unsafe` should never be used. The only exception is code where it is
+  really unavoidable: an OS kernel, for example, always has some code that requires `unsafe`.
+  However, that part should stand on its own, be as small as possible, and be rigorously checked,
+  tested and verified.
 - Put features only tests need in the development dependencies, so they never compile into
   consumers.
 - Use the idioms: iterators, pattern matching, `Result` and `Option` combinators, trait
