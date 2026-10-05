@@ -450,7 +450,7 @@ const parentResultPath = 'tests/fixtures/fix-list/results/parent-run.json'
 const reviewResultPath = 'tests/fixtures/fix-list/results/review-pass.json'
 const parentOutput = await Bun.file(join(root, parentResultPath)).json()
 const EARLIER_VERSION = 'as a run of an earlier version of the scripts returns: finish its chain of fix runs as the ' +
-  'skill, the spec tool and the scripts of the plugin version that ran it say, from the plugin cache'
+  'skill, the spec tool and the scripts of the newest plugin version below 0.42.0 in the plugin cache say'
 const validEntries = parentOutput.result.toFix
 const checkList = (path, options = [], cwd = root) => {
   const result = Bun.spawnSync([process.execPath, tool, '--fix-list', path, ...options], { cwd })

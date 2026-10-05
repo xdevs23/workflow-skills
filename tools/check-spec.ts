@@ -477,7 +477,7 @@ const remainingOfKind = (remaining: unknown[], kind: string, describe: (item: Ma
 
 // Runs of an earlier version of the scripts return neither toFix nor artifacts.
 const earlierVersion = 'as a run of an earlier version of the scripts returns: finish its chain of fix runs as the skill, ' +
-  'the spec tool and the scripts of the plugin version that ran it say, from the plugin cache'
+  'the spec tool and the scripts of the newest plugin version below 0.42.0 in the plugin cache say'
 
 // The workflow tool saves what a script returns in its output file under the key result.
 async function readSavedRunResult(file: string): Promise<Returned> {
