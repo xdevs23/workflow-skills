@@ -2200,6 +2200,33 @@ describe('fix-only follow-up runs', () => {
     expect(result.remaining).toEqual([unattestedFixItem('verify:0')])
   })
 
+  // A failed proof is the one open item of these runs: the fixes and rejections closed every entry, or
+  // the main run approved nothing. The list generator and the fix list check carry it as proof:0.
+  test('a failed proof reaches the next fix list after a mapped fix, after rejections and after a proof-only pass', async () => {
+    mkdirSync(TREE + '/.cache', { recursive: true })
+    const scratch = mkdtempSync(TREE + '/.cache/workflow-routing-')
+    const tool = (...options) => Bun.spawnSync([process.execPath, TREE + '/tools/check-spec.ts', ...options], { cwd: TREE })
+    try {
+      const specPath = 'tests/fixtures/fix-list/parent.yaml'
+      const sha256 = new Bun.CryptoHasher('sha256').update(await Bun.file(TREE + '/' + specPath).arrayBuffer()).digest('hex')
+      const proofOnly = await simulate({ specCheck: passedCheck(mainLaunchValues(launchArgs()), {}, { spec: specPath, sha256, specLines: 1 }),
+        fixes: { fix: fixed([], { proofPassed: false }) } })
+      const mappedFix = await simulateFix({ fixes: fixed([disposition('verify:0')], { proofPassed: false }) })
+      const rejected = await simulateFix({ fixes: fixed([disposition('verify:0', 'rejected')], { touched: [], proofPassed: false }) })
+      for (const [name, { result }] of [['proof-only', proofOnly], ['mapped-fix', mappedFix], ['all-rejected', rejected]]) {
+        expect([name, result.exit, result.toFix]).toEqual([name, 'root-resolution', [{ source: 'proof:0', proof: { label: 'fix', checks: [fullCheck(false)] } }]])
+        const saved = scratch + '/' + name + '.json', fixList = scratch + '/' + name + '.yaml'
+        writeFileSync(saved, JSON.stringify({ result }))
+        const made = tool('--make-fix-list', saved)
+        expect([name, made.exitCode, made.stderr.toString()]).toEqual([name, 0, ''])
+        writeFileSync(fixList, made.stdout.toString())
+        const checked = tool('--fix-list', fixList, '--json', '--entries')
+        expect([name, checked.exitCode, checked.stderr.toString()]).toEqual([name, 0, ''])
+        expect([name, JSON.parse(checked.stdout.toString()).entries]).toEqual([name, result.toFix])
+      }
+    } finally { rmSync(scratch, { recursive: true, force: true }) }
+  })
+
   test('a fix reported as done without a commit, or mapped to no change, returns as an unproven fix', async () => {
     const uncommitted = await simulateFix({ fixes: fixed([disposition('verify:0')], { touched: [] }) })
     expect(labels(uncommitted.calls)).not.toContain('diff')

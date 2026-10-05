@@ -691,7 +691,7 @@ describe('fix list validation', () => {
     ['an entry with a correction', l => { l.entries[5].correction = 'Close the handle.' }, 'roaster:0.correction: unknown key'],
     ['an entry with pointers', l => { l.entries[5].attach = [] }, 'roaster:0.attach: unknown key'],
     ['a reviewer source', l => { l.entries[5].source = 'correctness:1' },
-      'entry 6.source: expected impl:<index>, verify:<index>, issue:<index>, roaster:<index>, diff:<index>, review:<seat>:<index>, entry:<index>, size: "correctness:1"'],
+      'entry 6.source: expected impl:<index>, verify:<index>, issue:<index>, roaster:<index>, diff:<index>, proof:<index>, review:<seat>:<index>, entry:<index>, size: "correctness:1"'],
     ['a duplicate source', l => { l.entries.push(structuredClone(l.entries[1])) }, 'verify:0: duplicate source verify:0'],
   ])('%s fails shape validation', (name, edit, message) => invalid(changedList(edit), message))
 

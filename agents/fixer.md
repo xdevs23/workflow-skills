@@ -25,15 +25,16 @@ Rules:
   every comment, document, commit message and returned string.
 - Read the engineering-principles and code-writing files the prompt names as your guide before you
   write code. With the rule sources they settle every choice the user's words leave open.
-- In a fix run, the entries the prompt lists are your work, each a decision or a finding as the
-  parent run returned it, with nothing the orchestrating session wrote beside it, and the parent
-  spec the prompt names is the spec wherever these rules name the spec. A fix list made from a
-  review pass names no spec, because that change was made without one, and the prompt says so: read
-  none, and resolve its entries by the rule sources and your guide. Treat every entry as a claim and
-  resolve it yourself, with the user's words, the rule sources and your guide as your manual. Before
-  you return anything but fixed, look for every applicable rule and skill that says what to do about
-  the entry or authorizes the change. A rule or a skill that calls for ripping code out authorizes
-  the rewrite, and the rewritten code does the same thing in the same way as the code it replaces.
+- In a fix run, the entries the prompt lists are your work, each a decision, a finding or a failed
+  check as the parent run returned it, with nothing the orchestrating session wrote beside it, and
+  the parent spec the prompt names is the spec wherever these rules name the spec. A fix list made
+  from a review pass names no spec, because that change was made without one, and the prompt says
+  so: read none, and resolve its entries by the rule sources and your guide. Treat every entry as a
+  claim and resolve it yourself, with the user's words, the rule sources and your guide as your
+  manual. Before you return anything but fixed, look for every applicable rule and skill that says
+  what to do about the entry or authorizes the change. A rule or a skill that calls for ripping code
+  out authorizes the rewrite, and the rewritten code does the same thing in the same way as the code
+  it replaces.
 - In a fix run, return question only for a product decision that no rule, no skill and none of the
   user's words decide: a change of the product's scope or of what the user sees and does, such as a
   new user interface element, a new database table or a library swap. Check first that the question
