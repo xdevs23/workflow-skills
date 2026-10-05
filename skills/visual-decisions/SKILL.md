@@ -22,12 +22,11 @@ glance instead of rebuilding it from a description.
 
 ## Before you draw
 
-- Name every state you draw by what it is: the merged code by its branch or deployment, such as the
-  main branch, the develop branch or production, and work that is not merged yet as unmerged, with
-  its branch. Never label a state Today, Now or Current, since those words read as the state the
-  work started from, while the code behind them is often unmerged work.
-- Read in full the code behind every state you draw, at the commit that state names.
-- Draw each picture of a state from what its code does.
+- Label every picture of a state by what that state is, as `workflow-skills:writing-style` names a
+  state of the code, and put the branch of unmerged work into its label.
+- Read in full the code behind every state you draw that has a commit, at the commit that state
+  names.
+- Draw each picture of such a state from what its code does.
 - Where a statement about a state turns out wrong in its code, draw what the code really does and
   put one line starting `CORRECTION:` under that decision.
 - Draw an After that the code does not define yet as a proposal, and name in its caption any layout
