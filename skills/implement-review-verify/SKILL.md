@@ -893,6 +893,13 @@ second implementer pre-check.
   and build nothing on its result until the user answers. The run ended on its own after the
   stage's three attempts, so it is no interrupted run, and `workflow-skills:resume-interrupted-run`
   does not apply to it.
+- Read the `refused` list of a `stage-failure` item for what the stage reported before the script
+  refused it: one entry per attempt that returned an object, with the `failure` that refused it and
+  the whole `result`, such as a fixer's quoted checks, commits and dispositions. The run accepted
+  none of these results, so its `snapshots` and `proof` do not follow them and no entry or approval
+  closes on them. The list is empty when every attempt failed before it returned an object. A stage
+  whose result the script refused only after the stage ended, such as a fixer whose fix list check
+  failed, has no such list: its item holds the fields of that result beside its label and message.
 - Expect the tool to refuse the fix list of a run in which a stage raised a hard flag, whatever exit
   the run ended with. Every hard flag leaves an `abort` item in `remaining`, also when an earlier
   cause named the exit, and a flagged unit continues only on the user's answer, added to a copy of
@@ -1574,7 +1581,8 @@ complete)`, accepts every stage: the schema validates shapes and enums, `complet
 cross-field contracts, and the helper returns at once an object whose `abort.trigger` is not `none`
 with a non-empty `abort.reason` (law 8). A null result or a failed check retries the SAME agent up
 to three times, each retry stating plainly HOW the previous attempt failed; the third miss throws
-with the last failure named, so its cause is visible.
+with the last failure named, so its cause is visible, and with every object an attempt returned
+and a check refused, which the `stage-failure` item of the run keeps in `refused`.
 
 The completeness checks, by stage kind:
 - **every briefed stage**: `abort.reason` non-empty when the trigger is not `none`;

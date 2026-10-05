@@ -395,20 +395,28 @@ const abortOnFlag = (r, label) => {
 // the cross-field contracts named in the acceptance section. An abort with a reason returns at
 // once. A failed agent call, a null result or a failed check retries the SAME agent with the failure
 // named plainly, three attempts in all; the throw names the last failure, so its cause is visible.
+// The throw carries in refused every object an attempt returned and the check refused, each with its
+// failure, so their checks and commits stay readable without the run accepting them.
 async function stage(prompt, opts, complete = () => {}) {
   let failure = ''
+  const refused = []
   for (let i = 0; i < 3; i++) {
+    let r
     try {
-      const r = await agent(prompt + (failure ? '\n\nHOW YOUR PREVIOUS ATTEMPT FAILED, plainly: ' + failure : ''), opts)
+      r = await agent(prompt + (failure ? '\n\nHOW YOUR PREVIOUS ATTEMPT FAILED, plainly: ' + failure : ''), opts)
       if (hasHardFlag(r) && typeof r.abort.reason === 'string' && r.abort.reason.trim()) return r
       if (r == null) throw new Error('it returned nothing usable at all')
       if (hasHardFlag(r)) throw new Error('abort.trigger is set but abort.reason is empty')
       complete(r)
       return r
-    } catch (error) { failure = error.message }
+    } catch (error) {
+      failure = error.message
+      if (r != null) refused.push({ failure, result: r })
+    }
     log('incomplete result from ' + (opts.label || 'agent') + ', retry ' + (i + 1) + ': ' + failure)
   }
-  throw new Error('FAIL-FAST: ' + (opts.label || 'agent') + ' returned no complete result after 3 attempts: ' + failure)
+  throw Object.assign(new Error('FAIL-FAST: ' + (opts.label || 'agent') + ' returned no complete result after 3 attempts: ' + failure),
+    { refused })
 }
 
 // The root supplies base, one entry per git repository of the run's tree with its starting commit as
@@ -590,7 +598,7 @@ const end = (value, cause) => {
 }
 const failed = (error, label, result) => {
   if (error.exit === 'aborted') add('abort', { ...error.result, label: error.label })
-  else add('stage-failure', { ...result, label, message: error.message })
+  else add('stage-failure', { ...result, label, message: error.message, ...(error.refused ? { refused: error.refused } : {}) })
   end(error.exit === 'aborted' ? 'aborted' : 'failed', error.message)
 }
 // Records each blocking limitation with its stage label and returns how many there were.
