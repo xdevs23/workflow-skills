@@ -1,5 +1,3 @@
-# Synthetic fix list: everything the parent run returned to be fixed, as its saved result holds it,
-# and the spec the parent run checked.
 result: tests/fixtures/fix-list/results/parent-run.json
 spec: tests/fixtures/fix-list/parent.yaml
 entries:

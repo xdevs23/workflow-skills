@@ -446,7 +446,6 @@ const fixLists = join(root, 'tests/fixtures/fix-list')
 const validPath = join(fixLists, 'list.yaml')
 const reviewListPath = join(fixLists, 'review-list.yaml')
 const validList = Bun.YAML.parse(await Bun.file(validPath).text())
-// The saved results of a main run and of a review pass, as the workflow tool writes them.
 const parentResultPath = 'tests/fixtures/fix-list/results/parent-run.json'
 const reviewResultPath = 'tests/fixtures/fix-list/results/review-pass.json'
 const parentOutput = await Bun.file(join(root, parentResultPath)).json()
@@ -464,8 +463,7 @@ const makeList = (file, options = []) => {
   const result = Bun.spawnSync([process.execPath, tool, '--make-fix-list', file, ...options], { cwd: root })
   return { exit: result.exitCode, out: result.stdout.toString(), err: result.stderr.toString() }
 }
-// A copy of the main run's saved result whose run result edit changes, in the scratch directory.
-const savedResult = edit => {
+const writeEditedParentResult = edit => {
   const output = structuredClone(parentOutput)
   edit(output.result)
   const path = join(scratch, `${serial++}-result.json`)
@@ -510,7 +508,7 @@ describe('fix list validation', () => {
   test('the fix list of a fix run carries on the spec and holds the entries its fixer left open beside its roast and diff findings', () => {
     const items = [{ source: 'entry:2', entry: validList.entries[2] }, { source: 'roaster:0', finding: validEntries[5].finding },
       { source: 'diff:0', finding: { ...validEntries[5].finding, severity: 'CRITICAL', claim: 'The change also renames a helper.' } }]
-    const made = makeList(savedResult(result => { result.toFix = items }))
+    const made = makeList(writeEditedParentResult(result => { result.toFix = items }))
     expect([made.exit, made.err]).toEqual([0, ''])
     const list = Bun.YAML.parse(made.out)
     expect([list.spec, list.entries]).toEqual([parentSpecPath, items])
@@ -520,10 +518,10 @@ describe('fix list validation', () => {
 
   test('a run that ended failed, a file without a run result and a result of an earlier version give no fix list', () => {
     const detail = 'FAIL-FAST: verify returned no complete result after 3 attempts: model unavailable'
-    invalid(makeList(savedResult(result => { result.exit = 'failed'; result.detail = detail })),
+    invalid(makeList(writeEditedParentResult(result => { result.exit = 'failed'; result.detail = detail })),
       `the run ended failed, and a failed run gets no fix list: ${detail}`)
-    invalid(makeList(savedResult(result => { delete result.toFix })), 'the run result holds no toFix list, as a run of an earlier version of the scripts')
-    invalid(makeList(savedResult(result => { result.toFix = [] })), 'the run returned nothing to fix')
+    invalid(makeList(writeEditedParentResult(result => { delete result.toFix })), 'the run result holds no toFix list, as a run of an earlier version of the scripts')
+    invalid(makeList(writeEditedParentResult(result => { result.toFix = [] })), 'the run returned nothing to fix')
     const absent = join(scratch, 'absent-result.json')
     invalid(makeList(absent), `the run result ${absent} is unreadable or no JSON`)
     const unparsed = written('not json')
@@ -542,7 +540,7 @@ describe('fix list validation', () => {
       [result => { result.toFix.push({ source: 'size', size: { specLines: 1, ...measured } }) }, 'the run result holds item 7 of toFix in another form'],
       [result => { delete result.spec.lines }, 'the run result names the spec its check passed on in another form'],
       [result => { result.spec = parentSpecPath }, 'the run result names the spec its check passed on in another form'],
-    ]) invalid(makeList(savedResult(edit)), message)
+    ]) invalid(makeList(writeEditedParentResult(edit)), message)
   })
 
   test('the fix list of a review pass holds the findings of every review seat and names no spec', async () => {
@@ -558,10 +556,15 @@ describe('fix list validation', () => {
     expect(JSON.parse(checked.out)).toEqual({ result: reviewResultPath, spec: null,
       sha256: createHash('sha256').update(new Uint8Array(bytes)).digest('hex'),
       proof: listProof({ fixList: reviewListPath, spec: null, entries: list.entries }), fixList: reviewListPath })
-    // The absolute path finds the result from any directory, such as the worktree of a fix run.
-    expect(checkList(written(made.out), [], scratch).exit).toBe(0)
     invalid(checkList(written({ ...list, spec: parentSpecPath })), 'fix list.spec: expected null, because the parent run checked no spec')
     invalid(makeList(reviewResultPath, ['--size', JSON.stringify(measured)]), '--size: the parent run counted no spec lines to measure a size breach against')
+  })
+
+  test('the generated fix list finds its saved result from another directory, such as the worktree of a fix run', () => {
+    const made = makeList(reviewResultPath)
+    expect([made.exit, made.err]).toEqual([0, ''])
+    const checked = checkList(written(made.out), [], scratch)
+    expect([checked.exit, checked.err]).toEqual([0, ''])
   })
 
   test('a measured size breach joins the generated list beside the spec lines the parent run counted', () => {
