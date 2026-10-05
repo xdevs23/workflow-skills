@@ -59,6 +59,9 @@ glance instead of rebuilding it from a description.
   the file of `workflow-skills:writing-style` to read before writing, every decision with the
   statement of each state it shows, the rules of the page and the output path, and says that it
   writes exactly that one file and nothing else.
+- Give that agent, for every state it draws that has a commit, the repository and the full commit ID
+  that state names, and tell it to read every file of that state at that commit, since its own
+  checkout can hold a different version.
 - Render the page once in a headless browser the machine has, and look at the screenshot before you
   show the page. A page that only passed a check of its markup has not been seen.
 - Open the page for the user.
