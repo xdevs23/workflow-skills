@@ -870,7 +870,7 @@ second implementer pre-check.
   its implementer, as `impl:<index>`; every decision of its verify stage, as `verify:<index>`, apart
   from an approved correction its fixer reported fixed or rejected, and every unresolved issue of
   it, as `issue:<index>`; in a run without a verify stage, such as a review pass, every finding of
-  its review seats, as `review:<seat>:<index>`; in a fix run, every entry of its own list that its
+  its reviewers, as `review:<seat>:<index>`; in a fix run, every entry of its own list that its
   fixer left open, as `entry:<index>`; and every finding of its roast stage and of its diff check,
   as `roaster:<index>` and `diff:<index>`.
 - Expect the tool to refuse the fix list of a run in which a stage failed, whatever exit the run

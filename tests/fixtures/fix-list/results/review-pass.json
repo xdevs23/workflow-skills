@@ -1,5 +1,5 @@
 {
-  "summary": "Synthetic result of a review pass, which checks no spec: the findings of its review seats.",
+  "summary": "Synthetic result of a review pass, which checks no spec: the findings of its reviewers.",
   "result": {
     "exit": "follow-up",
     "detail": "The pass completed with items requiring follow-up.",
