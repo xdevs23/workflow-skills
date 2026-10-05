@@ -3,7 +3,7 @@ name: resume-interrupted-run
 description: Resumes a workflow run interrupted after agents did substantial work but before they returned results. Not for completed agents with bad results.
 ---
 
-# Resume an Interrupted Run — hand each mid-flight seat its own transcript back
+# Resume an Interrupted Run: hand each mid-flight seat its own transcript back
 
 **Load the `workflow-skills:writing-style` skill first.** It binds every comment, document, commit
 message and reply this skill produces, and it is not optional when working with this plugin.
@@ -63,7 +63,7 @@ rescuing.
 - **Every agent completed** and the run failed after them (an error in the workflow script, a throw
   between phases). Their results are journaled; a plain resume replays them as far as the section
   above describes, and this procedure buys nothing.
-- An agent **completed with a bad result**. That is the opposite problem — see the boundary section
+- An agent **completed with a bad result**. That is the opposite problem. See the boundary section
   at the end.
 - The run **ended on its own**, whatever its exit. Its remaining items are recorded, and a new run
   starts only for what must be fixed. This skill is never a way to run the same spec again.
@@ -73,31 +73,31 @@ rescuing.
 ### 1. Locate the run transcript directory
 
 - Find the run transcript directory at the path returned at launch, under the session's
-  `subagents/workflows/<runId>/`. It holds `journal.jsonl` (the cached results — one result line
+  `subagents/workflows/<runId>/`. It holds `journal.jsonl` (the cached results, one result line
   per completed agent) plus, per spawned agent, an `agent-<id>.jsonl` transcript and a matching
   `agent-<id>.meta.json`. The meta file carries the agent type, the model and a spawn depth.
 - Read the journal first: it is the evidence of which seats completed, so a seat holding a
   transcript with no result line against it is the one to treat as interrupted.
 - Treat a result line that is itself EMPTY as a different case: that seat COMPLETED, and no prompt
-  edit will make it replay as anything else — see the boundary section at the end of this file.
+  edit will make it replay as anything else. See the boundary section at the end of this file.
 
-### 2. Map transcripts to seats — meta narrows, the transcript head decides
+### 2. Map transcripts to seats: meta narrows, the transcript head decides
 
 - Do not guess from filenames. The mapping is a two-stage discrimination, because the meta file
-  holds a type, a model and a depth and nothing finer — no seat label, no prompt hash, no attempt
+  holds a type, a model and a depth and nothing finer: no seat label, no prompt hash, no attempt
   marker.
 - **Narrow a transcript to a seat TYPE with its meta.** Where every seat in the phase has a
   *distinct* agent type, that is the whole answer and the meta file alone maps it.
 - **Settle same-type ties by reading the transcript's HEAD.** Two seats sharing an agent type *and*
   a model within the same attempt are indistinguishable in their metas. Open each transcript and
-  read the **prompt at its head** — the seat brief sits verbatim at the top, and it is the thing
+  read the **prompt at its head**: the seat brief sits verbatim at the top, and it is the thing
   that actually tells the seats apart. There is no cheaper discriminator; do not substitute one.
-- **Use size and mtime only as a WEAK FIRST SORT across ATTEMPTS — never siblings, never
+- **Use size and mtime only as a WEAK FIRST SORT across ATTEMPTS, never siblings, never
   conclusive.** A stopped-then-resumed run **reuses the same run id and the same transcript
-  directory**, appending the new agents' files beside the old ones — which is why one seat can end
+  directory**, appending the new agents' files beside the old ones, which is why one seat can end
   up owning several transcripts. Size and mtime are good enough to pull those candidates out of the
   directory and order them, and no further: they do not establish which attempt holds the work.
-  That is settled by rule 2's content test — open the transcript and look for findings, verdicts,
+  That is settled by rule 2's content test: open the transcript and look for findings, verdicts,
   intermediate conclusions. And between two same-type *siblings* they say nothing whatever.
 
 Get this mapping wrong and you hand a seat someone else's work, which is the damage rule 1 exists to
@@ -113,8 +113,9 @@ prevent.
 - Edit **the persisted script file**, whose path is also returned at launch, and append the resume
   note to the prompts of the interrupted agents and nothing else.
 - Make the note tell the interrupted agent all seven things:
-  - an earlier attempt **of this exact seat** was interrupted **through no fault of its own** — the
-    seat has to know the transcript is its own sound work, not output handed to it under suspicion;
+  - an earlier attempt **of this exact seat** was interrupted **through no fault of its own**,
+    because the seat has to know the transcript is its own sound work, not output handed to it
+    under suspicion;
   - its complete transcript is at `<absolute path>`;
   - **read it first**, then pick up where it left off;
   - its prompt is the authority on its input, where an input differs from what the transcript
@@ -131,7 +132,7 @@ prevent.
   unchanged. **Any** edit of either, a word or a space, gives that call a new key and ends the
   replay there, as the first section describes, and its own result is thrown away as well. One
   stray edit early in the script can re-execute most of the run you were trying to salvage.
-- Never reach a single seat by editing a shared constant either — see
+- Never reach a single seat by editing a shared constant either. See
   `workflow-skills:implement-review-verify`, law 3(a).
 
 ### 5. Re-invoke
@@ -141,7 +142,7 @@ prevent.
   describes. That call and every call after it run live, the interrupted ones with their own
   transcript in hand.
 
-## The resume note — where it goes in a prompt
+## The resume note: where it goes in a prompt
 
 Append the resume note last, after the shared blocks, on that seat's prompt alone:
 
@@ -165,21 +166,21 @@ const specCompliancePrompt = [AUTHORITY, SPEC, SEAT_BRIEF].join('\n\n')
 
 ## The rules
 
-1. **SEAT ISOLATION — give each seat ONLY its own prior transcript.** Handing a seat another seat's
+1. **SEAT ISOLATION: give each seat ONLY its own prior transcript.** Handing a seat another seat's
    transcript destroys the independence the whole review design rests on: seats are split by concern
    and kept unbriefed on purpose, and one that has read a peer's reasoning is no longer an
-   independent verdict — a cold seat that has been shown someone else's findings is not cold any
-   more.
-2. **Reference a transcript only if it CARRIES FINDINGS — otherwise re-run the seat clean.** The
+   independent verdict. An unbriefed seat that has been shown someone else's findings is not
+   unbriefed any more.
+2. **Reference a transcript only if it CARRIES FINDINGS, otherwise re-run the seat clean.** The
    test is content, not size: open the transcript and look for a finding, a verdict, an intermediate
-   conclusion. One that holds only orientation work — tools loading, a first file read or two — has
-   nothing to carry forward and will anchor a fresh agent on a half-formed direction; that seat gets
-   **no resume note at all** and runs clean, like any seat with no prior attempt. Byte size is a
-   weak first sort for picking candidates out of a directory and nothing more — never a threshold,
-   because transcripts include harness echo and any figure stated in bytes rots the moment that
-   volume changes. Where a seat does own several transcripts, point at the one bearing the findings
-   and only that one: naming the others adds nothing to recover, dilutes the instruction, and the
-   agent has no way to know which one you meant it to trust.
+   conclusion. One that holds only orientation work, such as tools loading or a first file read or
+   two, has nothing to carry forward and will anchor a fresh agent on a half-formed direction; that
+   seat gets **no resume note at all** and runs clean, like any seat with no prior attempt. Byte
+   size is a weak first sort for picking candidates out of a directory and nothing more, never a
+   threshold, because transcripts include harness echo and any figure stated in bytes rots the
+   moment that volume changes. Where a seat does own several transcripts, point at the one bearing
+   the findings and only that one: naming the others adds nothing to recover, dilutes the
+   instruction, and the agent has no way to know which one you meant it to trust.
 3. **Edit only the INTERRUPTED prompts, and count what each edit re-runs.** An interrupted agent has
    no result to throw away, so its own call costs nothing extra, but its new key gives every call
    made after it a new key too, and the finished calls among them run live. Editing a COMPLETED
@@ -195,21 +196,21 @@ const specCompliancePrompt = [AUTHORITY, SPEC, SEAT_BRIEF].join('\n\n')
 
 A seat that had effectively finished before the stop reads its transcript and re-emits its findings
 almost immediately, instead of redoing the work. A partially-done seat continues from where it was.
-The recovery is near-lossless, not lossless — the note is an instruction to the resumed agent, not a
+The recovery is near-lossless, not lossless: the note is an instruction to the resumed agent, not a
 restored context, so treat a resumed seat's output as its own work product and hold it to the same
 contract as any other seat. The finished calls after the first call that ends the replay run again
 as well, and their results can differ from the ones they returned before the stop.
 
-## Boundary — this is NOT the poisoned-result case
+## Boundary: this is NOT the poisoned-result case
 
 An interrupted run and a poisoned result are two different failures with two different fixes:
 
 - **Interrupted** (this skill): no cached result exists for the interrupted call, so its edit costs
   no result of its own, only the re-run of the calls made after it. The fix is a resume note.
-- **Completed with a bad result — an EMPTY journaled result included**: the bad result **is cached**
+- **Completed with a bad result, an EMPTY journaled result included**: the bad result **is cached**
   and will replay verbatim on resume, so fixing the underlying cause and re-invoking changes nothing.
   The fix is a deliberate cache-bust of that single stage.
 
-The cache-bust case is already covered — see `workflow-skills:implement-review-verify`, law 3
+The cache-bust case is already covered. See `workflow-skills:implement-review-verify`, law 3
 (*Cache-busting on resume*) and its *Resume corollaries*. Do not re-derive it here; the two paths
 share only the journal mechanism, and each decision is recorded once.
