@@ -36,9 +36,9 @@ const UNIT = {
 }
 // ---- END OF UNIT VALUES ----
 
-// The preamble, the field shapes, stage(), the writer checks and the remaining-items handoff are the
-// main script's, copied in because this is its own run. A routing test holds each copied helper and
-// block to the main script's text.
+// A workflow script runs without imports, so the preamble, the field shapes, stage(), the writer
+// checks and the remaining-items handoff are copies of the main script's, and a routing test holds
+// each copied helper and block to the main script's text.
 
 // A defect of the host: it relays a message the user writes to the orchestrating session into
 // running stages as well. This line protects against a stage taking such a message as an order.
@@ -579,7 +579,6 @@ async function fixRun() {
   phase('Diff')
   activeLabel = 'diff'
   const checked = abortOnFlag(await diffPass(queue, snapshotsOf(passedFix)), 'diff')
-  // A change that no entry covers is CRITICAL, whatever severity the diff check gave it.
   diff = { ...checked, findings: checked.findings.map(f => ({ ...f, severity: 'CRITICAL' })) }
   for (const f of diff.findings) add('diff-finding', f)
   narrowed(diff, 'diff-limitation')
@@ -634,28 +633,23 @@ for (const entry of queue) {
 // A run that fixed anything leaves its unattested fixes, so it ends clean only when nothing remains.
 if (!exit) end(remaining.length ? 'follow-up' : 'clean', remaining.length
   ? 'The fix run completed with items requiring follow-up.' : 'The fix run completed and nothing remains.')
-// Everything the run returns to be fixed, in the order of a fix list, which is written from it
-// unchanged: every entry the accepted fixer left open, then the findings of the roaster and of the
-// diff check. The fixer closes an entry by rejecting it, by raising it as a question for the user, or
-// by a fix the diff check mapped a change to.
-const closes = ({ key, disposition }) => ['rejected', 'question'].includes(disposition) || provenFixes.has(key)
-const closed = new Set((passedFix?.dispositions ?? []).filter(closes).map(d => d.key))
+const closesEntry = ({ key, disposition }) => ['rejected', 'question'].includes(disposition) || provenFixes.has(key)
+const closedSources = new Set((passedFix?.dispositions ?? []).filter(closesEntry).map(d => d.key))
 const numbered = (kind, field, items) => items.map((item, i) => ({ source: kind + ':' + i, [field]: item }))
 const toFix = [
-  ...numbered('entry', 'entry', entries).filter(({ entry }) => !closed.has(entry.source)),
+  ...numbered('entry', 'entry', entries).filter(({ entry }) => !closedSources.has(entry.source)),
   ...numbered('roaster', 'finding', roast?.findings ?? []),
   ...numbered('diff', 'finding', diff?.findings ?? []),
 ]
-// The parent spec the fixer's check confirmed unchanged, as the spec tool printed it, or null when the
-// list names none or no check passed.
-const printed = reportedFix ? JSON.parse(reportedFix.specCheck.stdout) : null
-const spec = printed?.spec ? { path: printed.spec, sha256: printed.specSha256, lines: printed.specLines } : null
+const listCheckOutput = reportedFix ? JSON.parse(reportedFix.specCheck.stdout) : null
+const checkedParentSpec = listCheckOutput?.spec
+  ? { path: listCheckOutput.spec, sha256: listCheckOutput.specSha256, lines: listCheckOutput.specLines } : null
 return {
   exit, detail, remaining, toFix,
   dispositions: reportedFix?.dispositions ?? [],
   mappings: diff?.mappings ?? [],
   proof: passedFix ? { checks: passedFix.checks, files: passedFix.files } : null,
-  spec, base, snapshots,
+  spec: checkedParentSpec, base, snapshots,
   acceptance: 'pending-root-checks', // Run completion is not integration permission.
   counts: { entries: entries.length,
     fixed: (reportedFix?.dispositions ?? []).filter(d => d.disposition === 'fixed').length,

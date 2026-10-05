@@ -364,17 +364,8 @@ async function main() {
     `unbreakable=${JSON.stringify(summary.unbreakable)} proof=${summary.proof} spec=${summary.spec}`)
 }
 
-// A fix list names the saved result of its parent run and the spec that run checked, or null, and holds
-// the items the run returned to be fixed as that result holds them. Each mode refuses the keys of the
-// other.
 const fixListKeys = ['result', 'spec', 'entries']
-// The field an item is held under, by the kind of the source that names it: impl:<index> names a spec
-// finding of the implementer, verify:<index> a decision and issue:<index> an unresolved issue of the
-// finding verifier, and roaster:<index> and diff:<index> a finding of the roaster and of the diff check.
 const itemFields = { impl: 'finding', verify: 'decision', issue: 'issue', roaster: 'finding', diff: 'finding' } as const
-// Beside those, review:<seat>:<index> names a finding of a review seat, entry:<index> an entry of a fix
-// run's own list that its fixer left open, and size the measured size breach of the unit, which no
-// stage returns.
 const entrySource = new RegExp(`^(?:(?<kind>${Object.keys(itemFields).join('|')}|entry|review:[a-z][a-z-]*):(?:0|[1-9][0-9]*)|size)$`)
 const sourceNames = [...Object.keys(itemFields), 'review:<seat>', 'entry'].map(kind => `${kind}:<index>`).concat('size').join(', ')
 const fields: Record<string, string> = { ...itemFields, entry: 'entry', size: 'size' }
@@ -440,7 +431,6 @@ type CheckedSpec = { path: string, sha256: string, lines: number }
 type Entry = Mapping & { source: string }
 type Returned = { spec: CheckedSpec | null, entries: Entry[] }
 
-// The spec a run's check passed on, as the run returns it, or null when it checked none.
 function checkedSpec(spec: unknown): CheckedSpec | null {
   if (spec === null) return null
   if (mapping(spec) && text(spec.path) && text(spec.sha256) && Number.isSafeInteger(spec.lines)) {
@@ -449,18 +439,14 @@ function checkedSpec(spec: unknown): CheckedSpec | null {
   throw new Error('the run result names the spec its check passed on in another form')
 }
 
-// An item to fix as a run returns it: a source of a known form other than size, and the one mapping
-// that source names.
 const returnedItem = (value: unknown) => {
   if (!mapping(value)) return false
   const named = sourceOf(value.source)
   return named !== undefined && named.source !== 'size' && Object.keys(value).length === 2 && mapping(value[named.field])
 }
 
-// Everything a run returned to be fixed, read from the output file the workflow tool saved the run's
-// result in, under the key result. A run of the shipped scripts returns its items to fix in toFix and
-// the spec its check passed on in spec. A failed run is resumed and never gets a fix list.
-async function returned(file: string): Promise<Returned> {
+// The workflow tool saves what a script returns in its output file under the key result.
+async function readSavedRunResult(file: string): Promise<Returned> {
   let output: unknown
   try { output = JSON.parse(await readFile(file, 'utf8')) } catch (error) {
     throw new Error(`the run result ${file} is unreadable or no JSON: ${messageOf(error)}`)
@@ -503,9 +489,9 @@ function sizeProblems(size: unknown, specLines: number): string[] {
   return problems
 }
 
-// The list names the result by its absolute path, so a fix run's check finds it from its worktree.
+// Fix runs read the saved result from another worktree.
 async function makeFixList(file: string, size?: string) {
-  const { spec, entries } = await returned(file)
+  const { spec, entries } = await readSavedRunResult(file)
   if (size !== undefined) {
     const expects = '--size expects a JSON mapping of codeAdded and repositories'
     let measured: unknown
@@ -543,13 +529,9 @@ function listedEntry({ fail, shape }: Validator, value: unknown, index: number, 
   return { index, source, field, value }
 }
 
-// The list holds every item the parent run returned, in the order of its result, with a size breach
-// last, and the spec that run checked, unchanged since, or null when it checked none.
 async function compareWithResult({ fail }: Validator, file: string, spec: string | null | undefined, entries: ListedEntry[]) {
   let held: Returned
-  try { held = await returned(file) } catch (error) {
-    // Every entry rests on the parent run's result, so its failure is reported against each entry, or
-    // against the result itself when no entry could be read.
+  try { held = await readSavedRunResult(file) } catch (error) {
     if (!entries.length) fail(-1, 'fix list.result', messageOf(error))
     for (const { index, source } of entries) fail(index, source, messageOf(error))
     return
