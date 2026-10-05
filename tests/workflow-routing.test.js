@@ -712,7 +712,8 @@ describe('workflow verification and consolidation', () => {
       fixes: { fix: fixed([disposition('fix:0'), disposition('fix:1', 'rejected'), disposition('fix:2')]) },
     })
     expect(result.inverseSpecDecisions).toEqual([fromInverse, mixed])
-    expect(result.toFix).toEqual([{ source: 'verify:0', decision: fromInverse }, { source: 'verify:1', decision: mixed }])
+    expect(result.toFix).toEqual([{ source: 'verify:0', decision: { ...fromInverse, disposition: disposition('fix:0') } },
+      { source: 'verify:1', decision: { ...mixed, disposition: disposition('fix:1', 'rejected') } }])
   })
 
   test('a project-benefit decision of any reviewer goes to the next fix run with its kind-bearing findings, also when the fixer fixed or rejected it', async () => {
@@ -728,8 +729,9 @@ describe('workflow verification and consolidation', () => {
     const flagged = (seat, kind) => ({ id: source(seat), seat, kind, file: bandAid.file, claim: bandAid.claim })
     expect(result.inverseSpecDecisions).toEqual([])
     expect(result.toFix).toEqual([
-      { source: 'verify:0', decision: { ...patched, projectBenefit: [flagged('quality', 'band-aid')] } },
-      { source: 'verify:1', decision: { ...disputed, projectBenefit: [flagged('alternatives', 'longer-route')] } }])
+      { source: 'verify:0', decision: { ...patched, projectBenefit: [flagged('quality', 'band-aid')], disposition: disposition('fix:0') } },
+      { source: 'verify:1', decision: { ...disputed, projectBenefit: [flagged('alternatives', 'longer-route')],
+        disposition: disposition('fix:1', 'rejected') } }])
     expect(result.decisions).toEqual([patched, disputed, plain])
   })
 
@@ -809,19 +811,49 @@ describe('workflow verification and consolidation', () => {
     expect(calls.some(c => c.phase === 'Fix')).toBe(true)
   })
 
-  for (const kind of ['rejected', 'blocked']) {
-    test(`fixer ${kind} returns the approval and counterevidence to the root`, async () => {
-      const { result, calls } = await simulate({
-        reports: oneReport, verify: approveOne,
-        fixes: { 'fix': fixed([disposition('fix:0', kind)], { touched: [] }) },
-      })
-      expect(['clean', 'follow-up'].includes(result.exit)).toBe(false)
-      expect(result.remaining[0].kind).toBe('unfixed-approval')
-      expect(result.remaining.find(r => r.kind === 'unfixed-approval').item.approved.authority).toContain('Return the error')
-      expect(result.remaining.find(r => r.kind === 'unfixed-approval').item.response.disposition).toBe(kind)
-      expect(calls.filter(c => c.agentType === 'fixer')).toHaveLength(1)
-    })
+  // The fix list of a run with passing proof, made from its saved result and checked against it.
+  const fixListOf = async result => {
+    mkdirSync(TREE + '/.cache', { recursive: true })
+    const scratch = mkdtempSync(TREE + '/.cache/workflow-routing-')
+    const tool = (...options) => Bun.spawnSync([process.execPath, TREE + '/tools/check-spec.ts', ...options], { cwd: TREE })
+    try {
+      const saved = scratch + '/result.json', fixList = scratch + '/fix-list.yaml'
+      writeFileSync(saved, JSON.stringify({ result }))
+      const made = tool('--make-fix-list', saved)
+      if (made.exitCode !== 0) return { made: [made.exitCode, made.stderr.toString()] }
+      writeFileSync(fixList, made.stdout.toString())
+      const checked = tool('--fix-list', fixList, '--json', '--entries')
+      return { made: [made.exitCode, made.stderr.toString()], checked: [checked.exitCode, checked.stderr.toString()],
+        entries: checked.exitCode === 0 ? JSON.parse(checked.stdout.toString()).entries : null }
+    } finally { rmSync(scratch, { recursive: true, force: true }) }
   }
+  const parentSpec = async () => {
+    const specPath = 'tests/fixtures/fix-list/parent.yaml'
+    const sha256 = new Bun.CryptoHasher('sha256').update(await Bun.file(TREE + '/' + specPath).arrayBuffer()).digest('hex')
+    return passedCheck(mainLaunchValues(launchArgs()), {}, { spec: specPath, sha256, specLines: 1 })
+  }
+
+  test('a fixer rejection closes its approved correction, stays in dispositions and leaves nothing to fix', async () => {
+    const rejection = disposition('fix:0', 'rejected')
+    const { result, calls } = await simulate({ specCheck: await parentSpec(), reports: oneReport, verify: approveOne,
+      fixes: { fix: fixed([rejection], { touched: [] }) } })
+    expect([result.exit, result.remaining, result.dispositions, result.toFix]).toEqual(['clean', [], [rejection], []])
+    expect(calls.filter(c => c.agentType === 'fixer')).toHaveLength(1)
+    expect(await fixListOf(result)).toEqual({ made: [1, 'the run returned nothing to fix\n'] })
+  })
+
+  test('a blocked approval returns to the root and reaches the next fix list with the fixer\'s disposition beside it', async () => {
+    const blocked = disposition('fix:0', 'blocked')
+    const { result, calls } = await simulate({ specCheck: await parentSpec(), reports: oneReport, verify: approveOne,
+      fixes: { fix: fixed([blocked], { touched: [] }) } })
+    expect([result.exit, result.detail]).toEqual(['root-resolution', 'The fixer blocked an approved correction.'])
+    expect(result.remaining.map(r => r.kind)).toEqual(['unfixed-approval'])
+    expect(result.remaining[0].item.approved.authority).toContain('Return the error')
+    expect(result.remaining[0].item.response).toEqual(blocked)
+    expect(result.toFix).toEqual([{ source: 'verify:0', decision: { ...approveOne.verify.decisions[0], disposition: blocked } }])
+    expect(calls.filter(c => c.agentType === 'fixer')).toHaveLength(1)
+    expect(await fixListOf(result)).toEqual({ made: [0, ''], checked: [0, ''], entries: result.toFix })
+  })
 
   for (const answers of [[], [disposition('unknown')], [disposition(), disposition()]]) {
     test(`invalid fixer answers preserve unfixed approvals: ${JSON.stringify(answers)}`, async () => {
@@ -1382,7 +1414,7 @@ describe('one-pass remaining-items handoff', () => {
       const { result, calls } = await simulate(options)
       expect(result.exit).toBe(exit)
       expect(result.detail.length).toBeGreaterThan(0)
-      expect(Object.keys(result).sort()).toEqual(['exit', 'detail', 'remaining', 'toFix', 'decisions', 'proof',
+      expect(Object.keys(result).sort()).toEqual(['exit', 'detail', 'remaining', 'toFix', 'decisions', 'dispositions', 'proof',
         'spec', 'base', 'snapshots', 'artifacts', 'acceptance', 'counts', 'cleanup', 'inverseSpecDecisions', 'projectBenefitDecisions'].sort())
       expect(calls.filter(c => c.phase === 'Verify').length).toBeLessThanOrEqual(1)
     }
@@ -1452,7 +1484,8 @@ describe('one-pass remaining-items handoff', () => {
   test('the run returns to be fixed every spec finding, every decision and issue of the verifier and every roast finding, apart from an approval its accepted fixer fixed or disproved, beside the spec its check passed on', async () => {
     const { result } = await simulateToFix(fixed(approvalAnswers))
     expect(result.toFix).toEqual([{ source: 'impl:0', finding: specFinding([20], 'reality-drift') },
-      { source: 'verify:1', decision: toFixDecisions[1] }, { source: 'verify:3', decision: toFixDecisions[3] }, { source: 'issue:0', issue: toFixIssue },
+      { source: 'verify:1', decision: toFixDecisions[1] }, { source: 'verify:3', decision: { ...toFixDecisions[3], disposition: approvalAnswers[2] } },
+      { source: 'issue:0', issue: toFixIssue },
       { source: 'roaster:0', finding: { ...toFixRoastFinding, id: 'roaster:0', seat: 'roaster', snapshots: at(INITIAL) } }])
     expect(result.spec).toEqual({ path: SPEC_PATH, sha256: 'e'.repeat(64), lines: 4 })
   })

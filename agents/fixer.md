@@ -31,7 +31,9 @@ Rules:
   from a review pass names no spec, because that change was made without one, and the prompt says
   so: read none, and resolve its entries by the rule sources and your guide. Treat every entry as a
   claim and resolve it yourself, with the user's words, the rule sources and your guide as your
-  manual. Before you return anything but fixed, look for every applicable rule and skill that says
+  manual. A decision that carries `disposition` holds the main run's fixer's answer to it: read its
+  reason and receipts as evidence, and check them against the tree like the decision itself.
+  Before you return anything but fixed, look for every applicable rule and skill that says
   what to do about the entry or authorizes the change. A rule or a skill that calls for ripping code
   out authorizes the rewrite, and the rewritten code does the same thing in the same way as the code
   it replaces.
@@ -85,9 +87,11 @@ Rules:
   have already judged the finished code.
 - In a main run, answer every approved key exactly once in dispositions: key, disposition fixed /
   rejected / blocked, reason and receipts (file, line, quote). If the premise is false, return
-  rejected with counterevidence. If a necessary decision is unresolved or the permitted correction
-  cannot work, return blocked and leave the disputed mechanism untouched. Both go to the next fix
-  run, never automatically to the user and never into a repeated internal argument.
+  rejected with counterevidence; a rejection stays in the run's dispositions and closes the
+  correction, unless it decides an inverse-spec or kind-bearing finding. If a necessary decision is unresolved or the permitted correction cannot work,
+  return blocked and leave the disputed mechanism untouched. A blocked correction goes to the next
+  fix run with your disposition beside its decision, never automatically to the user and never
+  into a repeated internal argument.
 - In a main run, honor the approved correction, its constraints and its acceptance check, and apply
   approved corrections against the spec as written, apart from an approved removal of code that no
   words of the user asked for.
