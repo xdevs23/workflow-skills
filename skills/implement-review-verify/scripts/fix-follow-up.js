@@ -454,7 +454,7 @@ const checkDiffResult = (r, keys) => {
 
 // The remaining-items handoff of the main script, with the kinds this run produces.
 const EXIT = ['clean', 'follow-up', 'root-resolution', 'aborted', 'failed']
-const REMAINING = ['user-question', 'blocking-limitation', 'unfixed-entry', 'failed-proof',
+const REMAINING = ['user-question', 'blocking-limitation', 'unfixed-entry', 'failed-proof', 'false-premise',
   'roast-finding', 'roast-limitation', 'unattested-fix', 'unproven-fix', 'diff-finding', 'diff-limitation', 'abort',
   'stage-failure']
 const remaining = []
@@ -484,6 +484,10 @@ const recordBlocking = (result, label) => {
 }
 const limited = (result, label) => {
   if (recordBlocking(result, label)) end('root-resolution', 'Blocking limitation from ' + label + '.')
+}
+// Records each premise a writer reported false, a must-fix finding about its prompt, with its stage label.
+const recordFalsePremises = (writer, label) => {
+  for (const premise of writer.premises.filter(p => !p.holds)) add('false-premise', { ...premise, label }, 'must-fix')
 }
 const proof = (writer, label) => {
   if (!writer.proofPassed) {
@@ -596,6 +600,7 @@ async function fixRun() {
         passedFix = reportedFix = result
         snapshots = snapshotsOf(result)
         limited(result, label)
+        recordFalsePremises(result, label)
         if (result.dispositions.some(d => d.disposition === 'question')) end('root-resolution', 'A question for the user came back.')
         if (result.dispositions.some(d => d.disposition === 'blocked')) end('root-resolution', 'An entry was blocked.')
         proof(result, label)

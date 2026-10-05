@@ -590,7 +590,7 @@ const blocking = r => r.limitations.filter(l => l.effect === 'blocks')
 // Every stage ending uses the same run record and remaining-items handoff.
 const EXIT = ['clean', 'follow-up', 'root-resolution', 'aborted', 'failed']
 const REMAINING = ['open-decision', 'verifier-issue', 'writer-scope', 'blocking-limitation',
-  'unfixed-approval', 'failed-proof', 'roast-finding', 'roast-limitation', 'unattested-fix',
+  'unfixed-approval', 'failed-proof', 'false-premise', 'roast-finding', 'roast-limitation', 'unattested-fix',
   'spec-finding', 'review-finding', 'review-limitation', 'abort', 'stage-failure']
 const remaining = []
 let snapshots = null, impl = null, verified = null
@@ -618,6 +618,11 @@ const recordBlocking = (result, label) => {
 }
 const limited = (result, label) => {
   if (recordBlocking(result, label)) end('root-resolution', 'Blocking limitation from ' + label + '.')
+}
+// Records each premise a writer reported false, a must-fix finding about its prompt (law 6), with
+// its stage label.
+const recordFalsePremises = (writer, label) => {
+  for (const premise of writer.premises.filter(p => !p.holds)) add('false-premise', { ...premise, label }, 'must-fix')
 }
 // What a reader could check only in part: its narrowing limitations and its unchecked coverage entries.
 const uncovered = r => [...r.limitations.filter(l => l.effect === 'narrows'), ...r.coverage.filter(c => !c.checked)]
@@ -1025,6 +1030,7 @@ async function onePass() {
         reportedFix = passedFix
         snapshots = snapshotsOf(passedFix)
         limited(passedFix, label)
+        recordFalsePremises(passedFix, label)
         if (passedFix.dispositions.some(d => d.disposition === 'blocked')) end('root-resolution', 'The fixer blocked an approved correction.')
         proof(passedFix, label)
       } else {
