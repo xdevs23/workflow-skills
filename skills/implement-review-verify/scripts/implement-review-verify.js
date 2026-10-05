@@ -598,8 +598,9 @@ const narrowing = r => r.limitations.filter(l => l.effect === 'narrows')
 // Every stage ending uses the same run record and remaining-items handoff.
 const EXIT = ['clean', 'follow-up', 'root-resolution', 'aborted', 'failed']
 const REMAINING = ['open-decision', 'verifier-issue', 'writer-scope', 'blocking-limitation',
-  'unfixed-approval', 'failed-proof', 'false-premise', 'fix-limitation', 'roast-finding', 'roast-limitation', 'unattested-fix',
-  'spec-finding', 'review-finding', 'review-limitation', 'abort', 'stage-failure']
+  'unfixed-approval', 'failed-proof', 'false-premise', 'impl-limitation', 'fix-limitation',
+  'roast-finding', 'roast-limitation', 'unattested-fix', 'spec-finding', 'review-finding', 'review-limitation',
+  'abort', 'stage-failure']
 const remaining = []
 let snapshots = null, impl = null, verified = null
 let sources = [], queue = [], approvalKeys = new Map()
@@ -946,8 +947,11 @@ async function implement() {
   limited(impl, 'impl')
   proof(impl, 'impl')
   // The verifier reads the implementer's object on every path that goes on, so only a run that ends
-  // here records the implementer's false premises itself.
-  if (exit) recordFalsePremises(impl, 'impl')
+  // here records the implementer's false premises and narrowing limitations itself.
+  if (exit) {
+    recordFalsePremises(impl, 'impl')
+    for (const limitation of narrowing(impl)) add('impl-limitation', { ...limitation, label: 'impl' }, 'should-fix')
+  }
 }
 
 async function onePass() {

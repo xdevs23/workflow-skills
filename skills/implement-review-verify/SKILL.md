@@ -780,16 +780,17 @@ or raises it as a question for the user.
   checks. Stage labels are `review:<seat>`, `verify`, `fix` and `roast`.
 - **Every ending returns remaining items.** The run's single handoff is `remaining`, one
   `{ kind, severity, item }` per open decision, verifier issue, writer-scope violation, blocking
-  limitation, unfixed approval, failed proof, false premise, fixer limitation, roast finding or
-  limitation, unattested fix, spec finding, abort or stage failure. Each premise an accepted fixer
-  result reports false returns as a must-fix `false-premise` item with the fixer's label, and each
-  of its limitations of effect `narrows` as a should-fix `fix-limitation` item with that label, so
-  you know which check its proof covers only in part. An implementer that ends the run with a
-  failed proof or a blocking limitation reaches no verifier, so each premise it reports false
-  returns the same way with the label `impl`. Every key reported fixed by a fixer that committed
-  carries its disposition, approved correction, snapshot and commits; a key
-  reported fixed by a fixer that committed nothing returns as an unfixed approval with that answer,
-  because no commit stands behind the fix. A key that an accepted fixer result rejected adds no
+  limitation, unfixed approval, failed proof, false premise, implementer or fixer limitation, roast
+  finding or limitation, unattested fix, spec finding, abort or stage failure. Each premise an
+  accepted fixer result reports false returns as a must-fix `false-premise` item with the fixer's
+  label, and each of its limitations of effect `narrows` as a should-fix `fix-limitation` item with
+  that label, so you know which check its proof covers only in part. An implementer that ends the
+  run with a failed proof or a blocking limitation reaches no verifier, so each premise it reports
+  false returns the same way with the label `impl`, and each of its limitations of effect `narrows`
+  as a should-fix `impl-limitation` item with that label. Every key reported fixed by a fixer that
+  committed carries its disposition, approved correction, snapshot and commits; a key reported
+  fixed by a fixer that committed nothing returns as an unfixed approval with that answer, because
+  no commit stands behind the fix. A key that an accepted fixer result rejected adds no
   item: the rejection stays in the run's `dispositions`, which hold every answer of the fixer. The
   roast's findings retain their source IDs and snapshot; its limitations and unchecked coverage
   return as well. Record the list in the todo record that `workflow-skills:todo-md` defines and
@@ -1642,7 +1643,9 @@ limitation: the verifier keeps it as an unresolved issue or discards it. The fix
 verifier, so there the script records the blocking limitations of the fixer, the roaster
 and the diff check itself. No verifier reads the fixer's object in either script, so both
 scripts record each limitation of effect `narrows` of an accepted fixer result as a should-fix
-`fix-limitation` item with its stage label.
+`fix-limitation` item with its stage label. An implementer whose failed proof or blocking
+limitation ends the main run reaches no verifier either, so the script records each of its
+limitations of effect `narrows` as a should-fix `impl-limitation` item with the label `impl`.
 
 - **ARTIFACT-PRODUCING STAGES PROVE THE ARTIFACT IN `files` AND `checks`.** A stage can produce a
   long, immaculate ANALYSIS of the work and never create the file; an empty `files` list behind a
