@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test'
-import { realpathSync } from 'node:fs'
+import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'node:fs'
 import { dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { fingerprint } from '../tools/fingerprint.js'
@@ -26,9 +26,11 @@ const run = new AsyncFunction('agent', 'phase', 'log', 'args',
 const SPEC_PATH = '<main checkout>/.cache/specs/<unit>.yaml'
 const TRANSCRIPTS = '<session-dir>'
 const mainLaunchValues = args => ({ spec: args.specPath, transcripts: args.transcripts, base: args.base, partialBase: false, tree: '<isolated worktree>' })
-const fixLaunchValues = args => ({ fixList: args.fixList, transcripts: args.transcripts, spec: args.spec, entries: args.entries,
+const fixLaunchValues = args => ({ fixList: args.fixList, spec: args.spec, entries: args.entries,
   base: args.base, partialBase: false, tree: '<isolated worktree>' })
-const passedCheck = (values, fields = {}) => ({ exitCode: 0, stdout: JSON.stringify({ proof: fingerprint(values) }), stderr: '', ...fields })
+// A check that passed on the given launch values, printing the given fields beside their proof.
+const passedCheck = (values, fields = {}, printed = {}) =>
+  ({ exitCode: 0, stdout: JSON.stringify({ ...printed, proof: fingerprint(values) }), stderr: '', ...fields })
 
 // The eight audit seats, each labelled and loading the template of its name.
 const AUDIT = ['separation-of-concerns', 'abstraction-quality', 'code-smell', 'type-safety', 'code-cleanliness',
@@ -1282,8 +1284,8 @@ describe('one-pass remaining-items handoff', () => {
       const { result, calls } = await simulate(options)
       expect(result.exit).toBe(exit)
       expect(result.detail.length).toBeGreaterThan(0)
-      expect(Object.keys(result).sort()).toEqual(['exit', 'detail', 'remaining', 'decisions', 'proof',
-        'base', 'snapshots', 'acceptance', 'counts', 'cleanup', 'inverseSpecDecisions', 'projectBenefitDecisions'].sort())
+      expect(Object.keys(result).sort()).toEqual(['exit', 'detail', 'remaining', 'toFix', 'decisions', 'proof',
+        'spec', 'base', 'snapshots', 'acceptance', 'counts', 'cleanup', 'inverseSpecDecisions', 'projectBenefitDecisions'].sort())
       expect(calls.filter(c => c.phase === 'Verify').length).toBeLessThanOrEqual(1)
     }
   })
@@ -1336,6 +1338,30 @@ describe('one-pass remaining-items handoff', () => {
     expect(result.remaining[1].kind).toBe('unattested-fix')
     expect(result.remaining[1].item.approved).toEqual({ ...approval, key: 'fix:0', pointers: backed.evidence })
     expect(result.remaining).toHaveLength(2)
+  })
+
+  test('the run returns to be fixed every spec finding, every decision and issue of the verifier and every roast finding, apart from an approval its accepted fixer fixed or disproved, beside the spec its check passed on', async () => {
+    const specFindings = [specFinding([20], 'reality-drift')]
+    const issue = { kind: 'root-action', detail: 'Required evidence is unavailable.' }
+    const roastFinding = { ...finding, claim: 'The retry loop never ends.' }
+    const decisions = [decision([source('correctness', 0)]), decision([source('correctness', 1)], { action: 'needs-decision', correction: '' }),
+      decision([source('correctness', 2)]), decision([source('correctness', 3)])]
+    const printed = { spec: SPEC_PATH, sha256: 'e'.repeat(64), specLines: 4 }
+    const options = { implementation: implemented({ specFindings }), specCheck: passedCheck(mainLaunchValues(launchArgs()), {}, printed),
+      reports: { 'review:correctness': { findings: [backed, backed, backed, backed] }, roast: { findings: [roastFinding] } },
+      verify: { verify: verification(decisions, { issues: [issue] }) } }
+    // The fixer answers the three approvals as fix:0, fix:1 and fix:2, in the order of the decisions.
+    const answers = [disposition('fix:0'), disposition('fix:1', 'rejected'), disposition('fix:2', 'blocked')]
+    const { result } = await simulate({ ...options, fixes: { fix: fixed(answers) } })
+    expect(result.toFix).toEqual([{ source: 'impl:0', finding: specFindings[0] },
+      { source: 'verify:1', decision: decisions[1] }, { source: 'verify:3', decision: decisions[3] }, { source: 'issue:0', issue },
+      { source: 'roaster:0', finding: { ...roastFinding, id: 'roaster:0', seat: 'roaster', snapshots: at(INITIAL) } }])
+    expect(result.spec).toEqual({ path: SPEC_PATH, sha256: 'e'.repeat(64), lines: 4 })
+    // The answers of a fixer that aborted close nothing.
+    const abort = { trigger: 'sense-check', reason: 'The correction patches a mechanism the user\'s words describe as removed.' }
+    const aborted = await simulate({ ...options, fixes: { fix: fixed(answers, { abort, touched: [] }) } })
+    expect([aborted.result.exit, aborted.result.toFix.map(item => item.source)])
+      .toEqual(['aborted', ['impl:0', 'verify:0', 'verify:1', 'verify:2', 'verify:3', 'issue:0', 'roaster:0']])
   })
 
   test('a writer commit outside its scope still keeps the fixer from running', async () => {
@@ -1719,6 +1745,28 @@ const handed = (calls, label) => {
   return JSON.parse(prompt.slice(prompt.lastIndexOf('\n\n[') + 2).split('\n\nDo not repeat')[0])
 }
 const question = source => ({ key: source, disposition: 'question', reason: 'Should the error dialog get a retry button? Yes adds a button the user sees; no keeps the dialog as it is.', receipts: [receipt] })
+// The tree the tests run in, and the fix script as a unit fills it here, with the spec tool of this tree.
+const TREE = realpathSync(fileURLToPath(new URL('../', import.meta.url)))
+const fixInTree = new AsyncFunction('agent', 'phase', 'log', 'args', filled(fixSkeleton)
+  .replace("worktree: '<isolated worktree>'", 'worktree: ' + JSON.stringify(TREE))
+  .replace("pluginRoot: '<plugin root>'", 'pluginRoot: ' + JSON.stringify(TREE)).replace('export const meta =', 'const meta ='))
+// A fix run in this tree: its fixer runs the check command of its prompt with the spec tool and rejects
+// every entry, and the roaster reads the base unchanged.
+const fixRunOnTool = async ({ fixList, spec, entries, base }) => {
+  const labels = [], exits = []
+  const PATH = dirname(process.execPath) + ':' + process.env.PATH
+  const agent = async (prompt, opts) => {
+    labels.push(opts.label)
+    if (opts.label === 'roast') return { snapshots: base, ...cold() }
+    const ran = Bun.spawnSync(['sh', '-c', prompt.split('\n').find(line => line.includes('check-spec.ts'))], { env: { ...process.env, PATH } })
+    const specCheck = { exitCode: ran.exitCode, stdout: ran.stdout.toString(), stderr: ran.stderr.toString() }
+    exits.push(ran.exitCode)
+    const start = base[0].sha
+    return { specCheck, ...writer({ startSha: start, snapshotSha: start, ...fixed(entries.map(e => disposition(e.source, 'rejected'))) }) }
+  }
+  const result = await fixInTree(agent, () => {}, () => {}, { base, fixList, spec, transcripts: TREE + '/tests/fixtures/fix-list/transcripts', entries })
+  return { labels, exits, result }
+}
 
 describe('fix-only follow-up runs', () => {
   test('the fixer runs the fix list check in the worktree before anything else its prompt asks, and returns what the tool printed', async () => {
@@ -1728,7 +1776,7 @@ describe('fix-only follow-up runs', () => {
     const fix = calls[0]
     expect(fix.agentType).toBe('fixer')
     expect(fix.prompt.startsWith(checkFirst('FIX LIST CHECK', "bun '<plugin root>/tools/check-spec.ts' --fix-list '" + FIX_LIST +
-      "' --transcripts '" + TRANSCRIPTS + "' --json --base '" + JSON.stringify(at(BASE)) + "' --proof '" + fingerprint(fixLaunchValues(fixArgs())) + "'") +
+      "' --json --base '" + JSON.stringify(at(BASE)) + "' --proof '" + fingerprint(fixLaunchValues(fixArgs())) + "'") +
       '\n\n')).toBe(true)
     expect([fix.schema.required[0], fix.schema.properties.specCheck]).toEqual(['specCheck', SPEC_CHECK_SCHEMA])
     expect(fix.prompt).toContain('START SHAS, per repository: . ' + BASE)
@@ -1741,7 +1789,7 @@ describe('fix-only follow-up runs', () => {
     for (const [specCheck, printed] of [
       [passedCheck({ ...launched, entries: TWO }), fingerprint({ ...launched, entries: TWO })],
       [passedCheck(launched, { stdout: JSON.stringify({ proof: 'passed' }) }), 'passed'],
-      [passedCheck(launched, { exitCode: 1, stdout: '', stderr: '<list>.yaml: verify:0.decision: differs from the parent run\'s journal' }), null],
+      [passedCheck(launched, { exitCode: 1, stdout: '', stderr: '<list>.yaml: verify:0.decision: differs from the parent run\'s result' }), null],
     ]) {
       const calls = []
       const { result } = await simulateFix({ specCheck, calls })
@@ -1784,7 +1832,7 @@ describe('fix-only follow-up runs', () => {
       expect([call.label, /pointer/i.test(call.prompt)]).toEqual([call.label, false])
     }
     const diff = flat(calls.find(c => c.label === 'diff').prompt)
-    expect(diff).toContain('FIX LIST: ' + FIX_LIST + '. Its run key names the parent run and its spec key the parent spec, or null where there is none.')
+    expect(diff).toContain('FIX LIST: ' + FIX_LIST + '. Its result key names the saved result of the parent run and its spec key the parent spec, or null where there is none.')
     expect(diff).toContain('the fixer\'s fix list check compared the whole list with everything the parent run returned.')
   })
 
@@ -1861,12 +1909,10 @@ describe('fix-only follow-up runs', () => {
     expect(refused(await run([{ path: '.', sha: BASE }, { path: '.', sha: BASE }]))).toBe(true)
   })
 
-  test('each helper the fix script copies from the main script has the same source text, and the fingerprint helpers and the fix run\'s result checks that of their modules', async () => {
+  test('each helper the fix script copies from the main script has the same source text, and the fingerprint helpers that of their module', async () => {
     const copied = ['stage', 'hasHardFlag', 'abortOnFlag', 'checkWriterSnapshot', 'checkWriter', 'withReceipts', 'requireText',
       'exactlyOnce', 'add', 'end', 'failed', 'proof', 'limited', 'recordBlocking', 'blocking', 'sourceFindings', 'readSnapshots',
       'listPath', 'reported', 'checkModels', 'withSortedKeys', 'fingerprint', 'shellWord', 'printedProof']
-    const checked = ['shaByPath', 'hasHardFlag', 'requireText', 'exactlyOnce', 'withReceipts', 'checkCoverage', 'checkReader',
-      'checkWriterSnapshot', 'checkWriter', 'printedProof', 'listCheckPassed', 'checkListRun', 'checkFixerResult', 'checkDiffResult']
     const values = ['RULES', 'GUIDE', 'SPEC_RULES']
     const helpersBeforeRun = (source, args, names) => {
       const first = /\ntry \{ await (?:onePass|fixRun)\(\) \}.*\n/
@@ -1875,7 +1921,7 @@ describe('fix-only follow-up runs', () => {
         .replace(first, `\nreturn { ${[...new Set(names)].join(', ')} }\n`))(() => { throw new Error('no stage runs before the first') }, () => {}, () => {}, args)
     }
     const main = await helpersBeforeRun(filled(skeleton), launchArgs(), [...copied, ...values])
-    const fix = await helpersBeforeRun(filled(fixSkeleton), fixArgs(), [...copied, ...values, ...checked, 'SHA'])
+    const fix = await helpersBeforeRun(filled(fixSkeleton), fixArgs(), [...copied, ...values])
     for (const name of copied) expect([name, fix[name].toString()]).toEqual([name, main[name].toString()])
     for (const name of values) expect([name, fix[name]]).toEqual([name, main[name]])
     const module = await Bun.file(new URL('../tools/fingerprint.js', import.meta.url)).text()
@@ -1883,16 +1929,13 @@ describe('fix-only follow-up runs', () => {
     expect(module.split(exported)).toHaveLength(2)
     const shared = new Function(module.replace(exported, '\nreturn { withSortedKeys, fingerprint }\n'))()
     for (const name of ['withSortedKeys', 'fingerprint']) expect([name, main[name].toString()]).toEqual([name, shared[name].toString()])
-    // The spec tool applies the fix run's result checks to a journal, so the fix script carries its module's text.
-    const checks = await Bun.file(new URL('../tools/fix-run-checks.js', import.meta.url)).text()
-    const exports = '\nexport { hasHardFlag, checkFixerResult, checkDiffResult }\n'
-    expect(checks.split(exports)).toHaveLength(2)
-    const definitions = new Function(checks.replace(exports, `\nreturn { ${[...checked, 'SHA'].join(', ')} }\n`))()
-    for (const name of checked) expect([name, fix[name].toString()]).toEqual([name, definitions[name].toString()])
-    expect(fix.SHA.source).toBe(definitions.SHA.source)
+    // The helper that puts each item to fix under its source is defined after the run, in both scripts alike.
+    const numbered = source => source.split('\n').filter(line => line.startsWith('const numbered = '))
+    expect(numbered(fixSkeleton)).toHaveLength(1)
+    expect(numbered(fixSkeleton)).toEqual(numbered(skeleton))
   })
 
-  test('every entry reaches the fixer and the roaster as the journal holds it, keyed by its source, while they run side by side', async () => {
+  test('every entry reaches the fixer and the roaster as the list holds it, keyed by its source, while they run side by side', async () => {
     const roastEntered = Promise.withResolvers(), releaseRoast = Promise.withResolvers()
     let fixerSawRoaster = false
     const execution = simulateFix({ args: fixArgs({ entries: TWO }),
@@ -2016,6 +2059,32 @@ describe('fix-only follow-up runs', () => {
       ({ kind: 'unfixed-entry', severity: 'CRITICAL', item: { entry: keyedFixListEntry(response.key), response } })))
   })
 
+  test('a fix run returns every entry its accepted fixer left open, then its roast and diff findings, beside the parent spec its check confirmed', async () => {
+    const entries = ['verify:0', 'verify:1', 'verify:2', 'verify:3', 'roaster:0'].map(source => fixListEntry(source))
+    const args = fixArgs({ entries })
+    const printed = { spec: PARENT_SPEC, specSha256: 'e'.repeat(64), specLines: 4 }
+    const specCheck = passedCheck(fixLaunchValues(args), {}, printed)
+    const extra = { ...finding, severity: 'should-fix', claim: 'The change also renames an exported helper.' }
+    // Fixed and mapped, fixed without a mapped change, rejected, raised as a question, and blocked.
+    const answers = [disposition('verify:0'), disposition('verify:1'), disposition('verify:2', 'rejected'), question('verify:3'),
+      disposition('roaster:0', 'blocked')]
+    const { result } = await simulateFix({ args, specCheck, fixes: fixed(answers), roast: { findings: [finding] },
+      diff: { mappings: [mapping('verify:0')], findings: [extra] } })
+    expect(result.toFix).toEqual([{ source: 'entry:1', entry: entries[1] }, { source: 'entry:4', entry: entries[4] },
+      { source: 'roaster:0', finding: { ...finding, id: 'roaster:0', seat: 'roaster', snapshots: at(BASE) } },
+      { source: 'diff:0', finding: { ...extra, severity: 'CRITICAL' } }])
+    expect(result.spec).toEqual({ path: PARENT_SPEC, sha256: 'e'.repeat(64), lines: 4 })
+    // The answers of a fixer that aborted close no entry.
+    const abort = { trigger: 'sense-check', reason: 'The correction patches a mechanism the user\'s words describe as removed.' }
+    const aborted = await simulateFix({ args, specCheck, fixes: fixed(answers, { abort, touched: [] }) })
+    expect([aborted.result.exit, aborted.result.toFix.map(item => item.source)])
+      .toEqual(['aborted', ['entry:0', 'entry:1', 'entry:2', 'entry:3', 'entry:4']])
+    // A list without a spec gives a fix run without one.
+    const unspecified = fixArgs({ spec: null })
+    const without = await simulateFix({ args: unspecified, specCheck: passedCheck(fixLaunchValues(unspecified), {}, { spec: null }) })
+    expect([without.result.spec, without.result.toFix]).toEqual([null, []])
+  })
+
   test('a fixer result whose snapshot is not clean is retried, and three of them fail the run', async () => {
     const { calls, result } = await simulateFix({ fixes: fixed([disposition('verify:0')], { clean: false }) })
     expect(retried(calls, 'fix')).toHaveLength(3)
@@ -2044,29 +2113,10 @@ describe('fix-only follow-up runs', () => {
   })
 
   test('launch values that differ from the fix list make the spec tool fail the fixer\'s fix list check before any edit', async () => {
-    const root = realpathSync(fileURLToPath(new URL('../', import.meta.url)))
-    const head = Bun.spawnSync(['git', '-C', root, 'rev-parse', '--verify', 'HEAD^{commit}']).stdout.toString().trim()
-    const lists = root + '/tests/fixtures/fix-list'
-    const source = filled(fixSkeleton).replace("worktree: '<isolated worktree>'", 'worktree: ' + JSON.stringify(root))
-      .replace("pluginRoot: '<plugin root>'", 'pluginRoot: ' + JSON.stringify(root))
-    expect(source).not.toContain('<isolated worktree>')
-    const script = new AsyncFunction('agent', 'phase', 'log', 'args', source.replace('export const meta =', 'const meta ='))
-    const PATH = dirname(process.execPath) + ':' + process.env.PATH
-    const held = Bun.YAML.parse(await Bun.file(lists + '/list.yaml').text())
-    const launch = async (entries, spec = held.spec, base = at(head)) => {
-      const labels = [], exits = []
-      const agent = async (prompt, opts) => {
-        labels.push(opts.label)
-        if (opts.label === 'roast') return { snapshots: base, ...cold() }
-        const ran = Bun.spawnSync(['sh', '-c', prompt.split('\n').find(line => line.includes('check-spec.ts'))], { env: { ...process.env, PATH } })
-        const specCheck = { exitCode: ran.exitCode, stdout: ran.stdout.toString(), stderr: ran.stderr.toString() }
-        exits.push(ran.exitCode)
-        const start = base[0].sha
-        return { specCheck, ...writer({ startSha: start, snapshotSha: start, ...fixed(entries.map(e => disposition(e.source, 'rejected'))) }) }
-      }
-      const result = await script(agent, () => {}, () => {}, { base, fixList: lists + '/list.yaml', spec, transcripts: lists + '/transcripts', entries })
-      return { labels, exits, result }
-    }
+    const head = Bun.spawnSync(['git', '-C', TREE, 'rev-parse', '--verify', 'HEAD^{commit}']).stdout.toString().trim()
+    const fixList = TREE + '/tests/fixtures/fix-list/list.yaml'
+    const held = Bun.YAML.parse(await Bun.file(fixList).text())
+    const launch = (entries, spec = held.spec, base = at(head)) => fixRunOnTool({ fixList, spec, entries, base })
     // The entries the fixture list holds, as the tool prints them.
     const passed = await launch(held.entries)
     expect([passed.labels, passed.exits, passed.result.exit]).toEqual([['fix', 'roast'], [0], 'clean'])
@@ -2080,7 +2130,7 @@ describe('fix-only follow-up runs', () => {
     ]) {
       const refused = await launch(entries, spec)
       expect([refused.labels, refused.exits, refused.result.exit]).toEqual([['fix', 'roast'], [1], 'failed'])
-      const launched = fingerprint({ fixList: lists + '/list.yaml', transcripts: lists + '/transcripts', spec, entries, base: at(head), partialBase: false, tree: root })
+      const launched = fingerprint({ fixList, spec, entries, base: at(head), partialBase: false, tree: TREE })
       expect(refused.result.detail).toContain('the fix list check did not pass: exit 1, proof null where the launch values give ' + launched)
       expect(refused.result.detail).toContain('and the run launched with the proof ' + launched)
     }
@@ -2089,6 +2139,33 @@ describe('fix-only follow-up runs', () => {
     expect([elsewhere.labels, elsewhere.result.exit]).toEqual([['fix', 'roast'], 'failed'])
     expect(elsewhere.result.detail).toContain('the fix list check did not pass: exit 1, proof null where the launch values give ')
     expect(elsewhere.result.detail).toContain(`--base commit ${BASE} is not in the repository at .`)
+  })
+
+  test('a run\'s saved result gives a fix list that passes the fix list check, and a fix run launched on it passes its fixer\'s check', async () => {
+    const head = Bun.spawnSync(['git', '-C', TREE, 'rev-parse', '--verify', 'HEAD^{commit}']).stdout.toString().trim()
+    mkdirSync(TREE + '/.cache', { recursive: true })
+    const scratch = mkdtempSync(TREE + '/.cache/workflow-routing-')
+    try {
+      const specPath = 'tests/fixtures/fix-list/parent.yaml'
+      const sha256 = new Bun.CryptoHasher('sha256').update(await Bun.file(TREE + '/' + specPath).arrayBuffer()).digest('hex')
+      const { result } = await simulate({ specCheck: passedCheck(mainLaunchValues(launchArgs()), {}, { spec: specPath, sha256, specLines: 1 }),
+        reports: { 'review:correctness': { findings: [backed] }, roast: { findings: [finding] } },
+        verify: { verify: verification([decision([source('correctness')], { action: 'needs-decision', correction: '' })]) } })
+      // The workflow tool saves what the script returns in an output file, under result.
+      const saved = scratch + '/result.json', fixList = scratch + '/list.yaml'
+      writeFileSync(saved, JSON.stringify({ summary: 'A main run.', result }))
+      const tool = (...options) => Bun.spawnSync([process.execPath, TREE + '/tools/check-spec.ts', ...options], { cwd: TREE })
+      const made = tool('--make-fix-list', saved)
+      expect([made.exitCode, made.stderr.toString()]).toEqual([0, ''])
+      writeFileSync(fixList, made.stdout.toString())
+      const checked = tool('--fix-list', fixList, '--json', '--entries')
+      expect([checked.exitCode, checked.stderr.toString()]).toEqual([0, ''])
+      const { spec, entries } = JSON.parse(checked.stdout.toString())
+      expect([spec, entries.map(entry => entry.source)]).toEqual([specPath, ['verify:0', 'roaster:0']])
+      expect(entries).toEqual(result.toFix)
+      const launched = await fixRunOnTool({ fixList, spec, entries, base: at(head) })
+      expect([launched.labels, launched.exits, launched.result.exit]).toEqual([['fix', 'roast'], [0], 'clean'])
+    } finally { rmSync(scratch, { recursive: true, force: true }) }
   })
 
   test('every value of the check command of both scripts reaches the tool as one word, whatever its path holds', async () => {
@@ -2115,7 +2192,7 @@ describe('fix-only follow-up runs', () => {
       'bun', plugin + '/tools/check-spec.ts', spec, '--transcripts', sessions, '--json', '--base', JSON.stringify(at(BASE)),
       '--proof', fingerprint({ ...mainLaunchValues(mainArgs), tree })])
     expect(words(await checkCommand(fixSkeleton, listArgs))).toEqual(['cd', tree,
-      'bun', plugin + '/tools/check-spec.ts', '--fix-list', list, '--transcripts', sessions, '--json', '--base', JSON.stringify(at(BASE)),
+      'bun', plugin + '/tools/check-spec.ts', '--fix-list', list, '--json', '--base', JSON.stringify(at(BASE)),
       '--proof', fingerprint({ ...fixLaunchValues(listArgs), tree })])
   })
 })
@@ -2925,6 +3002,15 @@ describe('review-only runs', () => {
     // A blocking limitation of a reviewer ends the run for the root.
     const blocked = await simulateReview({ reports: { 'review:rules': { limitations: [{ what: 'CLAUDE.md', effect: 'blocks' }] } } })
     expect([blocked.result.exit, blocked.result.detail]).toEqual(['root-resolution', 'Blocking limitation from review:rules.'])
+  })
+
+  test('a review-only run returns the findings of every reviewer to be fixed, each under its reviewer, and no spec', async () => {
+    const bandAid = { ...finding, kind: 'band-aid', severity: 'should-fix', claim: 'The catch block hides a defect of the reader.' }
+    const { result } = await simulateReview({ reports: { 'review:correctness': { findings: [finding] }, 'review:quality': { findings: [bandAid] } } })
+    expect(result.spec).toBeNull()
+    expect(result.toFix).toEqual([
+      { source: 'review:correctness:0', finding: { ...finding, id: 'correctness:0', seat: 'correctness', snapshots: null } },
+      { source: 'review:quality:0', finding: { ...bandAid, severity: 'CRITICAL', id: 'quality:0', seat: 'quality', snapshots: null } }])
   })
 
   test('a reviewer that fails ends a review-only run, and the others\' findings still reach the root', async () => {

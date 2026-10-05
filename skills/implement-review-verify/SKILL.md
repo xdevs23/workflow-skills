@@ -828,7 +828,7 @@ second implementer pre-check.
 - The run and its unit are finished: never start a run on the same spec again, never edit a
   finished run's spec, and never hand a new run the previous run's findings as its next round.
 - Never read a finding, an open decision or a roast finding to sort, check or decide it. What a run
-  returned to be fixed goes, as its journal holds it, to the next fix run, described below. You
+  returned to be fixed goes, as its result holds it, to the next fix run, described below. You
   decide none of it and write nothing beside it.
 - Attest each `unattested-fix` by reading its commits against the approved correction and running
   the checks yourself. Never report a fix as verified on the fixer's claim.
@@ -856,42 +856,43 @@ second implementer pre-check.
   the rule sources and its guide, and the stops that need a spec, no-words and invalid-spec, do not
   apply.
 - The fix run's input is a fix list, a YAML file in the main checkout's project cache, which
-  `workflow-skills:local-cache` defines, with exactly the keys `run` (the parent run's ID), `spec`
-  (the spec the parent run checked, or null after a review pass, which checks none) and `entries`.
-- Write the fix list with
-  `<plugin root>/tools/check-spec.ts --make-fix-list <run> --transcripts <dir>`, which prints the
-  spec the parent run checked and everything the parent run returned to be fixed, each item as the
-  journal holds it under its source: every spec finding of its implementer, as `impl:<index>`;
-  every decision of its last verify stage, as `verify:<index>`, apart from an approved correction
-  its fixer reported fixed or rejected, and every unresolved issue of it, as
-  `issue:<index>`; in a run without a verify stage, such as a review pass, every finding of its
-  review seats, as `review:<seat>:<index>`; in a fix run, every entry of its own list that its fixer
-  left open, as `entry:<index>`; and every finding of its last roast stage and of its last diff
-  check, as `roaster:<index>` and `diff:<index>`.
-- Resume a run in which a stage returned no result with `workflow-skills:resume-interrupted-run`.
-  The tool refuses to write its fix list, because a stage either returns, is retried or ends the
-  run.
+  `workflow-skills:local-cache` defines, with exactly the keys `result` (the saved result of the
+  parent run), `spec` (the spec the parent run checked, or null after a review pass, which checks
+  none) and `entries`.
+- Save the parent run's result first: copy the output file that the run's task notification names
+  into the main checkout's project cache, unchanged. The notification shows only the beginning of a
+  long result, and the output file sits in a temporary directory that a restart empties, while the
+  fix run's check reads the result again.
+- Write the fix list with `<plugin root>/tools/check-spec.ts --make-fix-list <saved result>`, which
+  prints the absolute path of the saved result, the spec the parent run's check passed on, and every
+  item the run returned to be fixed in its `toFix` list, in that order and each under its source.
+- Expect each script to build its `toFix` list from the results it accepted: every spec finding of
+  its implementer, as `impl:<index>`; every decision of its verify stage, as `verify:<index>`, apart
+  from an approved correction its fixer reported fixed or rejected, and every unresolved issue of
+  it, as `issue:<index>`; in a run without a verify stage, such as a review pass, every finding of
+  its review seats, as `review:<seat>:<index>`; in a fix run, every entry of its own list that its
+  fixer left open, as `entry:<index>`; and every finding of its roast stage and of its diff check,
+  as `roaster:<index>` and `diff:<index>`.
+- Resume a run that ended `failed` because a stage returned no complete result with
+  `workflow-skills:resume-interrupted-run`. The tool refuses to write the fix list of any run that
+  ended `failed`, because a stage either returns, is retried or ends the run, and a run whose check
+  failed gives no fix list at all.
 - Expect a fix run's fixer to close an entry by rejecting it, by raising it as a question, or by a
   fix its diff check mapped a change to. Every other entry of the fix run, a blocked one or one the
   fixer never answered, stays open, and the next fix list carries it.
-- Expect only a result the fix run accepted to close an entry. The journal holds a stage's last
-  result whether or not the run accepted it, so the tool applies the fix run's own checks of the
-  fixer's and the diff check's results, which the script carries from the tool's fix-run checks
-  module, the fixer's fix list check among them. A refused or aborted fixer result closes no entry,
-  and neither does a fixer result without a fix list check of its own or any result of a fix run
-  whose check printed no base list, as in runs of earlier versions. A run whose check exited
-  non-zero gives no fix list at all.
+- Expect only a result the run accepted to close anything. The answers of a fixer whose result the
+  run refused, or that aborted, close no entry and no approved correction.
 - Save the tool's output as the fix list unchanged. Never add, delete or edit an entry and never
   attach anything to one: the check compares the whole list with what the parent run returned, and
   no word of yours enters the list.
 - Never use a spec as a fix list or a fix list as a spec, and never write one from the other. The
   two shapes never mix: the spec tool refuses a spec with the keys of a fix list, and a fix list
   with the keys of a spec.
-- Run `<plugin root>/tools/check-spec.ts --fix-list <file> --transcripts <dir> --json --entries`,
-  which compares the whole list with everything the parent run returned to be fixed, in the order
-  the generator writes it, so an entry that differs, is missing, was added or stands out of order
-  fails, holds the spec to the one the parent run checked, unchanged since, and prints the spec and
-  the entries with the proof only when all of them hold.
+- Run `<plugin root>/tools/check-spec.ts --fix-list <file> --json --entries`, which compares the
+  whole list with everything the saved result of the parent run returned to be fixed, in its order,
+  so an entry that differs, is missing, was added or stands out of order fails, holds the spec to
+  the one the parent run checked, unchanged since, and prints the spec and the entries with the
+  proof only when all of them hold.
 - Pass the tool's `spec` and `entries` output as `args.spec` and `args.entries` and the parent run's
   final snapshots as `args.base`, the `snapshots` list its run record returns, or after a review
   pass, which returns none, the commit each repository is at, and fill the parent
@@ -901,11 +902,10 @@ second implementer pre-check.
 - The fixer runs the same command in the worktree before anything else, without `--entries` and with
   the base list as `--base`, and `--partial-base` beside it when `partialBase` is set, so the tool
   checks the base list against the repositories of the tree as in the main run, and with `--proof`
-  set to the fingerprint of the list, the transcript directory, the spec, the entries, the base list
-  and the worktree the script received. The tool fails before the fixer's first edit when the list
-  gives another proof, and the run continues only when the proof the tool prints is that
-  fingerprint, so every stage receives what the journal holds and starts from commits the tree
-  holds.
+  set to the fingerprint of the list, the spec, the entries, the base list and the worktree the
+  script received. The tool fails before the fixer's first edit when the list gives another proof,
+  and the run continues only when the proof the tool prints is that fingerprint, so every stage
+  receives what the parent run returned and starts from commits the tree holds.
 - The fix run's fixer receives every entry, one key per source, and the parent spec. It resolves
   each entry with the user's words, the rule sources and the plugin's skills as its guide. Before it
   returns anything but fixed, it looks for every applicable rule and skill that says what to do or
@@ -1489,17 +1489,15 @@ back without the other completeness checks, so the stage helper does not ask it 
 another attempt could pass only by changing what the check compares.
 
 The fix run's fixer runs the tool's fix-list mode in place of the spec check: `--fix-list` with the
-fix list from `args.fixList`, the transcript directory, `--json`, the base list and `--proof`. The
-command carries no value of the list, so the fixer copies nothing long. Its proof is the
-fingerprint of the list path, the transcript directory, the spec, which is null for a list that
-names none, the entries, the base list, whether it is partial and the worktree, so a launched spec
-or entry that differs from the list fails the tool before the fixer's first edit. The script
-refuses at once when `args.fixList` does not end in `.yaml`, and the run ends when the launch values
-differ from the list, when the list differs from what the parent run returned to be fixed, or when
-the spec changed since the parent run checked it. The fix run's checks of a fixer result, in the
-tool's fix-run checks module, include this check, so the next fix list closes no entry through a
-fixer whose check failed. The roaster starts beside the fixer, and its findings, its limitations or
-its failure reach `remaining` also when the fixer's check failed.
+fix list from `args.fixList`, `--json`, the base list and `--proof`. The command carries no value of
+the list, so the fixer copies nothing long. Its proof is the fingerprint of the list path, the spec,
+which is null for a list that names none, the entries, the base list, whether it is partial and the
+worktree, so a launched spec or entry that differs from the list fails the tool before the fixer's
+first edit. The script refuses at once when `args.fixList` does not end in `.yaml`, and the run ends
+when the launch values differ from the list, when the list differs from what the parent run returned
+to be fixed, or when the spec changed since the parent run checked it. A failed check ends the run
+as `failed`, and a failed run gets no fix list. The roaster starts beside the fixer, and its
+findings, its limitations or its failure reach `remaining` also when the fixer's check failed.
 
 A review pass checks no spec and runs no writer, so it has no spec check.
 

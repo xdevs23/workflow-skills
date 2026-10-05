@@ -1,0 +1,44 @@
+{
+  "summary": "Synthetic result of a review pass, which checks no spec: the findings of its review seats.",
+  "result": {
+    "exit": "follow-up",
+    "detail": "The pass completed with items requiring follow-up.",
+    "remaining": [],
+    "toFix": [
+      {
+        "source": "review:correctness:0",
+        "finding": {
+          "file": "src/example.js",
+          "claim": "The error is swallowed.",
+          "severity": "must-fix",
+          "lane": "fixer-actionable",
+          "receipts": [
+            {
+              "file": "src/example.js",
+              "line": 12,
+              "quote": "catch (error) {}"
+            }
+          ]
+        }
+      },
+      {
+        "source": "review:rules:0",
+        "finding": {
+          "file": "src/example.js",
+          "claim": "The handler logs with console.log, which the project rules forbid.",
+          "severity": "should-fix",
+          "lane": "fixer-actionable",
+          "scope": "in-change",
+          "receipts": [
+            {
+              "file": "src/example.js",
+              "line": 31,
+              "quote": "console.log(event)"
+            }
+          ]
+        }
+      }
+    ],
+    "spec": null
+  }
+}

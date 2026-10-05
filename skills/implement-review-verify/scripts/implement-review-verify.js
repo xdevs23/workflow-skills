@@ -566,7 +566,7 @@ const remaining = []
 let snapshots = null, impl = null, verified = null
 let sources = [], queue = []
 let exit = null, detail = '', activeLabel = 'impl'
-let passedFix = null, reportedFix = null
+let passedFix = null, reportedFix = null, roast = null
 const add = (kind, item, severity = 'CRITICAL') => {
   if (!REMAINING.includes(kind)) throw new Error('Unknown remaining kind: ' + kind)
   remaining.push({ kind, severity, item })
@@ -995,6 +995,7 @@ async function onePass() {
         if (passedFix.dispositions.some(d => d.disposition !== 'fixed')) end('root-resolution', 'Fixer disagreement needs root resolution.')
         proof(passedFix, label)
       } else {
+        roast = result
         for (const f of result.findings) add('roast-finding', f, f.severity)
         for (const l of uncovered(result)) add('roast-limitation', l, 'should-fix')
         limited(result, label)
@@ -1064,11 +1065,29 @@ const inverseSpecDecisions = decisions.filter(d => d.sourceIds.some(id => source
 const projectBenefitDecisions = decisions.filter(d => d.sourceIds.some(id => sourceOf.get(id)?.kind))
   .map(d => ({ decision: d, findings: d.sourceIds.map(id => sourceOf.get(id)).filter(f => f?.kind)
     .map(({ id, seat, kind, file, claim }) => ({ id, seat, kind, file, claim })) }))
+// Everything the run returns to be fixed, each item under the source that names it, in the order of a
+// fix list, which is written from it unchanged. The fixer answers the approved corrections as fix:<n>
+// in the order of the decisions, and one it fixed or disproved goes no further. A run without a verify
+// stage, such as a review pass, returns the findings of its review seats in place of decisions.
+const numbered = (kind, field, items) => items.map((item, i) => ({ source: kind + ':' + i, [field]: item }))
+const approvals = decisions.filter(d => d.action === 'approve-fix')
+const settled = new Set((passedFix?.dispositions ?? []).filter(d => ['fixed', 'rejected'].includes(d.disposition)).map(d => d.key))
+const toFix = [
+  ...numbered('impl', 'finding', impl?.specFindings ?? []),
+  ...numbered('verify', 'decision', decisions).filter(({ decision }) => !settled.has('fix:' + approvals.indexOf(decision))),
+  ...numbered('issue', 'issue', verified?.issues ?? []),
+  ...verified ? [] : sources.map(finding => ({ source: 'review:' + finding.id, finding })),
+  ...numbered('roaster', 'finding', roast?.findings ?? []),
+]
+// The spec the implementer's check passed on, as the spec tool printed it, or null when no check
+// passed, as in a review pass.
+const printed = impl ? JSON.parse(impl.specCheck.stdout) : null
+const spec = printed && { path: printed.spec, sha256: printed.sha256, lines: printed.specLines }
 return {
-  exit, detail, remaining, decisions,
+  exit, detail, remaining, toFix, decisions,
   proof: passedFix ? { checks: passedFix.checks, files: passedFix.files }
     : impl ? { checks: impl.checks, files: impl.files } : null,
-  base, snapshots,
+  spec, base, snapshots,
   acceptance: 'pending-root-checks', // Pass completion is not size approval or integration permission.
   counts: { sources: sources.length, approved: queue.length,
     rejected: decisions.filter(d => d.action === 'reject').length,
