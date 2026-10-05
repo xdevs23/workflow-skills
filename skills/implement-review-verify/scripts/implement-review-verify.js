@@ -1068,10 +1068,15 @@ const projectBenefitDecisions = decisions.filter(d => d.sourceIds.some(id => sou
     .map(({ id, seat, kind, file, claim }) => ({ id, seat, kind, file, claim })) }))
 const numbered = (kind, field, items) => items.map((item, i) => ({ source: kind + ':' + i, [field]: item }))
 const settled = new Set((passedFix?.dispositions ?? []).filter(d => ['fixed', 'rejected'].includes(d.disposition)).map(d => d.key))
-// An inverse-spec decision goes to the next fix run also when the fixer settled it (law 13).
-const fromInverse = new Set(inverseSpecDecisions)
+// An inverse-spec decision (law 13) and a project-benefit decision go to the next fix run also when
+// the fixer settled them. A project-benefit decision carries its kind-bearing findings there, so
+// that a fix of it in that run cannot close it while the flagged mechanism may remain.
+const benefitFindings = new Map(projectBenefitDecisions.map(({ decision, findings }) => [decision, findings]))
+const keptOpen = new Set([...inverseSpecDecisions, ...benefitFindings.keys()])
 const openDecisions = numbered('verify', 'decision', decisions)
-  .filter(({ decision }) => fromInverse.has(decision) || !settled.has(approvalKeys.get(decision)))
+  .filter(({ decision }) => keptOpen.has(decision) || !settled.has(approvalKeys.get(decision)))
+  .map(({ source, decision }) => ({ source,
+    decision: benefitFindings.has(decision) ? { ...decision, projectBenefit: benefitFindings.get(decision) } : decision }))
 const unverifiedFindings = verified ? [] : sources.map(finding => ({ source: 'review:' + finding.id, finding }))
 const toFix = [
   ...numbered('impl', 'finding', impl?.specFindings ?? []),

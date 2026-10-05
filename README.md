@@ -98,11 +98,12 @@ directly as `agentType`s in your own workflows.
   tool saved its result in, copied into the project cache: the spec its check passed on and the
   `toFix` list the run returns. Each workflow script builds that list from the results it
   accepted: every spec finding of its implementer, every decision and unresolved issue of its
-  finding verifier apart from an approved correction its fixer fixed or rejected that decides no
-  inverse-spec finding, or every finding of its reviewers in a run without a verifier, every entry
-  of a fix run's own list its fixer left open, and every finding of its roaster and diff check. A
-  run in which a stage failed or raised a hard flag gives no fix list, whatever exit it ended with,
-  and neither does a run in which a writer committed outside its scope.
+  finding verifier apart from an approved correction its fixer fixed or rejected that decides
+  neither an inverse-spec finding nor a kind-bearing one, or every finding of its reviewers in a
+  run without a verifier, every entry of a fix run's own list its fixer left open, and every
+  finding of its roaster and diff check. A run in which a stage failed or raised a hard flag gives
+  no fix list, whatever exit it ended with, and neither does a run in which a writer committed
+  outside its scope.
   Add `--size <json>` to add a measured size breach of the unit.
 - **The pull request watcher `watch-prs` needs Python 3 and the GitHub CLI `gh`, logged in.**
   `babysit-pr` runs it. The watcher is a Python program in the plugin's tools directory, run with

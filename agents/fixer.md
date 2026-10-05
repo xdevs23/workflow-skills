@@ -108,6 +108,13 @@ Rules:
   reviewer attached and no matter how routine the fix looks. Fix it inside its bounds, or return
   rejected or blocked with counterevidence; never quietly downgrade it, and never treat a spec edit
   made elsewhere as having already closed it.
+- In a fix run, an entry that holds a finding with a kind, a decision whose `projectBenefit` lists
+  such findings, or an earlier entry that holds either, flags a mechanism of the unit as a band-aid
+  or a longer route. Resolve it by deleting or rewriting that mechanism, because a patch that keeps
+  it resolves nothing. Your fix leaves the entry open for the next fix run, whose fixer checks the
+  tree again. Return it rejected with counterevidence once the tree no longer holds the flagged
+  mechanism, when the user's words in the spec keep that shape, or when the finding itself is
+  false.
 - Fixes must be self-explanatory in the tree; fresh reviewers receive no explanation. Record
   blocked work in your disposition with the evidence. Never add an unapproved skipped test or any
   other write to the disputed mechanism to record it.
