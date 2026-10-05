@@ -393,10 +393,13 @@ const checkWriter = r => {
       if (!commits.length) throw new Error('the new snapshot of ' + path + ' needs commits in it')
     } else if (commits.length) throw new Error('the unchanged snapshot of ' + path + ' lists commits')
   }
-  if (moved) {
-    if (!r.files.length) throw new Error('a new snapshot needs files')
-    if (!r.checks.some(c => c.passed === r.proofPassed)) throw new Error('no check has passed equal to proofPassed')
-  } else if (r.files.length) throw new Error('an unchanged snapshot lists files')
+  if (moved && !r.files.length) throw new Error('a new snapshot needs files')
+  if (!moved && r.files.length) throw new Error('an unchanged snapshot lists files')
+}
+// The checks a writer quotes hold a run whose outcome is the proofPassed it reports. The fixer owes
+// that run on every result, a proof-only pass included; the implementer owes it once it committed.
+const checkProof = r => {
+  if (!r.checks.some(c => c.passed === r.proofPassed)) throw new Error('no check has passed equal to proofPassed')
 }
 const printedProof = stdout => { try { return JSON.parse(stdout)?.proof } catch { return undefined } }
 // The fixer runs the fix list check before its first edit, with the proof of the run's launch values
@@ -413,6 +416,7 @@ const checkListRun = (check, proof) => {
 const checkFixerResult = (r, proof, keys, starts) => {
   checkListRun(r.specCheck, proof)
   checkWriter(r)
+  checkProof(r)
   exactlyOnce(r.dispositions.map(d => d.key), keys, 'fix key')
   checkWriterSnapshot(r, starts)
   for (const d of r.dispositions) requireText(d.reason, 'fix disposition reason')
