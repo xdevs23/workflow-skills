@@ -445,6 +445,12 @@ const returnedItem = (value: unknown) => {
   return named !== undefined && named.source !== 'size' && Object.keys(value).length === 2 && mapping(value[named.field])
 }
 
+// The exit of a run names only the first cause that ended it, so a stage that failed after another
+// cause shows only as its stage-failure item in remaining.
+const stageFailures = (remaining: unknown[]) => remaining
+  .filter((entry): entry is Mapping => mapping(entry) && entry.kind === 'stage-failure')
+  .map(({ item }) => mapping(item) ? `${String(item.label)}: ${String(item.message)}` : JSON.stringify(item))
+
 // The workflow tool saves what a script returns in its output file under the key result.
 async function readSavedRunResult(file: string): Promise<Returned> {
   let output: unknown
@@ -453,8 +459,10 @@ async function readSavedRunResult(file: string): Promise<Returned> {
   }
   const result = mapping(output) ? output.result : undefined
   if (!mapping(result)) throw new Error(`${file} holds no run result`)
-  if (result.exit === 'failed') throw new Error(`the run ended failed, and a failed run gets no fix list: ${String(result.detail)}`)
   if (!Array.isArray(result.toFix)) throw new Error('the run result holds no toFix list, as a run of an earlier version of the scripts')
+  if (!Array.isArray(result.remaining)) throw new Error('the run result holds no remaining list')
+  const failures = stageFailures(result.remaining)
+  if (failures.length) throw new Error(`a stage of the run failed, and an incomplete run gets no fix list: ${failures.join('; ')}`)
   const items: unknown[] = result.toFix
   const malformed = items.findIndex(item => !returnedItem(item))
   if (malformed >= 0) throw new Error(`the run result holds item ${malformed + 1} of toFix in another form`)

@@ -873,10 +873,15 @@ second implementer pre-check.
   its review seats, as `review:<seat>:<index>`; in a fix run, every entry of its own list that its
   fixer left open, as `entry:<index>`; and every finding of its roast stage and of its diff check,
   as `roaster:<index>` and `diff:<index>`.
-- Resume a run that ended `failed` because a stage returned no complete result with
-  `workflow-skills:resume-interrupted-run`. The tool refuses to write the fix list of any run that
-  ended `failed`, because a stage either returns, is retried or ends the run, and a run whose check
-  failed gives no fix list at all.
+- Expect the tool to refuse the fix list of a run in which a stage failed, whatever exit the run
+  ended with. A stage either returns, is retried or ends the run, and every stage that failed leaves
+  a `stage-failure` item in `remaining`, also when an earlier cause, such as a blocked correction,
+  named the exit. Such a run is incomplete, because a stage it requires, such as the roaster, gave
+  no result the run accepted, and a run whose check failed gives no fix list either.
+- Show the user each `stage-failure` item of such a run with its message, as the run returned it,
+  and build nothing on its result until the user answers. The run ended on its own after the
+  stage's three attempts, so it is no interrupted run, and `workflow-skills:resume-interrupted-run`
+  does not apply to it.
 - Expect a fix run's fixer to close an entry by rejecting it, by raising it as a question, or by a
   fix its diff check mapped a change to. Every other entry of the fix run, a blocked one or one the
   fixer never answered, stays open, and the next fix list carries it.

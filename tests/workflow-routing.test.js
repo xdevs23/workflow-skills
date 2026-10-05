@@ -2167,6 +2167,27 @@ describe('fix-only follow-up runs', () => {
     } finally { rmSync(scratch, { recursive: true, force: true }) }
   })
 
+  test('a run whose roaster failed after its fixer blocked a correction ends root-resolution and gives no fix list', async () => {
+    mkdirSync(TREE + '/.cache', { recursive: true })
+    const scratch = mkdtempSync(TREE + '/.cache/workflow-routing-')
+    try {
+      const unavailable = { roast: 'roaster unavailable' }
+      const main = await simulate({ reports: oneReport, verify: approveOne, fail: unavailable,
+        fixes: { fix: fixed([disposition('fix:0', 'blocked')], { touched: [] }) } })
+      const fix = await simulateFix({ fail: unavailable, fixes: fixed([disposition('verify:0', 'blocked')], { touched: [] }) })
+      for (const [name, { result }] of [['main', main], ['fix', fix]]) {
+        expect([name, result.exit, result.remaining.filter(r => r.kind === 'stage-failure').map(r => r.item.label)])
+          .toEqual([name, 'root-resolution', ['roast']])
+        const saved = scratch + '/' + name + '.json'
+        writeFileSync(saved, JSON.stringify({ result }))
+        const made = Bun.spawnSync([process.execPath, TREE + '/tools/check-spec.ts', '--make-fix-list', saved], { cwd: TREE })
+        expect([name, made.exitCode, made.stdout.toString()]).toEqual([name, 1, ''])
+        expect(made.stderr.toString()).toContain('a stage of the run failed, and an incomplete run gets no fix list: roast: ' +
+          failedThrice('roast', 'roaster unavailable'))
+      }
+    } finally { rmSync(scratch, { recursive: true, force: true }) }
+  })
+
   test('every value of the check command of both scripts reaches the tool as one word, whatever its path holds', async () => {
     const tree = "/work/the tree's root", plugin = "/opt/the plugin's root", sessions = "/home/the sessions' dir"
     const located = source => filled(source).replace("worktree: '<isolated worktree>'", 'worktree: ' + JSON.stringify(tree))

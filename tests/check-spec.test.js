@@ -516,10 +516,19 @@ describe('fix list validation', () => {
     expect([checked.exit, checked.err, JSON.parse(checked.out).specSha256, JSON.parse(checked.out).specLines]).toEqual([0, '', parentSpecSha, 1])
   })
 
-  test('a run that ended failed, a file without a run result and a result of an earlier version give no fix list', () => {
-    const detail = 'FAIL-FAST: verify returned no complete result after 3 attempts: model unavailable'
-    invalid(makeList(writeEditedParentResult(result => { result.exit = 'failed'; result.detail = detail })),
-      `the run ended failed, and a failed run gets no fix list: ${detail}`)
+  test('a run in which a stage failed gives no fix list and fails the check of its list, whatever its exit', () => {
+    const message = 'FAIL-FAST: roast returned no complete result after 3 attempts: roaster unavailable'
+    const stageFailure = { kind: 'stage-failure', severity: 'CRITICAL', item: { label: 'roast', message } }
+    const refusal = `a stage of the run failed, and an incomplete run gets no fix list: roast: ${message}`
+    for (const exit of ['failed', 'root-resolution', 'aborted']) {
+      const saved = writeEditedParentResult(result => { result.exit = exit; result.remaining = [stageFailure] })
+      invalid(makeList(saved), refusal)
+      invalid(checkList(written({ ...validList, result: saved })), `impl:0: ${refusal}`)
+    }
+    invalid(makeList(writeEditedParentResult(result => { delete result.remaining })), 'the run result holds no remaining list')
+  })
+
+  test('a file without a run result and a result of an earlier version give no fix list', () => {
     invalid(makeList(writeEditedParentResult(result => { delete result.toFix })), 'the run result holds no toFix list, as a run of an earlier version of the scripts')
     invalid(makeList(writeEditedParentResult(result => { result.toFix = [] })), 'the run returned nothing to fix')
     const absent = join(scratch, 'absent-result.json')
