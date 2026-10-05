@@ -554,10 +554,20 @@ const checkWriter = r => {
   if (moved && !r.files.length) throw new Error('a new snapshot needs files')
   if (!moved && r.files.length) throw new Error('an unchanged snapshot lists files')
 }
-// The checks a writer quotes hold a run whose outcome is the proofPassed it reports. The fixer owes
-// that run on every result, a proof-only pass included; the implementer owes it once it committed.
+// The implementer runs focused checks of its own choice. Once it committed, at least one check it
+// quotes has the outcome its proofPassed reports.
 const checkProof = r => {
   if (!r.checks.some(c => c.passed === r.proofPassed)) throw new Error('no check has passed equal to proofPassed')
+}
+// The fixer's proof is the full check command it ran after its last write, on every result, a
+// proof-only pass included: its last quoted run of that command has the outcome proofPassed reports,
+// whatever other checks pass beside it.
+const checkFullRun = r => {
+  const last = r.checks.findLast(c => c.command === UNIT.checkCommand)
+  if (!last) throw new Error('no check quotes a run of the full check command ' + JSON.stringify(UNIT.checkCommand))
+  if (last.passed !== r.proofPassed) {
+    throw new Error('the last quoted run of the full check command has passed ' + last.passed + ' where proofPassed is ' + r.proofPassed)
+  }
 }
 const blocking = r => r.limitations.filter(l => l.effect === 'blocks')
 // Every stage ending uses the same run record and remaining-items handoff.
@@ -614,7 +624,7 @@ const PROVE = [
 // Fixer prompts only. Neither a block that reviewers receive nor the implementer's prompt carries
 // the check command: the fixer changes code after the implementer, so a full check in the implementer
 // stage goes stale, and the fixer's run after the last write of the run is the one full check.
-const CHECK = 'CHECK COMMAND, fixer only (run bare after your last write): ' + UNIT.checkCommand
+const CHECK = 'CHECK COMMAND, fixer only (run bare after your last write, and quote each run in checks with the command exactly as written here): ' + UNIT.checkCommand
 const RETURN_ARTIFACTS = [
   'ARTIFACTS, implementer only: return in artifacts every file you leave outside your commits for the stages after you, such as',
   'a capture of the running program, with its absolute path and what it holds, and an empty list when you leave none.',
@@ -884,7 +894,7 @@ const fixPass = (queue, starts) => stage([
 ].join('\n\n'), {
   label: 'fix', phase: 'Fix', agentType: 'workflow-skills:fixer',
   ...UNIT.models.fix, schema: FIX,
-}, r => { checkWriter(r); checkProof(r); exactlyOnce(r.dispositions.map(d => d.key), queue.map(f => f.key), 'fix key') })
+}, r => { checkWriter(r); checkFullRun(r); exactlyOnce(r.dispositions.map(d => d.key), queue.map(f => f.key), 'fix key') })
 
 async function implement() {
   phase('Implement')
