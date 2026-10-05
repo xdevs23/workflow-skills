@@ -682,6 +682,19 @@ describe('workflow verification and consolidation', () => {
     expect(result.inverseSpecDecisions[0].sourceIds).toEqual([source('correctness'), source('inverse')])
   })
 
+  test('an inverse-spec decision goes to the next fix run also when the fixer fixed or rejected it', async () => {
+    const fromInverse = decision([source('inverse')], { severity: 'CRITICAL' })
+    const mixed = decision([source('correctness'), source('inverse', 1)], { severity: 'CRITICAL' })
+    const plain = decision([source('correctness', 1)])
+    const { result } = await simulate({
+      reports: { 'review:correctness': { findings: [backed, backed] }, 'review:inverse': { findings: [finding, finding] } },
+      verify: { verify: verification([fromInverse, mixed, plain]) },
+      fixes: { fix: fixed([disposition('fix:0'), disposition('fix:1', 'rejected'), disposition('fix:2')]) },
+    })
+    expect(result.inverseSpecDecisions).toEqual([fromInverse, mixed])
+    expect(result.toFix).toEqual([{ source: 'verify:0', decision: fromInverse }, { source: 'verify:1', decision: mixed }])
+  })
+
   test('a reader abort object aborts before verify or fix, in one call, with its whole object in remaining', async () => {
     const abort = { trigger: 'directive-conflict', reason: 'the diff contradicts a recorded directive' }
     const { result, calls } = await simulate({ reports: { 'review:inverse': { abort, findings: [finding] } } })

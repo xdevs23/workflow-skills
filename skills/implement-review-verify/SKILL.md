@@ -868,11 +868,11 @@ second implementer pre-check.
   item the run returned to be fixed in its `toFix` list, in that order and each under its source.
 - Expect each script to build its `toFix` list from the results it accepted: every spec finding of
   its implementer, as `impl:<index>`; every decision of its verify stage, as `verify:<index>`, apart
-  from an approved correction its fixer reported fixed or rejected, and every unresolved issue of
-  it, as `issue:<index>`; in a run without a verify stage, such as a review pass, every finding of
-  its reviewers, as `review:<seat>:<index>`; in a fix run, every entry of its own list that its
-  fixer left open, as `entry:<index>`; and every finding of its roast stage and of its diff check,
-  as `roaster:<index>` and `diff:<index>`.
+  from an approved correction its fixer reported fixed or rejected that decides no inverse-spec
+  finding, and every unresolved issue of it, as `issue:<index>`; in a run without a verify stage,
+  such as a review pass, every finding of its reviewers, as `review:<seat>:<index>`; in a fix run,
+  every entry of its own list that its fixer left open, as `entry:<index>`; and every finding of
+  its roast stage and of its diff check, as `roaster:<index>` and `diff:<index>`.
 - Expect the tool to refuse the fix list of a run in which a stage failed, whatever exit the run
   ended with. A stage either returns, is retried or ends the run, and every stage that failed leaves
   a `stage-failure` item in `remaining`, also when an earlier cause, such as a blocked correction,
