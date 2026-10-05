@@ -299,7 +299,7 @@ async function main() {
   } catch (error) {
     fail(-1, 'spec', `unreadable or malformed YAML: ${messageOf(error)}`)
   }
-  // The text of every entry: the width rule checks it and the size gate counts its non-blank lines.
+  // The text of every entry: the width rule checks it and the size check counts its non-blank lines.
   // unbreakableLines holds the lines over the width that pass because their one word cannot be broken.
   const unbreakableLines: { field: string, line: number }[] = []
   let specLines = 0
@@ -353,7 +353,7 @@ async function main() {
   const summary = {
     sha256: sha256Of(bytes!),
     nonBlankLines: nonBlankLines(bytes!.toString('utf8')),
-    // The spec lines the size gate divides by: the non-blank lines of the entries' text.
+    // The spec lines the size check divides by: the non-blank lines of the entries' text.
     specLines,
     unbreakable: unbreakableLines,
     // The base list is checked against the tree the tool runs in, so the proof covers that tree too.
