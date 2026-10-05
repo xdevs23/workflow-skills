@@ -47,16 +47,20 @@ copies into the project cache unchanged. The list names that file by its absolut
 run's check passed on, or null when it checked none, as a review pass does, and holds the run's
 `toFix` list. Each script builds that list from the results it accepted: every spec finding of its
 implementer, every decision and unresolved issue of its verify stage apart from an approved
-correction its fixer fixed or rejected, in a run without a verify stage every finding of its
-reviewers, in a fix run every entry of its own list its fixer left open, and every finding of its
-roast stage and diff check. A fix run's fixer closes an entry by rejecting it, by raising it as a
-question or by a fix its diff check mapped a change to; a blocked entry and one the fixer never
-answered stay open. A result the run refused or that carries a hard flag closes nothing. A run in
-which a stage failed gets no fix list, whatever exit it ended with: the exit names only the first
-cause that ended the run, so a roaster that failed after the fixer blocked an entry shows only as
-the `stage-failure` item it left in `remaining`, and the tool refuses any result that holds one.
-Such a run is incomplete, and it ended on its own, so the orchestrating session shows its stage
-failures to the user instead of resuming it. The tool also refuses a result that holds one source
+correction its fixer fixed or rejected that decides no inverse-spec finding, in a run without a
+verify stage every finding of its reviewers, in a fix run every entry of its own list its fixer left
+open, and every finding of its roast stage and diff check. A fix run's fixer closes an entry by
+rejecting it, by raising it as a question or by a fix its diff check mapped a change to; a blocked
+entry and one the fixer never answered stay open. A result the run refused or that carries a hard
+flag closes nothing. A run in which a stage failed gets no fix list, whatever exit it ended with:
+the exit names only the first cause that ended the run, so a roaster that failed after the fixer
+blocked an entry shows only as the `stage-failure` item it left in `remaining`, and the tool refuses
+any result that holds one. Such a run is incomplete, and it ended on its own, so the orchestrating
+session shows its stage failures to the user instead of resuming it. A run in which a stage raised a
+hard flag gets no fix list either, whatever exit it ended with: every hard flag leaves an `abort`
+item in `remaining`, the tool refuses any result that holds one, and the unit continues only on the
+user's answer, added to a copy of the spec for a new run. The tool also refuses a result without a
+list of the implementer's artifacts, each a path and what it holds, a result that holds one source
 twice in `toFix`, or whose `spec` carries a sha256 other than 64 lowercase hexadecimal digits or a
 line count that is no positive integer, since a spec that passed its check counts at least one line.
 `--size <json>` adds a size breach the orchestrating session measured, with the implementation lines
@@ -75,32 +79,37 @@ parent run's spec check counted. It requires the spec to be the one the parent r
 with the same sha256, or null when that run checked none. With `--base`, and `--partial-base` beside
 it, it checks a base list against the tree it runs in as the spec mode does. A passing list prints
 its spec, the spec's sha256 and spec lines beside the saved result where it names a spec, the base
-list it checked, the list's `sha256`, and as its proof the fingerprint of the list path, the spec,
-the entries, the base list, whether it is partial and the directory the tool runs in, as the record
-of the spec check describes, so the output of a fix run's own check carries the spec, the list and
-the base list on to the next fix list. With `--entries` it prints the entries as well. Every failure
-is reported as a violation naming the entry's source. The result is parsed as JSON, never by hand.
+list it checked, the list's `sha256`, the implementer's artifacts the saved result holds, and as its
+proof the fingerprint of the list path, the spec, the entries, the artifacts, the base list, whether
+it is partial and the directory the tool runs in, as the record of the spec check describes, so the
+output of a fix run's own check carries the spec, the list and the base list on to the next fix
+list. With `--entries` it prints the entries as well. Every failure is reported as a violation
+naming the entry's source. The result is parsed as JSON, never by hand.
 
 **fix-script**: The skill ships a fix script beside the main script, in its shape: a marked block of
 unit values on top (main checkout, worktree, fix list path, parent spec, transcript directory,
 plugin root, check command, base snapshots and whether that list is partial, documents directory,
-the entries, the rule sources and the model per stage), and a reviewed body below it that is not
-edited per run. The base is the parent run's final snapshot, one commit per repository of the tree,
-and the spec and the entries are the tool's output for the fix list. Its stages, in order, are the
-fixer together with the roaster, and the diff check. It reuses the shared preamble, retry helper,
-writer checks and remaining-items handoff of the main script. The script itself checks only that
-the spec is named or null and that the entries are a non-empty list of objects, each with a source
-string and the one object it holds.
+the entries, the artifacts, the rule sources and the model per stage), and a reviewed body below it
+that is not edited per run. The base is the parent run's final snapshot, one commit per repository
+of the tree, and the spec, the entries and the artifacts are the tool's output for the fix list. Its
+stages, in order, are the fixer together with the roaster, and the diff check. It reuses the shared
+preamble, retry helper, writer checks and remaining-items handoff of the main script. The script
+itself checks only that the spec is named or null, that the entries are a non-empty list of objects,
+each with a source string and the one object it holds, and that the artifacts are a list of objects,
+each with a path and what it holds. It hands a non-empty list of artifacts to the fixer and the diff
+check in the block the main script uses, and returns the list in its result, so the next fix run of
+the unit receives the same files.
 
 **list-check**: The fixer runs the spec tool on the fix list and the base list before anything else,
 as the implementer of the main script runs the spec check. Its command changes to the worktree,
 carries no entry of the list, and quotes every value as one shell word. The tool fails when the list
 differs from what the parent run returned or the base list does not match the tree. The script
-computes the fingerprint of the list path, the spec, the entries, the base list, whether it is
-partial and the worktree it received at launch, and the run continues only when the proof the tool
-printed equals it. A launched spec or entry that differs from the list, a missing or an added entry,
-and a check that failed all end the run as failed, without asking the fixer again. So every stage
-receives what the parent run returned.
+computes the fingerprint of the list path, the spec, the entries, the artifacts, the base list,
+whether it is partial and the worktree it received at launch, and the run continues only when the
+proof the tool printed equals it. A launched spec or entry that differs from the list, launched
+artifacts that differ from the parent run's result, a missing or an added entry, and a check that
+failed all end the run as failed, without asking the fixer again. So every stage receives what the
+parent run returned.
 
 **fixer-on-every-entry**: The fixer receives every entry, one key per source, as the parent run
 returned it, and the parent spec. It resolves each entry with the user's words, the rule sources and
@@ -117,12 +126,12 @@ nor `invalid-spec`. The roaster runs alongside it on the same list, as in the ma
 
 **diff-check**: After the fixer, one read-only stage, with its own agent template, reads the fix
 diff from the parent run's final snapshot to the fixer's snapshot, with the fix list, the parent
-spec and the rule sources its prompt names, and maps every change in it to the key of an entry, with
-one mapping for each entry a change carries out. A change that maps to no entry, or that changes the
-product's scope or what the user sees and does where neither the user's words nor a rule calls for
-it, whatever the entry asks, is a CRITICAL finding. It checks the parent spec first and sets
-`invalid-spec` on an invalid one, which ends the run as an abort. Its findings go to the remaining
-items and start no further fixer in the run.
+spec, the implementer's artifacts and the rule sources its prompt names, and maps every change in it
+to the key of an entry, with one mapping for each entry a change carries out. A change that maps to
+no entry, or that changes the product's scope or what the user sees and does where neither the
+user's words nor a rule calls for it, whatever the entry asks, is a CRITICAL finding. It checks the
+parent spec first and sets `invalid-spec` on an invalid one, which ends the run as an abort. Its
+findings go to the remaining items and start no further fixer in the run.
 
 **fix-run-exit**: Every entry the fixer reports fixed returns as an unattested fix for the
 orchestrating session to attest, as in the main script, and the run then ends `follow-up`, as it

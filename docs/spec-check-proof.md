@@ -14,11 +14,12 @@ The spec tool prints as `proof` the 32-bit FNV-1a hash of the values it checked,
 with the keys of every mapping in sorted order. A spec check covers the spec path, the transcript
 directory, the base list, whether the base list is partial and the directory the tool runs in, as
 the operating system reports it with symbolic links resolved. A fix-list check covers the path of
-the fix list, the spec the list names, null for a list that names none, its entries, the base list
-the fix run starts from, whether that list is partial and the directory the tool runs in. The same
-values give the same proof on every run, and a failing check prints none. In every mode but the
-fix-list generator, `--proof` names the proof a run expects, and the tool fails with both proofs
-named when the values it checked give another.
+the fix list, the spec the list names, null for a list that names none, its entries, the
+implementer's artifacts the parent run returned, the base list the fix run starts from, whether that
+list is partial and the directory the tool runs in. The same values give the same proof on every
+run, and a failing check prints none. In every mode but the fix-list generator, `--proof` names the
+proof a run expects, and the tool fails with both proofs named when the values it checked give
+another.
 
 The base list is checked against the repositories of the directory the tool runs in, so the proof of
 every check covers that directory. Another checkout that holds the same commits passes the same
@@ -71,7 +72,8 @@ another proof, and the tool fails the fixer's check before its first edit. The c
 carries no entry of the list and stays short, because the proof stands for the entries. The base
 list it does carry holds one entry per repository. The fix list's `--json` summary holds the entries
 only with `--entries`, which the orchestrating session uses to build the launch values, so the fixer
-returns a short summary.
+returns a short summary. The artifacts take part in both fingerprints the same way: the summary
+always prints the list the parent run's saved result holds, and the session passes it at launch.
 
 A fix run builds the `toFix` list it returns from the results it accepted, so a fixer result whose
 check failed, or that the run refused for any other reason, closes no entry. The generator takes
@@ -86,11 +88,12 @@ so the stage helper never asks the writer again: another attempt could pass only
 the check compares. In a fix run the roaster runs beside the fixer, and its findings, its
 limitations or its failure reach the run's remaining items beside the failed check.
 
-The generator refuses every run in which a stage failed, whatever exit the run ended with, because
-the exit names only the first cause that ended the run and a failed stage after it shows only in
-`remaining`. Such a run ended on its own, so it is shown to the user and never followed by a fix
-run. A fix run whose fix list check failed launched on other values than it was given, and it is
-launched again with the right ones.
+The generator refuses every run in which a stage failed or raised a hard flag, whatever exit the run
+ended with, because the exit names only the first cause that ended the run and a failed or flagging
+stage after it shows only in `remaining`. Such a run ended on its own, so it is shown to the user
+and never followed by a fix run. A flagged unit continues only on the user's answer, added to a copy
+of the spec for a new run. A fix run whose fix list check failed launched on other values than it
+was given, and it is launched again with the right ones.
 
 ## What it replaces
 

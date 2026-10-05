@@ -19,14 +19,14 @@ option of its own.
 What a run returns to be fixed goes, as its result holds it, to a fix run. The run returns it in its
 `toFix` list, and the spec tool writes the fix list from the parent run's saved result with
 `--make-fix-list`: every spec finding of the implementer, every decision of the finding verifier,
-cleanup decisions included, apart from an approved correction its fixer reported fixed or rejected,
-every unresolved issue of the verifier, every finding of the reviewers in a run without a
-verifier, such as a review pass, every entry a fix run's fixer left open, and every finding of the
-roaster and the diff check. The list names the spec the parent run checked. Nobody adds, removes or
-edits an entry, and nothing is attached to one, so no reading of the orchestrating session steers
-the fix. One function of the spec tool reads what a run returned, and both the generator and the
-check use it: the check compares the whole list with that list, so a deleted, an added and an edited
-entry fail alike.
+cleanup decisions included, apart from an approved correction its fixer reported fixed or rejected
+that decides no inverse-spec finding, every unresolved issue of the verifier, every finding of the
+reviewers in a run without a verifier, such as a review pass, every entry a fix run's fixer left
+open, and every finding of the roaster and the diff check. The list names the spec the parent run
+checked. Nobody adds, removes or edits an entry, and nothing is attached to one, so no reading of
+the orchestrating session steers the fix. One function of the spec tool reads what a run returned,
+and both the generator and the check use it: the check compares the whole list with that list, so a
+deleted, an added and an edited entry fail alike.
 
 A size breach of the unit is measured after the run. The orchestrating session passes its
 measurement, the implementation lines added and the commits measured, to `--make-fix-list` with
@@ -80,7 +80,9 @@ toward a solution it could only assume.
 
 **Every decision goes to the fix run, unless the fixer settled it.** The fix list carries cleanup
 decisions as well, and leaves out only an approved correction the main run's fixer reported fixed
-or rejected, because the fixer is the stage that knows what it left undone.
+or rejected, because the fixer is the stage that knows what it left undone. A decision on an
+inverse-spec finding goes on even then, because every inverse-spec decision goes to the next fix
+run like every other decision and no completed run closes it on its own.
 
 **A rejection closes an entry.** A fixer that disproves a claim with counterevidence has resolved
 it. Carrying the claim into every later fix run would ask each fixer to argue the same point again.
