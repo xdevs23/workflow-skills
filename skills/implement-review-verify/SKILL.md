@@ -1337,11 +1337,10 @@ These laws are non-negotiable across every run of this skill.
    reader, including adversaries: the verifier consumes them all. A missing object is incomplete
    verification, never a harmless gap in a finished fix.
 3. **Resume interrupted runs only.** A run stopped mid-flight is resumed through
-   `workflow-skills:resume-interrupted-run`. Completed stages made before the first edited or
-   reordered call replay their journaled results, and that call, every call after it and every
-   unfinished stage run live, as that skill describes. A completed run never runs again: you record
-   its remaining items in the todo record and move on, and a new run starts only for an item that is
-   supposed to be fixed, as the remaining items section says.
+   `workflow-skills:resume-interrupted-run`, which says which calls the resume replays and which
+   run live. A completed run never runs again: you record its remaining items in the todo record and
+   move on, and a new run starts only for an item that is supposed to be fixed, as the remaining
+   items section says.
 4. **Barrier discipline.** Review readers run concurrently on a stable clean snapshot, then
    Verify consolidates their results. Fix awaits that approval. Only the Git-object-only roaster
    overlaps the fixer, reading the captured pre-fix SHA and approved list. Await both tasks;
@@ -1700,11 +1699,6 @@ once in fix dispositions. Unknown, duplicated and unanswered IDs are protocol fa
   out who was who.
 
 ### Resume corollaries
-
-Every `agent()` call is journaled under a key made from its prompt, its options and the calls made
-before it, in the order the script made them. For an interrupted run, matching keys with a result
-replay instantly. An edited call, every call made after it and every unfinished stage run live, and
-so does a call that the order of arriving results moved, such as a retry.
 
 - Read the journal to distinguish a completed stage from one that never returned.
 - Recover mid-flight work through **`workflow-skills:resume-interrupted-run`**.
