@@ -1385,6 +1385,18 @@ describe('one-pass remaining-items handoff', () => {
     expect(result.exit).toBe('root-resolution')
     expect(result.remaining.map(r => r.kind)).toEqual(['writer-scope', 'unfixed-approval'])
     expect(calls.some(c => c.phase === 'Fix')).toBe(false)
+    // The approval it left open never reaches a fix run that would build on the same snapshot.
+    expect(result.toFix.map(item => item.source)).toEqual(['verify:0'])
+    mkdirSync(TREE + '/.cache', { recursive: true })
+    const scratch = mkdtempSync(TREE + '/.cache/workflow-routing-')
+    try {
+      const saved = scratch + '/result.json'
+      writeFileSync(saved, JSON.stringify({ result }))
+      const made = Bun.spawnSync([process.execPath, TREE + '/tools/check-spec.ts', '--make-fix-list', saved], { cwd: TREE })
+      expect([made.exitCode, made.stdout.toString()]).toEqual([1, ''])
+      expect(made.stderr.toString()).toContain('a writer commit left its scope, and no fix run builds on the snapshot that holds it: . ' +
+        INITIAL + ': ' + entry.note)
+    } finally { rmSync(scratch, { recursive: true, force: true }) }
   })
 
   test('even a low-severity fixed key is unattested with its approval and commit evidence', async () => {

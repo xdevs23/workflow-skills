@@ -891,6 +891,11 @@ second implementer pre-check.
   the spec for a new run.
 - Show the user each `abort` item of such a run with its reason, as the stage wrote it, and start
   nothing on the unit until the user answers.
+- Expect the tool to refuse the fix list of a run whose finding verifier found a writer commit
+  outside its scope. The run then ends before its fixer, and the corrections it approved would
+  build on the snapshot that holds that commit.
+- Show the user each `writer-scope` item of such a run with its note, as the verifier wrote it, and
+  build nothing on its result until the user answers.
 - Expect a fix run's fixer to close an entry by rejecting it, by raising it as a question, or by a
   fix its diff check mapped a change to. Every other entry of the fix run, a blocked one or one the
   fixer never answered, stays open, and the next fix list carries it.

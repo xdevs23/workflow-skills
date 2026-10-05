@@ -539,6 +539,15 @@ describe('fix list validation', () => {
     }
   })
 
+  test('a run whose writer committed outside its scope gives no fix list and fails the check of its list', () => {
+    const note = 'the commit also rewrote an unrelated helper'
+    const scope = { kind: 'writer-scope', severity: 'CRITICAL', item: { repository: '.', sha: 'b'.repeat(40), ok: false, filesMatch: true, note } }
+    const refusal = `a writer commit left its scope, and no fix run builds on the snapshot that holds it: . ${'b'.repeat(40)}: ${note}`
+    const saved = writeEditedParentResult(result => { result.exit = 'root-resolution'; result.remaining = [scope] })
+    invalid(makeList(saved), refusal)
+    invalid(checkList(written({ ...validList, result: saved })), `impl:0: ${refusal}`)
+  })
+
   test('the implementer artifacts of the parent run are printed by the check of its list and covered by its proof', () => {
     const artifacts = [{ path: '/tree/.cache/visual/captures/impl-before', what: 'the screen at the base commit' }]
     const saved = writeEditedParentResult(result => { result.artifacts = artifacts })
