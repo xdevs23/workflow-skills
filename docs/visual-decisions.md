@@ -21,8 +21,11 @@ define yet is drawn as a proposal whose caption names any layout the assistant c
 The page is one standalone HTML file in the project cache, with its CSS inside it and no external
 resources. It holds no paragraphs. A visible change imitates the real screen, a change nobody sees
 is drawn as boxes and arrows, and one realistic sample runs through every decision of the page. The
-drawing can go to one agent when the code to read is large, and the assistant renders the page once
-in a headless browser and looks at the screenshot before showing it.
+drawing can go to one agent when the code to read is large. That agent's prompt carries, for every
+state with a commit, the repository and the full commit ID the state names, and the agent reads the
+files of that state at that commit, because its own checkout can hold a different version. The
+assistant renders the page once in a headless browser and looks at the screenshot before showing
+it.
 
 The chat message holds the page path, one line per decision and one question. An answer is taken
 exactly as written. A choice the rules already decide stays off the page and is stated in one line
