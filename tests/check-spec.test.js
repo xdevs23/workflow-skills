@@ -569,6 +569,10 @@ describe('fix list validation', () => {
 
   test('a file without a run result and a result of an earlier version give no fix list', () => {
     invalid(makeList(writeEditedParentResult(result => { delete result.toFix })), 'the run result holds no toFix list, ' + EARLIER_VERSION)
+    invalid(makeList(writeEditedParentResult(result => {
+      delete result.toFix
+      result.remaining.push({ kind: 'abort', severity: 'CRITICAL', item: { abort: { trigger: 'directive-conflict', reason: 'The scope contradicts the record.' } } })
+    })), "a stage of the run raised a hard flag")
     invalid(makeList(writeEditedParentResult(result => { result.toFix = [] })), 'the run returned nothing to fix')
     const absent = join(scratch, 'absent-result.json')
     invalid(makeList(absent), `the run result ${absent} is unreadable or no JSON`)
