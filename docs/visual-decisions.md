@@ -8,11 +8,12 @@ decision.
 
 ## What the skill asks for
 
-Every picture of a state is labelled by what that state is: the merged code by its branch or
-deployment, such as the main branch, the develop branch or production, and work that is not merged
-yet as unmerged, with its branch. A decision shows the state it starts from and After, or, when it
-helps, three pictures: the merged code, the unmerged work and After. Before drawing, the assistant
-reads in full the code behind every state it draws, at the commit that state names, so each picture
+Every picture of a state is labelled by what that state is, as the writing style skill names a state
+of the code: the merged code by its branch or deployment, such as the main branch, the develop
+branch or production, and work that is not merged yet as unmerged, with its branch in the label. A
+decision shows the state it starts from and After, or, when it helps, three pictures: the merged
+code, the unmerged work and After. Before drawing, the assistant reads in full the code behind every
+state it draws that has a commit, at the commit that state names, so each picture of such a state
 shows what that code does. A statement about a state that its code contradicts is drawn as the code
 has it, with a line starting `CORRECTION:` under the decision, and an After that the code does not
 define yet is drawn as a proposal whose caption names any layout the assistant chose.
@@ -46,7 +47,12 @@ changes are not merged yet, and such a label reads as the state the work started
 took unmerged work for the code that was already in place. A label that names the branch, the
 deployment or the unmerged work says which code the picture shows.
 
+The rule for naming a state of the code lives in the writing style skill alone, and the visual
+decisions skill refers to it and adds only what a picture needs, the branch of unmerged work in the
+label. The visual decisions skill loads the writing style skill first, so one rule covers questions,
+pages and pictures, and an edit to it reaches all of them.
+
 ## Rejected alternatives
 
-**rejected-today-label**: A pair of pictures labelled Today and After. Reason: Today hides whether
-the picture shows the merged code or the assistant's own unmerged work.
+**rejected-today-label**: A pair of pictures labelled Today and After was rejected, because Today
+hides whether the picture shows the merged code or the assistant's own unmerged work.
