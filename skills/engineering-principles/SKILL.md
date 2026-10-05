@@ -41,6 +41,9 @@ in every language. `workflow-skills:code-writing` holds how the code itself read
 - Refactor the wrong foundation and delete the machinery compensating for it.
 - Preserve useful abstractions; choose structures that carry the intent.
 - Reject specifications that mandate architectural violations.
+- Build code in distinct modules, layers and interfaces. One adapter handles the input and another
+  the output, and the core stays agnostic. The UI is decoupled from the renderer that actually draws
+  it.
 
 ## Separation and ownership
 
@@ -245,6 +248,10 @@ in every language. `workflow-skills:code-writing` holds how the code itself read
   the save a second time, and wait until the save is done. Leave the view as it was when an optional
   feature can't apply. Fix a usability problem in the interface, with an affordance, a label or
   discoverability, never by explaining the interface to the person testing it.
+- Avoid imperative or procedural checks. Make the condition fall out of the design where possible.
+- Where possible, use conditional database updates instead of checking a condition in the program,
+  which could suffer from TOCTOU or from races with other threads (the _what if it changes in the
+  milliseconds between the two_ question).
 
 ## Tests
 
