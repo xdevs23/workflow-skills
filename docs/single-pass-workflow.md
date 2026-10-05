@@ -34,7 +34,9 @@ no loop. This builds on [finding verification](workflow-finding-verification.md)
    `aborted` (a hard flag) and `failed` (a protocol or stage failure); `detail`, one sentence
    naming the cause; `remaining`, decision 4; `decisions`, `inverseSpecDecisions`,
    `projectBenefitDecisions`, `cleanup` and `counts` as today, built from the one
-   verification; `dispositions`, every answer of the fixer; `proof` (the fixer's checks and
+   verification; `dispositions`, every answer of the fixer; `specSuggestions`, the suggestions
+   about the spec of a fixer object that passed the writer checks, which block nothing and edit
+   no spec; `proof` (the fixer's checks and
    files when a fix pass ran, else the implementer's), `baseSha`, `snapshotSha` and `acceptance` as today. A pass has completed
    when the verifier returned, the fix pass and the roaster both settled without ending the
    run, and the proof passed. When several causes end the run, the first one processed sets
@@ -62,6 +64,10 @@ no loop. This builds on [finding verification](workflow-finding-verification.md)
    * `false-premise`: each premise an accepted fixer result reports with `holds` false, its
      claim and note with the fixer's label; `must-fix`, so a run it alone leaves open ends
      `follow-up`;
+   * `fix-limitation`: each limitation of effect `narrows` of an accepted fixer result, a check
+     its proof covers only in part, with the fixer's label, since no verifier of this run reads
+     the fixer's object; `should-fix`; a fixer limitation of effect `blocks` is a
+     `blocking-limitation` only;
    * `roast-finding`: every roaster finding, with the roast's snapshot SHA; the finding's own
      severity;
    * `roast-limitation`: every roaster limitation of effect `narrows` and every roaster

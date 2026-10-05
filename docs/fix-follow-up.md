@@ -170,8 +170,12 @@ the run `root-resolution`, as does a blocked entry, a fix reported as done that 
 maps to no change in the diff check, a failed proof, or a change the diff check maps to no entry.
 Each premise the accepted fixer result reports false returns as a must-fix `false-premise` item with
 the fixer's label, as in the main script, because the fixer's template counts a false prompt premise
-as a must-fix finding. It ends `clean` only when nothing at all remains. Aborts and stage failures
-end it as in the main script.
+as a must-fix finding. Each limitation of effect `narrows` of that result returns as a should-fix
+`fix-limitation` item with the fixer's label, as in the main script, because no verifier reads the
+fixer's object and the item is the only record of a check its proof covers in part. The run's
+result carries that fixer's `specSuggestions`, which add no remaining item, so a suggested spec edit
+reaches the orchestrating session without blocking the run. It ends `clean` only when nothing at all
+remains. Aborts and stage failures end it as in the main script.
 
 **fix-document**: A fixer whose correction alters the design extends the design document that
 already describes the part it changed, and writes a new one, named after the fix list, only when no
