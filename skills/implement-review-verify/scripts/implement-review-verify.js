@@ -571,10 +571,17 @@ const checkWriter = r => {
   if (moved && !r.files.length) throw new Error('a new snapshot needs files')
   if (!moved && r.files.length) throw new Error('an unchanged snapshot lists files')
 }
-// The implementer runs focused checks of its own choice. Once it committed, at least one check it
-// quotes has the outcome its proofPassed reports.
+// The implementer runs focused checks of its own choice. Once it committed, the last quoted run of
+// each command is that command's outcome, so a passed rerun supersedes an earlier failure, and
+// proofPassed is true exactly when the last run of every command passed.
 const checkProof = r => {
-  if (!r.checks.some(c => c.passed === r.proofPassed)) throw new Error('no check has passed equal to proofPassed')
+  const lastRuns = [...new Map(r.checks.map(c => [c.command, c])).values()]
+  if (!lastRuns.length) throw new Error('no check is quoted')
+  const failing = lastRuns.filter(c => !c.passed).map(c => c.command)
+  if (r.proofPassed && failing.length) {
+    throw new Error('proofPassed is true, but the last quoted run of ' + failing.map(command => JSON.stringify(command)).join(', ') + ' failed')
+  }
+  if (!r.proofPassed && !failing.length) throw new Error('proofPassed is false, but the last quoted run of every check command passed')
 }
 // The fixer's proof is the full check command it ran after its last write, on every result, a
 // proof-only pass included: its last quoted run of that command has the outcome proofPassed reports,
