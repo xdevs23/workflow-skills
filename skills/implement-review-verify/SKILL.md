@@ -871,11 +871,13 @@ second implementer pre-check.
   item the run returned to be fixed in its `toFix` list, in that order and each under its source.
 - Expect each script to build its `toFix` list from the results it accepted: every spec finding of
   its implementer, as `impl:<index>`; every decision of its verify stage, as `verify:<index>`, apart
-  from an approved correction its fixer reported fixed or rejected that decides no inverse-spec
-  finding, and every unresolved issue of it, as `issue:<index>`; in a run without a verify stage,
-  such as a review pass, every finding of its reviewers, as `review:<seat>:<index>`; in a fix run,
-  every entry of its own list that its fixer left open, as `entry:<index>`; and every finding of
-  its roast stage and of its diff check, as `roaster:<index>` and `diff:<index>`.
+  from an approved correction its fixer reported fixed or rejected that decides neither an
+  inverse-spec finding nor a kind-bearing one, a decision on a kind-bearing finding with those
+  findings in `projectBenefit`, and every unresolved issue of it, as `issue:<index>`; in a run
+  without a verify stage, such as a review pass, every finding of its reviewers, as
+  `review:<seat>:<index>`; in a fix run, every entry of its own list that its fixer left open, as
+  `entry:<index>`; and every finding of its roast stage and of its diff check, as `roaster:<index>`
+  and `diff:<index>`.
 - Expect the tool to refuse the fix list of a run in which a stage failed, whatever exit the run
   ended with. A stage either returns, is retried or ends the run, and every stage that failed leaves
   a `stage-failure` item in `remaining`, also when an earlier cause, such as a blocked correction,
@@ -899,6 +901,10 @@ second implementer pre-check.
 - Expect a fix run's fixer to close an entry by rejecting it, by raising it as a question, or by a
   fix its diff check mapped a change to. Every other entry of the fix run, a blocked one or one the
   fixer never answered, stays open, and the next fix list carries it.
+- Expect a fix to leave a project-benefit entry open: one that holds a finding with a kind, a
+  decision with `projectBenefit`, or an earlier entry that holds either. The next fix run's fixer
+  checks the tree for the flagged mechanism and rejects the entry once it is gone, so a patch that
+  keeps the mechanism never closes it.
 - Expect only a result the run accepted to close anything. The answers of a fixer whose result the
   run refused, or that aborted, close no entry and no approved correction.
 - Save the tool's output as the fix list unchanged. Never add, delete or edit an entry and never
@@ -1040,8 +1046,9 @@ it cannot prove a future model actually passed a question on unchanged and decid
 - **Pass a stage's question on with no recommended option of yours.** Label no option as
   recommended, add no option, and never offer one that keeps a found defect as it is or leaves the
   decision for later.
-- Every decision in `projectBenefitDecisions` goes to the next fix run like every other decision.
-  A standing one closes only by deletion, a rewrite, or the
+- Every decision in `projectBenefitDecisions` goes to the next fix run like every other decision,
+  also when the fixer reported it fixed or rejected it, with its kind-bearing findings in
+  `projectBenefit`. A standing one closes only by deletion, a rewrite, or the
   user's verbatim word to keep the shape, added to a copy of the spec; a patch that keeps the
   flagged mechanism leaves it open.
 

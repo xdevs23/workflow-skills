@@ -695,6 +695,24 @@ describe('workflow verification and consolidation', () => {
     expect(result.toFix).toEqual([{ source: 'verify:0', decision: fromInverse }, { source: 'verify:1', decision: mixed }])
   })
 
+  test('a project-benefit decision of any reviewer goes to the next fix run with its kind-bearing findings, also when the fixer fixed or rejected it', async () => {
+    const patched = benefit([source('quality')])
+    const disputed = benefit([source('alternatives'), source('correctness')])
+    const plain = decision([source('correctness', 1)])
+    const { result } = await simulate({
+      reports: { ...report('review:quality', [bandAid]), ...report('review:alternatives', [{ ...bandAid, kind: 'longer-route' }]),
+        'review:correctness': { findings: [backed, backed] } },
+      verify: { verify: verification([patched, disputed, plain]) },
+      fixes: { fix: fixed([disposition('fix:0'), disposition('fix:1', 'rejected'), disposition('fix:2')]) },
+    })
+    const flagged = (seat, kind) => ({ id: source(seat), seat, kind, file: bandAid.file, claim: bandAid.claim })
+    expect(result.inverseSpecDecisions).toEqual([])
+    expect(result.toFix).toEqual([
+      { source: 'verify:0', decision: { ...patched, projectBenefit: [flagged('quality', 'band-aid')] } },
+      { source: 'verify:1', decision: { ...disputed, projectBenefit: [flagged('alternatives', 'longer-route')] } }])
+    expect(result.decisions).toEqual([patched, disputed, plain])
+  })
+
   test('a reader abort object aborts before verify or fix, in one call, with its whole object in remaining', async () => {
     const abort = { trigger: 'directive-conflict', reason: 'the diff contradicts a recorded directive' }
     const { result, calls } = await simulate({ reports: { 'review:inverse': { abort, findings: [finding] } } })
@@ -2096,6 +2114,23 @@ describe('fix-only follow-up runs', () => {
       { source: 'roaster:0', finding: { ...finding, id: 'roaster:0', seat: 'roaster', snapshots: at(BASE) } },
       { source: 'diff:0', finding: { ...extra, severity: 'CRITICAL' } }])
     expect(result.spec).toEqual({ path: PARENT_SPEC, sha256: 'e'.repeat(64), lines: 4 })
+  })
+
+  test('a mapped fix leaves a project-benefit entry open for the next fix run, and a rejection closes it', async () => {
+    const flagged = { id: 'quality:0', seat: 'quality', kind: 'band-aid', file: 'src/example.js', claim: 'A guard around the caller compensates for the callee.' }
+    const entries = [
+      fixListEntry('verify:0', { severity: 'CRITICAL', projectBenefit: [flagged] }),
+      fixListEntry('verify:1'),
+      fixListEntry('roaster:0', { kind: 'longer-route', severity: 'CRITICAL' }),
+      { source: 'entry:3', entry: fixListEntry('roaster:0', { kind: 'band-aid', severity: 'CRITICAL' }) },
+      fixListEntry('diff:0', { kind: 'band-aid', severity: 'CRITICAL' }),
+    ]
+    const args = fixArgs({ entries })
+    const { result } = await simulateFix({ args, fixes: fixed([...entries.slice(0, 4).map(e => disposition(e.source)), disposition('diff:0', 'rejected')]) })
+    expect(result.mappings.map(m => m.source)).toEqual(['verify:0', 'verify:1', 'roaster:0', 'entry:3', 'diff:0'])
+    expect(result.toFix).toEqual([{ source: 'entry:0', entry: entries[0] }, { source: 'entry:2', entry: entries[2] },
+      { source: 'entry:3', entry: entries[3] }])
+    expect(await template('fixer')).toContain('Your fix leaves the entry open for the next fix run, whose fixer checks the tree again.')
   })
 
   test('the answers of a fixer that aborted close no entry of the fix run', async () => {

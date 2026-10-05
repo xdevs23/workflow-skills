@@ -650,7 +650,15 @@ for (const entry of queue) {
 // A run that fixed anything leaves its unattested fixes, so it ends clean only when nothing remains.
 if (!exit) end(remaining.length ? 'follow-up' : 'clean', remaining.length
   ? 'The fix run completed with items requiring follow-up.' : 'The fix run completed and nothing remains.')
-const closesEntry = ({ key, disposition }) => ['rejected', 'question'].includes(disposition) || provenFixes.has(key)
+// A project-benefit entry holds a finding with a kind, a decision that carries such findings in
+// projectBenefit, or an earlier entry that holds either. A fix leaves it open, because a patch that
+// keeps the flagged mechanism resolves nothing: the next fix run's fixer checks the tree again and
+// rejects the entry once the mechanism is gone.
+const projectBenefit = item => Boolean(item.finding?.kind || item.decision?.projectBenefit?.length) ||
+  (isObject(item.entry) && projectBenefit(item.entry))
+const entryOf = new Map(entries.map(entry => [entry.source, entry]))
+const closesEntry = ({ key, disposition }) => ['rejected', 'question'].includes(disposition) ||
+  (provenFixes.has(key) && !projectBenefit(entryOf.get(key)))
 const closedSources = new Set((passedFix?.dispositions ?? []).filter(closesEntry).map(d => d.key))
 const numbered = (kind, field, items) => items.map((item, i) => ({ source: kind + ':' + i, [field]: item }))
 const toFix = [
