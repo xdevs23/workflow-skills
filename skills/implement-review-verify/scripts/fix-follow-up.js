@@ -396,10 +396,15 @@ const checkWriter = r => {
   if (moved && !r.files.length) throw new Error('a new snapshot needs files')
   if (!moved && r.files.length) throw new Error('an unchanged snapshot lists files')
 }
-// The checks a writer quotes hold a run whose outcome is the proofPassed it reports. The fixer owes
-// that run on every result, a proof-only pass included; the implementer owes it once it committed.
-const checkProof = r => {
-  if (!r.checks.some(c => c.passed === r.proofPassed)) throw new Error('no check has passed equal to proofPassed')
+// The fixer's proof is the full check command it ran after its last write, on every result, a
+// proof-only pass included: its last quoted run of that command has the outcome proofPassed reports,
+// whatever other checks pass beside it.
+const checkFullRun = r => {
+  const last = r.checks.findLast(c => c.command === UNIT.checkCommand)
+  if (!last) throw new Error('no check quotes a run of the full check command ' + JSON.stringify(UNIT.checkCommand))
+  if (last.passed !== r.proofPassed) {
+    throw new Error('the last quoted run of the full check command has passed ' + last.passed + ' where proofPassed is ' + r.proofPassed)
+  }
 }
 const printedProof = stdout => { try { return JSON.parse(stdout)?.proof } catch { return undefined } }
 // The fixer runs the fix list check before its first edit, with the proof of the run's launch values
@@ -416,7 +421,7 @@ const checkListRun = (check, proof) => {
 const checkFixerResult = (r, proof, keys, starts) => {
   checkListRun(r.specCheck, proof)
   checkWriter(r)
-  checkProof(r)
+  checkFullRun(r)
   exactlyOnce(r.dispositions.map(d => d.key), keys, 'fix key')
   checkWriterSnapshot(r, starts)
   for (const d of r.dispositions) requireText(d.reason, 'fix disposition reason')
@@ -482,7 +487,7 @@ const PROVE = [
   'of this stage touched with its byte size at the snapshot, checks quotes the output of every bare',
   'run, git quotes HEAD and status. An account of the work with an empty files list is not the work.',
 ].join('\n')
-const CHECK = 'CHECK COMMAND, fixer only (run bare after your last write): ' + UNIT.checkCommand
+const CHECK = 'CHECK COMMAND, fixer only (run bare after your last write, and quote each run in checks with the command exactly as written here): ' + UNIT.checkCommand
 const NEW_DOCUMENT = UNIT.documents + '/' + UNIT.fixList.split('/').pop().replace(/\.yaml$/, '') + '.md'
 const DOCUMENT_WHEN = [
   'DESIGN DOCUMENT, writer only: write or extend a design document when your change alters the design: what the code does,',

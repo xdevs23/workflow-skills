@@ -68,13 +68,33 @@ const decision = (ids, fields = {}) => ({
   receipts: [receipt],
   ...fields,
 })
-const check = (passed = true) => ({ command: 'bun test tests/', passed, output: passed ? '2 pass' : '1 fail', truncated: false })
+const check = (passed = true, command = 'bun test tests/example.test.js') => ({ command, passed, output: passed ? '2 pass' : '1 fail', truncated: false })
+// A run of the check command the marked block of both shipped scripts holds, which only the fixer receives.
+const FULL_CHECK = '<the check command>'
+const fullCheck = (passed = true) => check(passed, FULL_CHECK)
+// Quoted checks of a fixer that reports proofPassed true, none of which proves it: the last quoted run
+// of the full check command decides, and a check of another command proves nothing.
+const NO_FULL_RUN = 'no check quotes a run of the full check command "<the check command>"'
+const FULL_RUN_FAILED = 'the last quoted run of the full check command has passed false where proofPassed is true'
+const unprovenFixerChecks = [
+  ['no check', [], NO_FULL_RUN],
+  ['only a failed check of another command', [check(false)], NO_FULL_RUN],
+  ['a passed check of another command and no run of the full check', [check(true)], NO_FULL_RUN],
+  ['a failed last full check beside a passed check of another command', [check(true), fullCheck(false)], FULL_RUN_FAILED],
+  ['a passed full check followed by a failed one', [fullCheck(true), fullCheck(false)], FULL_RUN_FAILED],
+]
+// The last run of the full check decides, so a passed rerun after a failed run proves proofPassed true,
+// and a failed last run beside a passed check of another command reaches the run as a failed proof.
+const provenFixerChecks = [
+  ['a failed full check followed by a passed rerun', [fullCheck(false), fullCheck(true)], true],
+  ['a failed last full check beside a passed check of another command', [check(true), fullCheck(false)], false],
+]
 const verification = (decisions = [], fields = {}) => ({
   abort: noAbort, limitations: [], checks: [], decisions, issues: [], specSuggestions: [], ...fields,
 })
 const fixed = (dispositions = [], fields = {}) => ({
   abort: noAbort, limitations: [], premises: [], specSuggestions: [], touched: dispositions.length ? ['src/example.js'] : [],
-  proofPassed: true, dispositions, ...fields,
+  proofPassed: true, checks: [fullCheck(fields.proofPassed ?? true)], dispositions, ...fields,
 })
 const disposition = (key = 'fix:0', kind = 'fixed') => ({ key, disposition: kind, reason: 'Checked the approved correction and its acceptance condition.', receipts: [receipt] })
 
@@ -432,7 +452,7 @@ describe('workflow verification and consolidation', () => {
   test('a dirty fixer result, or one on the wrong commit, cannot become the next snapshot', async () => {
     for (const fields of [{ clean: false }, { snapshotSha: 'HEAD' }, { startSha: BASE }]) {
       const response = fixed([disposition()], { ...fields,
-        checks: [{ ...check(), output: 'fixer proof' }],
+        checks: [{ ...fullCheck(), output: 'fixer proof' }],
         files: [{ path: 'src/example.js', bytes: 240, change: 'modified' }],
       })
       const rejectedFix = writer({ startSha: INITIAL, snapshotSha: fields.snapshotSha ?? FIXED,
@@ -1119,7 +1139,8 @@ describe('spec provenance instructions and routing', () => {
     expect(impl).toContain('FOCUSED CHECKS, implementer only: after your last write, run only the checks that cover what you changed,' +
       ' bare and once: its tests, and its type check or build where the project has one. Never run the full check:' +
       ' the fixer runs it once after its corrections, and a full run here goes stale when the fixer changes a file.')
-    expect(flat(fixers[0].prompt)).toContain('CHECK COMMAND, fixer only (run bare after your last write): <the check command>')
+    expect(flat(fixers[0].prompt)).toContain('CHECK COMMAND, fixer only (run bare after your last write, and quote each run in checks' +
+      ' with the command exactly as written here): <the check command>')
   })
 
   test('authority-aware templates trace authority to an entry of author user, and no template or schema knows a criterion', async () => {
@@ -1226,14 +1247,25 @@ describe('structured stage output', () => {
     })
   }
 
-  test('a proof-only fixer that quotes no check, or only checks that disagree with its proofPassed, is retried and then thrown', async () => {
-    for (const checks of [[], [check(false)]]) {
+  for (const [name, checks, message] of unprovenFixerChecks) {
+    test(`a proof-only fixer, or one that committed a correction, with ${name} is retried and then thrown`, async () => {
+      for (const options of [{}, { reports: oneReport, verify: approveOne, dispositions: [disposition()] }]) {
+        const calls = []
+        const { result } = await simulate({ ...options, fixes: { fix: fixed(options.dispositions, { checks }) }, calls })
+        expect([result.exit, retried(calls, 'fix').length]).toEqual(['failed', 3])
+        expect(result.detail).toContain(message)
+      }
+    })
+  }
+
+  for (const [name, checks, proofPassed] of provenFixerChecks) {
+    test(`a fixer with ${name} is accepted on the first attempt`, async () => {
       const calls = []
-      const { result } = await simulate({ fixes: { fix: fixed([], { checks }) }, calls })
-      expect([checks, result.exit, retried(calls, 'fix').length]).toEqual([checks, 'failed', 3])
-      expect(result.detail).toContain('no check has passed equal to proofPassed')
-    }
-  })
+      const { result } = await simulate({ fixes: { fix: fixed([], { checks, proofPassed }) }, calls })
+      expect(retried(calls, 'fix').length).toBe(1)
+      expect([result.exit, result.remaining.map(r => r.kind)]).toEqual(proofPassed ? ['clean', []] : ['root-resolution', ['failed-proof']])
+    })
+  }
 
   test('an implementer that committed nothing owes no check, so a blocking spec finding needs none quoted', async () => {
     const limitation = { what: 'The joint-impossibility finding leaves the spec unbuildable as written.', effect: 'blocks' }
@@ -1368,8 +1400,9 @@ describe('one-pass remaining-items handoff', () => {
         ? { implementation: implemented({ proofPassed: false }) }
         : { fixes: { fix: fixed([], { proofPassed: false }) } })
       expect(result.exit).toBe('root-resolution')
-      expect(result.remaining).toEqual([{ kind: 'failed-proof', severity: 'CRITICAL', item: { label, checks: [check(false)] } }])
-      expect(result.proof.checks).toEqual([check(false)])
+      const checks = [label === 'impl' ? check(false) : fullCheck(false)]
+      expect(result.remaining).toEqual([{ kind: 'failed-proof', severity: 'CRITICAL', item: { label, checks } }])
+      expect(result.proof.checks).toEqual(checks)
       if (label === 'impl') expect(calls.map(c => c.label)).toEqual(['impl'])
     }
   })
@@ -1476,7 +1509,7 @@ describe('one-pass remaining-items handoff', () => {
       'root-resolution', 'Required checks failed in fix.',
     ])
     expect(result.remaining.map(r => r.kind)).toEqual(['failed-proof', 'abort'])
-    expect(result.remaining[0].item).toEqual({ label: 'fix', checks: [check(false)] })
+    expect(result.remaining[0].item).toEqual({ label: 'fix', checks: [fullCheck(false)] })
     expect(result.remaining[1].item.abort).toEqual(abort)
     expect(result.remaining[1].item.label).toBe('roast')
   })
@@ -1968,7 +2001,7 @@ describe('fix-only follow-up runs', () => {
   })
 
   test('each helper the fix script copies from the main script has the same source text, and the fingerprint helpers that of their module', async () => {
-    const copied = ['stage', 'hasHardFlag', 'abortOnFlag', 'checkWriterSnapshot', 'checkWriter', 'checkProof', 'withReceipts', 'requireText',
+    const copied = ['stage', 'hasHardFlag', 'abortOnFlag', 'checkWriterSnapshot', 'checkWriter', 'checkFullRun', 'withReceipts', 'requireText',
       'exactlyOnce', 'add', 'end', 'failed', 'proof', 'limited', 'recordBlocking', 'blocking', 'sourceFindings', 'readSnapshots',
       'listPath', 'reported', 'checkModels', 'withSortedKeys', 'fingerprint', 'shellWord', 'printedProof', 'handedOn']
     const values = ['RULES', 'GUIDE', 'SPEC_RULES']
@@ -2071,14 +2104,25 @@ describe('fix-only follow-up runs', () => {
     }
   })
 
-  test('a fixer that rejects every entry and quotes no check, or only checks that disagree with its proofPassed, is retried and then thrown', async () => {
-    for (const checks of [[], [check(false)]]) {
+  for (const [name, checks, message] of unprovenFixerChecks) {
+    test(`a fix-run fixer that rejects every entry, or fixes one, with ${name} is retried and then thrown`, async () => {
+      for (const fixes of [fixed([disposition('verify:0', 'rejected')], { touched: [], checks }), fixed([disposition('verify:0')], { checks })]) {
+        const calls = []
+        const { result } = await simulateFix({ fixes, calls })
+        expect([result.exit, labels(calls).filter(label => label === 'fix').length]).toEqual(['failed', 3])
+        expect(result.detail).toContain(message)
+      }
+    })
+  }
+
+  for (const [name, checks, proofPassed] of provenFixerChecks) {
+    test(`a fix-run fixer that rejects every entry with ${name} is accepted on the first attempt`, async () => {
       const calls = []
-      const { result } = await simulateFix({ fixes: fixed([disposition('verify:0', 'rejected')], { touched: [], checks }), calls })
-      expect([checks, result.exit, labels(calls).filter(label => label === 'fix').length]).toEqual([checks, 'failed', 3])
-      expect(result.detail).toContain('no check has passed equal to proofPassed')
-    }
-  })
+      const { result } = await simulateFix({ fixes: fixed([disposition('verify:0', 'rejected')], { touched: [], checks, proofPassed }), calls })
+      expect(labels(calls).filter(label => label === 'fix').length).toBe(1)
+      expect([result.exit, result.remaining.map(r => r.kind)]).toEqual(proofPassed ? ['clean', []] : ['root-resolution', ['failed-proof']])
+    })
+  }
 
   test('a fix reported as done without a commit, or mapped to no change, returns as an unproven fix', async () => {
     const uncommitted = await simulateFix({ fixes: fixed([disposition('verify:0')], { touched: [] }) })
