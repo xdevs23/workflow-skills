@@ -336,7 +336,7 @@ describe('workflow verification and consolidation', () => {
     expect([result.exit, result.detail]).toEqual(['failed', message])
     expect(result.remaining).toEqual([{
       kind: 'stage-failure', severity: 'CRITICAL',
-      item: { label: 'review:correctness', message },
+      item: { label: 'review:correctness', message, refused: [] },
     }])
   })
 
@@ -1258,6 +1258,26 @@ describe('structured stage output', () => {
     })
   }
 
+  // The stage-failure item keeps each refused fixer object with its quoted checks and commits, and
+  // the run accepts none of them: snapshots and proof stay the implementer's, and no approval closes.
+  for (const [name, checks, message] of unprovenFixerChecks) {
+    test(`a fixer refused three times for ${name} leaves its refused objects in the stage-failure item`, async () => {
+      for (const [dispositions, commits] of [[[], []],
+        [[disposition()], [{ sha: FIXED, subject: 'apply the approved corrections', repository: '.' }]]]) {
+        const implementation = implemented()
+        const options = dispositions.length ? { reports: oneReport, verify: approveOne } : {}
+        const { result } = await simulate({ ...options, implementation, fixes: { fix: fixed(dispositions, { checks }) } })
+        const failure = result.remaining.find(r => r.kind === 'stage-failure').item
+        expect([failure.label, failure.message]).toEqual(['fix', failedThrice('fix', message)])
+        expect(failure.refused.map(({ failure, result }) => ({ failure, checks: result.checks, commits: result.commits, dispositions: result.dispositions })))
+          .toEqual(Array(3).fill({ failure: message, checks, commits, dispositions }))
+        expect([result.snapshots, result.proof]).toEqual([at(INITIAL), { checks: implementation.checks, files: implementation.files }])
+        expect(result.remaining.filter(r => r.kind === 'unfixed-approval').map(r => r.item.approved.key)).toEqual(dispositions.map(d => d.key))
+        expect(result.remaining.some(r => r.kind === 'unattested-fix')).toBe(false)
+      }
+    })
+  }
+
   for (const [name, checks, proofPassed] of provenFixerChecks) {
     test(`a fixer with ${name} is accepted on the first attempt`, async () => {
       const calls = []
@@ -1483,7 +1503,7 @@ describe('one-pass remaining-items handoff', () => {
       verify: approveOne, fail: { fix: 'writer interrupted' } })
     expect(result.exit).toBe('failed')
     expect(result.remaining.map(r => r.kind)).toEqual(['stage-failure', 'roast-finding', 'unfixed-approval'])
-    expect(result.remaining[0].item).toEqual({ label: 'fix', message: failedThrice('fix', 'writer interrupted') })
+    expect(result.remaining[0].item).toEqual({ label: 'fix', message: failedThrice('fix', 'writer interrupted'), refused: [] })
     expect(result.remaining[1].item.snapshots).toEqual(at(INITIAL))
   })
 
@@ -1518,7 +1538,7 @@ describe('one-pass remaining-items handoff', () => {
     const { result } = await simulate({ fail: { fix: 'writer unavailable', roast: 'roaster unavailable' } })
     expect([result.exit, result.detail]).toEqual(['failed', failedThrice('fix', 'writer unavailable')])
     expect(result.remaining).toEqual(['fix', 'roast'].map(label => ({ kind: 'stage-failure', severity: 'CRITICAL',
-      item: { label, message: failedThrice(label, label === 'fix' ? 'writer unavailable' : 'roaster unavailable') } })))
+      item: { label, message: failedThrice(label, label === 'fix' ? 'writer unavailable' : 'roaster unavailable'), refused: [] } })))
   })
 
   test('an aborting fixer keeps the settled roast and its whole abort object', async () => {
@@ -2111,6 +2131,23 @@ describe('fix-only follow-up runs', () => {
         const { result } = await simulateFix({ fixes, calls })
         expect([result.exit, labels(calls).filter(label => label === 'fix').length]).toEqual(['failed', 3])
         expect(result.detail).toContain(message)
+      }
+    })
+  }
+
+  // The stage-failure item keeps each refused fixer object with its quoted checks and commits, and
+  // the run accepts none of them: snapshots stay the parent's, there is no proof, and every entry stays open.
+  for (const [name, checks, message] of unprovenFixerChecks) {
+    test(`a fix-run fixer refused three times for ${name} leaves its refused objects in the stage-failure item`, async () => {
+      for (const [dispositions, touched, commits] of [[[disposition('verify:0', 'rejected')], [], []],
+        [[disposition('verify:0')], ['src/example.js'], [{ sha: FIXED, subject: 'return the swallowed error', repository: '.' }]]]) {
+        const { result } = await simulateFix({ fixes: fixed(dispositions, { touched, checks }) })
+        const failure = result.remaining.find(r => r.kind === 'stage-failure').item
+        expect([failure.label, failure.message]).toEqual(['fix', failedThrice('fix', message)])
+        expect(failure.refused.map(({ failure, result }) => ({ failure, checks: result.checks, commits: result.commits, dispositions: result.dispositions })))
+          .toEqual(Array(3).fill({ failure: message, checks, commits, dispositions }))
+        expect([result.snapshots, result.proof, result.dispositions]).toEqual([at(BASE), null, []])
+        expect([result.remaining.map(r => r.kind), result.toFix.map(item => item.source)]).toEqual([['stage-failure', 'unfixed-entry'], ['entry:0']])
       }
     })
   }
