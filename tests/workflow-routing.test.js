@@ -28,7 +28,6 @@ const TRANSCRIPTS = '<session-dir>'
 const mainLaunchValues = args => ({ spec: args.specPath, transcripts: args.transcripts, base: args.base, partialBase: false, tree: '<isolated worktree>' })
 const fixLaunchValues = args => ({ fixList: args.fixList, transcripts: args.transcripts, spec: args.spec, entries: args.entries,
   base: args.base, partialBase: false, tree: '<isolated worktree>' })
-// What a writer returns in specCheck for a run of the spec tool that printed the proof of the values.
 const passedCheck = (values, fields = {}) => ({ exitCode: 0, stdout: JSON.stringify({ proof: fingerprint(values) }), stderr: '', ...fields })
 
 // The eight audit seats, each labelled and loading the template of its name.
@@ -148,7 +147,7 @@ const bare = opts => {
   expect(opts.agentType).toMatch(/^workflow-skills:[a-z-]+$/)
   return { ...opts, agentType: opts.agentType.slice('workflow-skills:'.length) }
 }
-// seats holds the object of each review seat, and harness stands between the script and the
+// seats holds the object each reviewer returns, and harness stands between the script and the
 // simulated agents, passing their objects on unchecked unless a test asks for the schema check.
 async function simulate({ reports = {}, verify = {}, fixes = {}, fail = {}, implementation, specCheck,
   beforeRead = async () => {}, beforeFix = async () => {}, beforeRoast = async () => {},
@@ -1526,7 +1525,6 @@ const lawText = (text, number) => {
   return flat(law.text)
 }
 
-// What a writer is told before anything else: run the spec tool once and return what it printed.
 const checkFirst = (heading, command) => heading + ', before anything else and before any edit: run this exact command once with the' +
   " Bash tool, with no change, retry or fix:\ncd '<isolated worktree>' && " + command + '\nReturn its exit code, its stdout and its stderr' +
   ' in specCheck, unchanged. When its exit code is not 0, make no edit and\nreturn your object with every repository at its start SHA.'
@@ -1793,7 +1791,6 @@ describe('fix-only follow-up runs', () => {
       'Fourth, EVERY STAGE THAT READS THE SPEC: invalid-spec. An invalid parent spec sets abort.trigger to invalid-spec']) {
       expect([phrase, flat(fix).includes(phrase)]).toEqual([phrase, true])
     }
-    // The fixer meets the list's path only in the command of its check.
     expect([fix.split(FIX_LIST).length - 1, fix.includes('FIX LIST:')]).toEqual([1, false])
     expect(fix).toContain('CHECK COMMAND, fixer only')
     for (const label of ['roast', 'diff']) expect(calls.find(c => c.label === label).prompt).not.toContain('CHECK COMMAND')
@@ -1822,7 +1819,6 @@ describe('fix-only follow-up runs', () => {
   })
 
   test('a partial base list adds --partial-base to the spec check of the main script', async () => {
-    // The script runs only up to its first prompt, the implementer's, with partialBase switched on in its marked block.
     const firstPrompt = async (source, args) => {
       const partial = source.replace('  partialBase: false,', '  partialBase: true,')
       expect(partial).not.toBe(source)
@@ -1859,15 +1855,14 @@ describe('fix-only follow-up runs', () => {
     const checked = ['shaByPath', 'hasHardFlag', 'requireText', 'exactlyOnce', 'withReceipts', 'checkCoverage', 'checkReader',
       'checkWriterSnapshot', 'checkWriter', 'printedProof', 'listCheckPassed', 'checkListRun', 'checkFixerResult', 'checkDiffResult']
     const values = ['RULES', 'GUIDE', 'SPEC_RULES']
-    // Each script runs up to its first stage and returns the named helpers it has defined by then.
-    const helpers = (source, args, names) => {
+    const helpersBeforeRun = (source, args, names) => {
       const first = /\ntry \{ await (?:onePass|fixRun)\(\) \}.*\n/
       expect(source.split(first)).toHaveLength(2)
       return new AsyncFunction('agent', 'phase', 'log', 'args', source.replace('export const meta =', 'const meta =')
         .replace(first, `\nreturn { ${[...new Set(names)].join(', ')} }\n`))(() => { throw new Error('no stage runs before the first') }, () => {}, () => {}, args)
     }
-    const main = await helpers(filled(skeleton), launchArgs(), [...copied, ...values])
-    const fix = await helpers(filled(fixSkeleton), fixArgs(), [...copied, ...values, ...checked, 'SHA'])
+    const main = await helpersBeforeRun(filled(skeleton), launchArgs(), [...copied, ...values])
+    const fix = await helpersBeforeRun(filled(fixSkeleton), fixArgs(), [...copied, ...values, ...checked, 'SHA'])
     for (const name of copied) expect([name, fix[name].toString()]).toEqual([name, main[name].toString()])
     for (const name of values) expect([name, fix[name]]).toEqual([name, main[name]])
     const module = await Bun.file(new URL('../tools/fingerprint.js', import.meta.url)).text()
@@ -2087,7 +2082,6 @@ describe('fix-only follow-up runs', () => {
     const tree = "/work/the tree's root", plugin = "/opt/the plugin's root", sessions = "/home/the sessions' dir"
     const located = source => filled(source).replace("worktree: '<isolated worktree>'", 'worktree: ' + JSON.stringify(tree))
       .replace("pluginRoot: '<plugin root>'", 'pluginRoot: ' + JSON.stringify(plugin)).replace('export const meta =', 'const meta =')
-    // The command is the line of the writer's prompt that runs the spec tool.
     const checkCommand = async (source, args) => {
       let command
       await new AsyncFunction('agent', 'phase', 'log', 'args', located(source))(async prompt => {
@@ -2274,7 +2268,6 @@ describe('the project cache, the todo record and scratch files by role', () => {
       expect([id, count(WRITE_SCRATCH), count(WRITE_NOTHING)]).toEqual([id, role === 'writer' ? 1 : 0, role === 'reader' ? 1 : 0])
       expect([id, /global temp/i.test(call.prompt)]).toEqual([id, false])
       if (role === 'writer') continue
-      // A reading stage names no place for files beyond the temporary-directory exception.
       const rest = INPUT_PATHS.reduce((text, path) => text.split(path).join(''), call.prompt)
       expect([id, rest.includes('.cache'), /scratch/i.test(rest), rest.includes('local-cache')]).toEqual([id, false, false, false])
     }

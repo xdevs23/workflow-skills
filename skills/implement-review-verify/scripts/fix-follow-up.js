@@ -16,7 +16,7 @@ const UNIT = {
   mainCheckout: '<main checkout>',
   worktree: '<isolated worktree>',       // its absolute path with no symbolic link in it, as pwd -P prints it there
   fixList: args.fixList,                 // the fix list in the main checkout's project cache (workflow-skills:local-cache), passed at launch; ends in .yaml
-  spec: args.spec,                       // the parent unit's spec the fix list names, from the check tool's output, passed at launch; null when it names none
+  spec: args.spec,                       // the spec from the check tool's output, passed at launch, null included
   transcripts: args.transcripts,         // the session transcript directory, passed at launch
   pluginRoot: '<plugin root>',           // the directory holding tools/check-spec.ts
   checkCommand: '<the check command>',   // the fixer only, run bare after the last write
@@ -84,7 +84,6 @@ const GUIDE = [
     '/skills/code-writing/SKILL.md with the Read tool, and the file in code-writing\'s languages directory of every language you write.',
   'With the rule sources they are your guide: settle every choice the user\'s words leave open by them.',
 ].join('\n')
-// A fix list made from a review pass names no spec, because that change was made without one.
 const WITHOUT_SPEC = UNIT.spec === null
 const PARENT_SPEC = WITHOUT_SPEC
   ? 'NO SPEC: the fix list names no spec, because the change of the parent run was made without one. Read none.'
@@ -107,9 +106,6 @@ const SPEC_RULES = [
   'kept or lost, the product\'s scope and anything public or external. An architecture question is about where code lives, the',
   'shape of the system, the data model and the contracts between components.',
 ].join('\n')
-// Without a spec there are no entries to read in their context, and no stage can find the user's
-// words missing or the spec invalid, so the two triggers that read a spec are neither offered nor
-// described.
 const SPEC_READING = WITHOUT_SPEC ? [] : [
   'Read every entry of the spec with the entries around it for its context and examples, not just its',
   'lines in isolation - the absence of a particular keyword never licenses behavior that contradicts',
@@ -232,7 +228,6 @@ const DIFF = { type: 'object', additionalProperties: false, required: ['abort', 
       properties: { change: { type: 'string' }, source: { type: 'string' }, receipts: RECEIPTS } } } } }
 const ROAST = { type: 'object', additionalProperties: false, required: ['limitations', 'coverage', 'findings', 'snapshots'],
   properties: { limitations: LIMITATIONS, coverage: COVERAGE, findings: FINDINGS, snapshots: SNAPSHOTS } }
-// What the spec tool's run returned, unchanged: its exit code and what it printed.
 const SPEC_CHECK = { type: 'object', required: ['exitCode', 'stdout', 'stderr'], additionalProperties: false,
   properties: { exitCode: { type: 'integer' }, stdout: { type: 'string' }, stderr: { type: 'string' } } }
 const FIX = { type: 'object', additionalProperties: false,
@@ -332,7 +327,6 @@ if (typeof UNIT.transcripts !== 'string' || !UNIT.transcripts) throw new Error('
 if (!WITHOUT_SPEC && (typeof UNIT.spec !== 'string' || !UNIT.spec.trim())) {
   throw new Error('args.spec must name the parent spec the fix list names, or be null when it names none')
 }
-// The fixer's fix list check holds the list to the parent run; here it only needs the shape the stages are built from.
 const isObject = value => value != null && typeof value === 'object' && !Array.isArray(value)
 const holdsOneItem = ({ source, ...held }) => typeof source === 'string' && Object.keys(held).length === 1 && isObject(Object.values(held)[0])
 const entries = UNIT.entries

@@ -15,13 +15,13 @@ export const meta = {
 const UNIT = {
   mainCheckout: '<main checkout>',
   worktree: '<isolated worktree>',       // its absolute path with no symbolic link in it, as pwd -P prints it there
-  specPath: args.specPath,               // the unit spec under the main checkout, passed at launch; ends in .yaml; none in a review-only run
-  transcripts: args.transcripts,         // the session transcript directory, passed at launch; none in a review-only run
+  specPath: args.specPath,               // the unit spec under the main checkout, passed at launch; ends in .yaml
+  transcripts: args.transcripts,         // the session transcript directory, passed at launch
   pluginRoot: '<plugin root>',           // the directory holding tools/check-spec.ts
   checkCommand: '<the check command>',   // the fixer only, run bare after its last write
   base: args.base,                       // one { path, sha } per git repository of the tree: its path under the tree root and starting commit, passed at launch
   partialBase: false,                    // true only in a tree too large to list, where base names just the repositories the unit changes
-  reviewOnly: false,                     // true runs the review stage alone, without a spec, on a change already committed from base to head
+  reviewOnly: false,                     // true reviews the change from base to head alone
   head: args.head,                       // a review-only run's end: one { path, sha } per repository of base, the commit the change ends at, passed at launch
   documents: '<documents directory>',    // design documents, relative to the tree root and inside one repository of base; docs for a one-repository tree
   ruleSources: '<applicable project, directory and global rule paths>',
@@ -178,9 +178,8 @@ const WRITE_GIT = [
   'never an empty commit for a no-op: a repository you left unchanged keeps its startSha as its snapshotSha and lists no commit.',
   'After committing, run git -C <tree>/<path> rev-parse --verify HEAD^{commit} and git status --porcelain=v1 --untracked-files=all in every repository.',
 ].join('\n')
-// The spec rides as a PATH, never as a copy, because it quotes the user (law 5) and because the
-// implementer's spec check verifies that file and no copy of it (law 7). The orchestrating session adds no
-// words of its own to any stage: no scoping, no invariants and no note.
+// The spec rides as its path, never as a copy: the spec check validates that file (law 7), and the
+// spec quotes the user (law 5).
 // The check command never sits here: reviewers receive this block and may not run it.
 // The unbriefed seats receive the tree line alone, through HYGIENE below.
 const TREE = 'ASSIGNED TREE: ' + UNIT.worktree + '.'
@@ -302,8 +301,6 @@ const RULE_SOURCES = { type: 'array', items: { type: 'object', required: ['path'
 const RULES_SEAT = { type: 'object', additionalProperties: false,
   required: ['abort', 'limitations', 'coverage', 'findings', 'ruleSources'],
   properties: { abort: ABORT, limitations: LIMITATIONS, coverage: COVERAGE, findings: ruleFindings(BRIEFED_KINDS), ruleSources: RULE_SOURCES } }
-// Without a spec the rule reader has no words of the user to hold a choice to, so it carries no
-// abort field and no unbacked-choice kind.
 const RULES_WITHOUT_SPEC = { type: 'object', additionalProperties: false,
   required: ['limitations', 'coverage', 'findings', 'ruleSources'],
   properties: { limitations: LIMITATIONS, coverage: COVERAGE, findings: ruleFindings(FINDING.properties.kind), ruleSources: RULE_SOURCES } }
@@ -327,7 +324,6 @@ const SPEC_FINDINGS = { type: 'array', items: { type: 'object', required: ['evid
     class: { enum: ['joint-impossibility', 'missing-contract', 'reality-drift', 'unbacked-entry'] },
     claim: { type: 'string' }, receipts: RECEIPTS } } }
 
-// What the spec tool's run returned, unchanged: its exit code and what it printed.
 const SPEC_CHECK = { type: 'object', required: ['exitCode', 'stdout', 'stderr'], additionalProperties: false,
   properties: { exitCode: { type: 'integer' }, stdout: { type: 'string' }, stderr: { type: 'string' } } }
 
@@ -483,8 +479,6 @@ const readSnapshots = (read, snaps, required) => {
   return new Set(paths).size === paths.length &&
     read.every(entry => expected.get(entry.path) === entry.sha) && required.every(path => paths.includes(path))
 }
-// A review-only run reads a change made without a spec, so it takes none, and no transcript
-// directory, which only the spec's entries are read from.
 if (UNIT.reviewOnly) {
   if (UNIT.specPath !== undefined || UNIT.transcripts !== undefined) {
     throw new Error('a review-only run takes no spec: leave args.specPath and args.transcripts out')
@@ -634,7 +628,6 @@ const FOCUSED = [
   'bare and once: its tests, and its type check or build where the project has one. Never run the full check:',
   'the fixer runs it once after its corrections, and a full run here goes stale when the fixer changes a file.',
 ].join('\n')
-// A review-only run starts no writer, so it names no document.
 const NEW_DOCUMENT = UNIT.reviewOnly ? null : UNIT.documents + '/' + UNIT.specPath.split('/').pop().replace(/\.yaml$/, '') + '.md'
 const DOCUMENT_WHEN = [
   'DESIGN DOCUMENT, writer only: write or extend a design document when your change alters the design: what the code does,',
@@ -696,9 +689,9 @@ const NO_SPEC = 'NO SPEC: this change was made without a spec. Read none, and ju
 // Only the two briefed code-lens readers receive the implementer's object, as claims, and read its
 // artifacts there; the other briefed seats receive the artifacts alone. The eight audit seats receive
 // what quality receives, the hygiene floor and the diff, and return its object.
-// A review-only run takes no spec. A seat that reads the spec names in withoutSpec what it runs on
-// then: null when it judges the change against the spec and does not run, or the prompt blocks,
-// schema and completeness check that replace its own. A seat without the field reads no spec.
+// A review-only run takes no spec. A reviewer that reads the spec names in withoutSpec what it runs
+// on then: null when it judges the change against the spec and does not run, or the prompt blocks,
+// schema and completeness check that replace its own. A reviewer without the field reads no spec.
 const unbriefed = { inputs: [HYGIENE], schema: QUALITY, complete: checkReader }
 const toldNoSpec = { inputs: [HYGIENE, NO_SPEC], schema: QUALITY, complete: checkReader }
 const seatList = (claims, artifacts) => [
@@ -931,8 +924,7 @@ async function onePass() {
     } catch (error) { failed(error, label) }
   })
   sources = reports.flatMap(r => r.findings)
-  // A review-only run has no finding verifier, so every finding and every limitation of a reviewer that
-  // returned goes to the root, also when another reviewer failed.
+  // The results of reviewers that returned survive another reviewer's failure.
   if (UNIT.reviewOnly) {
     for (const report of reports) {
       for (const f of report.findings) add('review-finding', f, f.severity)
