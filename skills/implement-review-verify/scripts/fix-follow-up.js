@@ -430,7 +430,7 @@ const remaining = []
 let diff = null, snapshots = base
 let exit = null, detail = '', activeLabel = 'fix'
 const queue = entries.map(({ source, ...entry }) => ({ key: source, ...entry }))
-let passedFix = null, reportedFix = null, roast = null
+let passedFix = null, reportedFix = null, roast = null, provenFixes = new Set()
 const add = (kind, item, severity = 'CRITICAL') => {
   if (!REMAINING.includes(kind)) throw new Error('Unknown remaining kind: ' + kind)
   remaining.push({ kind, severity, item })
@@ -586,7 +586,8 @@ async function fixRun() {
   limited(diff, 'diff')
   if (diff.findings.length) end('root-resolution', 'The diff check found a change that no entry covers.')
   const mapped = new Set(diff.mappings.map(m => m.source))
-  const unmapped = fixedKeys.filter(key => !mapped.has(key))
+  provenFixes = new Set(fixedKeys.filter(key => mapped.has(key)))
+  const unmapped = fixedKeys.filter(key => !provenFixes.has(key))
   for (const key of unmapped) add('unproven-fix', { key, cause: 'The fixer reported it fixed and the diff check mapped no change to it.' }, 'must-fix')
   if (unmapped.length) end('root-resolution', 'A fix reported as done maps to no change in the diff.')
 }
@@ -637,8 +638,7 @@ if (!exit) end(remaining.length ? 'follow-up' : 'clean', remaining.length
 // unchanged: every entry the accepted fixer left open, then the findings of the roaster and of the
 // diff check. The fixer closes an entry by rejecting it, by raising it as a question for the user, or
 // by a fix the diff check mapped a change to.
-const mapped = new Set((diff?.mappings ?? []).map(m => m.source))
-const closes = ({ key, disposition }) => ['rejected', 'question'].includes(disposition) || (disposition === 'fixed' && mapped.has(key))
+const closes = ({ key, disposition }) => ['rejected', 'question'].includes(disposition) || provenFixes.has(key)
 const closed = new Set((passedFix?.dispositions ?? []).filter(closes).map(d => d.key))
 const numbered = (kind, field, items) => items.map((item, i) => ({ source: kind + ':' + i, [field]: item }))
 const toFix = [
