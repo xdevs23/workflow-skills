@@ -132,8 +132,9 @@ prevent.
   unchanged. **Any** edit of either, a word or a space, gives that call a new key and ends the
   replay there, as the first section describes, and its own result is thrown away as well. One
   stray edit early in the script can re-execute most of the run you were trying to salvage.
-- Never reach a single seat by editing a shared constant either. See
-  `workflow-skills:implement-review-verify`, law 3(a).
+- Never reach a single seat by editing a shared constant either. A constant such as `AUTHORITY`
+  goes into the prompt of every stage built from it, so an edit of it edits the completed prompts
+  among them as well.
 
 ### 5. Re-invoke
 
@@ -209,8 +210,11 @@ An interrupted run and a poisoned result are two different failures with two dif
   no result of its own, only the re-run of the calls made after it. The fix is a resume note.
 - **Completed with a bad result, an EMPTY journaled result included**: the bad result **is cached**
   and will replay verbatim on resume, so fixing the underlying cause and re-invoking changes nothing.
-  The fix is a deliberate cache-bust of that single stage.
+  Editing its prompt to make it run again is the edit of a completed prompt that step 4 forbids.
+  The run treats the replayed result like any other result it receives, and what the result leaves
+  wrong when the run ends is recorded and fixed by a later run.
 
-The cache-bust case is already covered. See `workflow-skills:implement-review-verify`, law 3
-(*Cache-busting on resume*) and its *Resume corollaries*. Do not re-derive it here; the two paths
-share only the journal mechanism, and each decision is recorded once.
+The second case belongs to `workflow-skills:implement-review-verify`: its fail-fast law, which
+refuses an empty or incomplete result and retries that stage, and its section on remaining items
+and follow-up work, which never runs a completed run again. Do not re-derive either here; the two
+paths share only the journal mechanism, and each decision is recorded once.
