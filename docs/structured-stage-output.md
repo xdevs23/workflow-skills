@@ -94,7 +94,18 @@ on the completeness of its object, never on the length of a text. This builds on
    `stage-failure` entry. A refused writer may have committed before it reported, so its quoted
    checks, commits and dispositions are what explains the failure. They stay readable there as
    evidence the run did not accept: the run's snapshots and proof do not follow them, and no entry
-   or approval closes on them.
+   or approval closes on them. Every retry receives the objects refused so far, each with its
+   failure, before the line that names the last failure. The commit permission block both writers
+   receive holds the retry rule: a prompt that ends with how the previous attempt failed is a retry,
+   the commits and changes the earlier attempts left in the tree are the stage's own work, and the
+   retry resets, reverts and repeats none of them. It reads each repository from its start commit
+   to its head beside the refused objects, does only what remains, and reports the whole stage:
+   `startSha` stays the start commit the stage began from, `snapshotSha` is the commit it leaves,
+   and `commits` and `files` cover every commit since the start, the earlier attempts' included.
+   The writer checks therefore hold a retry to the same start as its first attempt, and a fixer
+   refused only for its report repairs the report on the commit it already made. A retry told
+   only to start clean at its start commit finds a tree that no longer holds it, with resetting
+   forbidden, and can only commit the same correction again or stop.
    The completeness checks:
    * every briefed stage: `abort.reason` non-empty when the trigger is not `none`;
    * the three concern seats: every finding has a receipt, a lane and evidence, every evidence

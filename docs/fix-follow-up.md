@@ -38,8 +38,9 @@ the parent run returned to be fixed, as that result holds it: a spec finding of 
 of one of its reviewers, `review:<seat>:<index>`, under `finding`; a decision of its finding
 verifier, `verify:<index>`, under `decision`; an unresolved issue of the verifier, `issue:<index>`,
 under `issue`; an entry of a fix run's own list that its fixer left open, `entry:<index>`, under
-`entry`; or a measured size breach of the unit, `size`, under `size`. The list holds no word of the
-orchestrating session, no correction and no pointer.
+`entry`; a failed proof of the run, `proof:<index>`, under `proof`; or a measured size breach of
+the unit, `size`, under `size`. The list holds no word of the orchestrating session, no correction
+and no pointer.
 
 **written-from-scratch**: The spec tool writes a fix list with `--make-fix-list <saved result>`, the
 output file the workflow tool saved the parent run's result in, which the orchestrating session
@@ -49,7 +50,11 @@ run's check passed on, or null when it checked none, as a review pass does, and 
 implementer, every decision and unresolved issue of its verify stage apart from an approved
 correction its fixer fixed or rejected that decides neither an inverse-spec finding nor a
 kind-bearing one, in a run without a verify stage every finding of its reviewers, in a fix run every
-entry of its own list its fixer left open, and every finding of its roast stage and diff check. A
+entry of its own list its fixer left open, every finding of its roast stage and diff check, and
+every `failed-proof` item of its remaining list with the writer's label and quoted checks. A failed
+proof stays open whatever the fixer answered: its fixes and rejections close their entries, and the
+failing check goes to the next fix run, so a run whose fixer closed every entry, or a main run that
+approved nothing, still hands its failed check on instead of giving the generator nothing to fix. A
 decision on a kind-bearing finding, a project-benefit decision, carries those findings in
 `projectBenefit`, because the decision alone names its sources only by their IDs and the fix run
 needs to know its kind. A fix run's fixer closes an entry by rejecting it, by raising it as a
