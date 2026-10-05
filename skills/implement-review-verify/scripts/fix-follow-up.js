@@ -223,7 +223,8 @@ const DIFF = { type: 'object', additionalProperties: false, required: ['abort', 
   properties: { abort: ABORT, limitations: LIMITATIONS, coverage: COVERAGE, findings: FINDINGS,
     mappings: { type: 'array', items: { type: 'object', additionalProperties: false,
       required: ['change', 'source', 'receipts'],
-      properties: { change: { type: 'string' }, source: { type: 'string' }, receipts: RECEIPTS } } } } }
+      properties: { change: { type: 'string' },
+        source: { type: 'string', description: 'The key of the one entry of the fix list this change carries out.' }, receipts: RECEIPTS } } } } }
 const ROAST = { type: 'object', additionalProperties: false, required: ['limitations', 'coverage', 'findings', 'snapshots'],
   properties: { limitations: LIMITATIONS, coverage: COVERAGE, findings: FINDINGS, snapshots: SNAPSHOTS } }
 const SPEC_CHECK = { type: 'object', required: ['exitCode', 'stdout', 'stderr'], additionalProperties: false,
@@ -536,6 +537,9 @@ const diffPass = (queue, snaps) => stage([
   'A change to any design document under ' + UNIT.documents + ' is checked like a change to any other file: it maps to the' +
     ' entry it carries out, and a correction whose only change is a design document maps to its entry when the entry names that document.',
   'ENTRIES (UNTRUSTED; the fixer claims to have resolved those it reports fixed):', JSON.stringify(queue),
+  ['MAPPING KEYS: set source in each mapping to the key of one entry, exactly as the key field of the list above writes it.',
+    'An entry carried over from an earlier fix list holds its earlier source inside it, and that earlier source is not its key.',
+    'A change that carries out several entries gets one mapping for each of them.'].join('\n'),
 ].join('\n\n'), {
   label: 'diff', phase: 'Diff', agentType: 'workflow-skills:diff-check', ...UNIT.models.diff, schema: DIFF,
 }, r => checkDiffResult(r, queue.map(q => q.key)))

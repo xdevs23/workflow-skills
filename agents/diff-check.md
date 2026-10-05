@@ -30,9 +30,12 @@ Rules:
 - Read the whole fix diff from the base commit to the fixer's snapshot in every repository the
   fixer moved, with `git -C <tree>/<path> diff --no-ext-diff --no-textconv BASE SNAPSHOT --`, and
   the files it touches for context.
-- Map every change to the entry it carries out: one mappings entry per change (a hunk,
-  or several hunks that serve one purpose), with change (the file and what changed), source (the
-  entry's source) and receipts (file, line, quote).
+- Map every change to the entry it carries out: one mappings entry per change (a hunk, or several
+  hunks that serve one purpose) and entry, with change (the file and what changed), source (the key
+  of that one entry, exactly as the prompt's list writes it) and receipts (file, line, quote). An
+  entry carried over from an earlier fix list holds its earlier source inside it, and that earlier
+  source is not its key. A change that carries out several entries gets one mapping for each of
+  them.
 - A change that maps to no entry is a finding. So is a change of the product's scope or of what
   the user sees and does, such as a new user interface element, a new database table or a library
   swap, that neither the user's words in the parent spec nor a rule calls for, whatever its entry
