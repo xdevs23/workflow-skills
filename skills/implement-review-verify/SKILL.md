@@ -891,6 +891,10 @@ second implementer pre-check.
 - Write the fix list with `<plugin root>/tools/check-spec.ts --make-fix-list <saved result>`, which
   prints the absolute path of the saved result, the spec the parent run's check passed on, and every
   item the run returned to be fixed in its `toFix` list, in that order and each under its source.
+- Run each fix run on the plugin version that ran its parent. The tool refuses a result that an
+  earlier version saved without a `toFix` or an `artifacts` list: make and check its fix list, and
+  fill its fix run, with the spec tool and the scripts in that version's directory under the plugin
+  cache, and start every new unit on the loaded version.
 - Expect each script to build its `toFix` list from the results it accepted: every spec finding of
   its implementer, as `impl:<index>`; every decision of its verify stage, as `verify:<index>`, apart
   from an approved correction its fixer rejected, or reported fixed with a commit, that decides
