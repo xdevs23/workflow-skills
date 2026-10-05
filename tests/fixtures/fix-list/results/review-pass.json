@@ -4,6 +4,7 @@
     "exit": "follow-up",
     "detail": "The pass completed with items requiring follow-up.",
     "remaining": [],
+    "artifacts": [],
     "toFix": [
       {
         "source": "review:correctness:0",

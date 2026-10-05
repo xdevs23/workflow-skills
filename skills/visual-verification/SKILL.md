@@ -147,9 +147,10 @@ for it: no criterion, no capture name and no path.
 - Expect the main script to hand the implementer's `artifacts` to every reading stage that receives
   the spec and to the fixer, so each of them opens the captures the implementer compared by their
   names.
-- Attach to a fix list entry of visual work a pointer to the parent run's implementer result in its
-  journal, with the key path `result`, `artifacts`, so the fix run's fixer reaches the same
-  captures.
+- Expect the implementer's `artifacts` to reach every fix run of the unit through the parent run's
+  saved result, which holds them: the fix list check prints them, and the fix script hands them to
+  its fixer and its diff check and returns them for the next fix run, so each fixer opens the same
+  captures by their names.
 - For a change of the third form, the comparison refuses the pair and stays strict. The writing
   stage returns the refusal together with an evidence sheet of the same two captures, rendered under
   an output name never used before. The comparison is never loosened for the intended input change,

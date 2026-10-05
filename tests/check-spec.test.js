@@ -476,13 +476,13 @@ const sourcesOf = list => list.entries.map(entry => entry.source)
 const measured = { codeAdded: 21, repositories: [{ path: '.', base: 'a'.repeat(40), candidate: 'b'.repeat(40) }] }
 // The proof of the fixture list checked in the repository root without a base list.
 const listProof = (fields = {}) =>
-  fingerprint({ fixList: validPath, spec: parentSpecPath, entries: validEntries, base: null, partialBase: false, tree: here, ...fields })
+  fingerprint({ fixList: validPath, spec: parentSpecPath, entries: validEntries, artifacts: [], base: null, partialBase: false, tree: here, ...fields })
 
 describe('fix list validation', () => {
   test('a valid fix list passes with the proof of its values, its spec, and its entries on request, in both output forms', async () => {
     const proof = listProof()
     const bytes = await Bun.file(validPath).arrayBuffer()
-    const summary = { result: parentResultPath, spec: parentSpecPath, specSha256: parentSpecSha, specLines: 1,
+    const summary = { result: parentResultPath, spec: parentSpecPath, specSha256: parentSpecSha, specLines: 1, artifacts: [],
       sha256: createHash('sha256').update(new Uint8Array(bytes)).digest('hex'), proof, fixList: validPath }
     const brief = checkList(validPath, ['--json'])
     expect([brief.exit, brief.err]).toEqual([0, ''])
@@ -539,6 +539,23 @@ describe('fix list validation', () => {
     }
   })
 
+  test('the implementer artifacts of the parent run are printed by the check of its list and covered by its proof', () => {
+    const artifacts = [{ path: '/tree/.cache/visual/captures/impl-before', what: 'the screen at the base commit' }]
+    const saved = writeEditedParentResult(result => { result.artifacts = artifacts })
+    const checked = checkList(written({ ...validList, result: saved }), ['--json'])
+    expect([checked.exit, checked.err]).toEqual([0, ''])
+    const printed = JSON.parse(checked.out)
+    expect(printed.artifacts).toEqual(artifacts)
+    expect(printed.proof).not.toBe(fingerprint({ fixList: printed.fixList, spec: parentSpecPath, entries: validEntries, artifacts: [],
+      base: null, partialBase: false, tree: here }))
+    expect(printed.proof).toBe(fingerprint({ fixList: printed.fixList, spec: parentSpecPath, entries: validEntries, artifacts,
+      base: null, partialBase: false, tree: here }))
+    invalid(makeList(writeEditedParentResult(result => { delete result.artifacts })), 'the run result holds no artifacts list')
+    for (const strange of [{ path: '/tree/capture' }, { ...artifacts[0], kind: 'capture' }, { path: 7, what: 'a capture' }, 'capture']) {
+      invalid(makeList(writeEditedParentResult(result => { result.artifacts = [...artifacts, strange] })), 'the run result holds artifact 2 in another form')
+    }
+  })
+
   test('a file without a run result and a result of an earlier version give no fix list', () => {
     invalid(makeList(writeEditedParentResult(result => { delete result.toFix })), 'the run result holds no toFix list, as a run of an earlier version of the scripts')
     invalid(makeList(writeEditedParentResult(result => { result.toFix = [] })), 'the run returned nothing to fix')
@@ -584,7 +601,7 @@ describe('fix list validation', () => {
     const checked = checkList(reviewListPath, ['--json'])
     expect([checked.exit, checked.err]).toEqual([0, ''])
     const bytes = await Bun.file(reviewListPath).arrayBuffer()
-    expect(JSON.parse(checked.out)).toEqual({ result: reviewResultPath, spec: null,
+    expect(JSON.parse(checked.out)).toEqual({ result: reviewResultPath, spec: null, artifacts: [],
       sha256: createHash('sha256').update(new Uint8Array(bytes)).digest('hex'),
       proof: listProof({ fixList: reviewListPath, spec: null, entries: list.entries }), fixList: reviewListPath })
     invalid(checkList(written({ ...list, spec: parentSpecPath })), 'fix list.spec: expected null, because the parent run checked no spec')
@@ -687,11 +704,12 @@ describe('fix list validation', () => {
     ['a missing entry', v => { v.entries.pop() }],
     ['reordered entries', v => { v.entries.reverse() }],
     ['an entry the list does not hold', v => { v.entries.push({ ...v.entries[1], source: 'verify:7' }) }],
+    ['an artifact the parent run did not return', v => { v.artifacts.push({ path: '/tree/.cache/visual/after', what: 'the screen after the fix' }) }],
     ['another fix list', v => { v.fixList = join(scratch, 'other-list.yaml') }],
     ['a base list', v => { v.base = [{ path: '.', sha: 'a'.repeat(40) }] }],
     ['another tree', v => { v.tree = scratch }],
   ])('launch values with %s give another proof than the list', (name, edit) => {
-    const values = { fixList: validPath, spec: parentSpecPath, entries: structuredClone(validEntries), base: null, partialBase: false, tree: here }
+    const values = { fixList: validPath, spec: parentSpecPath, entries: structuredClone(validEntries), artifacts: [], base: null, partialBase: false, tree: here }
     const printed = JSON.parse(checkList(validPath, ['--json']).out).proof
     expect(fingerprint(values)).toBe(printed)
     edit(values)

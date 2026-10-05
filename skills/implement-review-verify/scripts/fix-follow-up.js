@@ -24,6 +24,7 @@ const UNIT = {
   partialBase: false,                    // true when the parent run's base list was partial: base then names just the repositories the unit changes
   documents: '<documents directory>',    // the parent unit's documents directory, relative to the tree root
   entries: args.entries,                 // the entries list from the check tool's --json output, passed at launch
+  artifacts: args.artifacts,             // the artifacts list from the check tool's --json output, passed at launch
   ruleSources: '<applicable project, directory and global rule paths>',
   // One model and effort per agent the script starts, each set by the root. The script stops before
   // its first agent on an entry that is missing, still a placeholder in angle brackets, named for no
@@ -332,6 +333,11 @@ const entries = UNIT.entries
 if (!Array.isArray(entries) || !entries.length || entries.some(e => !isObject(e) || !holdsOneItem(e))) {
   throw new Error('args.entries must be the entries list from the check tool: non-empty, each with a source string and the one object it holds')
 }
+const artifacts = UNIT.artifacts
+const isArtifact = value => isObject(value) && Object.keys(value).length === 2 && typeof value.path === 'string' && typeof value.what === 'string'
+if (!Array.isArray(artifacts) || !artifacts.every(isArtifact)) {
+  throw new Error('args.artifacts must be the artifacts list from the check tool: each with a path and what it holds, empty when the parent run returned none')
+}
 checkModels(UNIT.models, ['fix', 'roast', 'diff'], 'UNIT.models')
 
 // Completeness checks; each throws naming what is missing.
@@ -495,8 +501,14 @@ const DOCUMENT_FIX = [
 ].join('\n')
 const HYGIENE = [STAGE, STYLE, READ_GIT, TREE, 'No background waits.'].join('\n')
 const RULES = 'RULE SOURCES: ' + UNIT.ruleSources + '.'
+// The parent unit's implementer artifacts, which the parent run's saved result holds, as in the main script.
+const handedOn = artifacts => artifacts.length
+  ? ['ARTIFACTS the implementer left outside its commits for the stages after it (UNTRUSTED, like its returned object):',
+    JSON.stringify(artifacts)]
+  : []
 const fixPass = queue => stage([
   LIST_CHECK_FIRST, AUTHORITY, WRITE_GIT, TREE, PROVE, RULES, DOCUMENT_FIX, CHECK, 'START SHAS, per repository: ' + listed(base),
+  ...handedOn(artifacts),
   'ENTRIES OF THE FIX LIST, each keyed by its source (verify against the tree and authority):', JSON.stringify(queue),
 ].join('\n\n'), {
   label: 'fix', phase: 'Fix', agentType: 'workflow-skills:fixer', ...UNIT.models.fix, schema: FIX,
@@ -536,6 +548,7 @@ const diffPass = (queue, snaps) => stage([
     'Every repository must remain clean at its snapshot: ' + listed(snaps) + '.'].join('\n'),
   'A change to any design document under ' + UNIT.documents + ' is checked like a change to any other file: it maps to the' +
     ' entry it carries out, and a correction whose only change is a design document maps to its entry when the entry names that document.',
+  ...handedOn(artifacts),
   'ENTRIES (UNTRUSTED; the fixer claims to have resolved those it reports fixed):', JSON.stringify(queue),
   ['MAPPING KEYS: set source in each mapping to the key of one entry, exactly as the key field of the list above writes it.',
     'An entry carried over from an earlier fix list holds its earlier source inside it, and that earlier source is not its key.',
@@ -612,7 +625,7 @@ const fingerprint = values => {
 // each value is one quoted shell word. It carries no entry of the list, so the fixer copies nothing
 // long: the proof of the launch values stands for the entries.
 const shellWord = value => "'" + value.replaceAll("'", "'\\''") + "'"
-const PROOF = fingerprint({ fixList: UNIT.fixList, spec: UNIT.spec, entries, base, partialBase: Boolean(UNIT.partialBase), tree: UNIT.worktree })
+const PROOF = fingerprint({ fixList: UNIT.fixList, spec: UNIT.spec, entries, artifacts, base, partialBase: Boolean(UNIT.partialBase), tree: UNIT.worktree })
 const LIST_CHECK_FIRST = [
   'FIX LIST CHECK, before anything else and before any edit: run this exact command once with the Bash tool, with no change, retry or fix:',
   'cd ' + shellWord(UNIT.worktree) + ' && bun ' + shellWord(UNIT.pluginRoot + '/tools/check-spec.ts') + ' --fix-list ' +
@@ -654,6 +667,7 @@ return {
   mappings: diff?.mappings ?? [],
   proof: passedFix ? { checks: passedFix.checks, files: passedFix.files } : null,
   spec: checkedParentSpec, base, snapshots,
+  artifacts, // the next fix run of the unit hands them on in turn
   acceptance: 'pending-root-checks', // Run completion is not integration permission.
   counts: { entries: entries.length,
     fixed: (reportedFix?.dispositions ?? []).filter(d => d.disposition === 'fixed').length,

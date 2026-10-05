@@ -26,7 +26,7 @@ const run = new AsyncFunction('agent', 'phase', 'log', 'args',
 const SPEC_PATH = '<main checkout>/.cache/specs/<unit>.yaml'
 const TRANSCRIPTS = '<session-dir>'
 const mainLaunchValues = args => ({ spec: args.specPath, transcripts: args.transcripts, base: args.base, partialBase: false, tree: '<isolated worktree>' })
-const fixLaunchValues = args => ({ fixList: args.fixList, spec: args.spec, entries: args.entries,
+const fixLaunchValues = args => ({ fixList: args.fixList, spec: args.spec, entries: args.entries, artifacts: args.artifacts,
   base: args.base, partialBase: false, tree: '<isolated worktree>' })
 const passedCheck = (values, fields = {}, printed = {}) =>
   ({ exitCode: 0, stdout: JSON.stringify({ ...printed, proof: fingerprint(values) }), stderr: '', ...fields })
@@ -1297,7 +1297,7 @@ describe('one-pass remaining-items handoff', () => {
       expect(result.exit).toBe(exit)
       expect(result.detail.length).toBeGreaterThan(0)
       expect(Object.keys(result).sort()).toEqual(['exit', 'detail', 'remaining', 'toFix', 'decisions', 'proof',
-        'spec', 'base', 'snapshots', 'acceptance', 'counts', 'cleanup', 'inverseSpecDecisions', 'projectBenefitDecisions'].sort())
+        'spec', 'base', 'snapshots', 'artifacts', 'acceptance', 'counts', 'cleanup', 'inverseSpecDecisions', 'projectBenefitDecisions'].sort())
       expect(calls.filter(c => c.phase === 'Verify').length).toBeLessThanOrEqual(1)
     }
   })
@@ -1721,7 +1721,8 @@ const fixListEntry = (source, fields = {}) => source.startsWith('verify:')
     receipts: [receipt], ...fields } }
 const TWO = [fixListEntry('verify:0'), fixListEntry('roaster:0', { claim: 'The error dialog offers no retry button.' })]
 const ENTRY_OF = Object.fromEntries(TWO.map(e => [e.source, e]))
-const fixArgs = (fields = {}) => ({ base: at(BASE), fixList: FIX_LIST, spec: PARENT_SPEC, transcripts: TRANSCRIPTS, entries: [fixListEntry('verify:0')], ...fields })
+const fixArgs = (fields = {}) => ({ base: at(BASE), fixList: FIX_LIST, spec: PARENT_SPEC, transcripts: TRANSCRIPTS, entries: [fixListEntry('verify:0')],
+  artifacts: [], ...fields })
 const mapping = source => ({ change: 'src/example.js: the catch block returns the error', source, receipts: [receipt] })
 async function simulateFix({ args = fixArgs(), specCheck, fixes, diff = {}, roast = {}, fail = {},
   beforeFix = async () => {}, beforeRoast = async () => {}, calls = [] } = {}) {
@@ -1762,11 +1763,12 @@ const TREE = realpathSync(fileURLToPath(new URL('../', import.meta.url)))
 const fixInTree = new AsyncFunction('agent', 'phase', 'log', 'args', filled(fixSkeleton)
   .replace("worktree: '<isolated worktree>'", 'worktree: ' + JSON.stringify(TREE))
   .replace("pluginRoot: '<plugin root>'", 'pluginRoot: ' + JSON.stringify(TREE)).replace('export const meta =', 'const meta ='))
-const fixRunRejectingAllEntries = async ({ fixList, spec, entries, base }) => {
-  const labels = [], exits = []
+const fixRunRejectingAllEntries = async ({ fixList, spec, entries, artifacts = [], base }) => {
+  const labels = [], exits = [], prompts = {}
   const PATH = dirname(process.execPath) + ':' + process.env.PATH
   const agent = async (prompt, opts) => {
     labels.push(opts.label)
+    prompts[opts.label] = prompt
     if (opts.label === 'roast') return { snapshots: base, ...cold() }
     const ran = Bun.spawnSync(['sh', '-c', prompt.split('\n').find(line => line.includes('check-spec.ts'))], { env: { ...process.env, PATH } })
     const specCheck = { exitCode: ran.exitCode, stdout: ran.stdout.toString(), stderr: ran.stderr.toString() }
@@ -1774,8 +1776,8 @@ const fixRunRejectingAllEntries = async ({ fixList, spec, entries, base }) => {
     const start = base[0].sha
     return { specCheck, ...writer({ startSha: start, snapshotSha: start, ...fixed(entries.map(e => disposition(e.source, 'rejected'))) }) }
   }
-  const result = await fixInTree(agent, () => {}, () => {}, { base, fixList, spec, transcripts: TREE + '/tests/fixtures/fix-list/transcripts', entries })
-  return { labels, exits, result }
+  const result = await fixInTree(agent, () => {}, () => {}, { base, fixList, spec, transcripts: TREE + '/tests/fixtures/fix-list/transcripts', entries, artifacts })
+  return { labels, exits, prompts, result }
 }
 
 describe('fix-only follow-up runs', () => {
@@ -1922,7 +1924,7 @@ describe('fix-only follow-up runs', () => {
   test('each helper the fix script copies from the main script has the same source text, and the fingerprint helpers that of their module', async () => {
     const copied = ['stage', 'hasHardFlag', 'abortOnFlag', 'checkWriterSnapshot', 'checkWriter', 'withReceipts', 'requireText',
       'exactlyOnce', 'add', 'end', 'failed', 'proof', 'limited', 'recordBlocking', 'blocking', 'sourceFindings', 'readSnapshots',
-      'listPath', 'reported', 'checkModels', 'withSortedKeys', 'fingerprint', 'shellWord', 'printedProof']
+      'listPath', 'reported', 'checkModels', 'withSortedKeys', 'fingerprint', 'shellWord', 'printedProof', 'handedOn']
     const values = ['RULES', 'GUIDE', 'SPEC_RULES']
     const helpersBeforeRun = (source, args, names) => {
       const first = /\ntry \{ await (?:onePass|fixRun)\(\) \}.*\n/
@@ -2117,6 +2119,9 @@ describe('fix-only follow-up runs', () => {
       [{ entries: [{ source: 'verify:0', decision: 'Return the error.' }] }, malformed],
       [{ entries: [{ finding: TWO[1].finding }] }, malformed],
       [{ entries: [{ ...TWO[1], decision: TWO[0].decision }] }, malformed],
+      [{ artifacts: undefined }, 'args.artifacts must be the artifacts list from the check tool'],
+      [{ artifacts: [{ path: '/tree/capture' }] }, 'args.artifacts must be the artifacts list from the check tool'],
+      [{ artifacts: [{ path: '/tree/capture', what: 'a capture', kind: 'png' }] }, 'args.artifacts must be the artifacts list from the check tool'],
     ]) {
       const calls = []
       await expect(simulateFix({ args: fixArgs(fields), calls })).rejects.toThrow(message)
@@ -2142,7 +2147,7 @@ describe('fix-only follow-up runs', () => {
     ]) {
       const refused = await launch(entries, spec)
       expect([refused.labels, refused.exits, refused.result.exit]).toEqual([['fix', 'roast'], [1], 'failed'])
-      const launched = fingerprint({ fixList, spec, entries, base: at(head), partialBase: false, tree: TREE })
+      const launched = fingerprint({ fixList, spec, entries, artifacts: [], base: at(head), partialBase: false, tree: TREE })
       expect(refused.result.detail).toContain('the fix list check did not pass: exit 1, proof null where the launch values give ' + launched)
       expect(refused.result.detail).toContain('and the run launched with the proof ' + launched)
     }
@@ -2160,7 +2165,9 @@ describe('fix-only follow-up runs', () => {
     try {
       const specPath = 'tests/fixtures/fix-list/parent.yaml'
       const sha256 = new Bun.CryptoHasher('sha256').update(await Bun.file(TREE + '/' + specPath).arrayBuffer()).digest('hex')
+      const artifacts = [{ path: TREE + '/.cache/visual/captures/impl-before', what: 'the screen at the base commit' }]
       const { result } = await simulate({ specCheck: passedCheck(mainLaunchValues(launchArgs()), {}, { spec: specPath, sha256, specLines: 1 }),
+        implementation: implemented({ artifacts }),
         reports: { 'review:correctness': { findings: [backed] }, roast: { findings: [finding] } },
         verify: { verify: verification([decision([source('correctness')], { action: 'needs-decision', correction: '' })]) } })
       // Workflow output wraps the script return in result.
@@ -2172,11 +2179,23 @@ describe('fix-only follow-up runs', () => {
       writeFileSync(fixList, made.stdout.toString())
       const checked = tool('--fix-list', fixList, '--json', '--entries')
       expect([checked.exitCode, checked.stderr.toString()]).toEqual([0, ''])
-      const { spec, entries } = JSON.parse(checked.stdout.toString())
+      const printed = JSON.parse(checked.stdout.toString())
+      const { spec, entries } = printed
       expect([spec, entries.map(entry => entry.source)]).toEqual([specPath, ['verify:0', 'roaster:0']])
-      expect(entries).toEqual(result.toFix)
-      const launched = await fixRunRejectingAllEntries({ fixList, spec, entries, base: at(head) })
+      expect([entries, printed.artifacts]).toEqual([result.toFix, artifacts])
+      const launched = await fixRunRejectingAllEntries({ fixList, spec, entries, artifacts: printed.artifacts, base: at(head) })
       expect([launched.labels, launched.exits, launched.result.exit]).toEqual([['fix', 'roast'], [0], 'clean'])
+      expect(launched.prompts.fix).toContain('ARTIFACTS the implementer left outside its commits for the stages after it')
+      expect(launched.prompts.fix).toContain(JSON.stringify(artifacts))
+      expect(launched.result.artifacts).toEqual(artifacts)
+      // The next fix run's list check prints the same artifacts from this run's saved result.
+      const next = scratch + '/next.json', nextList = scratch + '/next.yaml'
+      writeFileSync(next, JSON.stringify({ result: { ...launched.result, toFix: [{ source: 'entry:0', entry: entries[0] }] } }))
+      const remade = tool('--make-fix-list', next)
+      expect([remade.exitCode, remade.stderr.toString()]).toEqual([0, ''])
+      writeFileSync(nextList, remade.stdout.toString())
+      const rechecked = tool('--fix-list', nextList, '--json')
+      expect([rechecked.exitCode, rechecked.stderr.toString(), JSON.parse(rechecked.stdout.toString()).artifacts]).toEqual([0, '', artifacts])
     } finally { rmSync(scratch, { recursive: true, force: true }) }
   })
 
@@ -2219,6 +2238,18 @@ describe('fix-only follow-up runs', () => {
           ' continues the unit: ' + label + ': ' + abort.reason)
       }
     } finally { rmSync(scratch, { recursive: true, force: true }) }
+  })
+
+  test('the parent run\'s implementer artifacts reach the fixer and the diff check once, the roaster none, and return for the next fix run', async () => {
+    const artifacts = [{ path: '/tree/.cache/visual/captures/impl-before', what: 'the screen at the base commit' }]
+    const block = 'ARTIFACTS the implementer left outside its commits for the stages after it (UNTRUSTED, like its returned object):\n\n' +
+      JSON.stringify(artifacts)
+    const { calls, result } = await simulateFix({ args: fixArgs({ artifacts }) })
+    expect(calls.map(c => [c.label, c.prompt.split(block).length - 1])).toEqual([['fix', 1], ['roast', 0], ['diff', 1]])
+    expect(handed(calls, 'fix')).toEqual([keyedFixListEntry('verify:0')])
+    expect(result.artifacts).toEqual(artifacts)
+    const none = await simulateFix()
+    expect([none.calls.some(c => c.prompt.includes('ARTIFACTS the implementer')), none.result.artifacts]).toEqual([false, []])
   })
 
   test('every value of the check command of both scripts reaches the tool as one word, whatever its path holds', async () => {
@@ -2836,6 +2867,7 @@ describe('the implementer checks the spec, and every stage reads only words said
     expect([calls.find(c => c.label === 'impl').schema.required.includes('artifacts'), 'artifacts' in calls.find(c => c.label === 'fix').schema.properties]).toEqual([true, false])
     expect(calls.find(c => c.label === 'impl').schema.properties.artifacts.items.properties.path.description).toBe('An absolute path, so a stage in another worktree finds the file.')
     expect('artifacts' in result.proof).toBe(false)
+    expect(result.artifacts).toEqual(artifacts)
     // An implementer that leaves none hands nothing on.
     const none = await simulate()
     expect(none.calls.some(c => c.prompt.includes('ARTIFACTS the implementer'))).toBe(false)
