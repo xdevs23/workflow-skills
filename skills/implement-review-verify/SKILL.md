@@ -749,7 +749,9 @@ or raises it as a question for the user.
   - applies the approved outcome within its bounds, never broadening scope or editing a
     spec or other authority document to make the correction legal after the fact;
   - returns disagreements with counterevidence in its dispositions, never into another fix
-    attempt inside the run; they go to the next fix run. A blocked mechanism stays untouched;
+    attempt inside the run. A rejection stays in the run's `dispositions` and closes its
+    correction, unless it decides an inverse-spec or kind-bearing finding; a blocked correction goes to the next fix run with the fixer's disposition
+    beside its decision. A blocked mechanism stays untouched;
   - writes or extends a design document by hand as its last write once its corrections are done,
     only when a correction alters the design;
   - runs full checks BARE AFTER ITS LAST WRITE;
@@ -778,13 +780,14 @@ or raises it as a question for the user.
   `{ kind, severity, item }` per open decision, verifier issue, writer-scope violation, blocking
   limitation, unfixed approval, failed proof, roast finding or limitation, unattested fix, spec
   finding, abort or stage failure. Every fixed key carries its disposition, approved correction,
-  snapshot and commits. The roast's findings retain their source IDs and snapshot; its limitations
+  snapshot and commits. A key that an accepted fixer result rejected adds no item: the rejection
+  stays in the run's `dispositions`, which hold every answer of the fixer. The roast's findings retain their source IDs and snapshot; its limitations
   and unchecked coverage return as well. Record the list in the todo record that
   `workflow-skills:todo-md` defines and hand it on as the remaining items section below says.
 - **The run returns `exit` and a one-sentence `detail`:** `clean` for a completed pass with neither
   a must-fix/CRITICAL remaining item nor an unattested fix; `follow-up` for a completed pass with
-  such items; `root-resolution` for unresolved verification, a blocking limitation, fixer
-  disagreement or failed proof; `aborted` for a hard flag; `failed` for a protocol or stage failure.
+  such items; `root-resolution` for unresolved verification, a blocking limitation, a blocked
+  correction or failed proof; `aborted` for a hard flag; `failed` for a protocol or stage failure.
   Completion requires the verifier's return, both concurrent tasks settling without ending the run,
   and passing proof. `proof` holds the checks and files of a fixer that passed its writer checks,
   otherwise the implementer's.
@@ -879,7 +882,8 @@ second implementer pre-check.
   its implementer, as `impl:<index>`; every decision of its verify stage, as `verify:<index>`, apart
   from an approved correction its fixer reported fixed or rejected that decides neither an
   inverse-spec finding nor a kind-bearing one, a decision on a kind-bearing finding with those
-  findings in `projectBenefit`, and every unresolved issue of it, as `issue:<index>`; in a run
+  findings in `projectBenefit`, a decision the fixer answered with that answer in `disposition`,
+  and every unresolved issue of it, as `issue:<index>`; in a run
   without a verify stage, such as a review pass, every finding of its reviewers, as
   `review:<seat>:<index>`; in a fix run, every entry of its own list that its fixer left open, as
   `entry:<index>`; every finding of its roast stage and of its diff check, as `roaster:<index>`
@@ -1651,7 +1655,7 @@ const fixPrompt = [
   AUTHORITY, WRITE_GIT, SPEC, PROVE, CHECK, 'START SHAS, per repository: ' + listed(snapshots),
   'Act ONLY on the verifier-approved corrections. Independently verify their evidence and authority.',
   'Respect each correction, constraints and acceptance check. Never broaden scope.',
-  'Answer each key in dispositions: fixed / rejected / blocked with receipts. Disagreements go to the next fix run.',
+  'Answer each key in dispositions: fixed / rejected / blocked with receipts. A blocked correction goes to the next fix run.',
   'APPROVED CORRECTIONS:', JSON.stringify(queue),
 ].join('\n\n')
 ```
@@ -1797,7 +1801,9 @@ prompt rule it sees nowhere is a defect.
   objects.
 - Each item carries its source IDs, verified evidence, authority references and exact quotes, the
   permitted correction, constraints and acceptance check. The fixer owes one disposition per key.
-- Rejected or blocked corrections go to the next fix run with their counterevidence.
+- A rejected correction stays in the run's `dispositions` and closes, unless it decides an
+  inverse-spec or kind-bearing finding. A blocked correction goes to the next fix run with the
+  fixer's disposition beside its decision.
 - A new necessary choice is not the fixer's to make; no scope expansion or authority-document edits
   are allowed.
 
