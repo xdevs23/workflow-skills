@@ -42,10 +42,12 @@ works with agree with the values the tool checked before the writer's first edit
 the writer edits nothing. The script parses the printed JSON, reads its `proof` field and compares
 it with its own fingerprint, so output that is no JSON ends the run like a wrong proof.
 
-The fix-list generator of the spec tool reads what a run checked from the same place: the
-`specCheck` of the implementer in a main run and of the fixer in a fix run, and the output of the
-launch check in a run of an earlier version, and only when its exit code is 0. A run with none of
-them, a review pass, checked no spec, and its fix list names none.
+Each script returns in `spec` the spec its writer's check passed on, taken from what the tool
+printed: its path, its sha256 and its spec lines, from the implementer's spec check in a main run
+and from the fixer's fix list check in a fix run. It is null when no check passed on a spec, as in a
+review pass, which checks none. The fix-list generator copies that field from the saved result: the
+fix list names its path, the check of the list compares the spec's sha256 with the file, and a size
+breach is measured against its spec lines.
 
 ## What the comparison shows
 
@@ -84,9 +86,11 @@ so the stage helper never asks the writer again: another attempt could pass only
 the check compares. In a fix run the roaster runs beside the fixer, and its findings, its
 limitations or its failure reach the run's remaining items beside the failed check.
 
-The generator refuses every run that ended `failed`. A fix run whose fixer returned no complete
-result is resumed and never followed by a fix run. A fix run whose fix list check failed launched on
-other values than it was given, and it is launched again with the right ones.
+The generator refuses every run in which a stage failed, whatever exit the run ended with, because
+the exit names only the first cause that ended the run and a failed stage after it shows only in
+`remaining`. Such a run ended on its own, so it is shown to the user and never followed by a fix
+run. A fix run whose fix list check failed launched on other values than it was given, and it is
+launched again with the right ones.
 
 ## What it replaces
 

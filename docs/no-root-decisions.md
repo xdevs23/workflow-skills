@@ -20,7 +20,7 @@ What a run returns to be fixed goes, as its result holds it, to a fix run. The r
 `toFix` list, and the spec tool writes the fix list from the parent run's saved result with
 `--make-fix-list`: every spec finding of the implementer, every decision of the finding verifier,
 cleanup decisions included, apart from an approved correction its fixer reported fixed or rejected,
-every unresolved issue of the verifier, every finding of the review seats in a run without a
+every unresolved issue of the verifier, every finding of the reviewers in a run without a
 verifier, such as a review pass, every entry a fix run's fixer left open, and every finding of the
 roaster and the diff check. The list names the spec the parent run checked. Nobody adds, removes or
 edits an entry, and nothing is attached to one, so no reading of the orchestrating session steers
@@ -48,9 +48,8 @@ The fixer closes an entry by rejecting it with counterevidence, by returning it 
 a fix the fix run's diff check maps a change to. A rejection stays in the run's dispositions and adds
 no remaining item. A blocked entry, and one the fixer never answered, stays open, and the next fix
 list carries it under its index in the fix run's own list. Only a result the fix run accepted closes
-an entry: the spec tool applies the fix script's own checks of the fixer's and the diff check's
-results, defined once in a module the script carries verbatim, so a refused or aborted result leaves
-every entry it answered open.
+an entry: the fix script builds the `toFix` list it returns from the results it accepted, so a
+refused or aborted result leaves every entry it answered open.
 
 A read-only diff check maps every change of the fix to an entry. A change that maps to no entry, or
 that changes the product's scope or what the user sees and does where neither the user's words nor a

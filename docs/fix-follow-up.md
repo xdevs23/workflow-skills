@@ -35,7 +35,7 @@ ignored private directory with exactly three keys, `result`, the saved result of
 `spec`, the spec the parent run checked, and `entries`. Each entry holds its `source` and one item
 the parent run returned to be fixed, as that result holds it: a spec finding of its implementer,
 `impl:<index>`, a finding of its roaster, `roaster:<index>`, of its diff check, `diff:<index>`, or
-of one of its review seats, `review:<seat>:<index>`, under `finding`; a decision of its finding
+of one of its reviewers, `review:<seat>:<index>`, under `finding`; a decision of its finding
 verifier, `verify:<index>`, under `decision`; an unresolved issue of the verifier, `issue:<index>`,
 under `issue`; an entry of a fix run's own list that its fixer left open, `entry:<index>`, under
 `entry`; or a measured size breach of the unit, `size`, under `size`. The list holds no word of the
@@ -47,16 +47,23 @@ copies into the project cache unchanged. The list names that file by its absolut
 run's check passed on, or null when it checked none, as a review pass does, and holds the run's
 `toFix` list. Each script builds that list from the results it accepted: every spec finding of its
 implementer, every decision and unresolved issue of its verify stage apart from an approved
-correction its fixer fixed or rejected, in a run without a verify stage every finding of its review
-seats, in a fix run every entry of its own list its fixer left open, and every finding of its roast
-stage and diff check. A fix run's fixer closes an entry by rejecting it, by raising it as a question
-or by a fix its diff check mapped a change to; a blocked entry and one the fixer never answered stay
-open. A result the run refused or that carries a hard flag closes nothing, and a run that ended
-`failed` gets no fix list. `--size <json>` adds a size breach the orchestrating session measured,
-with the implementation lines added and the commits measured, beside the spec lines the parent run's
-spec check counted. The orchestrating session saves the list unchanged and adds, deletes and edits
-nothing. A fix list is never made from a spec, a spec is never made from a fix list, and neither is
-used for the other kind of run.
+correction its fixer fixed or rejected, in a run without a verify stage every finding of its
+reviewers, in a fix run every entry of its own list its fixer left open, and every finding of its
+roast stage and diff check. A fix run's fixer closes an entry by rejecting it, by raising it as a
+question or by a fix its diff check mapped a change to; a blocked entry and one the fixer never
+answered stay open. A result the run refused or that carries a hard flag closes nothing. A run in
+which a stage failed gets no fix list, whatever exit it ended with: the exit names only the first
+cause that ended the run, so a roaster that failed after the fixer blocked an entry shows only as
+the `stage-failure` item it left in `remaining`, and the tool refuses any result that holds one.
+Such a run is incomplete, and it ended on its own, so the orchestrating session shows its stage
+failures to the user instead of resuming it. The tool also refuses a result that holds one source
+twice in `toFix`, or whose `spec` carries a sha256 other than 64 lowercase hexadecimal digits or a
+line count that is no positive integer, since a spec that passed its check counts at least one line.
+`--size <json>` adds a size breach the orchestrating session measured, with the implementation lines
+added and the commits measured, beside the spec lines the parent run's spec check counted. The
+orchestrating session saves the list unchanged and adds, deletes and edits nothing. A fix list is
+never made from a spec, a spec is never made from a fix list, and neither is used for the other kind
+of run.
 
 **fix-list-check**: The spec tool has a mode that takes a fix list in place of the spec argument,
 with the existing `--json`. It validates the list's shape strictly, as it does a spec, and refuses
@@ -156,6 +163,6 @@ Reason: The fix run passes on what the reviewer said.
 Reason: The fix run takes its own YAML shape, written from scratch, and a spec and a fix list never
 mix.
 
-**rejected-journal**: Reading what a run returned from the journal the workflow tool keeps for the
-run. Reason: the journal serves resuming and diagnosing a run, and what a run hands on is the result
-its script returns, so the script returns everything its fix list needs.
+**rejected-journal**: A fix list could be read from the journal the workflow tool keeps for the run.
+Reason: the journal serves resuming and diagnosing a run, and what a run hands on is the result its
+script returns, so the script returns everything its fix list needs.
