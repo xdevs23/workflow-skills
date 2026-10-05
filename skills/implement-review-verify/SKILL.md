@@ -892,9 +892,11 @@ second implementer pre-check.
   prints the absolute path of the saved result, the spec the parent run's check passed on, and every
   item the run returned to be fixed in its `toFix` list, in that order and each under its source.
 - Run each fix run on the plugin version that ran its parent. The tool refuses a result that an
-  earlier version saved without a `toFix` or an `artifacts` list: make and check its fix list, and
-  fill its fix run, with the spec tool and the scripts in that version's directory under the plugin
-  cache, and start every new unit on the loaded version.
+  earlier version saved without a `toFix` or an `artifacts` list. Write, check and fill the fix run
+  of such a result as that version's own copy of this skill says, with the spec tool and the scripts
+  beside it, all in that version's directory under the plugin cache. Its fix-list command, the keys
+  of its fix list and its launch values can differ from the ones here.
+- Start every new unit on the loaded plugin version.
 - Expect each script to build its `toFix` list from the results it accepted: every spec finding of
   its implementer, as `impl:<index>`; every decision of its verify stage, as `verify:<index>`, apart
   from an approved correction its fixer rejected, or reported fixed with a commit, that decides

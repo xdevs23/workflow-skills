@@ -475,10 +475,9 @@ const remainingOfKind = (remaining: unknown[], kind: string, describe: (item: Ma
   .filter((entry): entry is Mapping => mapping(entry) && entry.kind === kind)
   .map(({ item }) => mapping(item) ? describe(item) : JSON.stringify(item))
 
-// A run of an earlier version of the scripts returns neither list. Its chain of fix runs ends on
-// that version, whose spec tool and scripts stay in the plugin cache.
-const earlierVersion = 'as a run of an earlier version of the scripts returns: finish its chain of fix runs with the spec tool ' +
-  'and the scripts of the plugin version that ran it, from the plugin cache'
+// Runs of an earlier version of the scripts return neither toFix nor artifacts.
+const earlierVersion = 'as a run of an earlier version of the scripts returns: finish its chain of fix runs as the skill, ' +
+  'the spec tool and the scripts of the plugin version that ran it say, from the plugin cache'
 
 // The workflow tool saves what a script returns in its output file under the key result.
 async function readSavedRunResult(file: string): Promise<Returned> {
