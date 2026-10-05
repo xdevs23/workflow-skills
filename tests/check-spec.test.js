@@ -449,8 +449,8 @@ const validList = Bun.YAML.parse(await Bun.file(validPath).text())
 const parentResultPath = 'tests/fixtures/fix-list/results/parent-run.json'
 const reviewResultPath = 'tests/fixtures/fix-list/results/review-pass.json'
 const parentOutput = await Bun.file(join(root, parentResultPath)).json()
-const EARLIER_VERSION = 'as a run of an earlier version of the scripts returns: finish its chain of fix runs with the ' +
-  'spec tool and the scripts of the plugin version that ran it, from the plugin cache'
+const EARLIER_VERSION = 'as a run of an earlier version of the scripts returns: finish its chain of fix runs as the ' +
+  'skill, the spec tool and the scripts of the plugin version that ran it say, from the plugin cache'
 const validEntries = parentOutput.result.toFix
 const checkList = (path, options = [], cwd = root) => {
   const result = Bun.spawnSync([process.execPath, tool, '--fix-list', path, ...options], { cwd })
