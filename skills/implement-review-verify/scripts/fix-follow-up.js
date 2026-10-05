@@ -455,7 +455,7 @@ const checkDiffResult = (r, keys) => {
 // The remaining-items handoff of the main script, with the kinds this run produces.
 const EXIT = ['clean', 'follow-up', 'root-resolution', 'aborted', 'failed']
 const REMAINING = ['user-question', 'blocking-limitation', 'unfixed-entry', 'failed-proof', 'false-premise',
-  'roast-finding', 'roast-limitation', 'unattested-fix', 'unproven-fix', 'diff-finding', 'diff-limitation', 'abort',
+  'fix-limitation', 'roast-finding', 'roast-limitation', 'unattested-fix', 'unproven-fix', 'diff-finding', 'diff-limitation', 'abort',
   'stage-failure']
 const remaining = []
 let diff = null, snapshots = base
@@ -476,6 +476,7 @@ const failed = (error, label, result) => {
   end(error.exit === 'aborted' ? 'aborted' : 'failed', error.message)
 }
 const blocking = r => r.limitations.filter(l => l.effect === 'blocks')
+const narrowing = r => r.limitations.filter(l => l.effect === 'narrows')
 // Records each blocking limitation with its stage label and returns how many there were.
 const recordBlocking = (result, label) => {
   const limits = blocking(result)
@@ -489,6 +490,10 @@ const limited = (result, label) => {
 const recordFalsePremises = (writer, label) => {
   for (const premise of writer.premises.filter(p => !p.holds)) add('false-premise', { ...premise, label }, 'must-fix')
 }
+// Records each narrowing limitation of a fixer, a check it could run only in part, with its stage label.
+const recordFixLimitations = (fixer, label) => {
+  for (const limitation of narrowing(fixer)) add('fix-limitation', { ...limitation, label }, 'should-fix')
+}
 const proof = (writer, label) => {
   if (!writer.proofPassed) {
     add('failed-proof', { label, checks: writer.checks })
@@ -497,7 +502,7 @@ const proof = (writer, label) => {
 }
 // A narrowing limitation or an unchecked coverage entry of a reader returns to the root as well.
 const narrowed = (result, kind) => {
-  for (const l of [...result.limitations.filter(l => l.effect === 'narrows'), ...result.coverage.filter(c => !c.checked)]) {
+  for (const l of [...narrowing(result), ...result.coverage.filter(c => !c.checked)]) {
     add(kind, l, 'should-fix')
   }
 }
@@ -600,6 +605,7 @@ async function fixRun() {
         passedFix = reportedFix = result
         snapshots = snapshotsOf(result)
         limited(result, label)
+        recordFixLimitations(result, label)
         recordFalsePremises(result, label)
         if (result.dispositions.some(d => d.disposition === 'question')) end('root-resolution', 'A question for the user came back.')
         if (result.dispositions.some(d => d.disposition === 'blocked')) end('root-resolution', 'An entry was blocked.')
@@ -711,6 +717,8 @@ const checkedParentSpec = listCheckOutput?.spec
 return {
   exit, detail, remaining, toFix,
   dispositions: reportedFix?.dispositions ?? [],
+  // The accepted fixer's suggestions about the spec, for consideration: neither a blocker nor a spec edit.
+  specSuggestions: passedFix?.specSuggestions ?? [],
   mappings: diff?.mappings ?? [],
   proof: passedFix ? { checks: passedFix.checks, files: passedFix.files } : null,
   spec: checkedParentSpec, base, snapshots,

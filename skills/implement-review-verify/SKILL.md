@@ -778,9 +778,11 @@ or raises it as a question for the user.
   checks. Stage labels are `review:<seat>`, `verify`, `fix` and `roast`.
 - **Every ending returns remaining items.** The run's single handoff is `remaining`, one
   `{ kind, severity, item }` per open decision, verifier issue, writer-scope violation, blocking
-  limitation, unfixed approval, failed proof, false premise, roast finding or limitation, unattested
-  fix, spec finding, abort or stage failure. Each premise an accepted fixer result reports false
-  returns as a must-fix `false-premise` item with the fixer's label. Every key reported fixed by a
+  limitation, unfixed approval, failed proof, false premise, fixer limitation, roast finding or
+  limitation, unattested fix, spec finding, abort or stage failure. Each premise an accepted fixer
+  result reports false returns as a must-fix `false-premise` item with the fixer's label, and each
+  of its limitations of effect `narrows` as a should-fix `fix-limitation` item with that label, so
+  you know which check its proof covers only in part. Every key reported fixed by a
   fixer that committed carries its disposition, approved correction, snapshot and commits; a key
   reported fixed by a fixer that committed nothing returns as an unfixed approval with that answer,
   because no commit stands behind the fix. A key that an accepted fixer result rejected adds no
@@ -794,7 +796,9 @@ or raises it as a question for the user.
   correction or failed proof; `aborted` for a hard flag; `failed` for a protocol or stage failure.
   Completion requires the verifier's return, both concurrent tasks settling without ending the run,
   and passing proof. `proof` holds the checks and files of a fixer that passed its writer checks,
-  otherwise the implementer's.
+  otherwise the implementer's. `specSuggestions` holds the suggestions about the spec of a fixer
+  that passed its writer checks. Read them as suggestions: none of them blocks the run or edits the
+  spec, and a change to the spec still needs the user's words.
 
 #### Rule violations and local cleanup records
 
@@ -996,6 +1000,8 @@ second implementer pre-check.
   done has no commit or maps to no change in the diff check (an `unproven-fix`), the proof failed,
   or the diff check found a change without an entry. It ends `clean` only when nothing at all
   remains, and ends on an abort or a stage failure as the main script does.
+- The accepted fixer's false premises and narrowing limitations return as in the main run, as
+  `false-premise` and `fix-limitation` items, and its `specSuggestions` in the run's result.
 - **Two relocations mean the cause is untouched.** When the todo record shows the same defect moved
   twice, the third change fixes the cause instead of moving it a third time, and a third relocation
   is refused with the cause reported to the user. The count lives in that defect's entry in the
@@ -1629,7 +1635,9 @@ and exits with `root-resolution`. The verifier's own is recorded the same way, a
 with `root-resolution` after the fix stage has run. The main script records no reading seat's
 limitation: the verifier keeps it as an unresolved issue or discards it. The fix run has no
 verifier, so there the script records the blocking limitations of the fixer, the roaster
-and the diff check itself.
+and the diff check itself. No verifier reads the fixer's object in either script, so both
+scripts record each limitation of effect `narrows` of an accepted fixer result as a should-fix
+`fix-limitation` item with its stage label.
 
 - **ARTIFACT-PRODUCING STAGES PROVE THE ARTIFACT IN `files` AND `checks`.** A stage can produce a
   long, immaculate ANALYSIS of the work and never create the file; an empty `files` list behind a

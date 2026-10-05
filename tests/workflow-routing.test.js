@@ -852,6 +852,15 @@ describe('workflow verification and consolidation', () => {
       .toEqual(['follow-up', [{ kind: 'false-premise', severity: 'must-fix', item: { ...premise, label: 'fix' } }], []])
   })
 
+  test('a narrowing limitation of the fixer returns with its label, and its spec suggestions return in the result', async () => {
+    const limitation = { what: 'The integration suite needs a database this tree does not start.', effect: 'narrows' }
+    const suggestion = 'Name the error the spec expects for an empty file.'
+    const { result } = await simulate({ reports: oneReport, verify: approveOne,
+      fixes: { fix: fixed([disposition('fix:0', 'rejected')], { touched: [], limitations: [limitation], specSuggestions: [suggestion] }) } })
+    expect([result.exit, result.remaining, result.specSuggestions])
+      .toEqual(['clean', [{ kind: 'fix-limitation', severity: 'should-fix', item: { ...limitation, label: 'fix' } }], [suggestion]])
+  })
+
   test('a blocked approval returns to the root and reaches the next fix list with the fixer\'s disposition beside it', async () => {
     const blocked = disposition('fix:0', 'blocked')
     const { result, calls } = await simulate({ specCheck: await parentSpec(), reports: oneReport, verify: approveOne,
@@ -1434,7 +1443,7 @@ describe('one-pass remaining-items handoff', () => {
       const { result, calls } = await simulate(options)
       expect(result.exit).toBe(exit)
       expect(result.detail.length).toBeGreaterThan(0)
-      expect(Object.keys(result).sort()).toEqual(['exit', 'detail', 'remaining', 'toFix', 'decisions', 'dispositions', 'proof',
+      expect(Object.keys(result).sort()).toEqual(['exit', 'detail', 'remaining', 'toFix', 'decisions', 'dispositions', 'specSuggestions', 'proof',
         'spec', 'base', 'snapshots', 'artifacts', 'acceptance', 'counts', 'cleanup', 'inverseSpecDecisions', 'projectBenefitDecisions'].sort())
       expect(calls.filter(c => c.phase === 'Verify').length).toBeLessThanOrEqual(1)
     }
@@ -2075,7 +2084,8 @@ describe('fix-only follow-up runs', () => {
 
   test('each helper the fix script copies from the main script has the same source text, and the fingerprint helpers that of their module', async () => {
     const copied = ['stage', 'hasHardFlag', 'abortOnFlag', 'checkWriterSnapshot', 'checkWriter', 'checkFullRun', 'withReceipts', 'requireText',
-      'exactlyOnce', 'add', 'end', 'failed', 'proof', 'limited', 'recordBlocking', 'recordFalsePremises', 'blocking', 'sourceFindings', 'readSnapshots',
+      'exactlyOnce', 'add', 'end', 'failed', 'proof', 'limited', 'recordBlocking', 'recordFalsePremises', 'recordFixLimitations', 'blocking', 'narrowing',
+      'sourceFindings', 'readSnapshots',
       'listPath', 'reported', 'checkModels', 'withSortedKeys', 'fingerprint', 'shellWord', 'printedProof', 'handedOn']
     const values = ['RULES', 'GUIDE', 'SPEC_RULES', 'WRITE_GIT']
     const helpersBeforeRun = (source, args, names) => {
@@ -2321,6 +2331,15 @@ describe('fix-only follow-up runs', () => {
     const { result } = await simulateFix({ fixes: fixed([disposition('verify:0', 'rejected')], { touched: [], premises: [premise] }) })
     expect([result.exit, result.remaining, result.toFix])
       .toEqual(['follow-up', [{ kind: 'false-premise', severity: 'must-fix', item: { ...premise, label: 'fix' } }], []])
+  })
+
+  test('a narrowing limitation of the fixer returns with its label and ends the fix run follow-up, and its spec suggestions return in the result', async () => {
+    const limitation = { what: 'The integration suite needs a database this tree does not start.', effect: 'narrows' }
+    const suggestion = 'Name the error the spec expects for an empty file.'
+    const { result } = await simulateFix({ fixes: fixed([disposition('verify:0', 'rejected')],
+      { touched: [], limitations: [limitation], specSuggestions: [suggestion] }) })
+    expect([result.exit, result.remaining, result.toFix, result.specSuggestions])
+      .toEqual(['follow-up', [{ kind: 'fix-limitation', severity: 'should-fix', item: { ...limitation, label: 'fix' } }], [], [suggestion]])
   })
 
   test('an entry a parent fix run left open and a size breach reach the fixer as the list holds them, keyed by their sources', async () => {
