@@ -32,10 +32,11 @@ rescuing.
   call as started, with no failure recorded for it. From that call on, every call runs live, also
   one whose key the journal holds with a result.
 - Expect each of these calls to end the replay: a call whose key the journal does not hold, such as
-  an edited one, a call that failed or returned no result, such as an attempt that a retry follows,
-  and a call that had not started when the run stopped. After an edited call this means, for
-  example, that the roaster that starts beside the fixer or the reviewers listed after an edited
-  reviewer run again.
+  an edited one, a call that failed or returned no result, such as an attempt that died on an API
+  error before its stage retried it, and a call that had not started when the run stopped. An
+  attempt that returned an object the script's check then refused holds a journaled result, so it
+  replays and does not end the replay. After an edited call this means, for example, that the
+  roaster that starts beside the fixer or the reviewers listed after an edited reviewer run again.
 - Expect an interrupted call whose prompt and options you leave unchanged to run live without
   ending the replay, so the finished calls made after it replay until one of the calls above ends
   the replay.
