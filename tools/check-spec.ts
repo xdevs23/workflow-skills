@@ -545,6 +545,10 @@ function acceptedResult(result: unknown, check: (result: unknown) => void): unkn
 // list its fixer left open; and every finding of the roaster and of the diff check.
 async function returned(run: string, transcripts: string): Promise<{ launch: Launch, entries: Entry[] }> {
   const results = await lastResults(await findJournal(transcripts, run))
+  // A stage either returns, is retried or ends the run, and a run that ended that way is resumed, so
+  // it never gets a fix list.
+  const unfinished = [...results].filter(([, result]) => result === undefined).map(([label]) => label)
+  if (unfinished.length) throw new Error(`run ${run} did not finish: ${unfinished.join(', ')} returned no result, so resume the run`)
   const launch = launchOf(results)
   const entries: Entry[] = []
   const take = (kind: string, field: string, items: unknown[]) =>
@@ -554,7 +558,14 @@ async function returned(run: string, transcripts: string): Promise<{ launch: Lau
     take(kind, field, listIn(results.get(label), list))
   }
   fromStage('impl')
-  fromStage('verify')
+  // The fixer of a main run receives the approved corrections as fix:<n> in the order of the decisions,
+  // and an approval it fixed or disproved goes no further.
+  const fixer = new Map(listIn(results.get('fix'), 'dispositions').filter(mapping).map(d => [d.key, d.disposition]))
+  let approvals = 0
+  listIn(results.get('verify'), 'decisions').forEach((decision, index) => {
+    const key = mapping(decision) && decision.action === 'approve-fix' ? `fix:${approvals++}` : undefined
+    if (!key || !['fixed', 'rejected'].includes(String(fixer.get(key)))) entries.push({ source: `verify:${index}`, decision })
+  })
   fromStage('issue')
   if (!results.has('verify')) {
     for (const [label, result] of results) {

@@ -167,7 +167,7 @@ specs.
   tool, run at the tree root, fails a list whose path is no repository's top level, whose commit
   that repository does not hold, or which leaves out a repository it finds under the tree root.
 - Leave `reviewOnly` false in the marked block of a main run. Only a review pass, as
-  `workflow-skills:review-pass` describes, sets it to true and passes `head`.
+  `workflow-skills:review-pass` describes, sets it to true and passes `review` in place of `base`.
 - Set `partialBase` to true in the marked block of the main script for a tree too large to list,
   such as a ROM tree of a thousand repositories worked on in place. The base list then names only
   the repositories the unit changes, the spec check adds `--partial-base`, and the tool checks the
@@ -862,11 +862,15 @@ second implementer pre-check.
   `<plugin root>/tools/check-spec.ts --make-fix-list <run> --transcripts <dir>`, which prints the
   spec the parent run checked and everything the parent run returned to be fixed, each item as the
   journal holds it under its source: every spec finding of its implementer, as `impl:<index>`;
-  every decision of its last verify stage, as `verify:<index>`, and every unresolved issue of it, as
+  every decision of its last verify stage, as `verify:<index>`, apart from an approved correction
+  its fixer reported fixed or rejected, and every unresolved issue of it, as
   `issue:<index>`; in a run without a verify stage, such as a review pass, every finding of its
   review seats, as `review:<seat>:<index>`; in a fix run, every entry of its own list that its fixer
   left open, as `entry:<index>`; and every finding of its last roast stage and of its last diff
   check, as `roaster:<index>` and `diff:<index>`.
+- Resume a run in which a stage returned no result with `workflow-skills:resume-interrupted-run`.
+  The tool refuses to write its fix list, because a stage either returns, is retried or ends the
+  run.
 - Expect a fix run's fixer to close an entry by rejecting it, by raising it as a question, or by a
   fix its diff check mapped a change to. Every other entry of the fix run, a blocked one or one the
   fixer never answered, stays open, and the next fix list carries it.
@@ -889,7 +893,8 @@ second implementer pre-check.
   fails, holds the spec to the one the parent run checked, unchanged since, and prints the spec and
   the entries with the proof only when all of them hold.
 - Pass the tool's `spec` and `entries` output as `args.spec` and `args.entries` and the parent run's
-  final snapshots as `args.base`, the `snapshots` list its run record returns, and fill the parent
+  final snapshots as `args.base`, the `snapshots` list its run record returns, or after a review
+  pass, which returns none, the commit each repository is at, and fill the parent
   unit's documents directory and the applicable rule sources, as `ruleSources`, into the block.
 - Set `worktree` in the fix script's marked block to the worktree's absolute path as `pwd -P` prints
   it there, and `partialBase` to true when the parent run's base list was partial.
@@ -1253,16 +1258,16 @@ These laws are non-negotiable across every run of this skill.
 1. **EXPLICIT model AND effort on every stage, never inherited.** Two silent-downgrade paths: a
    custom `agentType` resolving its own default, and a cached resume. Either can quietly land a
    stage on the cheapest tier while the run looks healthy.
-2. **FAIL-FAST.** An agent returning null or an incomplete object retries the SAME agent (3 attempts
-   total) with the failure named, then the helper throws naming the last failure and no downstream
-   stage runs. The main run records the failure and remaining items; it never treats a failure as an
-   empty review. Completeness is structural: the schema validates shapes and enums, and the script
-   checks the cross-field contracts (an evidence pointer on every finding of a concern seat and
-   every spec finding of the implementer, a receipt on every finding, coverage with a limitation
-   behind every unchecked entry, files and checks behind a new snapshot, a reason behind an abort;
-   see the acceptance section). The law covers EVERY required reader, including adversaries: the
-   verifier consumes them all. A missing object is incomplete verification, never a harmless gap in
-   a finished fix.
+2. **FAIL-FAST.** An agent call that fails, or an agent returning null or an incomplete object,
+   retries the SAME agent (3 attempts total) with the failure named, then the helper throws naming
+   the last failure and no downstream stage runs. The main run records the failure and remaining
+   items; it never treats a failure as an empty review. Completeness is structural: the schema
+   validates shapes and enums, and the script checks the cross-field contracts (an evidence pointer
+   on every finding of a concern seat and every spec finding of the implementer, a receipt on every
+   finding, coverage with a limitation behind every unchecked entry, files and checks behind a new
+   snapshot, a reason behind an abort; see the acceptance section). The law covers EVERY required
+   reader, including adversaries: the verifier consumes them all. A missing object is incomplete
+   verification, never a harmless gap in a finished fix.
 3. **Resume interrupted runs only.** A run stopped mid-flight is resumed through
    `workflow-skills:resume-interrupted-run`. Completed stages replay their journaled results, and
    unfinished stages re-run. A completed run never runs again: you record its remaining items in

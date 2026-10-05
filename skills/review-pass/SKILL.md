@@ -9,19 +9,14 @@ description: Applies to a change that is already committed and needs only a revi
 message and reply this skill produces, and it is not optional when working with this plugin.
 
 The review pass is a run of the main script of `workflow-skills:implement-review-verify` in review
-mode: thirteen of its reviewers, on a change already committed from a base to a head commit, with
-no spec, no implementer, no finding verifier and no fixer. A change you made directly was made
+mode: thirteen of its reviewers, on whatever you name for review, with no spec, no implementer, no
+finding verifier and no fixer. A change you made directly was made
 without a spec, so the review pass takes none. The spec-compliance and inverse-spec reviewers judge
 a change against its spec, so they do not run, and the other reviewers read the change by the code
 and the rule sources.
 
 - Use it when a full run of `workflow-skills:implement-review-verify` would cost more than the
   change needs, such as for a change you made directly.
-
-## Before the run
-
-- Commit the change in its worktree first. The reviewers read the commits from base to head, never
-  uncommitted work.
 
 ## The script
 
@@ -32,15 +27,15 @@ and the rule sources.
   and the script stops on an entry that names no reviewer it runs.
 - Set `meta.name` to a kebab-case name of the review and `meta.description` to one line saying what
   it reviews.
-- Pass at launch `base` and `head`, one `{ path, sha }` per git repository of the tree each: the
-  commit the change starts from and the commit it ends at.
-- Pass no `specPath` and no `transcripts` at launch. The script stops on either, because a review
-  pass reads no spec.
-- Set `partialBase` to true only in a tree too large to list, as for a main run.
+- Pass at launch `review`: what the reviewers are to review, in any form that names it, such as a
+  sentence, or a list of repositories with the commits the change starts and ends at. Every
+  reviewer receives it as you wrote it.
+- Pass no `base`, no `specPath` and no `transcripts` at launch. The script stops on any of them,
+  because a review pass reads only its request.
 
 ## What runs and what returns
 
-- The thirteen reviewers read the change from base to head in parallel, each with its template. The
+- The thirteen reviewers read what `review` names in parallel, each with its template. The
   correctness reviewer, the duplicate checker and the rule reader are told that the change has no
   spec, and every other reviewer receives the prompt it receives in a main run's review stage. No
   implementer ran, so no reviewer receives an implementer's object or its artifacts.
@@ -61,5 +56,7 @@ and the rule sources.
   tool and start a fix run on it, as the section of `workflow-skills:implement-review-verify` on
   remaining items says. The list names no spec, so its fixer resolves every finding with the rules
   and the plugin's skills, and returns a question only for a product decision neither decides.
+- Pass the fix run the commit each repository is at as its `base`. A review pass returns no
+  snapshots, because it reads only its request.
 - Show the user such a question as the fix run's fixer wrote it.
 - Record what remains in the todo record that `workflow-skills:todo-md` defines.

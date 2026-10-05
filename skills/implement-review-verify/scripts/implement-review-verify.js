@@ -21,8 +21,8 @@ const UNIT = {
   checkCommand: '<the check command>',   // the fixer only, run bare after its last write
   base: args.base,                       // one { path, sha } per git repository of the tree: its path under the tree root and starting commit, passed at launch
   partialBase: false,                    // true only in a tree too large to list, where base names just the repositories the unit changes
-  reviewOnly: false,                     // true reviews the change from base to head alone
-  head: args.head,                       // a review-only run's end: one { path, sha } per repository of base, the commit the change ends at, passed at launch
+  reviewOnly: false,                     // true runs the reviewers alone on what args.review names
+  review: args.review,                   // a review-only run's request: what to review, in any form, passed at launch in place of base
   documents: '<documents directory>',    // design documents, relative to the tree root and inside one repository of base; docs for a one-repository tree
   ruleSources: '<applicable project, directory and global rule paths>',
   fileSizeCap: '<the per-file size cap>',
@@ -393,14 +393,14 @@ const abortOnFlag = (r, label) => {
 // ONE acceptance helper for every stage (law 2): a stage is accepted on the completeness of its
 // object, never on the length of a text. The schema validates shapes and enums; complete() checks
 // the cross-field contracts named in the acceptance section. An abort with a reason returns at
-// once. A null result or a failed check retries the SAME agent with the failure named plainly,
-// three attempts in all; the throw names the last failure, so its cause is visible.
+// once. A failed agent call, a null result or a failed check retries the SAME agent with the failure
+// named plainly, three attempts in all; the throw names the last failure, so its cause is visible.
 async function stage(prompt, opts, complete = () => {}) {
   let failure = ''
   for (let i = 0; i < 3; i++) {
-    const r = await agent(prompt + (failure ? '\n\nHOW YOUR PREVIOUS ATTEMPT FAILED, plainly: ' + failure : ''), opts)
-    if (hasHardFlag(r) && typeof r.abort.reason === 'string' && r.abort.reason.trim()) return r
     try {
+      const r = await agent(prompt + (failure ? '\n\nHOW YOUR PREVIOUS ATTEMPT FAILED, plainly: ' + failure : ''), opts)
+      if (hasHardFlag(r) && typeof r.abort.reason === 'string' && r.abort.reason.trim()) return r
       if (r == null) throw new Error('it returned nothing usable at all')
       if (hasHardFlag(r)) throw new Error('abort.trigger is set but abort.reason is empty')
       complete(r)
@@ -449,21 +449,13 @@ const checkModels = (models, names, path) => {
   }
 }
 const base = UNIT.base
-checkRepositories(base, 'args.base')
+if (typeof UNIT.reviewOnly !== 'boolean') throw new Error('UNIT.reviewOnly must be true or false')
+if (!UNIT.reviewOnly) checkRepositories(base, 'args.base')
 // Snapshots are lists of { path, sha } in the order of base.
 const shaByPath = list => new Map(list.map(entry => [entry.path, entry.sha]))
 const listed = list => list.map(entry => entry.path + ' ' + entry.sha).join(', ')
 const snapshotsOf = writer => writer.repositories.map(r => ({ path: r.path, sha: r.snapshotSha }))
 const sameSnapshots = (a, b) => a.length === b.length && a.every(entry => shaByPath(b).get(entry.path) === entry.sha)
-// A review-only run reads a change already committed, from base to head, and starts no writer.
-if (typeof UNIT.reviewOnly !== 'boolean') throw new Error('UNIT.reviewOnly must be true or false')
-const head = UNIT.head
-if (UNIT.reviewOnly) {
-  checkRepositories(head, 'args.head')
-  if (head.length !== base.length || head.some(entry => !shaByPath(base).has(entry.path))) {
-    throw new Error('args.head must name the repositories of args.base, one commit each')
-  }
-}
 // A reader may name a repository by its path inside the worktree instead of the list's path under the
 // tree root; both name the same repository.
 const listPath = path => {
@@ -480,9 +472,10 @@ const readSnapshots = (read, snaps, required) => {
     read.every(entry => expected.get(entry.path) === entry.sha) && required.every(path => paths.includes(path))
 }
 if (UNIT.reviewOnly) {
-  if (UNIT.specPath !== undefined || UNIT.transcripts !== undefined) {
-    throw new Error('a review-only run takes no spec: leave args.specPath and args.transcripts out')
+  if (UNIT.specPath !== undefined || UNIT.transcripts !== undefined || base !== undefined) {
+    throw new Error('a review-only run takes args.review alone: leave args.specPath, args.transcripts and args.base out')
   }
+  if (!UNIT.review) throw new Error('args.review must say what to review')
 } else {
   if (typeof UNIT.specPath !== 'string' || !UNIT.specPath.endsWith('.yaml')) throw new Error('args.specPath must name the unit spec YAML file')
   if (typeof UNIT.transcripts !== 'string' || !UNIT.transcripts) throw new Error('args.transcripts must name the transcript directory')
@@ -743,9 +736,12 @@ const sourceFindings = (findings, seat, snaps) => findings.map((f, i) => {
   if (f.kind && f.severity !== 'CRITICAL') log('Project-benefit finding from ' + seat + ' with kind ' + f.kind + ' set to severity CRITICAL')
   return { ...f, ...(f.kind ? { severity: 'CRITICAL' } : {}), id: seat + ':' + i, seat, snapshots: snaps }
 })
+// A review-only run reads what the session that started it names, in the form it chose.
+const reviewRequest = () => 'REVIEW REQUEST, from the session that started this review: ' +
+  (typeof UNIT.review === 'string' ? UNIT.review : JSON.stringify(UNIT.review))
 const readSeat = async ({ type, label, inputs, schema, complete }, snaps) => {
   const stageLabel = 'review:' + label
-  const result = await stage([...inputs, diffInput(snaps)].join('\n\n'), {
+  const result = await stage([...inputs, UNIT.reviewOnly ? reviewRequest() : diffInput(snaps)].join('\n\n'), {
     label: stageLabel, phase: 'Review', agentType: 'workflow-skills:' + type, ...UNIT.models.review[label], schema,
   }, complete)
   return { ...result, seat: label, snapshots: snaps,
@@ -903,7 +899,7 @@ async function implement() {
 }
 
 async function onePass() {
-  if (UNIT.reviewOnly) { snapshots = head; activeLabel = 'review' }
+  if (UNIT.reviewOnly) activeLabel = 'review'
   else await implement()
   if (exit) return
 
