@@ -209,10 +209,10 @@ async function simulate({ reports = {}, verify = {}, fixes = {}, fail = {}, impl
       const startSha = fixStart ?? currentSha   // a retried attempt starts where the first one did
       fixStart = startSha
       await beforeFix(opts)
-      // moves says whether the simulated fixer commits; by default it does when it answers an entry.
-      const { moves, ...response } = fixes[opts.label] ?? fixed()
+      const { shouldCommit: commitsOverride, ...response } = fixes[opts.label] ?? fixed()
+      const shouldCommit = commitsOverride ?? response.dispositions.length > 0
       const result = writer({ startSha,
-        snapshotSha: response.snapshotSha ?? ((moves ?? response.dispositions.length > 0) ? FIXED : startSha),
+        snapshotSha: response.snapshotSha ?? (shouldCommit ? FIXED : startSha),
         ...response }, 'apply the approved corrections')
       currentSha = result.snapshotSha
       lastWriter = result
@@ -812,7 +812,7 @@ describe('workflow verification and consolidation', () => {
   test('a fixer rejection closes its approved correction, stays in dispositions and leaves nothing to fix', async () => {
     const rejection = disposition('fix:0', 'rejected')
     const { result, calls } = await simulate({ reports: oneReport, verify: approveOne,
-      fixes: { fix: fixed([rejection], { moves: false }) } })
+      fixes: { fix: fixed([rejection], { shouldCommit: false }) } })
     expect([result.exit, result.remaining, result.dispositions, result.toFix]).toEqual(['clean', [], [rejection], []])
     expect(calls.filter(c => c.agentType === 'fixer')).toHaveLength(1)
   })
@@ -822,7 +822,7 @@ describe('workflow verification and consolidation', () => {
     const holding = { claim: 'The tree holds src/example.js.', holds: true, note: 'It does.' }
     const premise = { claim: 'The prompt says src/example.js already returns the error.', holds: false, note: 'src/example.js:12 still catches it.' }
     const { result } = await simulate({ reports: oneReport, verify: approveOne,
-      fixes: { fix: fixed([rejection], { moves: false, premises: [holding, premise] }) } })
+      fixes: { fix: fixed([rejection], { shouldCommit: false, premises: [holding, premise] }) } })
     expect([result.exit, result.remaining, result.toFix])
       .toEqual(['follow-up', [{ kind: 'false-premise', severity: 'must-fix', item: { ...premise, label: 'fix' } }], []])
   })
@@ -831,7 +831,7 @@ describe('workflow verification and consolidation', () => {
     const limitation = { what: 'The integration suite needs a database this tree does not start.', effect: 'narrows' }
     const suggestion = 'Name the error the spec expects for an empty file.'
     const { result } = await simulate({ reports: oneReport, verify: approveOne,
-      fixes: { fix: fixed([disposition('fix:0', 'rejected')], { moves: false, limitations: [limitation], specSuggestions: [suggestion] }) } })
+      fixes: { fix: fixed([disposition('fix:0', 'rejected')], { shouldCommit: false, limitations: [limitation], specSuggestions: [suggestion] }) } })
     expect([result.exit, result.remaining, result.specSuggestions])
       .toEqual(['clean', [{ kind: 'fix-limitation', severity: 'should-fix', item: { ...limitation, label: 'fix' } }], [suggestion]])
   })
@@ -839,7 +839,7 @@ describe('workflow verification and consolidation', () => {
   test('an unresolved approval returns to the root and reaches the follow-up run with the fixer\'s problem statement beside it', async () => {
     const left = unresolved('fix:0')
     const { result, calls } = await simulate({ reports: oneReport, verify: approveOne,
-      fixes: { fix: fixed([left], { moves: false }) } })
+      fixes: { fix: fixed([left], { shouldCommit: false }) } })
     expect([result.exit, result.detail]).toEqual(['root-resolution', 'The fixer left an approved correction unresolved.'])
     expect(result.remaining.map(r => r.kind)).toEqual(['unfixed-approval'])
     expect(result.remaining[0].item.response).toEqual(left)
@@ -850,7 +850,7 @@ describe('workflow verification and consolidation', () => {
   test('a fix reported without a commit leaves its approval unfixed and reaches the next fix list with the fixer\'s disposition beside it', async () => {
     const uncommitted = disposition('fix:0')
     const { result } = await simulate({ reports: oneReport, verify: approveOne,
-      fixes: { fix: fixed([uncommitted], { moves: false }) } })
+      fixes: { fix: fixed([uncommitted], { shouldCommit: false }) } })
     expect([result.exit, result.remaining.map(r => r.kind)]).toEqual(['follow-up', ['unfixed-approval']])
     expect(result.remaining[0].item.response).toEqual(uncommitted)
     expect(result.toFix).toEqual([{ source: 'verify:0', decision: { ...approveOne.verify.decisions[0], disposition: uncommitted } }])
@@ -1515,7 +1515,7 @@ describe('one-pass remaining-items handoff', () => {
 
   test('the answers of a fixer that aborted close no approval, and the run returns every decision to be fixed', async () => {
     const abort = { trigger: 'sense-check', reason: 'The correction patches a mechanism the user\'s words describe as removed.' }
-    const { result } = await simulateToFix(fixed(approvalAnswers, { abort, moves: false }))
+    const { result } = await simulateToFix(fixed(approvalAnswers, { abort, shouldCommit: false }))
     expect([result.exit, result.toFix.map(item => item.source)])
       .toEqual(['aborted', ['impl:0', 'verify:0', 'verify:1', 'verify:2', 'verify:3', 'issue:0', 'roaster:0']])
   })
