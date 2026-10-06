@@ -41,10 +41,9 @@ milestone until its stop condition holds and the evidence shows it.
   `workflow-skills:local-cache`, `workflow-skills:writing-style`, and
   `workflow-skills:copywriting` for every text the product shows. Name the rules that bind each
   agent in its prompt.
-- Let the decision panel pick among the copy variants where `workflow-skills:copywriting` asks the
-  user to pick, log each pick as a decision, and list the strings that carry the product in the
-  final report, because the user reads them before anything ships and shipping lies outside the
-  grant.
+- Let the subagents pick among the copy variants where `workflow-skills:copywriting` asks the user
+  to pick, log each pick as a decision, and list the strings that carry the product in the final
+  report, because the user reads them before anything ships and shipping lies outside the grant.
 
 ## Intake
 
@@ -76,9 +75,9 @@ milestone until its stop condition holds and the evidence shows it.
 - Keep the final stop condition as the user stated it, such as: stop only when the full app is
   implemented, screenshots and a screen recording show it fully working, and an APK the user can
   install on their phone is delivered.
-- Run each milestone as one workflow in its own worktree, with an explicit model on every agent.
-  Shape the workflow however the milestone needs: no script enforces it, and every agent in it
-  keeps the rules.
+- Shape the workflows however the work needs: which agents run, in which order, and how many
+  workflows a milestone takes. No script enforces a shape, and every agent keeps the rules.
+- Run every workflow in a worktree, with an explicit model on every agent.
 - Commit each milestone's work in the commit style.
 - Run the milestone's checks again and capture its evidence again after the last fix, and close the
   milestone only on that result.
@@ -90,8 +89,6 @@ milestone until its stop condition holds and the evidence shows it.
 
 ## Decisions
 
-- Let two independent proposers and one judge decide each architecture decision, so no single
-  agent's habit becomes the design.
 - Log every decision in the run file with its options and its reason, marked as made by an agent,
   so the user can override any of them later.
 - Apply the user's answers and overrides at the next milestone boundary.
@@ -106,13 +103,8 @@ milestone until its stop condition holds and the evidence shows it.
 
 ## Reviews
 
-- Decide yourself when a review runs, and run one at the latest at the end of every milestone.
-- Review with a subset of the plugin's reviewers: `workflow-skills:reviewer-correctness`,
-  `workflow-skills:quality`, `workflow-skills:project-rule-reader`,
-  `workflow-skills:cold-alternatives`, `workflow-skills:separation-of-concerns`,
-  `workflow-skills:abstraction-quality` and `workflow-skills:missing-gaps`.
-- Run `workflow-skills:roaster` beside every fixer.
-- Have `workflow-skills:fixer` fix a milestone's findings within that milestone.
+- Review the work with the plugin's reviewers, the subset of them the work needs, and decide
+  yourself which of them run and when.
 
 ## Hard rules
 
