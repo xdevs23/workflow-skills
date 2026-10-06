@@ -126,6 +126,8 @@ milestone until its stop condition holds and the evidence shows it.
 - Check the licence of everything downloaded from the internet.
 - Run the dependency advisory check.
 - Record every licence that the fetched content does not already contain.
+- Check a tool taken from a package set, such as nixpkgs, that is neither shipped nor committed by
+  the licence information of the package set alone. The advisory check covers what ships.
 
 ## Nix and builds
 

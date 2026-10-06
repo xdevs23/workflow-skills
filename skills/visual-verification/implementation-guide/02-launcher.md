@@ -29,12 +29,14 @@ variables of part 13. Nothing else from the caller's environment reaches the run
 setting, service credential or developer preference changes a capture. The runtime is told not to
 load environment files from the repository, such as dotenv files.
 
-The launcher creates a private scratch directory in the system temporary directory, one for each
-run and never shared across runs, and removes it when the run ends, on every exit path. The
-scratch directory holds only the temporary files of the runtime and the rendering engine, such as
-the engine's local socket. The launcher checks the length of the scratch path against any limit the
-rendering engine imposes and refuses a longer path before the engine starts, with a message naming
-the override variable. The check counts encoded bytes, since a path limit is a byte limit.
+The launcher creates a private scratch directory in the system temporary directory, one for each run
+and never shared across runs, and removes it when the run ends, on every exit path. The cleanup
+covers that directory and the processes the launcher started itself; it does not supervise every
+process the rendering engine starts in turn. The scratch directory holds only the temporary files of
+the runtime and the rendering engine, such as the engine's local socket. The launcher checks the
+length of the scratch path against any limit the rendering engine imposes and refuses a longer path
+before the engine starts, with a message naming the override variable. The check counts encoded
+bytes, since a path limit is a byte limit.
 
 The scratch override variable names another private directory that one run uses alone, and the
 launcher removes it the same way. The override moves only the scratch directory; captures, reports
@@ -69,7 +71,9 @@ as one killed by a signal, counts as a failure, so an interrupted capture never 
 
 Dependency acquisition may use the network, and it happens before any rendering. The rendering run
 itself never uses the network, and a missing dependency during rendering is a failure; it never
-triggers an installation.
+triggers an installation. The reference meets this rule and the frozen-cache rule with `env -i` and
+a copied harness directory, as its realization below describes. Neither rule calls for enforcement
+below the runtime, such as kernel namespaces or a sandbox.
 
 ## Two locks
 
