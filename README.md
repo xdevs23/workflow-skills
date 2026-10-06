@@ -77,12 +77,7 @@ directly as `agentType`s in your own workflows.
   holds at most 120 characters and is never held to the fill rule. A line whose own text is one
   word too long for the width, such as a long URL, passes and is named in the summary's
   `unbreakable` list. The YAML spec is the only form of the spec before and during
-  implementation. After the implementation, a
-  writer whose change alters the design writes or extends a tracked design document by hand from
-  the code as its last write, before its checks, and commits it: the implementer once its
-  implementation is done, the fixer once its corrections are done. A change that alters no design
-  needs no document, and correcting a design document that describes the code wrongly stays
-  allowed.
+  implementation.
   A passing run prints a `proof`, the fingerprint of the values it checked, and `--proof <proof>`
   fails the check when the values give another. The writer of each workflow script runs the tool
   before anything else with `--proof` set to the fingerprint of the script's own launch values, and

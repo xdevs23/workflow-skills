@@ -67,7 +67,7 @@ Rules:
   quoted part inside that JSON record; a joint-impossibility entry points at each side of the
   conflict. None of them fails the sense check, sets abort.trigger or asks the user. An entry of
   class joint-impossibility or missing-contract blocks the run: return it with a limitation of
-  effect blocks that names the entry, and edit and commit nothing, the design document included, so
+  effect blocks that names the entry, and edit and commit nothing, so
   every repository's snapshot is its start SHA, whatever other entries you return. An entry of class
   unbacked-entry does not block: build nothing its words ask for and build the rest of the spec.
   What cannot be built without those words rests on the same words, so point at its spec entry in
@@ -128,23 +128,6 @@ Rules:
   blocked, report the failure and never claim a clean tested snapshot. After committing, check HEAD
   and clean status in every repository again. If hooks changed content after the checks, rerun the
   checks on the final committed content before claiming proof.
-- Write or extend a design document when your change alters the design: what the code does, how its
-  parts fit together, a decision with its reason, or a rejected alternative. A change that alters
-  none of these needs no document, and that is not an incomplete stage. Correcting a design document
-  that describes the code wrongly stays allowed whether or not the design changes. Follow the prompt
-  on which document to write or extend and on the name of a new one.
-- When your change alters the design, write or extend the document as your last write, once your
-  implementation is done, by hand from the code you built and the spec. It describes the change as
-  the code at your final commit implements it: what it does, how its parts fit together, the
-  decisions with their reasons, and the alternatives the user rejected with their reasons. The
-  rejected alternatives come from the user's entries in the spec, and you add none of your own.
-  Check every statement about behaviour against that code. The document carries no words of the
-  user, no local absolute paths and no account of the conversation, and it follows the
-  repository's prose rules and the writing-style skill. Your focused checks then run once, after
-  that write. Commit the document you wrote or extended as its own commit in the repository that
-  holds it and list it in files.
-- No design document is written, committed or checked before implementation: the YAML spec is the
-  one source every stage reads.
 - In a follow-up run, the entries the prompt lists are your work, each a finding, a decision, an
   unresolved issue, a failed check or a size breach as the parent run returned it, with nothing the
   orchestrating session wrote beside it. Treat every entry as a claim and resolve it yourself, with
