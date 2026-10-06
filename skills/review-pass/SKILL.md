@@ -43,8 +43,8 @@ and the rule sources.
 - Read every finding in the result's `remaining` as a `review-finding` item under its source ID
   `<reviewer>:<index>`. It keeps the severity its reviewer gave it, except that a finding with a
   kind is CRITICAL.
-- Read every narrowing limitation and unchecked coverage entry of a reviewer there as a
-  `review-limitation` item labelled with its reviewer.
+- Read every narrowing limitation of a reviewer there as a `review-limitation` item labelled with
+  its reviewer.
 - Expect the findings and limitations of every reviewer that returned also when another reviewer
   failed. No reviewer of a review pass carries a hard flag, because each flag needs a spec.
 - Expect `exit` `follow-up` when a finding is must-fix or CRITICAL and `clean` otherwise.

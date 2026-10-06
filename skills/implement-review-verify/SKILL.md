@@ -474,14 +474,15 @@ lenses of every run, and the main script stops a run whose seat list holds anoth
   with defects obscures what actually needs correction. Every source finding carries a **FILE**,
   cited **repo-relative**, and a receipt, so verification can trace the claim to the tree. Concern
   reviewers suggest **WHO CAN CLOSE IT** using their existing actionability lanes; the verifier
-  validates those suggestions before dispositioning, and checks every limitation and unchecked
-  coverage entry.
+  validates those suggestions before dispositioning, and checks every limitation.
 - **A limitation is only something the stage was supposed to check and could not.** An act the
   stage's own rules forbid, such as running tests, builds or the spec tool as a reading stage, and
   input the stage is not given by design, such as the private spec for an unbriefed stage, are never
-  limitations and are not reported. They get no unchecked coverage entry either. The shared reader
-  blocks of the script and every reading-stage template state this, and the finding verifier
-  discards such an entry without a decision.
+  limitations and are not reported. The shared reader blocks of the script and every reading-stage
+  template state this, and the finding verifier discards such an entry without a decision.
+- **Coverage lists only what the stage checked, and how.** A coverage entry has no unchecked state:
+  what the stage's concern has nothing to judge in stays out of coverage, and what the stage was
+  supposed to check and could not is a limitation.
 - **A reviewer suggests and never decides.** A review seat proposes, the finding verifier
   authorizes, and the user decides anything that changes what the product does. Behavior nobody
   approved is such a decision, whoever proposed it and however small it looks. One of two existing
@@ -587,8 +588,8 @@ lenses of every run, and the main script stops a run whose seat list holds anoth
 - It checks claims against the code, the user's words in the spec and the applicable rules,
   resolves conflicts using evidence, and merges duplicate defects into ONE fix list, every decision
   with receipts. It preserves every source ID: consolidation is never permission to drop a finding.
-- It also checks every seat's limitations and unchecked coverage entries, inspects each implementer
-  commit in `writerScope`, naming its repository, and returns its own `repositories` and `checks`.
+- It also checks every seat's limitations, inspects each implementer commit in `writerScope`,
+  naming its repository, and returns its own `repositories` and `checks`.
   A writer's `files` list names the paths of all its commits together, relative to the tree root,
   so `filesMatch` is true when every path the commit touched, under its repository's path, appears
   in that list. A path in `files` that no commit of the writer touched is a writer-scope problem,
@@ -773,7 +774,7 @@ rules or returns it unresolved with the problem stated.
   as an unfixed approval with that answer, because no commit stands behind the fix. A key that an
   accepted fixer result rejected adds no item: the rejection stays in the run's `dispositions`,
   which hold every answer of the fixer. The roast's findings retain their source IDs and snapshot;
-  its limitations and unchecked coverage return as well. Record the list in the todo record that
+  its narrowing limitations return as well. Record the list in the todo record that
   `workflow-skills:todo-md` defines and hand it on as the remaining items section below says.
 - **The run returns `exit` and a one-sentence `detail`:** `clean` for a completed pass with neither
   a must-fix/CRITICAL remaining item nor an unattested fix; `follow-up` for a completed pass with
@@ -1261,8 +1262,8 @@ These laws are non-negotiable across every run of this skill.
    items; it never treats a failure as an empty review. Completeness is structural: the schema
    validates shapes and enums, and the script checks the cross-field contracts (an evidence pointer
    on every finding of a concern seat and every spec finding of the implementer, a receipt on every
-   finding, coverage with a limitation behind every unchecked entry, files and checks behind a new
-   snapshot, a reason behind an abort; see the acceptance section). The law covers EVERY required
+   finding, a non-empty coverage list, files and checks behind a new snapshot, a reason behind an
+   abort; see the acceptance section). The law covers EVERY required
    reader, including adversaries: the verifier consumes them all. A missing object is incomplete
    verification, never a harmless gap in a finished fix.
 3. **Resume interrupted runs only.** A run stopped mid-flight is resumed through
@@ -1537,10 +1538,8 @@ The completeness checks, by stage kind:
 - **every briefed stage**: `abort.reason` non-empty when the trigger is not `none`;
 - **the three concern seats**: every finding has a receipt, a lane and an `evidence` list of at
   least one pointer, a transcript pointer with a key path and a rule pointer with an empty one;
-- **the other readers**: every finding has a receipt; `coverage` non-empty; a coverage entry with
-  `checked` false marks a real gap and needs a non-empty `limitations` list, and the finding
-  verifier judges whether a limitation excuses it; the inverse seat has a non-empty
-  `authorizations` list; the alternatives seat has a candidate, a finding, or
+- **the other readers**: every finding has a receipt; `coverage` non-empty; the inverse seat has a
+  non-empty `authorizations` list; the alternatives seat has a candidate, a finding, or
   `currentShapeRight` true;
 - **writers**: one `repositories` entry per repository of the list; in each, a `snapshotSha` other
   than `startSha` needs commits in that repository and an unchanged one none, the quoted `git.head`
@@ -1710,13 +1709,13 @@ For the other seats:
   false prompt premise verified and reported, a tree that does not yet satisfy the spec) is an
   ordinary must-fix finding and the seat proceeds; see law 8.
 - **The findings contract**: a source finding is a DEFECT, cites a **repo-relative** FILE and
-  carries at least one receipt (`file`, `line`, `quote`); what was inspected goes in `coverage`,
+  carries at least one receipt (`file`, `line`, `quote`); what was checked goes in `coverage`,
   what could not be checked in `limitations`. Concern reviewers suggest
-  who can close it using their actionability lanes. The verifier checks every source finding,
-  limitation and unchecked coverage entry, then consolidates; only its approved corrections enter
-  the fixer queue. Source IDs, not file-name heuristics, bind the handoff. Every inverse-spec
-  source finding is CRITICAL unconditionally, whatever label it arrived with. A reading stage
-  reports a choice that no words of the user back as a finding with kind `unbacked-choice`.
+  who can close it using their actionability lanes. The verifier checks every source finding and
+  limitation, then consolidates; only its approved corrections enter the fixer queue. Source IDs,
+  not file-name heuristics, bind the handoff. Every inverse-spec source finding is CRITICAL
+  unconditionally, whatever label it arrived with. A reading stage reports a choice that no words
+  of the user back as a finding with kind `unbacked-choice`.
 - **Bound detection and repair separately.** Ordinary findings cover the change; the rule reader
   reads full changed files and separates unrelated cleanup. No seat turns cleanup into in-unit
   scope.

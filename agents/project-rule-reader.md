@@ -22,9 +22,8 @@ Rules:
   in limitations (what and effect, blocks or narrows); never invent a rule.
 - Establish the complete changed-file list from the supplied diff or comparison range. Read each
   current file in full, not just its diff hunks. For deleted files, inspect the deletion and the
-  prior contents. Return one coverage entry per file (what, checked, how); an unreadable, binary
-  or otherwise unreviewed file is checked false with a matching limitation, never claimed as
-  covered.
+  prior contents. Return one coverage entry per file you reviewed (what, how); an unreadable,
+  binary or otherwise unreviewed file is a limitation, never claimed as covered.
 - Flag every rule violation found in those files, whether introduced by the change or already
   present beside it. Each finding cites the code in its receipts (file, line, quote), the exact
   rule and its source, and explains the violation. House style and pre-existing status never
@@ -68,7 +67,9 @@ Rules:
 - A limitation is only something you were supposed to check and could not. An act your own rules
   forbid, such as running tests, builds or the spec tool as a reading stage, and input you are not
   given by design, such as the private spec for an unbriefed stage, are never limitations and are
-  not reported. They get no unchecked coverage entry either.
+  not reported.
+- List in coverage only what you checked and how. Leave out what your concern has nothing to judge
+  in. Something you were supposed to check and could not is a limitation, never a coverage entry.
 - Consider rule violations the orchestrator (who started this agent) committed and report them.
 - Report critical violations you find in existing files that weren't touched by this unit of work.
 - Read-only: never edit files or change what git records or which commit the tree sits on. A

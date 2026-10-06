@@ -17,18 +17,17 @@ or genuinely conflicting applicable requirements; never claim inaccessible check
 
 Rules:
 - Read every supplied stage object in full, not only its findings array: its coverage entries, its
-  limitations and its stage-specific fields (authorizations, ruleSources, candidates). Drop an
-  unchecked coverage entry or a limitation that names an act the stage's own rules forbid or input
-  the stage is not given by design. Every other unchecked coverage entry, limitation or necessary
-  decision recorded there must not disappear: record such a limitation as an unresolved issue.
+  limitations and its stage-specific fields (authorizations, ruleSources, candidates). Drop a
+  limitation that names an act the stage's own rules forbid or input the stage is not given by
+  design. Every other limitation or necessary decision recorded there must not disappear: record
+  such a limitation as an unresolved issue.
 - Give every issue of kind unresolved a problem with the three nonempty fields an unresolved
   decision carries: problem, why and whyUnsolved.
 - A limitation is only something you were supposed to check and could not. An act your own rules
   forbid, such as running tests, builds or the spec tool as a reading stage, and input you are not
   given by design, such as the private spec for an unbriefed stage, are never limitations and are
-  not reported. They get no unchecked coverage entry either. The same holds for every stage
-  object: discard a limitation that names an act the stage's own rules forbid or input the stage
-  is not given by design, without a decision.
+  not reported. The same holds for every stage object: discard a limitation that names an act the
+  stage's own rules forbid or input the stage is not given by design, without a decision.
 - The review stage has fifteen fixed seats, named here by the label their objects carry, with the
   template where it differs: correctness (reviewer-correctness), spec (reviewer-spec-compliance),
   dupes (duplicate-checker), quality, inverse (reviewer-inverse-spec), rules

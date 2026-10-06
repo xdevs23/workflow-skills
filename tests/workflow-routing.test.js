@@ -38,7 +38,7 @@ const finding = { file: 'src/example.js', claim: 'The specified error is swallow
 const back = f => ({ ...f, evidence: [{ kind: 'transcript', file: 'session.jsonl', line: 9, key: ['message', 'content'] }] })
 const backed = back(finding)
 const noAbort = { trigger: 'none', reason: '' }
-const coverage = [{ what: 'src/example.js', checked: true, how: 'read in full against the diff' }]
+const coverage = [{ what: 'src/example.js', how: 'read in full against the diff' }]
 // Stage objects: the cold reader shape, the briefed reader shape (abort), and each seat's own fields.
 const cold = (fields = {}) => ({ limitations: [], coverage, findings: [], ...fields })
 const briefed = (fields = {}) => ({ abort: noAbort, ...cold(fields) })
@@ -382,29 +382,6 @@ describe('workflow verification and consolidation', () => {
     }
     const { calls } = await simulate()
     expect(calls.find(c => c.label === 'roast').schema.properties.snapshots.minItems).toBe(1)
-  })
-
-  test('a roaster retried over unchecked coverage of unmoved repositories is accepted when the retry leaves them out', async () => {
-    const API = 'd'.repeat(40), API_NEW = 'e'.repeat(40)
-    const base = [{ path: 'api', sha: API }, { path: 'web', sha: BASE }]
-    const repositories = [
-      { path: 'api', startSha: API, snapshotSha: API_NEW, clean: true, git: { head: API_NEW, status: '' } },
-      { path: 'web', startSha: BASE, snapshotSha: BASE, clean: true, git: { head: BASE, status: '' } }]
-    const implementation = implemented({ repositories, commits: [{ sha: API_NEW, subject: 'implement the change', repository: 'api' }] })
-    const unmoved = repositories.map(r => ({ ...r, startSha: r.snapshotSha }))
-    let attempt = 0
-    const first = { snapshots: [{ path: 'api', sha: API_NEW }, { path: 'web', sha: BASE }],
-      coverage: [...coverage, { what: 'web', checked: false, how: 'the change left it alone' }], limitations: [] }
-    const retry = { snapshots: [{ path: 'api', sha: API_NEW }], coverage, limitations: [] }
-    const roast = { get snapshots() { return (attempt === 1 ? first : retry).snapshots },
-      get coverage() { return (attempt === 1 ? first : retry).coverage }, get limitations() { return [] }, findings: [finding] }
-    const { result, calls } = await simulate({ args: launchArgs({ base }), implementation, fixes: { fix: fixed([], { repositories: unmoved }) },
-      verify: { verify: verification([], { repositories: repositories.map(({ path, snapshotSha, clean, git }) => ({ path, snapshotSha, clean, git })) }) },
-      reports: { roast }, beforeRoast: async () => { attempt++ } })
-    expect(retried(calls, 'roast')).toHaveLength(2)
-    expect(calls.filter(c => c.label === 'roast')[1].prompt).toContain('coverage entry not checked and no limitation declared: web')
-    expect([result.exit, result.remaining.filter(r => r.kind === 'roast-finding').length,
-      result.remaining.some(r => r.kind === 'stage-failure')]).toEqual(['follow-up', 1, false])
   })
 
   test('a tree of several repositories hands every stage one entry per repository', async () => {
@@ -1231,7 +1208,7 @@ describe('structured stage output', () => {
     expect(new Set(seats.map(c => c.schema)).size).toBe(8)
     // The eight audit seats return the object quality returns, under its schema.
     for (const seat of AUDIT) expect([seat, calls.find(c => c.agentType === seat).schema]).toEqual([seat, calls.find(c => c.agentType === 'quality').schema])
-    for (const seat of seats) expect(seat.schema.properties.coverage.items.required).toEqual(['what', 'checked', 'how'])
+    for (const seat of seats) expect(seat.schema.properties.coverage.items.required).toEqual(['what', 'how'])
     expect(calls.find(c => c.label === 'impl').schema.properties.checks.items.properties.output).toEqual({ type: 'string', maxLength: 6000 })
     const [implSchema, fixSchema] = ['implementer', 'fixer'].map(type => calls.find(c => c.agentType === type).schema)
     expect(fixSchema.required).toContain('premises')
@@ -1267,7 +1244,6 @@ describe('structured stage output', () => {
       'A rule evidence entry takes an empty key path'],
     ['a finding without a receipt', 'quality', { findings: [{ ...finding, receipts: [] }] }, 'finding without a receipt'],
     ['a finding without a lane', 'rules', { findings: [{ ...finding, lane: undefined }] }, 'finding without a lane'],
-    ['a coverage entry unchecked without a limitation', 'quality', { coverage: [{ what: 'the integration suite', checked: false, how: 'no database' }], limitations: [] }, 'coverage entry not checked and no limitation declared: the integration suite'],
     ['empty coverage', 'alternatives', { coverage: [] }, 'coverage is empty'],
     ['an empty authorizations list', 'inverse', { authorizations: [] }, 'authorizations is empty'],
     ['an alternatives seat with no candidate, no finding and currentShapeRight false', 'alternatives', { currentShapeRight: false }, 'no candidate, no finding and currentShapeRight false'],
@@ -1278,14 +1254,6 @@ describe('structured stage output', () => {
       expect(result.detail).toContain(message)
     })
   }
-
-  test('an unchecked coverage entry with a limitation beside it is complete on the first attempt', async () => {
-    const { result, calls } = await simulate({ reports: { 'review:quality': {
-      coverage: [{ what: 'the integration suite', checked: false, how: 'no database' }],
-      limitations: [{ what: 'no database is reachable from this seat', effect: 'narrows' }],
-    } } })
-    expect([['clean', 'follow-up'].includes(result.exit), retried(calls, 'review:quality').length]).toEqual([true, 1])
-  })
 
   for (const [name, fields, message] of [
     ['a commit but no files', { files: [] }, 'a new snapshot needs files'],
@@ -1471,11 +1439,9 @@ describe('one-pass remaining-items handoff', () => {
   test('roast findings and limitations return intact without reaching a verifier', async () => {
     const limitation = { what: 'Integration service unavailable.', effect: 'narrows' }
     const blocking = { what: 'Required source object unavailable.', effect: 'blocks' }
-    const unchecked = { what: 'Integration path', checked: false, how: 'Service unavailable.' }
     for (const severity of ['nit', 'should-fix', 'must-fix', 'CRITICAL']) {
       const { result, calls } = await simulate({ reports: { roast: {
         findings: [{ ...finding, severity }], limitations: [blocking, limitation],
-        coverage: [unchecked],
       } } })
       expect(result.exit).toBe('root-resolution')
       expect(result.remaining).toEqual([
@@ -1483,7 +1449,6 @@ describe('one-pass remaining-items handoff', () => {
           ...finding, severity, id: 'roaster:0', seat: 'roaster', snapshots: at(INITIAL),
         } },
         { kind: 'roast-limitation', severity: 'should-fix', item: limitation },
-        { kind: 'roast-limitation', severity: 'should-fix', item: unchecked },
         { kind: 'blocking-limitation', severity: 'CRITICAL', item: { ...blocking, label: 'roast' } },
       ])
       const verifiers = calls.filter(c => c.phase === 'Verify')
@@ -1908,7 +1873,8 @@ describe('the project cache, the todo record and scratch files by role', () => {
 const LIMITS_RULE = 'a limitation is only something you were supposed to check and could not. An act your own rules forbid,\n' +
   'such as running tests, builds or the spec tool as a reading stage, and input you are not given by design, such as\n' +
   'the private spec for an unbriefed stage, are never limitations and are not reported.\n' +
-  'They get no unchecked coverage entry either.'
+  'COVERAGE lists only what you checked and how. Leave out what your concern has nothing to judge in.\n' +
+  'Something you were supposed to check and could not is a limitation, never a coverage entry.'
 const LIMITS_LINE = 'LIMITATIONS: ' + LIMITS_RULE
 const FILES_CHECK = 'one writerScope entry per commit, naming its repository, filesMatch true when every path the commit touched, under its repository\'s path, appears in the writer\'s files list.\n' +
   'The files list covers all commits of the writer together. A path in it that no commit of the writer touched is a\n' +
@@ -1922,17 +1888,6 @@ describe('what a limitation is, and the per-commit files check', () => {
       const reader = !['impl', 'fix'].includes(call.label)
       expect([call.label, call.prompt.split(LIMITS_LINE).length - 1]).toEqual([call.label, reader ? 1 : 0])
     }
-  })
-
-  test('an unchecked coverage entry without a limitation is retried with the instruction to drop it or declare a real limitation', async () => {
-    const unchecked = { what: 'the integration suite', checked: false, how: 'not run' }
-    const retry = FAILED + 'coverage entry not checked and no limitation declared: the integration suite. Drop the entry when it ' +
-      'names an act your own rules forbid or input you are not given by design. Otherwise declare the real limitation that kept it unchecked.'
-    const main = await simulate({ reports: { 'review:quality': { coverage: [unchecked], limitations: [] } } })
-    expect(retried(main.calls, 'review:quality')[1].prompt).toContain(retry)
-    expect(await template('finding-verifier')).toContain('Drop an unchecked coverage entry or a limitation that names an act the ' +
-      'stage\'s own rules forbid or input the stage is not given by design. Every other unchecked coverage entry, limitation or ' +
-      'necessary decision recorded there must not disappear: record such a limitation as an unresolved issue.')
   })
 
   test('the verify prompt, the verifier template and the skill compare each commit with the files list of all commits', async () => {
@@ -2456,15 +2411,14 @@ describe('review-only runs', () => {
   test('the findings and limitations of a review-only run go to the root as the reviewers returned them', async () => {
     const bandAid = { ...finding, kind: 'band-aid', severity: 'should-fix', claim: 'The catch block hides a defect of the reader.' }
     const narrows = { what: 'the integration suite', effect: 'narrows' }
-    const unchecked = { what: 'the renderer', checked: false, how: 'no display' }
     const { result } = await simulateReview({ reports: {
       'review:correctness': { findings: [finding] }, 'review:quality': { findings: [bandAid] },
-      'review:code-smell': { limitations: [narrows], coverage: [...coverage, unchecked] } } })
+      'review:code-smell': { limitations: [narrows] } } })
     expect([result.exit, result.detail]).toEqual(['follow-up', 'The pass completed with items requiring follow-up.'])
     expect(result.remaining.map(r => [r.kind, r.severity, r.item.id ?? r.item.what])).toEqual([
       ['review-finding', 'must-fix', 'correctness:0'], ['review-finding', 'CRITICAL', 'quality:0'],
-      ['review-limitation', 'should-fix', 'the integration suite'], ['review-limitation', 'should-fix', 'the renderer']])
-    expect(result.remaining.filter(r => r.kind === 'review-limitation').map(r => r.item.label)).toEqual(['review:code-smell', 'review:code-smell'])
+      ['review-limitation', 'should-fix', 'the integration suite']])
+    expect(result.remaining.filter(r => r.kind === 'review-limitation').map(r => r.item.label)).toEqual(['review:code-smell'])
     // A should-fix finding alone leaves the run clean with the finding in remaining.
     const minor = await simulateReview({ reports: { 'review:quality': { findings: [{ ...finding, severity: 'should-fix' }] } } })
     expect([minor.result.exit, minor.result.remaining.map(r => r.kind)]).toEqual(['clean', ['review-finding']])
