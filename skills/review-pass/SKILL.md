@@ -9,7 +9,7 @@ description: Applies to a change that is already committed and needs only a revi
 message and reply this skill produces, and it is not optional when working with this plugin.
 
 The review pass is a run of the main script of `workflow-skills:implement-review-verify` in review
-mode: thirteen of its reviewers, on whatever you name for review, with no spec, no implementer, no
+mode: fourteen of its reviewers, on whatever you name for review, with no spec, no implementer, no
 finding verifier and no fixer. A change you made directly was made
 without a spec, so the review pass takes none. The spec-compliance and inverse-spec reviewers judge
 a change against its spec, so they do not run, and the other reviewers read the change by the code
@@ -36,7 +36,7 @@ and the rule sources.
 
 ## What runs and what returns
 
-- The thirteen reviewers read what `review` names in parallel, each with its template. The
+- The fourteen reviewers read what `review` names in parallel, each with its template. The
   correctness reviewer, the duplicate checker and the rule reader are told that the change has no
   spec, and every other reviewer receives the prompt it receives in a main run's review stage. No
   implementer ran, so no reviewer receives an implementer's object or its artifacts.

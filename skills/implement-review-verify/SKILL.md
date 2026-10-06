@@ -67,7 +67,7 @@ whether they want a git repository.
   small change that carries no risk.
 - Use `workflow-skills:review-pass` for a change already committed that needs only the reviewers,
   such as one you edited directly: it runs the main script of this skill in review mode, without a
-  spec, with the thirteen reviewers that need none, and their findings go to a follow-up run.
+  spec, with the fourteen reviewers that need none, and their findings go to a follow-up run.
 
 ## Before phase 1: the unit spec
 
@@ -401,21 +401,21 @@ Run independent reviewers in parallel, each owning a DISTINCT lens, each via its
 This phase is a **genuine barrier**: the finding verifier needs every seat's object before
 consolidation.
 
-- **The review stage has fifteen fixed, mandatory seats.** Every main run runs all of them, whatever
+- **The review stage has sixteen fixed, mandatory seats.** Every main run runs all of them, whatever
   the size of the change: correctness, spec compliance, the duplicate checker, quality,
-  inverse-spec, the project rule reader, cold alternatives, and the eight audit seats (separation of
+  inverse-spec, the project rule reader, cold alternatives, and the nine audit seats (separation of
   concerns, abstraction quality, code smell, type safety, code cleanliness, missing gaps, domain
-  leakage and type smearing), each loading the agent template of its name.
+  leakage, type smearing and runtime cost), each loading the agent template of its name.
 - A review pass reads a change made without a spec, so spec compliance and inverse-spec do not run
-  in it, and the other thirteen reviewers read the change without one, as
+  in it, and the other fourteen reviewers read the change without one, as
   `workflow-skills:review-pass` describes.
 - Never leave a review seat out, rewrite a seat's template or the prompt text the script gives a
   seat, or remove anything from either. The one exception is the note
   `workflow-skills:resume-interrupted-run` appends to the prompt of an interrupted agent of a run
   being resumed, which adds and removes nothing else.
-- The main script keeps the list of the fifteen required seat labels, each with the template it
+- The main script keeps the list of the sixteen required seat labels, each with the template it
   loads, apart from its seat list, and it stops before its first agent when the seat list holds any
-  other set or gives a label another template; the finding verifier's template names the fifteen
+  other set or gives a label another template; the finding verifier's template names the sixteen
   seats and reports a seat whose object is missing as an issue for you.
 
 Correctness, spec compliance and the duplicate checker are the three seats that judge the change
@@ -445,7 +445,7 @@ source. There are no acceptance criteria and no verdicts.
   instead of shared. Cheap, narrow, and catches a class nothing else does.
 
 **A seat earns its place by having a DISTINCT FAILURE-DETECTION MODE, not by adding redundancy.**
-Three identical reviewers find less than three different lenses. The fifteen seats are the
+Three identical reviewers find less than three different lenses. The sixteen seats are the
 lenses of every run, and the main script stops a run whose seat list holds another set.
 
 - **Concern-reviewer output: findings that point at their evidence.** These seats return `findings`
@@ -511,8 +511,9 @@ lenses of every run, and the main script stops a run whose seat list holds anoth
 - **Cold alternatives** (`agents/cold-alternatives.md`): only the diff and the surrounding code,
   never the implementer's object. Returns `candidates`, at most two materially simpler shapes, and
   none when the shape of the change is right.
-- **The eight audit seats** (`separation-of-concerns`, `abstraction-quality`, `code-smell`,
-  `type-safety`, `code-cleanliness`, `missing-gaps`, `domain-leakage`, `type-smearing`): each judges
+- **The nine audit seats** (`separation-of-concerns`, `abstraction-quality`, `code-smell`,
+  `type-safety`, `code-cleanliness`, `missing-gaps`, `domain-leakage`, `type-smearing`,
+  `runtime-cost`): each judges
   the code through its one lens. Each receives what quality receives, the hygiene floor and the
   diff of every repository that moved, and returns what quality returns: `limitations`, `coverage`
   and `findings`, accepted by the same completeness check. Their templates ask for nothing about
@@ -521,7 +522,7 @@ lenses of every run, and the main script stops a run whose seat list holds anoth
 
 #### What every review seat owes
 
-- **All fifteen Review seats are REQUIRED results.** Read them against a stable tree and await ALL
+- **All sixteen Review seats are REQUIRED results.** Read them against a stable tree and await ALL
   of them before verification. The roaster is the explicit exception to this scheduling: it runs in
   Fix against immutable Git objects, never against the writer's moving filesystem.
 - Quality can legitimately return an empty findings list with its coverage.
@@ -539,7 +540,7 @@ lenses of every run, and the main script stops a run whose seat list holds anoth
   on stand.
 - Expect the inverse-spec and rule readers to name in the claim the spec entry of the simpler route
   by its session file and line.
-- Expect the unbriefed seats (quality, the eight audit seats, cold alternatives, the roaster) to
+- Expect the unbriefed seats (quality, the nine audit seats, cold alternatives, the roaster) to
   keep their input boundaries, flag by shape and name no words.
 - Expect the verifier to supply the words for a finding of quality, an audit seat or cold
   alternatives.
@@ -550,7 +551,7 @@ lenses of every run, and the main script stops a run whose seat list holds anoth
 - **A choice without the user's words is its own finding kind.** A briefed reader reports a choice
   in the spec, the prompt or the diff that no words of the user back as a finding with kind
   **`unbacked-choice`**, and the inverse-spec reviewer's missing-decision findings carry it. A
-  decision on such a finding is CRITICAL. The unbriefed readers (quality, the eight audit seats,
+  decision on such a finding is CRITICAL. The unbriefed readers (quality, the nine audit seats,
   `cold-alternatives`, the roaster) never see the spec, so their schemas do not carry that kind.
 
 ### Phase 3: Verify and consolidate (1 read-only `agentType:'workflow-skills:finding-verifier'`)
@@ -676,7 +677,7 @@ rules or returns it unresolved with the problem stated.
   belong to exactly one decision group. The SCRIPT checks coverage, unknown IDs, duplicate IDs and
   approval payloads before mutation.
 - A missing seat object or an invalid handoff stops the run, and a `blocks` limitation on any
-  accepted stage other than the fifteen reading seats and the verifier ends it after that stage
+  accepted stage other than the sixteen reading seats and the verifier ends it after that stage
   with exit `root-resolution` and a `blocking-limitation` item. A reading seat's limitation reaches
   you only through the verifier, which receives it with the seat's object and keeps it as an
   unresolved issue or discards it, and the pass goes on to the fix stage; missing evidence is never
@@ -746,7 +747,7 @@ rules or returns it unresolved with the problem stated.
 
 #### One pass per run
 
-- **Each stage runs once.** Implement, the fifteen parallel Review seats, Verify, then Fix with its
+- **Each stage runs once.** Implement, the sixteen parallel Review seats, Verify, then Fix with its
   concurrent roast. A stage failure, a hard flag or a blocking limitation ends the run after that
   stage, except that the verifier's own blocking limitation, like an unresolved verifier decision,
   ends it after the fix stage. A reading seat's limitation reaches you only as the verifier's issue.
@@ -1285,7 +1286,7 @@ These laws are non-negotiable across every run of this skill.
    its words never enter commit-bound artifacts without explicit permission. Technical design
    documents record decisions and constraints, not conversational appendices.
 6. **AUTHORITY ARCHITECTURE: state the hierarchy in authority-aware prompts.** Quality, the
-   eight audit seats and cold alternatives receive only their hygiene and diff inputs, not the
+   nine audit seats and cold alternatives receive only their hygiene and diff inputs, not the
    shared authority briefing. For other seats the order is: **the user entries of the spec > this
    prompt**, with the prompt explicitly labelled **UNTRUSTED**, and *"a prompt-vs-spec conflict is
    itself a must-fix finding"*. An entry of author `assistant` is context that gives the user
@@ -1509,7 +1510,7 @@ the readers. `HYGIENE`, the hygiene floor of the main script, carries no writing
 unbriefed seats' findings go to the finding verifier only, and the rule reader checks the prose of
 the diff against the rule sources. The writers and the briefed seats receive the order through
 `AUTHORITY`. The field shapes are declared once and reused inside the reader schemas and the writer
-and verifier schemas, each a closed object declared in full; the eight audit seats share the quality
+and verifier schemas, each a closed object declared in full; the nine audit seats share the quality
 seat's schema, because they return the object it returns. `stage()` is the one acceptance helper,
 `abortOnFlag()` the structural abort for every consumed stage result, and the completeness checks,
 the remaining-items handoff and the exit values are the ones the sections above and below describe.
@@ -1555,7 +1556,7 @@ The completeness checks, by stage kind:
   repository whose quoted `git.head` equals its `snapshotSha`, and one `writerScope` entry per
   implementer commit and repository.
 
-A `blocks` limitation on any accepted stage other than the fifteen reading seats and the verifier
+A `blocks` limitation on any accepted stage other than the sixteen reading seats and the verifier
 ends the run after that stage: the script records a `blocking-limitation` item with its stage label
 and exits with `root-resolution`. The verifier's own is recorded the same way, and the run ends with
 `root-resolution` after the fix stage has run. The main script records no reading seat's limitation:
@@ -1641,7 +1642,7 @@ once in fix dispositions. Unknown, duplicated and unanswered IDs are protocol fa
 Every stage carries a `schema`, because every stage's object is what the next stage and the script
 consume (validated, retried on mismatch). The readers have eight schemas, each declared in full
 under its own name, so validation says which schema a seat's object failed: one per briefed seat,
-one for quality, which the eight audit seats share, one for cold alternatives and one for the
+one for quality, which the nine audit seats share, one for cold alternatives and one for the
 roaster. The five leaf shapes (abort, receipt, limitation, check, git) are constants reused inside
 them as field shapes. No stage schema declares a free-prose field, and every stage schema root is
 closed with `additionalProperties: false`: a capped summary string beside the fields is the place
@@ -1662,7 +1663,7 @@ array is **defects only**: what was inspected goes in `coverage`, what was run i
 
 ### The AUTHORITY constant
 
-This content rides authority-aware seats, verbatim, not paraphrased. Quality, the eight audit
+This content rides authority-aware seats, verbatim, not paraphrased. Quality, the nine audit
 seats and cold alternatives get the hygiene floor only.
 Do not defeat an unbriefed seat by appending instructions to read the spec or project docs.
 For the other seats:
@@ -1750,9 +1751,9 @@ prompt rule it sees nowhere is a defect.
 - Every NAMED role this skill spawns has a fixed prompt template in `agents/`:
   `agents/implementer.md`, `agents/reviewer-correctness.md`, `agents/reviewer-spec-compliance.md`,
   `agents/duplicate-checker.md`, `agents/roaster.md`, `agents/cold-alternatives.md`,
-  `agents/quality.md`, `agents/reviewer-inverse-spec.md`, `agents/project-rule-reader.md`, the eight
+  `agents/quality.md`, `agents/reviewer-inverse-spec.md`, `agents/project-rule-reader.md`, the nine
   audit templates `separation-of-concerns`, `abstraction-quality`, `code-smell`, `type-safety`,
-  `code-cleanliness`, `missing-gaps`, `domain-leakage` and `type-smearing`,
+  `code-cleanliness`, `missing-gaps`, `domain-leakage`, `type-smearing` and `runtime-cost`,
   `agents/finding-verifier.md` and `agents/fixer.md`. That file's body is the agent's
   **authoritative rules** and is used **VERBATIM** as the start of its prompt.
 - Invoke the agent by its qualified agent type, `agentType:'workflow-skills:<role>'`.
@@ -1769,7 +1770,7 @@ The marked block of the shipped script holds one model entry, a model and an eff
 agent the script starts, and you set every one of them, as law 1 requires. Every
 entry ships with a placeholder in angle brackets as its model, such as `<explicit>`, so no shipped
 script names a model, and no agent template names one either. In the main script, `models.review`
-holds one entry per review seat, keyed by the seat's label, so each of the fifteen seats can run on
+holds one entry per review seat, keyed by the seat's label, so each of the sixteen seats can run on
 its own model. A run leaves out the entries of the agents it does not start. A review pass leaves
 out the `impl`, `verify`, `fix` and `roast` entries, and a follow-up run the `fix` and `roast`
 entries. A review pass, and a follow-up run whose parent checked no spec, also leave out the entries
@@ -1795,7 +1796,7 @@ policy either of them states decides it. Where neither states one, these are rec
 ## Don't over-fan
 
 No review seat is droppable, whatever the size of the change: every main run runs the implementer,
-all fifteen review seats, the finding verifier, the fix or proof pass and the roaster, every
+all sixteen review seats, the finding verifier, the fix or proof pass and the roaster, every
 follow-up run its implementer, its reviewers and the finding verifier, and no reader may
 silently fail. The main script stops a run whose seat list leaves a seat out.
 

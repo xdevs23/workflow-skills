@@ -48,6 +48,7 @@ const UNIT = {
       'missing-gaps': { model: '<explicit>', effort: 'high' },
       'domain-leakage': { model: '<explicit>', effort: 'high' },
       'type-smearing': { model: '<explicit>', effort: 'high' },
+      'runtime-cost': { model: '<explicit>', effort: 'high' },
     },
     verify: { model: '<explicit>', effort: 'high' },
     fix: { model: '<explicit>', effort: 'high' },
@@ -305,7 +306,7 @@ const PREMISES = { type: 'array', items: { type: 'object', required: ['claim', '
   properties: { claim: { type: 'string' }, holds: { type: 'boolean' }, note: { type: 'string' } } } }
 
 // Eight reader schemas, each declared in full: one per briefed seat, one for quality, which the
-// eight audit seats share because they return the object quality returns, one for cold
+// audit seats share because they return the object quality returns, one for cold
 // alternatives and one for the roaster. Every reader owes limitations, coverage and findings; the
 // briefed seats also owe abort (law 8). The cold seats (quality, the audit seats, cold
 // alternatives, roaster) carry no abort field, because its member names would brief them.
@@ -756,7 +757,7 @@ const workOf = () => followUp
 const HYGIENE = [
   STAGE, READ_GIT, TREE, 'No background waits.',
 ].join('\n')
-// The fifteen seats of the review stage, each label with the template it loads. Every run runs each
+// The seats of the review stage, each label with the template it loads. Every run runs each
 // of them, whatever the size of the change, and the marked block keys one model entry to each label.
 const REVIEW_SEATS = {
   correctness: 'reviewer-correctness', spec: 'reviewer-spec-compliance', dupes: 'duplicate-checker',
@@ -764,6 +765,7 @@ const REVIEW_SEATS = {
   'separation-of-concerns': 'separation-of-concerns', 'abstraction-quality': 'abstraction-quality',
   'code-smell': 'code-smell', 'type-safety': 'type-safety', 'code-cleanliness': 'code-cleanliness',
   'missing-gaps': 'missing-gaps', 'domain-leakage': 'domain-leakage', 'type-smearing': 'type-smearing',
+  'runtime-cost': 'runtime-cost',
 }
 const reviewerRules = seats => [
   'REVIEWER RULES: the review seats of this run, each by the label its object carries, with its template. The templates are the',
@@ -778,7 +780,7 @@ const handedOn = artifacts => artifacts.length
   : []
 // The seat list: the template, label, prompt blocks, schema and completeness check of each seat.
 // Only the two briefed code-lens readers receive the implementer's object, as claims, and read its
-// artifacts there; the other briefed seats receive the artifacts alone. The eight audit seats receive
+// artifacts there; the other briefed seats receive the artifacts alone. The audit seats receive
 // what quality receives, the hygiene floor and the diff, and return its object.
 // A review-only run takes no spec. A reviewer that reads the spec names in withoutSpec what it runs
 // on then: null when it judges the change against the spec and does not run, or the prompt blocks,
@@ -807,13 +809,14 @@ const seatList = (claims, artifacts, work = []) => [
   { type: 'missing-gaps', label: 'missing-gaps', ...unbriefed },
   { type: 'domain-leakage', label: 'domain-leakage', ...unbriefed },
   { type: 'type-smearing', label: 'type-smearing', ...unbriefed },
+  { type: 'runtime-cost', label: 'runtime-cost', ...unbriefed },
 ]
 // A seat list that leaves a seat out, adds one, names one twice or gives a label another template
 // stops the run before its first agent.
 const requiredSeats = Object.entries(REVIEW_SEATS).map(([label, type]) => label + ' on ' + type)
 const listedSeats = seatList([], []).map(({ type, label }) => label + ' on ' + type)
 if (JSON.stringify([...listedSeats].sort()) !== JSON.stringify([...requiredSeats].sort())) {
-  throw new Error('The review stage runs exactly the fifteen seats ' + requiredSeats.join(', ') +
+  throw new Error('The review stage runs exactly the seats ' + requiredSeats.join(', ') +
     ', and the seat list holds ' + listedSeats.join(', '))
 }
 const seatsWithoutSpec = (claims = [], work = []) => seatList(claims, [], work).filter(seat => seat.withoutSpec !== null)

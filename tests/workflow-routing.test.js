@@ -26,9 +26,9 @@ const mainLaunchValues = args => ({ spec: args.specPath, transcripts: args.trans
 const passedCheck = (values, fields = {}, printed = {}) =>
   ({ exitCode: 0, stdout: JSON.stringify({ ...printed, proof: fingerprint(values) }), stderr: '', ...fields })
 
-// The eight audit seats, each labelled and loading the template of its name.
+// The audit seats, each labelled and loading the template of its name.
 const AUDIT = ['separation-of-concerns', 'abstraction-quality', 'code-smell', 'type-safety', 'code-cleanliness',
-  'missing-gaps', 'domain-leakage', 'type-smearing']
+  'missing-gaps', 'domain-leakage', 'type-smearing', 'runtime-cost']
 const readers = ['correctness', 'spec', 'dupes', 'quality', 'inverse', 'rules', 'alternatives', ...AUDIT]
 const source = (seat, index = 0) => `${seat}:${index}`
 const receipt = { file: 'src/example.js', line: 12, quote: 'catch (error) {}' }
@@ -1012,7 +1012,7 @@ describe('coder sense check and project-benefit review', () => {
     const { calls } = await simulate()
     const unbriefed = ['quality', ...AUDIT, 'cold-alternatives', 'roaster']
     const readerCalls = calls.filter(c => c.phase === 'Review' || c.agentType === 'roaster')
-    expect(readerCalls).toHaveLength(16)
+    expect(readerCalls).toHaveLength(17)
     for (const call of readerCalls) {
       const kinds = unbriefed.includes(call.agentType) ? ['band-aid', 'longer-route'] : ['band-aid', 'longer-route', 'unbacked-choice']
       expect([call.agentType, call.schema.properties.findings.items.properties.kind]).toEqual([call.agentType, { enum: kinds }])
@@ -1860,7 +1860,7 @@ const LIMITS_LINE = 'LIMITATIONS: ' + LIMITS_RULE
 describe('what a limitation is', () => {
   test('every reading stage receives the limitation rule once, and no writer does', async () => {
     const { calls } = await simulate({ reports: oneReport, verify: approveOne, fixes: { fix: fixed([disposition()]) } })
-    expect(calls).toHaveLength(19)
+    expect(calls).toHaveLength(20)
     for (const call of calls) {
       const reader = !['impl', 'fix'].includes(call.label)
       expect([call.label, call.prompt.split(LIMITS_LINE).length - 1]).toEqual([call.label, reader ? 1 : 0])
@@ -2050,7 +2050,7 @@ describe('fixed review seats and a model for every agent', () => {
       copy.replace(line, retemplated)]) {
       expect(edited).not.toBe(copy)
       const { message, calls } = await stopsBeforeAnyAgent(edited, launchArgs())
-      expect([message?.startsWith('The review stage runs exactly the fifteen seats correctness on reviewer-correctness, ' +
+      expect([message?.startsWith('The review stage runs exactly the seats correctness on reviewer-correctness, ' +
         'spec on reviewer-spec-compliance, dupes on duplicate-checker,'), calls]).toEqual([true, []])
     }
     const retemplatedRun = await stopsBeforeAnyAgent(copy.replace(line, retemplated), launchArgs())
@@ -2063,7 +2063,7 @@ describe('fixed review seats and a model for every agent', () => {
     const { calls } = await simulate()
     const review = calls.filter(c => c.phase === 'Review')
     expect(review.map(c => c.model)).toEqual(readers.map(seat => 'model-' + seat))
-    expect(new Set(review.map(c => c.model)).size).toBe(15)
+    expect(new Set(review.map(c => c.model)).size).toBe(16)
     const block = skeleton.slice(skeleton.indexOf('// ---- UNIT VALUES.'), skeleton.indexOf('// ---- END OF UNIT VALUES ----'))
     for (const seat of readers) {
       const key = seat.includes('-') ? `'${seat}'` : seat
@@ -2281,7 +2281,7 @@ describe('review seats are critics, and no stage asks the user a question', () =
     const prompt = calls.find(c => c.label === 'verify').prompt
     expect(prompt).toContain(REVIEWER_RULES_LINE + '\n' + TEMPLATES.join('\n'))
     expect(prompt).toContain(RULE_SOURCES)
-    expect(TEMPLATES).toHaveLength(15)
+    expect(TEMPLATES).toHaveLength(16)
   })
 
 })
