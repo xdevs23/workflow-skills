@@ -25,12 +25,6 @@ marked block. The block says that these templates are the reviewers' rules, what
 looks for, and that the review seats are critics without authority. The finding verifier's prompt
 carries that block beside the rule sources it already received.
 
-The fix run's marked block gains a `ruleSources` value like the main script's, filled by the root
-at launch. The fix run copies the seat map and the reviewer block from the main script, as it
-copies its other helpers, and the scope check's prompt carries the rule sources and the reviewer
-block ahead of the fix list. The fixer, the roaster and the diff check of the fix run receive
-neither block.
-
 ## Corrections that improve code quality
 
 The finding verifier's template states that a correction which improves code quality without
@@ -39,16 +33,6 @@ such a correction `approve-fix`: the `authority` field names the rule of the ver
 and the `evidence` field quotes the reviewer's rule or the project rule the correction serves. The
 reviewer's rule never stands in `authority`. Merging duplicated code into one shared function is
 such a correction. A correction that adds or changes behavior still needs the user's words.
-
-The scope check's template states the same rule for a fix run, and the scope check classes such a
-correction corrective. A classification has no authority field, so its reason names the rule of the
-scope check's template and its receipts quote the reviewer's rule or the project rule the
-correction serves, beside the code it improves. A function that only holds merged code is not a
-new interface in the scope check's sense, so a deduplication is no longer a new choice. A
-correction that adds or changes behavior stays a new choice. The fixer's prompt and the diff check
-of the fix run follow the same rule: the fixer's prompt counts a quality correction that keeps the
-parent spec as corrective, and neither counts a function that only holds merged code as a new
-interface, so a correction the scope check admits is not refused by the next stage.
 
 ## Removing code nothing uses or nobody asked for
 
@@ -59,18 +43,10 @@ verifier decides such a removal `approve-fix`, even where the removal takes away
 The `authority` field names the removal rule of the verifier's template, and the `evidence` field
 shows that nothing uses the code or that no words of the user asked for it.
 
-The scope check's template states the same rule for a fix run. The scope check classes such a
-removal corrective, its reason names the removal rule of the scope check's template, and its
-receipts show the code it removes together with the evidence that nothing uses it or that no words
-of the user asked for it. The corrective class of the template lists the removal beside the
-restoring correction and the quality correction, and the opening of the template names it among
-the three things a fix run may do.
-
-In both templates the rule holds also where only an assistant entry of the spec, or an assistant
-message an entry of a fix list points at, names the code: an assistant entry is no authority for
-keeping the code. Code that an applicable project rule asks for is not code nobody asked for, so
-the removal rule does not reach it. Code that the user's words asked for still needs the user's
-word to be removed, so the scope check classes its removal a new choice.
+The template's rule holds also where only an assistant entry of the spec names the code: an
+assistant entry is no authority for keeping the code. Code that an applicable project rule asks for
+is not code nobody asked for, so the removal rule does not reach it. Code that the user's words
+asked for still needs the user's word to be removed.
 
 Each decision of the finding verifier carries a boolean `removal`. The verifier sets it to true on
 an `approve-fix` whose correction removes code on the removal rule, and to false on every other
@@ -91,22 +67,14 @@ The fixer's template applies approved corrections against the spec as written, a
 approved removal of code that no words of the user asked for. It carries out such a removal also
 where only an assistant entry names the code, because such an entry is no authority for keeping
 the code, so the removal is no conflict between the prompt and the spec. It returns
-the removal of code the user's words asked for rejected with receipts. The authority block both
-scripts give their briefed stages states the same exception beside the rule to implement the spec
-as written. The main script's fixer prompt tells the fixer to carry out a correction marked
-`removal` also where only an assistant entry names the code and to return a removal of requested
-code rejected. The fix
-run's fixer prompt lists the removal among the corrections the scope check classes corrective,
-repeats the exception for code the user's words asked for, and says that a removal on the rule is
-not a change of behavior the fixer returns to the root, while a removal of requested code is.
+the removal of code the user's words asked for rejected with receipts. The authority block the
+script gives its briefed stages states the same exception beside the rule to implement the spec as
+written. The fixer prompt tells the fixer to carry out a correction marked `removal` also where only
+an assistant entry names the code and to return a removal of requested code rejected.
 
-The diff check's template and its prompt map a change that carries out such a removal to the entry
-that names it, even where the change takes away what the removed code did. Both also state that a
-change removing code the user's words asked for never maps to an entry as such a removal.
-implement-review-verify states the rule where it describes the finding verifier's decisions and the
-fix run's scope check, states the three answers to an `unbacked-choice` finding, and its rule that
-has the root remove such code without asking says that the finding verifier and the scope check
-apply the same rule. In the templates and the skill each rule of the removal passages stands in a
+implement-review-verify states the rule where it describes the finding verifier's decisions, states
+the three answers to an `unbacked-choice` finding, and its rule that has the root remove such code
+without asking says that the finding verifier applies the same rule. In the templates and the skill each rule of the removal passages stands in a
 bullet of its own.
 
 ## Band-aid and longer-route findings
@@ -134,10 +102,8 @@ decision only by deletion, a rewrite, or the user's word.
   open question listed with an approval and a rejection of an inverse-spec finding, the question
   named in `correction` for an unbacked choice and for an item left unbuilt, and the root putting
   that question to the user.
-- The fixer's template loses the unresolved question of a blocked disposition. It keeps the
-  clause that its rejected and blocked dispositions go to the root and never to the user
-  automatically, because that clause forbids asking the user.
-- The scope check's template loses the user as a destination of a new choice.
+- The fixer's template carries no question: a correction it cannot resolve it answers
+  `unresolved`, with the problem stated as it is, and the answer goes to the follow-up run.
 - The main script loses the comment above its check of unbacked-choice decisions, and its other
   comments and error messages lose their wording about the user answering a question or being
   asked.
@@ -185,27 +151,20 @@ The question wording is deleted instead of reworded, because a stage reports to 
 talks to the user. A reworded invitation to ask would keep the same opening, and a stage that
 states the facts gives the root what it needs to decide what reaches the user.
 
-The fix run copies the seat map and the reviewer block instead of reading them from the main
-script, because each script runs on its own. The routing tests hold both copies equal to the main
-script's.
-
 ## Tests
 
-The routing tests check that the finding verifier's prompt and the scope check's prompt name the
-template of every review seat after the reviewers' rules line, and carry the rule sources; that the
-fix run's marked block holds `ruleSources`; and that the seat map, the reviewer block and the rule
-sources block of the fix run equal the main script's. They check that both templates and
+The routing tests check that the finding verifier's prompt names the template of every review seat
+after the reviewers' rules line, and carries the rule sources. They check that the template and
 implement-review-verify state the rule on corrections that improve code quality, that a reviewer's
 rule is evidence and is never cited as authority, and the changed rule for band-aid and
 longer-route findings. They check that no agent template and neither script contains the deleted
 wording. They check that a needs-decision decision with an empty correction is accepted, that one
 with a correction is refused before it reaches the remaining items, and that a root-action
-decision without a correction is refused. They check that the finding verifier's, the scope
-check's and the diff check's templates, the fix run's fixer and diff prompts and
+decision without a correction is refused. They check that the finding verifier's template and
 implement-review-verify state the removal rule, the rule's reach over code only an assistant entry
 names, the protection of code a project rule asks for, and the exception for code the user's words
 asked for, and that each rule of those passages opens a bullet of its own. They check that the
-fixer's template and both fixer prompts carry out an approved removal of code only an assistant
+fixer's template and the fixer prompt carry out an approved removal of code only an assistant
 entry or message names and return the removal of requested code. They check that a removal of an unbacked choice marked `removal` reaches the
 fixer, alone and in a consolidated group with a band-aid finding and an ordinary finding, that an
 `approve-fix` on an unbacked choice without the mark is refused, and that the mark on another

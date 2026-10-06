@@ -24,8 +24,8 @@ one, and a path of another form than a single dot or segments of letters, digits
 and hyphens joined by slashes, with no segment of one or two dots. That path form keeps quotes out
 of the list, so the scripts can pass it to the spec tool as JSON inside single quotes.
 
-The run record of the main and fix-run scripts returns `base` and `snapshots`, both lists of
-`{ path, sha }` in the order of `base`. A fix run's `base` is the parent run's `snapshots`.
+The run record of the main script returns `base` and `snapshots`, both lists of `{ path, sha }` in
+the order of `base`. A follow-up run's `base` is the parent run's `snapshots`.
 
 ## Writers
 
@@ -63,8 +63,7 @@ repository, reads only Git objects of each repository at those commits, and retu
 entry for each repository it read, at least one, with the commit it read there. Every entry names a
 repository of the list at the commit given for it, no repository has two entries, and every
 repository whose base and snapshot differ has one, so a repository the change left alone may have
-none. In a fix run, where base and snapshot are one commit, any repository of the list may have
-none, as long as the list holds one entry.
+none.
 
 ## The spec tool's --base
 
@@ -77,17 +76,9 @@ list leaves out, so no repository of a tree goes unread. The walk follows no sym
 A cited rule file is read at the commit of the entry whose path is the longest one containing the
 file, with `git show` in that repository. It is read from disk only when no entry contains it or
 when `git ls-tree` shows that the file is not tracked at that commit. Any other git failure fails
-the check, so a failed lookup can never pass off the working copy as the committed text. The fix
-run's check uses the fix-list mode, which checks its `--base` list against the tree as the spec
-mode does and reads no rule file.
-
-## Design documents in a tree of several repositories
-
-The marked block of the main and fix-run scripts names `documents`, the directory for design
-documents relative to the tree root, inside one repository of the list: `docs` for a tree that is
-one repository. A unit's design document is that directory joined with the spec's file name, and
-the writers commit it in the repository that holds the directory. The root of a repo-tool tree is
-no repository, so a document placed there could be committed nowhere.
+the check, so a failed lookup can never pass off the working copy as the committed text. Without a
+spec, the tool checks the `--base` list against the tree the same way and reads no rule file: a
+follow-up run of a change made without a spec checks its base list so.
 
 ## The pre-phase
 

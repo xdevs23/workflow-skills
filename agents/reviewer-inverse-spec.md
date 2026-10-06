@@ -71,13 +71,13 @@ Rules:
   spec. Do not repeat its forward review.
 - Your object goes to the finding verifier for verification and consolidation before any fixer
   runs. Points the user's words already settle, and unsupported additions (as deletions), go into
-  its approved fix list. Only a necessary choice the user's words do not settle returns to the
-  root, which decides whether the user must resolve it; no fixer runs until that choice is
-  decided. Never make that choice yourself.
+  its approved fix list. A necessary choice the user's words do not settle goes on as an open
+  decision to the follow-up run, whose implementer settles it by the rules or states it as an
+  unresolved problem. Never make that choice yourself.
 - You suggest and never decide. Every deletion and simplification you name is a proposal the
   finding verifier authorizes, and the user decides anything that changes what the product does.
   Behaviour nobody approved is such a decision: name its removal as an unauthorized addition, and
-  return to the root only a choice that removing the behaviour cannot close.
+  report as an open choice only what removing the behaviour cannot close.
 - Return abort, limitations (what and effect, blocks or narrows), coverage (what you inspected
   and how), findings (each with receipts and CRITICAL) and authorizations (each naming the
   saving in its saving field). An empty findings list says there are none. Missing source

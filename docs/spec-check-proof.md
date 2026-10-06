@@ -1,134 +1,87 @@
 # The writer's spec check proves what it checked
 
-The writer of each workflow script of implement-review-verify runs the spec tool before anything
-else: the implementer on the unit spec in a main run, the fixer on the fix list in a fix run. Its
-command passes the fingerprint of the values the script launched with, and the tool fails before it
-prints anything when the values it checked give another proof, so the writer edits nothing on a
-check of other values. The writer returns what the tool printed, and the script continues only when
-the proof printed there equals that fingerprint. A review pass reviews a change made without a spec,
-so it runs no writer and no check.
+The implementer of implement-review-verify runs the spec tool before anything else: on the unit
+spec in a main run, and in a follow-up run on the spec its parent run checked, or on the base list
+alone when the parent run checked no spec. Its command passes the fingerprint of the values the
+script launched with, and the tool fails before it prints anything when the values it checked give
+another proof, so the implementer edits nothing on a check of other values. The implementer returns
+what the tool printed, and the script continues only when the proof printed there equals that
+fingerprint. A review pass reviews a change made without a spec, so it runs no writer and no check.
 
 ## The proof
 
 The spec tool prints as `proof` the 32-bit FNV-1a hash of the values it checked, written as JSON
 with the keys of every mapping in sorted order. A spec check covers the spec path, the transcript
 directory, the base list, whether the base list is partial and the directory the tool runs in, as
-the operating system reports it with symbolic links resolved. A fix-list check covers the path of
-the fix list, the spec the list names, null for a list that names none, its entries, the
-implementer's artifacts the parent run returned, the base list the fix run starts from, whether that
-list is partial and the directory the tool runs in. The same values give the same proof on every
-run, and a failing check prints none. In every mode but the fix-list generator, `--proof` names the
-proof a run expects, and the tool fails with both proofs named when the values it checked give
-another.
+the operating system reports it with symbolic links resolved, and in a follow-up run the `sha256`
+the spec must have. A check of the base list alone covers the base list, whether it is partial and
+the directory the tool runs in. The same values give the same proof on every run, and a failing
+check prints none. `--proof` names the proof a run expects, and the tool fails with both proofs
+named when the values it checked give another.
 
 The base list is checked against the repositories of the directory the tool runs in, so the proof of
 every check covers that directory. Another checkout that holds the same commits passes the same
 list, and its proof differs from the one the script computes with its worktree, so a check that ran
-outside the worktree stops the run, in a main run and a fix run alike. The marked block of each
+outside the worktree stops the run, in a main run and a follow-up run alike. The marked block of the
 script therefore names the worktree by its absolute path without symbolic links. Every value of the
 check's command is one single-quoted shell word, so a path holding a space or an apostrophe reaches
 the tool unchanged.
 
-The base list of a fix run takes part in the proof, so the script and the tool agree on it, and that
-agreement alone would pass a list that consistently names an earlier commit the tree holds. The
-fix-list check therefore also holds the base list to the final snapshots the parent run's saved
-result names, one commit per repository, and fails on any other commit. A review pass returns no
-snapshots, and the fix run of one starts from the commit each repository is at, which only the check
-against the tree covers.
+The base list of a follow-up run takes part in the proof, so the script and the tool agree on it,
+and that agreement alone would pass a list that consistently names an earlier commit the tree holds.
+The script therefore also holds the base list to the final snapshots the parent run returned, one
+commit per repository, and stops before its first agent on any other commit. A review pass returns
+no snapshots, and the follow-up run of one starts from the commit each repository is at, which only
+the check against the tree covers.
 
 The hash has one definition, the spec tool's fingerprint module, with two helpers, `withSortedKeys`
 and `fingerprint`. The spec tool imports it. A workflow script runs without imports and has no hash
-library to call, so each script carries the two helpers as the module writes them, and the routing
-tests hold both copies to the module's text.
+library to call, so the main script carries the two helpers as the module writes them, and the
+routing tests compare the proofs the script computes with the module's.
 
 ## Who runs the check
 
-The check is the first block of the writer's prompt: one command, run once exactly as written,
-whose exit code, stdout and stderr the writer returns unchanged in `specCheck`, a field its schema
-requires. The command carries the script's own fingerprint in `--proof`, so the values the writer
-works with agree with the values the tool checked before the writer's first edit. On a failed check
-the writer edits nothing. The script parses the printed JSON, reads its `proof` field and compares
-it with its own fingerprint, so output that is no JSON ends the run like a wrong proof.
+The check is the first block of the implementer's prompt: one command, run once exactly as written,
+whose exit code, stdout and stderr the implementer returns unchanged in `specCheck`, a field its
+schema requires. The command carries the script's own fingerprint in `--proof`, so the values the
+implementer works with agree with the values the tool checked before its first edit. On a failed
+check the implementer edits nothing. The script parses the printed JSON, reads its `proof` field and
+compares it with its own fingerprint, so output that is no JSON ends the run like a wrong proof.
 
-Each script returns in `spec` the spec its writer's check passed on, taken from what the tool
-printed: its path, its sha256 and its spec lines, from the implementer's spec check in a main run
-and from the fixer's fix list check in a fix run. It is null when no check passed on a spec, as in a
-review pass, which checks none. The fix-list generator copies that field from the saved result: the
-fix list names its path, the check of the list compares the spec's sha256 with the file, and a size
+The script returns in `spec` the spec its implementer's check passed on, taken from what the tool
+printed: its path, its sha256 and its spec lines. It is null when no check passed on a spec, as in a
+review pass, which checks none, and in the follow-up run of one. The follow-up run receives that
+field unchanged in `args.parent`: its implementer's check names its path and its sha256, and a size
 breach is measured against its spec lines.
 
 ## What the comparison shows
 
 The comparison shows that the values the tool checked are the values the run launched with and hands
 its stages. A check of other values, a check in another tree and a failed check stop the run, and so
-does printed output with a missing proof or another one. A proof the writer wrote itself cannot be
-told apart from one the tool printed: the command names the proof the run expects, and the algorithm
-and every value it covers are part of the plugin or of the writer's prompt.
+does printed output with a missing proof or another one. A proof the implementer wrote itself cannot
+be told apart from one the tool printed: the command names the proof the run expects, and the
+algorithm and every value it covers are part of the plugin or of the implementer's prompt.
 
 OPEN: a workflow script sees only the object a stage returns, and every value the tool can print,
 the stage that runs the tool can produce as well, so no field of that object can prove that the
 tool ran.
 
-## The fix run's launch values
+## The follow-up run's spec
 
-A fix run hands its stages the entries it received at launch, so those entries have to equal the fix
-list the tool held to the saved result of the parent run. The fingerprint carries that comparison:
-the entries take part in the script's fingerprint and in the tool's, so a single changed character
-in any entry, another spec, a missing entry, an added one, another order or another list gives
-another proof, and the tool fails the fixer's check before its first edit. The check's command
-carries no entry of the list and stays short, because the proof stands for the entries. The base
-list it does carry holds one entry per repository. The fix list's `--json` summary holds the entries
-only with `--entries`, which the orchestrating session uses to build the launch values, so the fixer
-returns a short summary. The artifacts take part in both fingerprints the same way: the summary
-always prints the list the parent run's saved result holds, and the session passes it at launch.
-
-A fix run builds the `toFix` list it returns from the results it accepted, so a fixer result whose
-check failed, or that the run refused for any other reason, closes no entry. The generator takes
-that list from the saved result as it is and applies no checks of its own to the stages behind it.
+A follow-up run hands its implementer the spec its parent run checked, and the spec must not have
+changed since. Its check therefore passes `--sha256` with the value in `args.parent.spec`, and the
+tool fails before the implementer's first edit when the spec it reads has another `sha256`. The value
+takes part in the proof as well, so the script and the tool agree on the spec the run expects.
 
 ## A failed check
 
 A failed check ends the run as `failed`, with the tool's error output in the message, before any
 later stage, and the stage failure carries the result of the stage that ran the check. The script
-accepts the writer's result as it is when the check failed, without the other completeness checks,
-so the stage helper never asks the writer again: another attempt could pass only by changing what
-the check compares. In a fix run the roaster runs beside the fixer, and its findings, its
-limitations or its failure reach the run's remaining items beside the failed check.
-
-The generator refuses every run in which a stage failed or raised a hard flag, whatever exit the run
-ended with, because the exit names only the first cause that ended the run, and a later stage that
-failed or raised a hard flag shows only in `remaining`. Such a run ended on its own, so it is shown
-to the user and never followed by a fix run. A flagged unit continues only on the user's answer,
-added to a copy of the spec for a new run. The generator refuses a run whose finding verifier found
-a writer commit outside its scope as well, because the main script ends that run before its fixer so
-that no correction builds on the commit, and a fix run would apply the open approvals on the same
-snapshot. The spec tool keeps these three kinds of remaining items in one table, each with its
-refusal. A fix run whose fix list check failed launched on other values than it was given, and it is
-launched again with the right ones.
-
-## What it replaces
-
-The check used to be a stage of its own at the start of each script, the launch check: a small
-stage on a model of its own whose prompt was one command line, and which returned the tool's output
-together with the proof copied into a field of its own. The script compared only that copied field,
-so printed output that was no JSON at all still passed. Every value the stage worked with sits in
-the writer's prompt as well, and the writer runs commands anyway, so the writer now runs the check,
-the script reads the proof from what the tool printed, and the run starts one agent fewer.
-
-Before the fingerprint, the tool printed a random proof, and the scripts continued on exit code
-zero and any non-empty proof. The fix script passed the spec and every entry to the tool as one
-JSON argument of `--expect`, which the tool compared with the list. A stage that left out
-`--expect`, or returned a proof it wrote itself, still passed. On a large fix list the stage retyped
-an argument of about 100 kilobytes and broke it, and the retry named the entry that differed, which
-a stage then "repaired" by editing the fix list. Both defects were reported as issues #9 and #10 of
-the plugin's repository.
+accepts the implementer's result as it is when the check failed, without the other completeness
+checks, so the stage helper never asks the implementer again: another attempt could pass only by
+changing what the check compares.
 
 ## Rejected alternatives
-
-**The tool's hash passed in at launch.** The orchestrating session would pass the hash the tool
-printed for the fix list beside the entries, and `--expect` would take that hash. Reason: the stages
-receive the entries from the launch values, and a script that cannot compute a hash cannot check
-that those entries are the ones the hash covers.
 
 **The launch check kept, with the script reading the proof from its printed output.** Reason: the
 stage did nothing the writer cannot do as its first step, so the stage itself went.

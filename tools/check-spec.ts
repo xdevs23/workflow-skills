@@ -200,8 +200,8 @@ function widthViolations(prose: string) {
   return { problems, unbreakable }
 }
 
-// The shape checks a spec and a fix list share. Each failure is recorded with the position of the
-// entry it concerns, so the report keeps file order, and with a path that names the entry.
+// Each failure is recorded with the position of the entry it concerns, so the report keeps file
+// order, and with a path that names the entry.
 function validator(file: string) {
   const violations: { item: number, message: string }[] = []
   const fail = (item: number, path: string, message: string) => {
@@ -247,10 +247,8 @@ function validator(file: string) {
 }
 
 const usage = 'Usage: bun tools/check-spec.ts <spec.yaml> --transcripts <dir> ' +
-  '[--json] [--base <JSON list of { path, sha }> [--partial-base]] [--proof <proof>], ' +
-  'or bun tools/check-spec.ts --fix-list <file> [--json [--entries]] ' +
-  '[--base <JSON list of { path, sha }> [--partial-base]] [--proof <proof>], ' +
-  'or bun tools/check-spec.ts --make-fix-list <result> [--size <json>]'
+  '[--json] [--base <JSON list of { path, sha }> [--partial-base]] [--sha256 <sha256>] [--proof <proof>], ' +
+  'or bun tools/check-spec.ts --base <JSON list of { path, sha }> [--partial-base] [--json] [--proof <proof>]'
 
 // The proof of the checked values. A workflow script passes the proof of its own launch values, so a
 // check of other values fails before the stage that runs it edits anything.
@@ -266,24 +264,13 @@ async function main() {
   if (!Bun.YAML?.parse) throw new Error(`Bun ${minimumBun} or newer is required: Bun.YAML is unavailable`)
   const { values, positionals } = parseArgs({ args: Bun.argv.slice(2), allowPositionals: true,
     options: { transcripts: { type: 'string' }, json: { type: 'boolean' }, base: { type: 'string' }, 'partial-base': { type: 'boolean' },
-      'fix-list': { type: 'string' }, entries: { type: 'boolean' }, 'make-fix-list': { type: 'string' }, size: { type: 'string' },
-      proof: { type: 'string' } } })
-  if (values['make-fix-list'] !== undefined) {
-    if (positionals.length || !values['make-fix-list'] || values.transcripts !== undefined || values.base || values['partial-base'] ||
-      values['fix-list'] !== undefined || values.entries || values.json || values.proof !== undefined) {
-      throw new Error(usage)
-    }
-    return makeFixList(values['make-fix-list'], values.size)
-  }
-  if (values.size !== undefined || (values['partial-base'] && values.base === undefined)) throw new Error(usage)
+      sha256: { type: 'string' }, proof: { type: 'string' } } })
+  if (values['partial-base'] && values.base === undefined) throw new Error(usage)
   const partialBase = values['partial-base'] === true
-  if (values['fix-list'] !== undefined) {
-    if (positionals.length || !values['fix-list'] || values.transcripts !== undefined || (values.entries && !values.json)) throw new Error(usage)
-    const base = values.base === undefined ? null : await baseRepositories(values.base, partialBase)
-    return checkFixList(values['fix-list'],
-      { json: values.json === true, withEntries: values.entries === true, base, partialBase, expected: values.proof })
+  if (!positionals.length && values.transcripts === undefined && values.sha256 === undefined && values.base !== undefined) {
+    return checkBase(await baseRepositories(values.base, partialBase), { json: values.json === true, partialBase, expected: values.proof })
   }
-  if (positionals.length !== 1 || !values.transcripts || values.entries) throw new Error(usage)
+  if (positionals.length !== 1 || !values.transcripts) throw new Error(usage)
   const base = values.base === undefined ? null : await baseRepositories(values.base, partialBase)
   const transcripts = values.transcripts
   const specPath = positionals[0]
@@ -349,14 +336,21 @@ async function main() {
     }
   }
   if (report()) return
+  // A run that reads the spec another run checked names its sha256, so a spec changed since fails here,
+  // before the stage that runs the check edits anything.
+  const sha256 = sha256Of(bytes!)
+  if (values.sha256 !== undefined && values.sha256 !== sha256) {
+    throw new Error(`the spec's sha256 is ${sha256}, and the run expects the spec its parent run checked, of sha256 ${values.sha256}`)
+  }
   const summary = {
-    sha256: sha256Of(bytes!),
+    sha256,
     nonBlankLines: nonBlankLines(bytes!.toString('utf8')),
     // The spec lines the size check divides by: the non-blank lines of the entries' text.
     specLines,
     unbreakable: unbreakableLines,
     // The base list is checked against the tree the tool runs in, so the proof covers that tree too.
-    proof: proven({ spec: specPath, transcripts, base, partialBase, tree: process.cwd() }, values.proof),
+    proof: proven({ spec: specPath, transcripts, base, partialBase, tree: process.cwd(),
+      ...values.sha256 === undefined ? {} : { sha256: values.sha256 } }, values.proof),
     spec: specPath,
   }
   console.log(values.json ? JSON.stringify(summary) :
@@ -364,16 +358,6 @@ async function main() {
     `unbreakable=${JSON.stringify(summary.unbreakable)} proof=${summary.proof} spec=${summary.spec}`)
 }
 
-const fixListKeys = ['result', 'spec', 'entries']
-const itemFields = { impl: 'finding', verify: 'decision', issue: 'issue', roaster: 'finding', diff: 'finding', proof: 'proof' } as const
-const entrySource = new RegExp(`^(?:(?<kind>${Object.keys(itemFields).join('|')}|entry|review:[a-z][a-z-]*):(?:0|[1-9][0-9]*)|size)$`)
-const sourceNames = [...Object.keys(itemFields), 'review:<seat>', 'entry'].map(kind => `${kind}:<index>`).concat('size').join(', ')
-const fields: Record<string, string> = { ...itemFields, entry: 'entry', size: 'size' }
-const sourceOf = (source: unknown): { source: string, field: string } | undefined => {
-  const kind = typeof source === 'string' ? (entrySource.exec(source)?.groups?.kind ?? (source === 'size' ? 'size' : undefined)) : undefined
-  if (typeof source !== 'string' || kind === undefined) return undefined
-  return { source, field: kind.startsWith('review:') ? 'finding' : fields[kind] }
-}
 const exists = (path: string) => stat(path).then(() => true, () => false)
 const git = (directory: string, ...command: string[]) =>
   Bun.spawnSync(['git', '-C', directory, ...command], { stdout: 'pipe', stderr: 'pipe' })
@@ -427,269 +411,9 @@ async function baseRepositories(value: string, partial: boolean): Promise<unknow
   return list
 }
 
-type Sha256 = string & { readonly brand: 'Sha256' }
-type SpecLineCount = number & { readonly brand: 'SpecLineCount' }
-const sha256Form = (value: unknown): value is Sha256 => typeof value === 'string' && /^[0-9a-f]{64}$/.test(value)
-// A spec that passes its check holds at least one user entry with text, so it counts at least one line.
-const specLineCount = (value: unknown): value is SpecLineCount => Number.isSafeInteger(value) && Number(value) > 0
-type CheckedSpec = { path: string, sha256: Sha256, lines: SpecLineCount }
-type Entry = Mapping & { source: string }
-type Artifact = { path: string, what: string }
-type Snapshot = { path: string, sha: string }
-// snapshots is null after a review pass, which reviews the tree as it is and leaves no snapshot.
-type Returned = { spec: CheckedSpec | null, entries: Entry[], artifacts: Artifact[], snapshots: Snapshot[] | null }
-const commitId = /^(?:[0-9a-f]{40}|[0-9a-f]{64})$/
-
-function checkedSpec(spec: unknown): CheckedSpec | null {
-  if (spec === null) return null
-  if (mapping(spec) && text(spec.path) && sha256Form(spec.sha256) && specLineCount(spec.lines)) {
-    return { path: spec.path, sha256: spec.sha256, lines: spec.lines }
-  }
-  throw new Error('the run result names the spec its check passed on in another form')
-}
-
-const returnedItem = (value: unknown) => {
-  if (!mapping(value)) return false
-  const named = sourceOf(value.source)
-  return named !== undefined && named.source !== 'size' && Object.keys(value).length === 2 && mapping(value[named.field])
-}
-
-const artifact = (value: unknown): value is Artifact => mapping(value) && Object.keys(value).length === 2 &&
-  typeof value.path === 'string' && typeof value.what === 'string'
-const snapshot = (value: unknown): value is Snapshot => mapping(value) && Object.keys(value).length === 2 &&
-  repositoryPath(value.path) && typeof value.sha === 'string' && commitId.test(value.sha)
-const snapshotList = (value: unknown): value is Snapshot[] => Array.isArray(value) && value.length > 0 &&
-  value.every(snapshot) && new Set(value.map(({ path }) => path)).size === value.length
-
-// The exit of a run names only the first cause that ended it, so a later cause shows only as its item
-// in remaining. A run whose remaining list holds an item of one of these kinds gets no fix list.
-const refusedKinds: { kind: string, refusal: string, describe: (item: Mapping) => string }[] = [
-  { kind: 'stage-failure', refusal: 'a stage of the run failed, and an incomplete run gets no fix list',
-    describe: item => `${String(item.label)}: ${String(item.message)}` },
-  { kind: 'abort', refusal: "a stage of the run raised a hard flag, and only a new run that receives the user's answer continues the unit",
-    describe: item => `${String(item.label)}: ${String(mapping(item.abort) ? item.abort.reason : item.abort)}` },
-  { kind: 'writer-scope', refusal: 'a writer commit left its scope, and no fix run builds on the snapshot that holds it',
-    describe: item => `${String(item.repository)} ${String(item.sha)}: ${String(item.note)}` },
-]
-const remainingOfKind = (remaining: unknown[], kind: string, describe: (item: Mapping) => string) => remaining
-  .filter((entry): entry is Mapping => mapping(entry) && entry.kind === kind)
-  .map(({ item }) => mapping(item) ? describe(item) : JSON.stringify(item))
-
-// Runs of an earlier version of the scripts return neither toFix nor artifacts.
-const earlierVersion = 'as a run of an earlier version of the scripts returns: finish its chain of fix runs as the skill, ' +
-  'the spec tool and the scripts of the newest plugin version below 0.42.0 in the plugin cache say'
-
-// The workflow tool saves what a script returns in its output file under the key result.
-async function readSavedRunResult(file: string): Promise<Returned> {
-  let output: unknown
-  try { output = JSON.parse(await readFile(file, 'utf8')) } catch (error) {
-    throw new Error(`the run result ${file} is unreadable or no JSON: ${messageOf(error)}`)
-  }
-  const result = mapping(output) ? output.result : undefined
-  if (!mapping(result)) throw new Error(`${file} holds no run result`)
-  if (!Array.isArray(result.remaining)) throw new Error('the run result holds no remaining list')
-  for (const { kind, refusal, describe } of refusedKinds) {
-    const found = remainingOfKind(result.remaining, kind, describe)
-    if (found.length) throw new Error(`${refusal}: ${found.join('; ')}`)
-  }
-  if (!Array.isArray(result.toFix)) throw new Error(`the run result holds no toFix list, ${earlierVersion}`)
-  if (!Array.isArray(result.artifacts)) throw new Error(`the run result holds no artifacts list, ${earlierVersion}`)
-  const strange = result.artifacts.findIndex(item => !artifact(item))
-  if (strange >= 0) throw new Error(`the run result holds artifact ${strange + 1} in another form`)
-  const snapshots: unknown = result.snapshots
-  if (snapshots !== null && !snapshotList(snapshots)) {
-    throw new Error('the run result holds its final snapshots in another form: null, or one { path, sha } per repository')
-  }
-  const items: unknown[] = result.toFix
-  const malformed = items.findIndex(item => !returnedItem(item))
-  if (malformed >= 0) throw new Error(`the run result holds item ${malformed + 1} of toFix in another form`)
-  const seen = new Set<string>()
-  for (const { source } of items as Entry[]) {
-    if (seen.has(source)) throw new Error(`the run result holds the source ${source} twice in toFix`)
-    seen.add(source)
-  }
-  return { spec: checkedSpec(result.spec), entries: items as Entry[], artifacts: result.artifacts as Artifact[], snapshots }
-}
-
-// A fix run starts from the parent run's final snapshots, so a base list naming any other commit,
-// even one the tree holds, is refused. A review pass returns no snapshots: the fix run of one starts
-// from the commit each repository is at, and only the check against the tree covers its base list.
-function baseProblems(base: Snapshot[], snapshots: Snapshot[] | null): string[] {
-  if (snapshots === null) return []
-  const final = new Map(snapshots.map(({ path, sha }) => [path, sha]))
-  const listed = new Set(base.map(({ path }) => path))
-  return [
-    ...base.filter(({ path }) => !final.has(path))
-      .map(({ path }) => `--base names the repository at ${path}, of which the parent run returned no final snapshot`),
-    ...base.filter(({ path, sha }) => final.has(path) && final.get(path) !== sha)
-      .map(({ path, sha }) => `--base names commit ${sha} at ${path}, and the parent run's final snapshot there is ${final.get(path)}`),
-    ...snapshots.filter(({ path }) => !listed.has(path))
-      .map(({ path }) => `--base leaves out the repository at ${path}, of which the parent run returned its final snapshot`),
-  ]
-}
-
-// A size breach is measured after the run, against the spec lines the parent run's spec check counted.
-const sizeKeys = ['specLines', 'codeAdded', 'repositories']
-const measuredKeys = ['path', 'base', 'candidate']
-const measuredRepository = (value: unknown) => mapping(value) &&
-  Object.keys(value).length === measuredKeys.length && measuredKeys.every(key => Object.hasOwn(value, key)) &&
-  repositoryPath(value.path) && typeof value.base === 'string' && commitId.test(value.base) &&
-  typeof value.candidate === 'string' && commitId.test(value.candidate)
-const uncounted = 'the parent run counted no spec lines to measure a size breach against'
-function sizeProblems(size: unknown, specLines: number): string[] {
-  if (!mapping(size)) return ['expected a mapping']
-  const problems = [
-    ...Object.keys(size).filter(key => !sizeKeys.includes(key)).map(key => `${key}: unknown key`),
-    ...sizeKeys.filter(key => !Object.hasOwn(size, key)).map(key => `${key}: missing field`),
-  ]
-  if (Object.hasOwn(size, 'specLines') && size.specLines !== specLines) {
-    problems.push(`specLines: expected ${specLines}, the spec lines the parent run's spec check counted`)
-  }
-  if (Object.hasOwn(size, 'codeAdded') && !(Number.isSafeInteger(size.codeAdded) && Number(size.codeAdded) >= 0)) {
-    problems.push('codeAdded: expected the count of implementation lines added')
-  }
-  if (Object.hasOwn(size, 'repositories') && !(Array.isArray(size.repositories) && size.repositories.length &&
-    size.repositories.every(measuredRepository))) {
-    problems.push('repositories: expected a non-empty list of { path, base, candidate } with full commit IDs')
-  }
-  return problems
-}
-
-// Fix runs read the saved result from another worktree.
-async function makeFixList(file: string, size?: string) {
-  const { spec, entries } = await readSavedRunResult(file)
-  if (size !== undefined) {
-    const expects = '--size expects a JSON mapping of codeAdded and repositories'
-    let measured: unknown
-    try { measured = JSON.parse(size) } catch (error) { throw new Error(`${expects}: ${messageOf(error)}`) }
-    if (!mapping(measured)) throw new Error(expects)
-    const specLines = spec?.lines
-    if (specLines === undefined) throw new Error(`--size: ${uncounted}`)
-    const breach = { specLines, ...measured }
-    const problems = sizeProblems(breach, specLines)
-    if (problems.length) throw new Error(`--size: ${problems.join('; ')}`)
-    entries.push({ source: 'size', size: breach })
-  }
-  if (!entries.length) throw new Error('the run returned nothing to fix')
-  console.log(Bun.YAML.stringify({ result: resolve(file), spec: spec?.path ?? null, entries }, null, 2))
-}
-
-type Validator = ReturnType<typeof validator>
-type ListedEntry = { index: number, source: string, field: string, value: Mapping }
-
-// One entry of the list by its shape alone: a mapping with a source of a known form, the one field
-// that source names and no source a former entry already holds.
-function listedEntry({ fail, shape }: Validator, value: unknown, index: number, seen: Set<string>): ListedEntry | undefined {
-  if (!mapping(value)) { fail(index, `entry ${index + 1}`, 'expected a mapping'); return }
-  const named = sourceOf(value.source)
-  if (!named) {
-    shape(value, ['source'], index, `entry ${index + 1}`)
-    fail(index, `entry ${index + 1}.source`, `expected ${sourceNames}: ${JSON.stringify(value.source)}`)
-    return
-  }
-  const { source, field } = named
-  shape(value, ['source', field], index, source)
-  if (seen.has(source)) { fail(index, source, `duplicate source ${source}`); return }
-  seen.add(source)
-  if (Object.hasOwn(value, field) && !mapping(value[field])) fail(index, `${source}.${field}`, 'expected a mapping')
-  return { index, source, field, value }
-}
-
-async function compareWithResult({ fail }: Validator, file: string, spec: string | null | undefined, entries: ListedEntry[]) {
-  let held: Returned
-  try { held = await readSavedRunResult(file) } catch (error) {
-    if (!entries.length) fail(-1, 'fix list.result', messageOf(error))
-    for (const { index, source } of entries) fail(index, source, messageOf(error))
-    return
-  }
-  const checked = held.spec?.path ?? null
-  if (spec !== undefined && spec !== checked) {
-    fail(-1, 'fix list.spec', checked === null ? 'expected null, because the parent run checked no spec'
-      : `expected the spec the parent run checked, ${checked}`)
-  } else if (spec !== undefined && held.spec) {
-    try {
-      if (sha256Of(await readFile(held.spec.path)) !== held.spec.sha256) fail(-1, 'fix list.spec', 'changed since the parent run checked it')
-    } catch (error) { fail(-1, 'fix list.spec', messageOf(error)) }
-  }
-  const items = new Map(held.entries.map(entry => [entry.source, entry]))
-  for (const { index, source, field, value } of entries) {
-    if (source === 'size') {
-      const specLines = held.spec?.lines
-      if (specLines === undefined) fail(index, 'size', uncounted)
-      else for (const problem of sizeProblems(value.size, specLines)) fail(index, 'size', problem)
-      continue
-    }
-    const item = items.get(source)
-    if (!item) fail(index, source, 'the parent run returned no item to fix under this source')
-    else if (Object.hasOwn(value, field) && !Bun.deepEquals(value[field], item[field], true)) {
-      fail(index, `${source}.${field}`, "differs from the parent run's result")
-    }
-  }
-  const listed = new Set(entries.map(({ source }) => source))
-  for (const { source } of held.entries) {
-    if (!listed.has(source)) fail(entries.length, source, 'missing, and the parent run returned it to be fixed')
-  }
-  const order = [...held.entries.map(({ source }) => source), 'size']
-  const expected = order.filter(source => listed.has(source))
-  const known = entries.filter(({ source }) => order.includes(source))
-  const position = known.findIndex(({ source }, at) => source !== expected[at])
-  if (position >= 0) {
-    fail(known[position].index, known[position].source, `out of order: the parent run returned ${expected[position]} in this place`)
-  }
-  return held
-}
-
-type FixListOptions = { json: boolean, withEntries: boolean, base: unknown[] | null, partialBase: boolean, expected?: string }
-
-async function checkFixList(file: string, { json, withEntries, base, partialBase, expected }: FixListOptions) {
-  const checks = validator(file)
-  const { fail, shape, stringField, list, report } = checks
-  let bytes: Buffer | undefined
-  let fixList: unknown
-  let parsed = false
-  try {
-    bytes = await readFile(file)
-    fixList = Bun.YAML.parse(bytes.toString('utf8'))
-    parsed = true
-  } catch (error) {
-    fail(-1, 'fix list', `unreadable or malformed YAML: ${messageOf(error)}`)
-  }
-  const entries: ListedEntry[] = []
-  let parent: Returned | undefined
-  if (parsed && shape(fixList, fixListKeys, -1, 'fix list')) {
-    const { result, spec } = fixList
-    stringField(fixList, 'result', -1, 'fix list')
-    if (spec !== null) stringField(fixList, 'spec', -1, 'fix list')
-    if (list(fixList.entries, -1, 'entries')) {
-      const seen = new Set<string>()
-      fixList.entries.forEach((value, index) => {
-        const listed = listedEntry(checks, value, index, seen)
-        if (listed) entries.push(listed)
-      })
-    }
-    if (text(result)) parent = await compareWithResult(checks, result, spec === null || text(spec) ? spec : undefined, entries)
-  }
-  if (report()) return
-  if (!parent) throw new Error('the fix list passed without what its parent run checked')
-  const mismatches = base ? baseProblems(base as Snapshot[], parent.snapshots) : []
-  if (mismatches.length) throw new Error(mismatches.join('; '))
-  const listed = entries.map(({ value }) => value)
-  const spec = parent.spec?.path ?? null
-  const { artifacts } = parent
-  // The entries appear only with --entries, because the fixer returns the output whole.
-  const summary = {
-    ...(withEntries ? { entries: listed } : {}),
-    result: (fixList as Mapping).result,
-    spec,
-    ...(parent.spec ? { specSha256: parent.spec.sha256, specLines: parent.spec.lines } : {}),
-    artifacts,
-    ...(base ? { base } : {}),
-    sha256: sha256Of(bytes!),
-    proof: proven({ fixList: file, spec, entries: listed, artifacts, base, partialBase, tree: process.cwd() }, expected),
-    fixList: file,
-  }
-  console.log(json ? JSON.stringify(summary) :
-    `entries=${listed.length} result=${summary.result} spec=${summary.spec} sha256=${summary.sha256} proof=${summary.proof} fixList=${summary.fixList}`)
+function checkBase(base: unknown[], { json, partialBase, expected }: { json: boolean, partialBase: boolean, expected?: string }) {
+  const summary = { base, proof: proven({ base, partialBase, tree: process.cwd() }, expected) }
+  console.log(json ? JSON.stringify(summary) : `base=${JSON.stringify(summary.base)} proof=${summary.proof}`)
 }
 
 main().catch(error => { console.error(messageOf(error).replace(/[\r\n]+/g, ' ')); process.exitCode = 1 })

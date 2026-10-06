@@ -20,8 +20,8 @@ Then the skills appear in the skill list and each has a matching slash command (
 ### Skills
 | Skill | What it does |
 |---|---|
-| `implement-review-verify` | Assemble the unit spec from the user's words in the session transcripts and check it with the spec tool, then implement against it and commit a clean snapshot, with the implementer's sense check reporting what it finds in the spec, then review and independently consolidate findings. The fixer commits only approved corrections while a mandatory roaster reads the pre-fix Git snapshot and approved list. Everything a run returns to be fixed goes to a fix run, whose fixer resolves it by the user's words and the rules and returns only a product decision as a question for the user. |
-| `review-pass` | Run the thirteen reviewers of `implement-review-verify` that need no spec alone on a change that is already committed, such as one edited directly, with no spec, implementer, verifier or fixer, and send their findings to a fix run. |
+| `implement-review-verify` | Assemble the unit spec from the user's words in the session transcripts and check it with the spec tool, then implement against it and commit a clean snapshot, with the implementer's sense check reporting what it finds in the spec, then review and independently consolidate findings. The fixer commits only approved corrections while a mandatory roaster reads the pre-fix Git snapshot and approved list. Everything a run returns to be fixed goes to one follow-up run, whose implementer resolves it by the user's words and the rules and states what nothing resolves as a problem for the user, without a question; the follow-up's review checks its change, and what it leaves is recorded for later. |
+| `review-pass` | Run the thirteen reviewers of `implement-review-verify` that need no spec alone on a change that is already committed, such as one edited directly, with no spec, implementer, verifier or fixer, and send their findings to a follow-up run. |
 | `autonomous-implementation` | Implement without asking, on the user's grant for a task, a session or a timeframe: subagents make the decisions, each milestone ends with evidence, a subset of the reviewers checks the work, and the result is libre and built with Nix. |
 | `copywriting` | Write an increment's user-visible strings BEFORE implementation: intent catalog + writing system, one agent per item, mechanical check + source-verify + fresh-context critic, and the user ships the crucial lines. |
 | `resume-interrupted-run` | Recover a workflow run that was stopped while agents were mid-flight: hand each interrupted seat its own prior transcript, leave every completed prompt byte-identical, resume near-losslessly. |
@@ -87,25 +87,11 @@ directly as `agentType`s in your own workflows.
   fails the check when the values give another. The writer of each workflow script runs the tool
   before anything else with `--proof` set to the fingerprint of the script's own launch values, and
   the script compares the printed proof with that fingerprint.
-  Its fix-list mode, `--fix-list <file>` in place of the spec, checks the fix list of a fix run,
-  which names the saved result of a parent run in `result`, the spec that run checked in `spec`,
-  null after a review pass, and holds in `entries` everything the run returned to be fixed, each as
-  that result holds it: it compares the whole list, in order, with what the parent run returned and
-  the spec with the one that run checked, and prints the spec and the implementer artifacts the
-  result holds, with the proof of the list's values, and with `--entries` the entries as well.
-  `--base` and `--partial-base` check a fix run's base list against the tree as in the spec mode,
-  and against the final snapshots the parent run returned, which a review pass leaves null.
-  `--make-fix-list <saved result>` writes the fix list of a run from the output file the workflow
-  tool saved its result in, copied into the project cache: the spec its check passed on and the
-  `toFix` list the run returns. Each workflow script builds that list from the results it
-  accepted: every spec finding of its implementer, every decision and unresolved issue of its
-  finding verifier apart from an approved correction its fixer rejected, or fixed with a commit,
-  that decides neither an inverse-spec finding nor a kind-bearing one, or every finding of its
-  reviewers in a run without a verifier, every entry of a fix run's own list its fixer left open,
-  and every finding of its roaster and diff check. A run in which a stage failed or raised a hard
-  flag gives no fix list, whatever exit it ended with, and neither does a run in which a writer
-  committed outside its scope.
-  Add `--size <json>` to add a measured size breach of the unit.
+  `--sha256 <sha256>` fails the check when the spec has another `sha256`: a follow-up run checks
+  that way that its spec is the one its parent run checked, and the value joins the proof.
+  Without a spec and without `--transcripts`, `--base '<list>'` checks the base list alone against
+  the tree and prints it with the proof of the list and the tree: a follow-up run of a review pass,
+  which checked no spec, starts from commits its tree holds that way.
 - **The pull request watcher `watch-prs` needs Python 3 and the GitHub CLI `gh`, logged in.**
   `babysit-pr` runs it. The watcher is a Python program in the plugin's tools directory, run with
   `python3`. It takes the state file with `--state`, the seconds between polls with `--interval`,
