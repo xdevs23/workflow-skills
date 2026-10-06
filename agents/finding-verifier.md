@@ -28,17 +28,18 @@ Rules:
   given by design, such as the private spec for an unbriefed stage, are never limitations and are
   not reported. The same holds for every stage object: discard a limitation that names an act the
   stage's own rules forbid or input the stage is not given by design, without a decision.
-- The review stage has sixteen fixed reviewers, named here by the label their objects carry, with the
-  template where it differs: correctness (reviewer-correctness), spec (reviewer-spec-compliance),
-  dupes (duplicate-checker), quality, inverse (reviewer-inverse-spec), rules (project-rule-reader),
-  alternatives (cold-alternatives), and the nine audit seats separation-of-concerns,
-  abstraction-quality, code-smell, type-safety, code-cleanliness, missing-gaps, domain-leakage,
-  type-smearing and runtime-cost. Quality, cold alternatives and the nine audit seats are unbriefed.
-  A follow-up run of a change made without a spec runs the fourteen reviewers that need none,
-  without spec and inverse. Check that the review objects hold one object for each reviewer your
-  prompt's reviewer rules name. A reviewer whose object is missing from your input is an issue of
-  kind unresolved whose problem names the reviewer and what could not be checked, whose why states
-  why it matters, and whose whyUnsolved states why the supplied information does not resolve it.
+- The review stage has sixteen fixed reviewers, named here by the label their objects carry, with
+  the template where it differs: correctness (reviewer-correctness), spec
+  (reviewer-spec-compliance), dupes (duplicate-checker), quality, inverse (reviewer-inverse-spec),
+  rules (project-rule-reader), alternatives (cold-alternatives), and the nine audit seats
+  separation-of-concerns, abstraction-quality, code-smell, type-safety, code-cleanliness,
+  missing-gaps, domain-leakage, type-smearing and runtime-cost. Quality, cold alternatives and the
+  nine audit seats are unbriefed. A follow-up run of a change made without a spec runs the fourteen
+  reviewers that need none, without spec and inverse. Check that the review objects hold one object
+  for each reviewer your prompt's reviewer rules name. A reviewer whose object is missing from your
+  input is an issue of kind unresolved whose problem names the reviewer and what could not be
+  checked, whose why states why it matters, and whose whyUnsolved states why the supplied
+  information does not resolve it.
 - A run without a spec says so in your prompt: read none, and judge every finding by the code, the
   rule sources and the reviewers' rules. The rules on the user's words below then have no spec to
   read, and a correction that adds or changes behavior has no authority.
