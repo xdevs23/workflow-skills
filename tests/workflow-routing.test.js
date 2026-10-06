@@ -96,6 +96,8 @@ const disposition = (key = 'fix:0', kind = 'fixed') => ({ key, disposition: kind
 const unresolved = key => ({ key, disposition: 'unresolved', receipts: [receipt], problem: {
   problem: 'The caller has no channel that carries the error back.', why: 'The correction needs one to return the error.',
   whyUnsolved: 'No rule, skill or word of the user says which channel the caller gets.' } })
+const openIssue = problem => ({ kind: 'unresolved', problem: { problem, why: 'The finding cannot be judged without it.',
+  whyUnsolved: 'No supplied input or rule provides it.' } })
 
 const BASE = 'a'.repeat(40)
 const INITIAL = 'b'.repeat(40)
@@ -587,12 +589,21 @@ describe('workflow verification and consolidation', () => {
 
   test('a verifier issue is not lost when the findings list is empty', async () => {
     const { result, calls } = await simulate({
-      verify: { 'verify': verification([], { issues: [{ kind: 'unresolved', detail: 'The authority document is unavailable.' }] }) },
+      verify: { 'verify': verification([], { issues: [openIssue('The authority document is unavailable.')] }) },
     })
     expect(result.exit).toBe('root-resolution')
     expect(result.remaining.map(r => r.kind)).toEqual(['verifier-issue'])
     // With no approved correction the fixer runs the checks only, and the roast still runs.
     expect(calls.filter(c => c.phase === 'Fix').map(c => c.label).sort()).toEqual(['fix', 'roast'])
+  })
+
+  test('a verifier issue without its full problem statement is refused by its index and field', async () => {
+    const issue = openIssue('The authority document is unavailable.')
+    const { result, calls } = await simulate({
+      verify: { verify: verification([], { issues: [{ ...issue, problem: { ...issue.problem, whyUnsolved: ' ' } }] }) },
+    })
+    expect(result.detail).toContain('Issue issue:0 (unresolved), field problem.whyUnsolved: must be nonempty text')
+    expect([result.exit, calls.some(c => c.phase === 'Fix')]).toEqual(['failed', false])
   })
 
   test('a suggested spec edit does not block implementation, normal reviews or proof', async () => {
@@ -821,7 +832,7 @@ describe('workflow verification and consolidation', () => {
     const { result, calls } = await simulate({
       reports: { 'review:rules': { findings: [finding] } },
       verify: { 'verify': verification([cleanup], {
-        issues: [{ kind: 'unresolved', detail: 'The required retention policy is undefined, so deletion safety cannot be checked.' }],
+        issues: [openIssue('The required retention policy is undefined, so deletion safety cannot be checked.')],
       }) },
     })
     expect(result.exit).toBe('root-resolution')
@@ -1390,7 +1401,7 @@ describe('structured stage output', () => {
 
   test('a reading seat\'s blocking limitation reaches the verifier and the root only as the verifier\'s issue', async () => {
     const limitation = { what: 'the integration service is unreachable from this seat', effect: 'blocks' }
-    const issue = { kind: 'unresolved', detail: 'Reach the integration service: ' + limitation.what }
+    const issue = openIssue('Reach the integration service: ' + limitation.what)
     for (const seat of readers) {
       const label = 'review:' + seat
       const { result, calls } = await simulate({
@@ -1527,7 +1538,7 @@ describe('one-pass remaining-items handoff', () => {
   })
 
   test('verifier issues retain their full objects beside the approvals the fixer applied', async () => {
-    const issue = { kind: 'unresolved', detail: 'Required evidence is unavailable.' }
+    const issue = openIssue('Required evidence is unavailable.')
     const approval = decision([source('correctness')])
     const { result } = await simulate({ reports: oneReport, verify: { verify: verification([approval], { issues: [issue] }) },
       fixes: { fix: fixed([disposition()]) } })
@@ -1538,7 +1549,7 @@ describe('one-pass remaining-items handoff', () => {
     expect(result.remaining).toHaveLength(2)
   })
 
-  const toFixIssue = { kind: 'unresolved', detail: 'Required evidence is unavailable.' }
+  const toFixIssue = openIssue('Required evidence is unavailable.')
   const toFixRoastFinding = { ...finding, claim: 'The retry loop never ends.' }
   const toFixDecisions = [decision([source('correctness', 0)]), decision([source('correctness', 1)], { action: 'unresolved', correction: '' }),
     decision([source('correctness', 2)]), decision([source('correctness', 3)])]
@@ -2569,10 +2580,10 @@ describe('follow-up runs', () => {
   for (const [name, answer, message] of [
     ['no answer', null, 'Missing entry key'],
     ['an unresolved answer with a reason', { ...unresolved('verify:0'), reason: 'Which channel should it use?' },
-      'An unresolved answer states its problem in problem and carries no reason: verify:0'],
-    ['a fix with a problem', { ...disposition('verify:0'), problem: unresolved('verify:0').problem }, 'Only an unresolved answer carries a problem: verify:0'],
+      'Answer verify:0 (unresolved), field reason: an unresolved result states its problem in problem and carries no reason'],
+    ['a fix with a problem', { ...disposition('verify:0'), problem: unresolved('verify:0').problem }, 'Answer verify:0 (fixed), field problem: only an unresolved result carries a problem statement'],
     ['a problem without its reason for being unsolved', { ...unresolved('verify:0'), problem: { ...unresolved('verify:0').problem, whyUnsolved: '' } },
-      'Missing the whyUnsolved of the problem of verify:0'],
+      'Answer verify:0 (unresolved), field problem.whyUnsolved: must be nonempty text'],
   ]) {
     test(`a follow-up implementer whose answers hold ${name} is retried and then fails the run`, async () => {
       const answers = [...answer ? [answer] : [], disposition('roaster:0')]

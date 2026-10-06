@@ -620,8 +620,9 @@ rules or returns it unresolved with the problem stated.
 - Require a nonempty `correction` only on `approve-fix`. Other actions may omit it. A supplied
   correction is a proposal, and only an approval enters the fixer list. Every action except
   `unresolved` carries a nonempty `reason` and no `problem`.
-- Read a verifier validation failure by its source IDs, field and unmet requirement. The script
-  identifies those in decision failures so a retry can correct the report it refused.
+- Read a validation failure by the result, field and unmet requirement it names. The script names a
+  decision by its source IDs, an issue by `issue:<index>` and a writer's answer by its key, so a
+  retry can correct the report it refused.
 - Every inverse-spec source finding carries CRITICAL severity unconditionally, regardless of the
   label it arrived with (law 13): `record` and `cleanup` are never available for one (an
   inverse-spec finding is about a choice made IN this unit's own diff, never work outside its repair

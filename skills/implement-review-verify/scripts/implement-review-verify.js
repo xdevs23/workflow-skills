@@ -430,8 +430,8 @@ const VERIFY = { type: 'object', additionalProperties: false,
         receipts: RECEIPTS,
       } } },
     // Limitations and unchecked coverage must not disappear merely because they lacked a source finding.
-    issues: { type: 'array', items: { type: 'object', required: ['kind', 'detail'], additionalProperties: false,
-      properties: { kind: { enum: ['unresolved'] }, detail: { type: 'string' } } } },
+    issues: { type: 'array', items: { type: 'object', required: ['kind', 'problem'], additionalProperties: false,
+      properties: { kind: { enum: ['unresolved'] }, problem: PROBLEM } } },
     specSuggestions: STRINGS } }
 
 // The hard flag is the abort field (law 8): a trigger other than none. Cold seats carry no abort
@@ -927,6 +927,24 @@ const exactlyOnce = (actual, expected, label) => {
   }
   if (seen.size !== wanted.size) throw new Error('Missing ' + label + ': ' + [...wanted].filter(id => !seen.has(id)).join(', '))
 }
+// A failure names the result it refused, the field and the unmet requirement, so a retry can correct it.
+const fieldError = subject => (field, requirement) => new Error(subject + ', field ' + field + ': ' + requirement)
+const requireNonempty = (fail, field, value) => {
+  if (typeof value !== 'string' || !value.trim()) throw fail(field, 'must be nonempty text')
+}
+const checkProblem = (problem, fail) => {
+  for (const field of PROBLEM.required) requireNonempty(fail, 'problem.' + field, problem?.[field])
+}
+// An unresolved result states its problem and carries no reason; every other result is the reverse.
+const checkStatement = (result, unresolved, fail) => {
+  if (unresolved) {
+    if (result.reason !== undefined) throw fail('reason', 'an unresolved result states its problem in problem and carries no reason')
+    checkProblem(result.problem, fail)
+  } else {
+    requireNonempty(fail, 'reason', result.reason)
+    if (result.problem !== undefined) throw fail('problem', 'only an unresolved result carries a problem statement')
+  }
+}
 // The citation a rejection of an unbacked-choice finding carries in its authority: the spec entry
 // by its session file and line, then the backing words quoted together with their surrounding context.
 const BACKING = /\bspec entry [^\s:]+:[1-9][0-9]*: "[\s\S]*\S[\s\S]*"/
@@ -955,19 +973,10 @@ const checkVerification = (v, sources, snaps) => {
   const seatOf = new Map(sources.map(f => [f.id, f.seat]))
   const kindOf = new Map(sources.map(f => [f.id, f.kind]))
   for (const d of v.decisions) {
-    const invalid = (field, requirement) => new Error('Decision ' + JSON.stringify(d.sourceIds) +
-      ' (' + d.action + '), field ' + field + ': ' + requirement)
-    const requireField = (field, value = d[field]) => {
-      if (typeof value !== 'string' || !value.trim()) throw invalid(field, 'must be nonempty text')
-    }
+    const invalid = fieldError('Decision ' + JSON.stringify(d.sourceIds) + ' (' + d.action + ')')
+    const requireField = field => requireNonempty(invalid, field, d[field])
     if (!d.sourceIds.length) throw invalid('sourceIds', 'must name at least one source finding')
-    if (d.action === 'unresolved') {
-      if (d.reason !== undefined) throw invalid('reason', 'an unresolved finding states its problem in problem and carries no reason')
-      for (const field of PROBLEM.required) requireField('problem.' + field, d.problem?.[field])
-    } else {
-      requireField('reason')
-      if (d.problem !== undefined) throw invalid('problem', 'only an unresolved finding carries a problem statement')
-    }
+    checkStatement(d, d.action === 'unresolved', invalid)
     requireField('evidence')
     if (d.action === 'approve-fix') {
       for (const field of ['authority', 'correction', 'constraints', 'acceptance']) requireField(field)
@@ -1003,18 +1012,10 @@ const checkVerification = (v, sources, snaps) => {
       throw invalid('action', 'Inverse-spec finding cannot be dispositioned as cleanup; it goes to the follow-up run')
     }
   }
-  for (const [index, issue] of v.issues.entries()) requireText(issue.detail, 'issue:' + index + ', field detail (must be nonempty text)')
+  for (const [index, issue] of v.issues.entries()) checkProblem(issue.problem, fieldError('Issue issue:' + index + ' (' + issue.kind + ')'))
 }
 const checkAnswers = dispositions => {
-  for (const d of dispositions) {
-    if (d.disposition === 'unresolved') {
-      if (d.reason !== undefined || !d.problem) throw new Error('An unresolved answer states its problem in problem and carries no reason: ' + d.key)
-      for (const field of PROBLEM.required) requireText(d.problem[field], 'the ' + field + ' of the problem of ' + d.key)
-    } else {
-      if (d.problem !== undefined) throw new Error('Only an unresolved answer carries a problem: ' + d.key)
-      requireText(d.reason, 'the reason of the answer to ' + d.key)
-    }
-  }
+  for (const d of dispositions) checkStatement(d, d.disposition === 'unresolved', fieldError('Answer ' + d.key + ' (' + d.disposition + ')'))
 }
 const checkFix = (result, queue, starts) => {
   checkWriterSnapshot(result, starts)
