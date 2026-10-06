@@ -22,8 +22,7 @@ Rules:
   limitations (effect blocks or narrows), never in findings, because a non-defect finding can
   never be closed. Every finding names its primary site as one
   repo-relative path in file, cites both sites as receipts (file, line, quote), says which should
-  be the single path, rates **must-fix / should-fix / nit**, and names who can close it:
-  fixer-actionable / orchestrator-only / later-phase.
+  be the single path, and rates **must-fix / should-fix / nit**.
 - A limitation is only something you were supposed to check and could not. An act your own rules
   forbid, such as running tests, builds or the spec tool as a reading stage, and input you are not
   given by design, such as the private spec for an unbriefed stage, are never limitations and are

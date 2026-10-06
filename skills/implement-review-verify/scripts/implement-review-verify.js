@@ -151,8 +151,7 @@ const AUTHORITY = [                    // authority-aware seats only; quality us
   'NEVER end a turn waiting on a backgrounded check; your returned object IS the deliverable.',
   'A FINDING IS A DEFECT: what you checked and how goes in coverage, what you',
   'could not check in limitations (effect blocks or narrows). Every finding carries at least one receipt (file, line, quote).',
-  'Every finding cites a FILE and names WHO CAN CLOSE IT - the actionability lane, one of:',
-  'fixer-actionable / orchestrator-only / later-phase / not-a-defect.',
+  'Every finding cites a FILE.',
   'Cite every file as a REPO-RELATIVE path so each receipt identifies its source.',
   'Ordinary findings cover the change; the rule reader checks full changed files and separates cleanup.',
   'You may NEVER edit a spec or any other AUTHORITY DOCUMENT: report what you find in it. A run\'s spec never changes,',
@@ -255,13 +254,12 @@ const GIT = { type: 'object', required: ['head', 'status'], additionalProperties
 // A repository is named by its path in the base list, never by where it sits on disk.
 const REPOSITORY_PATH = { type: 'string', description: 'The path of the repository exactly as the base list names it, such as ., never an absolute path.' }
 // A finding is a defect with at least one receipt. Project-benefit kinds mark a choice made in
-// THIS unit's diff; a finding without kind is ordinary, which keeps the cleanup lane open for a
-// band-aid that already existed beside it.
-const FINDING = { type: 'object', required: ['file', 'claim', 'severity', 'lane', 'receipts'], additionalProperties: false,
+// THIS unit's diff; a finding without kind is ordinary, which keeps cleanup open for a band-aid
+// that already existed beside it.
+const FINDING = { type: 'object', required: ['file', 'claim', 'severity', 'receipts'], additionalProperties: false,
   properties: {
     file: { type: 'string' }, claim: { type: 'string' },
     severity: { enum: ['must-fix', 'should-fix', 'nit', 'CRITICAL'] },
-    lane: { enum: ['fixer-actionable', 'orchestrator-only', 'later-phase', 'not-a-defect'] },
     kind: { enum: ['band-aid', 'longer-route'] },
     receipts: RECEIPTS,
   } }
@@ -332,10 +330,9 @@ const INVERSE = { type: 'object', additionalProperties: false,
         class: { enum: ['authorized', 'derivation', 'excess', 'missing-decision', 'directive-conflict'] } } } } } }
 // The rule reader's finding also carries scope: in the change, or an existing violation beside it.
 const ruleFindings = kinds => ({ type: 'array', items: { type: 'object', additionalProperties: false,
-  required: ['file', 'claim', 'severity', 'lane', 'receipts', 'scope'],
+  required: ['file', 'claim', 'severity', 'receipts', 'scope'],
   properties: { file: { type: 'string' }, claim: { type: 'string' },
     severity: { enum: ['must-fix', 'should-fix', 'nit', 'CRITICAL'] },
-    lane: { enum: ['fixer-actionable', 'orchestrator-only', 'later-phase', 'not-a-defect'] },
     kind: kinds, receipts: RECEIPTS, scope: { enum: ['in-change', 'beside'] } } } })
 const RULE_SOURCES = { type: 'array', items: { type: 'object', required: ['path', 'read'], additionalProperties: false,
   properties: { path: { type: 'string' }, read: { type: 'boolean' } } } }
@@ -624,7 +621,6 @@ const withReceipts = (items, label) => {
 }
 const checkReader = r => {
   withReceipts(r.findings, 'finding')
-  for (const f of r.findings) if (!f.lane) throw new Error('finding without a lane: ' + f.claim)
 }
 // A transcript pointer needs the key path of the quoted part; a rule pointer names a line of a file
 // that is no JSON record, so its key path is empty.
