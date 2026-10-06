@@ -401,7 +401,7 @@ Run independent reviewers in parallel, each owning a DISTINCT lens, each via its
 This phase is a **genuine barrier**: the finding verifier needs every seat's object before
 consolidation.
 
-- **The review stage has sixteen fixed, mandatory seats.** Every main run runs all of them, whatever
+- **The review stage has sixteen fixed, mandatory reviewers.** Every main run runs all of them, whatever
   the size of the change: correctness, spec compliance, the duplicate checker, quality,
   inverse-spec, the project rule reader, cold alternatives, and the nine audit seats (separation of
   concerns, abstraction quality, code smell, type safety, code cleanliness, missing gaps, domain

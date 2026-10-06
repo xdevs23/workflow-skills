@@ -28,7 +28,7 @@ Rules:
   given by design, such as the private spec for an unbriefed stage, are never limitations and are
   not reported. The same holds for every stage object: discard a limitation that names an act the
   stage's own rules forbid or input the stage is not given by design, without a decision.
-- The review stage has sixteen fixed seats, named here by the label their objects carry, with the
+- The review stage has sixteen fixed reviewers, named here by the label their objects carry, with the
   template where it differs: correctness (reviewer-correctness), spec (reviewer-spec-compliance),
   dupes (duplicate-checker), quality, inverse (reviewer-inverse-spec), rules (project-rule-reader),
   alternatives (cold-alternatives), and the nine audit seats separation-of-concerns,
