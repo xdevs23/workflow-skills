@@ -601,20 +601,22 @@ reviewer or verifier prefers it, and goes to the follow-up run, whose implemente
 rules or returns it unresolved with the problem stated.
 
 - **The verifier takes one explicit decision per consolidated group:**
-  - **approve-fix**: verified defect and already-authorized correction. Supply evidence,
-    authority references with EXACT QUOTES, the correction, constraints and an acceptance check.
-  - **reject**: false positive or unsupported objection, with concrete counterevidence.
-    Duplicates are MERGED with all source IDs, not silently rejected or discarded.
+  - Report **approve-fix** for a verified defect with an already-authorized correction. Supply
+    evidence, authority references with EXACT QUOTES, the correction, constraints and an acceptance
+    check.
+  - Report **reject** for a false positive or an unsupported objection, with concrete
+    counterevidence. Duplicates are MERGED with all source IDs, not silently rejected or discarded.
   - Report **unresolved** for a necessary choice, demonstrated impossibility or required
-    investigation that the available information and authority do not resolve. Supply `problem` with three nonempty
-    fields: `problem`, the actual problem; `why`, why it matters; and `whyUnsolved`, why the available
-    information and authority do not resolve it. Supply evidence, receipts and source IDs, with no
-    `reason`. The claim goes to the follow-up run for investigation. Retain a non-blocking proposed
-    spec edit in `specSuggestions` or as `record` without making it a prerequisite.
+    investigation that the available information and authority do not resolve. Supply `problem`
+    with three nonempty fields: `problem`, the actual problem; `why`, why it matters; and
+    `whyUnsolved`, why the available information and authority do not resolve it. Supply evidence,
+    receipts and source IDs, with no `reason`. The claim goes to the follow-up run for
+    investigation. Retain a non-blocking proposed spec edit in `specSuggestions` or as `record`
+    without making it a prerequisite.
   - Report **cleanup** for verified work outside this unit's repair scope. Retain concrete cleanup
     entries and receipts for your end-of-run handoff to the todo record. A correction is optional.
-  - **record**: genuinely non-blocking observations, retained in the ledger. Never use it
-    to dispose of a confirmed must-fix or CRITICAL violation.
+  - Report **record** for a genuinely non-blocking observation, retained in the ledger. Never use
+    it to dispose of a confirmed must-fix or CRITICAL violation.
 - Require a nonempty `correction` only on `approve-fix`. Other actions may omit it. A supplied
   correction is a proposal, and only an approval enters the fixer list. Every action except
   `unresolved` carries a nonempty `reason` and no `problem`.

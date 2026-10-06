@@ -1097,7 +1097,7 @@ describe('coder sense check and project-benefit review', () => {
     expect(result.projectBenefitDecisions.map(d => d.findings[0].id)).toEqual([source('inverse'), source('alternatives')])
   })
 
-  test("a cold seat's kind-bearing finding on a mechanism the record is silent about reaches the root unresolved", async () => {
+  test("an unbriefed reviewer's kind-bearing finding on a mechanism the record is silent about reaches the root unresolved", async () => {
     const silent = benefit([source('quality')], { action: 'unresolved', authority: 'The recorded words hold nothing about the retry wrapper.',
       correction: '' })
     const { result, calls } = await simulate({ reports: report('review:quality', [bandAid]), verify: { 'verify': verification([silent]) } })
