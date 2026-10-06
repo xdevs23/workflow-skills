@@ -2,7 +2,6 @@ import { createHash } from 'node:crypto'
 import { createReadStream } from 'node:fs'
 import { readdir, readFile, realpath, stat } from 'node:fs/promises'
 import { join, resolve } from 'node:path'
-import { createInterface } from 'node:readline'
 import { parseArgs } from 'node:util'
 import { fromMarkdown } from 'mdast-util-from-markdown@2.0.3'
 import { fingerprint } from './fingerprint.js'
@@ -104,20 +103,33 @@ const parseRecord = (line: string): Mapping | undefined => {
 }
 const sha256Of = (bytes: Buffer) => createHash('sha256').update(bytes).digest('hex')
 
+// The lines of a JSONL stream, each ended by "\n" alone, with a "\r" before it counted as part of the
+// line ending. node:readline also ends a line at U+2028 and U+2029, which a JSON string may hold
+// unescaped, so it would split one record into several lines.
+async function* jsonlLines(input: AsyncIterable<string>) {
+  let pending = ''
+  for await (const chunk of input) {
+    const lines = chunk.split('\n')
+    lines[0] = pending + lines[0]
+    pending = lines.pop()!
+    for (const line of lines) yield line.endsWith('\r') ? line.slice(0, -1) : line
+  }
+  if (pending) yield pending
+}
+
 // The record at a line of a transcript, with the ids of the question-dialog calls asked before it.
 async function readCited(transcripts: string, reference: Mapping) {
   const input = createReadStream(resolve(transcripts, reference.file as string), { encoding: 'utf8' })
-  const reader = createInterface({ input, crlfDelay: Infinity })
   let cited: unknown, found = false, current = 0
   const asked = new Set<string>()
   try {
-    for await (const line of reader) {
+    for await (const line of jsonlLines(input)) {
       if (++current === reference.line) { cited = JSON.parse(line); found = true; break }
       if (!line.includes(dialogTool)) continue
       const earlier = parseRecord(line)
       if (earlier?.type === 'assistant') for (const call of dialogCalls(earlier)) asked.add(call.id as string)
     }
-  } finally { reader.close(); input.destroy() }
+  } finally { input.destroy() }
   if (!found) throw new Error('line is outside the transcript')
   return { cited, asked }
 }

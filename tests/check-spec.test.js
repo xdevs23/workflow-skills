@@ -182,6 +182,17 @@ describe('unit spec validation', () => {
     invalid(changed(s => { s.entries[0].file = 'missing.jsonl' }), 'entry 1: transcript reference failed')
   })
 
+  test('a line separator or paragraph separator inside a JSON string does not end a transcript line', () => {
+    const session = join(scratch, 'separator-session.jsonl')
+    const records = [
+      { type: 'assistant', uuid: 'separated', message: { content: [{ type: 'text', text: 'One two three.' }] } },
+      { type: 'user', uuid: 'after', origin: { kind: 'human' }, message: { content: 'Keep both.' } },
+    ]
+    writeFileSync(session, records.map(record => JSON.stringify(record) + '\n').join(''))
+    const result = run(written({ unit: 'example', entries: [{ file: session, line: 2, uuid: 'after', author: 'user', text: 'Keep both.' }] }))
+    expect([result.exit, result.err]).toEqual([0, ''])
+  })
+
   describe('a user entry', () => {
     const unfound = 'entry 1.text: not found in the cited user message'
     const failed = 'entry 1: transcript reference failed: '
