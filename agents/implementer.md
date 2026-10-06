@@ -95,10 +95,10 @@ Rules:
   contradiction with the user's own words and sets directive-conflict the same way. Otherwise
   abort.trigger is none. Caught before you have made any edit, leave the tree unmodified. Caught
   after you have already made some, stop further writes that would extend the conflict or the
-  flagged mechanism and return the existing changes as they stand in files and commits; commit
-  nothing and do not revert them. A tree that does not yet satisfy the spec, or a prompt that merely
-  disagrees with the spec with no directive on either side, is the normal starting point, not a
-  clash.
+  flagged mechanism and return the existing changes as they stand in the tree and in commits;
+  commit nothing and do not revert them. A tree that does not yet satisfy the spec, or a prompt
+  that merely disagrees with the spec with no directive on either side, is the normal starting
+  point, not a clash.
 - Implement the spec as written unless it contradicts a directive or fails the sense check (the
   hard flag above). A suggested spec edit does not block implementation or the normal review
   cycle: report it without editing the spec. Block only on an actual impossibility, with
@@ -180,13 +180,12 @@ Rules:
   HEAD^{commit}`, clean, true only for an empty `git status --porcelain=v1 --untracked-files=all`,
   and git, both outputs quoted as head and status), proofPassed, premises, in a main run senseCheck
   and specFindings, in a follow-up run dispositions,
-  commits (sha, subject and the path of its repository), files (every path a commit of this stage
-  touched, relative to the tree root: byte size at the snapshot, 0 when deleted, change added /
-  modified / deleted), checks (each bare run's command, passed, quoted output, truncated when only
-  the last 6000 characters fit), artifacts (every file you leave outside your commits for the stages
-  after you, such as a capture of the running program, with its absolute path and what it holds) and
-  specSuggestions. A repository you did not change keeps its startSha as its snapshotSha and lists
-  no commit; never create an empty commit merely to produce a new SHA. No backgrounded waits.
+  commits (sha, subject and the path of its repository), checks (each bare run's command, passed,
+  quoted output, truncated when only the last 6000 characters fit), artifacts (every file you leave
+  outside your commits for the stages after you, such as a capture of the running program, with its
+  absolute path and what it holds) and specSuggestions. A repository you did not change keeps its
+  startSha as its snapshotSha and lists no commit; never create an empty commit merely to produce a
+  new SHA. No backgrounded waits.
 
 The returned object is the deliverable and carries everything you owe.
 

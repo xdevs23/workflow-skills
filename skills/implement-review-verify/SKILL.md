@@ -314,8 +314,8 @@ collisions and consistency drift.
   without the user's words (`no-words`), or an invalid spec (`invalid-spec`) sets a trigger other
   than `none`, with the reason in `abort.reason`. Caught before any edit, it stops with the tree
   UNMODIFIED; caught after some edits were already made, it stops further writes that would extend
-  the conflict or the flagged mechanism and returns the existing changes as they stand in `files`
-  and `commits`, committing nothing and without reverting them. Four triggers, one field, one
+  the conflict or the flagged mechanism and returns the existing changes as they stand in the tree
+  and in `commits`, committing nothing and without reverting them. Four triggers, one field, one
   disposition: an abort class with no trigger of its own is undetectable, and a trigger with more
   than one disposition deadlocks. The second and third triggers belong to the writing seats and the
   fourth to every stage that reads the spec. A reading seat reports the sense-check observation as a
@@ -329,10 +329,9 @@ collisions and consistency drift.
   anything beyond the decided scope as an invention instead of building it.
 - **The implementer's checks run once, after its last write.**
 - **The implementer commits only its own scoped changes after checks.**
-- **The implementer returns its snapshot with the evidence for it.** It returns `files` (every path
-  a commit of the stage touched, with its byte size at the snapshot), `checks` (each bare run with
-  its quoted output), `commits`, the full immutable snapshot SHA, `clean` and `git` (the quoted HEAD
-  and status), `artifacts` and `specFindings`.
+- **The implementer returns its snapshot with the evidence for it.** It returns `checks` (each bare
+  run with its quoted output), `commits`, the full immutable snapshot SHA, `clean` and `git` (the
+  quoted HEAD and status), `artifacts` and `specFindings`.
 - **A failed check or commit is an incomplete stage**, never a fabricated successful snapshot.
 
 #### Writer commits are snapshots, not integration permission
@@ -352,7 +351,8 @@ collisions and consistency drift.
 - Each writer returns `repositories`, one entry per repository of the base list with its `path`,
   `startSha`, full `snapshotSha`, `clean` and `git` (the quoted output of `git rev-parse --verify
   HEAD^{commit}` and `git status --porcelain=v1 --untracked-files=all` in that repository), then
-  `commits`, each naming its repository, `files`, relative to the tree root, and `checks`.
+  `commits`, each naming its repository, and `checks`. The paths a writer changed are read from
+  its commits, so no writer lists them.
 - Expect the implementer to return `artifacts` as well: every file it leaves outside its commits for
   the stages after it, such as a capture of the running program, with its absolute path and what it
   holds.
@@ -588,11 +588,8 @@ lenses of every run, and the main script stops a run whose seat list holds anoth
   resolves conflicts using evidence, and merges duplicate defects into ONE fix list, every decision
   with receipts. It preserves every source ID: consolidation is never permission to drop a finding.
 - It also checks every seat's limitations, inspects each implementer commit in `writerScope`,
-  naming its repository, and returns its own `repositories` and `checks`.
-  A writer's `files` list names the paths of all its commits together, relative to the tree root,
-  so `filesMatch` is true when every path the commit touched, under its repository's path, appears
-  in that list. A path in `files` that no commit of the writer touched is a writer-scope problem,
-  reported in the note of the writer's last commit with `ok` false.
+  naming its repository, with `ok` false and the reason in its note when the commit holds an
+  unrelated change or rewrites history, and returns its own `repositories` and `checks`.
 
 This is ordinary workflow work and no checkpoint of yours. A verifier is neither a rubber stamp nor
 a new source of design authority. Corrections already authorized by the user's words can proceed
@@ -738,7 +735,7 @@ rules or returns it unresolved with the problem stated.
     untouched;
   - runs full checks BARE AFTER ITS LAST WRITE;
   - commits completed scoped corrections;
-  - then returns the clean snapshot SHA, `git`, `commits`, `files`, `checks` with the quoted output
+  - then returns the clean snapshot SHA, `git`, `commits`, `checks` with the quoted output
     and `proofPassed`.
 - Attest each fix the fixer claims against its approved correction and checks.
 - With an EMPTY approved list the fix pass owes PROOF ONLY and may not edit or create an empty
@@ -780,7 +777,7 @@ rules or returns it unresolved with the problem stated.
   such items; `root-resolution` for unresolved verification, a blocking limitation, an unresolved
   correction or entry, or failed proof; `aborted` for a hard flag; `failed` for a protocol or stage
   failure. Completion requires the verifier's return, both concurrent tasks settling without ending
-  the run, and passing proof. `proof` holds the checks and files of a fixer that passed its writer
+  the run, and passing proof. `proof` holds the checks of a fixer that passed its writer
   checks, otherwise the implementer's. `specSuggestions` holds the suggestions about the spec of a
   fixer that passed its writer checks. Read them as suggestions: none of them blocks the run or
   edits the spec, and a change to the spec still needs the user's words.
@@ -1538,9 +1535,8 @@ The completeness checks, by stage kind:
 - **the other readers**: every finding has a receipt;
 - **writers**: one `repositories` entry per repository of the list; in each, a `snapshotSha` other
   than `startSha` needs commits in that repository and an unchanged one none, the quoted `git.head`
-  equals `snapshotSha` and `clean` equals `git.status` being empty; a new snapshot anywhere needs
-  non-empty `files`, and no new snapshot needs empty `files`; every fixer result quotes a run of
-  the check command, and the last such run has `passed` equal to `proofPassed`; an implementer
+  equals `snapshotSha` and `clean` equals `git.status` being empty; every fixer result quotes a run
+  of the check command, and the last such run has `passed` equal to `proofPassed`; an implementer
   result with a new snapshot quotes a check, and its `proofPassed` is true exactly when the last
   run of every check command it quotes passed;
   every `specFindings` entry of the implementer has evidence by the rules of the concern seats; the
@@ -1559,10 +1555,10 @@ should-fix `fix-limitation` item with its stage label. An implementer whose fail
 limitation ends the main run reaches no verifier either, so the script records each of its
 limitations of effect `narrows` as a should-fix `impl-limitation` item with the label `impl`.
 
-- **ARTIFACT-PRODUCING STAGES PROVE THE ARTIFACT IN `files` AND `checks`.** A stage can produce a
-  long, immaculate ANALYSIS of the work and never create the file; an empty `files` list behind a
-  new snapshot fails the check above, and the finding verifier recomputes from the artifact (law
-  10) by checking `files` against the paths the commit touched. The stage's own account of itself
+- **ARTIFACT-PRODUCING STAGES PROVE THE ARTIFACT IN `commits` AND `checks`.** A stage can produce
+  a long, immaculate ANALYSIS of the work and never create the file; a new snapshot without a
+  commit fails the check above, and the finding verifier recomputes from the artifact (law 10) by
+  reading what each commit changed. The stage's own account of itself
   is a truncation-and-dishonesty detector, never evidence.
 - The second line of defense is downstream: **UNBRIEFED seats refuse to fabricate a review against
   an artifact that is not there**, and say so in `limitations`.

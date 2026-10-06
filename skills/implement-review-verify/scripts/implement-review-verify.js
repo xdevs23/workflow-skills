@@ -208,13 +208,13 @@ const WRITE_GIT = [
   WRITE_SCRATCH,
   'Keep scratch files and the local todo record of workflow-skills:todo-md out of commits unless explicitly requested.',
   'Return repositories, one entry per repository of the list with path, startSha, full snapshotSha, clean and git (head, the commit ID alone,',
-  'and status, the output of git status), commits (each with sha, subject and the path of its repository), files (paths relative to the tree root) and checks;',
+  'and status, the output of git status), commits (each with sha, subject and the path of its repository) and checks;',
   'never an empty commit for a no-op: a repository you left unchanged keeps its startSha as its snapshotSha and lists no commit.',
   'After committing, run git -C <tree>/<path> rev-parse --verify HEAD^{commit} and git status --porcelain=v1 --untracked-files=all in every repository.',
   'RETRY: a prompt that ends with how your previous attempt failed is a retry of this stage. The commits and changes its earlier attempts left in',
   'the tree are this stage\'s own work: never reset, revert or repeat them. Read each repository from its START SHA to its HEAD beside the objects',
   'the earlier attempts returned, do only what remains of your assignment, and return the report of the whole stage: startSha is the START SHA',
-  'the stage started from, snapshotSha the commit you leave, and commits and files cover every commit since the START SHA, those of the earlier',
+  'the stage started from, snapshotSha the commit you leave, and commits cover every commit since the START SHA, those of the earlier',
   'attempts included.',
 ].join('\n')
 // The spec rides as its path, never as a copy: the spec check validates that file (law 7), and the
@@ -294,9 +294,6 @@ const REPOSITORIES = { type: 'array', minItems: 1, items: { type: 'object', addi
 // A snapshot of the tree: one full commit ID per repository.
 const SNAPSHOTS = { type: 'array', minItems: 1, items: { type: 'object', required: ['path', 'sha'], additionalProperties: false,
   properties: { path: { type: 'string' }, sha: COMMIT_ID } } }
-// One entry per path a commit of the stage touched; bytes is the size at the snapshot, 0 when deleted.
-const FILES = { type: 'array', items: { type: 'object', required: ['path', 'bytes', 'change'], additionalProperties: false,
-  properties: { path: { type: 'string' }, bytes: { type: 'integer', minimum: 0 }, change: { enum: ['added', 'modified', 'deleted'] } } } }
 const STRINGS = { type: 'array', items: { type: 'string' } }
 // Files the implementer leaves outside its commits for the stages after it, such as a capture of the
 // running program: where each lies and what it holds. The script hands them on without knowing what they are.
@@ -361,16 +358,16 @@ const SPEC_FINDINGS = { type: 'array', items: { type: 'object', required: ['evid
 const SPEC_CHECK = { type: 'object', required: ['exitCode', 'stdout', 'stderr'], additionalProperties: false,
   properties: { exitCode: { type: 'integer' }, stdout: { type: 'string' }, stderr: { type: 'string' } } }
 
-// Writer schemas. The deliverable proof is files together with checks: an account of the work
-// with an empty files list behind a new snapshot fails the completeness check below.
+// Writer schemas. The deliverable proof is commits together with checks: a new snapshot without a
+// commit in its repository fails the completeness check below.
 const IMPLEMENT = { type: 'object', additionalProperties: false,
   required: ['specCheck', 'abort', 'limitations', 'repositories', 'proofPassed', 'premises',
-    'senseCheck', 'specFindings', 'commits', 'files', 'checks', 'artifacts', 'specSuggestions'],
+    'senseCheck', 'specFindings', 'commits', 'checks', 'artifacts', 'specSuggestions'],
   properties: { specCheck: SPEC_CHECK, abort: ABORT, limitations: LIMITATIONS, repositories: REPOSITORIES, proofPassed: { type: 'boolean' },
     premises: PREMISES,
     senseCheck: { type: 'object', required: ['passed', 'recordSilent', 'note'], additionalProperties: false,
       properties: { passed: { type: 'boolean' }, recordSilent: { type: 'boolean' }, note: { type: 'string' } } },
-    specFindings: SPEC_FINDINGS, commits: COMMITS, files: FILES, checks: CHECKS, artifacts: ARTIFACTS, specSuggestions: STRINGS } }
+    specFindings: SPEC_FINDINGS, commits: COMMITS, checks: CHECKS, artifacts: ARTIFACTS, specSuggestions: STRINGS } }
 const PROBLEM = { type: 'object', required: ['problem', 'why', 'whyUnsolved'], additionalProperties: false,
   properties: { problem: { type: 'string' }, why: { type: 'string' }, whyUnsolved: { type: 'string' } } }
 // The schema keywords have no unions, so checkAnswers holds each answer to its one field.
@@ -380,15 +377,15 @@ const DISPOSITIONS = { type: 'array', items: { type: 'object', additionalPropert
     reason: { type: 'string' }, problem: PROBLEM, receipts: RECEIPTS } } }
 const FIX = { type: 'object', additionalProperties: false,
   required: ['abort', 'limitations', 'repositories', 'proofPassed', 'premises', 'commits',
-    'files', 'checks', 'specSuggestions', 'dispositions', 'touched'],
+    'checks', 'specSuggestions', 'dispositions'],
   properties: { abort: ABORT, limitations: LIMITATIONS, repositories: REPOSITORIES, proofPassed: { type: 'boolean' }, premises: PREMISES,
-    commits: COMMITS, files: FILES, checks: CHECKS, specSuggestions: STRINGS, dispositions: DISPOSITIONS, touched: STRINGS } }
+    commits: COMMITS, checks: CHECKS, specSuggestions: STRINGS, dispositions: DISPOSITIONS } }
 // A follow-up implementer answers entries like a fixer, so it owes no sense check and no spec findings.
 const FOLLOW_UP = { type: 'object', additionalProperties: false,
   required: ['specCheck', 'abort', 'limitations', 'repositories', 'proofPassed', 'premises', 'commits',
-    'files', 'checks', 'artifacts', 'specSuggestions', 'dispositions'],
+    'checks', 'artifacts', 'specSuggestions', 'dispositions'],
   properties: { specCheck: SPEC_CHECK, abort: ABORT, limitations: LIMITATIONS, repositories: REPOSITORIES, proofPassed: { type: 'boolean' },
-    premises: PREMISES, commits: COMMITS, files: FILES, checks: CHECKS, artifacts: ARTIFACTS, specSuggestions: STRINGS,
+    premises: PREMISES, commits: COMMITS, checks: CHECKS, artifacts: ARTIFACTS, specSuggestions: STRINGS,
     dispositions: DISPOSITIONS } }
 const VERIFY = { type: 'object', additionalProperties: false,
   required: ['abort', 'limitations', 'repositories', 'checks', 'writerScope', 'decisions',
@@ -398,14 +395,10 @@ const VERIFY = { type: 'object', additionalProperties: false,
     repositories: { type: 'array', minItems: 1, items: { type: 'object', required: ['path', 'snapshotSha', 'clean', 'git'],
       additionalProperties: false,
       properties: { path: REPOSITORY_PATH, snapshotSha: { type: 'string' }, clean: { type: 'boolean' }, git: GIT } } },
-    // One entry per implementer commit, inspected against its start in its repository. The writer's
-    // files list names the paths of all its commits together, relative to the tree root, so
-    // filesMatch is true when every path the commit touched, under its repository's path, appears in
-    // that list (law 10).
-    writerScope: { type: 'array', items: { type: 'object', required: ['repository', 'sha', 'ok', 'filesMatch', 'note'],
+    // One entry per implementer commit, inspected against its start in its repository.
+    writerScope: { type: 'array', items: { type: 'object', required: ['repository', 'sha', 'ok', 'note'],
       additionalProperties: false,
-      properties: { repository: { type: 'string' }, sha: COMMIT_ID, ok: { type: 'boolean' }, filesMatch: { type: 'boolean' },
-        note: { type: 'string' } } } },
+      properties: { repository: { type: 'string' }, sha: COMMIT_ID, ok: { type: 'boolean' }, note: { type: 'string' } } } },
     decisions: { type: 'array', items: { type: 'object', additionalProperties: false,
       required: ['sourceIds', 'action', 'severity', 'evidence', 'authority',
         'constraints', 'acceptance', 'removal', 'receipts'],
@@ -637,18 +630,13 @@ const checkBacked = r => {
 const checkWriter = r => {
   const paths = new Set(r.repositories.map(repository => repository.path))
   for (const c of r.commits) if (!paths.has(c.repository)) throw new Error('commit ' + c.sha + ' names no repository of the result: ' + JSON.stringify(c.repository))
-  let moved = false
   for (const { path, startSha, snapshotSha, clean, git } of r.repositories) {
     if (git.head.trim() !== snapshotSha) throw new Error('git.head ' + JSON.stringify(git.head) + ' of ' + path + ' differs from snapshotSha ' + JSON.stringify(snapshotSha))
     if (clean !== (git.status === '')) throw new Error('clean disagrees with git.status in ' + path)
     const commits = r.commits.filter(c => c.repository === path)
-    if (snapshotSha !== startSha) {
-      moved = true
-      if (!commits.length) throw new Error('the new snapshot of ' + path + ' needs commits in it')
-    } else if (commits.length) throw new Error('the unchanged snapshot of ' + path + ' lists commits')
+    if (snapshotSha !== startSha && !commits.length) throw new Error('the new snapshot of ' + path + ' needs commits in it')
+    if (snapshotSha === startSha && commits.length) throw new Error('the unchanged snapshot of ' + path + ' lists commits')
   }
-  if (moved && !r.files.length) throw new Error('a new snapshot needs files')
-  if (!moved && r.files.length) throw new Error('an unchanged snapshot lists files')
 }
 // The implementer runs focused checks of its own choice. Once it committed, the last quoted run of
 // each command is that command's outcome, so a passed rerun supersedes an earlier failure, and
@@ -724,12 +712,12 @@ const proof = (writer, label) => {
     end('root-resolution', 'Required checks failed in ' + label + '.')
   }
 }
-// The deliverable of a writer is FILES ON DISK, proved by files and checks in its object: an
-// account of the work is not the work (law 10). The retry in stage() names the actual failure.
+// The deliverable of a writer is FILES ON DISK, proved by its commits and checks: an account of the
+// work is not the work (law 10). The retry in stage() names the actual failure.
 const PROVE = [
-  'Your deliverable is FILES ON DISK, proved by your returned object: files lists every path a commit',
-  'of this stage touched with its byte size at the snapshot, checks quotes the output of every bare',
-  'run, git quotes HEAD and status. An account of the work with an empty files list is not the work.',
+  'Your deliverable is FILES ON DISK, proved by your returned object: commits names every commit of',
+  'this stage, checks quotes the output of every bare run, git quotes HEAD and status. An account of',
+  'the work without a commit is not the work.',
   'Where the deliverable is an AUTHORED ARTIFACT it is MULTI-FILE: ONE FILE PER WRITE CALL, each',
   'under ' + UNIT.fileSizeCap + '. One large file written in a single call fails MID-WRITE at any',
   'output ceiling and leaves a TRUNCATED file rather than an error. The layout of CODE is decided',
@@ -992,7 +980,7 @@ const checkAnswers = dispositions => {
 }
 const checkFix = (result, queue, starts) => {
   checkWriterSnapshot(result, starts)
-  if (!queue.length && (result.touched.length || !sameSnapshots(snapshotsOf(result), starts))) {
+  if (!queue.length && !sameSnapshots(snapshotsOf(result), starts)) {
     throw new Error('Proof-only pass edited or committed changes')
   }
 }
@@ -1010,7 +998,7 @@ const fixPass = (queue, starts) => stage([
   'A correction whose premise the tree, the user\'s words or a rule disprove returns rejected with counterevidence.',
   'A correction that cannot work returns unresolved with its problem statement and receipts, and goes to the follow-up run. Never broaden scope.',
   'Answer every approved key once in dispositions. With an empty list, run proof ONLY, never edit or create an empty commit.',
-  'Run checks after the last write, commit only scoped corrections, and return repositories, commits, files and checks.',
+  'Run checks after the last write, commit only scoped corrections, and return repositories, commits and checks.',
   'APPROVED CORRECTIONS (verify against the tree and authority):', JSON.stringify(queue),
 ].join('\n\n'), {
   label: 'fix', phase: 'Fix', agentType: 'workflow-skills:fixer',
@@ -1087,9 +1075,7 @@ async function verify(SEATS) {
     'In every repository of the list, independently run git -C ' + UNIT.worktree + '/<path> rev-parse --verify HEAD^{commit} and git status --porcelain=v1 --untracked-files=all.',
     'Confirm each immutable commit exists and each clean tree matches it; return repositories with path as the list names it, snapshotSha, clean, and git with head, the commit ID alone, and status, the output of git status.',
     'Inspect each writer commit against its start SHA in its repository for unrelated changes or history rewriting:',
-    ['one writerScope entry per commit, naming its repository, filesMatch true when every path the commit touched, under its repository\'s path, appears in the writer\'s files list.',
-      'The files list covers all commits of the writer together. A path in it that no commit of the writer touched is a',
-      'writer-scope problem: report it in the note of the writer\'s last commit and set that entry\'s ok to false.'].join('\n'),
+    'one writerScope entry per commit, naming its repository, with ok false and the reason in note when the commit holds an unrelated change or rewrites history.',
     'Verify ALL source findings and every seat\'s limitations; consolidate without losing IDs.',
     'Approve only authorized corrections with evidence, receipts, authority quotes, constraints and acceptance.',
     'Set removal true on an approve-fix whose correction removes code, a parameter or a mechanism that nothing uses, that nobody',
@@ -1115,7 +1101,7 @@ async function verify(SEATS) {
   approvalKeys = new Map(approvals.map((d, i) => [d, 'fix:' + i]))
   queue = approvals.map(d => ({ ...d, key: approvalKeys.get(d), pointers: d.sourceIds.flatMap(id => evidenceOf.get(id) ?? []) }))
   // A writer commit outside its scope is the one verification result the fixer must not build on.
-  const outOfScope = verified.writerScope.filter(w => !w.ok || !w.filesMatch)
+  const outOfScope = verified.writerScope.filter(w => !w.ok)
   for (const w of outOfScope) add('writer-scope', w)
   if (outOfScope.length) return end('root-resolution', 'A writer commit left its scope.')
   // Everything else the verifier leaves open goes to the root after the fix stage, not instead of
@@ -1303,8 +1289,7 @@ return {
   dispositions: lastWriter.reported?.dispositions ?? [],
   // The accepted writer's suggestions about the spec, for consideration: neither a blocker nor a spec edit.
   specSuggestions: lastWriter.accepted?.specSuggestions ?? [],
-  proof: passedFix ? { checks: passedFix.checks, files: passedFix.files }
-    : impl ? { checks: impl.checks, files: impl.files } : null,
+  proof: passedFix ? { checks: passedFix.checks } : impl ? { checks: impl.checks } : null,
   spec: checkedSpec, base, snapshots,
   artifacts: impl?.artifacts ?? [], // the follow-up run of the unit hands them to its implementer
   acceptance: 'pending-root-checks', // Pass completion is not size approval or integration permission.

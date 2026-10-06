@@ -88,7 +88,7 @@ const verification = (decisions = [], fields = {}) => ({
   abort: noAbort, limitations: [], checks: [], decisions, issues: [], specSuggestions: [], ...fields,
 })
 const fixed = (dispositions = [], fields = {}) => ({
-  abort: noAbort, limitations: [], premises: [], specSuggestions: [], touched: dispositions.length ? ['src/example.js'] : [],
+  abort: noAbort, limitations: [], premises: [], specSuggestions: [],
   proofPassed: true, checks: [fullCheck(fields.proofPassed ?? true)], dispositions, ...fields,
 })
 const disposition = (key = 'fix:0', kind = 'fixed') => ({ key, disposition: kind, reason: 'Checked the approved correction and its acceptance condition.', receipts: [receipt] })
@@ -103,7 +103,7 @@ const INITIAL = 'b'.repeat(40)
 const FIXED = 'c'.repeat(40)
 // A snapshot of the one-repository tree the tests run in: its single entry has the path '.'.
 const at = sha => [{ path: '.', sha }]
-// A writer object whose commits, files, checks and repository entry agree with the start and snapshot
+// A writer object whose commits, checks and repository entry agree with the start and snapshot
 // fields of its one repository unless overridden. startSha, snapshotSha, clean and git describe that
 // repository; repositories replaces the entry outright.
 const writer = (fields, subject) => {
@@ -112,7 +112,6 @@ const writer = (fields, subject) => {
   const moved = snapshotSha !== startSha
   return {
     commits: moved ? [{ sha: snapshotSha, subject, repository: '.' }] : [],
-    files: moved ? [{ path: 'src/example.js', bytes: 120, change: 'modified' }] : [],
     checks: [check(r.proofPassed)],
     repositories: repositories ?? [{ path: '.', startSha, snapshotSha, clean,
       git: git ?? { head: snapshotSha, status: clean ? '' : ' M src/example.js' } }],
@@ -197,7 +196,7 @@ async function simulate({ reports = {}, verify = {}, fixes = {}, fail = {}, impl
     if (opts.phase === 'Verify') {
       for (const seat of seatLabels) expect(completed.has(`review:${seat}`)).toBe(true)
       return { repositories: [{ path: '.', snapshotSha: currentSha, clean: true, git: { head: currentSha, status: '' } }],
-        writerScope: lastWriter.commits.map(c => ({ repository: c.repository, sha: c.sha, ok: true, filesMatch: true, note: '' })),
+        writerScope: lastWriter.commits.map(c => ({ repository: c.repository, sha: c.sha, ok: true, note: '' })),
         ...(verify[opts.label] ?? verification()) }
     }
     if (opts.agentType === 'roaster') {
@@ -210,9 +209,10 @@ async function simulate({ reports = {}, verify = {}, fixes = {}, fail = {}, impl
       const startSha = fixStart ?? currentSha   // a retried attempt starts where the first one did
       fixStart = startSha
       await beforeFix(opts)
-      const response = fixes[opts.label] ?? fixed()
+      // moves says whether the simulated fixer commits; by default it does when it answers an entry.
+      const { moves, ...response } = fixes[opts.label] ?? fixed()
       const result = writer({ startSha,
-        snapshotSha: response.snapshotSha ?? (response.touched.length ? FIXED : startSha),
+        snapshotSha: response.snapshotSha ?? ((moves ?? response.dispositions.length > 0) ? FIXED : startSha),
         ...response }, 'apply the approved corrections')
       currentSha = result.snapshotSha
       lastWriter = result
@@ -430,7 +430,6 @@ describe('workflow verification and consolidation', () => {
     for (const fields of [{ clean: false }, { snapshotSha: 'HEAD' }, { startSha: BASE }]) {
       const response = fixed([disposition()], { ...fields,
         checks: [{ ...fullCheck(), output: 'fixer proof' }],
-        files: [{ path: 'src/example.js', bytes: 240, change: 'modified' }],
       })
       const rejectedFix = writer({ startSha: INITIAL, snapshotSha: fields.snapshotSha ?? FIXED,
         ...response }, 'apply the approved corrections')
@@ -440,19 +439,13 @@ describe('workflow verification and consolidation', () => {
       })
       expect(['clean', 'follow-up'].includes(result.exit)).toBe(false)
       expect(result.remaining.some(r => r.item.approved?.key === 'fix:0')).toBe(true)
-      expect(result.proof).toEqual({ checks: implementation.checks, files: implementation.files })
+      expect(result.proof).toEqual({ checks: implementation.checks })
       expect(result.snapshots).toEqual(at(INITIAL))
       expect(result.remaining.find(r => r.kind === 'stage-failure').item).toEqual({
         ...rejectedFix, label: 'fix',
         message: 'Writer did not return a clean immutable snapshot of . from its expected start SHA',
       })
     }
-  })
-
-  test('proof-only cannot advance the commit even if no touched files are reported', async () => {
-    const { result } = await simulate({ fixes: { 'fix': fixed([], { snapshotSha: FIXED }) } })
-    expect(['clean', 'follow-up'].includes(result.exit)).toBe(false)
-    expect(result.detail).toContain('Proof-only pass edited or committed')
   })
 
   test('verifier-reported drift or dirty state blocks writing', async () => {
@@ -819,7 +812,7 @@ describe('workflow verification and consolidation', () => {
   test('a fixer rejection closes its approved correction, stays in dispositions and leaves nothing to fix', async () => {
     const rejection = disposition('fix:0', 'rejected')
     const { result, calls } = await simulate({ reports: oneReport, verify: approveOne,
-      fixes: { fix: fixed([rejection], { touched: [] }) } })
+      fixes: { fix: fixed([rejection], { moves: false }) } })
     expect([result.exit, result.remaining, result.dispositions, result.toFix]).toEqual(['clean', [], [rejection], []])
     expect(calls.filter(c => c.agentType === 'fixer')).toHaveLength(1)
   })
@@ -829,7 +822,7 @@ describe('workflow verification and consolidation', () => {
     const holding = { claim: 'The tree holds src/example.js.', holds: true, note: 'It does.' }
     const premise = { claim: 'The prompt says src/example.js already returns the error.', holds: false, note: 'src/example.js:12 still catches it.' }
     const { result } = await simulate({ reports: oneReport, verify: approveOne,
-      fixes: { fix: fixed([rejection], { touched: [], premises: [holding, premise] }) } })
+      fixes: { fix: fixed([rejection], { moves: false, premises: [holding, premise] }) } })
     expect([result.exit, result.remaining, result.toFix])
       .toEqual(['follow-up', [{ kind: 'false-premise', severity: 'must-fix', item: { ...premise, label: 'fix' } }], []])
   })
@@ -838,7 +831,7 @@ describe('workflow verification and consolidation', () => {
     const limitation = { what: 'The integration suite needs a database this tree does not start.', effect: 'narrows' }
     const suggestion = 'Name the error the spec expects for an empty file.'
     const { result } = await simulate({ reports: oneReport, verify: approveOne,
-      fixes: { fix: fixed([disposition('fix:0', 'rejected')], { touched: [], limitations: [limitation], specSuggestions: [suggestion] }) } })
+      fixes: { fix: fixed([disposition('fix:0', 'rejected')], { moves: false, limitations: [limitation], specSuggestions: [suggestion] }) } })
     expect([result.exit, result.remaining, result.specSuggestions])
       .toEqual(['clean', [{ kind: 'fix-limitation', severity: 'should-fix', item: { ...limitation, label: 'fix' } }], [suggestion]])
   })
@@ -846,7 +839,7 @@ describe('workflow verification and consolidation', () => {
   test('an unresolved approval returns to the root and reaches the follow-up run with the fixer\'s problem statement beside it', async () => {
     const left = unresolved('fix:0')
     const { result, calls } = await simulate({ reports: oneReport, verify: approveOne,
-      fixes: { fix: fixed([left], { touched: [] }) } })
+      fixes: { fix: fixed([left], { moves: false }) } })
     expect([result.exit, result.detail]).toEqual(['root-resolution', 'The fixer left an approved correction unresolved.'])
     expect(result.remaining.map(r => r.kind)).toEqual(['unfixed-approval'])
     expect(result.remaining[0].item.response).toEqual(left)
@@ -857,7 +850,7 @@ describe('workflow verification and consolidation', () => {
   test('a fix reported without a commit leaves its approval unfixed and reaches the next fix list with the fixer\'s disposition beside it', async () => {
     const uncommitted = disposition('fix:0')
     const { result } = await simulate({ reports: oneReport, verify: approveOne,
-      fixes: { fix: fixed([uncommitted], { touched: [] }) } })
+      fixes: { fix: fixed([uncommitted], { moves: false }) } })
     expect([result.exit, result.remaining.map(r => r.kind)]).toEqual(['follow-up', ['unfixed-approval']])
     expect(result.remaining[0].item.response).toEqual(uncommitted)
     expect(result.toFix).toEqual([{ source: 'verify:0', decision: { ...approveOne.verify.decisions[0], disposition: uncommitted } }])
@@ -966,7 +959,7 @@ describe('workflow verification and consolidation', () => {
   })
 
   test('proof failure and proof-only edits cannot claim completion', async () => {
-    for (const response of [fixed([], { proofPassed: false }), fixed([], { touched: ['src/example.js'] })]) {
+    for (const response of [fixed([], { proofPassed: false }), fixed([], { snapshotSha: FIXED })]) {
       const { result } = await simulate({ fixes: { 'fix': response } })
       expect(['clean', 'follow-up'].includes(result.exit)).toBe(false)
       expect(result.remaining).not.toHaveLength(0)
@@ -1254,8 +1247,7 @@ describe('structured stage output', () => {
   })
 
   for (const [name, fields, message] of [
-    ['a commit but no files', { files: [] }, 'a new snapshot needs files'],
-    ['files but no commit', { commits: [] }, 'the new snapshot of . needs commits in it'],
+    ['a new snapshot without a commit', { commits: [] }, 'the new snapshot of . needs commits in it'],
     ['clean disagreeing with its status output', { git: { head: INITIAL, status: ' M src/example.js' } }, 'clean disagrees with git.status in .'],
     ['an empty git.head', { git: { head: '', status: '' } }, 'git.head "" of . differs from snapshotSha "' + INITIAL + '"'],
     ['git.head disagreeing with snapshotSha', { git: { head: BASE, status: '' } }, 'git.head "' + BASE + '" of . differs from snapshotSha "' + INITIAL + '"'],
@@ -1267,7 +1259,6 @@ describe('structured stage output', () => {
       'proofPassed is true, but the last quoted run of "bun test tests/example.test.js" failed'],
     ['proofPassed false and every last run passed', { proofPassed: false, checks: [check(false), check(true)] },
       'proofPassed is false, but the last quoted run of every check command passed'],
-    ['an unchanged snapshot listing files', { snapshotSha: BASE, files: [{ path: 'src/example.js', bytes: 1, change: 'added' }] }, 'an unchanged snapshot lists files'],
   ]) {
     test(`an implementer with ${name} is retried and then thrown`, async () => {
       const calls = []
@@ -1317,7 +1308,7 @@ describe('structured stage output', () => {
         expect([failure.label, failure.message]).toEqual(['fix', failedThrice('fix', message)])
         expect(failure.refused.map(({ failure, result }) => ({ failure, checks: result.checks, commits: result.commits, dispositions: result.dispositions })))
           .toEqual(Array(3).fill({ failure: message, checks, commits, dispositions }))
-        expect([result.snapshots, result.proof]).toEqual([at(INITIAL), { checks: implementation.checks, files: implementation.files }])
+        expect([result.snapshots, result.proof]).toEqual([at(INITIAL), { checks: implementation.checks }])
         expect(result.remaining.filter(r => r.kind === 'unfixed-approval').map(r => r.item.approved.key)).toEqual(dispositions.map(d => d.key))
         expect(result.remaining.some(r => r.kind === 'unattested-fix')).toBe(false)
       }
@@ -1338,13 +1329,6 @@ describe('structured stage output', () => {
     const { result, calls } = await simulate({ implementation: implemented({ snapshotSha: BASE, checks: [], limitations: [limitation],
       specFindings: [specFinding([9, 11], 'joint-impossibility')] }) })
     expect([retried(calls, 'impl').length, result.exit, result.detail]).toEqual([1, 'root-resolution', 'Blocking limitation from impl.'])
-  })
-
-  test('a fixer with a commit but no files preserves the unfixed approvals', async () => {
-    const { result, calls } = await simulate({ reports: oneReport, verify: approveOne, fixes: { 'fix': fixed([disposition()], { files: [] }) } })
-    expect([result.exit, retried(calls, 'fix').length]).toEqual(['failed', 3])
-    expect(result.remaining.some(r => r.kind === 'unfixed-approval')).toBe(true)
-    expect(result.detail).toContain('a new snapshot needs files')
   })
 
   test('blocking limitations from every stage but the reading seats return their label; narrowing ones continue', async () => {
@@ -1389,14 +1373,12 @@ describe('structured stage output', () => {
     expect(result.remaining.map(r => r.kind)).toEqual(['unattested-fix'])
   })
 
-  test('a writerScope entry reported out of scope or with a files mismatch ends the run for root resolution with a writer-scope item, without a retry', async () => {
-    for (const fields of [{ ok: false }, { filesMatch: false }]) {
-      const entry = { repository: '.', sha: INITIAL, ok: true, filesMatch: true, note: 'the commit also rewrote an unrelated helper', ...fields }
-      const { result, calls } = await simulate({ verify: { 'verify': verification([], { writerScope: [entry] }) } })
-      expect([result.exit, result.remaining]).toEqual(['root-resolution', [{ kind: 'writer-scope', severity: 'CRITICAL', item: entry }]])
-      expect([retried(calls, 'verify').length, calls.some(c => c.phase === 'Fix')]).toEqual([1, false])
-    }
-    const { result } = await simulate({ verify: { 'verify': verification([], { writerScope: [{ repository: '.', sha: INITIAL, ok: true, filesMatch: true, note: '' }] }) } })
+  test('a writerScope entry reported out of scope ends the run for root resolution with a writer-scope item, without a retry', async () => {
+    const entry = { repository: '.', sha: INITIAL, ok: false, note: 'the commit also rewrote an unrelated helper' }
+    const { result: refused, calls } = await simulate({ verify: { 'verify': verification([], { writerScope: [entry] }) } })
+    expect([refused.exit, refused.remaining]).toEqual(['root-resolution', [{ kind: 'writer-scope', severity: 'CRITICAL', item: entry }]])
+    expect([retried(calls, 'verify').length, calls.some(c => c.phase === 'Fix')]).toEqual([1, false])
+    const { result } = await simulate({ verify: { 'verify': verification([], { writerScope: [{ repository: '.', sha: INITIAL, ok: true, note: '' }] }) } })
     expect([result.exit, result.remaining]).toEqual(['clean', []])
   })
 
@@ -1533,13 +1515,13 @@ describe('one-pass remaining-items handoff', () => {
 
   test('the answers of a fixer that aborted close no approval, and the run returns every decision to be fixed', async () => {
     const abort = { trigger: 'sense-check', reason: 'The correction patches a mechanism the user\'s words describe as removed.' }
-    const { result } = await simulateToFix(fixed(approvalAnswers, { abort, touched: [] }))
+    const { result } = await simulateToFix(fixed(approvalAnswers, { abort, moves: false }))
     expect([result.exit, result.toFix.map(item => item.source)])
       .toEqual(['aborted', ['impl:0', 'verify:0', 'verify:1', 'verify:2', 'verify:3', 'issue:0', 'roaster:0']])
   })
 
   test('a writer commit outside its scope still keeps the fixer from running', async () => {
-    const entry = { repository: '.', sha: INITIAL, ok: false, filesMatch: true, note: 'the commit also rewrote an unrelated helper' }
+    const entry = { repository: '.', sha: INITIAL, ok: false, note: 'the commit also rewrote an unrelated helper' }
     const approval = decision([source('correctness')])
     const { result, calls } = await simulate({ reports: oneReport,
       verify: { verify: verification([approval], { writerScope: [entry] }) } })
@@ -1874,11 +1856,8 @@ const LIMITS_RULE = 'a limitation is only something you were supposed to check a
   'COVERAGE lists only what you checked and how. Leave out what your concern has nothing to judge in.\n' +
   'Something you were supposed to check and could not is a limitation, never a coverage entry.'
 const LIMITS_LINE = 'LIMITATIONS: ' + LIMITS_RULE
-const FILES_CHECK = 'one writerScope entry per commit, naming its repository, filesMatch true when every path the commit touched, under its repository\'s path, appears in the writer\'s files list.\n' +
-  'The files list covers all commits of the writer together. A path in it that no commit of the writer touched is a\n' +
-  'writer-scope problem: report it in the note of the writer\'s last commit and set that entry\'s ok to false.'
 
-describe('what a limitation is, and the per-commit files check', () => {
+describe('what a limitation is', () => {
   test('every reading stage receives the limitation rule once, and no writer does', async () => {
     const { calls } = await simulate({ reports: oneReport, verify: approveOne, fixes: { fix: fixed([disposition()]) } })
     expect(calls).toHaveLength(19)
@@ -1888,24 +1867,10 @@ describe('what a limitation is, and the per-commit files check', () => {
     }
   })
 
-  test('the verify prompt, the verifier template and the skill compare each commit with the files list of all commits', async () => {
-    const { calls } = await simulate()
-    expect(calls.find(c => c.label === 'verify').prompt).toContain(FILES_CHECK)
-    expect(await template('finding-verifier')).toContain('The writer\'s files list names the paths of all its commits together, ' +
-      'relative to the tree root, so filesMatch is true when every path the commit touched, under its repository\'s path, appears ' +
-      'in that list. A path in the files list that no commit of ' +
-      'the writer touched is a writer-scope problem: report it in the note of the writer\'s last commit and set that entry\'s ok to false.')
-    expect(flat(skill)).toContain('A writer\'s `files` list names the paths of all its commits together, relative to the tree root, ' +
-      'so `filesMatch` is true when every path the commit touched, under its repository\'s path, appears in that list. ' +
-      'A path in `files` that no commit of the writer touched is a writer-scope ' +
-      'problem, reported in the note of the writer\'s last commit with `ok` false.')
-  })
-
-  test('a writer with two commits and one files list reaches the fix stage when the verifier accepts each commit', async () => {
+  test('a writer with two commits reaches the fix stage when the verifier accepts each commit', async () => {
     const FIRST = 'd'.repeat(40)
     const implementation = implemented({
       commits: [{ sha: FIRST, subject: 'add the error helper', repository: '.' }, { sha: INITIAL, subject: 'return the error through the helper', repository: '.' }],
-      files: [{ path: 'src/errors.js', bytes: 80, change: 'added' }, { path: 'src/example.js', bytes: 120, change: 'modified' }],
     })
     const { result, calls } = await simulate({ implementation, reports: oneReport, verify: approveOne,
       fixes: { fix: fixed([disposition()]) } })
