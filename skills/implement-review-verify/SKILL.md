@@ -809,9 +809,6 @@ rules or returns it unresolved with the problem stated.
 - The read-only reviewers and verifier never edit the todo record or Git excludes; this handoff
   belongs to you.
 
-The enum-locked handoff and the shipped main script implement this contract. The design
-and rejected alternatives are recorded in `docs/workflow-finding-verification.md`.
-
 ## Completion checks: timing, size and project-defined integration
 
 A completed pass returns its evidence and remaining items for your acceptance. Perform the checks
@@ -1037,9 +1034,6 @@ This inspection is separate from the twenty-minute soft ceiling on one agent's t
 measured after the fact and is unchanged by this rule: the inspection watches a run that is still
 moving and can still be stopped, and the ceiling reviews a task that has already finished.
 
-The twelve work-execution rules, their placement and the alternatives rejected for each are
-recorded in [work execution rules](../../docs/work-execution-rules.md).
-
 ### Post-run timing review
 
 - After every run, including an incomplete run, inspect the actual per-stage durations in the
@@ -1229,9 +1223,6 @@ of repeating the rule here.
   a marker invented to carry meaning the native mechanism already carries is a defect, because
   every reader and every later tool has to be taught the private convention before either can be
   correct about the code.
-
-The twelve work-execution rules, their placement and the alternatives rejected for each are
-recorded in [work execution rules](../../docs/work-execution-rules.md).
 
 ## Why this shape (the rationale that makes it work)
 

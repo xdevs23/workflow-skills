@@ -72,6 +72,8 @@ tree at once.
 - A general instruction to fix findings authorizes no particular fix, because the user may not agree
   with a finding. The implementer judges every entry as a claim, by the user's words, the rules and
   the plugin's skills.
+- Design documents remain the writer's choice. An order in every writer's prompt and template made
+  every unit get a document, including units that did not need one.
 
 ## Rejected alternatives
 
