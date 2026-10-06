@@ -191,34 +191,6 @@ specs.
   this tool checks another spec format, so the spec check fails and no run goes past it until the
   plugin is updated; that is the intended effect.
 
-The tracked design document is written by hand from the code after the implementation, so it
-records what was built, and only when the change alters the design.
-
-- A writer, the implementer or a fixer, writes or extends a design document when its change alters
-  the design: what the code does, how its parts fit together, a decision with its reason, or a
-  rejected alternative. A change that alters none of these needs no document, and that is not an
-  incomplete stage. Correcting a design document that describes the code wrongly stays allowed
-  whether or not the design changes.
-- A writer whose change alters the design extends by hand the design document in the documents
-  directory that already describes the part it changed. It writes a new document, named after the
-  unit's spec file, only when no document describes that part.
-- The document describes the change as the code at the writer's final commit implements it: what
-  it does, how its parts fit together, the decisions with their reasons, and the alternatives the
-  user rejected with their reasons.
-- The rejected alternatives come from the user's entries in the spec, and the writer adds none of
-  its own. The writer checks every statement about behaviour against that code.
-- The document carries no words of the user, no local absolute paths and no account of the
-  conversation, and it follows the repository's prose rules and `workflow-skills:writing-style`.
-- The implementer, once its implementation is done, writes or extends the document as its last
-  write when its change alters the design.
-- The implementer's focused checks run once, after its last write.
-- The implementer commits a document it wrote or extended as its own commit.
-- The fixer, once its corrections are done, writes or extends the document by hand when a
-  correction alters the design, as its last write before its checks.
-- The fixer commits a document it wrote or extended as its own commit.
-- The writer prompts of the main script carry this step and name a new document after the spec path
-  of the marked block, `docs/<unit>.md` in a one-repository tree.
-
 ## The shape
 
 The implement-review-verify workflow runs four phases: **Implement → Review → Verify → Fix**.
@@ -355,12 +327,8 @@ collisions and consistency drift.
   mechanism never continues, whatever a stage argues for it.
 - **Scope follows the same rule.** The implementer touches only what the task needs, and flags
   anything beyond the decided scope as an invention instead of building it.
-- **A design document, when the change alters the design, is the implementer's last write.** It
-  writes or extends the document by hand from the code once its implementation is done, as the unit
-  spec section above describes, and a change that alters no design writes none.
 - **The implementer's checks run once, after its last write.**
-- **The implementer commits only its own scoped changes after checks.** A design document it wrote
-  or extended is its own commit.
+- **The implementer commits only its own scoped changes after checks.**
 - **The implementer returns its snapshot with the evidence for it.** It returns `files` (every path
   a commit of the stage touched, with its byte size at the snapshot), `checks` (each bare run with
   its quoted output), `commits`, the full immutable snapshot SHA, `clean` and `git` (the quoted HEAD
@@ -760,10 +728,8 @@ rules or returns it unresolved with the problem stated.
     it decides an inverse-spec or kind-bearing finding; an unresolved correction goes to the
     follow-up run with the fixer's answer beside its decision. An unresolved mechanism stays
     untouched;
-  - writes or extends a design document by hand as its last write once its corrections are done,
-    only when a correction alters the design;
   - runs full checks BARE AFTER ITS LAST WRITE;
-  - commits completed scoped corrections and the document it wrote or extended;
+  - commits completed scoped corrections;
   - then returns the clean snapshot SHA, `git`, `commits`, `files`, `checks` with the quoted output
     and `proofPassed`.
 - Attest each fix the fixer claims against its approved correction and checks.
@@ -1452,16 +1418,11 @@ The phase shape only holds up if the script is written to hold it up.
   `kebab-name` and `one line` as the values a copy replaces, and its phases and every other line
   outside the marked block stay as shipped. A copy that keeps the placeholders shows every run of
   that script in the workflow list under the same name and description.
-- The marked block sits at the top of each file between two comment lines and holds every value a
+- The marked block sits at the top of the file between two comment lines and holds every value a
   unit sets apart from `meta.name` and `meta.description`: the mode, the paths (main checkout,
-  worktree, spec, transcripts, plugin root), the documents directory, the check command, the `base`
-  list, the parent run's result fields of a follow-up run, the rule sources, the per-file size cap
-  and one model entry per agent. It holds values and no
-  prose: no word of yours reaches a stage through it.
-- The documents directory is relative to the tree root and lies inside one repository of the list,
-  `docs` for a tree that is one repository. It holds the design documents a writer extends, and the
-  scripts join it with the spec's file name to name a new one. The writers commit a document they
-  wrote or extended in that repository.
+  worktree, spec, transcripts, plugin root), the check command, the `base` list, the parent run's
+  result fields of a follow-up run, the rule sources, the per-file size cap and one model entry per
+  agent. It holds values and no prose: no word of yours reaches a stage through it.
 - Everything below the block is the reviewed script and is not edited per unit. Never copy a
   previous unit's script and edit it, and never generalize one that already ran into a runner
   several units share.
