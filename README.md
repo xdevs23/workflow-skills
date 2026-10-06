@@ -45,7 +45,7 @@ the only one of that name available.
 ### Audit-lens subagents (read-only)
 The nine read-only audit-lens subagents are `separation-of-concerns`, `abstraction-quality`,
 `code-smell`, `type-safety`, `code-cleanliness`, `missing-gaps`, `domain-leakage`,
-`type-smearing` and `runtime-cost`. All nine run as seats of every
+`type-smearing` and `runtime-cost`. All nine run as reviewers of every
 `implement-review-verify` run's review stage, beside its seven other seats. They are also usable
 directly as `agentType`s in your own workflows.
 

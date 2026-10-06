@@ -757,8 +757,8 @@ const workOf = () => followUp
 const HYGIENE = [
   STAGE, READ_GIT, TREE, 'No background waits.',
 ].join('\n')
-// The seats of the review stage, each label with the template it loads. Every run runs each
-// of them, whatever the size of the change, and the marked block keys one model entry to each label.
+// The reviewers of the review stage, each label with the template it loads. The marked block keys
+// one model entry to each label.
 const REVIEW_SEATS = {
   correctness: 'reviewer-correctness', spec: 'reviewer-spec-compliance', dupes: 'duplicate-checker',
   quality: 'quality', inverse: 'reviewer-inverse-spec', rules: 'project-rule-reader', alternatives: 'cold-alternatives',

@@ -22,6 +22,6 @@ Find:
 - A cost that grows with data that has no bound, on a path that runs often.
 
 For each finding: cite a real `file:line`, quote the code, name the entry point and the call chain
-from it, and state the growth, such as attachments × history length per page render, with what
-would make it grow once instead. Report only what the change adds or moves, and only on a path that
-actually runs it. Read-only. No quota-filling.
+from it, and state the growth, such as attachments × history length per page render, with the
+change that would do the work once instead. Report only what the change adds or moves, and only on
+a path that actually runs it. Read-only. No quota-filling.

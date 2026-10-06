@@ -1196,7 +1196,7 @@ describe('structured stage output', () => {
     }
     const seats = calls.filter(c => c.phase === 'Review' || c.agentType === 'roaster')
     expect(new Set(seats.map(c => c.schema)).size).toBe(8)
-    // The eight audit seats return the object quality returns, under its schema.
+    // The audit reviewers return the object quality returns, under its schema.
     for (const seat of AUDIT) expect([seat, calls.find(c => c.agentType === seat).schema]).toEqual([seat, calls.find(c => c.agentType === 'quality').schema])
     for (const seat of seats) expect(seat.schema.properties.coverage.items.required).toEqual(['what', 'how'])
     expect(calls.find(c => c.label === 'impl').schema.properties.checks.items.properties.output).toEqual({ type: 'string', maxLength: 6000 })
@@ -2007,7 +2007,7 @@ const stopsBeforeAnyAgent = async (script, args) => {
 }
 
 describe('fixed review seats and a model for every agent', () => {
-  test('the review stage runs exactly the fifteen seats, each on the template of its name', async () => {
+  test('the review stage runs exactly its fixed reviewers, each on the template of its name', async () => {
     const { calls } = await simulate()
     const review = calls.filter(c => c.phase === 'Review').map(c => [c.label.slice('review:'.length), c.agentType])
     expect(review).toEqual(SEAT_TEMPLATES)
@@ -2015,7 +2015,7 @@ describe('fixed review seats and a model for every agent', () => {
     expect(await Bun.file(new URL(`../agents/${REMOVED}.md`, import.meta.url)).exists()).toBe(false)
   })
 
-  test('the eight audit seats receive the hygiene floor and the diff and nothing else', async () => {
+  test('the audit reviewers receive the hygiene floor and the diff and nothing else', async () => {
     const { calls } = await simulate()
     const quality = calls.find(c => c.label === 'review:quality').prompt
     const [floor, diff, ...rest] = quality.split('\n\n')
@@ -2336,7 +2336,7 @@ const simulateReview = (options = {}) =>
 const NO_SPEC_LINE = 'NO SPEC: this change was made without a spec. Read none, and judge the change by the code and the rule sources.'
 
 describe('review-only runs', () => {
-  test('a review-only run starts the thirteen reviewers that need no spec on its request, and no other stage', async () => {
+  test('a review-only run starts the reviewers that need no spec on its request, and no other stage', async () => {
     const { result, calls, phases } = await simulateReview()
     expect(calls.map(c => c.label)).toEqual(reviewSeats.map(seat => 'review:' + seat))
     expect(phases).toEqual(['Review'])
