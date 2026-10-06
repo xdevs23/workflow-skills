@@ -613,10 +613,8 @@ rules or returns it unresolved with the problem stated.
     entries and receipts for your end-of-run handoff to the todo record. A correction is optional.
   - Report **record** for a genuinely non-blocking observation, retained in the ledger. Never use
     it to dispose of a confirmed must-fix or CRITICAL violation.
-- Expect the verifier to reject a finding whose correction adds machinery beyond what the spec, the
-  rules or a guide describes. Where a guide gives a reference realization, code that meets a
-  requirement the way the reference does has met it. Every real defect is still fixed; this rule
-  only keeps a finding from defining a defect beyond its source.
+- Expect the verifier to hold every correction to what the spec, the rules or a guide describe, by
+  the proportion rule of its template.
 - Require a nonempty `correction` only on `approve-fix`. Other actions may omit it. A supplied
   correction is a proposal, and only an approval enters the fixer list. Every action except
   `unresolved` carries a nonempty `reason` and no `problem`.

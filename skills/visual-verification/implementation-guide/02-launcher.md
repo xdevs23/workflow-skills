@@ -71,9 +71,10 @@ as one killed by a signal, counts as a failure, so an interrupted capture never 
 
 Dependency acquisition may use the network, and it happens before any rendering. The rendering run
 itself never uses the network, and a missing dependency during rendering is a failure; it never
-triggers an installation. The reference meets this rule and the frozen-cache rule with `env -i` and
-a copied harness directory, as its realization below describes. Neither rule calls for enforcement
-below the runtime, such as kernel namespaces or a sandbox.
+triggers an installation. The reference met the frozen-cache rule with `env -i` and a copied
+harness directory, as its realization below describes, and the no-network rule with the request
+interception and browser settings of part 5. Neither rule calls for enforcement below the runtime,
+such as kernel namespaces or a sandbox.
 
 ## Two locks
 
