@@ -36,8 +36,8 @@ Rules:
   seats are unbriefed. A follow-up run of a change made without a spec runs the thirteen reviewers
   that need none, without spec and inverse. Check that the review objects hold one object for each
   reviewer your prompt's reviewer rules name. A reviewer whose object is missing from your input is
-  an unresolved issue of kind root-action that names the reviewer, never a reviewer that found
-  nothing.
+  an issue of kind unresolved that names the reviewer and states what could not be checked, why it
+  matters and why the supplied information does not resolve it.
 - A run without a spec says so in your prompt: read none, and judge every finding by the code, the
   rule sources and the reviewers' rules. The rules on the user's words below then have no spec to
   read, and a correction that adds or changes behavior has no authority.
@@ -74,14 +74,16 @@ Rules:
   contributes. Do not merge distinct defects merely because they share a file or a proposed
   fix. Resolve conflicting claims against the tree and authority, not by vote. Every source ID
   belongs to exactly one consolidated decision.
-- Disposition each group: approve-fix / reject / needs-decision / root-action / cleanup /
-  record. Explain each decision with evidence and at least one receipt (file, line, quote). A
-  rejection needs concrete counterevidence; calling a finding taste or aggressive is not enough.
+- Disposition each group: approve-fix / reject / unresolved / cleanup / record. Explain each decision
+  with evidence and at least one receipt (file, line, quote). A rejection needs concrete
+  counterevidence; calling a finding taste or aggressive is not enough.
 - Approve only a verified correction already authorized by the recorded requirements or rules.
-  Include authority references with exact quotes, the required correction, scope constraints
-  and an acceptance check. A justified ordinary implementation derivation is allowed; an
-  unrequested product or architecture choice is not. Approval is not new authority, and a later
+  Include authority references with exact quotes, a nonempty correction in correction, scope
+  constraints and an acceptance check. A justified ordinary implementation derivation is allowed;
+  an unrequested product or architecture choice is not. Approval is not new authority, and a later
   spec edit cannot authorize earlier code.
+- Omit correction on any other action when no correction is established. A proposed correction
+  carries no approval and never directs who must act. Do not invent one to complete a report.
 - The prompt names the template of every review seat. These templates are the reviewers' rules:
   read them with the rule sources to know what each seat looks for. The review seats are critics
   without authority, and their purpose is to improve code quality.
@@ -105,25 +107,25 @@ Rules:
 - Code that the user's words asked for still needs the user's word to be removed.
 - Code that an applicable project rule asks for is not code nobody asked for, so the removal rule
   does not reach it.
-- Needs-decision names a choice without which the assigned work cannot satisfy the existing
-  requirements, with evidence, and carries no correction. Root-action covers a demonstrated
-  impossibility or a required investigation you cannot complete. Both go to the follow-up run, whose
-  implementer settles them by the rules or returns them unresolved with the problem stated; the
-  approved corrections are applied regardless. State the reason of either as the problem it is,
-  without interpreting it: what the problem is, why it is a problem, and why nothing the user's
-  words, the rules and the skills say solves it. Never ask a question, never offer options and never
-  recommend one, in any string you return. What only a build, a test run, a capture or a device can
-  show is not a root-action: the fixer runs the check command after its writes, so state it as the
-  acceptance check of the approved correction it concerns. A suggested spec edit is not itself
-  either kind of blocker: implement and review the spec as written, and record non-blocking spec
-  suggestions for the root in specSuggestions (or as record for a supplied finding) without pausing
-  ordinary reviews or executable fixes. Do not downgrade real impossibilities or rule violations.
-- Cleanup is verified work outside this unit's repair scope. Include the issue, rule citation,
-  code receipts, source IDs and required correction for the root's same-run handoff to the todo
-  record that workflow-skills:todo-md defines. That record stays untracked unless explicitly
-  requested tracked and committed; you never write or stage it. Recording cleanup is not fixing
-  it: the root records each entry as a separate unit, done later, without expanding this unit or
-  interrupting the root per issue.
+- Report unresolved when a necessary choice, demonstrated impossibility or required investigation
+  cannot be resolved with the available information and authority. Return problem with three
+  nonempty fields: problem states the actual problem, why states why it matters, and whyUnsolved
+  states why nothing the user's words, the rules and the skills say resolves it. Carry no reason
+  on this action. Every other action carries a nonempty reason and no problem. Retain evidence,
+  receipts and source IDs. The unresolved claim goes to the follow-up run, whose implementer
+  investigates it; approved corrections are applied regardless.
+- Ask no question, offer no options and recommend none in any string you return. What only a build,
+  test run, capture or device can show belongs in the acceptance check of the approved correction
+  it concerns, because the fixer runs the check command after its writes. Record non-blocking spec
+  suggestions in specSuggestions (or as record for a supplied finding) without pausing reviews or
+  executable fixes. A suggested spec edit alone is no blocker. Do not downgrade real
+  impossibilities or rule violations.
+- Report cleanup for verified work outside this unit's repair scope. Include the issue, rule
+  citation, code receipts and source IDs, with a proposed correction only when one is established,
+  for the session's same-run handoff to the todo record that workflow-skills:todo-md defines. That
+  record stays untracked unless explicitly requested tracked and committed; you never write or
+  stage it. The session records each entry as a separate unit for later work without expanding
+  this unit or interrupting the user per issue.
 - A confirmed rule violation stays CRITICAL regardless of house style or pre-existing status;
   describe operational impact separately. Reject a false violation only with evidence that it
   is not a violation; never downgrade a real one to a style nit. Record is genuinely
@@ -133,8 +135,8 @@ Rules:
 - Every inverse-spec source finding is CRITICAL, unconditionally: ignore whatever severity, lane or
   hedging language it arrived with, and never treat "nit", "soft" or "already covered by an edited
   spec" as a reason to disregard it. Give each one an explicit, evidence-backed decision:
-  approve-fix when the user's words already authorize the correction, otherwise needs-decision or
-  root-action; the root never corrects the spec of the run. Reject only with concrete
+  approve-fix when the user's words already authorize the correction, otherwise unresolved; the
+  session never corrects the spec of the run. Reject only with concrete
   counterevidence against the finding itself, never because a later spec edit made it look resolved;
   an edited spec does not resolve the finding, and the original directives stay the measure it is
   judged against. A rejection is not a routine disposition here: like every other inverse-spec
@@ -165,15 +167,15 @@ Rules:
   it fixed. A standing one closes only by deletion, a rewrite, or the user's word.
 - A source finding carrying kind unbacked-choice names a choice in the spec, the prompt or the diff
   that no words of the user back. Every decision whose sources include one is CRITICAL, and only
-  needs-decision, reject and an approve-fix for a removal on the removal rule are available for it;
-  root-action, cleanup, record and every other approve-fix are refused. Needs-decision states in
-  authority that no recorded words back the choice; it goes to the follow-up run as an open
+  unresolved, reject and an approve-fix for a removal on the removal rule are available for it;
+  cleanup, record and every other approve-fix are refused. Unresolved states in authority that no
+  recorded words back the choice; it goes to the follow-up run as an open
   decision. Reject closes it only on an entry of author user whose words were said about this unit
   and back the choice: authority reads spec entry <file>:<line>: "<quote>", naming the entry by its
   session file and line and quoting the backing words together with their surrounding context from
   the spec, and reason says how that context supports the choice. Read the entry and the entries and
   messages around its words before you quote them. A line found by searching for a word and quoted
-  without its context backs nothing, so such a finding stays needs-decision. Words about another
+  without its context backs nothing, so such a finding stays unresolved. Words about another
   unit, such as a request to record a todo for later work or a decision given for a different piece
   of work, back nothing here even where their subject overlaps. A short answer that crossed with a
   newer message answers the earlier message and never approves what the newer message proposed, so
@@ -188,7 +190,7 @@ Rules:
   review, so in a run that reaches you what was left unbuilt is what the words of an entry of class
   unbacked-entry ask for, which points as well at the entries that cannot be built without them. A
   source finding that asks to build, complete or change what those words ask for is never
-  approve-fix, even where it reports it as missing required behaviour: decide it needs-decision and
+  approve-fix, even where it reports it as missing required behaviour: decide it unresolved and
   name that specFindings entry by its class and evidence in authority. It goes to the follow-up run
   as an open decision, so this run's fixer never builds what the implementer's sense check left
   unbuilt.

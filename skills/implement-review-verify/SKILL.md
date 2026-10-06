@@ -605,17 +605,21 @@ rules or returns it unresolved with the problem stated.
     authority references with EXACT QUOTES, the correction, constraints and an acceptance check.
   - **reject**: false positive or unsupported objection, with concrete counterevidence.
     Duplicates are MERGED with all source IDs, not silently rejected or discarded.
-  - **needs-decision**: a choice without which the assigned work cannot satisfy the existing
-    requirements. Establish the impossibility. The decision carries no correction and goes to the
-    follow-up run.
-  - **root-action**: a demonstrated impossibility or required investigation the verifier cannot
-    complete. It goes to the follow-up run, whose implementer investigates it. A proposed spec edit
-    alone is not a blocker: implement and review the spec as written, retaining non-blocking
-    suggestions in `specSuggestions` or as `record`, not as prerequisites.
-  - **cleanup**: verified work outside this unit's repair scope, with concrete cleanup
-    entries and receipts retained for your end-of-run handoff to the todo record.
+  - Report **unresolved** for a necessary choice, demonstrated impossibility or required
+    investigation that the available information and authority do not resolve. Supply `problem` with three nonempty
+    fields: `problem`, the actual problem; `why`, why it matters; and `whyUnsolved`, why the available
+    information and authority do not resolve it. Supply evidence, receipts and source IDs, with no
+    `reason`. The claim goes to the follow-up run for investigation. Retain a non-blocking proposed
+    spec edit in `specSuggestions` or as `record` without making it a prerequisite.
+  - Report **cleanup** for verified work outside this unit's repair scope. Retain concrete cleanup
+    entries and receipts for your end-of-run handoff to the todo record. A correction is optional.
   - **record**: genuinely non-blocking observations, retained in the ledger. Never use it
     to dispose of a confirmed must-fix or CRITICAL violation.
+- Require a nonempty `correction` only on `approve-fix`. Other actions may omit it. A supplied
+  correction is a proposal, and only an approval enters the fixer list. Every action except
+  `unresolved` carries a nonempty `reason` and no `problem`.
+- Read a verifier validation failure by its source IDs, field and unmet requirement. The script
+  identifies those in decision failures so a retry can correct the report it refused.
 - Every inverse-spec source finding carries CRITICAL severity unconditionally, regardless of the
   label it arrived with (law 13): `record` and `cleanup` are never available for one (an
   inverse-spec finding is about a choice made IN this unit's own diff, never work outside its repair
@@ -638,8 +642,8 @@ rules or returns it unresolved with the problem stated.
 - Keeping the flagged shape of a kind-bearing finding needs the user's word.
 - `reject` on a kind-bearing finding needs counterevidence against the finding itself.
 - A decision on an `unbacked-choice` finding is CRITICAL the same way, and three actions answer it:
-  `needs-decision`, `reject`, and `approve-fix` for a removal on the removal rule.
-- `needs-decision` on an `unbacked-choice` finding states in `authority` that no recorded words back
+  `unresolved`, `reject`, and `approve-fix` for a removal on the removal rule.
+- `unresolved` on an `unbacked-choice` finding states in `authority` that no recorded words back
   the choice and goes to the follow-up run as an open decision.
 - `reject` closes an `unbacked-choice` finding only on an entry of author `user` whose words, said
   about this unit, back the choice: its `authority` reads `spec entry <file>:<line>: "<quote>"`,
@@ -651,9 +655,9 @@ rules or returns it unresolved with the problem stated.
   choice, and the correction removes the chosen code and adds or changes nothing else. A correction
   that adds, changes or replaces the choice, and the removal of code the user's words asked for, are
   never such an `approve-fix`.
-- The script's decision checks refuse `root-action`, `cleanup` and `record` for an `unbacked-choice`
-  finding, an `approve-fix` without `removal` true, and a rejection whose `authority` lacks the
-  spec entry citation.
+- The script's decision checks refuse `cleanup` and `record` for an `unbacked-choice` finding,
+  an `approve-fix` without `removal` true, and a rejection whose `authority` lacks the spec entry
+  citation.
 - The spec-compliance reviewer never sees the implementer's object, so it reports what the
   implementer left unbuilt as missing required behaviour. The implementer's `specFindings` entry
   points at its spec entries in `evidence`. A `joint-impossibility` or `missing-contract` entry ends
@@ -662,10 +666,11 @@ rules or returns it unresolved with the problem stated.
   cannot be built without them.
 - A finding that asks to build what the implementer left unbuilt is never `approve-fix`.
 - A source finding that asks to build, complete or change what was left unbuilt is decided
-  `needs-decision`, and the decision goes to the follow-up run as an open decision. The
-  `authority` of that decision names the `specFindings` entry by its class and evidence, and its
-  `correction` stays empty. Without this rule the verifier would approve what is missing and the
-  fixer would build what the sense check left unbuilt.
+  `unresolved`, and the decision goes to the follow-up run as an open decision. The
+  `authority` of that decision names the `specFindings` entry by its class and evidence. Its
+  `problem` states why those words cannot authorize completing the missing behavior. Without this
+  rule the verifier would approve what is missing and the fixer would build what the sense check
+  left unbuilt.
 - Reviewer lanes and severity are claims to verify, not queue permissions. Every source ID must
   belong to exactly one decision group. The SCRIPT checks coverage, unknown IDs, duplicate IDs and
   approval payloads before mutation.
@@ -675,8 +680,8 @@ rules or returns it unresolved with the problem stated.
   you only through the verifier, which receives it with the seat's object and keeps it as an
   unresolved issue or discards it, and the pass goes on to the fix stage; missing evidence is never
   an implicit rejection or a clean empty queue.
-- Only approvals enter the fixer list. Unsettled necessary decisions, required `root-action` items,
-  unresolved `issues` and the verifier's own blocking `limitations` do not hold the approved work
+- Only approvals enter the fixer list. Unresolved decisions, unresolved `issues` and the verifier's
+  own blocking `limitations` do not hold the approved work
   back: the fixer applies the approved list and runs the checks, and those items return in
   `remaining` with exit `root-resolution`. The decisions and the issues go to the follow-up run. A
   blocking limitation is a failure of the process and no finding, so no `toFix` list carries it. A
@@ -785,9 +790,10 @@ rules or returns it unresolved with the problem stated.
 - A confirmed rule violation is CRITICAL, never a nit; matching house style or pre-existing status
   cannot excuse it. CRITICAL expresses rule compliance, not an assumed level of operational impact,
   which is reported separately.
-- The verifier approves authorized corrections in this unit's repair scope. Unrelated existing
-  violations become concrete cleanup entries: issue, rule citation, code receipts, source finding
-  IDs and the required correction. Existing entries are updated, never duplicated.
+- The verifier approves authorized corrections in this unit's repair scope. Record unrelated
+  existing violations as cleanup entries with the issue, rule citation, code receipts and source
+  finding IDs. Include a proposed correction when one is established. Update existing entries
+  without duplicating them.
 - Record this consolidated handoff in the todo record that `workflow-skills:todo-md` defines, in the
   SAME RUN, before reporting the task finished, including when the workflow exits with unresolved
   work. Each cleanup entry is recorded as a separate unit, done later; recording an issue is not
@@ -1339,7 +1345,7 @@ These laws are non-negotiable across every run of this skill.
    same for every other vocabulary the script switches on: the actionability **lane**
    (`fixer-actionable` / `orchestrator-only` / `later-phase` / `not-a-defect`) and the **disposition**
    (`fixed` / `rejected` / `unresolved`), verifier action (`approve-fix` / `reject` /
-   `needs-decision` / `root-action` / `cleanup` / `record`),
+   `unresolved` / `cleanup` / `record`),
    the finding `kind` (`band-aid` / `longer-route` / `unbacked-choice`), the abort `trigger`
    (`none` / `directive-conflict` / `sense-check` / `no-words` / `invalid-spec`), the limitation
    `effect` (`blocks` / `narrows`), the authorization `class`, the rule reader's finding `scope`

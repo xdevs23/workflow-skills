@@ -53,7 +53,8 @@ const seatObject = {
 }
 const decision = (ids, fields = {}) => ({
   sourceIds: ids, action: 'approve-fix', severity: 'must-fix',
-  reason: 'The implementation contradicts the required failure behavior.',
+  ...(fields.action === 'unresolved' ? { problem: unresolved('').problem }
+    : { reason: 'The implementation contradicts the required failure behavior.' }),
   evidence: 'src/example.js:12 catches and ignores this error.',
   authority: 'docs/spec.md:8: "Return the error to the caller."',
   correction: 'Return the specified error to the caller.',
@@ -546,29 +547,47 @@ describe('workflow verification and consolidation', () => {
         verify: { 'verify': verification([decision([source('correctness')], { [field]: '' })]) },
       })
       expect(['clean', 'follow-up'].includes(result.exit)).toBe(false)
+      expect(result.detail).toContain('Decision ["correctness:0"] (approve-fix), field ' + field + ': must be nonempty text')
       expect(calls.some(c => c.phase === 'Fix')).toBe(false)
     })
   }
 
-  for (const action of ['needs-decision', 'root-action']) {
-    test(`${action} reaches the root while the approved correction is still applied`, async () => {
-      const { result, calls } = await simulate({
-        reports: { 'review:correctness': { findings: [backed, backed] } },
-        verify: { 'verify': verification([
-          decision([source('correctness')]),
-          decision([source('correctness', 1)], { action, correction: action === 'needs-decision' ? '' : 'Resolve the necessary retention policy first.' }),
-        ]) },
-        fixes: { fix: fixed([disposition()]) },
-      })
-      expect([result.exit, result.detail]).toEqual(['root-resolution', 'Review or verification left items for the root.'])
-      expect(result.remaining.map(r => r.kind)).toEqual(['open-decision', 'unattested-fix'])
-      expect(calls.filter(c => c.phase === 'Fix').map(c => c.label).sort()).toEqual(['fix', 'roast'])
+  test('an unresolved finding without a correction reaches the follow-up while approved work is applied', async () => {
+    const { correction, ...open } = decision([source('correctness', 1)], { action: 'unresolved' })
+    const { result, calls } = await simulate({
+      reports: { 'review:correctness': { findings: [backed, backed] } },
+      verify: { verify: verification([decision([source('correctness')]), open]) },
+      fixes: { fix: fixed([disposition()]) }, harness: schemaChecked,
     })
-  }
+    expect([result.exit, result.detail]).toEqual(['root-resolution', 'Review or verification left items for the root.'])
+    expect(result.remaining.map(r => r.kind)).toEqual(['open-decision', 'unattested-fix'])
+    expect(result.remaining[0].item).toEqual(open)
+    expect(result.toFix).toEqual([{ source: 'verify:1', decision: open }])
+    expect(calls.filter(c => c.phase === 'Fix').map(c => c.label).sort()).toEqual(['fix', 'roast'])
+    expect(retried(calls, 'verify')).toHaveLength(1)
+  })
+
+  test('an approval without a correction is refused with its source IDs and field', async () => {
+    const { correction, ...approval } = decision([source('correctness')])
+    const { result, calls } = await simulate({ reports: oneReport,
+      verify: { verify: verification([approval]) }, harness: schemaChecked })
+    expect(result.detail).toContain('Decision ["correctness:0"] (approve-fix), field correction: must be nonempty text')
+    expect([result.exit, retried(calls, 'verify').length, calls.some(c => c.phase === 'Fix')]).toEqual(['failed', 3, false])
+  })
+
+  test('an unresolved report missing part of its problem is refused with its source IDs and field', async () => {
+    const open = decision([source('correctness')], { action: 'unresolved', correction: '' })
+    for (const field of ['problem', 'why', 'whyUnsolved']) {
+      const { result, calls } = await simulate({ reports: oneReport,
+        verify: { verify: verification([{ ...open, problem: { ...open.problem, [field]: '' } }]) }, harness: schemaChecked })
+      expect(result.detail).toContain('Decision ["correctness:0"] (unresolved), field problem.' + field + ': must be nonempty text')
+      expect([result.exit, calls.some(c => c.phase === 'Fix')]).toEqual(['failed', false])
+    }
+  })
 
   test('a verifier issue is not lost when the findings list is empty', async () => {
     const { result, calls } = await simulate({
-      verify: { 'verify': verification([], { issues: [{ kind: 'root-action', detail: 'The authority document is unavailable.' }] }) },
+      verify: { 'verify': verification([], { issues: [{ kind: 'unresolved', detail: 'The authority document is unavailable.' }] }) },
     })
     expect(result.exit).toBe('root-resolution')
     expect(result.remaining.map(r => r.kind)).toEqual(['verifier-issue'])
@@ -759,17 +778,18 @@ describe('workflow verification and consolidation', () => {
     expect(calls.some(c => c.phase === 'Fix')).toBe(false)
   })
 
-  test('ordinary rejection and out-of-scope cleanup do not interrupt the root', async () => {
+  test('ordinary rejection and out-of-scope cleanup without a correction retain their evidence', async () => {
+    const { correction, ...cleanup } = decision([source('rules', 1)], { action: 'cleanup' })
     const { result } = await simulate({
-      reports: { 'review:rules': { findings: [finding, finding] } },
-      verify: { 'verify': verification([
+      reports: { 'review:rules': { findings: [{ ...finding, scope: 'in-change' }, { ...finding, scope: 'beside' }] } },
+      verify: { verify: verification([
         decision([source('rules')], { action: 'reject', reason: 'The caller already propagates the error.', evidence: 'src/caller.js:30 returns the error.' }),
-        decision([source('rules', 1)], { action: 'cleanup', correction: 'Record the unrelated existing violation in TODO.md.' }),
-      ]) },
+        cleanup,
+      ]) }, harness: schemaChecked,
     })
     expect(['clean', 'follow-up'].includes(result.exit)).toBe(true)
     expect(result.remaining.filter(r => r.kind !== 'unattested-fix')).toEqual([])
-    expect(result.cleanup).toHaveLength(1)
+    expect(result.cleanup).toEqual([cleanup])
     expect(result.counts.rejected).toBe(1)
   })
 
@@ -801,7 +821,7 @@ describe('workflow verification and consolidation', () => {
     const { result, calls } = await simulate({
       reports: { 'review:rules': { findings: [finding] } },
       verify: { 'verify': verification([cleanup], {
-        issues: [{ kind: 'needs-decision', detail: 'Choose the required retention policy.' }],
+        issues: [{ kind: 'unresolved', detail: 'The required retention policy is undefined, so deletion safety cannot be checked.' }],
       }) },
     })
     expect(result.exit).toBe('root-resolution')
@@ -1052,7 +1072,7 @@ describe('coder sense check and project-benefit review', () => {
       [{ severity: 'must-fix' }, 'Project-benefit finding must keep CRITICAL severity'],
       [{ action: 'cleanup', correction: 'Record it.' }, 'cannot be dispositioned as cleanup or record'],
       [{ action: 'record', correction: 'Record it.' }, 'cannot be dispositioned as cleanup or record'],
-      [{ action: 'reject', authority: ' ' }, 'Missing project-benefit authority'],
+      [{ action: 'reject', authority: ' ' }, 'field authority: must be nonempty text'],
     ]) {
       const { result, calls } = await simulate({ reports: report('review:quality', [bandAid]),
         verify: { 'verify': verification([benefit([source('quality')], fields)]) } })
@@ -1077,8 +1097,8 @@ describe('coder sense check and project-benefit review', () => {
     expect(result.projectBenefitDecisions.map(d => d.findings[0].id)).toEqual([source('inverse'), source('alternatives')])
   })
 
-  test("a cold seat's kind-bearing finding on a mechanism the record is silent about reaches the root as needs-decision", async () => {
-    const silent = benefit([source('quality')], { action: 'needs-decision', authority: 'The recorded words hold nothing about the retry wrapper.',
+  test("a cold seat's kind-bearing finding on a mechanism the record is silent about reaches the root unresolved", async () => {
+    const silent = benefit([source('quality')], { action: 'unresolved', authority: 'The recorded words hold nothing about the retry wrapper.',
       correction: '' })
     const { result, calls } = await simulate({ reports: report('review:quality', [bandAid]), verify: { 'verify': verification([silent]) } })
     expect([result.exit, result.remaining]).toEqual(['root-resolution', [{ kind: 'open-decision', severity: 'CRITICAL', item: silent }]])
@@ -1370,7 +1390,7 @@ describe('structured stage output', () => {
 
   test('a reading seat\'s blocking limitation reaches the verifier and the root only as the verifier\'s issue', async () => {
     const limitation = { what: 'the integration service is unreachable from this seat', effect: 'blocks' }
-    const issue = { kind: 'root-action', detail: 'Reach the integration service: ' + limitation.what }
+    const issue = { kind: 'unresolved', detail: 'Reach the integration service: ' + limitation.what }
     for (const seat of readers) {
       const label = 'review:' + seat
       const { result, calls } = await simulate({
@@ -1507,7 +1527,7 @@ describe('one-pass remaining-items handoff', () => {
   })
 
   test('verifier issues retain their full objects beside the approvals the fixer applied', async () => {
-    const issue = { kind: 'root-action', detail: 'Required evidence is unavailable.' }
+    const issue = { kind: 'unresolved', detail: 'Required evidence is unavailable.' }
     const approval = decision([source('correctness')])
     const { result } = await simulate({ reports: oneReport, verify: { verify: verification([approval], { issues: [issue] }) },
       fixes: { fix: fixed([disposition()]) } })
@@ -1518,9 +1538,9 @@ describe('one-pass remaining-items handoff', () => {
     expect(result.remaining).toHaveLength(2)
   })
 
-  const toFixIssue = { kind: 'root-action', detail: 'Required evidence is unavailable.' }
+  const toFixIssue = { kind: 'unresolved', detail: 'Required evidence is unavailable.' }
   const toFixRoastFinding = { ...finding, claim: 'The retry loop never ends.' }
-  const toFixDecisions = [decision([source('correctness', 0)]), decision([source('correctness', 1)], { action: 'needs-decision', correction: '' }),
+  const toFixDecisions = [decision([source('correctness', 0)]), decision([source('correctness', 1)], { action: 'unresolved', correction: '' }),
     decision([source('correctness', 2)]), decision([source('correctness', 3)])]
   const approvalAnswers = [disposition('fix:0'), disposition('fix:1', 'rejected'), disposition('fix:2', 'blocked')]
   const simulateToFix = fix => simulate({ implementation: implemented({ specFindings: [specFinding([20], 'reality-drift')] }),
@@ -1940,12 +1960,11 @@ const backing = 'spec entry session.jsonl:42: "Before you start: if the upload f
 const lower = text => flat(text).toLowerCase()
 
 describe('the user\'s words reach every stage', () => {
-  test('an unbacked-choice decision answered with record, cleanup or root-action fails the verifier checks', async () => {
-    for (const fields of [{ action: 'record', correction: 'Record it.' }, { action: 'cleanup', correction: 'Record it.' },
-      { action: 'root-action', correction: 'Investigate the retry policy.' }]) {
+  test('an unbacked-choice decision answered with record or cleanup fails the verifier checks', async () => {
+    for (const fields of [{ action: 'record', correction: 'Record it.' }, { action: 'cleanup', correction: 'Record it.' }]) {
       const { result, calls } = await simulate({ reports: report('review:inverse', [unbacked]),
         verify: { verify: verification([benefit([source('inverse')], fields)]) } })
-      expect(result.detail).toContain('Unbacked-choice finding allows only needs-decision, reject or a removal approve-fix, never ' + fields.action)
+      expect(result.detail).toContain('Unbacked-choice finding allows only unresolved, reject or a removal approve-fix, never ' + fields.action)
       expect([retried(calls, 'verify').length, calls.some(c => c.phase === 'Fix')]).toEqual([3, false])
     }
   })
@@ -1961,10 +1980,10 @@ describe('the user\'s words reach every stage', () => {
       expect([retried(calls, 'verify').length, calls.some(c => c.phase === 'Fix')]).toEqual([3, false])
     }
     // The removal mark belongs to an approve-fix alone.
-    const marked = benefit([source('correctness')], { action: 'needs-decision', authority: 'No recorded words back the three retries.',
+    const marked = benefit([source('correctness')], { action: 'unresolved', authority: 'No recorded words back the three retries.',
       correction: '', removal: true })
     const { result, calls } = await simulate({ reports: report('review:correctness', [back(unbacked)]), verify: { verify: verification([marked]) } })
-    expect(result.detail).toContain('Only an approve-fix carries removal true, never needs-decision')
+    expect(result.detail).toContain('Only an approve-fix carries removal true, never unresolved')
     expect(calls.some(c => c.phase === 'Fix')).toBe(false)
   })
 
@@ -1985,8 +2004,8 @@ describe('the user\'s words reach every stage', () => {
     }
   })
 
-  test('needs-decision on an unbacked-choice finding reaches the root as an open decision', async () => {
-    const open = benefit([source('correctness')], { action: 'needs-decision', authority: 'No recorded words back the three retries.',
+  test('an unresolved unbacked-choice finding reaches the root as an open decision', async () => {
+    const open = benefit([source('correctness')], { action: 'unresolved', authority: 'No recorded words back the three retries.',
       correction: '' })
     const { result, calls } = await simulate({ reports: report('review:correctness', [back(unbacked)]), verify: { verify: verification([open]) } })
     expect([result.exit, result.remaining]).toEqual(['root-resolution', [{ kind: 'open-decision', severity: 'CRITICAL', item: open }]])
@@ -2006,40 +2025,6 @@ describe('the user\'s words reach every stage', () => {
     const { result } = await simulate({ reports: report('review:correctness', [back(unbacked)]), verify: { verify: verification([closed]) } })
     expect([result.exit, result.remaining, result.counts.rejected]).toEqual(['clean', [], 1])
     expect(result.projectBenefitDecisions.map(d => d.decision)).toEqual([closed])
-  })
-
-  test('the verifier prompt, the verifier template and the skill state the three answers to an unbacked-choice finding', async () => {
-    const { calls } = await simulate()
-    const prompt = flat(calls.find(c => c.label === 'verify').prompt)
-    for (const phrase of ['Answer an unbacked-choice finding with needs-decision, with reject whose authority reads spec entry <file>:<line>: "<the backing words quoted together with their surrounding context>"',
-      'or with an approve-fix marked removal true whose correction only removes the chosen code, after your own check of the spec shows that no words of the user back that choice.',
-      'Code that the user\'s words asked for still needs the user\'s word to be removed.',
-      'Set removal true on an approve-fix whose correction removes code, a parameter or a mechanism that nothing uses, that nobody asked for, or that is built beyond what was asked, ' +
-      'on the removal rule of your template, and false on every other decision.']) {
-      expect([phrase, prompt.includes(phrase)]).toEqual([phrase, true])
-    }
-    const verifier = await template('finding-verifier')
-    for (const phrase of ['only needs-decision, reject and an approve-fix for a removal on the removal rule are available for it; root-action, cleanup, record and every other approve-fix are refused',
-      'Approve-fix an unbacked-choice finding only for a removal on the removal rule, with removal set to true: your own check of the spec shows that no words of the user back the choice, ' +
-      'and the correction removes the chosen code and adds or changes nothing else.',
-      'A correction that adds, changes or replaces the choice, and the removal of code the user\'s words asked for, are never such an approve-fix.',
-      'Set removal to true on an approve-fix whose correction removes code on the removal rule, and to false on every other decision.',
-      'Needs-decision states in authority that no recorded words back the choice',
-      'spec entry <file>:<line>: "<quote>", naming the entry by its session file and line and quoting the backing words together with their surrounding context',
-      'reason says how that context supports the choice', 'A line found by searching for a word and quoted without its context backs nothing']) {
-      expect([phrase, verifier.includes(phrase)]).toEqual([phrase, true])
-    }
-    for (const phrase of ['A decision on an `unbacked-choice` finding is CRITICAL the same way, and three actions answer it: ' +
-      '`needs-decision`, `reject`, and `approve-fix` for a removal on the removal rule.',
-      '`approve-fix` answers an `unbacked-choice` finding only for a removal on the removal rule, with `removal` true: the verifier\'s own check of the spec shows ' +
-      'that no words of the user back the choice, and the correction removes the chosen code and adds or changes nothing else.',
-      'the removal of code the user\'s words asked for, are never such an `approve-fix`.',
-      'The script\'s decision checks refuse `root-action`, `cleanup` and `record` for an `unbacked-choice` finding, an `approve-fix` without `removal` true, ' +
-      'and a rejection whose `authority` lacks the spec entry citation.',
-      'The verifier sets `removal` to true on an `approve-fix` whose correction removes code on the removal rule, and to false on every other decision.',
-      'the inverse-spec reviewer\'s missing-decision findings carry it', '(`band-aid` / `longer-route` / `unbacked-choice`)']) {
-      expect([phrase, flat(skill).includes(phrase)]).toEqual([phrase, true])
-    }
   })
 
   test('the briefed readers report an unbacked choice by kind, and the unbriefed ones never hear of it', async () => {
@@ -2370,27 +2355,6 @@ describe('review seats are critics, and no stage asks the user a question', () =
     expect(TEMPLATES).toHaveLength(15)
   })
 
-  test('a needs-decision decision is accepted only without a correction, and root-action still names its next action', async () => {
-    const open = await simulate({ reports: oneReport, verify: { verify: verification([decision([source('correctness')], {
-      action: 'needs-decision', severity: 'must-fix', authority: '', correction: '', constraints: '', acceptance: '' })]) } })
-    expect([open.result.exit, open.result.detail]).toEqual(['root-resolution', 'Review or verification left items for the root.'])
-    expect(open.result.remaining.filter(r => r.kind === 'open-decision').map(r => r.item.correction)).toEqual([''])
-    // A correction on a needs-decision decision is refused before anything reaches remaining, for an
-    // ordinary finding and for an unbacked choice alike.
-    for (const [reports, refusedDecision] of [
-      [oneReport, decision([source('correctness')], { action: 'needs-decision', correction: 'Should a failed upload be retried, and how often?' })],
-      [report('review:correctness', [back(unbacked)]), benefit([source('correctness')], { action: 'needs-decision',
-        authority: 'No recorded words back the three retries.', correction: 'Keep the three retries.' })],
-    ]) {
-      const refused = await simulate({ reports, verify: { verify: verification([refusedDecision]) } })
-      expect(refused.result.detail).toContain('A needs-decision decision carries no correction')
-      expect([retried(refused.calls, 'verify').length, (refused.result.remaining ?? []).some(r => r.kind === 'open-decision'),
-        refused.calls.some(c => c.phase === 'Fix')]).toEqual([3, false, false])
-    }
-    const action = await simulate({ reports: oneReport, verify: { verify: verification([decision([source('correctness')], {
-      action: 'root-action', correction: '' })]) } })
-    expect(action.result.detail).toContain('Missing next action')
-  })
 })
 
 describe('the stages receive the quoted discussion and no words of the orchestrating session', () => {
@@ -2650,14 +2614,24 @@ describe('follow-up runs', () => {
     expect(calls[0].prompt.endsWith('\n\n' + JSON.stringify([...ENTRIES, breach]))).toBe(true)
   })
 
-  test('what a main run returns to be fixed is what a follow-up run on it takes', async () => {
+  test('an unresolved verifier report travels unchanged from a main run through an accepted follow-up', async () => {
     const printed = { spec: SPEC_PATH, sha256: PARENT_CHECKED.sha256, specLines: PARENT_CHECKED.lines }
-    const { result } = await simulate({ specCheck: passedCheck(mainLaunchValues(launchArgs()), {}, printed), reports: oneReport,
-      verify: approveOne, fixes: { fix: fixed([unresolved('fix:0')], { touched: [] }) }, roaster: {} })
+    const { correction, ...open } = decision([source('correctness', 1)], { action: 'unresolved' })
+    const { result } = await simulate({ specCheck: passedCheck(mainLaunchValues(launchArgs()), {}, printed),
+      reports: { 'review:correctness': { findings: [backed, backed] } },
+      verify: { verify: verification([decision([source('correctness')]), open]) },
+      fixes: { fix: fixed([disposition()]) }, harness: schemaChecked })
     const parent = { spec: result.spec, toFix: result.toFix, artifacts: result.artifacts, snapshots: result.snapshots }
-    const args = { base: result.snapshots, transcripts: TRANSCRIPTS, parent }
-    const { calls } = await simulateFollowUp({ args })
-    expect(calls[0].prompt.endsWith('\n\n' + JSON.stringify(result.toFix))).toBe(true)
+    const snapshotSha = parent.snapshots[0].sha
+    const args = { base: parent.snapshots, transcripts: TRANSCRIPTS, parent }
+    const answers = parent.toFix.map(entry => disposition(entry.source, 'rejected'))
+    const followed = await simulateFollowUp({ args,
+      implementation: followUpImplementation(answers, { startSha: snapshotSha, snapshotSha }),
+      verify: { verify: verification([], { repositories: [{ path: '.', snapshotSha, clean: true, git: { head: snapshotSha, status: '' } }] }) },
+      harness: schemaChecked })
+    expect(parent.toFix).toEqual([{ source: 'verify:1', decision: open }])
+    expect(followed.calls[0].prompt.endsWith('\n\n' + JSON.stringify(parent.toFix))).toBe(true)
+    expect([followed.result.exit, followed.result.remaining, followed.result.dispositions]).toEqual(['clean', [], answers])
   })
 
   test('launch values a follow-up run cannot start from stop it before any agent', async () => {
