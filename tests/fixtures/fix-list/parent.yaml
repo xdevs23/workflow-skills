@@ -1,9 +1,0 @@
-# Synthetic spec of the parent run's unit. The fix list names it, and the check holds its bytes to
-# the sha256 the parent run's launch check printed.
-unit: example
-entries:
-  - file: session-a.jsonl
-    line: 1
-    uuid: example
-    author: user
-    text: A session transcript beside its directory.

@@ -20,11 +20,12 @@ and the rule sources.
 
 ## The script
 
-- Copy the main script of `workflow-skills:implement-review-verify` and set `reviewOnly` to true in
+- Copy the main script of `workflow-skills:implement-review-verify` and set `mode` to `review` in
   its marked block.
-- Fill the rest of the marked block as for a main run, every model entry included apart from the
-  `spec` and `inverse` entries of `models.review`. Leave those two out: those reviewers do not run,
-  and the script stops on an entry that names no reviewer it runs.
+- Fill the rest of the marked block as for a main run, without the `impl`, `verify`, `fix` and
+  `roast` entries of `models` and the `spec` and `inverse` entries of `models.review`. Leave those
+  out: those agents do not run, and the script stops on an entry that names no agent the run
+  starts.
 - Set `meta.name` to a kebab-case name of the review and `meta.description` to one line saying what
   it reviews.
 - Pass at launch `review`: what the reviewers are to review, in any form that names it, such as a
@@ -52,11 +53,12 @@ and the rule sources.
 
 ## After the run
 
-- Read no finding to judge, sort or decide it. Write the fix list of the review pass with the spec
-  tool and start a fix run on it, as the section of `workflow-skills:implement-review-verify` on
-  remaining items says. The list names no spec, so its fixer resolves every finding with the rules
-  and the plugin's skills, and returns a question only for a product decision neither decides.
-- Pass the fix run the commit each repository is at as its `base`. A review pass returns no
+- Read no finding to judge, sort or decide it. Start a follow-up run on what the review pass
+  returned to be fixed, as the section of `workflow-skills:implement-review-verify` on remaining
+  items says. The review pass checked no spec, so the follow-up's implementer resolves every finding
+  with the rules and the plugin's skills, and returns unresolved, with the problem stated, only what
+  neither resolves.
+- Pass the follow-up run the commit each repository is at as its `base`. A review pass returns no
   snapshots, because it reads only its request.
-- Show the user such a question as the fix run's fixer wrote it.
+- Show the user each problem the follow-up run returns unresolved, as its implementer wrote it.
 - Record what remains in the todo record that `workflow-skills:todo-md` defines.

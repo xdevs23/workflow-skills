@@ -1,6 +1,6 @@
 import { afterAll, describe, expect, test } from 'bun:test'
 import { createHash } from 'node:crypto'
-import { cpSync, mkdirSync, mkdtempSync, realpathSync, rmSync, symlinkSync, writeFileSync } from 'node:fs'
+import { mkdirSync, mkdtempSync, realpathSync, rmSync, symlinkSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { fingerprint } from '../tools/fingerprint.js'
@@ -273,8 +273,8 @@ describe('unit spec validation', () => {
     })
   })
 
-  test('--base takes one entry per repository of the tree and checks the list against the tree', () => {
-    // A tree root that is no repository and holds two, as a repo-tool task tree does.
+  // A tree root that is no repository and holds two, as a repo-tool task tree does.
+  const twoRepositories = () => {
     const tree = join(scratch, `${serial++}-tree`)
     const git = (repository, ...command) => {
       const result = Bun.spawnSync(['git', '-C', join(tree, repository), ...command], { stdout: 'pipe', stderr: 'pipe' })
@@ -290,8 +290,11 @@ describe('unit spec validation', () => {
       git(path, 'commit', '--quiet', '-m', 'fixture: record the notes')
       return git(path, 'rev-parse', '--verify', 'HEAD^{commit}')
     }
-    const api = repository('api')
-    const web = repository('web')
+    return { tree, api: repository('api'), web: repository('web') }
+  }
+
+  test('--base takes one entry per repository of the tree and checks the list against the tree', () => {
+    const { tree, api, web } = twoRepositories()
     const checkIn = (directory, list, ...options) => {
       const result = Bun.spawnSync([process.execPath, tool, join(fixtures, 'valid.yaml'), '--transcripts', fixtures,
         '--base', JSON.stringify(list), ...options], { cwd: directory })
@@ -331,16 +334,35 @@ describe('unit spec validation', () => {
     expect(bare.stderr.toString()).toContain('Usage:')
   })
 
+  test('--base without a spec checks the list alone against the tree and prints it with the proof of the list and the tree', () => {
+    const { tree, api, web } = twoRepositories()
+    const checkBase = (list, ...options) => {
+      const result = Bun.spawnSync([process.execPath, tool, '--base', JSON.stringify(list), ...options], { cwd: tree })
+      return { exit: result.exitCode, out: result.stdout.toString(), err: result.stderr.toString() }
+    }
+    const complete = [{ path: 'api', sha: api }, { path: 'web', sha: web }]
+    const proof = (list, partialBase = false) => fingerprint({ base: list, partialBase, tree: realpathSync(tree) })
+    const checked = checkBase(complete, '--json')
+    expect([checked.exit, checked.err]).toEqual([0, ''])
+    expect(JSON.parse(checked.out)).toEqual({ base: complete, proof: proof(complete) })
+    expect(checkBase(complete).out).toBe(`base=${JSON.stringify(complete)} proof=${proof(complete)}\n`)
+    expect(JSON.parse(checkBase(complete.slice(0, 1), '--json', '--partial-base').out).proof).toBe(proof(complete.slice(0, 1), true))
+    expect(checkBase(complete, '--proof', proof(complete))).toMatchObject({ exit: 0, err: '' })
+    invalid(checkBase(complete, '--proof', proof(complete.slice(0, 1))),
+      `the checked values give the proof ${proof(complete)}, and the run launched with the proof ${proof(complete.slice(0, 1))}`)
+    invalid(checkBase(complete.slice(0, 1)), '--base leaves out the git repositories at web')
+    invalid(checkBase([{ path: 'api', sha: web }, complete[1]]), `--base commit ${web} is not in the repository at api`)
+    invalid(checkBase(complete, '--transcripts', fixtures), 'Usage:')
+  })
+
   test('the tool knows no private record, design document or launch values in spec mode: those options are refused', async () => {
     for (const option of ['--record', '--render', '--check-render']) {
       const path = join(scratch, `refused${option}.md`)
       invalid(fixture('valid', [option, path]), `Unknown option '${option}'`)
       expect(await Bun.file(path).exists()).toBe(false)
-      const list = Bun.spawnSync([process.execPath, tool, '--fix-list', join(root, 'tests/fixtures/fix-list/list.yaml'),
-        '--transcripts', fixtures, option, path], { cwd: root })
-      expect([list.exitCode, list.stderr.toString().includes(`Unknown option '${option}'`)]).toEqual([1, true])
     }
-    invalid(fixture('valid', ['--entries']), 'Usage')
+    for (const option of ['--fix-list', '--make-fix-list', '--size']) invalid(fixture('valid', [option, 'value']), `Unknown option '${option}'`)
+    invalid(fixture('valid', ['--entries']), "Unknown option '--entries'")
     invalid(fixture('valid', ['--expect', '{}']), "Unknown option '--expect'")
   })
 
@@ -439,359 +461,5 @@ describe('unit spec validation', () => {
     expect(result.exitCode).not.toBe(0)
     expect(result.stderr.toString()).toContain('Bun 1.2.21 or newer is required: Bun.YAML is unavailable')
     expect(await Bun.file(join(root, 'README.md')).text()).toContain('Bun 1.2.21 or newer')
-  })
-})
-
-const fixLists = join(root, 'tests/fixtures/fix-list')
-const validPath = join(fixLists, 'list.yaml')
-const reviewListPath = join(fixLists, 'review-list.yaml')
-const validList = Bun.YAML.parse(await Bun.file(validPath).text())
-const parentResultPath = 'tests/fixtures/fix-list/results/parent-run.json'
-const reviewResultPath = 'tests/fixtures/fix-list/results/review-pass.json'
-const parentOutput = await Bun.file(join(root, parentResultPath)).json()
-const EARLIER_VERSION = 'as a run of an earlier version of the scripts returns: finish its chain of fix runs as the ' +
-  'skill, the spec tool and the scripts of the newest plugin version below 0.42.0 in the plugin cache say'
-const validEntries = parentOutput.result.toFix
-const checkList = (path, options = [], cwd = root) => {
-  const result = Bun.spawnSync([process.execPath, tool, '--fix-list', path, ...options], { cwd })
-  return { exit: result.exitCode, out: result.stdout.toString(), err: result.stderr.toString() }
-}
-const changedList = (edit, options = []) => {
-  const list = structuredClone(validList)
-  edit(list)
-  return checkList(written(list), options)
-}
-const makeList = (file, options = []) => {
-  const result = Bun.spawnSync([process.execPath, tool, '--make-fix-list', file, ...options], { cwd: root })
-  return { exit: result.exitCode, out: result.stdout.toString(), err: result.stderr.toString() }
-}
-const writeEditedParentResult = edit => {
-  const output = structuredClone(parentOutput)
-  edit(output.result)
-  const path = join(scratch, `${serial++}-result.json`)
-  writeFileSync(path, JSON.stringify(output))
-  return path
-}
-const parentSpecPath = 'tests/fixtures/fix-list/parent.yaml'
-const parentSpecSha = createHash('sha256').update(new Uint8Array(await Bun.file(join(root, parentSpecPath)).arrayBuffer())).digest('hex')
-const sourcesOf = list => list.entries.map(entry => entry.source)
-const measured = { codeAdded: 21, repositories: [{ path: '.', base: 'a'.repeat(40), candidate: 'b'.repeat(40) }] }
-// The proof of the fixture list checked in the repository root without a base list.
-const listProof = (fields = {}) =>
-  fingerprint({ fixList: validPath, spec: parentSpecPath, entries: validEntries, artifacts: [], base: null, partialBase: false, tree: here, ...fields })
-
-describe('fix list validation', () => {
-  test('a valid fix list passes with the proof of its values, its spec, and its entries on request, in both output forms', async () => {
-    const proof = listProof()
-    const bytes = await Bun.file(validPath).arrayBuffer()
-    const summary = { result: parentResultPath, spec: parentSpecPath, specSha256: parentSpecSha, specLines: 1, artifacts: [],
-      sha256: createHash('sha256').update(new Uint8Array(bytes)).digest('hex'), proof, fixList: validPath }
-    const brief = checkList(validPath, ['--json'])
-    expect([brief.exit, brief.err]).toEqual([0, ''])
-    expect(JSON.parse(brief.out)).toEqual(summary)
-    const full = checkList(validPath, ['--json', '--entries'])
-    expect([full.exit, full.err]).toEqual([0, ''])
-    expect(JSON.parse(full.out)).toEqual({ entries: validEntries, ...summary })
-    const plain = checkList(validPath)
-    expect([plain.exit, plain.err]).toEqual([0, ''])
-    expect(plain.out).toStartWith(`entries=6 result=${parentResultPath} spec=${parentSpecPath} sha256=${summary.sha256} proof=${proof} fixList=`)
-    invalid(checkList(validPath, ['--entries']), 'Usage')
-  })
-
-  test('the generated fix list names the saved result by its absolute path and holds the spec and every item the run returned to be fixed, in its order', () => {
-    const made = makeList(parentResultPath)
-    expect([made.exit, made.err]).toEqual([0, ''])
-    expect(Bun.YAML.parse(made.out)).toEqual({ result: join(root, parentResultPath), spec: parentSpecPath, entries: validEntries })
-    expect(sourcesOf(Bun.YAML.parse(made.out))).toEqual(['impl:0', 'verify:0', 'verify:1', 'verify:2', 'issue:0', 'roaster:0'])
-    const checked = checkList(written(made.out), ['--json'])
-    expect([checked.exit, checked.err]).toEqual([0, ''])
-  })
-
-  test('the fix list of a fix run carries on the spec and holds the entries its fixer left open beside its roast and diff findings', () => {
-    const items = [{ source: 'entry:2', entry: validList.entries[2] }, { source: 'roaster:0', finding: validEntries[5].finding },
-      { source: 'diff:0', finding: { ...validEntries[5].finding, severity: 'CRITICAL', claim: 'The change also renames a helper.' } }]
-    const made = makeList(writeEditedParentResult(result => { result.toFix = items }))
-    expect([made.exit, made.err]).toEqual([0, ''])
-    const list = Bun.YAML.parse(made.out)
-    expect([list.spec, list.entries]).toEqual([parentSpecPath, items])
-    const checked = checkList(written(list), ['--json'])
-    expect([checked.exit, checked.err, JSON.parse(checked.out).specSha256, JSON.parse(checked.out).specLines]).toEqual([0, '', parentSpecSha, 1])
-  })
-
-  test('a run in which a stage failed gives no fix list and fails the check of its list, whatever its exit', () => {
-    const message = 'FAIL-FAST: roast returned no complete result after 3 attempts: roaster unavailable'
-    const stageFailure = { kind: 'stage-failure', severity: 'CRITICAL', item: { label: 'roast', message } }
-    const refusal = `a stage of the run failed, and an incomplete run gets no fix list: roast: ${message}`
-    for (const exit of ['failed', 'root-resolution', 'aborted']) {
-      const saved = writeEditedParentResult(result => { result.exit = exit; result.remaining = [stageFailure] })
-      invalid(makeList(saved), refusal)
-      invalid(checkList(written({ ...validList, result: saved })), `impl:0: ${refusal}`)
-    }
-    invalid(makeList(writeEditedParentResult(result => { delete result.remaining })), 'the run result holds no remaining list')
-  })
-
-  test('a run in which a stage raised a hard flag gives no fix list and fails the check of its list, whatever its exit', () => {
-    const reason = 'The correction patches a mechanism the user\'s words describe as removed.'
-    const flag = { kind: 'abort', severity: 'CRITICAL', item: { label: 'fix', abort: { trigger: 'sense-check', reason } } }
-    const refusal = `a stage of the run raised a hard flag, and only a new run that receives the user's answer continues the unit: fix: ${reason}`
-    for (const exit of ['aborted', 'root-resolution']) {
-      const saved = writeEditedParentResult(result => { result.exit = exit; result.remaining = [flag] })
-      invalid(makeList(saved), refusal)
-      invalid(checkList(written({ ...validList, result: saved })), `impl:0: ${refusal}`)
-    }
-  })
-
-  test('a run whose writer committed outside its scope gives no fix list and fails the check of its list', () => {
-    const note = 'the commit also rewrote an unrelated helper'
-    const scope = { kind: 'writer-scope', severity: 'CRITICAL', item: { repository: '.', sha: 'b'.repeat(40), ok: false, filesMatch: true, note } }
-    const refusal = `a writer commit left its scope, and no fix run builds on the snapshot that holds it: . ${'b'.repeat(40)}: ${note}`
-    const saved = writeEditedParentResult(result => { result.exit = 'root-resolution'; result.remaining = [scope] })
-    invalid(makeList(saved), refusal)
-    invalid(checkList(written({ ...validList, result: saved })), `impl:0: ${refusal}`)
-  })
-
-  test('the implementer artifacts of the parent run are printed by the check of its list and covered by its proof', () => {
-    const artifacts = [{ path: '/tree/.cache/visual/captures/impl-before', what: 'the screen at the base commit' }]
-    const saved = writeEditedParentResult(result => { result.artifacts = artifacts })
-    const checked = checkList(written({ ...validList, result: saved }), ['--json'])
-    expect([checked.exit, checked.err]).toEqual([0, ''])
-    const printed = JSON.parse(checked.out)
-    expect(printed.artifacts).toEqual(artifacts)
-    expect(printed.proof).not.toBe(fingerprint({ fixList: printed.fixList, spec: parentSpecPath, entries: validEntries, artifacts: [],
-      base: null, partialBase: false, tree: here }))
-    expect(printed.proof).toBe(fingerprint({ fixList: printed.fixList, spec: parentSpecPath, entries: validEntries, artifacts,
-      base: null, partialBase: false, tree: here }))
-    invalid(makeList(writeEditedParentResult(result => { delete result.artifacts })), 'the run result holds no artifacts list, ' + EARLIER_VERSION)
-    for (const strange of [{ path: '/tree/capture' }, { ...artifacts[0], kind: 'capture' }, { path: 7, what: 'a capture' }, 'capture']) {
-      invalid(makeList(writeEditedParentResult(result => { result.artifacts = [...artifacts, strange] })), 'the run result holds artifact 2 in another form')
-    }
-  })
-
-  test('a file without a run result and a result of an earlier version give no fix list', () => {
-    invalid(makeList(writeEditedParentResult(result => { delete result.toFix })), 'the run result holds no toFix list, ' + EARLIER_VERSION)
-    invalid(makeList(writeEditedParentResult(result => {
-      delete result.toFix
-      result.remaining.push({ kind: 'abort', severity: 'CRITICAL', item: { abort: { trigger: 'directive-conflict', reason: 'The scope contradicts the record.' } } })
-    })), "a stage of the run raised a hard flag")
-    invalid(makeList(writeEditedParentResult(result => { result.toFix = [] })), 'the run returned nothing to fix')
-    const absent = join(scratch, 'absent-result.json')
-    invalid(makeList(absent), `the run result ${absent} is unreadable or no JSON`)
-    const unparsed = written('not json')
-    invalid(makeList(unparsed), `the run result ${unparsed} is unreadable or no JSON`)
-    const bare = join(scratch, `${serial++}-bare.json`)
-    writeFileSync(bare, JSON.stringify({ summary: 'A workflow whose script returned nothing.' }))
-    invalid(makeList(bare), `${bare} holds no run result`)
-  })
-
-  test('every item of a run result has a source of a known form and the one mapping it names, and its spec a path, a sha256 and a line count', () => {
-    for (const [edit, message] of [
-      [result => { result.toFix[1].source = 'correctness:1' }, 'the run result holds item 2 of toFix in another form'],
-      [result => { result.toFix[1].correction = 'Close the handle.' }, 'the run result holds item 2 of toFix in another form'],
-      [result => { result.toFix[0] = { source: 'impl:0', decision: result.toFix[0].finding } }, 'the run result holds item 1 of toFix in another form'],
-      [result => { result.toFix[5].finding = 'The handle leaks.' }, 'the run result holds item 6 of toFix in another form'],
-      [result => { result.toFix.push({ source: 'size', size: { specLines: 1, ...measured } }) }, 'the run result holds item 7 of toFix in another form'],
-      [result => { delete result.spec.lines }, 'the run result names the spec its check passed on in another form'],
-      [result => { result.spec.lines = -1 }, 'the run result names the spec its check passed on in another form'],
-      [result => { result.spec.lines = 0 }, 'the run result names the spec its check passed on in another form'],
-      [result => { result.spec.sha256 = 'abc' }, 'the run result names the spec its check passed on in another form'],
-      [result => { result.spec.sha256 = result.spec.sha256.toUpperCase() }, 'the run result names the spec its check passed on in another form'],
-      [result => { result.spec = parentSpecPath }, 'the run result names the spec its check passed on in another form'],
-    ]) invalid(makeList(writeEditedParentResult(edit)), message)
-  })
-
-  test('a run result that holds a source twice gives no fix list and fails the check of its list', () => {
-    const saved = writeEditedParentResult(result => { result.toFix.push(structuredClone(result.toFix[5])) })
-    const refusal = 'the run result holds the source roaster:0 twice in toFix'
-    invalid(makeList(saved), refusal)
-    invalid(checkList(written({ ...validList, result: saved })), `roaster:0: ${refusal}`)
-  })
-
-  test('the fix list of a review pass holds the findings of every review seat and names no spec', async () => {
-    const made = makeList(reviewResultPath)
-    expect([made.exit, made.err]).toEqual([0, ''])
-    const list = Bun.YAML.parse(made.out)
-    const fixture = Bun.YAML.parse(await Bun.file(reviewListPath).text())
-    expect(list).toEqual({ ...fixture, result: join(root, reviewResultPath) })
-    expect([fixture.spec, sourcesOf(fixture)]).toEqual([null, ['review:correctness:0', 'review:rules:0']])
-    const checked = checkList(reviewListPath, ['--json'])
-    expect([checked.exit, checked.err]).toEqual([0, ''])
-    const bytes = await Bun.file(reviewListPath).arrayBuffer()
-    expect(JSON.parse(checked.out)).toEqual({ result: reviewResultPath, spec: null, artifacts: [],
-      sha256: createHash('sha256').update(new Uint8Array(bytes)).digest('hex'),
-      proof: listProof({ fixList: reviewListPath, spec: null, entries: list.entries }), fixList: reviewListPath })
-    invalid(checkList(written({ ...list, spec: parentSpecPath })), 'fix list.spec: expected null, because the parent run checked no spec')
-    invalid(makeList(reviewResultPath, ['--size', JSON.stringify(measured)]), '--size: the parent run counted no spec lines to measure a size breach against')
-  })
-
-  test('the generated fix list finds its saved result from another directory, such as the worktree of a fix run', () => {
-    const made = makeList(reviewResultPath)
-    expect([made.exit, made.err]).toEqual([0, ''])
-    const checked = checkList(written(made.out), [], scratch)
-    expect([checked.exit, checked.err]).toEqual([0, ''])
-  })
-
-  test('a measured size breach joins the generated list beside the spec lines the parent run counted', () => {
-    const made = makeList(parentResultPath, ['--size', JSON.stringify(measured)])
-    expect([made.exit, made.err]).toEqual([0, ''])
-    const list = Bun.YAML.parse(made.out)
-    expect(list.entries.at(-1)).toEqual({ source: 'size', size: { specLines: 1, ...measured } })
-    expect(sourcesOf(list)).toEqual([...validEntries.map(e => e.source), 'size'])
-    expect(checkList(written(list)).exit).toBe(0)
-    invalid(checkList(written({ ...list, entries: [list.entries.at(-1), ...list.entries.slice(0, -1)] })),
-      'size: out of order: the parent run returned impl:0 in this place')
-    invalid(checkList(written({ ...list, entries: list.entries.map(e => e.source === 'size' ? { ...e, size: { ...e.size, specLines: 2 } } : e) })),
-      "size: specLines: expected 1, the spec lines the parent run's spec check counted")
-    for (const [size, message] of [
-      ['{', '--size expects a JSON mapping of codeAdded and repositories: '],
-      ['[]', '--size expects a JSON mapping of codeAdded and repositories'],
-      [JSON.stringify({ ...measured, codeAdded: -1 }), 'codeAdded: expected the count of implementation lines added'],
-      [JSON.stringify({ ...measured, repositories: [{ path: '.', base: 'main', candidate: 'b'.repeat(40) }] }), 'repositories: expected a non-empty list'],
-      [JSON.stringify({ ...measured, specLines: 3 }), "specLines: expected 1, the spec lines the parent run's spec check counted"],
-      [JSON.stringify({ codeAdded: 21 }), 'repositories: missing field'],
-    ]) invalid(makeList(parentResultPath, ['--size', size]), message)
-  })
-
-  test.each([
-    ['an unknown result', l => { l.result = 'tests/fixtures/fix-list/results/missing.json' },
-      'verify:1: the run result tests/fixtures/fix-list/results/missing.json is unreadable or no JSON'],
-    ['the result of another run', l => { l.result = reviewResultPath }, 'verify:1: the parent run returned no item to fix under this source'],
-    ['an index out of range', l => { l.entries[2].source = 'verify:3' }, 'verify:3: the parent run returned no item to fix under this source'],
-    ['a deleted entry', l => { l.entries.splice(2, 1) }, 'verify:1: missing, and the parent run returned it to be fixed'],
-    ['an added entry', l => { l.entries.push({ source: 'verify:7', decision: validEntries[1].decision }) }, 'verify:7: the parent run returned no item to fix under this source'],
-    ['an edited decision', l => { l.entries[2].decision.correction = 'Return the error to the caller.' }, 'verify:1.decision: differs from the parent run\'s result'],
-    ['an edited finding', l => { l.entries[5].finding.claim = 'The handle leaks.' }, 'roaster:0.finding: differs from the parent run\'s result'],
-    ['a reordered list', l => { l.entries.reverse() }, 'roaster:0: out of order: the parent run returned impl:0 in this place'],
-    ['a decision under a roaster source', l => { l.entries[5] = { source: 'roaster:0', decision: l.entries[5].finding } }, 'roaster:0.decision: unknown key'],
-  ])('%s fails with a violation naming the entry', (name, edit, message) => {
-    const result = changedList(edit)
-    invalid(result, message)
-    expect(result.err).not.toContain('proof')
-  })
-
-  test('a failure of the result names every entry', () => {
-    const result = changedList(l => { l.result = 'tests/fixtures/fix-list/results/missing.json' })
-    for (const source of sourcesOf(validList)) invalid(result, `: ${source}: the run result tests/fixtures/fix-list/results/missing.json`)
-    expect(result.err.trim().split('\n')).toHaveLength(validList.entries.length)
-  })
-
-  test('the spec is the one the parent run checked, unchanged', () => {
-    invalid(changedList(l => { l.spec = 'tests/fixtures/spec/valid.yaml' }), 'fix list.spec: expected the spec the parent run checked, tests/fixtures/fix-list/parent.yaml')
-    invalid(changedList(l => { l.spec = null }), 'fix list.spec: expected the spec the parent run checked, tests/fixtures/fix-list/parent.yaml')
-    const copy = join(scratch, 'parent-copy')
-    cpSync(join(fixLists, 'results'), join(copy, 'tests/fixtures/fix-list/results'), { recursive: true })
-    writeFileSync(join(copy, parentSpecPath), 'unit: changed\n')
-    const result = checkList(validPath, [], copy)
-    expect([result.exit, result.err.includes('fix list.spec: changed since the parent run checked it')]).toEqual([1, true])
-  })
-
-  test.each([
-    ['an unknown list key', l => { l.extra = true }, 'fix list.extra: unknown key'],
-    ['a findings key', l => { l.findings = ['correctness:1'] }, 'fix list.findings: unknown key'],
-    ['the keys of a spec', l => { l.unit = 'example' }, 'fix list.unit: unknown key'],
-    ['the run key of an earlier version', l => { l.run = 'wf_parent-run' }, 'fix list.run: unknown key'],
-    ['a missing result', l => { delete l.result }, 'fix list.result: missing field'],
-    ['a result that names no file', l => { l.result = 7 }, 'fix list.result: expected a non-empty string'],
-    ['a missing spec', l => { delete l.spec }, 'fix list.spec: missing field'],
-    ['missing entries', l => { delete l.entries }, 'fix list.entries: missing field'],
-    ['empty entries', l => { l.entries = [] }, 'entries: expected a non-empty list'],
-    ['an entry with a correction', l => { l.entries[5].correction = 'Close the handle.' }, 'roaster:0.correction: unknown key'],
-    ['an entry with pointers', l => { l.entries[5].attach = [] }, 'roaster:0.attach: unknown key'],
-    ['a reviewer source', l => { l.entries[5].source = 'correctness:1' },
-      'entry 6.source: expected impl:<index>, verify:<index>, issue:<index>, roaster:<index>, diff:<index>, proof:<index>, review:<seat>:<index>, entry:<index>, size: "correctness:1"'],
-    ['a duplicate source', l => { l.entries.push(structuredClone(l.entries[1])) }, 'verify:0: duplicate source verify:0'],
-  ])('%s fails shape validation', (name, edit, message) => invalid(changedList(edit), message))
-
-  test('a spec is no fix list, and a fix list is no spec', () => {
-    invalid(checkList(join(fixtures, 'valid.yaml')), 'fix list.unit: unknown key')
-    invalid(run(validPath), 'spec.result: unknown key')
-  })
-
-  test('an unreadable fix list or a parent result that is no JSON fails', () => {
-    invalid(checkList(join(scratch, 'absent-list.yaml')), 'fix list: unreadable or malformed YAML')
-    const unparsed = written('{"result": ')
-    invalid(checkList(written({ ...validList, entries: [validList.entries[5]], result: unparsed })), `roaster:0: the run result ${unparsed} is unreadable or no JSON`)
-  })
-
-  test.each([
-    ['a changed decision', v => { v.entries[1].decision.correction = 'Log the error and continue.' }],
-    ['a correction beside the finding', v => { v.entries[5].correction = 'Close the file handle.' }],
-    ['another spec', v => { v.spec = 'tests/fixtures/spec/valid.yaml' }],
-    ['a missing entry', v => { v.entries.pop() }],
-    ['reordered entries', v => { v.entries.reverse() }],
-    ['an entry the list does not hold', v => { v.entries.push({ ...v.entries[1], source: 'verify:7' }) }],
-    ['an artifact the parent run did not return', v => { v.artifacts.push({ path: '/tree/.cache/visual/after', what: 'the screen after the fix' }) }],
-    ['another fix list', v => { v.fixList = join(scratch, 'other-list.yaml') }],
-    ['a base list', v => { v.base = [{ path: '.', sha: 'a'.repeat(40) }] }],
-    ['another tree', v => { v.tree = scratch }],
-  ])('launch values with %s give another proof than the list', (name, edit) => {
-    const values = { fixList: validPath, spec: parentSpecPath, entries: structuredClone(validEntries), artifacts: [], base: null, partialBase: false, tree: here }
-    const printed = JSON.parse(checkList(validPath, ['--json']).out).proof
-    expect(fingerprint(values)).toBe(printed)
-    edit(values)
-    expect(fingerprint(values)).not.toBe(printed)
-  })
-
-  test('--base beside --fix-list is checked against the tree, printed, and covered by the proof', () => {
-    const head = Bun.spawnSync(['git', '-C', root, 'rev-parse', '--verify', 'HEAD^{commit}']).stdout.toString().trim()
-    const base = [{ path: '.', sha: head }]
-    // The parent run ended on the commit the tree is at.
-    const list = written({ ...validList, result: writeEditedParentResult(result => { result.snapshots = base }) })
-    const checked = checkList(list, ['--json', '--base', JSON.stringify(base)])
-    expect([checked.exit, checked.err]).toEqual([0, ''])
-    expect(JSON.parse(checked.out)).toMatchObject({ base, proof: listProof({ fixList: list, base }) })
-    expect(JSON.parse(checkList(list, ['--json', '--base', JSON.stringify(base), '--partial-base']).out).proof)
-      .toBe(listProof({ fixList: list, base, partialBase: true }))
-    expect(JSON.parse(checkList(list, ['--json']).out)).not.toHaveProperty('base')
-    invalid(checkList(list, ['--base', JSON.stringify([{ path: '.', sha: 'f'.repeat(40) }])]), `--base commit ${'f'.repeat(40)} is not in the repository at .`)
-    invalid(checkList(list, ['--base', JSON.stringify([...base, { path: 'tests', sha: head }])]), '--base path tests is not the top level of a git repository')
-  })
-
-  test('--base beside --fix-list names the final snapshots the parent run returned, and any commit the tree holds after a review pass', () => {
-    const [head, earlier] = Bun.spawnSync(['git', '-C', root, 'rev-list', '--max-count=2', 'HEAD']).stdout.toString().trim().split('\n')
-    const list = written({ ...validList, result: writeEditedParentResult(result => { result.snapshots = [{ path: '.', sha: head }] }) })
-    // Both commits are in the tree, so only the parent run's final snapshot tells them apart.
-    const older = checkList(list, ['--json', '--base', JSON.stringify([{ path: '.', sha: earlier }])])
-    invalid(older, `--base names commit ${earlier} at ., and the parent run's final snapshot there is ${head}`)
-    expect(older.out).toBe('')
-    invalid(checkList(list, ['--base', JSON.stringify([{ path: '.', sha: earlier }]), '--partial-base']),
-      `--base names commit ${earlier} at ., and the parent run's final snapshot there is ${head}`)
-    const elsewhere = written({ ...validList, result: writeEditedParentResult(result => { result.snapshots = [{ path: 'api', sha: head }] }) })
-    invalid(checkList(elsewhere, ['--base', JSON.stringify([{ path: '.', sha: head }])]),
-      '--base names the repository at ., of which the parent run returned no final snapshot; ' +
-      '--base leaves out the repository at api, of which the parent run returned its final snapshot')
-    for (const sha of [head, earlier]) {
-      const reviewed = checkList(reviewListPath, ['--json', '--base', JSON.stringify([{ path: '.', sha }])])
-      expect([sha, reviewed.exit, reviewed.err]).toEqual([sha, 0, ''])
-    }
-  })
-
-  test('a run result holds its final snapshots as null or one { path, sha } per repository', () => {
-    const message = 'the run result holds its final snapshots in another form: null, or one { path, sha } per repository'
-    for (const edit of [
-      result => { delete result.snapshots },
-      result => { result.snapshots = [] },
-      result => { result.snapshots = [{ path: '.', sha: 'main' }] },
-      result => { result.snapshots = [{ path: '/tree', sha: 'b'.repeat(40) }] },
-      result => { result.snapshots = [{ path: '.', sha: 'b'.repeat(40), clean: true }] },
-      result => { result.snapshots = [{ path: '.', sha: 'b'.repeat(40) }, { path: '.', sha: 'c'.repeat(40) }] },
-    ]) invalid(makeList(writeEditedParentResult(edit)), message)
-  })
-
-  test('the launch values are no option of the tool any more, and only their proof is', () => {
-    invalid(checkList(validPath, ['--expect', JSON.stringify({ spec: parentSpecPath, entries: validEntries })]), "Unknown option '--expect'")
-    expect(JSON.parse(checkList(validPath, ['--json', '--proof', listProof()]).out).proof).toBe(listProof())
-    const launched = listProof({ entries: validEntries.slice(1) })
-    invalid(checkList(validPath, ['--json', '--proof', launched]), `the checked values give the proof ${listProof()}, and the run launched with the proof ${launched}`)
-  })
-
-  test('a spec argument or a transcript directory beside --fix-list, --partial-base without --base, and a spec option beside --make-fix-list are usage errors, and --size belongs to --make-fix-list alone', () => {
-    for (const options of [[join(fixtures, 'valid.yaml')], ['--partial-base'], ['--size', JSON.stringify(measured)], ['--transcripts', fixtures]]) {
-      invalid(checkList(validPath, options), 'Usage')
-    }
-    invalid(run(join(fixtures, 'valid.yaml'), ['--size', JSON.stringify(measured)]), 'Usage')
-    for (const options of [['--json'], ['--fix-list', validPath], ['--entries'], [join(fixtures, 'valid.yaml')], ['--proof', listProof()], ['--transcripts', fixtures]]) {
-      const made = makeList(parentResultPath, options)
-      expect([options.join(' '), made.exit, made.err.includes('Usage')]).toEqual([options.join(' '), 1, true])
-    }
   })
 })
