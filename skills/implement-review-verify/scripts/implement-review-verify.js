@@ -416,21 +416,22 @@ const VERIFY = { type: 'object', additionalProperties: false,
       properties: { repository: { type: 'string' }, sha: COMMIT_ID, ok: { type: 'boolean' }, filesMatch: { type: 'boolean' },
         note: { type: 'string' } } } },
     decisions: { type: 'array', items: { type: 'object', additionalProperties: false,
-      required: ['sourceIds', 'action', 'severity', 'reason', 'evidence', 'authority',
-        'correction', 'constraints', 'acceptance', 'removal', 'receipts'],
+      required: ['sourceIds', 'action', 'severity', 'evidence', 'authority',
+        'constraints', 'acceptance', 'removal', 'receipts'],
       properties: {
         sourceIds: { type: 'array', minItems: 1, items: { type: 'string' } },
-        action: { enum: ['approve-fix', 'reject', 'needs-decision', 'root-action', 'cleanup', 'record'] },
+        action: { enum: ['approve-fix', 'reject', 'unresolved', 'cleanup', 'record'] },
         severity: { enum: ['must-fix', 'should-fix', 'nit', 'CRITICAL'] },
-        reason: { type: 'string' }, evidence: { type: 'string' }, authority: { type: 'string' },
-        correction: { type: 'string' }, constraints: { type: 'string' }, acceptance: { type: 'string' },
+        reason: { type: 'string' }, problem: PROBLEM, evidence: { type: 'string' }, authority: { type: 'string' },
+        correction: { type: 'string', description: 'Required and nonempty for approve-fix. Other actions may omit it.' },
+        constraints: { type: 'string' }, acceptance: { type: 'string' },
         // True on an approve-fix whose correction removes code on the removal rule of the verifier's template.
         removal: { type: 'boolean' },
         receipts: RECEIPTS,
       } } },
     // Limitations and unchecked coverage must not disappear merely because they lacked a source finding.
     issues: { type: 'array', items: { type: 'object', required: ['kind', 'detail'], additionalProperties: false,
-      properties: { kind: { enum: ['needs-decision', 'root-action'] }, detail: { type: 'string' } } } },
+      properties: { kind: { enum: ['unresolved'] }, detail: { type: 'string' } } } },
     specSuggestions: STRINGS } }
 
 // The hard flag is the abort field (law 8): a trigger other than none. Cold seats carry no abort
@@ -924,7 +925,7 @@ const exactlyOnce = (actual, expected, label) => {
     if (!wanted.has(id) || seen.has(id)) throw new Error('Unknown or duplicate ' + label + ': ' + id)
     seen.add(id)
   }
-  if (seen.size !== wanted.size) throw new Error('Missing ' + label)
+  if (seen.size !== wanted.size) throw new Error('Missing ' + label + ': ' + [...wanted].filter(id => !seen.has(id)).join(', '))
 }
 // The citation a rejection of an unbacked-choice finding carries in its authority: the spec entry
 // by its session file and line, then the backing words quoted together with their surrounding context.
@@ -950,57 +951,65 @@ const checkVerification = (v, sources, snaps) => {
     if (snapshotSha !== expected.get(path) || clean !== true) throw new Error('Verifier observed snapshot drift or a dirty worktree in ' + path)
     if (git.head.trim() !== snapshotSha) throw new Error('git.head ' + JSON.stringify(git.head) + ' of ' + path + ' differs from snapshotSha ' + JSON.stringify(snapshotSha))
   }
-  exactlyOnce(v.decisions.flatMap(d => d.sourceIds), sources.map(f => f.id), 'source ID')
+  exactlyOnce(v.decisions.flatMap(d => d.sourceIds), sources.map(f => f.id), 'sourceIds in verifier decisions')
   const seatOf = new Map(sources.map(f => [f.id, f.seat]))
   const kindOf = new Map(sources.map(f => [f.id, f.kind]))
   for (const d of v.decisions) {
-    if (!d.sourceIds.length) throw new Error('Decision without source IDs')
-    requireText(d.reason, 'decision reason')
-    requireText(d.evidence, 'decision evidence')
-    if (d.action === 'approve-fix') {
-      for (const field of ['authority', 'correction', 'constraints', 'acceptance']) requireText(d[field], 'approved ' + field)
+    const invalid = (field, requirement) => new Error('Decision ' + JSON.stringify(d.sourceIds) +
+      ' (' + d.action + '), field ' + field + ': ' + requirement)
+    const requireField = (field, value = d[field]) => {
+      if (typeof value !== 'string' || !value.trim()) throw invalid(field, 'must be nonempty text')
     }
-    if (d.removal && d.action !== 'approve-fix') throw new Error('Only an approve-fix carries removal true, never ' + d.action)
+    if (!d.sourceIds.length) throw invalid('sourceIds', 'must name at least one source finding')
+    if (d.action === 'unresolved') {
+      if (d.reason !== undefined) throw invalid('reason', 'an unresolved finding states its problem in problem and carries no reason')
+      for (const field of PROBLEM.required) requireField('problem.' + field, d.problem?.[field])
+    } else {
+      requireField('reason')
+      if (d.problem !== undefined) throw invalid('problem', 'only an unresolved finding carries a problem statement')
+    }
+    requireField('evidence')
+    if (d.action === 'approve-fix') {
+      for (const field of ['authority', 'correction', 'constraints', 'acceptance']) requireField(field)
+    }
+    if (d.removal && d.action !== 'approve-fix') throw invalid('removal', 'Only an approve-fix carries removal true, never ' + d.action)
     if (d.sourceIds.some(id => kindOf.get(id) === 'unbacked-choice')) {
       if (d.action === 'approve-fix' && d.removal !== true) {
-        throw new Error('Unbacked-choice finding allows approve-fix only for a removal on the removal rule, marked removal true')
+        throw invalid('removal', 'Unbacked-choice finding allows approve-fix only for a removal on the removal rule, marked removal true')
       }
-      if (!['needs-decision', 'reject', 'approve-fix'].includes(d.action)) {
-        throw new Error('Unbacked-choice finding allows only needs-decision, reject or a removal approve-fix, never ' + d.action)
+      if (!['unresolved', 'reject', 'approve-fix'].includes(d.action)) {
+        throw invalid('action', 'Unbacked-choice finding allows only unresolved, reject or a removal approve-fix, never ' + d.action)
       }
       if (d.action === 'reject' && !BACKING.test(d.authority)) {
-        throw new Error('Unbacked-choice rejection must cite in authority the spec entry by its file and line with the backing words quoted in their context: spec entry <file>:<line>: "<quote>"')
+        throw invalid('authority', 'Unbacked-choice rejection must cite in authority the spec entry by its file and line with the backing words quoted in their context: spec entry <file>:<line>: "<quote>"')
       }
     }
     // A kind-bearing finding is about this unit's own diff: CRITICAL whatever its disposition,
     // never deferred as cleanup or record, and its authority quotes the record on EVERY action.
     const fromKind = d.sourceIds.some(id => kindOf.get(id))
-    if (fromKind && d.severity !== 'CRITICAL') throw new Error('Project-benefit finding must keep CRITICAL severity whatever its disposition')
-    if (fromKind && ['cleanup', 'record'].includes(d.action)) throw new Error('Project-benefit finding cannot be dispositioned as cleanup or record; it goes to the follow-up run')
-    if (fromKind) requireText(d.authority, 'project-benefit authority (the recorded words)')
-    if (d.action === 'record' && ['must-fix', 'CRITICAL'].includes(d.severity)) throw new Error('Blocking defect cannot be recorded as advisory')
+    if (fromKind && d.severity !== 'CRITICAL') throw invalid('severity', 'Project-benefit finding must keep CRITICAL severity whatever its disposition')
+    if (fromKind && ['cleanup', 'record'].includes(d.action)) throw invalid('action', 'Project-benefit finding cannot be dispositioned as cleanup or record; it goes to the follow-up run')
+    if (fromKind) requireField('authority')
+    if (d.action === 'record' && ['must-fix', 'CRITICAL'].includes(d.severity)) throw invalid('action', 'Blocking defect cannot be recorded as advisory')
     // Every inverse-spec finding is CRITICAL unconditionally (law 13): ignore whatever severity
     // a reviewer supplied, and never let a mixed consolidated group launder it to a lower tier.
     const fromInverse = d.sourceIds.some(id => seatOf.get(id) === 'inverse')
     if (fromInverse && d.severity !== 'CRITICAL') {
-      throw new Error('Inverse-spec finding must keep CRITICAL severity regardless of supplied categorization')
+      throw invalid('severity', 'Inverse-spec finding must keep CRITICAL severity regardless of supplied categorization')
     }
     // cleanup is for work OUTSIDE this unit's repair scope; an inverse-spec finding is about a
     // choice made INSIDE this unit's own diff, so it can never be deferred there or as record.
     if (fromInverse && d.action === 'cleanup') {
-      throw new Error('Inverse-spec finding cannot be dispositioned as cleanup; it goes to the follow-up run')
+      throw invalid('action', 'Inverse-spec finding cannot be dispositioned as cleanup; it goes to the follow-up run')
     }
-    // A needs-decision decision carries no correction; root-action and cleanup name the next action.
-    if (d.action === 'needs-decision' && d.correction !== '') throw new Error('A needs-decision decision carries no correction')
-    if (['root-action', 'cleanup'].includes(d.action)) requireText(d.correction, 'next action')
   }
-  for (const issue of v.issues) requireText(issue.detail, 'unresolved issue')
+  for (const [index, issue] of v.issues.entries()) requireText(issue.detail, 'issue:' + index + ', field detail (must be nonempty text)')
 }
 const checkAnswers = dispositions => {
   for (const d of dispositions) {
     if (d.disposition === 'unresolved') {
       if (d.reason !== undefined || !d.problem) throw new Error('An unresolved answer states its problem in problem and carries no reason: ' + d.key)
-      for (const field of ['problem', 'why', 'whyUnsolved']) requireText(d.problem[field], 'the ' + field + ' of the problem of ' + d.key)
+      for (const field of PROBLEM.required) requireText(d.problem[field], 'the ' + field + ' of the problem of ' + d.key)
     } else {
       if (d.problem !== undefined) throw new Error('Only an unresolved answer carries a problem: ' + d.key)
       requireText(d.reason, 'the reason of the answer to ' + d.key)
@@ -1111,7 +1120,7 @@ async function verify(SEATS) {
     'Approve only authorized corrections with evidence, receipts, authority quotes, constraints and acceptance.',
     'Set removal true on an approve-fix whose correction removes code, a parameter or a mechanism that nothing uses, that nobody',
     'asked for, or that is built beyond what was asked, on the removal rule of your template, and false on every other decision.',
-    'Answer an unbacked-choice finding with needs-decision, with reject whose authority reads',
+    'Answer an unbacked-choice finding with unresolved, with reject whose authority reads',
     'spec entry <file>:<line>: "<the backing words quoted together with their surrounding context>", as your template requires,',
     'or with an approve-fix marked removal true whose correction only removes the chosen code, after your own check of the spec',
     'shows that no words of the user back that choice. Code that the user\'s words asked for still needs the user\'s word to be removed.',
@@ -1141,7 +1150,7 @@ async function verify(SEATS) {
   // before its approved fixes were applied.
   recordBlocking(verified, 'verify')
   for (const issue of verified.issues) add('verifier-issue', issue)
-  for (const d of verified.decisions.filter(d => ['needs-decision', 'root-action'].includes(d.action))) add('open-decision', d)
+  for (const d of verified.decisions.filter(d => d.action === 'unresolved')) add('open-decision', d)
 }
 async function fixAndRoast() {
   phase('Fix')

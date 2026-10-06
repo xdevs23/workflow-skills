@@ -51,7 +51,9 @@ No stage asks the user a question. A writer that cannot resolve a correction or 
 `unresolved` and states the problem as it is, without interpreting it: what the problem is, why it is
 a problem, and why nothing the user's words, the rules and the skills say solves it. The script holds
 such an answer to those three parts and to no reason, and holds a fix or a rejection to a reason and
-no problem. The finding verifier states the reason of an open decision the same way.
+no problem. An unresolved decision of the finding verifier carries the same problem statement with
+its evidence, receipts and source IDs. A correction is required only for an approved fix; an
+unresolved claim or verified work outside the repair scope needs no invented next action.
 
 A problem the main run's fixer leaves unresolved travels to the follow-up run with the decision it
 answers. An entry the follow-up's implementer leaves unresolved returns as an `unresolved-entry`
