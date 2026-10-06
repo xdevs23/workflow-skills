@@ -480,9 +480,10 @@ lenses of every run, and the main script stops a run whose seat list holds anoth
   input the stage is not given by design, such as the private spec for an unbriefed stage, are never
   limitations and are not reported. The shared reader blocks of the script and every reading-stage
   template state this, and the finding verifier discards such an entry without a decision.
-- **Coverage lists only what the stage checked, and how.** A coverage entry has no unchecked state:
-  what the stage's concern has nothing to judge in stays out of coverage, and what the stage was
-  supposed to check and could not is a limitation.
+- **Expect coverage to list only what the stage checked, and how.** A coverage entry has no
+  unchecked state: what the stage's concern has nothing to judge in stays out of coverage, and what
+  the stage was supposed to check and could not is a limitation. A stage whose concern has nothing to
+  judge in the change returns an empty coverage list.
 - **A reviewer suggests and never decides.** A review seat proposes, the finding verifier
   authorizes, and the user decides anything that changes what the product does. Behavior nobody
   approved is such a decision, whoever proposed it and however small it looks. One of two existing
@@ -1262,10 +1263,9 @@ These laws are non-negotiable across every run of this skill.
    items; it never treats a failure as an empty review. Completeness is structural: the schema
    validates shapes and enums, and the script checks the cross-field contracts (an evidence pointer
    on every finding of a concern seat and every spec finding of the implementer, a receipt on every
-   finding, a non-empty coverage list, files and checks behind a new snapshot, a reason behind an
-   abort; see the acceptance section). The law covers EVERY required
-   reader, including adversaries: the verifier consumes them all. A missing object is incomplete
-   verification, never a harmless gap in a finished fix.
+   finding, files and checks behind a new snapshot, a reason behind an abort; see the acceptance
+   section). The law covers EVERY required reader, including adversaries: the verifier consumes them
+   all. A missing object is incomplete verification, never a harmless gap in a finished fix.
 3. **Resume interrupted runs only.** A run stopped mid-flight is resumed through
    `workflow-skills:resume-interrupted-run`, which says which calls the resume replays and which
    run live. A completed run never runs again: you record its remaining items in the todo record and
@@ -1538,8 +1538,8 @@ The completeness checks, by stage kind:
 - **every briefed stage**: `abort.reason` non-empty when the trigger is not `none`;
 - **the three concern seats**: every finding has a receipt, a lane and an `evidence` list of at
   least one pointer, a transcript pointer with a key path and a rule pointer with an empty one;
-- **the other readers**: every finding has a receipt; `coverage` non-empty; the inverse seat has a
-  non-empty `authorizations` list; the alternatives seat has a candidate, a finding, or
+- **the other readers**: every finding has a receipt; the inverse seat has a non-empty
+  `authorizations` list; the alternatives seat has a candidate, a finding, or
   `currentShapeRight` true;
 - **writers**: one `repositories` entry per repository of the list; in each, a `snapshotSha` other
   than `startSha` needs commits in that repository and an unchanged one none, the quoted `git.head`

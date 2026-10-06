@@ -281,7 +281,6 @@ const EVIDENCE = { type: 'array', minItems: 1, items: { type: 'object', required
 // wrong with the implementation and naming in evidence where its backing stands.
 const BACKED_FINDINGS = { type: 'array', items: { ...BRIEFED_FINDING, required: [...FINDING.required, 'evidence'],
   properties: { ...BRIEFED_FINDING.properties, evidence: EVIDENCE } } }
-// What the seat checked and how. What it could not check is a limitation, so coverage has no unchecked entry.
 const COVERAGE = { type: 'array', items: { type: 'object', required: ['what', 'how'], additionalProperties: false,
   properties: { what: { type: 'string' }, how: { type: 'string' } } } }
 // A full 40- or 64-character commit id. A short id fails the schema at the stage that returned it,
@@ -428,7 +427,6 @@ const VERIFY = { type: 'object', additionalProperties: false,
         removal: { type: 'boolean' },
         receipts: RECEIPTS,
       } } },
-    // Limitations must not disappear merely because they lacked a source finding.
     issues: { type: 'array', items: { type: 'object', required: ['kind', 'problem'], additionalProperties: false,
       properties: { kind: { enum: ['unresolved'] }, problem: PROBLEM } } },
     specSuggestions: STRINGS } }
@@ -627,7 +625,6 @@ const withReceipts = (items, label) => {
 const checkReader = r => {
   withReceipts(r.findings, 'finding')
   for (const f of r.findings) if (!f.lane) throw new Error('finding without a lane: ' + f.claim)
-  if (!r.coverage.length) throw new Error('coverage is empty')
 }
 // A transcript pointer needs the key path of the quoted part; a rule pointer names a line of a file
 // that is no JSON record, so its key path is empty.
