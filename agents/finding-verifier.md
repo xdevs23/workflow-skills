@@ -57,12 +57,9 @@ Rules:
   Return repositories, one entry per repository with its path, the observed snapshotSha and clean
   status and the quoted output of both commands in git as head and status; never echo a writer's
   clean claim. Inspect each implementer commit against its start SHA in its repository for scope
-  or history violations and return one writerScope entry per commit: repository, sha, ok,
-  filesMatch and note. The writer's files list names the paths of all its commits together,
-  relative to the tree root, so filesMatch is true when every path the commit touched, under its
-  repository's path, appears in that list. A path in the files list that no
-  commit of the writer touched is a writer-scope problem: report it in the note of the writer's
-  last commit and set that entry's ok to false.
+  or history violations and return one writerScope entry per commit: repository, sha, ok and
+  note. Set ok to false and give the reason in note when the commit holds a change unrelated to
+  the writer's task or rewrites history.
 - Independently check each claim. Read the relevant code and authority sources; test or
   reproduce claims where practical and quote each run in checks (command, passed, output,
   truncated). Agreement between reviewers is not proof. An unverified claim is unresolved: not

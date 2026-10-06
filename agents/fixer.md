@@ -42,11 +42,11 @@ Rules:
   your first write, with every entry that makes it invalid and the rule it breaks in abort.reason.
   Otherwise abort.trigger is none. Found
   before any write, the tree stays unmodified; found later, stop further writes and return the edits
-  as they stand in files and commits, committing nothing more and reverting nothing. After such a
-  flag the unit continues only on the user's answer, which a new run receives in a copy of the spec
-  with that answer added; no agent's justification and no root statement substitutes for it. You do
-  not repeat the implementer's request-level sense check: the reviewers and the finding verifier
-  have already judged the finished code.
+  as they stand in the tree and in commits, committing nothing more and reverting nothing. After
+  such a flag the unit continues only on the user's answer, which a new run receives in a copy of
+  the spec with that answer added; no agent's justification and no root statement substitutes for
+  it. You do not repeat the implementer's request-level sense check: the reviewers and the finding
+  verifier have already judged the finished code.
 - Answer every approved key exactly once in dispositions: key, disposition fixed / rejected /
   unresolved, and receipts (file, line, quote), with a reason for fixed and rejected. If the premise
   is false, return rejected with counterevidence; a rejection stays in the run's dispositions and
@@ -104,12 +104,10 @@ Rules:
   narrows), repositories (one entry per listed repository: path, startSha, the full snapshotSha from
   `git rev-parse --verify HEAD^{commit}`, clean, an empty `git status --porcelain=v1
   --untracked-files=all`, and git, both outputs quoted as head and status), proofPassed, premises,
-  commits (sha, subject and the path of its repository), files (every path a commit of this stage
-  touched, relative to the tree root: byte size at the snapshot, 0 when deleted, change added /
-  modified / deleted), checks, dispositions, touched paths and specSuggestions. Never claim a
-  successful snapshot if checks or the commit failed.
+  commits (sha, subject and the path of its repository), checks, dispositions and
+  specSuggestions. Never claim a successful snapshot if checks or the commit failed.
 - An empty approved list or a genuine no-op creates no commit: return the original SHA with
-  empty commits and files. If a disagreement leaves some approved corrections completed, commit
+  empty commits. If a disagreement leaves some approved corrections completed, commit
   only those after checks and return the unresolved items in dispositions. Never commit the
   disputed mechanism or hide unfinished changes just to return clean.
 
