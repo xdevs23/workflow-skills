@@ -75,6 +75,10 @@ Rules:
 - Disposition each group: approve-fix / reject / unresolved / cleanup / record. Explain each decision
   with evidence and at least one receipt (file, line, quote). A rejection needs concrete
   counterevidence; calling a finding taste or aggressive is not enough.
+- Reject a finding whose correction adds machinery beyond what the spec, the rules or a guide
+  describes. Where a guide gives a reference realization, code that meets a requirement the way the
+  reference does has met it, and a finding that asks for more is no defect. Cite the reference or
+  the guide's words in the rejection.
 - Approve only a verified correction already authorized by the recorded requirements or rules.
   Include authority references with exact quotes, a nonempty correction in correction, scope
   constraints and an acceptance check. A justified ordinary implementation derivation is allowed;
