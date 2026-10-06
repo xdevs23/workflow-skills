@@ -846,9 +846,10 @@ second implementer pre-check.
   The user may not agree with the finding, so the follow-up run's implementer judges every entry as
   a claim.
 - Start no run after a follow-up run. It returns no `toFix` list.
-- Continue unfinished work whose last result has no `spec`, `toFix` or `artifacts` field, or comes
-  from a chain of fix runs, through a review pass. Such a result is from a version before the
-  follow-up run.
+- Continue unfinished work whose last run was made with a plugin version before 0.45.0, such as a
+  fix run of the former fix-follow-up script, through a review pass. Tell such a result by the
+  plugin version of the script copy that produced it, never by a missing field: a follow-up run's
+  own result has no `toFix` either, and no run follows it.
   - Record its remaining items in the todo record, as for every finished run.
   - Run `workflow-skills:review-pass` on the unit's commits as they stand.
   - Start the follow-up run on what the review pass returned to be fixed. It is the one follow-up
