@@ -1244,7 +1244,6 @@ describe('structured stage output', () => {
       'A rule evidence entry takes an empty key path'],
     ['a finding without a receipt', 'quality', { findings: [{ ...finding, receipts: [] }] }, 'finding without a receipt'],
     ['a finding without a lane', 'rules', { findings: [{ ...finding, lane: undefined }] }, 'finding without a lane'],
-    ['empty coverage', 'alternatives', { coverage: [] }, 'coverage is empty'],
     ['an empty authorizations list', 'inverse', { authorizations: [] }, 'authorizations is empty'],
     ['an alternatives seat with no candidate, no finding and currentShapeRight false', 'alternatives', { currentShapeRight: false }, 'no candidate, no finding and currentShapeRight false'],
   ]) {
@@ -1254,6 +1253,11 @@ describe('structured stage output', () => {
       expect(result.detail).toContain(message)
     })
   }
+
+  test('a reviewer whose concern has nothing to judge in the change is accepted with empty coverage', async () => {
+    const { result, calls } = await simulate({ reports: { 'review:type-safety': { coverage: [], findings: [], limitations: [] } } })
+    expect([['clean', 'follow-up'].includes(result.exit), retried(calls, 'review:type-safety').length]).toEqual([true, 1])
+  })
 
   for (const [name, fields, message] of [
     ['a commit but no files', { files: [] }, 'a new snapshot needs files'],
