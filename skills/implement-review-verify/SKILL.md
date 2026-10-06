@@ -472,9 +472,9 @@ lenses of every run, and the main script stops a run whose seat list holds anoth
 - **And a FINDING IS A DEFECT, nothing else.** What the seat inspected and how goes in `coverage`,
   what it could not check in `limitations`, never in the findings array, because mixing coverage
   with defects obscures what actually needs correction. Every source finding carries a **FILE**,
-  cited **repo-relative**, and a receipt, so verification can trace the claim to the tree. Concern
-  reviewers suggest **WHO CAN CLOSE IT** using their existing actionability lanes; the verifier
-  validates those suggestions before dispositioning, and checks every limitation.
+  cited **repo-relative**, and a receipt, so verification can trace the claim to the tree. A
+  finding is a claim and names nobody to act on it: the verifier decides every finding and checks
+  every limitation.
 - **A limitation is only something the stage was supposed to check and could not.** An act the
   stage's own rules forbid, such as running tests, builds or the spec tool as a reading stage, and
   input the stage is not given by design, such as the private spec for an unbriefed stage, are never
@@ -494,8 +494,8 @@ lenses of every run, and the main script stops a run whose seat list holds anoth
   correctness, spec-compliance and inverse-spec templates each state in their own words that a
   reviewer proposes and never decides, and that behavior added without authority is removed as an
   unauthorized addition.
-- **Every seat object goes to the finding verifier.** A lane or severity assigned by a reviewer
-  does not authorize a fix; only the verifier's checked, consolidated approval does.
+- **Every seat object goes to the finding verifier.** A severity assigned by a reviewer does not
+  authorize a fix; only the verifier's checked, consolidated approval does.
 
 ### Additional review seats, parallel with the concern reviewers
 
@@ -676,7 +676,7 @@ rules or returns it unresolved with the problem stated.
   `problem` states why those words cannot authorize completing the missing behavior. Without this
   rule the verifier would approve what is missing and the fixer would build what the sense check
   left unbuilt.
-- Reviewer lanes and severity are claims to verify, not queue permissions. Every source ID must
+- A reviewer's severity is a claim to verify, not a queue permission. Every source ID must
   belong to exactly one decision group. The SCRIPT checks coverage, unknown IDs, duplicate IDs and
   approval payloads before mutation.
 - A missing seat object or an invalid handoff stops the run, and a `blocks` limitation on any
@@ -1346,8 +1346,7 @@ These laws are non-negotiable across every run of this skill.
    reader stops the cycle before fixing.
 9. **ENUM-LOCK ANY VOCABULARY THE SCRIPT BRANCHES ON.** If control flow keys off severity, lock it in
    the output schema as an enum (`must-fix` / `should-fix` / `nit`) with validation-retry, and the
-   same for every other vocabulary the script switches on: the actionability **lane**
-   (`fixer-actionable` / `orchestrator-only` / `later-phase` / `not-a-defect`) and the **disposition**
+   same for every other vocabulary the script switches on: the **disposition**
    (`fixed` / `rejected` / `unresolved`), verifier action (`approve-fix` / `reject` /
    `unresolved` / `cleanup` / `record`),
    the finding `kind` (`band-aid` / `longer-route` / `unbacked-choice`), the abort `trigger`
@@ -1388,7 +1387,7 @@ These laws are non-negotiable across every run of this skill.
     **NO STAGE EDITS A SPEC OR OTHER AUTHORITY DOCUMENT, AND NEITHER DO YOU.** A run's spec never
     changes: the user's new words go into a copy (law 7), and the user alone removes an entry that
     does not belong. Never retroactively authorize unsupported implementation.
-    **Every inverse-spec finding is CRITICAL regardless of the severity or lane it arrived with; the
+    **Every inverse-spec finding is CRITICAL regardless of the severity it arrived with; the
     finding verifier, the fixer and you all ignore that supplied categorization and must dispose of
     it explicitly and never leave it implicitly closed.** Every one goes to the follow-up run like
     every other decision, and you decide none of them. A copy of the
@@ -1536,7 +1535,7 @@ accepts sets the run's snapshots and proof.
 
 The completeness checks, by stage kind:
 - **every briefed stage**: `abort.reason` non-empty when the trigger is not `none`;
-- **the three concern seats**: every finding has a receipt, a lane and an `evidence` list of at
+- **the three concern seats**: every finding has a receipt and an `evidence` list of at
   least one pointer, a transcript pointer with a key path and a rule pointer with an empty one;
 - **the other readers**: every finding has a receipt; the inverse seat has a non-empty
   `authorizations` list; the alternatives seat has a candidate, a finding, or
@@ -1654,7 +1653,7 @@ disposition to build remaining items, and reads receipts (`file`, `line`, `quote
 array is **defects only**: what was inspected goes in `coverage`, what was run in `checks`.
 
 - **And ENUM-LOCK the vocabulary the script branches on (law 9).** Fixing is authorized by
-  `approve-fix`, not a reviewer's free-form lane or severity.
+  `approve-fix`, not a reviewer's severity.
 - Lock verifier actions, severities (including `CRITICAL` for rule violations and, unconditionally,
   every inverse-spec finding, law 13) and fixer dispositions in the schema.
 - Make an unfamiliar word fail validation, not silently skip a phase and produce success.
@@ -1710,8 +1709,7 @@ For the other seats:
   ordinary must-fix finding and the seat proceeds; see law 8.
 - **The findings contract**: a source finding is a DEFECT, cites a **repo-relative** FILE and
   carries at least one receipt (`file`, `line`, `quote`); what was checked goes in `coverage`,
-  what could not be checked in `limitations`. Concern reviewers suggest
-  who can close it using their actionability lanes. The verifier checks every source finding and
+  what could not be checked in `limitations`. The verifier checks every source finding and
   limitation, then consolidates; only its approved corrections enter the fixer queue. Source IDs,
   not file-name heuristics, bind the handoff. Every inverse-spec source finding is CRITICAL
   unconditionally, whatever label it arrived with. A reading stage reports a choice that no words

@@ -32,7 +32,7 @@ const AUDIT = ['separation-of-concerns', 'abstraction-quality', 'code-smell', 't
 const readers = ['correctness', 'spec', 'dupes', 'quality', 'inverse', 'rules', 'alternatives', ...AUDIT]
 const source = (seat, index = 0) => `${seat}:${index}`
 const receipt = { file: 'src/example.js', line: 12, quote: 'catch (error) {}' }
-const finding = { file: 'src/example.js', claim: 'The specified error is swallowed.', severity: 'must-fix', lane: 'fixer-actionable', receipts: [receipt] }
+const finding = { file: 'src/example.js', claim: 'The specified error is swallowed.', severity: 'must-fix', receipts: [receipt] }
 // The correctness, spec-compliance and duplicate readers point in evidence at the transcript record
 // of the words a finding is judged against. No other reader's finding has the field.
 const back = f => ({ ...f, evidence: [{ kind: 'transcript', file: 'session.jsonl', line: 9, key: ['message', 'content'] }] })
@@ -587,7 +587,7 @@ describe('workflow verification and consolidation', () => {
     const { result, calls } = await simulate({
       reports: { 'review:spec': { findings: [{
         file: 'docs/spec.md', claim: 'The optional example could explain the error response more clearly.',
-        severity: 'nit', lane: 'orchestrator-only', receipts: [{ file: 'docs/spec.md', line: 8, quote: 'Return the error to the caller.' }],
+        severity: 'nit', receipts: [{ file: 'docs/spec.md', line: 8, quote: 'Return the error to the caller.' }],
         evidence: [{ kind: 'transcript', file: 'session.jsonl', line: 9, key: ['message', 'content'] }],
       }] } },
       verify: { 'verify': verification([decision([source('spec')], {
@@ -1026,7 +1026,7 @@ describe('coder sense check and project-benefit review', () => {
       expect([call.agentType, call.schema.properties.findings.items.properties.kind]).toEqual([call.agentType, { enum: kinds }])
       // The three seats that judge the change against the spec name in evidence where each finding's backing stands.
       const backing = ['reviewer-correctness', 'reviewer-spec-compliance', 'duplicate-checker'].includes(call.agentType)
-      expect(call.schema.properties.findings.items.required).toEqual(['file', 'claim', 'severity', 'lane', 'receipts',
+      expect(call.schema.properties.findings.items.required).toEqual(['file', 'claim', 'severity', 'receipts',
         ...(call.agentType === 'project-rule-reader' ? ['scope'] : []), ...(backing ? ['evidence'] : [])])
       expect([call.agentType, 'evidence' in call.schema.properties.findings.items.properties, 'words' in call.schema.properties.findings.items.properties,
         'verdicts' in call.schema.properties]).toEqual([call.agentType, backing, false, false])
@@ -1243,7 +1243,6 @@ describe('structured stage output', () => {
     ['a backed finding whose rule evidence names a key', 'correctness', { findings: [{ ...backed, evidence: [{ kind: 'rule', file: 'CLAUDE.md', line: 3, key: ['message'] }] }] },
       'A rule evidence entry takes an empty key path'],
     ['a finding without a receipt', 'quality', { findings: [{ ...finding, receipts: [] }] }, 'finding without a receipt'],
-    ['a finding without a lane', 'rules', { findings: [{ ...finding, lane: undefined }] }, 'finding without a lane'],
     ['an empty authorizations list', 'inverse', { authorizations: [] }, 'authorizations is empty'],
     ['an alternatives seat with no candidate, no finding and currentShapeRight false', 'alternatives', { currentShapeRight: false }, 'no candidate, no finding and currentShapeRight false'],
   ]) {

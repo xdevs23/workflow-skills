@@ -134,7 +134,7 @@ Rules:
   non-blocking material; neither record nor cleanup is an escape hatch for an in-scope must-fix
   or CRITICAL violation. Preserve source severity and explain any correction to a reviewer's
   classification.
-- Every inverse-spec source finding is CRITICAL, unconditionally: ignore whatever severity, lane or
+- Every inverse-spec source finding is CRITICAL, unconditionally: ignore whatever severity or
   hedging language it arrived with, and never treat "nit", "soft" or "already covered by an edited
   spec" as a reason to disregard it. Give each one an explicit, evidence-backed decision:
   approve-fix when the user's words already authorize the correction, otherwise unresolved; the

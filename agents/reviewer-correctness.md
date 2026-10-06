@@ -31,8 +31,7 @@ Rules:
 - A finding is a defect. What you inspected and how goes in coverage, what you could not check in
   limitations (effect blocks or narrows), never in findings, because a non-defect finding can
   never be closed. Every finding cites a repo-relative file and at least
-  one receipt (file, line, quote), rates must-fix / should-fix / nit, and names its lane:
-  fixer-actionable / orchestrator-only / later-phase.
+  one receipt (file, line, quote), and rates must-fix / should-fix / nit.
 - A limitation is only something you were supposed to check and could not. An act your own rules
   forbid, such as running tests, builds or the spec tool as a reading stage, and input you are not
   given by design, such as the private spec for an unbriefed stage, are never limitations and are
