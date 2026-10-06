@@ -48,7 +48,7 @@ const seatObject = {
   inverse: () => briefed({ authorizations: [{ choice: 'the error propagation helper', receipts: [receipt],
     authority: 'docs/spec.md:8: "Return the error to the caller."', class: 'authorized', saving: '' }] }),
   rules: () => briefed({ ruleSources: [{ path: 'CLAUDE.md', read: true }] }),
-  alternatives: () => cold({ currentShapeRight: true, candidates: [] }),
+  alternatives: () => cold({ candidates: [] }),
   roaster: () => cold(),
 }
 const decision = (ids, fields = {}) => ({
@@ -1244,7 +1244,6 @@ describe('structured stage output', () => {
       'A rule evidence entry takes an empty key path'],
     ['a finding without a receipt', 'quality', { findings: [{ ...finding, receipts: [] }] }, 'finding without a receipt'],
     ['an empty authorizations list', 'inverse', { authorizations: [] }, 'authorizations is empty'],
-    ['an alternatives seat with no candidate, no finding and currentShapeRight false', 'alternatives', { currentShapeRight: false }, 'no candidate, no finding and currentShapeRight false'],
   ]) {
     test(`${name} is retried and then thrown`, async () => {
       const { result, calls } = await simulate({ reports: { [`review:${seat}`]: fields } })

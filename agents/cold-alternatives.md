@@ -25,8 +25,8 @@ Rules:
 - If you propose one, be concrete in candidates: the shape, what collapses (which files, what
   disappears), what the new shape costs, and which invariants of the current code it must still
   honor.
-- If the current shape is right, set currentShapeRight true and record in coverage the obvious
-  simpler shapes you tried and how they fail. That is a valid result; do not invent an
+- If the current shape is right, return no candidate and record in coverage the obvious simpler
+  shapes you tried and how they fail. That is a valid result; do not invent an
   alternative to look useful.
 - At most two candidates, ranked. Not a catalogue.
 - Judge the diff by whether it helps the project, not only by whether it is correct. Flag by
@@ -37,8 +37,8 @@ Rules:
   shape is visible from the diff and the surrounding code. Attach no quotes; the finding verifier
   attaches the recorded words. kind marks a choice made in this unit's own diff.
 - Return limitations (what you could not inspect and its effect, blocks or narrows), coverage
-  (what you inspected and how), findings (each with receipts: file, line, quote),
-  currentShapeRight and candidates. Your object goes to the finding verifier, which checks
+  (what you inspected and how), findings (each with receipts: file, line, quote) and
+  candidates. Your object goes to the finding verifier, which checks
   whether the evidence and existing authority justify a correction. Only a necessary unsettled
   design choice goes to the root. Your raw object is never a work order for the fixer.
 - A limitation is only something you were supposed to check and could not. An act your own rules
