@@ -2,8 +2,10 @@ import { createHash } from 'node:crypto'
 import { createReadStream } from 'node:fs'
 import { readdir, readFile, realpath, stat } from 'node:fs/promises'
 import { join, resolve } from 'node:path'
+import { pipeline } from 'node:stream'
 import { parseArgs } from 'node:util'
 import { fromMarkdown } from 'mdast-util-from-markdown@2.0.3'
+import split from 'split2@4.2.0'
 import { fingerprint } from './fingerprint.js'
 
 const minimumBun = '1.2.21'
@@ -103,27 +105,15 @@ const parseRecord = (line: string): Mapping | undefined => {
 }
 const sha256Of = (bytes: Buffer) => createHash('sha256').update(bytes).digest('hex')
 
-// The lines of a JSONL stream, each ended by "\n" alone, with a "\r" before it counted as part of the
-// line ending. node:readline also ends a line at U+2028 and U+2029, which a JSON string may hold
-// unescaped, so it would split one record into several lines.
-async function* jsonlLines(input: AsyncIterable<string>) {
-  let pending = ''
-  for await (const chunk of input) {
-    const lines = chunk.split('\n')
-    lines[0] = pending + lines[0]
-    pending = lines.pop()!
-    for (const line of lines) yield line.endsWith('\r') ? line.slice(0, -1) : line
-  }
-  if (pending) yield pending
-}
-
 // The record at a line of a transcript, with the ids of the question-dialog calls asked before it.
 async function readCited(transcripts: string, reference: Mapping) {
-  const input = createReadStream(resolve(transcripts, reference.file as string), { encoding: 'utf8' })
+  const input = createReadStream(resolve(transcripts, reference.file as string))
+  // A record ends only at a newline, never at U+2028 or U+2029, which a JSON string may hold unescaped.
+  const lines = pipeline(input, split(/\r?\n/), () => {})
   let cited: unknown, found = false, current = 0
   const asked = new Set<string>()
   try {
-    for await (const line of jsonlLines(input)) {
+    for await (const line of lines) {
       if (++current === reference.line) { cited = JSON.parse(line); found = true; break }
       if (!line.includes(dialogTool)) continue
       const earlier = parseRecord(line)
