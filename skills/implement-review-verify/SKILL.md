@@ -510,8 +510,8 @@ lenses of every run, and the main script stops a run whose seat list holds anoth
   against applicable project/global rules, including violations beside the diff. Its
   cleanup findings are preserved without expanding this unit's repair scope.
 - **Cold alternatives** (`agents/cold-alternatives.md`): only the diff and the surrounding code,
-  never the implementer's object. Returns `candidates` (at most two materially simpler shapes) or
-  `currentShapeRight`.
+  never the implementer's object. Returns `candidates`, at most two materially simpler shapes, and
+  none when the shape of the change is right.
 - **The eight audit seats** (`separation-of-concerns`, `abstraction-quality`, `code-smell`,
   `type-safety`, `code-cleanliness`, `missing-gaps`, `domain-leakage`, `type-smearing`): each judges
   the code through its one lens. Each receives what quality receives, the hygiene floor and the
@@ -527,9 +527,8 @@ lenses of every run, and the main script stops a run whose seat list holds anoth
   Fix against immutable Git objects, never against the writer's moving filesystem.
 - Quality can legitimately return an empty findings list with its coverage.
 - Each seat has its own schema: the inverse reviewer owes a non-empty `authorizations` map, the rule
-  reader `ruleSources` and a `scope` on every finding, the alternatives seat a candidate, a finding
-  or `currentShapeRight` true, and the three concern seats an `evidence` pointer on every
-  finding.
+  reader `ruleSources` and a `scope` on every finding, and the three concern seats an `evidence`
+  pointer on every finding.
 - **Expect every review seat to judge whether the diff HELPS THE PROJECT as well as whether it is
   correct.** Two finding kinds, enum-locked as the optional `kind` field of the findings schema and
   each CRITICAL, cover choices made in this unit's own diff.
@@ -1538,8 +1537,7 @@ The completeness checks, by stage kind:
 - **the three concern seats**: every finding has a receipt and an `evidence` list of at
   least one pointer, a transcript pointer with a key path and a rule pointer with an empty one;
 - **the other readers**: every finding has a receipt; the inverse seat has a non-empty
-  `authorizations` list; the alternatives seat has a candidate, a finding, or
-  `currentShapeRight` true;
+  `authorizations` list;
 - **writers**: one `repositories` entry per repository of the list; in each, a `snapshotSha` other
   than `startSha` needs commits in that repository and an unchanged one none, the quoted `git.head`
   equals `snapshotSha` and `clean` equals `git.status` being empty; a new snapshot anywhere needs

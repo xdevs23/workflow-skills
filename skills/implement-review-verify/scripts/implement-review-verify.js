@@ -345,8 +345,8 @@ const RULES_WITHOUT_SPEC = { type: 'object', additionalProperties: false,
 const QUALITY = { type: 'object', additionalProperties: false, required: ['limitations', 'coverage', 'findings'],
   properties: { limitations: LIMITATIONS, coverage: COVERAGE, findings: FINDINGS } }
 const ALTERNATIVES = { type: 'object', additionalProperties: false,
-  required: ['limitations', 'coverage', 'findings', 'currentShapeRight', 'candidates'],
-  properties: { limitations: LIMITATIONS, coverage: COVERAGE, findings: FINDINGS, currentShapeRight: { type: 'boolean' },
+  required: ['limitations', 'coverage', 'findings', 'candidates'],
+  properties: { limitations: LIMITATIONS, coverage: COVERAGE, findings: FINDINGS,
     candidates: { type: 'array', maxItems: 2, items: { type: 'object', additionalProperties: false,
       required: ['shape', 'collapses', 'cost', 'invariants'],
       properties: { shape: { type: 'string' }, collapses: { type: 'string' }, cost: { type: 'string' }, invariants: { type: 'string' } } } } } }
@@ -639,10 +639,6 @@ const checkBacked = r => {
   for (const f of r.findings) checkEvidence(f)
 }
 const checkInverse = r => { checkReader(r); if (!r.authorizations.length) throw new Error('authorizations is empty') }
-const checkAlternatives = r => {
-  checkReader(r)
-  if (!r.candidates.length && !r.findings.length && !r.currentShapeRight) throw new Error('no candidate, no finding and currentShapeRight false')
-}
 const checkWriter = r => {
   const paths = new Set(r.repositories.map(repository => repository.path))
   for (const c of r.commits) if (!paths.has(c.repository)) throw new Error('commit ' + c.sha + ' names no repository of the result: ' + JSON.stringify(c.repository))
@@ -822,7 +818,7 @@ const seatList = (claims, artifacts, work = []) => [
   { type: 'project-rule-reader', label: 'rules', inputs: [AUTHORITY, READ_GIT, SPEC, RULES, ...artifacts],
     schema: RULES_SEAT, complete: checkReader,
     withoutSpec: { inputs: [HYGIENE, NO_SPEC, RULES], schema: RULES_WITHOUT_SPEC, complete: checkReader } },
-  { type: 'cold-alternatives', label: 'alternatives', inputs: [HYGIENE], schema: ALTERNATIVES, complete: checkAlternatives },
+  { type: 'cold-alternatives', label: 'alternatives', inputs: [HYGIENE], schema: ALTERNATIVES, complete: checkReader },
   { type: 'separation-of-concerns', label: 'separation-of-concerns', ...unbriefed },
   { type: 'abstraction-quality', label: 'abstraction-quality', ...unbriefed },
   { type: 'code-smell', label: 'code-smell', ...unbriefed },
