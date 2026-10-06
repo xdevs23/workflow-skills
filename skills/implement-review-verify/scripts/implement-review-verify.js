@@ -358,8 +358,6 @@ const SPEC_FINDINGS = { type: 'array', items: { type: 'object', required: ['evid
 const SPEC_CHECK = { type: 'object', required: ['exitCode', 'stdout', 'stderr'], additionalProperties: false,
   properties: { exitCode: { type: 'integer' }, stdout: { type: 'string' }, stderr: { type: 'string' } } }
 
-// Writer schemas. The deliverable proof is commits together with checks: a new snapshot without a
-// commit in its repository fails the completeness check below.
 const IMPLEMENT = { type: 'object', additionalProperties: false,
   required: ['specCheck', 'abort', 'limitations', 'repositories', 'proofPassed', 'premises',
     'senseCheck', 'specFindings', 'commits', 'checks', 'artifacts', 'specSuggestions'],
@@ -395,7 +393,6 @@ const VERIFY = { type: 'object', additionalProperties: false,
     repositories: { type: 'array', minItems: 1, items: { type: 'object', required: ['path', 'snapshotSha', 'clean', 'git'],
       additionalProperties: false,
       properties: { path: REPOSITORY_PATH, snapshotSha: { type: 'string' }, clean: { type: 'boolean' }, git: GIT } } },
-    // One entry per implementer commit, inspected against its start in its repository.
     writerScope: { type: 'array', items: { type: 'object', required: ['repository', 'sha', 'ok', 'note'],
       additionalProperties: false,
       properties: { repository: { type: 'string' }, sha: COMMIT_ID, ok: { type: 'boolean' }, note: { type: 'string' } } } },

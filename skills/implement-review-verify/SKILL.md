@@ -366,8 +366,7 @@ collisions and consistency drift.
   follow-up run of the unit reaches the same files.
 - The script accepts a writer only when every repository of the list appears exactly once at its
   expected start, each quoted `git.head` equals its `snapshotSha`, each `clean` agrees with an empty
-  `git.status`, a repository whose snapshot moved has commits in it and an unchanged one none, and a
-  new snapshot anywhere lists files.
+  `git.status`, and a repository whose snapshot moved has commits in it and an unchanged one none.
 - Expect the script to require of every fixer result, a proof-only pass and one that leaves every
   repository unchanged included, and of every implementer result of a follow-up run, a quoted run of
   the check command exactly as its prompt gives it, and the last such run to have the `passed`
@@ -494,8 +493,8 @@ lenses of every run, and the main script stops a run whose seat list holds anoth
   correctness, spec-compliance and inverse-spec templates each state in their own words that a
   reviewer proposes and never decides, and that behavior added without authority is removed as an
   unauthorized addition.
-- **Every seat object goes to the finding verifier.** A severity assigned by a reviewer does not
-  authorize a fix; only the verifier's checked, consolidated approval does.
+- **Every reviewer's object goes to the finding verifier.** A severity assigned by a reviewer
+  does not authorize a fix; only the verifier's checked, consolidated approval does.
 
 ### Additional review seats, parallel with the concern reviewers
 
@@ -526,8 +525,8 @@ lenses of every run, and the main script stops a run whose seat list holds anoth
   of them before verification. The roaster is the explicit exception to this scheduling: it runs in
   Fix against immutable Git objects, never against the writer's moving filesystem.
 - Quality can legitimately return an empty findings list with its coverage.
-- Each seat has its own schema: the rule reader owes `ruleSources` and a `scope` on every finding,
-  and the three concern seats an `evidence` pointer on every finding.
+- Each reviewer has its own schema: the rule reader owes `ruleSources` and a `scope` on every
+  finding, and the three concern reviewers an `evidence` pointer on every finding.
 - **Expect every review seat to judge whether the diff HELPS THE PROJECT as well as whether it is
   correct.** Two finding kinds, enum-locked as the optional `kind` field of the findings schema and
   each CRITICAL, cover choices made in this unit's own diff.
@@ -546,8 +545,8 @@ lenses of every run, and the main script stops a run whose seat list holds anoth
   alternatives.
 - Expect a roaster finding to go, with what else the run returned, to the follow-up run, whose
   implementer checks it against the tree and the recorded words.
-- Expect the rule reader to report a pre-existing band-aid beside the diff without a kind, so the
-  cleanup lane stays available.
+- Expect the rule reader to report a pre-existing band-aid beside the diff without a kind, so it can
+  still be handed on as cleanup.
 - **A choice without the user's words is its own finding kind.** A briefed reader reports a choice
   in the spec, the prompt or the diff that no words of the user back as a finding with kind
   **`unbacked-choice`**, and the inverse-spec reviewer's missing-decision findings carry it. A
@@ -1258,7 +1257,7 @@ These laws are non-negotiable across every run of this skill.
    items; it never treats a failure as an empty review. Completeness is structural: the schema
    validates shapes and enums, and the script checks the cross-field contracts (an evidence pointer
    on every finding of a concern seat and every spec finding of the implementer, a receipt on every
-   finding, files and checks behind a new snapshot, a reason behind an abort; see the acceptance
+   finding, commits and checks behind a new snapshot, a reason behind an abort; see the acceptance
    section). The law covers EVERY required reader, including adversaries: the verifier consumes them
    all. A missing object is incomplete verification, never a harmless gap in a finished fix.
 3. **Resume interrupted runs only.** A run stopped mid-flight is resumed through

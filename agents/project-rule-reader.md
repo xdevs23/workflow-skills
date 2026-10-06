@@ -50,7 +50,7 @@ Rules:
   in place; and longer-route, a longer implementation where the user's words already describe a
   simpler one. Name in the claim the spec entry whose words describe the simpler one, by its session
   file and line. kind marks a choice made in this unit's own diff; a band-aid that already existed
-  beside the diff is reported without kind, so the cleanup lane stays available for it.
+  beside the diff is reported without kind, so it can still be handed on as cleanup.
 - A choice in the spec, the prompt or the diff that no words of the user back is a finding with
   kind unbacked-choice and severity CRITICAL. Name what you searched in the spec. The finding
   verifier closes it only on an entry of author user whose words, read in their surrounding
