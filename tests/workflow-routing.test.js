@@ -45,8 +45,7 @@ const briefed = (fields = {}) => ({ abort: noAbort, ...cold(fields) })
 const seatObject = {
   correctness: () => briefed(), spec: () => briefed(), dupes: () => briefed(),
   quality: () => cold(), ...Object.fromEntries(AUDIT.map(seat => [seat, () => cold()])),
-  inverse: () => briefed({ authorizations: [{ choice: 'the error propagation helper', receipts: [receipt],
-    authority: 'docs/spec.md:8: "Return the error to the caller."', class: 'authorized', saving: '' }] }),
+  inverse: () => briefed(),
   rules: () => briefed({ ruleSources: [{ path: 'CLAUDE.md', read: true }] }),
   alternatives: () => cold({ candidates: [] }),
   roaster: () => cold(),
@@ -1186,8 +1185,6 @@ describe('spec provenance instructions and routing', () => {
         expect([name, phrase, prose.includes(phrase)]).toEqual([name, phrase, false])
       }
     }
-    expect(flat(await template('reviewer-inverse-spec'))).toContain('the authority field quotes the authorizing words of an entry of author user with its session file and line')
-    expect(flat(await template('reviewer-inverse-spec'))).toContain('explicitly reports that no words of the user authorize the choice')
     const { calls } = await simulate()
     for (const call of calls) expect([call.label, 'verdicts' in (call.schema.properties ?? {})]).toEqual([call.label, false])
   })
@@ -1243,7 +1240,6 @@ describe('structured stage output', () => {
     ['a backed finding whose rule evidence names a key', 'correctness', { findings: [{ ...backed, evidence: [{ kind: 'rule', file: 'CLAUDE.md', line: 3, key: ['message'] }] }] },
       'A rule evidence entry takes an empty key path'],
     ['a finding without a receipt', 'quality', { findings: [{ ...finding, receipts: [] }] }, 'finding without a receipt'],
-    ['an empty authorizations list', 'inverse', { authorizations: [] }, 'authorizations is empty'],
   ]) {
     test(`${name} is retried and then thrown`, async () => {
       const { result, calls } = await simulate({ reports: { [`review:${seat}`]: fields } })

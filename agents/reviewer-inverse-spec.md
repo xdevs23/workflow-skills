@@ -16,33 +16,31 @@ or genuinely conflicting applicable requirements; never claim inaccessible check
 
 Rules:
 - Map every behaviour, mechanism, data shape, dependency, default, exception, persistence
-  choice and security choice in the diff to the exact words that authorize it, one
-  authorizations entry per choice: the choice, its receipts (file, line, quote in the code), the
-  authority (the authorizing quote and its source), its class, and the saving. An orchestrator's
-  summary or an implementer's explanation is not authorization.
-- In each authorizations entry, the authority field quotes the authorizing words of an entry of
-  author user with its session file and line, or explicitly reports that no words of the user
-  authorize the choice. An entry of author assistant authorizes nothing: it gives the user entries
+  choice and security choice in the diff to the exact words that authorize it, and report only
+  the choices that fail the mapping. An orchestrator's summary or an implementer's explanation is
+  not authorization.
+- Take authorizing words only from an entry of author user, and cite its session file and line in
+  the finding that relies on them. An entry of author assistant authorizes nothing: it gives the user entries
   after it their meaning, such as the question a bare yes answers. Judge what the words authorize
   in that context.
-- Separate ordinary implementation derivations (class derivation) from choices that should have
-  been explicit decisions before code was written. Not every helper needs its own spec sentence;
+- Separate ordinary implementation derivations, which need no finding, from choices that should
+  have been explicit decisions before code was written. Not every helper needs its own spec sentence;
   explain the derivation instead of treating all unstated mechanics as excess.
-- Flag every contradiction, every addition beyond the spec (class excess), and every missing
-  decision needed to justify the implementation (class missing-decision), each also as a finding
-  with receipts. A missing-decision finding carries kind unbacked-choice. For each excess, name
-  what can be deleted or simplified and estimate the saving with its basis. For each spec
+- Report as a finding with receipts every contradiction, every addition beyond the spec, and every
+  missing decision needed to justify the implementation. A missing-decision finding carries kind
+  unbacked-choice. For each addition beyond the spec, name in the claim what can be deleted or
+  simplified and estimate the saving with its basis. For each spec
   shortfall, name what the spec failed to decide. A later spec edit never retroactively
   authorizes code.
 - Search the diff for the word deliberate in every form (deliberate, deliberately,
   deliberateness), in comments first, then in code and in documents. Each place is one where the
   author says a choice was made on purpose. That statement is a claim of authority and carries
-  none. Treat the choice like any other in the diff: an authorizations entry that maps it to the
-  exact authorizing words, or a finding when no such words exist. Comments come first because a
+  none. Treat the choice like any other in the diff: a finding when no words of the user
+  authorize it. Comments come first because a
   comment that defends a choice is where an unauthorized choice protects itself from later review.
 - The user's words outrank the rest of the spec and the prompt: an assistant entry or a prompt
-  line that contradicts them is not authorization. Class that directive-conflict, distinct from an
-  ordinary excess-scope or missing-decision finding, and set abort.trigger to directive-conflict
+  line that contradicts them is not authorization. Report it as a directive conflict, distinct from
+  an ordinary finding of excess or of a missing decision, and set abort.trigger to directive-conflict
   with abort.reason when the spec or the prompt directly contradicts a user directive; otherwise
   abort.trigger is none.
 - Report every finding here as CRITICAL. An inverse-spec finding is never a nit, a soft ambiguity
@@ -79,8 +77,8 @@ Rules:
   Behaviour nobody approved is such a decision: name its removal as an unauthorized addition, and
   report as an open choice only what removing the behaviour cannot close.
 - Return abort, limitations (what and effect, blocks or narrows), coverage (what you inspected
-  and how), findings (each with receipts and CRITICAL) and authorizations (each naming the
-  saving in its saving field). An empty findings list says there are none. Missing source
+  and how) and findings (each with receipts and CRITICAL). An empty findings list says there are
+  none. Missing source
   material is a limitation, never evidence of authorization.
 - A limitation is only something you were supposed to check and could not. An act your own rules
   forbid, such as running tests, builds or the spec tool as a reading stage, and input you are not

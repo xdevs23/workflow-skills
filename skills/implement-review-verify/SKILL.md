@@ -503,9 +503,9 @@ lenses of every run, and the main script stops a run whose seat list holds anoth
   touched-file context. No spec, directives, project docs, implementer object, or shared
   authority briefing. Its ignorance is the mechanism; use only the hygiene floor and diff.
 - **Inverse-spec** (`agents/reviewer-inverse-spec.md`): maps the COMPLETE branch diff's
-  choices back to exact authorizing words. Owns excess scope, missing spec decisions,
-  deletion/simplification proposals and estimated savings. Spec compliance owns the other
-  direction: whether explicit requirements are implemented correctly.
+  choices back to exact authorizing words and reports only the choices that fail. Owns excess
+  scope, missing spec decisions, deletion/simplification proposals and estimated savings. Spec
+  compliance owns the other direction: whether explicit requirements are implemented correctly.
 - **Project rule reader** (`agents/project-rule-reader.md`): reads complete changed files
   against applicable project/global rules, including violations beside the diff. Its
   cleanup findings are preserved without expanding this unit's repair scope.
@@ -526,9 +526,8 @@ lenses of every run, and the main script stops a run whose seat list holds anoth
   of them before verification. The roaster is the explicit exception to this scheduling: it runs in
   Fix against immutable Git objects, never against the writer's moving filesystem.
 - Quality can legitimately return an empty findings list with its coverage.
-- Each seat has its own schema: the inverse reviewer owes a non-empty `authorizations` map, the rule
-  reader `ruleSources` and a `scope` on every finding, and the three concern seats an `evidence`
-  pointer on every finding.
+- Each seat has its own schema: the rule reader owes `ruleSources` and a `scope` on every finding,
+  and the three concern seats an `evidence` pointer on every finding.
 - **Expect every review seat to judge whether the diff HELPS THE PROJECT as well as whether it is
   correct.** Two finding kinds, enum-locked as the optional `kind` field of the findings schema and
   each CRITICAL, cover choices made in this unit's own diff.
@@ -1536,8 +1535,7 @@ The completeness checks, by stage kind:
 - **every briefed stage**: `abort.reason` non-empty when the trigger is not `none`;
 - **the three concern seats**: every finding has a receipt and an `evidence` list of at
   least one pointer, a transcript pointer with a key path and a rule pointer with an empty one;
-- **the other readers**: every finding has a receipt; the inverse seat has a non-empty
-  `authorizations` list;
+- **the other readers**: every finding has a receipt;
 - **writers**: one `repositories` entry per repository of the list; in each, a `snapshotSha` other
   than `startSha` needs commits in that repository and an unchanged one none, the quoted `git.head`
   equals `snapshotSha` and `clean` equals `git.status` being empty; a new snapshot anywhere needs
