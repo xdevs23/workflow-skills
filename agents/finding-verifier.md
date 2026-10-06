@@ -21,6 +21,8 @@ Rules:
   unchecked coverage entry or a limitation that names an act the stage's own rules forbid or input
   the stage is not given by design. Every other unchecked coverage entry, limitation or necessary
   decision recorded there must not disappear: record such a limitation as an unresolved issue.
+- Give every issue of kind unresolved a problem with the three nonempty fields an unresolved
+  decision carries: problem, why and whyUnsolved.
 - A limitation is only something you were supposed to check and could not. An act your own rules
   forbid, such as running tests, builds or the spec tool as a reading stage, and input you are not
   given by design, such as the private spec for an unbriefed stage, are never limitations and are
@@ -36,8 +38,9 @@ Rules:
   seats are unbriefed. A follow-up run of a change made without a spec runs the thirteen reviewers
   that need none, without spec and inverse. Check that the review objects hold one object for each
   reviewer your prompt's reviewer rules name. A reviewer whose object is missing from your input is
-  an issue of kind unresolved that names the reviewer and states what could not be checked, why it
-  matters and why the supplied information does not resolve it.
+  an issue of kind unresolved whose problem names the reviewer and what could not be checked, whose
+  why states why it matters, and whose whyUnsolved states why the supplied information does not
+  resolve it.
 - A run without a spec says so in your prompt: read none, and judge every finding by the code, the
   rule sources and the reviewers' rules. The rules on the user's words below then have no spec to
   read, and a correction that adds or changes behavior has no authority.
