@@ -374,10 +374,13 @@ collisions and consistency drift.
 - Before edits, each writer inspects HEAD, the index and working-tree status of each repository;
   unrelated or pre-existing changes are an anomaly, not permission to absorb or discard them.
 - Only the implementer and fixer may stage explicit paths for their own scoped changes, inspect the
-  staged diff, and create NEW commits after checks. No broad add, amend, reset, rebase, merge,
-  cherry-pick, branch switching, history rewriting or push.
+  staged diff, and create NEW commits after checks. Neither of them makes a broad add, amends,
+  resets, rebases, merges, cherry-picks, switches branches, rewrites history or pushes.
 - Writers honor project commit-message rules and normal hooks/signing. If hooks change content, a
   writer reruns proof on the final committed contents before claiming success.
+- Apply these commit rules to the writer stages of a run only. Your own git work outside the stages,
+  such as importing commits with a cherry-pick or adding a trailer with an amend, follows the
+  project's documented procedure, as integration does.
 - Each writer returns `repositories`, one entry per repository of the base list with its `path`,
   `startSha`, full `snapshotSha`, `clean` and `git` (the quoted output of `git rev-parse --verify
   HEAD^{commit}` and `git status --porcelain=v1 --untracked-files=all` in that repository), then
