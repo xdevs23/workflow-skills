@@ -21,7 +21,7 @@ Then the skills appear in the skill list and each has a matching slash command (
 | Skill | What it does |
 |---|---|
 | `implement-review-verify` | Assemble the unit spec from the user's words in the session transcripts and check it with the spec tool, then implement against it and commit a clean snapshot, with the implementer's sense check reporting what it finds in the spec, then review and independently consolidate findings. The fixer commits only approved corrections while a mandatory roaster reads the pre-fix Git snapshot and approved list. Everything a run returns to be fixed goes to one follow-up run, whose implementer resolves it by the user's words and the rules and states what nothing resolves as a problem for the user, without a question; the follow-up's review checks its change, and what it leaves is recorded for later. |
-| `review-pass` | Run the thirteen reviewers of `implement-review-verify` that need no spec alone on a change that is already committed, such as one edited directly, with no spec, implementer, verifier or fixer, and send their findings to a follow-up run. |
+| `review-pass` | Run the fourteen reviewers of `implement-review-verify` that need no spec alone on a change that is already committed, such as one edited directly, with no spec, implementer, verifier or fixer, and send their findings to a follow-up run. |
 | `autonomous-implementation` | Implement without asking, on the user's grant for a task, a session or a timeframe: subagents make the decisions, each milestone ends with evidence, a subset of the reviewers checks the work, and the result is libre and built with Nix. |
 | `copywriting` | Write an increment's user-visible strings BEFORE implementation: intent catalog + writing system, one agent per item, mechanical check + source-verify + fresh-context critic, and the user ships the crucial lines. |
 | `resume-interrupted-run` | Recover a workflow run that was stopped while agents were mid-flight: hand each interrupted seat its own prior transcript, leave every completed prompt byte-identical, resume near-losslessly. |
@@ -43,9 +43,9 @@ When a session has a skill of the same name without the plugin prefix, such as a
 the only one of that name available.
 
 ### Audit-lens subagents (read-only)
-The eight read-only audit-lens subagents are `separation-of-concerns`, `abstraction-quality`,
-`code-smell`, `type-safety`, `code-cleanliness`, `missing-gaps`, `domain-leakage` and
-`type-smearing`. All eight run as seats of every
+The nine read-only audit-lens subagents are `separation-of-concerns`, `abstraction-quality`,
+`code-smell`, `type-safety`, `code-cleanliness`, `missing-gaps`, `domain-leakage`,
+`type-smearing` and `runtime-cost`. All nine run as seats of every
 `implement-review-verify` run's review stage, beside its seven other seats. They are also usable
 directly as `agentType`s in your own workflows.
 

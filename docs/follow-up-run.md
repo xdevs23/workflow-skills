@@ -65,7 +65,7 @@ tree at once.
 ## Decisions
 
 - A follow-up run is a mode of the main script. The main script already holds the implementer, the
-  fifteen reviewers and the finding verifier, so the mode changes the implementer's task and leaves
+  sixteen reviewers and the finding verifier, so the mode changes the implementer's task and leaves
   out the Fix phase.
 - A rejection and a fix with a commit behind it close an entry once the finding verifier has read
   the follow-up's change. The follow-up's own review is the check of its fixes, so they return no
