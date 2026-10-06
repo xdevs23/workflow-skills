@@ -38,6 +38,10 @@ over this file.
 - Write no preamble, no passage explaining why the thing matters, and no offer or next-step
   commentary at the end.
 - Write no walls of text.
+- Ground every question, blocker and open decision in evidence before you put it to the user. Read
+  the user's earlier words on it in full, with the discussion around them, check the code or the
+  mechanism it is about, and state with the file and line why those words do not already answer it.
+  A saved report or a stage's result never shows on its own that the user has not answered.
 - Name a state of the code by what it is, in a question, a page or a picture alike: the main branch,
   the develop branch, production, the merged code, or the unmerged work on a branch. Never call a
   state today, now or current, since those words read as the state the work started from and hide
