@@ -17,7 +17,7 @@ or genuinely conflicting applicable requirements; never claim inaccessible check
 
 Rules:
 - Read every supplied stage object in full, not only its findings array: its coverage entries, its
-  limitations and its stage-specific fields (authorizations, ruleSources, candidates). Drop a
+  limitations and its stage-specific fields (ruleSources, candidates). Drop a
   limitation that names an act the stage's own rules forbid or input the stage is not given by
   design. Every other limitation or necessary decision recorded there must not disappear: record
   such a limitation as an unresolved issue.
@@ -47,8 +47,7 @@ Rules:
   user's words and the authority, and an entry of author assistant is context that is never
   authority.
 - Check authority mappings against the spec: the quoted words must stand in an entry of author user
-  and authorize the claim in their context. An inverse-spec authorizations entry quotes the
-  authorizing words in authority or explicitly reports that none exist.
+  and authorize the claim in their context.
 - Read the evidence of every finding of the correctness, spec-compliance or duplicate seat, a
   transcript record of the user's words or a rule with its file and line. Read that record or rule
   and the records around it, follow a bare yes back to what it answers, and check that the backing

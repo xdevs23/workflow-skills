@@ -322,12 +322,8 @@ const DUPLICATES = { type: 'object', additionalProperties: false,
   required: ['abort', 'limitations', 'coverage', 'findings'],
   properties: { abort: ABORT, limitations: LIMITATIONS, coverage: COVERAGE, findings: BACKED_FINDINGS } }
 const INVERSE = { type: 'object', additionalProperties: false,
-  required: ['abort', 'limitations', 'coverage', 'findings', 'authorizations'],
-  properties: { abort: ABORT, limitations: LIMITATIONS, coverage: COVERAGE, findings: BRIEFED_FINDINGS,
-    authorizations: { type: 'array', items: { type: 'object', additionalProperties: false,
-      required: ['choice', 'receipts', 'authority', 'class', 'saving'],
-      properties: { choice: { type: 'string' }, receipts: RECEIPTS, authority: { type: 'string' }, saving: { type: 'string' },
-        class: { enum: ['authorized', 'derivation', 'excess', 'missing-decision', 'directive-conflict'] } } } } } }
+  required: ['abort', 'limitations', 'coverage', 'findings'],
+  properties: { abort: ABORT, limitations: LIMITATIONS, coverage: COVERAGE, findings: BRIEFED_FINDINGS } }
 // The rule reader's finding also carries scope: in the change, or an existing violation beside it.
 const ruleFindings = kinds => ({ type: 'array', items: { type: 'object', additionalProperties: false,
   required: ['file', 'claim', 'severity', 'receipts', 'scope'],
@@ -638,7 +634,6 @@ const checkBacked = r => {
   checkReader(r)
   for (const f of r.findings) checkEvidence(f)
 }
-const checkInverse = r => { checkReader(r); if (!r.authorizations.length) throw new Error('authorizations is empty') }
 const checkWriter = r => {
   const paths = new Set(r.repositories.map(repository => repository.path))
   for (const c of r.commits) if (!paths.has(c.repository)) throw new Error('commit ' + c.sha + ' names no repository of the result: ' + JSON.stringify(c.repository))
@@ -814,7 +809,7 @@ const seatList = (claims, artifacts, work = []) => [
     schema: DUPLICATES, complete: checkBacked, withoutSpec: toldNoSpec([...claims, ...work]) },
   { type: 'quality', label: 'quality', ...unbriefed },
   { type: 'reviewer-inverse-spec', label: 'inverse', inputs: [AUTHORITY, READ_GIT, SPEC, ...artifacts, ...work],
-    schema: INVERSE, complete: checkInverse, withoutSpec: null },
+    schema: INVERSE, complete: checkReader, withoutSpec: null },
   { type: 'project-rule-reader', label: 'rules', inputs: [AUTHORITY, READ_GIT, SPEC, RULES, ...artifacts],
     schema: RULES_SEAT, complete: checkReader,
     withoutSpec: { inputs: [HYGIENE, NO_SPEC, RULES], schema: RULES_WITHOUT_SPEC, complete: checkReader } },
