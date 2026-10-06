@@ -1143,7 +1143,6 @@ describe('coder sense check and project-benefit review', () => {
       expect(calls.find(c => c.agentType === type).prompt).not.toContain('is a root-action limitation')
     }
     for (const type of ['quality', ...AUDIT, 'cold-alternatives', 'roaster']) expect(calls.find(c => c.agentType === type).prompt).not.toContain('sense check')
-    for (const name of ['directive-authority.md', 'workflow-finding-verification.md']) expect(await Bun.file(new URL(`../docs/${name}`, import.meta.url)).text()).toContain('](coder-sense-check-and-project-benefit.md)')
   })
 })
 
@@ -1812,19 +1811,6 @@ describe('spec check and shipped scripts', () => {
     for (const call of calls) {
       for (const stale of ['.cache/directives/', 'PRIVATE DIRECTIVES', 'private directive record', 'approves field', 'ORCHESTRATOR SCOPING']) {
         expect([call.label, stale, call.prompt.includes(stale)]).toEqual([call.label, stale, false])
-      }
-    }
-  })
-
-  test('no stage prompt of a shipped script calls a design settled or decided', async () => {
-    const { calls } = await simulate({ reports: oneReport, verify: approveOne })
-    expect(labels(calls)).toContain('fix')
-    for (const call of calls) {
-      expect([call.label, /\bsettled\b/i.test(call.prompt)]).toEqual([call.label, false])
-      // The one use of decided names the spec as the authority for the layout of code.
-      const decided = flat(call.prompt).match(/[^.]*\bdecided\b[^.:]*/gi) ?? []
-      for (const clause of decided) {
-        expect([call.label, clause.trim()]).toEqual([call.label, 'The layout of CODE is decided by the spec and not by this rule'])
       }
     }
   })

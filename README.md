@@ -49,80 +49,18 @@ The eight read-only audit-lens subagents are `separation-of-concerns`, `abstract
 `implement-review-verify` run's review stage, beside its seven other seats. They are also usable
 directly as `agentType`s in your own workflows.
 
-## Requirements / assumptions
+## Requirements
 
-- **The Workflow tool / multi-agent fan-out.** Every skill orchestrates subagents via Workflow. A
-  harness or plan that doesn't expose Workflow can't run these.
-- **Bun 1.2.21 or newer** for `tools/check-spec.ts`, which uses the built-in `Bun.YAML.parse`
-  and the Markdown parser `mdast-util-from-markdown`, whose version 2.0.3 its import names and Bun
-  fetches on the tool's first run.
-  Check a private unit spec with `bun <plugin root>/tools/check-spec.ts <spec.yaml> --transcripts <session-dir>`,
-  where the plugin root is this repository or the installed plugin's directory under the plugin cache.
-  A unit spec is a YAML file of `unit` and `entries`, and nothing else. Each entry quotes one
-  session transcript record by its `file`, `line` and `uuid`, with its `author`, `user` or
-  `assistant`, and its `text`, a verbatim substring of that record: a message the user wrote or
-  answered in the question dialog, or an assistant text block, the question text of a dialog call
-  or the content of a Write call. The tool fails an entry whose text does not stand in the record
-  it cites as a message of its author, entries of one session file that go back in line order, and
-  a spec without an entry of author `user`.
-  Add `--base '<list>'`, a JSON list with one `{ path, sha }` for every git repository of the
-  tree it runs at. The tool fails a list that names no repository's top level, a commit its
-  repository does not hold, or leaves a repository of the tree out; `--partial-base` accepts a
-  list of only the repositories a unit changes, for a tree too large to list.
-  implement-review-verify runs only in a git repository or a tree of several, such as a repo-tool
-  client. Add `--json` for the summary as JSON. Both output forms carry `specLines`, which the 20:1
-  size check divides by: the non-blank lines of the entries' text. The tool fails an entry whose
-  text breaks the width rule: a line, counted with its indentation and markers, holds at most 120
-  characters, and every line of a paragraph but its last is full. A line of a fenced code block
-  holds at most 120 characters and is never held to the fill rule. A line whose own text is one
-  word too long for the width, such as a long URL, passes and is named in the summary's
-  `unbreakable` list. The YAML spec is the only form of the spec before and during
-  implementation.
-  A passing run prints a `proof`, the fingerprint of the values it checked, and `--proof <proof>`
-  fails the check when the values give another. The writer of each workflow script runs the tool
-  before anything else with `--proof` set to the fingerprint of the script's own launch values, and
-  the script compares the printed proof with that fingerprint.
-  `--sha256 <sha256>` fails the check when the spec has another `sha256`: a follow-up run checks
-  that way that its spec is the one its parent run checked, and the value joins the proof.
-  Without a spec and without `--transcripts`, `--base '<list>'` checks the base list alone against
-  the tree and prints it with the proof of the list and the tree: a follow-up run of a review pass,
-  which checked no spec, starts from commits its tree holds that way.
-- **The pull request watcher `watch-prs` needs Python 3 and the GitHub CLI `gh`, logged in.**
-  `babysit-pr` runs it. The watcher is a Python program in the plugin's tools directory, run with
-  `python3`. It takes the state file with `--state`, the seconds between polls with `--interval`,
-  60 when not given, and one or more pull requests, each named as `owner/repo#number`, or as
-  `owner/repo@branch` for the open pull request whose head is that branch. It reads GitHub only
-  through `gh api --paginate --slurp` and prints one JSON line per event: `watching` at start,
-  `comment`, `review`, `review-comment` and `check-failed` for each one not printed before,
-  `merged` or `closed` when a pull request ends, `poll-error` when a poll fails, and `done` when
-  every pull request is closed or merged. The state file keeps the ids of the events already
-  printed, so a restarted watch prints only what is new. The watcher exits with an error when `gh`
-  is missing or not logged in, or when a branch has no open pull request or more than one.
-- **Explicit model selection.** Agent templates carry no model defaults. The orchestrator must
-  select an explicit model and effort for every stage at launch, following the applicable project
-  policy. Do not rely on template defaults or implicit inheritance.
+- Claude Code with the Workflow tool for skills that launch stages.
+- Bun 1.2.21 or newer for the spec checker.
+- A Bun release with `Bun.markdown.render` for the tests.
+- Python 3 and an authenticated GitHub CLI for `babysit-pr`.
 
-## Workflow routing checks
+## Tests
 
 ```sh
-bun test tests/workflow-routing.test.js tests/git-snapshot.test.js tests/check-spec.test.js
+bun test --timeout 60000 tests/
 ```
-
-The routing tests execute the two shipped workflow scripts under
-`skills/implement-review-verify/scripts/`, the main script also in review mode, with deterministic
-fake stage results, including the
-writers' spec check and execution boundaries for every stage, and read the skill's Markdown with Bun's
-built-in parser for the prose and helper they check.
-The Git integration test creates scoped commits in a disposable repository under the project
-cache that `workflow-skills:local-cache` defines, and verifies reads at a fixed commit while HEAD
-changes.
-None of these tests makes model calls or launches workflows.
-
-The verification/consolidation contract is recorded in
-[`docs/workflow-finding-verification.md`](docs/workflow-finding-verification.md).
-Cycle completion leaves root acceptance pending: inspect stage timings, apply the **20:1**
-code/spec size check, and follow the project's integration route (PR, merge, bundle or patch).
-Worktree cleanup requires separately inspected preservation and handoff evidence.
 
 ## License
 
