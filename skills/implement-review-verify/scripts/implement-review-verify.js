@@ -104,7 +104,8 @@ const LIMITS = [
   'LIMITATIONS: a limitation is only something you were supposed to check and could not. An act your own rules forbid,',
   'such as running tests, builds or the spec tool as a reading stage, and input you are not given by design, such as',
   'the private spec for an unbriefed stage, are never limitations and are not reported.',
-  'They get no unchecked coverage entry either.',
+  'COVERAGE lists only what you checked and how. Leave out what your concern has nothing to judge in.',
+  'Something you were supposed to check and could not is a limitation, never a coverage entry.',
 ].join('\n')
 const PROBLEMS = [
   'NO QUESTIONS: never ask a question, never offer options and never recommend one, in any string you return.',
@@ -148,9 +149,8 @@ const AUTHORITY = [                    // authority-aware seats only; quality us
   'A tree not yet satisfying the spec is normal: report ordinary findings, never a hard flag.',
   'Run checks BARE. Never pipe through head/grep: it hides the error.',
   'NEVER end a turn waiting on a backgrounded check; your returned object IS the deliverable.',
-  'A FINDING IS A DEFECT: what you inspected and how goes in coverage, what you',
-  'could not check in limitations (effect blocks or narrows); an unchecked coverage entry marks a',
-  'real gap and needs a declared limitation. Every finding carries at least one receipt (file, line, quote).',
+  'A FINDING IS A DEFECT: what you checked and how goes in coverage, what you',
+  'could not check in limitations (effect blocks or narrows). Every finding carries at least one receipt (file, line, quote).',
   'Every finding cites a FILE and names WHO CAN CLOSE IT - the actionability lane, one of:',
   'fixer-actionable / orchestrator-only / later-phase / not-a-defect.',
   'Cite every file as a REPO-RELATIVE path so each receipt identifies its source.',
@@ -281,10 +281,9 @@ const EVIDENCE = { type: 'array', minItems: 1, items: { type: 'object', required
 // wrong with the implementation and naming in evidence where its backing stands.
 const BACKED_FINDINGS = { type: 'array', items: { ...BRIEFED_FINDING, required: [...FINDING.required, 'evidence'],
   properties: { ...BRIEFED_FINDING.properties, evidence: EVIDENCE } } }
-// What the seat inspected and how; an entry with checked false needs a limitation beside it, and
-// the finding verifier judges whether that limitation excuses it.
-const COVERAGE = { type: 'array', items: { type: 'object', required: ['what', 'checked', 'how'], additionalProperties: false,
-  properties: { what: { type: 'string' }, checked: { type: 'boolean' }, how: { type: 'string' } } } }
+// What the seat checked and how. What it could not check is a limitation, so coverage has no unchecked entry.
+const COVERAGE = { type: 'array', items: { type: 'object', required: ['what', 'how'], additionalProperties: false,
+  properties: { what: { type: 'string' }, how: { type: 'string' } } } }
 // A full 40- or 64-character commit id. A short id fails the schema at the stage that returned it,
 // so the verify check can compare ids exactly and never has to resolve a prefix.
 const COMMIT_ID = { type: 'string', pattern: '^(?:[0-9a-f]{40}|[0-9a-f]{64})$' }
@@ -429,7 +428,7 @@ const VERIFY = { type: 'object', additionalProperties: false,
         removal: { type: 'boolean' },
         receipts: RECEIPTS,
       } } },
-    // Limitations and unchecked coverage must not disappear merely because they lacked a source finding.
+    // Limitations must not disappear merely because they lacked a source finding.
     issues: { type: 'array', items: { type: 'object', required: ['kind', 'problem'], additionalProperties: false,
       properties: { kind: { enum: ['unresolved'] }, problem: PROBLEM } } },
     specSuggestions: STRINGS } }
@@ -629,14 +628,6 @@ const checkReader = r => {
   withReceipts(r.findings, 'finding')
   for (const f of r.findings) if (!f.lane) throw new Error('finding without a lane: ' + f.claim)
   if (!r.coverage.length) throw new Error('coverage is empty')
-  // The finding verifier judges which limitation excuses which unchecked entry; the script only
-  // requires that a limitation exists to judge.
-  for (const c of r.coverage) {
-    if (!c.checked && !r.limitations.length) {
-      throw new Error('coverage entry not checked and no limitation declared: ' + c.what + '. Drop the entry when it names an act ' +
-        'your own rules forbid or input you are not given by design. Otherwise declare the real limitation that kept it unchecked.')
-    }
-  }
 }
 // A transcript pointer needs the key path of the quoted part; a rule pointer names a line of a file
 // that is no JSON record, so its key path is empty.
@@ -743,8 +734,6 @@ const recordFalsePremises = (writer, label) => {
 const recordFixLimitations = (fixer, label) => {
   for (const limitation of narrowing(fixer)) add('fix-limitation', { ...limitation, label }, 'should-fix')
 }
-// What a reader could check only in part: its narrowing limitations and its unchecked coverage entries.
-const uncovered = r => [...narrowing(r), ...r.coverage.filter(c => !c.checked)]
 const proof = (writer, label) => {
   if (!writer.proofPassed) {
     add('failed-proof', { label, checks: writer.checks })
@@ -1102,7 +1091,7 @@ async function review(SEATS) {
 const recordReviews = () => {
   for (const report of reports) {
     for (const f of report.findings) add('review-finding', f, f.severity)
-    for (const l of uncovered(report)) add('review-limitation', { ...l, label: report.label }, 'should-fix')
+    for (const l of narrowing(report)) add('review-limitation', { ...l, label: report.label }, 'should-fix')
     limited(report, report.label)
   }
 }
@@ -1117,7 +1106,7 @@ async function verify(SEATS) {
     ['one writerScope entry per commit, naming its repository, filesMatch true when every path the commit touched, under its repository\'s path, appears in the writer\'s files list.',
       'The files list covers all commits of the writer together. A path in it that no commit of the writer touched is a',
       'writer-scope problem: report it in the note of the writer\'s last commit and set that entry\'s ok to false.'].join('\n'),
-    'Verify ALL source findings, every seat\'s limitations and unchecked coverage; consolidate without losing IDs.',
+    'Verify ALL source findings and every seat\'s limitations; consolidate without losing IDs.',
     'Approve only authorized corrections with evidence, receipts, authority quotes, constraints and acceptance.',
     'Set removal true on an approve-fix whose correction removes code, a parameter or a mechanism that nothing uses, that nobody',
     'asked for, or that is built beyond what was asked, on the removal rule of your template, and false on every other decision.',
@@ -1177,7 +1166,7 @@ async function fixAndRoast() {
       } else {
         roast = result
         for (const f of result.findings) add('roast-finding', f, f.severity)
-        for (const l of uncovered(result)) add('roast-limitation', l, 'should-fix')
+        for (const l of narrowing(result)) add('roast-limitation', l, 'should-fix')
         limited(result, label)
       }
     } catch (error) { failed(error, label, i === 0 && r.status === 'fulfilled' ? r.value : undefined) }
