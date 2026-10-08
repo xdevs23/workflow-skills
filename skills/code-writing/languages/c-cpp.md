@@ -10,3 +10,5 @@
 - Keep control flow structured. Use `goto` only as the single forward jump to a function's cleanup,
   the way kernel C uses it, and never to build a loop or a call.
 - Model a closed set of domain values as an `enum class` in C++ and an `enum` in C.
+- Read text into a closed set with one function that returns no value for text naming none, and
+  never cast unchecked input to the enum.

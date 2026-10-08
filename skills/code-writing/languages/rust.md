@@ -26,5 +26,6 @@
   consumers.
 - Use the idioms: iterators, pattern matching, `Result` and `Option` combinators, trait
   implementations.
-- Model a closed set of domain values as an `enum`, and read text into it with `FromStr` or a
-  derived `Deserialize` where the text arrives.
+- Model a closed set of domain values as an `enum`.
+- Read text into a closed set with `FromStr` where the text arrives, and read its error for text
+  that names no value as unknown, so the rest of the input stays usable.

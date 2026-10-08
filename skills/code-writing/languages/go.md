@@ -13,6 +13,9 @@
   typed request and response structs.
 - Give a method that changes its receiver a pointer receiver.
 - Use generics and interfaces in place of the switch over type names that pre-generics Go forced.
-- Model a closed set of domain values as a named type with its values as constants
-  (`type Outcome int` with `iota`), and read text into it with one parse function where the text
-  arrives.
+- Model a closed set of domain values as a struct type with one unexported field and its values as
+  package variables, such as `type Outcome struct{ name string }` and
+  `var OutcomeRun = Outcome{"run"}`, so no code outside the package can make a value or pass a bare
+  string.
+- Read text into a closed set with one parse function that returns an error for text naming no
+  value, and write a value out as text through its `MarshalText` method, never as a number.

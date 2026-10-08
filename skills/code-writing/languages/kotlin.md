@@ -10,8 +10,9 @@
   of lines whether it is the third entry or the fiftieth.
 - Make domain quantities value types with operators and construction extensions (`120.dp`,
   `width + padding * 2`). Raw numbers don't cross an API boundary.
-- Model a finite set of variants as an enum that carries its serialized form as a property, with no
-  string constants and no `when` over raw strings.
+- Model a closed set of domain values as an enum that carries its serialized form as a property,
+  with no string constants and no `when` over raw strings.
+- Read text into a closed set with one lookup by its serialized form where the text arrives.
 - Make records immutable data classes, built with named arguments and changed with `copy()`.
 - Make an invalid instance impossible: validation runs in `init` with `require`.
 - Model a finite set of states as a sealed class, exposed as a `StateFlow` when observed, never as a
