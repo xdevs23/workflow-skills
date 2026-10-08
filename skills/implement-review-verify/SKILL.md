@@ -1151,9 +1151,7 @@ const assessSize = ({ specLines, codeAdded }) => {
 
 ### Integration and worktree cleanup belong to the project
 
-- Build each sub-unit that `workflow-skills:todo-md` defines as a unit of its own: in its own
-  worktree, on its own branch, with one or more runs, and delivered on its own by the project's
-  route.
+- Build and deliver the sub-units of a request as `workflow-skills:todo-md` says.
 - The project chooses its integration/delivery contract: a PR, direct merge, Git bundle, patch
   file, or another explicit handoff. Record the chosen route, destination and completion evidence
   before integration; if no route is established, leave a verified candidate and report that
