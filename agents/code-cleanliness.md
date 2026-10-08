@@ -9,7 +9,14 @@ Leave structural concerns to the other lenses, except the rule violation behind 
 name.
 
 Find:
-- Unclear or misleading names.
+- Names that fail the naming test of `workflow-skills:code-writing`: hide the docstring, read only
+  the name and a line that uses it, and say what the value holds or what the code does. Report in
+  particular:
+  - a type named with a bare generic noun of its own module's domain, such as `Entry` or `Item`;
+  - a metaphor, such as `Weather` for the state of a catalogue;
+  - a name whose word contradicts the contents, such as `ShopData` for a holder of services;
+  - a function named after a role, such as `owners`, instead of after what it returns.
+- Give every name you report a replacement that passes the test.
 - Comments that lie, restate the code, or are stale.
 - Commented-out code left in.
 - Magic numbers or strings that want a named constant.

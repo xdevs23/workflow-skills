@@ -37,6 +37,8 @@ shape of the system the code belongs to.
   restates the next line, narrates a change ("used to be A, now B") or talks to a reviewer.
 - Name things with plain words for what they do, and invent no metaphors. Use no `util`, `misc`,
   `helper` or similar grab-bag: find the name of what the code does.
+- Test a name by hiding its docstring and reading only the name and a line that uses it. A reader
+  who can't then say what the value holds or what the code does has found a name that fails.
 - Treat a file past about 500 lines as a candidate for splitting.
 - Keep the public surface small: implementation types are internal or private, and only what a
   consumer calls is public.
