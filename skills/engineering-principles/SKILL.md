@@ -155,6 +155,15 @@ in every language. `workflow-skills:code-writing` holds how the code itself read
 
 - Type data everywhere: no raw JSON lookups, no stringly-typed dispatch and no anonymous structures
   on a bus. Make illegal states unrepresentable.
+- Give a closed set of domain values, such as the outcomes of a decision or the states of a job,
+  one definition as an enum, in the form the language file of `workflow-skills:code-writing`
+  names, and name a value by that definition everywhere else. Write no such value as a hardcoded
+  string, not even inside a type the checker narrows, such as a Python `Literal` of strings or a
+  TypeScript union of string literals: the text would still be written again at every return and
+  every comparison. Keep the behavior that belongs to a value with its definition, never in
+  conditions over its text spread across the callers. Convert text to the enum once, at the
+  boundary where it arrives, such as a JSON field or a stored value, and back to text only where
+  it leaves.
 - Store a value as a stable identifier. Store an enum by a stable name or value, never by its
   position in the declaration, and store nothing as the text shown to the user.
 - Read a value the data defines, such as a currency, a unit, a locale or a timezone, from that data,
