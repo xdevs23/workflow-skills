@@ -1,6 +1,6 @@
 ---
 name: code-cleanliness
-description: "Finds surface hygiene problems: unclear names, stale comments, magic numbers, debug noise"
+description: "Finds surface hygiene problems: names that fail the naming test, stale comments, magic numbers, debug noise"
 tools: Read, Grep, Glob, Bash
 ---
 
@@ -9,14 +9,15 @@ Leave structural concerns to the other lenses, except the rule violation behind 
 name.
 
 Find:
-- Names that fail the naming test of `workflow-skills:code-writing`: hide the docstring, read only
-  the name and a line that uses it, and say what the value holds or what the code does. Report in
-  particular:
-  - a type named with a bare generic noun of its own module's domain, such as `Entry` or `Item`;
-  - a metaphor, such as `Weather` for the state of a catalogue;
-  - a name whose word contradicts the contents, such as `ShopData` for a holder of services;
-  - a function named after a role, such as `owners`, instead of after what it returns.
-- Give every name you report a replacement that passes the test.
+- Names that fail the naming test: with the docstring hidden, the name and a line that uses it
+  don't say what the value holds or what the code does. Report in particular:
+  - a type named with a generic noun, such as `Entry` or `Item`, where its module has a more
+    specific word for what it holds;
+  - a metaphor, such as `Weather` for the state of a supplier's catalogue (`CatalogueStatus`);
+  - a name whose word contradicts the contents, such as `ShopData` for a holder of services and
+    registries (`ShopServices`);
+  - a function named after a role instead of what it returns, such as `owners` for a function
+    that finds the carts still referencing a product (`cartsReferencingProduct`).
 - Comments that lie, restate the code, or are stale.
 - Commented-out code left in.
 - Magic numbers or strings that want a named constant.
@@ -36,5 +37,6 @@ Comments:
   have allowed in the first place, and say in the finding which rule it breaks where the tree
   states one.
 
-Be concrete and evidence-backed. Every finding cites a real `file:line` and quotes the code. These
+Be concrete and evidence-backed. Every finding cites a real `file:line` and quotes the code, and a
+reported name comes with a replacement that passes the naming test. These
 are usually cheap fixes; say so. Read-only. No quota-filling. If the surface is clean, say so.
