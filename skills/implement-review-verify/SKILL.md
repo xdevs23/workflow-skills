@@ -76,6 +76,8 @@ nothing else. Nothing is written for it: it holds the user's words and, as their
 parts of your messages, such as the question an answer of the user replies to or a decision of
 yours the user has seen in the chat.
 
+- Start a main run only on a unit that holds one behavior, as `workflow-skills:todo-md` defines,
+  and split a request with several behaviors into sub-units first.
 - Write the spec as `<unit>.yaml` in the private-spec location that `workflow-skills:local-cache`
   defines, ignored and untracked because it quotes the user.
 - Give the spec exactly the keys `unit`, the unit's name, and `entries`.
@@ -611,7 +613,8 @@ rules or returns it unresolved with the problem stated.
     investigation. Retain a non-blocking proposed spec edit in `specSuggestions` or as `record`
     without making it a prerequisite.
   - Report **cleanup** for verified work outside this unit's repair scope, such as a finding about a
-    behavior the unit does not hold. Retain concrete cleanup entries and receipts for your
+    behavior the unit does not hold that this unit's change did not cause and that does not keep
+    the unit's own behavior from working. Retain concrete cleanup entries and receipts for your
     end-of-run handoff to the todo record. A correction is optional.
   - Report **record** for a genuinely non-blocking observation, retained in the ledger. Never use
     it to dispose of a confirmed must-fix or CRITICAL violation.
@@ -1148,6 +1151,9 @@ const assessSize = ({ specLines, codeAdded }) => {
 
 ### Integration and worktree cleanup belong to the project
 
+- Build each sub-unit that `workflow-skills:todo-md` defines as a unit of its own: in its own
+  worktree, on its own branch, with one or more runs, and delivered on its own by the project's
+  route.
 - The project chooses its integration/delivery contract: a PR, direct merge, Git bundle, patch
   file, or another explicit handoff. Record the chosen route, destination and completion evidence
   before integration; if no route is established, leave a verified candidate and report that
