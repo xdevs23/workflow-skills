@@ -105,8 +105,13 @@ When an item finishes, its **design** stays in the design docs, its **diff** sta
   ```
 
 - Give the request's entry the state of its least advanced sub-unit.
-- Build and deliver each sub-unit as a unit of its own, as `workflow-skills:implement-review-verify`
-  says.
+- Build each sub-unit as a unit of its own, in its own worktree, on its own branch, with one or
+  more workflow runs. Building may start on whatever base suits the work.
+- Deliver each sub-unit on its own, such as by opening its own pull request against the project's
+  main branch, and only once every sub-unit it builds on is merged there. A pull request is a
+  request that can be rejected.
+- When the delivery of a sub-unit is rejected, deliver none of the sub-units that build on it, and
+  ask the user how to go on.
 - Record a finding about a behavior the unit does not hold as a new entry at the end of the file,
   unless the unit's own change caused it or it keeps the unit's own behavior from working. Such a
   finding stays with the unit.
