@@ -13,3 +13,6 @@
   typed request and response structs.
 - Give a method that changes its receiver a pointer receiver.
 - Use generics and interfaces in place of the switch over type names that pre-generics Go forced.
+- Model a closed set of domain values as a named type with its values as constants
+  (`type Outcome int` with `iota`), and read text into it with one parse function where the text
+  arrives.

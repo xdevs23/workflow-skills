@@ -9,3 +9,4 @@
   argument-count overloads are inline functions, `constexpr` and variadic templates.
 - Keep control flow structured. Use `goto` only as the single forward jump to a function's cleanup,
   the way kernel C uses it, and never to build a loop or a call.
+- Model a closed set of domain values as an `enum class` in C++ and an `enum` in C.
