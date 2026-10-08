@@ -155,21 +155,24 @@ in every language. `workflow-skills:code-writing` holds how the code itself read
 
 - Type data everywhere: no raw JSON lookups, no stringly-typed dispatch and no anonymous structures
   on a bus. Make illegal states unrepresentable.
-- Judge a string in code by its purpose. A string that stands for something the language can type,
-  such as one value of a closed set or a structured value, becomes an enum or a class. A string
-  whose purpose is text, such as a message or a name an outside format fixes, stays a string,
-  defined in one place.
+- Judge a string in code by its purpose. A string that stands for something the language can type
+  becomes an enum or a class. A string whose purpose is text, such as a message or a name an outside
+  format fixes, stays a string, defined in one place.
 - Give a closed set of domain values, such as the outcomes of a decision or the states of a job,
   one definition as an enum, in the form the language file of `workflow-skills:code-writing`
-  names. A set that modules extend is a kind of thing instead, and goes into a registry.
+  names. A set that modules extend, such as message types or providers, is no closed set and goes
+  into a registry instead.
 - Write the text of a value of a closed set only in the set's definition, and name the value
   through that definition everywhere else, also where a type lists the allowed strings. Text
   written out again at every return, argument and comparison scatters the value over the code.
+- Map an outside spelling of a value of a closed set that differs from the definition's, such as a
+  wire or database spelling, in the adapter of that edge, never in the definition.
 - Keep the behavior that belongs to a value of a closed set with the set's definition, never in
   conditions over the value's text spread across the callers.
 - Convert text into a value of a closed set once, where the text arrives, such as from a JSON field
   or a stored value, with a check that reads text naming no value as unknown, never with a cast
-  and never as a default value. Turn the value back into text only where it leaves.
+  and never as a default value.
+- Turn a value of a closed set back into text only where it leaves.
 - Store a value as a stable identifier. Store an enum by a stable name or value, never by its
   position in the declaration, and store nothing as the text shown to the user.
 - Read a value the data defines, such as a currency, a unit, a locale or a timezone, from that data,
