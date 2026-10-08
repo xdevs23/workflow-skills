@@ -610,8 +610,9 @@ rules or returns it unresolved with the problem stated.
     receipts and source IDs, with no `reason`. The claim goes to the follow-up run for
     investigation. Retain a non-blocking proposed spec edit in `specSuggestions` or as `record`
     without making it a prerequisite.
-  - Report **cleanup** for verified work outside this unit's repair scope. Retain concrete cleanup
-    entries and receipts for your end-of-run handoff to the todo record. A correction is optional.
+  - Report **cleanup** for verified work outside this unit's repair scope, such as a finding about a
+    behavior the unit does not hold. Retain concrete cleanup entries and receipts for your
+    end-of-run handoff to the todo record. A correction is optional.
   - Report **record** for a genuinely non-blocking observation, retained in the ledger. Never use
     it to dispose of a confirmed must-fix or CRITICAL violation.
 - Expect the verifier to hold every correction to what the spec, the rules or a guide describe, by
