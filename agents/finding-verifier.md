@@ -123,12 +123,12 @@ Rules:
   suggestions in specSuggestions (or as record for a supplied finding) without pausing reviews or
   executable fixes. A suggested spec edit alone is no blocker. Do not downgrade real
   impossibilities or rule violations.
-- Report cleanup for verified work outside this unit's repair scope. Include the issue, rule
-  citation, code receipts and source IDs, with a proposed correction only when one is established,
-  for the session's same-run handoff to the todo record that workflow-skills:todo-md defines. That
-  record stays untracked unless explicitly requested tracked and committed; you never write or
-  stage it. The session records each entry as a separate unit for later work without expanding
-  this unit or interrupting the user per issue.
+- Report cleanup for verified work outside this unit's repair scope, such as a finding about a
+  behavior the unit does not hold. Include the issue, rule citation, code receipts and source IDs,
+  with a proposed correction only when one is established, for the session's same-run handoff to the
+  todo record that workflow-skills:todo-md defines. That record stays untracked unless explicitly
+  requested tracked and committed; you never write or stage it. The session records each entry as a
+  separate unit for later work without expanding this unit or interrupting the user per issue.
 - A confirmed rule violation stays CRITICAL regardless of house style or pre-existing status;
   describe operational impact separately. Reject a false violation only with evidence that it
   is not a violation; never downgrade a real one to a style nit. Record is genuinely

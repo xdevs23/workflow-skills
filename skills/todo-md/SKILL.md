@@ -82,6 +82,28 @@ When an item finishes, its **design** stays in the design docs, its **diff** sta
 
 - Give a sub-item a fourth level (`#### #29.1 — ...`) and the same shape.
 
+## One behavior to a unit
+
+- Give a unit one behavior: something one sentence can state, such as "the profile page shows the
+  avatar".
+- Split a request that holds several behaviors into sub-units in dot notation under the entry for
+  the request, one sub-unit per behavior, each naming the sub-units it builds on:
+
+  ```
+  ### #383 - Profile avatars - IN PROGRESS
+  #### #383.1 - The profile page shows the avatar - BUILT
+  #### #383.2 - The avatar can be replaced - IN PROGRESS
+  Builds on #383.1.
+  #### #383.3 - A replaced avatar is resized to the page's sizes - QUEUED
+  Builds on #383.2.
+  ```
+
+- Build each sub-unit in its own worktree, on its own branch, with one or more workflow runs, and
+  deliver it as its own pull request, or as its own commits where the project takes no pull
+  requests. One behavior per pull request follows from one behavior per unit.
+- Record a finding about a behavior the unit does not hold as a unit of its own, never as part of
+  the unit that found it.
+
 # 4. The states an entry can take
 
 The state is a fixed enum: either no marker or one of the markers below. Grouped by where the
