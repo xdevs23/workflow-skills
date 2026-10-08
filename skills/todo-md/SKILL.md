@@ -80,29 +80,36 @@ When an item finishes, its **design** stays in the design docs, its **diff** sta
   or a potential work unit with no pointer is one nobody can trace back to its words.
   Finding the line: search the project's session transcript directory for the promptId or uuid or read the specified line directly.
 
-- Give a sub-item a fourth level (`#### #29.1 — ...`) and the same shape.
-
-## One behavior to a unit
+## 3.1. One behavior to a unit
 
 - Give a unit one behavior: something one sentence can state, such as "the profile page shows the
   avatar".
-- Split a request that holds several behaviors into sub-units in dot notation under the entry for
-  the request, one sub-unit per behavior, each naming the sub-units it builds on:
+- Split a request that holds several behaviors into sub-units, one per behavior, when you write the
+  request's entry. Give each sub-unit a fourth-level entry in dot notation under the request's
+  entry, in the shape of any other entry, and a `Builds on:` line naming the sub-units it needs
+  first:
 
   ```
   ### #383 - Profile avatars - IN PROGRESS
   #### #383.1 - The profile page shows the avatar - BUILT
+  <body>
+  Origin: <pointer>
   #### #383.2 - The avatar can be replaced - IN PROGRESS
-  Builds on #383.1.
+  Builds on: #383.1
+  <body>
+  Origin: <pointer>
   #### #383.3 - A replaced avatar is resized to the page's sizes - QUEUED
-  Builds on #383.2.
+  Builds on: #383.2
+  <body>
+  Origin: <pointer>
   ```
 
-- Build each sub-unit in its own worktree, on its own branch, with one or more workflow runs, and
-  deliver it as its own pull request, or as its own commits where the project takes no pull
-  requests. One behavior per pull request follows from one behavior per unit.
-- Record a finding about a behavior the unit does not hold as a unit of its own, never as part of
-  the unit that found it.
+- Give the request's entry the state of its least advanced sub-unit.
+- Build and deliver each sub-unit as a unit of its own, as `workflow-skills:implement-review-verify`
+  says.
+- Record a finding about a behavior the unit does not hold as a new entry at the end of the file,
+  unless the unit's own change caused it or it keeps the unit's own behavior from working. Such a
+  finding stays with the unit.
 
 # 4. The states an entry can take
 
