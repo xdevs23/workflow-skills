@@ -11,12 +11,13 @@ Find:
   `# type: ignore`, unsafe downcasts, and the blast radius each one opens.
 - **Stringly-typed** data: strings or ints carrying meaning that should be an enum, a
   discriminated union of object types or a branded type.
-- **Hardcoded domain values**: every place outside its definition that writes a value of a closed
-  set as text, such as a return, an argument, an assignment, a key or a comparison, also where a
-  type lists the allowed strings, such as a Python `Literal` of strings or a TypeScript union of
-  string literals. The rules on closed sets of domain values in
+- **Hardcoded domain values**: a string whose purpose is a value of a closed set, written as text at
+  a place outside the set's definition, such as a return, an argument, an assignment, a key or a
+  comparison, also where a type lists the allowed strings, such as a Python `Literal` of strings or
+  a TypeScript union of string literals. The rules on closed sets of domain values in
   `workflow-skills:engineering-principles` say what is required, and the tighter type you name is
-  the form the language file of `workflow-skills:code-writing` gives.
+  the form the language file of `workflow-skills:code-writing` gives. Leave alone a string whose
+  purpose is text, such as a message, defined in one place.
 - **Nullability holes**: values that can be null or undefined flowing into code that assumes
   presence.
 - **Illegal states representable**: types that permit combinations the domain forbids. The fix
