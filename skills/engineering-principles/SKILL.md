@@ -199,47 +199,6 @@ in every language. `workflow-skills:code-writing` holds how the code itself read
   machine the software runs on, or remove the mechanism that needs the value.
 - Keep no hand-curated list where judgment is needed: keep the mechanical check strict and give the
   caller an explicit override.
-- Show a person or an agent an error only when the system can't recover on its own and only a
-  person can fix the cause, such as the reader, someone the reader can ask, or the developers.
-  Until then the system recovers: it retries a temporary failure by itself, or it carries on
-  without the part that failed.
-- Give every error that reaches a person or an agent a next step its reader can take, drawn from one
-  central source, never a hint written for one case: how the reader can fix the cause, or, when the
-  cause lies in the system, what the reader can try in the meantime. An error that only says what
-  happened is incomplete, such as "Image processing failed.", and so is one that asks for
-  something the system could have done itself, such as "Image processing failed. Try again later."
-  - A cause the reader can fix: "Image couldn't be processed, because the uploaded image has invalid
-    metadata. Upload only images that have valid metadata or try converting it to a different
-    format before uploading again."
-  - A cause in the system: "Image failed to process due to a server error. We have recorded the
-    failure and will work on a fix. In the meantime you can try uploading an image with a smaller
-    resolution or different format."
-- Log a failure whose cause lies in the system in the system's logs, and tell the reader in plain
-  words that the failure was recorded.
-- Make the system retry by itself a failure it knows to be temporary, such as a refusal that says
-  the other side is busy or a network failure, as long as the operation is safe to repeat: it
-  changes nothing, or it carries an id derived from durable state that lets the other side recognize
-  a repeat. Retry a write whose connection dropped only under that condition.
-- Show a retry while it runs as progress with the number of tries so far, such as "Image
-  processing failed, retrying (3 attempts)…", never as an error, and log every failed try.
-- Wait between tries as long as the refusing system names, such as in a `Retry-After` header, or
-  with a growing, randomized pause where it names nothing.
-- Retry until the work succeeds or its purpose is gone, such as when the person cancels it or its
-  result is no longer needed, never until a count or a time limit of your own. Work that would need
-  such a limit is not work a retry recovers, and gets no retry. A retry that keeps failing is a
-  defect in the code, found through the logs and fixed there.
-- Once a retry has failed several times, show beside its progress, as information and never as an
-  error, that the problem is known and being taken care of and where to check on the work later,
-  such as "We're having trouble processing this request. Come back later to check on its status.
-  We've recorded this incident and will take care of it." Give a waiting caller that answer while
-  the retry goes on.
-- Where the temporary cause is a limit of the system's own, such as a full worker pool, remove that
-  limit instead of retrying against it, since the software sets no limit of its own.
-- Never retry automatically a request that fails the same way on every attempt: stop and show the
-  failure.
-- When an external system rejects an optional part of a request, degrade the result instead of
-  failing: retry once without that part, show a visible note that it was left out, and fail hard
-  only if that retry fails too.
 - Let a check tell "the value is wrong" apart from "I couldn't tell": its answer carries an explicit
   status that outranks the exit code, and a transient failure never discards a good value.
 - Fail loud: something that must be handled raises when nothing handles it, and no silent check
@@ -268,9 +227,55 @@ in every language. `workflow-skills:code-writing` holds how the code itself read
   message from those facts, so a message never describes a different moment than the decision.
 - Pass a failure across a language or process boundary as data, never as a panic or an exception
   that unwinds across it.
+- Choose what leaves a system by an allowlist of fields, never by a denylist.
+
+## Recovery and error messages
+
+- Show a person or an agent an error only when the system can't recover on its own and only a
+  person can fix the cause, such as the one who sees the error, someone they can ask, or the
+  developers. Until then the system recovers: it retries a temporary failure by itself, or it
+  carries on without the part that failed.
+- Give every error that reaches a person or an agent a next step they can take, drawn from one
+  central source, never a hint written for one case: how they can fix the cause, or, when the
+  cause lies in the system, what they can try in the meantime, or, when nothing is left to try,
+  that the failure was recorded and where to check on it later. An error that only says what
+  happened is incomplete, such as "Image processing failed.", and so is one that asks for
+  something the system could have done itself, such as "Image processing failed. Try again later."
+  - A cause they can fix: "Image couldn't be processed, because the uploaded image has invalid
+    metadata. Upload only images that have valid metadata or try converting it to a different
+    format before uploading again."
+  - A cause in the system: "Image failed to process due to a server error. We have recorded the
+    failure and will work on a fix. In the meantime you can try uploading an image with a smaller
+    resolution or different format."
+- Log every failure whose cause lies in the system, each failed try of a retry included, in the
+  system's logs, and say in plain words in an error about such a failure that it was recorded.
 - Always give a waiting caller an answer: send a failure back to whoever is waiting, never only log
   it on the other side.
-- Choose what leaves a system by an allowlist of fields, never by a denylist.
+- Make the system retry by itself a failure it knows to be temporary, such as a refusal that says
+  the other side is busy or a network failure, as long as the operation is safe to repeat: it
+  changes nothing, or it carries an id derived from durable state that lets the other side
+  recognize a repeat. Retry a write whose connection dropped only under that condition.
+- Never retry automatically a failure the system does not know to be temporary, such as a refused
+  validation or a failure it can't classify: show it as an error with a next step.
+- Show a retry while it runs as progress with the number of tries so far, such as "Image
+  processing failed, retrying (3 attempts)…", never as an error.
+- Wait between tries as long as the refusing system names, such as in a `Retry-After` header, or
+  with a randomized pause where it names nothing, which grows up to the longest wait the work's
+  purpose tolerates.
+- Retry until the work succeeds or its purpose is gone, never until a count or a time limit of the
+  system's own. Work that would need such a limit is not work a retry recovers, and gets no retry.
+  A retry that keeps failing is a defect in the code, found through the logs and fixed there.
+- Give a person who waits on a retry a way to cancel it, and give a retry nobody watches the
+  condition that makes its result no longer needed.
+- Once a retry has failed several times, show beside its progress, as information and never as an
+  error, that the problem is known and being taken care of and where to check on the work later,
+  such as "We're having trouble processing this request. Come back later to check on its status.
+  We've recorded this incident and will take care of it." A caller waiting on the work gets the
+  same information as its answer.
+- When an external system refuses an optional part of a request, degrade the result instead of
+  failing: send a fallback request without that part and show a visible note that the part was
+  left out. A temporary failure of the fallback request is retried like any other, and a refusal of
+  it is shown as an error.
 
 ## Correctness and change
 
