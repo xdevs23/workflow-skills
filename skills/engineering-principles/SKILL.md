@@ -192,14 +192,34 @@ in every language. `workflow-skills:code-writing` holds how the code itself read
   machine the software runs on, or remove the mechanism that needs the value.
 - Keep no hand-curated list where judgment is needed: keep the mechanical check strict and give the
   caller an explicit override.
-- Show a person an error only when the system can't recover on its own and only that person or the
-  developers can fix the cause. Before that, the system recovers: it retries a temporary failure,
-  as the rule on retries below says, or it stays resilient against the failure.
+- Show a person or an agent an error only when the system can't recover on its own and only a
+  person can fix the cause, such as the reader, someone the reader can ask, or the developers.
+  Until then the system recovers: it retries a temporary failure by itself, or it carries on
+  without the part that failed.
 - Give every error that reaches a person or an agent a next step its reader can take, drawn from one
   central source, never a hint written for one case: how the reader can fix the cause, or, when the
-  cause lies in the system, that the failure was recorded and what the reader can try in the
-  meantime. An error that only says what happened is incomplete, and so is one that asks for
-  something the system could have done itself, such as "try again later".
+  cause lies in the system, what the reader can try in the meantime. An error that only says what
+  happened is incomplete, and so is one that asks for something the system could have done itself,
+  such as "try again later".
+- Record a failure whose cause lies in the system where its developers will see it, and say in the
+  error that it was recorded.
+- Make the system retry by itself a failure it knows to be temporary, such as a refusal that says
+  the other side is busy, as long as the operation is safe to repeat: it changes nothing, or it
+  carries an id derived from durable state that lets the other side recognize a repeat. Retry a
+  write whose connection dropped only under that condition.
+- Show a retry while it runs as progress, such as "The export failed, retrying…", never as an
+  error.
+- Wait between tries as long as the refusing system names, such as in a `Retry-After` header, or
+  with a growing, randomized pause where it names nothing.
+- Stop retrying at the deadline of whoever waits or when the person cancels, never after a count of
+  your own.
+- Where the temporary cause is a limit of the system's own, such as a full worker pool, remove that
+  limit instead of retrying against it, since the software sets no limit of its own.
+- Never retry automatically a request that fails the same way on every attempt: stop and show the
+  failure.
+- When an external system rejects an optional part of a request, degrade the result instead of
+  failing: retry once without that part, show a visible note that it was left out, and fail hard
+  only if that retry fails too.
 - Let a check tell "the value is wrong" apart from "I couldn't tell": its answer carries an explicit
   status that outranks the exit code, and a transient failure never discards a good value.
 - Fail loud: something that must be handled raises when nothing handles it, and no silent check
@@ -231,18 +251,6 @@ in every language. `workflow-skills:code-writing` holds how the code itself read
 - Always give a waiting caller an answer: send a failure back to whoever is waiting, never only log
   it on the other side.
 - Choose what leaves a system by an allowlist of fields, never by a denylist.
-- Never retry automatically a request that fails the same way on every attempt: stop and show the
-  failure.
-- Make the system retry by itself a failure it knows to be temporary, such as a refusal that says
-  the other side is busy or a dropped connection, and show the retry while it runs, such as "The
-  export failed, retrying…". Wait between tries as long as the refusing system names, such as in a
-  `Retry-After` header, or with a growing pause where it names nothing, and stop at the deadline
-  of whoever waits or when the person cancels, never after a count of your own. Where the
-  temporary cause is a limit of the system's own, such as a full worker pool, remove the limit as
-  the rule on limits says instead of retrying against it.
-- When an external system rejects an optional part of a request, degrade the result instead of
-  failing: retry once without that part, show a visible note that it was left out, and fail hard
-  only if that retry fails too.
 
 ## Correctness and change
 
