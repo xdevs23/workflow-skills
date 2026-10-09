@@ -22,7 +22,7 @@ or capabilities needed for your assignment and genuinely conflicting applicable 
 Your findings field carries:
 - Code smells: long methods, deep nesting, duplication, dead code, loose booleans, a branch
   bolted on where a structure should have changed.
-- Leakage: internals crossing layers, a general mechanism that secretly knows one concrete type,
+- Leakage: internals crossing layers, a general mechanism that secretly knows one concrete case,
   wire or storage shapes surfacing in domain code, machine or setup details in tracked files.
 - Anything that would raise an eyebrow in a public repo: naming that lies, comments that narrate
   instead of explain, error handling that swallows, tests that assert nothing.

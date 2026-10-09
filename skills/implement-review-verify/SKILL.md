@@ -407,7 +407,7 @@ consolidation.
   whatever the size of the change: correctness, spec compliance, the duplicate checker, quality,
   inverse-spec, the project rule reader, cold alternatives, and the nine audit seats (separation of
   concerns, abstraction quality, code smell, type safety, code cleanliness, missing gaps, domain
-  leakage, type smearing and runtime cost), each loading the agent template of its name.
+  leakage, smearing and runtime cost), each loading the agent template of its name.
 - A review pass reads a change made without a spec, so spec compliance and inverse-spec do not run
   in it, and the other fourteen reviewers read the change without one, as
   `workflow-skills:review-pass` describes.
@@ -514,7 +514,7 @@ lenses of every run, and the main script stops a run whose seat list holds anoth
   never the implementer's object. Returns `candidates`, at most two materially simpler shapes, and
   none when the shape of the change is right.
 - **The nine audit seats** (`separation-of-concerns`, `abstraction-quality`, `code-smell`,
-  `type-safety`, `code-cleanliness`, `missing-gaps`, `domain-leakage`, `type-smearing`,
+  `type-safety`, `code-cleanliness`, `missing-gaps`, `domain-leakage`, `smearing`,
   `runtime-cost`): each judges
   the code through its one lens. Each receives what quality receives, the hygiene floor and the
   diff of every repository that moved, and returns what quality returns: `limitations`, `coverage`
@@ -1231,8 +1231,9 @@ A change is measured against a fixed bar:
   while the parts that change independently stay apart.
 - **The structure carries the cases.** An architecture where each case has its own place beats one
   generic path with conditionals bolted onto it for every case it did not anticipate.
-- **A generic mechanism stays generic.** It never learns the specifics of one concrete type.
-  Knowledge of a single type, smeared into shared code, makes every later type a special case.
+- **A generic mechanism stays generic.** It never learns the specifics of one concrete case, such
+  as a type, a module or a route. Knowledge of a single case, smeared into shared code, makes every
+  later case a special one.
 - **A package is named after the project.** Names describe what the thing does for the project,
   never the person who wrote it.
 
@@ -1758,7 +1759,7 @@ prompt rule it sees nowhere is a defect.
   `agents/duplicate-checker.md`, `agents/roaster.md`, `agents/cold-alternatives.md`,
   `agents/quality.md`, `agents/reviewer-inverse-spec.md`, `agents/project-rule-reader.md`, the nine
   audit templates `separation-of-concerns`, `abstraction-quality`, `code-smell`, `type-safety`,
-  `code-cleanliness`, `missing-gaps`, `domain-leakage`, `type-smearing` and `runtime-cost`,
+  `code-cleanliness`, `missing-gaps`, `domain-leakage`, `smearing` and `runtime-cost`,
   `agents/finding-verifier.md` and `agents/fixer.md`. That file's body is the agent's
   **authoritative rules** and is used **VERBATIM** as the start of its prompt.
 - Invoke the agent by its qualified agent type, `agentType:'workflow-skills:<role>'`.

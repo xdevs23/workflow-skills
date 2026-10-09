@@ -47,7 +47,7 @@ const UNIT = {
       'code-cleanliness': { model: '<explicit>', effort: 'high' },
       'missing-gaps': { model: '<explicit>', effort: 'high' },
       'domain-leakage': { model: '<explicit>', effort: 'high' },
-      'type-smearing': { model: '<explicit>', effort: 'high' },
+      smearing: { model: '<explicit>', effort: 'high' },
       'runtime-cost': { model: '<explicit>', effort: 'high' },
     },
     verify: { model: '<explicit>', effort: 'high' },
@@ -764,7 +764,7 @@ const REVIEW_SEATS = {
   quality: 'quality', inverse: 'reviewer-inverse-spec', rules: 'project-rule-reader', alternatives: 'cold-alternatives',
   'separation-of-concerns': 'separation-of-concerns', 'abstraction-quality': 'abstraction-quality',
   'code-smell': 'code-smell', 'type-safety': 'type-safety', 'code-cleanliness': 'code-cleanliness',
-  'missing-gaps': 'missing-gaps', 'domain-leakage': 'domain-leakage', 'type-smearing': 'type-smearing',
+  'missing-gaps': 'missing-gaps', 'domain-leakage': 'domain-leakage', smearing: 'smearing',
   'runtime-cost': 'runtime-cost',
 }
 const reviewerRules = seats => [
@@ -808,7 +808,7 @@ const seatList = (claims, artifacts, work = []) => [
   { type: 'code-cleanliness', label: 'code-cleanliness', ...unbriefed },
   { type: 'missing-gaps', label: 'missing-gaps', ...unbriefed },
   { type: 'domain-leakage', label: 'domain-leakage', ...unbriefed },
-  { type: 'type-smearing', label: 'type-smearing', ...unbriefed },
+  { type: 'smearing', label: 'smearing', ...unbriefed },
   { type: 'runtime-cost', label: 'runtime-cost', ...unbriefed },
 ]
 // A seat list that leaves a seat out, adds one, names one twice or gives a label another template

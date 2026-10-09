@@ -28,7 +28,7 @@ const passedCheck = (values, fields = {}, printed = {}) =>
 
 // The audit seats, each labelled and loading the template of its name.
 const AUDIT = ['separation-of-concerns', 'abstraction-quality', 'code-smell', 'type-safety', 'code-cleanliness',
-  'missing-gaps', 'domain-leakage', 'type-smearing', 'runtime-cost']
+  'missing-gaps', 'domain-leakage', 'smearing', 'runtime-cost']
 const readers = ['correctness', 'spec', 'dupes', 'quality', 'inverse', 'rules', 'alternatives', ...AUDIT]
 const source = (seat, index = 0) => `${seat}:${index}`
 const receipt = { file: 'src/example.js', line: 12, quote: 'catch (error) {}' }

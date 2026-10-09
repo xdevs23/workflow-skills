@@ -33,7 +33,7 @@ Rules:
   (reviewer-spec-compliance), dupes (duplicate-checker), quality, inverse (reviewer-inverse-spec),
   rules (project-rule-reader), alternatives (cold-alternatives), and the nine audit seats
   separation-of-concerns, abstraction-quality, code-smell, type-safety, code-cleanliness,
-  missing-gaps, domain-leakage, type-smearing and runtime-cost. Quality, cold alternatives and the
+  missing-gaps, domain-leakage, smearing and runtime-cost. Quality, cold alternatives and the
   nine audit seats are unbriefed. A follow-up run of a change made without a spec runs the fourteen
   reviewers that need none, without spec and inverse. Check that the review objects hold one object
   for each reviewer your prompt's reviewer rules name. A reviewer whose object is missing from your
