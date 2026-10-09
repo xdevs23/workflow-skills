@@ -304,13 +304,18 @@ in every language. `workflow-skills:code-writing` holds how the code itself read
   loading state, never an error. During a save, show progress, disable every control that could send
   the save a second time, and wait until the save is done. Leave the view as it was when an optional
   feature can't apply.
-- Make a user interface explain itself through its labels, controls and layout. Put no text into it
-  that explains the product: how it computes or stores something, why it was built that way, which
-  features it does not offer, or where things sit on the screen. When a part needs such text
-  because its behavior is not evident, change that part, such as its label, its grouping or its
-  control, and never explain it to the person testing it either.
-- Word a state of the reader's own data or action, such as an empty list or a failed save, by what
-  happened and what the reader can do next, as the rules on error messages say.
+- Count as text that explains a product any text on a product screen, where the reader uses the
+  product, about how the product computes or stores something, why it was built that way, which
+  features it does not offer, or where things sit on the screen. Text about a state of the
+  reader's own data or action is a state, such as an empty list, a failed save or a retry in
+  progress.
+- Make a product screen explain itself through its labels, controls and layout, and put no text
+  that explains the product on it. When a part needs such text because its behavior is not
+  evident, change that part, such as its label, its grouping or its control, and explain nothing
+  to a tester either. A marketing page, where the reader decides whether to use the product,
+  follows `workflow-skills:copywriting`.
+- Word a state of the reader's own data or action by what happened and what the reader can do
+  next, including where to check on the work later.
 - Avoid imperative or procedural checks. Make the condition fall out of the design where possible.
 - Where possible, use conditional database updates instead of checking a condition in the program,
   which could suffer from TOCTOU or from races with other threads (the _what if it changes in the
