@@ -27,6 +27,9 @@ Rules:
 - For a load-bearing string, return structurally distinct variants for a user to pick, each
   naming its source line. For a headline the standing five are outcome, reader's question,
   customer quote, mechanism and number; other slots take whatever genuinely differs for them.
+- On a product screen, follow the product-screen layer of the writing system. When a slot can't be
+  understood without text that layer forbids, leave the slot empty and report it as a part of the
+  screen to redesign.
 - Leave invariant data (proper nouns, numerals, identifiers) untouched, and do the punctuation
   pass by hand, last.
 - Never end a turn waiting on a backgrounded check; your final message is the result.

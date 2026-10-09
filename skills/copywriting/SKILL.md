@@ -45,7 +45,11 @@ The contract is two documents, and keeping them separate is the whole discipline
   - **its data shape**: line-break convention, interpolation slots, plural forms;
   - **a classification: copy key vs invariant data.** Proper nouns, product names, numerals and
     identifiers are invariant data and are never rewritten or "translated"; everything else is a
-    copy key.
+    copy key;
+  - **its surface**: a product screen, where the reader uses the product, onboarding and error
+    states included, or a marketing page, where the reader decides whether to use it.
+- Give a slot on a product screen an intent that names what the reader reads or does there, and
+  send a need to explain the product back to the screen's design.
 - **Never put example prose or the designer's imagery in an intent.** This rule is load-bearing: an
   intent that prescribes imagery turns the writer into a translator of someone else's draft instead
   of someone writing from the goal. State the communicative goal; let the writer construct the
@@ -56,18 +60,22 @@ The contract is two documents, and keeping them separate is the whole discipline
 - Write the writing system as one document, phrased **positively with a pass/fail check on every
   rule**. Prohibition-framed rules ("don't be salesy") fail: the model needs the replacement named,
   not the vice.
-- Give it a **page layer**:
+- Give it a **page layer** for every surface:
   - One page, one action.
+  - Prefer nouns, verbs and numbers over adjectives.
+  - Write in the second person, active voice, present tense.
+  - Make buttons complete "I want to ___".
+  - Use one name per thing, everywhere.
+  - Then cut, read aloud, and stranger-test.
+- Give it a **product-screen layer**: the labels, actions and states the reader acts on, and no text
+  that explains the product. Copy the definition of that text and the rule on wording a state from
+  `workflow-skills:engineering-principles` into it word for word.
+- Give it a **marketing-page layer**:
   - Make the headline name the **reader's outcome**, and make it pass the competitor-swap test: if
     a competitor could paste it unchanged, it says nothing.
   - Give every claim its proof within a screen.
   - Build from the customer's verbatim words.
-  - Prefer nouns, verbs and numbers over adjectives.
-  - Write in the second person, active voice, present tense.
-  - Make buttons complete "I want to ___".
   - Name the objections instead of hoping they go unasked.
-  - Use one name per thing, everywhere.
-  - Then cut, read aloud, and stranger-test.
 - Give it a **generation layer**:
   - Load the SOURCE block before asking for a single word: every claim must trace to a source
     line.
@@ -215,6 +223,8 @@ The workflow runs five phases: **Intent → Write → Check → Verify → User.
    smallest model on the source-verify reviewer.
 7. **Let the user ship the load-bearing strings.** The model supplies structurally distinct
    variants.
+8. **Send a slot reported for redesign back to the screen's design.** Its screen waits for
+   implementation until the redesigned slot has its copy.
 
 ## Agent prompt templates (verbatim base, append-only)
 

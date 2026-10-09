@@ -303,8 +303,14 @@ in every language. `workflow-skills:code-writing` holds how the code itself read
 - In a user interface, show an error only on the part that fails. Show a loading indicator for a
   loading state, never an error. During a save, show progress, disable every control that could send
   the save a second time, and wait until the save is done. Leave the view as it was when an optional
-  feature can't apply. Fix a usability problem in the interface, with an affordance, a label or
-  discoverability, never by explaining the interface to the person testing it.
+  feature can't apply.
+- Make a user interface explain itself through its labels, controls and layout. Put no text into it
+  that explains the product: how it computes or stores something, why it was built that way, which
+  features it does not offer, or where things sit on the screen. When a part needs such text
+  because its behavior is not evident, change that part, such as its label, its grouping or its
+  control, and never explain it to the person testing it either.
+- Word a state of the reader's own data or action, such as an empty list or a failed save, by what
+  happened and what the reader can do next, as the rules on error messages say.
 - Avoid imperative or procedural checks. Make the condition fall out of the design where possible.
 - Where possible, use conditional database updates instead of checking a condition in the program,
   which could suffer from TOCTOU or from races with other threads (the _what if it changes in the

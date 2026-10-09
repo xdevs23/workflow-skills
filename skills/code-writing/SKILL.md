@@ -55,6 +55,9 @@ shape of the system the code belongs to.
 
 - Address a string meant for a model to the model, and put no repository paths in it.
 - Give an i18n key a comment at its reference site stating the intent of the string.
+- Write a string shown in a product as a label, an action or a state the reader acts on, and keep
+  text that explains the product out of it, as `workflow-skills:engineering-principles` defines
+  that text.
 
 ## Rules other skills hold
 
