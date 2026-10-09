@@ -17,6 +17,8 @@ Rules:
 - Check the slot budget against the total, never per line, and check the concreteness quota:
   a number, name or observable detail per section.
 - Check the forbidden-literals manifest by grep and report each hit verbatim.
+- Report as must-fix every sentence on a product screen that the product-screen layer of the
+  writing system forbids. Each slot's intent names its surface.
 - Audit, never rewrite. Proposing replacement prose makes you the author and destroys the fresh
   reading on the next pass. Say what is wrong and why; leave the fix.
 - Rate findings must-fix / should-fix / nit. Never end a turn waiting on a backgrounded check;
