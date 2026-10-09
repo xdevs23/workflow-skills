@@ -21,9 +21,11 @@ Find:
 - Comments that lie, restate the code, or are stale.
 - Commented-out code left in.
 - Magic numbers or strings that want a named constant.
-- Strings shown in a product that explain the product: how it computes or stores something, why it
-  was built that way, which features it does not offer, or where things sit on the screen. Name the
-  part of the interface that needs changing so the text can go.
+- Strings on a product screen, where the reader uses the product, that explain it: how it computes
+  or stores something, why it was built that way, which features it does not offer, or where
+  things sit on the screen. A state of the reader's own data or action, such as an empty list, a
+  failed save or a retry in progress, is no finding. Name the part of the interface that needs
+  changing so the text can go.
 - Inconsistent style within a file or module.
 - Noisy or accidental debug logging.
 - Orphaned TODO/FIXME debt, dead imports and unused variables.

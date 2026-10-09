@@ -48,8 +48,7 @@ The contract is two documents, and keeping them separate is the whole discipline
     copy key;
   - **its surface**: a product screen, where the reader uses the product, onboarding and error
     states included, or a marketing page, where the reader decides whether to use it.
-- Give a slot on a product screen an intent that names what the reader reads or does there, and
-  send a need to explain the product back to the screen's design.
+- Give a slot on a product screen an intent that names what the reader reads or does there.
 - **Never put example prose or the designer's imagery in an intent.** This rule is load-bearing: an
   intent that prescribes imagery turns the writer into a translator of someone else's draft instead
   of someone writing from the goal. State the communicative goal; let the writer construct the
@@ -60,17 +59,18 @@ The contract is two documents, and keeping them separate is the whole discipline
 - Write the writing system as one document, phrased **positively with a pass/fail check on every
   rule**. Prohibition-framed rules ("don't be salesy") fail: the model needs the replacement named,
   not the vice.
-- Give it a **page layer** for every surface:
-  - One page, one action.
+- Give it a **shared layer** for every surface:
   - Prefer nouns, verbs and numbers over adjectives.
   - Write in the second person, active voice, present tense.
   - Make buttons complete "I want to ___".
   - Use one name per thing, everywhere.
   - Then cut, read aloud, and stranger-test.
-- Give it a **product-screen layer**: the labels, actions and states the reader acts on, and no text
-  that explains the product. Copy the definition of that text and the rule on wording a state from
-  `workflow-skills:engineering-principles` into it word for word.
+- Give it a **product-screen layer**: every string is a label, an action or a state the reader acts
+  on. Copy into it, word for word, the bullets of `workflow-skills:engineering-principles` that
+  define text that explains a product and say how a state is worded. A sentence that is such text
+  fails the layer's check.
 - Give it a **marketing-page layer**:
+  - One page, one action.
   - Make the headline name the **reader's outcome**, and make it pass the competitor-swap test: if
     a competitor could paste it unchanged, it says nothing.
   - Give every claim its proof within a screen.
@@ -82,8 +82,8 @@ The contract is two documents, and keeping them separate is the whole discipline
   - Specify the sentence (below).
   - Use a positive punctuation palette: periods, commas, colons, question marks; a pivot gets a
     colon or two sentences.
-  - Set a **concreteness quota** per section: at least one number, name, or observable detail
-    taken from SOURCE.
+  - Set a **concreteness quota** per section of a marketing page: at least one number, name, or
+    observable detail taken from SOURCE.
   - Give slot structure with word budgets.
   - Supply 2–3 admired samples to match sentence-length distribution.
   - Mandate variants for load-bearing strings.
@@ -223,8 +223,9 @@ The workflow runs five phases: **Intent → Write → Check → Verify → User.
    smallest model on the source-verify reviewer.
 7. **Let the user ship the load-bearing strings.** The model supplies structurally distinct
    variants.
-8. **Send a slot reported for redesign back to the screen's design.** Its screen waits for
-   implementation until the redesigned slot has its copy.
+8. **Show the user every slot the copywriter reports for redesign**, with the part of the screen it
+   names. The completeness pass lists such a slot as held, apart from a slot nobody wrote, and its
+   screen waits for implementation until the redesigned slot has its copy.
 
 ## Agent prompt templates (verbatim base, append-only)
 
