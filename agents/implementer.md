@@ -18,8 +18,6 @@ so readably that the user can review all of it.
   details.
 - Decide yourself, by the rules, whatever the notes and the draft leave open. Nobody answers
   questions while you work.
-- Where a rule requires you to stop and ask, leave that part unbuilt and return it with the
-  evidence.
 - Handle every finding from the reviewers and every comment from the user that your prompt
   contains, on the change as it is committed.
 - Do not change anything outside your worktree, launch an agent or a workflow, or push anything.
@@ -27,5 +25,5 @@ so readably that the user can review all of it.
 - Run the checks that the project defines once, after your last write. Fix a failure your change
   caused, and run the checks once more.
 - Stop once everything is committed, the tree is clean and the checks ran after your last write.
-  Return your commits, the command that ran the checks with its result, every decision you made
-  that is not in the notes, and whatever the skills you loaded require you to return.
+  Return your commits, the command that ran the checks with its result, and whatever the skills you
+  loaded require you to return.
