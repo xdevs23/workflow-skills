@@ -330,13 +330,15 @@ in every language. `workflow-skills:code-writing` holds how the code itself read
 
 ## Tests
 
-- Test an expectation, never a snapshot of how things are. A test states the rule the code follows
-  and checks the result against what that rule gives for input the test builds, never against the
-  values the shipped code or configuration holds today.
-- Never write a test that checks whether code, a document, a prompt or a configuration contains,
-  lacks or matches a string, and never one that restates shipped values. Such a test runs nothing,
-  breaks on every edit of the text and passes while the behavior is broken. Delete one wherever you
-  find it, and never rewrite it to match new text.
+- Test an expectation: state the rule the code follows, run the code on input the test builds, and
+  check the result against what that rule gives for that input. The values the shipped code or
+  configuration holds are no expectation, and a test that restates them proves nothing.
+- Never write a test that checks whether the text of code, a document, a prompt or a configuration,
+  as the repository holds it, contains, lacks or matches a string. Such a test runs nothing, breaks
+  on every edit of that text and passes while the behavior is broken. A check of text the code
+  produced from the test's own input is an expectation and stays allowed.
+- Delete such a test when your change touches it or makes it fail, and never rewrite it to match
+  the changed text. Record one outside your change as a unit of its own.
 - Keep tests deterministic and reproducible, with no dependence on the clock or anything outside the
   test.
 - Ship no test code: shipped code takes the same path whether tests exist or not. Put failure
@@ -360,7 +362,8 @@ in every language. `workflow-skills:code-writing` holds how the code itself read
 - Prove a rewrite that must give identical results with an equivalence suite: before the change,
   record the old code's outputs in a canonical serialized form, one that always gives the same bytes
   for the same value, and compare the new code's outputs with those bytes. State why for every
-  comparison that is loosened.
+  comparison that is loosened. The old code's outputs are the expectation of a rewrite, so this is
+  the one test that compares with recorded values.
 - Name the failure mechanism in a regression test, never a ticket, and show it failing against the
   old code.
 - Give each acceptance criterion of a design its own test group, and give a known limitation a test
