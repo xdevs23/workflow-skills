@@ -101,9 +101,9 @@ const dialogAnswers = (record: Mapping, answered: Set<string>): string[] => {
 const toolResult = (record: Mapping) => blocksOf(record).some(block => mapping(block) && block.type === 'tool_result')
 const humanOrigin = (value: unknown) => mapping(value) && value.kind === 'human'
 // A message typed in a session hosted through the Agent SDK carries no origin. The host marks it
-// with the prompt source and turn origin sdk.
-const sdkPrompt = (record: Mapping) =>
-  record.origin === undefined && record.promptSource === 'sdk' && record.turnOrigin === 'sdk'
+// with this value as both its prompt source and its turn origin.
+const sdkHost = 'sdk'
+const sdkPrompt = (record: Mapping) => record.promptSource === sdkHost && record.turnOrigin === sdkHost
 const parseRecord = (line: string): Mapping | undefined => {
   try { const record = JSON.parse(line); return mapping(record) ? record : undefined } catch { return undefined }
 }
