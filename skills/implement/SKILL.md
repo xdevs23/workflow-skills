@@ -99,3 +99,11 @@ it, and the user reviews the code.
   Handle every comment the user adds.
 - In a project without a review system, report the change to the user. The user may review it but
   does not have to.
+
+## Wrapping up
+
+- After each workflow, assess what took the longest and try to optimize it so that the next run needs less time. Aim
+  for a maximum of 20 minutes per agent. Anything under 20 minutes does not need to be inspected.
+- The implementer is not supposed to run full tests or checks if they take considerable time to run. Instead, they
+  are supposed to run just the tests and checks that concern their task, and you are supposed to run the full check
+  at the right time.
