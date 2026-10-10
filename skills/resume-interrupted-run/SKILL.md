@@ -36,7 +36,7 @@ rescuing.
   error before its stage retried it, and a call that had not started when the run stopped. An
   attempt that returned an object the script's check then refused holds a journaled result, so it
   replays and does not end the replay. After an edited call this means, for example, that the
-  roaster that starts beside the fixer or the reviewers listed after an edited reviewer run again.
+  reviewers listed after an edited reviewer run again.
 - Expect an interrupted call whose prompt and options you leave unchanged to run live without
   ending the replay, so the finished calls made after it replay until one of the calls above ends
   the replay.
@@ -48,7 +48,7 @@ rescuing.
   makes them in the same order with the same keys and no call before them ends the replay. The
   order depends on when results arrive, so one resume does not settle it for the next.
 - Expect a call that runs live again to receive other input than its earlier attempt saw whenever a
-  call before it returned something new, such as a verifier reading reviewer reports that were
+  call before it returned something new, such as a later stage reading reviewer reports that were
   written again.
 
 ## When to reach for it
@@ -66,8 +66,8 @@ rescuing.
   above describes, and this procedure buys nothing.
 - An agent **completed with a bad result**. That is the opposite problem. See the boundary section
   at the end.
-- The run **ended on its own**, whatever its exit. Its remaining items are recorded, and a new run
-  starts only for what must be fixed. This skill is never a way to run the same spec again.
+- The run **ended on its own**, whatever its exit. This skill is never a way to run a finished run
+  again.
 
 ## The procedure
 
@@ -133,7 +133,7 @@ prevent.
   unchanged. **Any** edit of either, a word or a space, gives that call a new key and ends the
   replay there, as the first section describes, and its own result is thrown away as well. One
   stray edit early in the script can re-execute most of the run you were trying to salvage.
-- Never reach a single seat by editing a shared constant either. A constant such as `AUTHORITY`
+- Never reach a single seat by editing a shared constant either. A constant such as `RULES`
   goes into the prompt of every stage built from it, so an edit of it edits the completed prompts
   among them as well.
 
@@ -161,9 +161,9 @@ const RESUME_NOTE = [
 ].join('\n')
 
 // Editing this call also changes every later call's key.
-const correctnessPrompt = [AUTHORITY, SPEC, SEAT_BRIEF, RESUME_NOTE].join('\n\n')
+const correctnessPrompt = [RULES, SEAT_BRIEF, RESUME_NOTE].join('\n\n')
 // Replays only when made before the first call that ends the replay.
-const specCompliancePrompt = [AUTHORITY, SPEC, SEAT_BRIEF].join('\n\n')
+const scopePrompt = [RULES, SEAT_BRIEF].join('\n\n')
 ```
 
 ## The rules
@@ -212,10 +212,5 @@ An interrupted run and a poisoned result are two different failures with two dif
 - **Completed with a bad result, an EMPTY journaled result included**: the bad result **is cached**
   and will replay verbatim on resume, so fixing the underlying cause and re-invoking changes nothing.
   Editing its prompt to make it run again is the edit of a completed prompt that step 4 forbids.
-  The run treats the replayed result like any other result it receives, and what the result leaves
-  wrong when the run ends is recorded and fixed by a later run.
-
-The second case belongs to `workflow-skills:implement-review-verify`: its fail-fast law, which
-refuses an empty or incomplete result and retries that stage, and its section on remaining items
-and follow-up work, which never runs a completed run again. Do not re-derive either here; the two
-paths share only the journal mechanism, and each decision is recorded once.
+  The run treats the replayed result like any other result it receives, and you fix what the result
+  leaves wrong once the run has ended, the way you fix any other wrong result of the run.

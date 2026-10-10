@@ -1,8 +1,8 @@
 # workflow-skills
 
-A bundled Claude Code plugin of **multi-agent workflow skills** plus a library of **audit-lens
-subagents**. The skills cover implementing and reviewing a change against a unit spec that quotes
-the discussion of the change, copywriting, visual verification and the recovery of an interrupted
+A bundled Claude Code plugin of **multi-agent workflow skills** plus a library of **review-lens
+skills**. The skills cover implementing and reviewing a change from notes of the user's words and a
+draft the user approved, copywriting, visual verification and the recovery of an interrupted
 workflow run.
 
 ## Install
@@ -13,15 +13,15 @@ workflow run.
 ```
 
 Then the skills appear in the skill list and each has a matching slash command (e.g.
-`/implement-review-verify`).
+`/implement`).
 
 ## What's inside
 
 ### Skills
 | Skill | What it does |
 |---|---|
-| `implement-review-verify` | Assemble the unit spec from the user's words in the session transcripts and check it with the spec tool, then implement against it and commit a clean snapshot, with the implementer's sense check reporting what it finds in the spec, then review and independently consolidate findings. The fixer commits only approved corrections while a mandatory roaster reads the pre-fix Git snapshot and approved list. Everything a run returns to be fixed goes to one follow-up run, whose implementer resolves it by the user's words and the rules and states what nothing resolves as a problem for the user, without a question; the follow-up's review checks its change, and what it leaves is recorded for later. |
-| `review-pass` | Run the fourteen reviewers of `implement-review-verify` that need no spec alone on a change that is already committed, such as one edited directly, with no spec, implementer, verifier or fixer, and send their findings to a follow-up run. |
+| `implement` | Write the user's words about a change into notes and draw an HTML draft the user approves, then have implementers write the smallest code the task needs, reviewers check it against the notes and the rule skills `engineering-principles`, `code-writing`, `writing-style` and `hygiene`, and send the change to the user's own review. |
+| `review-pass` | Run the reviewers of `implement` alone on a change that is already committed, such as one edited directly. |
 | `autonomous-implementation` | Implement without asking, on the user's grant for a task, a session or a timeframe: subagents make the decisions, each milestone ends with evidence, a subset of the reviewers checks the work, and the result is libre and built with Nix. |
 | `copywriting` | Write an increment's user-visible strings BEFORE implementation: intent catalog + writing system, one agent per item, mechanical check + source-verify + fresh-context critic, and the user ships the crucial lines. |
 | `resume-interrupted-run` | Recover a workflow run that was stopped while agents were mid-flight: hand each interrupted seat its own prior transcript, leave every completed prompt byte-identical, resume near-losslessly. |
@@ -42,18 +42,17 @@ When a session has a skill of the same name without the plugin prefix, such as a
 `todo-md`, that skill is used and the plugin's is not. The plugin's skill is used only when it is
 the only one of that name available.
 
-### Audit-lens subagents (read-only)
-The nine read-only audit-lens subagents are `separation-of-concerns`, `abstraction-quality`,
-`code-smell`, `type-safety`, `code-cleanliness`, `missing-gaps`, `domain-leakage`,
-`smearing` and `runtime-cost`. All nine run as reviewers of every
-`implement-review-verify` run's review stage, beside its seven other seats. They are also usable
-directly as `agentType`s in your own workflows.
+### Review lenses
+The fourteen review-lens skills are `reviewer-correctness`, `missing-gaps`, `runtime-cost`,
+`cold-alternatives`, `duplicate-checker`, `abstraction-quality`, `separation-of-concerns`,
+`domain-leakage`, `smearing`, `code-smell`, `type-safety`, `project-rule-reader`,
+`code-cleanliness` and `quality`. The reviewers of `implement` load them by layer, and each one can
+also be loaded alone to review a change through its lens.
 
 ## Requirements
 
 - Claude Code with the Workflow tool for skills that launch stages.
-- Bun 1.2.21 or newer for the spec checker.
-- A Bun release with `Bun.markdown.render` for the tests.
+- Bun for the tests.
 - Python 3 and an authenticated GitHub CLI for `babysit-pr`.
 
 ## Tests

@@ -124,47 +124,45 @@ A scene is curated when no existing scene exposes the surface a change touches.
 The evidence sheet is a view for a reader. It never passes or fails a pair of captures; the
 comparison stays the verdict.
 
-## Visual work in an implement-review-verify unit
+## Visual work in a change of `workflow-skills:implement`
 
-`workflow-skills:implement-review-verify` holds nothing specific to visual work. What a visual
-change should do comes from the user's words in the unit spec, and nothing is written into the spec
-for it: no criterion, no capture name and no path.
+What a visual change should do comes from the user's words in the notes.
 
 - Judge a visual change by its comparison outcome, which takes one of three forms: zero changed
   pixels on every checkpoint; changes only in the checkpoints the user's words concern, with every
   measured check passing; or, for a change that alters a compatibility input on purpose, such as a
   translation, a fixture, the scene module or a dependency lock, the intended input change.
-- The implementer captures the before state in its worktree from its start commit, before its
-  first edit, under a name never used before in that worktree. No other stage captures the before
-  state.
-- Each writing stage, after its last commit, captures the after state under a name never used
-  before in that worktree, such as its stage label joined with the run identifier. It runs the
-  comparison against the before capture and returns the comparison command and its output, which
-  name both captures, in its checks. The stage's pass or fail proof stays the project's check
-  command, because the comparison exits nonzero for every intended change.
-- The implementer returns in `artifacts` every capture, comparison report and evidence sheet it
-  made, each with its absolute path and what it shows.
-- Expect the main script to hand the implementer's `artifacts` to every reading stage that receives
-  the spec and to the fixer, so each of them opens the captures the implementer compared by their
-  names.
-- Expect the implementer's `artifacts` to reach the follow-up run of the unit through the parent
-  run's result, which holds them: the follow-up run receives them with the rest of what that run
-  returned and hands them to its implementer, so it opens the same captures by their names.
-- For a change of the third form, the comparison refuses the pair and stays strict. The writing
-  stage returns the refusal together with an evidence sheet of the same two captures, rendered under
-  an output name never used before. The comparison is never loosened for the intended input change,
+- The first implementer of the change captures the before state in its worktree from the start
+  commit of the change, before its first edit, under a name never used before in that worktree.
+- The after state is captured on the branch that contains the whole change, after its last commit,
+  under a name never used before in that worktree:
+  - When one implementer built the change, or several one after the other, the last of them
+    captures it.
+  - When implementers ran at the same time, start one implementer on the branch their work was
+    merged into to capture it there, and hand it the path of the before capture.
+- The implementer that captures the after state runs the comparison against the before capture and
+  returns the comparison command and its output, which name both captures, with its checks. Its pass
+  or fail proof stays the project's check command, because the comparison exits nonzero for every
+  intended change.
+- After any fix to a visual change, capture the after state again under a name never used before
+  and compare it against the before capture. When an implementer makes the fix, hand it the path of
+  the before capture so that it captures and compares.
+- The implementer returns every capture, comparison report and evidence sheet it made, each with its
+  absolute path and what it shows.
+- Hand those paths to the scope reviewer, so it opens the captures the implementer compared by
+  their names.
+- For a change of the third form, the comparison refuses the pair and stays strict. The implementer
+  returns the refusal together with an evidence sheet of the same two captures, rendered under an
+  output name never used before. The comparison is never loosened for the intended input change,
   since that would weaken the strict verdict.
-- Reading stages that receive the spec open the PNGs, the receipts and the comparison reports in
-  the harness's directory inside that worktree's project cache, the location
-  `workflow-skills:local-cache` defines. For a change of the third form they judge the outcome by
-  reading the evidence sheet, the two receipts and the after capture's measured checks in its
-  receipt and report.
-- Each reading stage checks that the after capture's receipt carries the snapshot under review as
-  its source revision, and that the before capture's receipt carries the run's base commit; an
-  after capture of another commit is no evidence for this one.
-- A point that needs a new capture goes to the fixer, since reading stages write nothing.
-- Stages that receive no spec by design, such as the fresh-context quality and alternatives reviews
-  and the roaster, get nothing added.
+- The scope reviewer opens the PNGs, the receipts and the comparison reports in the harness's
+  directory inside that worktree's project cache, the location `workflow-skills:local-cache`
+  defines. For a change of the third form it judges the outcome by reading the evidence sheet, the
+  two receipts and the after capture's measured checks in its receipt and report.
+- The scope reviewer checks that the after capture's receipt carries the commit under review as its
+  source revision, and that the before capture's receipt carries the change's start commit; an after
+  capture of another commit is no evidence for this one.
+- A point that needs a new capture goes to the implementer, since reviewers write nothing.
 
 ## Known pitfalls
 

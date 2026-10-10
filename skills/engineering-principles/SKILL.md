@@ -423,8 +423,8 @@ in every language. `workflow-skills:code-writing` holds how the code itself read
   crafts of each language.
 - Follow `workflow-skills:writing-style` for the words of comments, documents and messages.
 - Follow `workflow-skills:hygiene` for what may leave the machine.
-- Follow `workflow-skills:implement-review-verify` for specs, what reaches the user, design
-  documents with their rejected alternatives, and checks that run once.
+- Follow `workflow-skills:implement` for how a change goes from the user's words to the user's
+  review.
 - Follow `workflow-skills:visual-verification` to prove a change to a user interface with
   screenshots.
 - Follow `workflow-skills:local-cache` for where scratch files go.

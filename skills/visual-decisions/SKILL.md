@@ -76,10 +76,7 @@ glance instead of rebuilding it from a description.
 - Take an answer exactly as written: an answer that approves an After picture with one change asks
   for that picture with that change.
 
-## The decisions in a unit spec
+## The decisions in the notes
 
-- Expect an image the user pastes into the chat to be in the session transcript, in the record of
-  that message, so a unit spec of `workflow-skills:implement-review-verify` that quotes the message
-  reaches the image.
-- You can also copy the images into the project cache, name their paths in the chat, and then write
-  the spec.
+- Copy an image the user pastes into the chat into the project cache, and name its path in the notes
+  of `workflow-skills:implement`, so the implementer reaches it.

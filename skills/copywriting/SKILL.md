@@ -23,8 +23,8 @@ mechanical check, parallel verification reviewers, and a user who ships.
 - **Run the copy phase BEFORE implementation.** Implementation must consume *finished* strings.
   Placeholder copy in the tree leaks to production renders. That is not a hypothetical, it is what
   placeholders do, so the increment's strings are settled, verified and keyed before the
-  implementer starts. `workflow-skills:implement-review-verify` then treats the copy artifact as
-  part of its spec.
+  implementer starts. Hand the copy artifact to the implementer of `workflow-skills:implement` with
+  the notes.
 - Do NOT use it for internal-only text, such as logs, code comments and developer-facing errors,
   which is text in the *codebase*, not in the product.
 - Treat everything user-visible as in scope: what scales is the fan-out, not the trigger. Give a
