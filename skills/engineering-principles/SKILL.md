@@ -162,6 +162,12 @@ in every language. `workflow-skills:code-writing` holds how the code itself read
   one definition as an enum, in the form the language file of `workflow-skills:code-writing`
   names. A set that modules extend, such as message types or providers, is no closed set and goes
   into a registry instead.
+- Define a closed set in the module of the concept it belongs to, such as the user roles in the
+  access model. No other module defines it again, in any form: strings, a list or tuple of them, or
+  an enum of its own.
+- State an order among the values of a closed set in its definition, as a rank or a comparison
+  defined with the values. Never read the order from where a value sits in a list, such as the last
+  entry as the highest role.
 - Write the text of a value of a closed set only in the set's definition, and name the value
   through that definition everywhere else, also where a type lists the allowed strings. Text
   written out again at every return, argument and comparison scatters the value over the code.

@@ -14,6 +14,12 @@ Find:
   computing domain decisions; orchestration code doing leaf-level work inline.
 - A change to one concern forcing edits scattered across unrelated units, a sign the concern is
   smeared instead of isolated.
+- A module that defines a closed set of a concept it has no reason to know, such as the user roles
+  in the module that lists prices, which gives the module a second reason to change: a new role.
+  Report it with severity CRITICAL whatever this seat's scale says for its other findings, and name
+  the module of the concept the set belongs to, where the closed-set rules of
+  `workflow-skills:engineering-principles` define it once. A set that modules extend is a registry
+  under those rules and no closed set.
 
 Be concrete and evidence-backed. Every finding cites a real `file:line` and quotes the offending
 code. Rank by how much the tangle will cost future change. Read-only. No quota-filling. If the
