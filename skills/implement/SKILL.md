@@ -37,7 +37,9 @@ it, and the user reviews the code.
 - Show the overall shape, direction, architecture and design of the change on the draft.
 - Draw technical details, such as migrations, data models and schemas, as visualizations.
 - Save the draft as `<change>.html` in the same folder as the notes.
-- When the user says what should be different, change both the notes and the draft.
+- When the user says what should be different, change the notes, and edit the draft in place by
+  hand. Highlight on the draft what changed since the version the user last saw, and remove the
+  highlights of earlier rounds.
 - Start the implementation once the user approves the draft.
 
 ## Implementation
