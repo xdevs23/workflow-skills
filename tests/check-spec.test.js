@@ -254,6 +254,7 @@ describe('unit spec validation', () => {
       invalid(cite(31, 'meta-answer', 'January, then every month'), failed + 'an injected meta record is not the user\'s words')
       invalid(cite(32, 'notification-answer', 'January, then every month'), failed + 'a user record of origin "task-notification" is not the user\'s words')
       expect(cite(29, 'approval', 'Approved, go ahead.').exit).toBe(0)
+      expect(cite(47, 'sdk-prompt', 'Rename the export button.').exit).toBe(0)
     })
   })
 

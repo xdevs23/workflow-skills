@@ -100,6 +100,10 @@ const dialogAnswers = (record: Mapping, answered: Set<string>): string[] => {
 }
 const toolResult = (record: Mapping) => blocksOf(record).some(block => mapping(block) && block.type === 'tool_result')
 const humanOrigin = (value: unknown) => mapping(value) && value.kind === 'human'
+// A message typed in a session hosted through the Agent SDK carries no origin. The host marks it
+// with the prompt source and turn origin sdk.
+const sdkPrompt = (record: Mapping) =>
+  record.origin === undefined && record.promptSource === 'sdk' && record.turnOrigin === 'sdk'
 const parseRecord = (line: string): Mapping | undefined => {
   try { const record = JSON.parse(line); return mapping(record) ? record : undefined } catch { return undefined }
 }
@@ -127,7 +131,8 @@ async function readCited(transcripts: string, reference: Mapping) {
 // The words of the user a cited record holds. A tool result holds them only as the answers to a
 // dialog call asked before it; a record that is not a message the user wrote throws. An injected
 // meta record or a record of any origin other than human throws before its tool result is read. A
-// dialog answer carries no origin, so a tool result without one is read.
+// dialog answer carries no origin, so a tool result without one is read. A message without an
+// origin counts only as a typed prompt of an SDK-hosted session.
 function userWords(cited: unknown, uuid: string, asked: Set<string>): string[] {
   if (!mapping(cited)) throw new Error('expected a user record with the cited uuid')
   if (queuedCommand(cited)) {
@@ -144,7 +149,7 @@ function userWords(cited: unknown, uuid: string, asked: Set<string>): string[] {
   }
   if (cited.origin !== undefined && !humanOrigin(cited.origin)) throw foreign()
   if (toolResult(cited)) return dialogAnswers(cited, new Set(resultIds(cited).filter(id => asked.has(id))))
-  if (!humanOrigin(cited.origin)) throw foreign()
+  if (!humanOrigin(cited.origin) && !sdkPrompt(cited)) throw foreign()
   return [textOf(cited)]
 }
 
