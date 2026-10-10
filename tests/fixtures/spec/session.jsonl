@@ -44,4 +44,4 @@ not json
 {"type":"assistant","uuid":"plan-write","message":{"content":[{"type":"text","text":"The plan is written."},{"type":"tool_use","id":"write-1","name":"Write","input":{"file_path":"plan.html","content":"<h1>Monthly report</h1>\n<p>Group the rows by month and total each month.</p>\n<p>Leave rows without a date out of every total.</p>\n"}}]}}
 {"type":"assistant","uuid":"plan-command","message":{"content":[{"type":"tool_use","id":"run-2","name":"Bash","input":{"command":"printf 'Total each quarter.'","content":"Total each quarter."}}]}}
 {"type":"user","uuid":"plan-approval","origin":{"kind":"human"},"message":{"content":"Yes, build it."}}
-{"type":"user","uuid":"sdk-prompt","promptSource":"sdk","turnOrigin":"sdk","entrypoint":"sdk-ts","message":{"role":"user","content":"Rename the export button."}}
+{"type":"user","uuid":"sdk-prompt","promptSource":"sdk","turnOrigin":"sdk","entrypoint":"sdk-cli","message":{"role":"user","content":"Rename the export button."}}
