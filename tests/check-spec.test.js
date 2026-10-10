@@ -235,12 +235,16 @@ describe('unit spec validation', () => {
       invalid(cite(40, 'notification-note', 'A note in a notification'), failed + 'a user record of origin "task-notification" is not the user\'s words')
     })
 
-    test('a message queued by the user while the session worked counts, a queued command of any other origin never', () => {
+    test('a queued message counts for a human origin or an SDK prompt entry, and never for another origin', () => {
       expect(cite(20, 'queued-human', 'Skip the empty rows.').exit).toBe(0)
+      expect(cite(48, 'sdk-queued', 'Then say the word banana.').exit).toBe(0)
       invalid(cite(20, 'queued-human', 'queued reminder'), unfound)
       invalid(cite(20, 'queued-task', 'Skip the empty rows.'), failed + 'expected a queued message with the cited uuid')
       invalid(cite(21, 'queued-task', 'Skip the empty rows.'), failed + 'a queued command of origin "task-notification" is not the user\'s words')
-      invalid(cite(22, 'queued-no-origin', 'Skip the empty rows.'), failed + 'a queued command of origin null is not the user\'s words')
+      invalid(cite(22, 'queued-no-origin', 'Skip the empty rows.'),
+        failed + 'a queued command of origin null and command mode null is not the user\'s words')
+      invalid(cite(49, 'queued-task-no-origin', 'Skip the empty rows.'),
+        failed + 'a queued command of origin null and command mode "task-notification" is not the user\'s words')
       // A queued message that carries an image beside its text has a block array as its prompt.
       expect(cite(43, 'queued-image', 'Keep the header row.').exit).toBe(0)
       invalid(cite(43, 'queued-image', 'iVBORw0KGgo'), unfound)
@@ -255,7 +259,6 @@ describe('unit spec validation', () => {
       invalid(cite(32, 'notification-answer', 'January, then every month'), failed + 'a user record of origin "task-notification" is not the user\'s words')
       expect(cite(29, 'approval', 'Approved, go ahead.').exit).toBe(0)
       expect(cite(47, 'sdk-prompt', 'Rename the export button.').exit).toBe(0)
-      expect(cite(48, 'sdk-queued', 'Then say the word banana.').exit).toBe(0)
     })
   })
 
