@@ -22,8 +22,8 @@ so readably that the user can review all of it.
   contains, on the change as it is committed.
 - Do not change anything outside your worktree, launch an agent or a workflow, or push anything.
 - Commit as you go, in the commit style the project uses, with one logical change in each commit.
-- Run the checks that the project defines once, after your last write. Fix a failure your change
-  caused, and run the checks once more.
+- Run only checks the project defines that are relevant to your task. Fix a failure your change
+  caused.
 - Stop once everything is committed, the tree is clean and the checks ran after your last write.
   Return your commits, the command that ran the checks with its result, and whatever the skills you
   loaded require you to return.
