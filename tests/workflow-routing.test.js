@@ -1,6 +1,4 @@
 import { describe, expect, test } from 'bun:test'
-import { realpathSync } from 'node:fs'
-import { fileURLToPath } from 'node:url'
 import { fingerprint } from '../tools/fingerprint.js'
 
 const skill = await Bun.file(new URL('../skills/implement-review-verify/SKILL.md', import.meta.url)).text()
@@ -1489,10 +1487,6 @@ describe('spec check and shipped scripts', () => {
 })
 
 const labels = calls => calls.map(c => c.label)
-const TREE = realpathSync(fileURLToPath(new URL('../', import.meta.url)))
-
-// A code span holding a command starts with a program name followed by its arguments.
-const command = span => /^[a-z][\w-]* /.test(span)
 
 describe('what a limitation is', () => {
   test('a writer with two commits reaches the fix stage when the verifier accepts each commit', async () => {
@@ -1584,9 +1578,6 @@ describe('the user\'s words reach every stage', () => {
   })
 })
 
-// Every file under a directory of the plugin, read as text, keyed by its path relative to the plugin root.
-
-// Every file under a directory of the tree, as paths relative to the tree root.
 // A run of a copy that must stop before its first agent: the error it throws and the agents it started.
 const stopsBeforeAnyAgent = async (script, args) => {
   const calls = []
