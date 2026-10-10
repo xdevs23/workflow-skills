@@ -27,19 +27,11 @@ it, and the user reviews the code.
 
 ## Draft
 
-- Once the notes are done, draw the change for the user as one standalone HTML file. Render it in a
-  headless browser and look at the screenshot before you show it, then open it for the user.
-- Where the session is headless, or runs in a harness that cannot open a file for the user, show
-  the draft the way the harness allows, such as an inline artifact, inline HTML or an embedded
-  screenshot.
-- Keep the draft on the filesystem you work on. Upload or publish it elsewhere only when the user
-  has explicitly allowed it.
-- Show the overall shape, direction, architecture and design of the change on the draft.
-- Draw technical details, such as migrations, data models and schemas, as visualizations.
+- Once the notes are done, draw the draft of the change as `workflow-skills:visual-decisions`
+  describes.
 - Save the draft as `<change>.html` in the same folder as the notes.
-- When the user says what should be different, change the notes, and edit the draft in place by
-  hand. Highlight on the draft what changed since the version the user last saw, and remove the
-  highlights of earlier rounds.
+- When the user says what should be different, change the notes, and update the draft as
+  `workflow-skills:visual-decisions` describes.
 - Start the implementation once the user approves the draft.
 
 ## Implementation
