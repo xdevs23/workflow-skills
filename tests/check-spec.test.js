@@ -465,7 +465,7 @@ describe('unit spec validation', () => {
     })
   })
 
-  test('a runtime without YAML support stops with the version it needs', async () => {
+  test('a runtime without YAML support stops with the version it needs', () => {
     const preload = join(scratch, 'without-YAML.js')
     writeFileSync(preload, 'Bun.YAML = undefined\n')
     const result = Bun.spawnSync([process.execPath, '--preload', preload, tool], { cwd: root })
