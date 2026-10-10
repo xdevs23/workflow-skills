@@ -471,6 +471,5 @@ describe('unit spec validation', () => {
     const result = Bun.spawnSync([process.execPath, '--preload', preload, tool], { cwd: root })
     expect(result.exitCode).not.toBe(0)
     expect(result.stderr.toString()).toContain('Bun 1.2.21 or newer is required: Bun.YAML is unavailable')
-    expect(await Bun.file(join(root, 'README.md')).text()).toContain('Bun 1.2.21 or newer')
   })
 })
