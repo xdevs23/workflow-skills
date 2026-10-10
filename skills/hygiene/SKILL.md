@@ -89,7 +89,7 @@ someone else. A project's own rules add to these.
 
 - Follow `workflow-skills:local-cache` for the project cache and what goes into it.
 - Follow `workflow-skills:todo-md` for the todo record.
-- Follow `workflow-skills:implement-review-verify` for the unit spec and its private records.
+- Follow `workflow-skills:implement` for the notes of the user's words and the draft of a change.
 - Follow `workflow-skills:visual-verification` for the captures and real samples of a visual
   harness.
 - Follow `workflow-skills:wall-of-shame` to record a violation of these rules.

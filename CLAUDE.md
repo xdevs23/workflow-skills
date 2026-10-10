@@ -1,9 +1,8 @@
 # Working in this repository
 
-This repository is a plugin: its product is the Markdown that skills, agent templates and design
-records are written in. A wording defect here is a behavior defect in every session that loads the
-skill, so the prose rules below bind every document in the tree — `skills/`, `agents/`, `docs/`
-and the README alike.
+This repository is a plugin: its product is the Markdown that skills and agent templates are
+written in. A wording defect here is a behavior defect in every session that loads the skill, so
+the prose rules below bind every document in the tree: `skills/`, `agents/` and the README alike.
 
 ## Prose stands without its heading
 

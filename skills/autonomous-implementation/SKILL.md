@@ -8,8 +8,8 @@ description: Applies only when the user has asked for autonomous implementation,
 **Load the `workflow-skills:writing-style` skill first.** It binds every comment, document, commit
 message and reply this skill produces, and it is not optional when working with this plugin.
 
-Autonomous implementation is `workflow-skills:implement-review-verify` turned around. There, the
-user's words are the only authority and you decide nothing yourself. Here, subagents make the
+Autonomous implementation is `workflow-skills:implement` turned around. There, the user approves
+notes of the user's words and a draft before anything is built. Here, subagents make the
 decisions, the user's input is optional and never waited for, and the work goes milestone by
 milestone until its stop condition holds and the evidence shows it.
 
@@ -25,9 +25,9 @@ milestone until its stop condition holds and the evidence shows it.
   say.
 - Keep everything outward-facing out of the grant, such as pushing, publishing and posting: it still
   needs the user's consent.
-- Within the grant, use this skill in place of `workflow-skills:implement-review-verify` for the
-  granted work. The user chose it for that work, and the global rule to implement through
-  `workflow-skills:implement-review-verify` covers every other work.
+- Within the grant, use this skill in place of `workflow-skills:implement` for the granted work.
+  The user chose it for that work, and the global rule to implement through
+  `workflow-skills:implement` covers every other work.
 
 ## What turns around
 
