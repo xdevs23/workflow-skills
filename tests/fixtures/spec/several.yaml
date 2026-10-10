@@ -1,6 +1,0 @@
-unit: invalid-example
-summary: A synthetic spec of the earlier shape, with several violations.
-entries:
-  - { file: session.jsonl, line: 9, uuid: answer, author: assistant, text: Stream the rows. }
-  - { file: session.jsonl, line: 1, uuid: request-string, author: reader, text: Export the selected rows. }
-  - { file: session.jsonl, line: 8, uuid: offer, text: '' }

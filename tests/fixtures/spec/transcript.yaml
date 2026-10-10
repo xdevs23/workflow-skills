@@ -1,3 +1,0 @@
-unit: invalid-example
-entries:
-  - { file: session.jsonl, line: 3, uuid: assistant-record, author: user, text: Export the selected rows. }
