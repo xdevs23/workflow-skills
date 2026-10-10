@@ -330,6 +330,13 @@ in every language. `workflow-skills:code-writing` holds how the code itself read
 
 ## Tests
 
+- Test an expectation, never a snapshot of how things are. A test states the rule the code follows
+  and checks the result against what that rule gives for input the test builds, never against the
+  values the shipped code or configuration holds today.
+- Never write a test that checks whether code, a document, a prompt or a configuration contains,
+  lacks or matches a string, and never one that restates shipped values. Such a test runs nothing,
+  breaks on every edit of the text and passes while the behavior is broken. Delete one wherever you
+  find it, and never rewrite it to match new text.
 - Keep tests deterministic and reproducible, with no dependence on the clock or anything outside the
   test.
 - Ship no test code: shipped code takes the same path whether tests exist or not. Put failure
