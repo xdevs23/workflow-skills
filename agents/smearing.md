@@ -17,11 +17,11 @@ Find:
   configuration key, a feature, a customer or tenant, or a domain word, such as
   `if (route === '/invoices')` in a shared list component.
 - A module that defines a closed set belonging to another concept, in any form, such as
-  `ROLES = ("user", "editor", "admin")` in the module that lists prices. The module is the unit that
-  should stay ignorant of that concept. Report it with severity CRITICAL whatever this seat's scale
-  says for its other findings, and name the concept's module as the place the set is defined once,
-  as the closed-set rules of `workflow-skills:engineering-principles` require. A set that modules
-  extend is a registry under those rules and no closed set.
+  `ROLES = ("user", "editor", "admin")` in the module that lists prices. The module knows a
+  definition it should stay ignorant of, also when it uses the concept. Report it with severity
+  CRITICAL whatever this seat's scale says for its other findings, and name the concept's module as
+  the one place the set is defined, as the closed-set rules of
+  `workflow-skills:engineering-principles` require.
 - A general rule, skill or document that names one specific language, tool or product, such as a
   rule for every language that spells out one language's construct, where that case belongs to
   the file or section that owns it.
