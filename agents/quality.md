@@ -26,10 +26,10 @@ Your findings field carries:
   wire or storage shapes surfacing in domain code, machine or setup details in tracked files.
 - Anything that would raise an eyebrow in a public repo: naming that lies, comments that narrate
   instead of explain, error handling that swallows, tests that assert nothing.
-- A test that checks the text of code, a document, a prompt or a configuration, as the repository
-  holds it, for a string, or that restates the values shipped code or configuration holds. Such a
-  test runs nothing and breaks on every edit of that text. Report it for deletion: rewriting it to
-  match the changed text keeps a test that never ran the code.
+- A test the diff adds, touches or breaks that looks for a string in the stored text of code, a
+  document, a prompt or a configuration, or that restates the values shipped code or configuration
+  holds, as the Tests rules of `workflow-skills:engineering-principles` define it. Report it for
+  deletion, since rewriting it to match the changed text keeps a test that proves nothing.
 - Whether the diff helps the project, not only whether it is correct. Flag by shape, with the
   enum field kind and severity CRITICAL whatever this seat's scale says for its other findings:
   band-aid for a guard added around a call instead of fixing the callee, a translation layer

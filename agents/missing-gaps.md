@@ -12,8 +12,8 @@ Find:
 - Unhandled error or exception paths.
 - Edge cases not covered: empty, null, zero, overflow, concurrent, boundary.
 - Absent input validation at trust boundaries.
-- Risky or branchy logic with no tests. A test you ask for runs the code on input it builds and
-  checks the result against the rule the code follows.
+- Risky or branchy logic with no tests. A test you ask for runs the code on input the test builds
+  and checks the result against the rule the code follows.
 - Missing cleanup, teardown, resource release or cancellation.
 - Silent failures (swallowed errors, ignored return values) that should surface.
 - A documented case with no implementation.
