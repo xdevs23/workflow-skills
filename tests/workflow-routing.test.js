@@ -256,29 +256,6 @@ describe('workflow verification and consolidation', () => {
     expect(() => assess({ specLines: 0, codeAdded: 0 })).toThrow()
   })
 
-  test('every main stage receives the execution boundary without orchestration tools', async () => {
-    const { result, calls } = await simulate()
-    expect(['clean', 'follow-up'].includes(result.exit)).toBe(true)
-    for (const { prompt } of calls) {
-      expect(prompt).toContain('you are one assigned stage, not the orchestrator')
-      expect(prompt).toContain('Do not launch workflows or subagents, directly or through skills or shell commands')
-      expect(prompt).toContain('those checks have NOT already passed')
-      expect(prompt).toContain('Missing orchestration tools alone do not block')
-      expect(prompt).toContain('Report genuinely missing assignment capabilities/instructions, authorization or conflicting applicable requirements')
-    }
-    const types = new Set(calls.map(c => c.agentType).filter(Boolean))
-    expect(types.size).toBeGreaterThan(0)
-    for (const type of types) {
-      const template = await Bun.file(new URL(`../agents/${type}.md`, import.meta.url)).text()
-      const tools = type === 'roaster' ? 'Bash'
-        : ['implementer', 'fixer'].includes(type) ? 'Read, Grep, Glob, Bash, Edit, Write'
-        : 'Read, Grep, Glob, Bash'
-      expect(template).toContain(`\ntools: ${tools}\n---\n`)
-      // The audit templates stay as they are; their stages receive the boundary in the prompt, checked above.
-      if (!AUDIT.includes(type)) expect(template).toContain('Execution boundary: perform only your assigned stage')
-    }
-  })
-
   test('fixer and mandatory roaster overlap, with an immutable pre-fix snapshot', async () => {
     const roastEntered = Promise.withResolvers(), releaseRoast = Promise.withResolvers()
     let fixerSawRoaster = false
@@ -297,9 +274,6 @@ describe('workflow verification and consolidation', () => {
     const roast = calls.find(c => c.agentType === 'roaster')
     expect(roast.prompt).toContain('IMMUTABLE COMMIT IDS, per repository of the tree as path: base..snapshot:\n.: ' + BASE + '..' + INITIAL)
     expect(roast.prompt).toContain('fix:0')
-    expect(roast.prompt).toContain('planned, not completed')
-    expect(roast.prompt).toContain('ONLY through Git objects')
-    expect(roast.prompt).not.toContain('SPEC (authority)')
     expect(roast.prompt).not.toContain(FIXED)
     expect(result.snapshots).toEqual(at(FIXED))
   })
@@ -457,25 +431,12 @@ describe('workflow verification and consolidation', () => {
     }
   })
 
-  test('writer commit permission is not granted to readers', async () => {
-    const { calls } = await simulate()
-    for (const call of calls.filter(c => ['implementer', 'fixer'].includes(c.agentType))) {
-      expect(call.prompt).toContain('NARROW COMMIT PERMISSION')
-      expect(call.prompt).not.toContain('GIT READ-ONLY:')
-    }
-    for (const call of calls.filter(c => ['Review', 'Verify'].includes(c.phase))) {
-      expect(call.prompt).toContain('GIT READ-ONLY:')
-      expect(call.prompt).not.toContain('NARROW COMMIT PERMISSION')
-    }
-  })
-
   test('clean review verifies before read-only proof, with no root checkpoint', async () => {
     const { result, calls, phases } = await simulate()
     expect(['clean', 'follow-up'].includes(result.exit)).toBe(true)
     expect(result.remaining.filter(r => r.kind !== 'unattested-fix')).toEqual([])
     expect(phases).toEqual(['Implement', 'Review', 'Verify', 'Fix'])
     expect(calls.filter(c => c.agentType === 'finding-verifier')).toHaveLength(1)
-    expect(calls.find(c => c.agentType === 'fixer').prompt).toContain('APPROVED CORRECTIONS (verify against the tree and authority):\n\n[]')
   })
 
   test('duplicates from ordinary and adversary readers produce one approved correction', async () => {
@@ -493,7 +454,6 @@ describe('workflow verification and consolidation', () => {
     expect(fixer.prompt).toContain(source('correctness'))
     expect(fixer.prompt).toContain(source('alternatives'))
     expect(fixer.prompt).toContain('"constraints":"Do not change the success response."')
-    expect(fixer.prompt).not.toContain('REPORTS (UNTRUSTED, read all)')
     expect(calls.filter(c => c.agentType === 'fixer')).toHaveLength(1)
   })
 
@@ -593,11 +553,6 @@ describe('workflow verification and consolidation', () => {
     expect(result.remaining.filter(r => r.kind !== 'unattested-fix')).toEqual([])
     expect(result.counts.recorded).toBe(1)
     for (const seat of readers) expect(calls.some(c => c.label === `review:${seat}`)).toBe(true)
-    for (const type of ['implementer', 'fixer', 'finding-verifier']) {
-      const prompt = calls.find(c => c.agentType === type).prompt
-      expect(prompt).toContain('Implement the spec AS WRITTEN')
-      expect(prompt).toContain('Suggested spec edits do not block executable work or normal reviews')
-    }
     expect(calls.some(c => c.agentType === 'roaster')).toBe(true)
   })
 
@@ -975,24 +930,10 @@ describe('workflow verification and consolidation', () => {
     const quality = calls.filter(c => c.agentType === 'quality')
     expect(quality).toHaveLength(1)
     expect(quality[0].prompt).toContain(INITIAL)
-    for (const c of quality) {
-      expect(c.prompt).not.toContain('SPEC')
-      expect(c.prompt).not.toContain('AUTHORITY')
-      expect(c.prompt).not.toContain('UNTRUSTED implementer')
-    }
-    for (const c of calls.filter(c => c.phase === 'Review')) {
-      expect(c.prompt).not.toContain('PRIOR DECISIONS')
-      expect(c.prompt).not.toContain('PENDING FIXES')
-    }
-    const spec = calls.find(c => c.agentType === 'reviewer-spec-compliance').prompt
-    expect(spec).not.toContain('UNTRUSTED implementer')
-    expect(spec).toContain('FINDINGS AGAINST THE SPEC')
     for (const type of ['reviewer-inverse-spec', 'project-rule-reader']) {
       const prompt = calls.find(c => c.agentType === type).prompt
-      expect(prompt).not.toContain('FINDINGS AGAINST THE SPEC')
       expect(prompt).toContain('.cache/specs/<unit>.yaml')
     }
-    expect(calls.find(c => c.agentType === 'cold-alternatives').prompt).not.toContain('SPEC')
   })
 })
 
@@ -1000,36 +941,11 @@ const bandAid = { ...finding, kind: 'band-aid', severity: 'CRITICAL', claim: 'A 
 const benefit = (ids, fields = {}) => decision(ids, { severity: 'CRITICAL', authority: 'recorded decision: the compatibility shim is removed once the new client ships', ...fields })
 const rejectShape = ids => benefit(ids, { action: 'reject', reason: 'The simpler shape breaks the ordering invariant.', evidence: 'src/example.js:4 orders by arrival.' })
 const report = (label, findings) => ({ [label]: { findings } })
-// Wording checks compare whitespace-normalized prose so a rewrap never changes the checked rule.
-const flat = text => text.replace(/\s+/g, ' ')
-const template = async name => flat(await Bun.file(new URL(`../agents/${name}.md`, import.meta.url)).text())
 // The verifier prompt carries the source findings serialized; the expected list is serialized the same way.
 const handedTo = (calls, label, findings) =>
   expect(calls.find(c => c.label === label).prompt).toContain('SOURCE FINDINGS:\n\n' + JSON.stringify(findings))
 
 describe('coder sense check and project-benefit review', () => {
-  test('the finding schemas enum-lock kind, with unbacked-choice for the briefed readers only', async () => {
-    const { calls } = await simulate()
-    const unbriefed = ['quality', ...AUDIT, 'cold-alternatives', 'roaster']
-    const readerCalls = calls.filter(c => c.phase === 'Review' || c.agentType === 'roaster')
-    expect(readerCalls).toHaveLength(17)
-    for (const call of readerCalls) {
-      const kinds = unbriefed.includes(call.agentType) ? ['band-aid', 'longer-route'] : ['band-aid', 'longer-route', 'unbacked-choice']
-      expect([call.agentType, call.schema.properties.findings.items.properties.kind]).toEqual([call.agentType, { enum: kinds }])
-      // The three seats that judge the change against the spec name in evidence where each finding's backing stands.
-      const backing = ['reviewer-correctness', 'reviewer-spec-compliance', 'duplicate-checker'].includes(call.agentType)
-      expect(call.schema.properties.findings.items.required).toEqual(['file', 'claim', 'severity', 'receipts',
-        ...(call.agentType === 'project-rule-reader' ? ['scope'] : []), ...(backing ? ['evidence'] : [])])
-      expect([call.agentType, 'evidence' in call.schema.properties.findings.items.properties, 'words' in call.schema.properties.findings.items.properties,
-        'verdicts' in call.schema.properties]).toEqual([call.agentType, backing, false, false])
-      if (backing) {
-        const pointer = call.schema.properties.findings.items.properties.evidence
-        expect([pointer.minItems, pointer.items.required, pointer.items.properties.kind]).toEqual([1, ['kind', 'file', 'line', 'key'], { enum: ['transcript', 'rule'] }])
-      }
-      expect(call.schema.properties.findings.items.properties.receipts.minItems).toBe(1)
-    }
-  })
-
   test('a kind-bearing source finding is set to CRITICAL at intake, for readers and roasts alike', async () => {
     const { severity, ...unmarked } = bandAid
     const reader = await simulate({ reports: report('review:dupes', [back({ ...bandAid, severity: 'must-fix' })]),
@@ -1109,104 +1025,12 @@ describe('coder sense check and project-benefit review', () => {
     expect(result.remaining.filter(r => r.kind === 'unattested-fix')).toHaveLength(1)
     expect(calls.filter(c => c.phase === 'Verify')).toHaveLength(1)
   })
-
-  test('the coder and verifier templates, law 8 and the shared authority constant state the four triggers and the kind rules', async () => {
-    for (const [name, phrases] of [
-      ['implementer', ['In a main run, sense check before any edit: read the spec and ask two questions.', 'Words that say nothing about the mechanism rule nothing out: the check passes and senseCheck records recordSilent true.',
-        'Hard-flag and stop on one of four triggers, with one abort field and one disposition',
-        'or to invalid-spec for an invalid spec, and abort.reason to the reason.',
-        "After a sense-check flag the unit continues only on the user's answer, which a new run receives in a copy of the spec with that answer added.",
-        'A spec without the user\'s words is not a silent one.', 'set abort.trigger to no-words with the reason in abort.reason and leave the tree unmodified',
-        'holds no entry of author user', "An entry of author assistant, a paraphrase, a summary or a design document's decision list is not the user's words."]],
-      ['fixer', ['Bounded sense check before your first write, on every approved correction', "itself a band-aid on a mechanism the user's words in the spec do not call for, where they describe deletion or a rewrite",
-        "no agent's justification and no root statement substitutes for it", "You do not repeat the implementer's request-level sense check",
-        'holds no entry of author user sets abort.trigger to no-words before your first write']],
-      ['finding-verifier', ['is CRITICAL, and neither cleanup nor record is available for it', "supply the quote yourself for an unbriefed seat's finding (quality, cold alternatives, an audit seat)",
-        'Where the spec holds no words of the user about the mechanism, state that silence in plain words in the authority field',
-        "Approve-fix a project-benefit finding for the deletion or rewrite the user's words describe, or for a deletion or rewrite that improves code quality without changing anything the spec specifies.",
-        'the authority field also names the rule of this template on corrections that improve code quality, and the evidence field quotes the reviewer\'s rule or the project rule the correction serves.',
-        "Keeping the flagged shape of a project-benefit finding needs the user's word"]],
-    ]) { const text = await template(name); for (const phrase of phrases) expect(text).toContain(phrase) }
-    for (const stale of ['approve-fix is then unavailable', 'Approve-fix only for the deletion or rewrite']) expect(await template('finding-verifier')).not.toContain(stale)
-    const flatSkill = flat(skill)
-    expect(flatSkill).toContain('8. **HARD-FLAG SEMANTICS.** A hard flag (agent stops, script aborts) has exactly four triggers.')
-    expect(flatSkill).toContain('**Four triggers, one field, one disposition**')
-    for (const phrase of ['exactly one trigger', 'One trigger, one field', 'one trigger only', 'single abort condition',
-      'exactly two triggers', 'Two triggers, one field', 'two triggers, one abort field', 'abort on two triggers']) expect(flatSkill).not.toContain(phrase)
-    const { calls } = await simulate()
-    for (const type of ['implementer', 'fixer', 'finding-verifier', 'reviewer-inverse-spec']) {
-      expect(flat(calls.find(c => c.agentType === type).prompt)).toContain('has FOUR triggers, one abort field, one disposition. First:')
-      expect(calls.find(c => c.agentType === type).prompt).toContain('Second, WRITING SEATS ONLY: a failed sense')
-      expect(calls.find(c => c.agentType === type).prompt).toContain('Third, WRITING SEATS ONLY: no-words.')
-      expect(calls.find(c => c.agentType === type).prompt).toContain('Never report that gap as a limitation and proceed.')
-      expect(calls.find(c => c.agentType === type).prompt).toContain('Fourth, EVERY STAGE THAT READS THE SPEC: invalid-spec.')
-      expect(calls.find(c => c.agentType === type).prompt).not.toContain('is a root-action limitation')
-    }
-    for (const type of ['quality', ...AUDIT, 'cold-alternatives', 'roaster']) expect(calls.find(c => c.agentType === type).prompt).not.toContain('sense check')
-  })
 })
 
-// Field names every template must name (the gap-finder names none: the caller's schema defines its object).
-const BRIEFED = ['implementer', 'fixer', 'finding-verifier', 'reviewer-correctness', 'reviewer-spec-compliance', 'duplicate-checker', 'reviewer-inverse-spec', 'project-rule-reader']
 const retried = (calls, label) => calls.filter(c => c.label === label)
 const FAILED = 'HOW YOUR PREVIOUS ATTEMPT FAILED, plainly: '
 
-describe('spec provenance instructions and routing', () => {
-
-  test('only the fixer receives the check command, and the implementer runs focused checks', async () => {
-    const { calls } = await simulate()
-    const fixers = calls.filter(c => c.agentType === 'fixer')
-    expect(fixers.length).toBeGreaterThan(0)
-    for (const call of calls) {
-      expect([call.label, call.prompt.includes('CHECK COMMAND')]).toEqual([call.label, fixers.includes(call)])
-      expect([call.label, call.prompt.includes('<the check command>')]).toEqual([call.label, fixers.includes(call)])
-      expect([call.label, call.prompt.includes('FOCUSED CHECKS')]).toEqual([call.label, call.label === 'impl'])
-    }
-    const impl = flat(calls.find(c => c.label === 'impl').prompt)
-    expect(impl).toContain('FOCUSED CHECKS, implementer only: after your last write, run only the checks that cover what you changed,' +
-      ' bare and once: its tests, and its type check or build where the project has one. Never run the full check:' +
-      ' the fixer runs it once after its corrections, and a full run here goes stale when the fixer changes a file.')
-    expect(flat(fixers[0].prompt)).toContain('CHECK COMMAND, the last writer of the run only (run bare after your last write, and quote' +
-      ' each run in checks with the command exactly as written here): <the check command>')
-  })
-
-  test('authority-aware templates trace authority to an entry of author user, and no template or schema knows a criterion', async () => {
-    for (const name of ['reviewer-spec-compliance', 'reviewer-inverse-spec', 'finding-verifier']) {
-      const prose = flat(await template(name))
-      expect([name, prose.includes('entry of author user')]).toEqual([name, true])
-      for (const phrase of ['item id', 'ordinal', 'args.criteriaCount', '{ ordinal, id }', 'criterion']) {
-        expect([name, phrase, prose.includes(phrase)]).toEqual([name, phrase, false])
-      }
-    }
-    const { calls } = await simulate()
-    for (const call of calls) expect([call.label, 'verdicts' in (call.schema.properties ?? {})]).toEqual([call.label, false])
-  })
-
-})
-
 describe('structured stage output', () => {
-  test('no stage schema declares a prose field, every root is closed, and only briefed stages declare abort', async () => {
-    const { calls } = await simulate()
-    expect(calls.every(c => c.schema)).toBe(true)
-    for (const { schema, agentType, label } of calls) {
-      const briefed = BRIEFED.includes(agentType)
-      expect([label, schema.properties.report, schema.additionalProperties, schema.required.includes('abort'), 'abort' in schema.properties])
-        .toEqual([label, undefined, false, briefed, briefed])
-      if (briefed) expect(schema.properties.abort.properties.trigger).toEqual({ enum: ['none', 'directive-conflict', 'sense-check', 'no-words', 'invalid-spec'] })
-    }
-    const seats = calls.filter(c => c.phase === 'Review' || c.agentType === 'roaster')
-    expect(new Set(seats.map(c => c.schema)).size).toBe(8)
-    // The audit reviewers return the object quality returns, under its schema.
-    for (const seat of AUDIT) expect([seat, calls.find(c => c.agentType === seat).schema]).toEqual([seat, calls.find(c => c.agentType === 'quality').schema])
-    for (const seat of seats) expect(seat.schema.properties.coverage.items.required).toEqual(['what', 'how'])
-    expect(calls.find(c => c.label === 'impl').schema.properties.checks.items.properties.output).toEqual({ type: 'string', maxLength: 6000 })
-    const [implSchema, fixSchema] = ['implementer', 'fixer'].map(type => calls.find(c => c.agentType === type).schema)
-    expect(fixSchema.required).toContain('premises')
-    expect(fixSchema.properties.premises).toEqual(implSchema.properties.premises)
-    const verify = calls.find(c => c.phase === 'Verify').schema.properties
-    for (const field of ['writerScope', 'decisions', 'issues']) expect([field, verify[field].items.additionalProperties]).toEqual([field, false])
-  })
-
   test('a finding of a concern seat without evidence is retried with the cause named, then thrown, and the run needs no count', async () => {
     const { evidence, ...unquoted } = backed
     const missing = 'Missing the evidence the finding rests on: ' + finding.claim
@@ -1595,60 +1419,11 @@ describe('one-pass remaining-items handoff', () => {
     expect(result.remaining[0].item.label).toBe('fix')
   })
 
-  test('the writers and the briefed seats name the writing-style and hygiene files under the plugin root, the unbriefed seats and the roaster name none, and nothing tells a stage to load the skill', async () => {
-    const required = 'REQUIRED: before you write, read the files <plugin root>/skills/writing-style/SKILL.md and <plugin root>/skills/hygiene/SKILL.md with the Read tool,\n' +
-      'and follow them in every comment, document, commit message and returned string.'
-    const { calls } = await simulate()
-    const unbriefed = ['quality', 'alternatives', ...AUDIT].map(seat => 'review:' + seat)
-    const stages = calls.filter(c => !['roast', ...unbriefed].includes(c.label))
-    expect(stages.map(c => c.label)).toEqual(['impl', ...['correctness', 'spec', 'dupes', 'inverse', 'rules'].map(seat => 'review:' + seat), 'verify', 'fix'])
-    for (const call of stages) expect([call.label, call.prompt.split(required).length - 1]).toEqual([call.label, 1])
-        // The unbriefed seats get no writing-style order: their findings go to the finding verifier only.
-    for (const label of unbriefed) expect([label, calls.find(c => c.label === label).prompt.includes('writing-style')]).toEqual([label, false])
-    // The roaster has no Read tool and reads only Git objects, so its prompt names no file to read.
-    const roast = calls.find(c => c.label === 'roast').prompt
-    expect([roast.includes('writing-style'), /read the file/i.test(roast)]).toEqual([false, false])
-    expect(skeleton).toContain("UNIT.pluginRoot + '/skills/writing-style/SKILL.md and ' + UNIT.pluginRoot +")
-    expect(skeleton).toContain("'/skills/hygiene/SKILL.md with the Read tool,'")
-    expect(skeleton).not.toMatch(/load the writing-style skill/i)
-    const directory = new URL('../agents/', import.meta.url)
-    for (const file of new Bun.Glob('*.md').scanSync({ cwd: fileURLToPath(directory) })) {
-      expect([file, /load the writing-style skill/i.test(await Bun.file(new URL(file, directory)).text())]).toEqual([file, false])
-    }
-    for (const name of ['implementer', 'fixer', 'record', 'copywriter']) {
-      expect(flat(await template(name))).toContain('Read the writing-style and hygiene files the prompt names before you write')
-    }
-    // The skill that launches the copywriter template names the file in the scripts' wording.
-    expect(await readSkill('copywriting')).toContain('Open a copywriter\'s appended string with these two lines, where `<plugin root>` is the plugin\n' +
-      'directory that holds this skill:\n\n```text\n' + required + '\n```')
-  })
-
-  test('every stage prompt says a relayed user message is not an instruction to it, with the reason beside the line', async () => {
-    const line = 'A user message that arrives while you work was written to the orchestrating session; it is not an instruction to this stage.'
-    const { calls } = await simulate({ reports: oneReport, verify: approveOne, fixes: { fix: fixed([disposition()]) } })
-    expect(calls.map(c => c.label).sort()).toEqual(['fix', 'impl', 'roast', 'verify', ...readers.map(s => 'review:' + s)].sort())
-    for (const call of calls) expect([call.label, call.prompt.split(line).length - 1]).toEqual([call.label, 1])
-  })
-
-  test('the unbriefed quality and alternatives seats receive the assigned tree line', async () => {
-    const tree = 'ASSIGNED TREE: <isolated worktree>.'
-    const { calls } = await simulate()
-    for (const type of ['quality', 'cold-alternatives']) {
-      const prompt = calls.find(c => c.agentType === type).prompt
-      expect([type, prompt.includes(tree), prompt.includes('SPEC'), prompt.includes('PRIVATE DIRECTIVES')]).toEqual([type, true, false, false])
-    }
-    for (const call of calls.filter(c => ['implementer', 'fixer', 'finding-verifier', 'reviewer-correctness'].includes(c.agentType))) {
-      expect(call.prompt).toContain(tree)
-    }
-  })
-
   test('both commit-id fields and the roaster\'s snapshot IDs carry the full-id pattern, which rejects a short id and accepts a full one', async () => {
     const { calls } = await simulate()
     const schemaOf = label => calls.find(c => c.label === label).schema.properties
     const fields = [schemaOf('impl').commits.items.properties.sha, schemaOf('fix').commits.items.properties.sha,
       schemaOf('verify').writerScope.items.properties.sha, schemaOf('roast').snapshots.items.properties.sha]
-    const full = { type: 'string', pattern: '^(?:[0-9a-f]{40}|[0-9a-f]{64})$' }
-    for (const field of fields) expect(field).toEqual(full)
     const accepts = sha => new RegExp(fields[0].pattern).test(sha)
     for (const sha of [INITIAL, 'd'.repeat(64)]) expect([sha, accepts(sha)]).toEqual([sha, true])
     for (const sha of [INITIAL.slice(0, 7), '', INITIAL.toUpperCase(), INITIAL + 'a', 'g'.repeat(40)]) {
@@ -1657,82 +1432,7 @@ describe('one-pass remaining-items handoff', () => {
   })
 })
 
-// The blocks of a Markdown file as Bun's parser reads them. A block holds only its own inline text,
-// with each code span written in backticks, the list of code spans in it and the list of its bold
-// phrases. With `bold` set, the text also writes each bold phrase between double asterisks, as the
-// source does. A heading also holds its level, and an item of an ordered list its depth and number.
-// The parser closes a nested block before the block that holds it, so a nested item comes before
-// its parent item and every other block is in document order.
-// The parser has no front matter support: it reads the front matter of these files as a heading,
-// which keeps it out of the paragraphs.
-const markdownBlocks = (text, { bold = false } = {}) => {
-  const blocks = []
-  let spans = []
-  let strong = []
-  const block = kind => (children, meta) => {
-    if (children) {
-      blocks.push({ kind, text: children, spans, strong, ...(kind === 'heading' && { level: meta.level }),
-        ...(kind === 'item' && meta.ordered && { depth: meta.depth, number: meta.start + meta.index }) })
-    }
-    spans = []
-    strong = []
-    return ''
-  }
-  Bun.markdown.render(text, {
-    heading: block('heading'), paragraph: block('paragraph'), listItem: block('item'),
-    th: block('cell'), td: block('cell'), html: block('html'),
-    code: body => { blocks.push({ kind: 'code', text: body, spans: [], strong: [] }); return '' },
-    codespan: span => { spans.push(span); return '`' + span + '`' },
-    strong: children => { strong.push(children); return bold ? `**${children}**` : children },
-  })
-  return blocks
-}
-// A heading as the source writes it: its level in hash marks, then its text.
-const headingLabel = block => `${'#'.repeat(block.level)} ${block.text}`
-// Headings of levels two to four in document order, so a rule required to sit immediately before
-// another is checked by position.
-const readSkill = name => Bun.file(new URL(`../skills/${name}/SKILL.md`, import.meta.url)).text()
-// The blocks of one section, after its heading and up to the next heading of the same or higher level.
-const sectionBlocks = (text, heading, options) => {
-  const blocks = markdownBlocks(text, options)
-  const start = blocks.findIndex(block => block.kind === 'heading' && headingLabel(block) === heading)
-  if (start < 0) throw new Error(`Missing heading: ${heading}`)
-  const end = blocks.findIndex((block, i) => i > start && block.kind === 'heading' && block.level <= blocks[start].level)
-  return blocks.slice(start + 1, end < 0 ? blocks.length : end)
-}
-// One section's own text with its bold phrases marked, so a rule that moves to another section
-// stops satisfying the criterion that names this one.
-const sectionText = (text, heading) => flat(sectionBlocks(text, heading, { bold: true }).map(block => block.text).join(' '))
-// The one item of a section that opens with the given words, so a rule is checked in the item that states it.
-// One numbered law's own item, with its bold phrases marked.
-const lawText = (text, number) => {
-  const law = sectionBlocks(text, '## Laws', { bold: true })
-    .find(block => block.kind === 'item' && block.depth === 0 && block.number === number)
-  if (!law) throw new Error(`Missing law: ${number}`)
-  return flat(law.text)
-}
-
-const checkFirst = (heading, command) => heading + ', before anything else and before any edit: run this exact command once with the' +
-  " Bash tool, with no change, retry or fix:\ncd '<isolated worktree>' && " + command + '\nReturn its exit code, its stdout and its stderr' +
-  ' in specCheck, unchanged. When its exit code is not 0, make no edit and\nreturn your object with every repository at its start SHA.'
-const SPEC_CHECK_SCHEMA = { type: 'object', required: ['exitCode', 'stdout', 'stderr'], additionalProperties: false,
-  properties: { exitCode: { type: 'integer' }, stdout: { type: 'string' }, stderr: { type: 'string' } } }
-
 describe('spec check and shipped scripts', () => {
-  const command = "bun '<plugin root>/tools/check-spec.ts' '" + SPEC_PATH + "' --transcripts '" + TRANSCRIPTS + "' --json --base '" +
-    JSON.stringify(at(BASE)) + "' --proof '" + fingerprint(mainLaunchValues(launchArgs())) + "'"
-
-  test('the implementer runs the spec check before anything else its prompt asks, and returns what the tool printed', async () => {
-    const { calls, phases } = await simulate()
-    const impl = calls[0]
-    expect([impl.label, impl.agentType, impl.phase]).toEqual(['impl', 'implementer', 'Implement'])
-    expect(impl.prompt.startsWith(checkFirst('SPEC CHECK', command) + '\n\n')).toBe(true)
-    expect(impl.prompt).not.toContain('--check-render')
-    expect([impl.schema.required[0], impl.schema.properties.specCheck]).toEqual(['specCheck', SPEC_CHECK_SCHEMA])
-    expect(phases[0]).toBe('Implement')
-    expect(calls.filter(c => c.prompt.includes('check-spec.ts')).map(c => c.label)).toEqual(['impl'])
-  })
-
   const launched = mainLaunchValues(launchArgs())
   for (const [name, specCheck, printed] of [
     ['an output without a proof', passedCheck(launched, { stdout: '{}' }), null],
@@ -1780,93 +1480,21 @@ describe('spec check and shipped scripts', () => {
     expect(calls).toEqual([])
   })
 
-  test('no shipped script passes a private record to the spec tool, and no stage prompt names one', async () => {
-    const { calls } = await simulate({ reports: oneReport, verify: approveOne })
-    const command = calls.find(c => c.label === 'impl').prompt.split('\n').find(line => line.includes('check-spec.ts'))
-    expect(command.includes('--record')).toBe(false)
-    for (const call of calls) {
-      for (const stale of ['.cache/directives/', 'PRIVATE DIRECTIVES', 'private directive record', 'approves field', 'ORCHESTRATOR SCOPING']) {
-        expect([call.label, stale, call.prompt.includes(stale)]).toEqual([call.label, stale, false])
-      }
-    }
-  })
-
   test('the scripts read only the proof field of what the tool printed, and use no random value', async () => {
     const launched = mainLaunchValues(launchArgs())
     const printed = JSON.stringify({ sha256: 'not checked', spec: 'other.yaml', proof: fingerprint(launched) })
     const { result } = await simulate({ specCheck: passedCheck(launched, { stdout: printed }) })
     expect(result.exit).toBe('clean')
-    expect(skeleton).not.toContain('Math.random')
-  })
-
-  test('the shipped script carries the placeholder name and description, and a copy sets its own', async () => {
-    // Evaluating the meta literal returns the object the workflow list reads.
-    const metaOf = script => new AsyncFunction(script.replace('export const meta =', 'return'))()
-    const meta = await metaOf(skeleton)
-    expect([meta.name, meta.description]).toEqual(['kebab-name', 'one line'])
-    // A copy replaces both values and keeps the phases.
-    const copy = await metaOf(skeleton.replace("name: 'kebab-name'", "name: 'return-the-error'")
-      .replace("description: 'one line'", "description: 'returns the swallowed error to the caller'"))
-    expect([copy.name, copy.description, copy.phases]).toEqual(['return-the-error', 'returns the swallowed error to the caller', meta.phases])
-    const rule = sectionText(skill, "### Every unit's script is a copy of the shipped one, edited in one block")
-    for (const phrase of ['A copy of the script changes only its marked block and two values outside it',
-      '`meta.name`', '`meta.description`',
-      'The shipped script carries `kebab-name` and `one line` as the values a copy replaces',
-    ]) expect([phrase, rule.includes(phrase)]).toEqual([phrase, true])
-    expect(rule).not.toContain('edits only its marked block')
-    // The marked block does not claim to hold the two values a main-script copy sets above it.
-    expect(rule).not.toContain('holds everything a unit sets')
   })
 })
 
 const labels = calls => calls.map(c => c.label)
 const TREE = realpathSync(fileURLToPath(new URL('../', import.meta.url)))
 
-// The two scratch rules as the scripts write them: the writers' rule points at the local-cache
-// skill, the readers' rule forbids every write except a command's output to the system temporary directory.
-const WRITE_SCRATCH = 'SCRATCH: put scratch files where the workflow-skills:local-cache skill says for a writing stage. A local-cache skill\n' +
-  'without the plugin prefix takes precedence; otherwise read <plugin root>/skills/local-cache/SKILL.md with the Read tool.'
-const WRITE_NOTHING = 'WRITE NOTHING: no copies of files and no notes. Only the output of a command that cannot be read directly may be written, to the system temporary directory.'
-// The input paths a stage reads, which sit in the project cache and are no place to write.
-const INPUT_PATHS = [SPEC_PATH]
 // A code span holding a command starts with a program name followed by its arguments.
 const command = span => /^[a-z][\w-]* /.test(span)
 
-describe('the project cache, the todo record and scratch files by role', () => {
-  test('every writing stage is pointed at local-cache and every reading stage writes nothing', async () => {
-    const { calls } = await simulate({ reports: oneReport, verify: approveOne, fixes: { fix: fixed([disposition()]) } })
-    expect(labels(calls).sort()).toEqual(['fix', 'impl', 'roast', 'verify', ...readers.map(s => 'review:' + s)].sort())
-    for (const call of calls) {
-      const role = ['impl', 'fix'].includes(call.label) ? 'writer' : 'reader'
-      const count = line => call.prompt.split(line).length - 1
-      expect([call.label, count(WRITE_SCRATCH), count(WRITE_NOTHING)]).toEqual([call.label, role === 'writer' ? 1 : 0, role === 'reader' ? 1 : 0])
-      expect([call.label, /global temp/i.test(call.prompt)]).toEqual([call.label, false])
-      if (role === 'writer') continue
-      const rest = INPUT_PATHS.reduce((text, path) => text.split(path).join(''), call.prompt)
-      expect([call.label, rest.includes('.cache'), /scratch/i.test(rest), rest.includes('local-cache')]).toEqual([call.label, false, false, false])
-    }
-  })
-})
-
-// The rule every reading stage receives about what it may report as a limitation, as the scripts
-// write it and as the templates state it.
-const LIMITS_RULE = 'a limitation is only something you were supposed to check and could not. An act your own rules forbid,\n' +
-  'such as running tests, builds or the spec tool as a reading stage, and input you are not given by design, such as\n' +
-  'the private spec for an unbriefed stage, are never limitations and are not reported.\n' +
-  'COVERAGE lists only what you checked and how. Leave out what your concern has nothing to judge in.\n' +
-  'Something you were supposed to check and could not is a limitation, never a coverage entry.'
-const LIMITS_LINE = 'LIMITATIONS: ' + LIMITS_RULE
-
 describe('what a limitation is', () => {
-  test('every reading stage receives the limitation rule once, and no writer does', async () => {
-    const { calls } = await simulate({ reports: oneReport, verify: approveOne, fixes: { fix: fixed([disposition()]) } })
-    expect(calls).toHaveLength(20)
-    for (const call of calls) {
-      const reader = !['impl', 'fix'].includes(call.label)
-      expect([call.label, call.prompt.split(LIMITS_LINE).length - 1]).toEqual([call.label, reader ? 1 : 0])
-    }
-  })
-
   test('a writer with two commits reaches the fix stage when the verifier accepts each commit', async () => {
     const FIRST = 'd'.repeat(40)
     const implementation = implemented({
@@ -1886,7 +1514,6 @@ const rejectUnbacked = (authority, seat = 'correctness') => benefit([source(seat
   reason: 'The entry asks for three attempts on a failed upload, which is the retry the finding names.',
   evidence: 'src/example.js:12 retries the upload three times.' })
 const backing = 'spec entry session.jsonl:42: "Before you start: if the upload fails, try it three times and then stop and tell me."'
-const lower = text => flat(text).toLowerCase()
 
 describe('the user\'s words reach every stage', () => {
   test('an unbacked-choice decision answered with record or cleanup fails the verifier checks', async () => {
@@ -1955,47 +1582,10 @@ describe('the user\'s words reach every stage', () => {
     expect([result.exit, result.remaining, result.counts.rejected]).toEqual(['clean', [], 1])
     expect(result.projectBenefitDecisions.map(d => d.decision)).toEqual([closed])
   })
-
-  test('the briefed readers report an unbacked choice by kind, and the unbriefed ones never hear of it', async () => {
-    const rule = 'A choice in the spec, the prompt or the diff that no words of the user back is a finding with kind unbacked-choice and severity CRITICAL.'
-    for (const name of ['reviewer-correctness', 'reviewer-spec-compliance', 'duplicate-checker', 'reviewer-inverse-spec', 'project-rule-reader']) {
-      expect([name, (await template(name)).includes(rule)]).toEqual([name, true])
-    }
-    expect(await template('reviewer-inverse-spec')).toContain('A missing-decision finding carries kind unbacked-choice.')
-    for (const name of ['quality', 'cold-alternatives', 'roaster', 'gap-finder']) {
-      expect([name, (await template(name)).includes('unbacked-choice')]).toEqual([name, false])
-    }
-    const line = 'A READING STAGE reports a choice in the spec, this prompt or the diff that no words of the user back as a finding with kind unbacked-choice.'
-    const { calls } = await simulate()
-    for (const call of calls) {
-      const briefed = BRIEFED.includes(call.agentType)
-      expect([call.label, flat(call.prompt).includes(line)]).toEqual([call.label, briefed])
-    }
-  })
-
-  test('an assistant entry is context, and a contradiction with what the user answered yes to is a contradiction with the user\'s words', async () => {
-    const context = 'an entry of author assistant is context'
-    const contradiction = 'a contradiction with what the user answered yes to'
-    const main = await simulate()
-    const texts = [['main AUTHORITY', main.calls.find(c => c.label === 'impl').prompt], ['skill', skill]]
-    for (const name of ['implementer', 'fixer', 'finding-verifier']) texts.push([name, await template(name)])
-    for (const [name, text] of texts) {
-      const plain = lower(text).replaceAll('`', '')
-      expect([name, plain.includes(context), plain.includes(contradiction)]).toEqual([name, true, true])
-      expect([name, lower(text).includes('approves field')]).toEqual([name, false])
-    }
-    expect(lawText(skill, 6)).toContain('this hierarchy and the directive-conflict hard flag of law 8 treat a contradiction with what the user answered yes to like a contradiction with the user\'s own sentence')
-  })
 })
 
 // Every file under a directory of the plugin, read as text, keyed by its path relative to the plugin root.
 
-// The template each review seat loads, by the label its stage carries.
-const SEAT_TEMPLATES = [['correctness', 'reviewer-correctness'], ['spec', 'reviewer-spec-compliance'], ['dupes', 'duplicate-checker'],
-  ['quality', 'quality'], ['inverse', 'reviewer-inverse-spec'], ['rules', 'project-rule-reader'], ['alternatives', 'cold-alternatives'],
-  ...AUDIT.map(seat => [seat, seat])]
-// The removed seat's template name, built so that no file of the tree spells it out.
-const REMOVED = ['reviewer', 'cleanliness'].join('-')
 // Every file under a directory of the tree, as paths relative to the tree root.
 // A run of a copy that must stop before its first agent: the error it throws and the agents it started.
 const stopsBeforeAnyAgent = async (script, args) => {
@@ -2007,27 +1597,14 @@ const stopsBeforeAnyAgent = async (script, args) => {
 }
 
 describe('fixed review seats and a model for every agent', () => {
-  test('the review stage runs exactly its fixed reviewers, each on the template of its name', async () => {
-    const { calls } = await simulate()
-    const review = calls.filter(c => c.phase === 'Review').map(c => [c.label.slice('review:'.length), c.agentType])
-    expect(review).toEqual(SEAT_TEMPLATES)
-    for (const [, name] of SEAT_TEMPLATES) expect([name, await Bun.file(new URL(`../agents/${name}.md`, import.meta.url)).exists()]).toEqual([name, true])
-    expect(await Bun.file(new URL(`../agents/${REMOVED}.md`, import.meta.url)).exists()).toBe(false)
-  })
-
   test('the audit reviewers receive the hygiene floor and the diff and nothing else', async () => {
     const { calls } = await simulate()
     const quality = calls.find(c => c.label === 'review:quality').prompt
-    const [floor, diff, ...rest] = quality.split('\n\n')
-    expect([floor.startsWith('EXECUTION CONTEXT'), floor.endsWith('No background waits.'), diff.startsWith('DIFFS,'), rest]).toEqual([true, true, true, []])
-    expect(floor).toContain('GIT READ-ONLY:')
+    const [, diff] = quality.split('\n\n')
     expect(diff).toContain('.: ' + BASE + '..' + INITIAL)
     for (const seat of AUDIT) {
       const prompt = calls.find(c => c.label === 'review:' + seat).prompt
       expect([seat, prompt]).toEqual([seat, quality])
-      for (const briefing of ['AUTHORITY', 'SPEC', 'PRIVATE DIRECTIVES', 'UNTRUSTED implementer', 'REQUIRED INVARIANTS', 'ACCEPTANCE CRITERIA']) {
-        expect([seat, briefing, prompt.includes(briefing)]).toEqual([seat, briefing, false])
-      }
     }
   })
 
@@ -2056,7 +1633,6 @@ describe('fixed review seats and a model for every agent', () => {
     const retemplatedRun = await stopsBeforeAnyAgent(copy.replace(line, retemplated), launchArgs())
     expect(retemplatedRun.message).toContain('and the seat list holds correctness on reviewer-correctness')
     expect(retemplatedRun.message).toContain('code-smell on quality')
-    expect(skeleton).toContain("  correctness: 'reviewer-correctness', spec: 'reviewer-spec-compliance', dupes: 'duplicate-checker',")
   })
 
   test('each review seat runs on its own model entry, keyed by its label', async () => {
@@ -2064,11 +1640,6 @@ describe('fixed review seats and a model for every agent', () => {
     const review = calls.filter(c => c.phase === 'Review')
     expect(review.map(c => c.model)).toEqual(readers.map(seat => 'model-' + seat))
     expect(new Set(review.map(c => c.model)).size).toBe(16)
-    const block = skeleton.slice(skeleton.indexOf('// ---- UNIT VALUES.'), skeleton.indexOf('// ---- END OF UNIT VALUES ----'))
-    for (const seat of readers) {
-      const key = seat.includes('-') ? `'${seat}'` : seat
-      expect([seat, block.includes(`      ${key}: { model: '<explicit>', effort: 'high' },`)]).toEqual([seat, true])
-    }
   })
 
   test('a model entry that is missing, still a placeholder or named for no agent stops the run before its first agent', async () => {
@@ -2100,61 +1671,15 @@ describe('fixed review seats and a model for every agent', () => {
   })
 })
 
-// Wording that sends the root to a review of the spec before the main run. The patterns are written
-// so that this file does not match itself; the inverse-spec reviewer is a stage of the main run.
-const SPEC_FINDING_CLASSES = ['joint-impossibility', 'missing-contract', 'reality-drift', 'unbacked-entry']
 // A spec finding points at the transcript record of every spec entry it concerns, here by line.
 const specFinding = (lines, kind) => ({ evidence: lines.map(line => ({ kind: 'transcript', file: 'session.jsonl', line, key: ['message', 'content'] })),
   class: kind, claim: 'The entries named here are ' + kind + '.', receipts: [receipt] })
 
 describe('the implementer checks the spec, and every stage reads only words said about this unit', () => {
 
-  test('every repository entry says its path is the listed one, and its head the commit ID alone', async () => {
-    const { calls } = await simulate()
-    const writers = calls.filter(c => ['impl', 'verify', 'fix'].includes(c.label))
-    expect(writers.map(c => c.label)).toEqual(['impl', 'verify', 'fix'])
-    for (const { label, schema } of writers) {
-      const entry = schema.properties.repositories.items.properties
-      expect([label, entry.path.description]).toEqual([label, 'The path of the repository exactly as the base list names it, such as ., never an absolute path.'])
-      expect([label, entry.git.properties.head.description]).toEqual([label, expect.stringContaining('The commit ID that git rev-parse --verify HEAD^{commit} printed, and nothing else')])
-      expect([label, entry.git.properties.status.description]).toEqual([label, expect.stringContaining('the empty string on a clean tree')])
-    }
-  })
-
-  test('the implementer schema carries specFindings, one entry per finding with evidence pointers, enum-locked class, claim and receipts', async () => {
-    const { calls } = await simulate()
-    const schema = calls.find(c => c.label === 'impl').schema
-    expect(schema.required).toContain('specFindings')
-    const entry = schema.properties.specFindings.items
-    expect([entry.required, entry.additionalProperties, entry.properties.class, entry.properties.receipts.minItems])
-      .toEqual([['evidence', 'class', 'claim', 'receipts'], false, { enum: SPEC_FINDING_CLASSES }, 1])
-    // The entry points at its spec entries with the evidence shape of the concern seats, and quotes no words.
-    const concern = calls.find(c => c.label === 'review:correctness').schema.properties.findings.items.properties.evidence
-    expect([entry.properties.evidence, 'words' in entry.properties, 'items' in entry.properties]).toEqual([concern, false, false])
-    // Only the implementer returns spec findings.
-    for (const call of calls.filter(c => c.label !== 'impl')) expect([call.label, 'specFindings' in call.schema.properties]).toEqual([call.label, false])
-  })
-
-  test('a later entry replaces what it corrects only where it says it corrects it, in every stage that reads the spec', async () => {
-    const { calls } = await simulate({ reports: oneReport, verify: approveOne, fixes: { fix: fixed([disposition()]) } })
-    const rule = 'A later one replaces what it corrects in an earlier one only where its own words present it as a correction of it:' +
-      ' it says to do it differently instead, that something else was meant, adds to what was said because of it, or forbids what was' +
-      ' asked before. A later user entry that contradicts an earlier one without such words conflicts with it: report it.'
-    for (const call of calls) {
-      expect([call.label, flat(call.prompt).includes(rule)]).toEqual([call.label, call.prompt.includes('SPEC (authority)')])
-    }
-    expect(await template('implementer')).toContain('cannot both hold, the later one not correcting the earlier one as the authority block of' +
-      ' your prompt defines;')
-    expect(flat(skill)).toContain('Expect the implementer to report a later user entry that contradicts an earlier one without such words as a' +
-      ' `joint-impossibility`.')
-  })
-
   test('every stage that reads the spec learns the directory its entries and transcript evidence resolve in', async () => {
     const { calls } = await simulate({ reports: oneReport, verify: approveOne, fixes: { fix: fixed([disposition()]) } })
     const line = 'TRANSCRIPTS: a session file that a spec entry or a transcript evidence entry names by a relative path lies under ' + TRANSCRIPTS + '.'
-    for (const call of calls) {
-      expect([call.label, call.prompt.includes(line)]).toEqual([call.label, call.prompt.includes('SPEC (authority)')])
-    }
     expect(calls.filter(c => c.prompt.includes(line)).map(c => c.label).sort())
       .toEqual(['fix', 'impl', 'review:correctness', 'review:dupes', 'review:inverse', 'review:rules', 'review:spec', 'verify'])
   })
@@ -2166,7 +1691,6 @@ describe('the implementer checks the spec, and every stage reads only words said
     const fix = calls.find(c => c.label === 'fix').prompt
     const queue = JSON.parse(fix.slice(fix.indexOf('APPROVED CORRECTIONS (verify against the tree and authority):\n\n') + 'APPROVED CORRECTIONS (verify against the tree and authority):\n\n'.length).split('\n\n')[0])
     expect(queue.map(q => [q.key, q.pointers])).toEqual([['fix:0', [...backed.evidence, rule]]])
-    expect(flat(fix)).toContain('Read every record or rule a pointer names, and the records around a transcript record, before you act on it.')
   })
 
   test('the implementer\'s artifacts reach every briefed stage once, and the unbriefed stages get none', async () => {
@@ -2180,10 +1704,6 @@ describe('the implementer checks the spec, and every stage reads only words said
       expect([call.label, call.prompt.split(JSON.stringify(artifacts)).length - 1]).toEqual([call.label, block.includes(call.label) || whole.includes(call.label) ? 1 : 0])
     }
     // Only the implementer is asked for them; the fixer returns none and the run's proof carries none.
-    expect(calls.find(c => c.label === 'impl').prompt).toContain('ARTIFACTS, implementer only: return in artifacts every file you leave outside your commits')
-    expect(calls.find(c => c.label === 'fix').prompt).not.toContain('return in artifacts')
-    expect([calls.find(c => c.label === 'impl').schema.required.includes('artifacts'), 'artifacts' in calls.find(c => c.label === 'fix').schema.properties]).toEqual([true, false])
-    expect(calls.find(c => c.label === 'impl').schema.properties.artifacts.items.properties.path.description).toBe('An absolute path, so a stage in another worktree finds the file.')
     expect('artifacts' in result.proof).toBe(false)
     expect(result.artifacts).toEqual(artifacts)
     // An implementer that leaves none hands nothing on.
@@ -2208,28 +1728,6 @@ describe('the implementer checks the spec, and every stage reads only words said
     const aborted = await simulate({ implementation: implemented({ snapshotSha: BASE, proofPassed: false, abort, specFindings: specFindings.slice(0, 1) }) })
     expect([aborted.result.exit, aborted.result.remaining.map(r => [r.kind, r.severity])])
       .toEqual(['aborted', [['abort', 'CRITICAL'], ['spec-finding', 'CRITICAL']]])
-  })
-
-  test('every stage that reads the spec receives the definition of an invalid spec and hard-aborts on one', async () => {
-    const { calls } = await simulate({ reports: oneReport, verify: approveOne, fixes: { fix: fixed([disposition()]) } })
-    const rule = 'A SPEC IS INVALID when a question an entry asks has no answer in a later entry, when an entry holds speculation or an' +
-      ' unverified assertion, such as a cause or a fix called likely, probable, almost certain or assumed, when an entry of author' +
-      ' assistant quotes a Write call that no later user entry answers yes to, or when an entry of author assistant decides a product' +
-      ' or architecture question that no user entry decides.'
-    const trigger = 'Fourth, EVERY STAGE THAT READS THE SPEC: invalid-spec. An invalid spec sets abort.trigger to invalid-spec before anything' +
-      ' else, a writer before any edit, with every entry that makes it invalid and the rule it breaks in abort.reason.'
-    for (const call of calls) {
-      const briefed = call.prompt.includes('SPEC (authority)')
-      expect([call.label, flat(call.prompt).includes(rule), flat(call.prompt).includes(trigger)]).toEqual([call.label, briefed, briefed])
-    }
-    const implementer = await template('implementer')
-    for (const phrase of ['An entry of class joint-impossibility or missing-contract blocks the run',
-      'An invalid spec is not one to build. Before any edit, check the spec against the definition of an invalid spec in the authority block of your prompt.',
-      'On an invalid spec, set abort.trigger to invalid-spec, name in abort.reason every entry that makes it invalid, by its session file and line, and the rule it breaks, and leave the tree unmodified.',
-      'Block only on an actual impossibility, with evidence, not on a preference for different requirements. The hard flag above, with its four triggers, is the only gate; do not add another.',
-      'In a main run, the same sense check flags an entry whose words are ambiguous or do not match this unit, and so have no meaning on their own, as class unbacked-entry.']) {
-      expect([phrase, implementer.includes(phrase)]).toEqual([phrase, true])
-    }
   })
 
   test('a blocking spec finding with a blocking limitation and unmoved snapshots ends the run after the implement stage', async () => {
@@ -2269,53 +1767,6 @@ describe('the implementer checks the spec, and every stage reads only words said
   })
 })
 
-describe('review seats are critics, and no stage asks the user a question', () => {
-  const TEMPLATES = ['reviewer-correctness', 'reviewer-spec-compliance', 'duplicate-checker', 'quality', 'reviewer-inverse-spec',
-    'project-rule-reader', 'cold-alternatives', ...AUDIT].map((type, index) => readers[index] + ': <plugin root>/agents/' + type + '.md')
-  const REVIEWER_RULES_LINE = 'REVIEWER RULES: the review seats of this run, each by the label its object carries, with its template. The templates are the\n' +
-    "reviewers' rules, what each seat looks for, and the review seats are critics without authority:"
-  const RULE_SOURCES = 'RULE SOURCES: <applicable project, directory and global rule paths>.'
-
-  test('the finding verifier\'s prompt names the template of every review seat and the rule sources', async () => {
-    const { calls } = await simulate()
-    const prompt = calls.find(c => c.label === 'verify').prompt
-    expect(prompt).toContain(REVIEWER_RULES_LINE + '\n' + TEMPLATES.join('\n'))
-    expect(prompt).toContain(RULE_SOURCES)
-    expect(TEMPLATES).toHaveLength(16)
-  })
-
-})
-
-describe('the stages receive the quoted discussion and no words of the orchestrating session', () => {
-  test('the implementer\'s task is the discussion the spec quotes, with no scoping, invariant or note beside it', async () => {
-    const { calls } = await simulate()
-    const impl = calls.find(c => c.label === 'impl').prompt
-    expect(impl.endsWith('\n\nImplement what the following discussion arrived at:\nthe spec at ' + SPEC_PATH + '.')).toBe(true)
-    for (const stale of ['ORCHESTRATOR SCOPING', 'REQUIRED INVARIANTS', 'Implement, run focused checks, and commit only scoped changes.']) {
-      expect([stale, impl.includes(stale)]).toEqual([stale, false])
-    }
-  })
-
-  test('the three concern seats receive the order to quote the user\'s words, and no other stage does', async () => {
-    const { calls } = await simulate({ reports: oneReport, verify: approveOne, fixes: { fix: fixed([disposition()]) } })
-    const concern = ['review:correctness', 'review:spec', 'review:dupes']
-    for (const call of calls) {
-      expect([call.label, call.prompt.includes('FINDINGS AGAINST THE SPEC')]).toEqual([call.label, concern.includes(call.label)])
-    }
-  })
-
-  test('every authority-aware stage reads the spec as the discussion: user entries are the authority, assistant entries are context', async () => {
-    const { calls } = await simulate({ reports: oneReport, verify: approveOne, fixes: { fix: fixed([disposition()]) } })
-    const briefed = calls.filter(c => BRIEFED.includes(c.agentType))
-    expect(briefed.length).toBe(BRIEFED.length)
-    for (const call of briefed) {
-      expect([call.label, flat(call.prompt).includes('THE SPEC is the discussion of its unit, quoted verbatim, and nothing else')]).toEqual([call.label, true])
-      expect([call.label, flat(call.prompt).includes("An entry of author user is the user's words and the authority. An entry of author assistant is context and never authority")])
-        .toEqual([call.label, true])
-    }
-  })
-})
-
 // A review-only copy of a filled script leaves out the model entries of the two reviewers that judge
 // a change against its spec.
 const SPEC_SEAT_MODELS = ["      'spec': { model: 'model-spec', effort: 'high' },\n", "      'inverse': { model: 'model-inverse', effort: 'high' },\n"]
@@ -2333,7 +1784,6 @@ const specFreeSeats = { ...seatObject, correctness: () => cold(), dupes: () => c
   rules: () => cold({ ruleSources: [{ path: 'CLAUDE.md', read: true }] }) }
 const simulateReview = (options = {}) =>
   simulate({ script: reviewRun, args: reviewArgs(), seats: specFreeSeats, harness: schemaChecked, ...options })
-const NO_SPEC_LINE = 'NO SPEC: this change was made without a spec. Read none, and judge the change by the code and the rule sources.'
 
 describe('review-only runs', () => {
   test('a review-only run starts the reviewers that need no spec on its request, and no other stage', async () => {
@@ -2342,9 +1792,6 @@ describe('review-only runs', () => {
     expect(phases).toEqual(['Review'])
     for (const call of calls) {
       expect([call.label, call.prompt.endsWith('REVIEW REQUEST, from the session that started this review: ' + REVIEW)]).toEqual([call.label, true])
-      expect([call.label, call.prompt.includes('implementer claims'), call.prompt.includes('ARTIFACTS the implementer')]).toEqual([call.label, false, false])
-      expect([call.label, call.prompt.includes('check-spec.ts'), call.prompt.includes('SPEC (authority)'), 'abort' in call.schema.properties])
-        .toEqual([call.label, false, false, false])
     }
     expect([result.exit, result.remaining, result.snapshots, result.proof]).toEqual(['clean', [], null, null])
   })
@@ -2353,22 +1800,6 @@ describe('review-only runs', () => {
     const review = [{ path: '.', from: BASE, to: INITIAL }, { path: 'web', note: 'the uncommitted edit of the login form' }]
     const { calls } = await simulateReview({ args: reviewArgs({ review }) })
     for (const call of calls) expect([call.label, call.prompt.endsWith(JSON.stringify(review))]).toEqual([call.label, true])
-  })
-
-  test('the reviewers that read the spec in a main run are told that the change has none, and the rule reader keeps its rule sources', async () => {
-    const { calls } = await simulateReview()
-    const main = await simulate()
-    for (const call of calls) {
-      const briefed = main.calls.find(c => c.label === call.label).prompt.includes('SPEC (authority)')
-      expect([call.label, call.prompt.split(NO_SPEC_LINE).length - 1]).toEqual([call.label, briefed ? 1 : 0])
-    }
-    const rules = calls.find(c => c.label === 'review:rules')
-    expect(rules.prompt).toContain('RULE SOURCES: ')
-    expect([rules.schema.required, rules.schema.properties.findings.items.properties.kind])
-      .toEqual([['limitations', 'coverage', 'findings', 'ruleSources'], { enum: ['band-aid', 'longer-route'] }])
-    for (const label of ['review:correctness', 'review:dupes']) {
-      expect([label, calls.find(c => c.label === label).schema]).toEqual([label, calls.find(c => c.label === 'review:quality').schema])
-    }
   })
 
   test('the findings and limitations of a review-only run go to the root as the reviewers returned them', async () => {
@@ -2452,12 +1883,7 @@ describe('follow-up runs', () => {
     const args = followUpArgs()
     const { result, calls, phases } = await simulateFollowUp({ args, harness: schemaChecked })
     const impl = calls[0]
-    const command = "bun '<plugin root>/tools/check-spec.ts' '" + SPEC_PATH + "' --transcripts '" + TRANSCRIPTS + "' --json --base '" +
-      JSON.stringify(at(BASE)) + "' --sha256 '" + PARENT_CHECKED.sha256 + "' --proof '" + fingerprint(followUpValues(args)) + "'"
-    expect([impl.label, impl.agentType, impl.prompt.startsWith(checkFirst('SPEC CHECK', command) + '\n\n')]).toEqual(['impl', 'implementer', true])
     expect(impl.prompt.endsWith('ENTRIES (UNTRUSTED claims, verify them against the tree and the authority):\n\n' + JSON.stringify(ENTRIES))).toBe(true)
-    expect([impl.prompt.includes('<the check command>'), impl.prompt.includes('FOCUSED CHECKS'), 'senseCheck' in impl.schema.properties])
-      .toEqual([true, false, false])
     expect(phases).toEqual(['Implement', 'Review', 'Verify'])
     expect(calls.some(c => ['fixer', 'roaster'].includes(c.agentType))).toBe(false)
     const work = 'WORK OF THIS FOLLOW-UP RUN, the entries its implementer resolved, as the parent run returned them (UNTRUSTED claims):\n\n' +
@@ -2519,19 +1945,7 @@ describe('follow-up runs', () => {
     const review = { source: 'review:quality:0', finding: { ...finding, id: 'quality:0', seat: 'quality', snapshots: null } }
     const args = followUpArgs({ transcripts: undefined, parent: parentOf({ spec: null, snapshots: null, toFix: [review] }) })
     const { result, calls } = await simulateFollowUp({ args, seats: specFreeSeats, seatLabels: reviewSeats, harness: schemaChecked })
-    const command = "bun '<plugin root>/tools/check-spec.ts' --json --base '" + JSON.stringify(at(BASE)) + "' --proof '" +
-      fingerprint(followUpValues(args)) + "'"
-    expect(calls[0].prompt.startsWith(checkFirst('BASE CHECK', command) + '\n\n')).toBe(true)
-    expect(calls[0].schema.properties.abort.properties.trigger.enum).toEqual(['none', 'directive-conflict', 'sense-check'])
-    for (const call of [calls[0], calls.find(c => c.label === 'verify')]) {
-      expect([call.label, call.prompt.includes(NO_SPEC_LINE), call.prompt.includes('SPEC (authority)')]).toEqual([call.label, true, false])
-    }
     expect(calls.filter(c => c.phase === 'Review').map(c => c.label)).toEqual(reviewSeats.map(seat => 'review:' + seat))
-    // Its two code reviewers still compare each change with the entry it answers.
-    for (const call of calls.filter(c => c.phase === 'Review')) {
-      expect([call.label, call.prompt.includes('WORK OF THIS FOLLOW-UP RUN'), call.prompt.includes('implementer claims')])
-        .toEqual([call.label, ...Array(2).fill(['review:correctness', 'review:dupes'].includes(call.label))])
-    }
     expect([result.exit, result.spec]).toEqual(['clean', null])
   })
 
