@@ -5,8 +5,8 @@
   `enum Outcome { Run = 'run', Refused = 'refused' }`, so the checker refuses a bare `'refused'`
   where an `Outcome` is expected.
 - In a tree that allows only erasable syntax, such as one built with `erasableSyntaxOnly` or run
-  through Node's type stripping, model the set as a const-asserted object with the same members
-  instead, and name its members everywhere, since the checker there accepts the bare string.
+  through Node's type stripping, model the set as a const-asserted object with the same members,
+  and name its members everywhere, since the checker accepts the bare string there.
 - Type the tag of a discriminated union over a closed set as the set's member, such as
   `kind: Outcome.Run`.
 - Keep the behavior of the values of a closed set in a `Record<Outcome, …>` beside the set, so a
