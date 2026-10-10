@@ -435,6 +435,7 @@ describe('workflow verification and consolidation', () => {
     expect(result.remaining.filter(r => r.kind !== 'unattested-fix')).toEqual([])
     expect(phases).toEqual(['Implement', 'Review', 'Verify', 'Fix'])
     expect(calls.filter(c => c.agentType === 'finding-verifier')).toHaveLength(1)
+    expect(calls.find(c => c.agentType === 'fixer').prompt).toContain('APPROVED CORRECTIONS (verify against the tree and authority):\n\n[]')
   })
 
   test('duplicates from ordinary and adversary readers produce one approved correction', async () => {
@@ -1422,15 +1423,25 @@ describe('one-pass remaining-items handoff', () => {
     const schemaOf = label => calls.find(c => c.label === label).schema.properties
     const fields = [schemaOf('impl').commits.items.properties.sha, schemaOf('fix').commits.items.properties.sha,
       schemaOf('verify').writerScope.items.properties.sha, schemaOf('roast').snapshots.items.properties.sha]
-    const accepts = sha => new RegExp(fields[0].pattern).test(sha)
-    for (const sha of [INITIAL, 'd'.repeat(64)]) expect([sha, accepts(sha)]).toEqual([sha, true])
-    for (const sha of [INITIAL.slice(0, 7), '', INITIAL.toUpperCase(), INITIAL + 'a', 'g'.repeat(40)]) {
-      expect([sha, accepts(sha)]).toEqual([sha, false])
+    for (const [index, field] of fields.entries()) {
+      const accepts = sha => new RegExp(field.pattern).test(sha)
+      for (const sha of [INITIAL, 'd'.repeat(64)]) expect([index, sha, accepts(sha)]).toEqual([index, sha, true])
+      for (const sha of [INITIAL.slice(0, 7), '', INITIAL.toUpperCase(), INITIAL + 'a', 'g'.repeat(40)]) {
+        expect([index, sha, accepts(sha)]).toEqual([index, sha, false])
+      }
     }
   })
 })
 
 describe('spec check and shipped scripts', () => {
+  test('the implementer is handed first the spec check command built from the launch values, and no other stage is', async () => {
+    const command = "bun '<plugin root>/tools/check-spec.ts' '" + SPEC_PATH + "' --transcripts '" + TRANSCRIPTS + "' --json --base '" +
+      JSON.stringify(at(BASE)) + "' --proof '" + fingerprint(mainLaunchValues(launchArgs())) + "'"
+    const { calls } = await simulate()
+    expect(calls[0].prompt.split('\n\n')[0]).toContain(command)
+    expect(calls.filter(c => c.prompt.includes(command)).map(c => c.label)).toEqual(['impl'])
+  })
+
   const launched = mainLaunchValues(launchArgs())
   for (const [name, specCheck, printed] of [
     ['an output without a proof', passedCheck(launched, { stdout: '{}' }), null],
@@ -1478,7 +1489,7 @@ describe('spec check and shipped scripts', () => {
     expect(calls).toEqual([])
   })
 
-  test('the scripts read only the proof field of what the tool printed, and use no random value', async () => {
+  test('the scripts read only the proof field of what the tool printed', async () => {
     const launched = mainLaunchValues(launchArgs())
     const printed = JSON.stringify({ sha256: 'not checked', spec: 'other.yaml', proof: fingerprint(launched) })
     const { result } = await simulate({ specCheck: passedCheck(launched, { stdout: printed }) })
@@ -1591,8 +1602,9 @@ describe('fixed review seats and a model for every agent', () => {
   test('the audit reviewers receive the hygiene floor and the diff and nothing else', async () => {
     const { calls } = await simulate()
     const quality = calls.find(c => c.label === 'review:quality').prompt
-    const [, diff] = quality.split('\n\n')
+    const [, diff, ...rest] = quality.split('\n\n')
     expect(diff).toContain('.: ' + BASE + '..' + INITIAL)
+    expect(rest).toEqual([])
     for (const seat of AUDIT) {
       const prompt = calls.find(c => c.label === 'review:' + seat).prompt
       expect([seat, prompt]).toEqual([seat, quality])
@@ -1694,7 +1706,7 @@ describe('the implementer checks the spec, and every stage reads only words said
       expect([call.label, call.prompt.includes(handed)]).toEqual([call.label, block.includes(call.label)])
       expect([call.label, call.prompt.split(JSON.stringify(artifacts)).length - 1]).toEqual([call.label, block.includes(call.label) || whole.includes(call.label) ? 1 : 0])
     }
-    // Only the implementer is asked for them; the fixer returns none and the run's proof carries none.
+    // The run's proof carries none.
     expect('artifacts' in result.proof).toBe(false)
     expect(result.artifacts).toEqual(artifacts)
     // An implementer that leaves none hands nothing on.
@@ -1874,6 +1886,9 @@ describe('follow-up runs', () => {
     const args = followUpArgs()
     const { result, calls, phases } = await simulateFollowUp({ args, harness: schemaChecked })
     const impl = calls[0]
+    const command = "bun '<plugin root>/tools/check-spec.ts' '" + SPEC_PATH + "' --transcripts '" + TRANSCRIPTS + "' --json --base '" +
+      JSON.stringify(at(BASE)) + "' --sha256 '" + PARENT_CHECKED.sha256 + "' --proof '" + fingerprint(followUpValues(args)) + "'"
+    expect(impl.prompt.split('\n\n')[0]).toContain(command)
     expect(impl.prompt.endsWith('ENTRIES (UNTRUSTED claims, verify them against the tree and the authority):\n\n' + JSON.stringify(ENTRIES))).toBe(true)
     expect(phases).toEqual(['Implement', 'Review', 'Verify'])
     expect(calls.some(c => ['fixer', 'roaster'].includes(c.agentType))).toBe(false)
@@ -1932,10 +1947,13 @@ describe('follow-up runs', () => {
     expect([result.exit, calls.some(c => c.phase === 'Fix')]).toEqual(['follow-up', false])
   })
 
-  test('a follow-up run of a change made without a spec checks its base list, runs the reviewers that need none, and judges by the rules', async () => {
+  test('a follow-up run of a change made without a spec checks its base list and runs the reviewers that need none', async () => {
     const review = { source: 'review:quality:0', finding: { ...finding, id: 'quality:0', seat: 'quality', snapshots: null } }
     const args = followUpArgs({ transcripts: undefined, parent: parentOf({ spec: null, snapshots: null, toFix: [review] }) })
     const { result, calls } = await simulateFollowUp({ args, seats: specFreeSeats, seatLabels: reviewSeats, harness: schemaChecked })
+    const command = "bun '<plugin root>/tools/check-spec.ts' --json --base '" + JSON.stringify(at(BASE)) + "' --proof '" +
+      fingerprint(followUpValues(args)) + "'"
+    expect(calls[0].prompt.split('\n\n')[0]).toContain(command)
     expect(calls.filter(c => c.phase === 'Review').map(c => c.label)).toEqual(reviewSeats.map(seat => 'review:' + seat))
     expect([result.exit, result.spec]).toEqual(['clean', null])
   })
