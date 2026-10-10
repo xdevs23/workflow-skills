@@ -5,21 +5,20 @@ description: Applies to everything that leaves the machine or goes to someone el
 
 # Hygiene
 
-**Load the `workflow-skills:writing-style` skill first.** It binds every comment, document, commit
-message and reply this skill produces, and it is not optional when working with this plugin.
-
-This skill holds the rules for what may leave the machine: a commit and its message, a pushed
-branch, a pull request, an issue or a comment, a published document or package, and a message to
-someone else. A project's own rules add to these.
+- Load `workflow-skills:writing-style` first. It binds every comment, document, commit message and
+  reply you write under this skill.
+- Apply these rules to everything that leaves the machine: a commit and its message, a pushed
+  branch, a pull request, an issue, a comment, a published document or package, and a message to
+  someone else. A project's own rules add to them.
 
 ## Tracked files and their history
 
-- Keep out of every tracked file and every commit message: private conversation content, the
-  user's words, setup facts and machine internals, local absolute paths, model names, facts about a
-  session, personal data and secrets.
+- Keep private conversation content, the user's words, setup facts, machine internals, local
+  absolute paths, model names, facts about a session, personal data and secrets out of every
+  tracked file and every commit message.
 - Apply this to code, comments, documentation, agent instructions such as `CLAUDE.md`, tests,
   scripts and assets alike.
-- Write so that nobody would raise an eyebrow if everyone read it: technical, focused, and clear to
+- Write so that nobody would raise an eyebrow if everyone read it: technical, focused and clear to
   a reader who never saw the session.
 
 ## The user's words
@@ -31,12 +30,12 @@ someone else. A project's own rules add to these.
 
 ## Setup facts
 
-- Put a fact about the machine or the local setup into local memory or an ignored file. It stays
-  out of every repository.
+- Put a fact about the machine or the local setup into local memory or an ignored file, never into
+  a repository.
 
 ## Commit messages
 
-- Describe the technical change, and keep process vocabulary, narration of the session, names of
+- Describe the technical change. Keep process vocabulary, narration of the session, names of
   reviewers or stages, and actor words such as owner, founder and admin out of the message.
 - Put no model name into a commit.
 - Add no `Co-Authored-By` line to a commit.
@@ -76,9 +75,8 @@ someone else. A project's own rules add to these.
 
 - Put no proprietary upstream code and no proprietary prompt text into a public repository.
 - Download no third-party asset meant to ship with the work, such as a font file, unless the user
-  approves it.
-- Consider a font package that carries the font's license, such as a Fontsource package, as one way
-  to do without a download.
+  approves it. A font package that carries the font's license, such as a Fontsource package, is one
+  way to do without the download.
 - Keep every license and notice that comes with third-party material.
 - Never relicense adopted code silently.
 - Never put a third-party mark under the project's own license.

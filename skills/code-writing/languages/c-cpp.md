@@ -4,7 +4,8 @@
   place is an RAII type. A raw pointer never owns memory, and no function returns a pointer into its
   own stack frame or into memory it has freed.
 - Keep data that never changes in read-only memory, which on a microcontroller means program memory
-  (`F()`, `PROGMEM`), and let debug output compile away entirely.
+  (`F()`, `PROGMEM`).
+- Let debug output compile away entirely.
 - Use macros only where the language can't do the job: minimum, maximum, constants and
   argument-count overloads are inline functions, `constexpr` and variadic templates.
 - Keep control flow structured. Use `goto` only as the single forward jump to a function's cleanup,
