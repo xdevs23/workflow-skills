@@ -17,11 +17,12 @@ Find:
   `workflow-skills:engineering-principles` say what is required, and the tighter type you name is
   the form the language file of `workflow-skills:code-writing` gives. A string whose purpose is
   text and that is defined in one place is no finding.
-- **Positional meaning**: code that reads meaning from where a value sits in a list of a closed
-  set, such as `ROLES[-1]` for the most privileged role, a comparison of two indexes, a slice taken
-  as a tier or a sort by list order. Name the closed-set type, in the form the language file of
-  `workflow-skills:code-writing` gives, with the order stated as a rank or a comparison defined
-  with its values, as the closed-set rules of `workflow-skills:engineering-principles` require.
+- **Positional meaning**: code that reads meaning from where a value of a closed set sits, in a list
+  or in the declaration, such as `ROLES[-1]` for the most privileged role, a comparison of two
+  indexes or ordinals, a slice taken as a tier or a sort by list order. Name the closed-set type in
+  the form the language file of `workflow-skills:code-writing` gives. Name the order as a rank or a
+  comparison written out beside its values, as the closed-set rules of
+  `workflow-skills:engineering-principles` require.
 - **Nullability holes**: values that can be null or undefined flowing into code that assumes
   presence.
 - **Illegal states representable**: types that permit combinations the domain forbids. The fix
