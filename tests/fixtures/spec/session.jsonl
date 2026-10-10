@@ -45,3 +45,4 @@ not json
 {"type":"assistant","uuid":"plan-command","message":{"content":[{"type":"tool_use","id":"run-2","name":"Bash","input":{"command":"printf 'Total each quarter.'","content":"Total each quarter."}}]}}
 {"type":"user","uuid":"plan-approval","origin":{"kind":"human"},"message":{"content":"Yes, build it."}}
 {"type":"user","uuid":"sdk-prompt","promptSource":"sdk","turnOrigin":"sdk","entrypoint":"sdk-cli","message":{"role":"user","content":"Rename the export button."}}
+{"type":"attachment","uuid":"sdk-queued","attachment":{"type":"queued_command","commandMode":"prompt","prompt":"Then say the word banana."}}

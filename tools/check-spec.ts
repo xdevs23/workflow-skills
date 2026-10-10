@@ -62,7 +62,8 @@ const textOf = (record: Mapping) => {
 }
 // A message sent while the session was working is recorded as an attachment of type
 // queued_command. Commands of other origins are queued the same way, so only the origin kind
-// human marks the user's words.
+// human marks the user's words, or an origin-less entry queued from a prompt of a session hosted
+// through the Agent SDK, which the host marks with this command mode.
 const queuedCommand = (record: Mapping): record is Mapping & { attachment: Mapping } =>
   record.type === 'attachment' && mapping(record.attachment) && record.attachment.type === 'queued_command'
 // A queued prompt is a string, or a block array when the message carries an image beside its text.
@@ -71,10 +72,14 @@ const promptText = (prompt: unknown) => {
   if (Array.isArray(prompt)) return withoutReminders(textBlocks(prompt))
   throw new Error('attachment.prompt must be a string or block array')
 }
+const queuedPromptMode = 'prompt'
 const queuedText = (record: Mapping & { attachment: Mapping }) => {
-  const { origin, prompt } = record.attachment
+  const { origin, prompt, commandMode } = record.attachment
   const kind = mapping(origin) ? origin.kind : undefined
-  if (kind !== 'human') throw new Error(`a queued command of origin ${JSON.stringify(kind ?? null)} is not the user's words`)
+  const queuedPrompt = origin === undefined && commandMode === queuedPromptMode
+  if (kind !== 'human' && !queuedPrompt) {
+    throw new Error(`a queued command of origin ${JSON.stringify(kind ?? null)} is not the user's words`)
+  }
   return promptText(prompt)
 }
 // The host's placeholder in `answers` for a question the user answered with a typed note alone.
