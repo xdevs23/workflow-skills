@@ -90,6 +90,7 @@ it, and the user reviews the code.
 - Record a finding about code outside the change with `workflow-skills:todo-md`, and leave it out
   of this change.
 - Show the user every optional pick a reviewer returns, and build it only when the user picks it.
+  Don't wait for the user to respond: show them the options and treat it as asynchronous.
 
 ## User review
 
