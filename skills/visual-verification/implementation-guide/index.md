@@ -147,5 +147,3 @@ Every file is read in full, in this order, before any harness code is written.
     harness contract with its scene documentation.
 17. `17-acceptance-criteria.md` covers the generalized acceptance criteria of a harness, including
     the regression proof.
-18. `18-rejected-alternatives.md` covers the alternatives the reference rejected and the reason for
-    each.

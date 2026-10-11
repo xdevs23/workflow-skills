@@ -89,6 +89,7 @@ it, and the user reviews the code.
   see fit.
 - Record a finding about code outside the change with `workflow-skills:todo-md`, and leave it out
   of this change.
+- Show the user every optional pick a reviewer returns, and build it only when the user picks it.
 
 ## User review
 

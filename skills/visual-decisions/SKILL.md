@@ -45,6 +45,7 @@ it from a description.
   - After, in green, for a part the change adds or changes;
   - the earlier state, in red, for a part that After leaves out;
   - Open, in amber, for a proposal the user can change;
+  - Optional pick, in blue, for an alternative approach the user can choose;
   - a dashed box, for a file the change does not edit;
   - Updated, in purple, for a part that changed after the last answer from the user.
 - Split the page into numbered sections, each with a title of at most eight words.
@@ -76,6 +77,8 @@ it from a description.
   change it.
 - When the user decides an Open point, keep it on the page, struck through, and start it with
   `Settled:`.
+- Show every alternative approach you see in a blue box that starts with `Optional pick:`, with what
+  it changes. The change includes it only when the user picks it.
 
 ## Updating the page
 

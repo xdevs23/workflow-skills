@@ -33,7 +33,7 @@ Four records divide the work between them:
 |---|---|
 | `TODO.md` | Open work, its order, its current state, and the decisions still owed |
 | git history | What changed, and when it was committed |
-| design docs (wherever the project keeps them) | The durable design for a change, including the alternatives rejected and why |
+| design docs (wherever the project keeps them) | The durable design for a change |
 | in-session task list | This session's steps only; disposable |
 
 When an item finishes, its **design** stays in the design docs, its **diff** stays in git, and its
