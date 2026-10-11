@@ -33,6 +33,9 @@ it, and the user reviews the code.
 - When the user says what should be different, change the notes, and update the draft as
   `workflow-skills:visual-decisions` describes.
 - Start the implementation once the user approves the draft.
+- If the user can't give a clear direction or define the scope, task a workflow with draft writing,
+  marking suggested options as open and providing multiple options on scope, UI/UX design
+  and architecture.
 
 ## Implementation
 
