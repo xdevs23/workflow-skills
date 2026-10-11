@@ -154,11 +154,13 @@ pin, owner, masthead, flagging.
 - State a rule as neutral engineering law, without the motive behind it.
 - Describe in a document what the system is and does. Write a decision and the history of a change
   in the commit message or the pull request for the change.
-- Leave rejected alternatives out of documents, commit messages and pull requests.
 
 ## Messages
 
 - Write paths, commands and identifiers in monospace.
+- Present the alternative approaches you see, each as an optional pick: what it is and what it
+  changes, next to the approach the user asked for. Leave the choice to the user, and never present
+  an alternative as a proposal.
 - Make every message understandable without an earlier message.
 - Leave out jargon, filler and hedging.
 - Do not restate the question.

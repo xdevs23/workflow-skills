@@ -38,13 +38,12 @@ a record of this project's facts:
 6. Samples and privacy, when the harness has a refresh.
 7. Drift, receipts and comparison, including the recorded comparison options and the diff coloring
    parameters; a change to the coloring's radius or margin is recorded here as a tooling decision.
-8. Rejected alternatives with their reasons, as part 18 lists them.
-9. Acceptance criteria, as part 17 generalizes them.
-10. Recorded verification: for each criterion or group of criteria, the captures and runs that
-    verified it and what they showed, with observed product findings listed apart.
-11. Engineering process: the working practice, where exploratory scenes live, where reports and
+8. Acceptance criteria, as part 17 generalizes them.
+9. Recorded verification: for each criterion or group of criteria, the captures and runs that
+   verified it and what they showed, with observed product findings listed apart.
+10. Engineering process: the working practice, where exploratory scenes live, where reports and
     comparisons are written, and the rule that capture and comparison names are exclusive.
-12. Production impact: that the harness changes no application behavior or data and needs no
+11. Production impact: that the harness changes no application behavior or data and needs no
     migration, and how the production artifact is inspected.
 
 ## Scene documentation

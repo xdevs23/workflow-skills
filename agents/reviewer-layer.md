@@ -25,5 +25,5 @@ You review one change through the lens skills for one layer.
 - Return only real findings, each with the file and line it is in, the quoted code, what is wrong,
   the lens it came from, and the grade or scope that the lens skill requires. Return an empty list
   when you find nothing.
-- Return as well what a lens skill asks for besides findings, such as the candidates and the
-  simpler shapes you tried for `workflow-skills:cold-alternatives`.
+- Return as well what a lens skill asks for besides findings, such as the optional picks of
+  `workflow-skills:cold-alternatives`.
