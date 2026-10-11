@@ -152,6 +152,8 @@ pin, owner, masthead, flagging.
   a limitation. Each one is a decision or a defect.
 - Mark an undecided shortfall OPEN and surface it. Never give it a date that makes it look decided.
 - State a rule as neutral engineering law, without the motive behind it.
+- Describe in a document what the system is and does. Write a decision, a rejected alternative and
+  the history of a change in the commit message or the pull request for the change.
 
 ## Messages
 

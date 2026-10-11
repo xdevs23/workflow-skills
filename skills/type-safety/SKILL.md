@@ -27,5 +27,7 @@ Review the change through one lens, type safety, and leave unrelated concerns to
   presence.
 - Report illegal states the types can represent: types that permit combinations the domain forbids.
   The fix is usually to make invalid states unconstructable.
+- Report a stored record built or read as a dictionary or by looking up its keys, where a typed
+  model converted at the store belongs.
 - Report validation at the wrong boundary: untrusted input typed as if already validated.
 - State in every finding the tighter type that would make the bug unrepresentable.
