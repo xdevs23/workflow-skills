@@ -11,6 +11,8 @@ Those four skills contain the full rules. The reviewers check every change again
   data wherever it crosses from one layer to another.
 - Keep data, logic and presentation apart, give each component one job, and keep business logic out
   of endpoints, command handlers and adapters.
+- Query a data store only in the component that owns it. Only that component writes the field names
+  of its stored data, and it reads and writes every record as a typed model.
 - Make each decision in one place, and keep the truth in durable state. Derive state from the data
   it follows from, and never store it next to that data.
 - Write one change in one transaction, record before you act, and never synchronize by time.
@@ -53,5 +55,7 @@ Those four skills contain the full rules. The reviewers check every change again
   landed, load-bearing and owner.
 - Keep the user's words, facts about the local setup, local absolute paths, model names and secrets
   out of every tracked file and commit.
+- Describe in a document what the system is and does. Put decisions, rejected alternatives and
+  history into the commit message or the pull request.
 - Describe the technical change in a commit message. Leave out process vocabulary, model names and
   the `Co-Authored-By` line.

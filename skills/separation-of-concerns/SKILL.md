@@ -12,6 +12,7 @@ to other lenses unless they show up as a concerns violation.
   business logic mixed with persistence, transport, formatting, logging or configuration.
 - Report fused layers: presentation computing domain decisions, or orchestration code doing
   leaf-level work inline.
+- Report a component that writes the field names of stored data that another component owns.
 - Report a change to one concern that forces edits scattered across unrelated units, a sign the
   concern is smeared instead of isolated.
 - Rank the findings by how much the tangle will cost future change.

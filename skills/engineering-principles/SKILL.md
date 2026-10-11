@@ -52,6 +52,11 @@ in every language. `workflow-skills:code-writing` holds how the code itself read
 - Let each entity own its state and lifecycle: no god objects, no state bags and no global mutable
   state behind a lock. Prefer asking another entity through its contract over reading its stored
   state directly.
+- Run every query of a data store in the component that owns that collection or table, through the
+  one place in the project that runs queries. A mapping, a provider, a worker or a route asks that
+  component for the data, and only that component has a handle to the store.
+- Write the field names of stored data only in the component that owns the data. Another component
+  hands the owner typed values, and the owner builds the record from them.
 - Never change what was passed into a function. Convert an input into a new value, and change the
   caller's data only when that is the function's stated purpose.
 - Represent one resource, such as a device, a connection or an open file, by exactly one object that
@@ -147,6 +152,8 @@ in every language. `workflow-skills:code-writing` holds how the code itself read
 
 - Type data everywhere: no raw JSON lookups, no stringly-typed dispatch and no anonymous structures
   on a bus. Make illegal states unrepresentable.
+- Read and write a stored record as a typed model, converted where it enters or leaves the store.
+  Never build or read a stored record as a dictionary literal or by looking up its keys.
 - Judge a string in code by its purpose. A string standing for something the language can type
   becomes an enum or a class. A string whose purpose is text, such as a message or a name an outside
   format fixes, stays a string, defined in one place.
@@ -395,7 +402,7 @@ in every language. `workflow-skills:code-writing` holds how the code itself read
   experiment that found nothing is recorded too, and work that depends on an open point waits for
   its experiment.
 - Make every architectural decision deliberately, and write it down with acceptance criteria that
-  can be checked.
+  can be checked, in the commit message or the pull request for the change.
 - Change the documentation of an interface others use, such as an API, a command or a screen, in the
   same change as that interface.
 - Build in layers, scaffolding first and then one piece at a time. This orders the building only:
