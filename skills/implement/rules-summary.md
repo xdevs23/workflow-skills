@@ -55,7 +55,7 @@ Those four skills contain the full rules. The reviewers check every change again
   landed, load-bearing and owner.
 - Keep the user's words, facts about the local setup, local absolute paths, model names and secrets
   out of every tracked file and commit.
-- Describe in a document what the system is and does. Put decisions, rejected alternatives and
-  history into the commit message or the pull request.
+- Describe in a document what the system is and does. Put decisions and history into the commit
+  message or the pull request, and leave rejected alternatives out of all of them.
 - Describe the technical change in a commit message. Leave out process vocabulary, model names and
   the `Co-Authored-By` line.
