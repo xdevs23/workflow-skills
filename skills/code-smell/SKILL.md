@@ -14,5 +14,7 @@ pain. Leave unrelated concerns to other lenses.
 - Report duplicated logic and dead or unreachable code.
 - Report deep nesting and arrow-shaped control flow.
 - Report boolean or flag parameters that switch behavior.
+- Report direct access by string keys, like `doc["key"]` and `item.get("key")` where it was introduced by the new code.
+- Report arbitrary constants without a documented reason, like a page size or parallelism limit.
 - Name the smell in every finding, and rank the findings by how likely they are to cause real
   future cost.

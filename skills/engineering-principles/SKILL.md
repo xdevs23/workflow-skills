@@ -407,6 +407,10 @@ in every language. `workflow-skills:code-writing` holds how the code itself read
   same change as that interface.
 - Build in layers, scaffolding first and then one piece at a time. This orders the building only:
   each feature still ships through all its layers in the same pass.
+- Don't copy the bad. If the pre-existing code already violates the rules, don't excuse writing the
+  same kind of code by arguing with prior art. Bad code is not art, it's debt. Where scope allows,
+  rewrite the existing code cleanly, or do your best by integrating your part well and leaving the
+  rest as-is.
 
 ## Rules other skills hold
 

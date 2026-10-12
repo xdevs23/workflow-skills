@@ -61,6 +61,8 @@ and the user reviews the code.
   requirement.
 - Never give an implementer a number or any other limit on how large the change may be. The only
   rule on the size of the change is the one in `workflow-skills:implementer`.
+- Prior art is not a reason to reject a review finding. If something is bad, it is bad, and there
+  is no amount of excuse that can justify it.
 
 ## Reviewers
 
