@@ -43,9 +43,8 @@ When an item finishes, its **design** stays in the design docs, its **diff** sta
 
 # 2. Layout of the file
 
-- Keep the file OLDEST FIRST: entries carry ascending ids and the newest entry is the last one in
-  the file, so a reader follows the project's history in the order it happened.
-- Append to the ledger, and never insert into it.
+- Write the entries in the order of their numbers, so the newest entry is the last one in the
+  file.
 - Put reference material (header, conventions) first, then the record in id order:
 
 1. **Header**: what the file is, plus the conventions that apply to every entry (reference this skill)
@@ -54,8 +53,10 @@ When an item finishes, its **design** stays in the design docs, its **diff** sta
    prevented from happening through code, tests or by construction, remove the entry, and instead
    explain within the resolving change what incident type it addresses.
 3. **Current queue**: the active order of work, with the deployment state that precedes it.
-   A newer queue block is appended below the older ones and says which it supersedes; the
-   older blocks stay.
+   Rewrite the queue when the order changes.
+   - When new work sets other work aside, add a line to the queue before you start the new work.
+     It names the entry set aside, the entry it waits for, and where to go back to once that one
+     is done. Remove the line when the work is resumed or finished.
 4. **Deploy state**: what is live where, with commit hashes and verification receipts.
 5. **Open sections by area**: the per-item entries, grouped by project area.
 
@@ -79,6 +80,10 @@ When an item finishes, its **design** stays in the design docs, its **diff** sta
   first message of the conversation that raised the item. Every entry carries one: a decision
   or a potential work unit with no pointer is one nobody can trace back to its words.
   Finding the line: search the project's session transcript directory for the promptId or uuid or read the specified line directly.
+- **`Builds on:`**: a line naming every entry that has to be built first. Write a dependency
+  between entries in this line and nowhere else.
+- When you report on several entries, show in the message the chains of `Builds on:` lines and the
+  set-aside lines of the queue that concern them.
 
 ## 3.1. One behavior to a unit
 
@@ -186,12 +191,9 @@ An item can be finished but deliberately withheld.
 - **Spend uppercase, since it carries weight.** Uppercase marks a state, a hard constraint, or
   something that costs money or data if missed. Uppercase everywhere reads as noise and hides the
   parts that matter.
-- **Supersede, never rewrite, append below.** A newer queue block says what it supersedes and is
-  written after the old one; the old block stays. Ids ascend down the file; nothing is inserted
-  above an older entry. History is what makes a decision re-checkable. Delete only what was
-  factually wrong, and say so.
-- **Keep corrections visible.** When an entry turns out to be wrong, correct it in place and note
-  what it said before. Record an item found already shipped, or a claim found false, as such.
+- **Remove what is no longer true.** When a fact in an entry turns out wrong or out of date,
+  change or delete it in place. A stale line misleads every reader who finds it by search and
+  reads it without the rest of the entry.
 - **Accept a limitation only when it is an EXTERNAL system's limit**, and give it its official
   source, the date it was checked, and a sign-off naming whoever model and session wrote it.
   Scoped-out work, a choice the project made, a shortcut or a broken rule is never one, and a
