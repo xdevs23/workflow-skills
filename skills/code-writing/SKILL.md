@@ -35,6 +35,9 @@ description: Applies whenever you write or change code in any language, includin
   project it is written for, with warnings treated as errors.
 - Give a new small file, such as a configuration file, a one-line SPDX license identifier, never a
   full license boilerplate block.
+- Don't access objects by raw string attributes: Don't use `doc["key"]` or `item.get("key")` if a
+  cleaner way of access is possible. Where in scope, refactor existing untyped structures into
+  the clean structure they should have had all along.
 
 ## Strings in code
 
