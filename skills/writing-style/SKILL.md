@@ -21,8 +21,13 @@ description: Applies to every text you write that a person reads, such as code c
 
 ## Sentence shape
 
-- Use `'s` or an `of` that could become `'s` only for real ownership, such as Anna's book, Tom's
-  table, the source code of the database or the design of that website.
+- Use `'s`, `its`, `their` or an `of` that could become `'s` only for real ownership:
+  - a person who owns a thing, such as Anna's book or Tom's table;
+  - a part that exists only inside the whole, such as the source code of the database or the
+    design of that website.
+- Never write a thing that exists apart from another as owned by it, even where the other one uses,
+  builds, names or needs it. Write "the library used by the app", never "the app's library" or
+  "its library".
 - Leave an `of` that could never become `'s` as it is, such as in "each of those requests" or
   "instead of".
 - Where one thing does not own the other, say how the two relate: where one sits, what it contains,
