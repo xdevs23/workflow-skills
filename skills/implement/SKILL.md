@@ -10,8 +10,8 @@ document, commit message and reply you write while you follow this skill. Load i
 with this plugin.
 
 A change starts as a talk between you and the user. You write down what the user says in notes and
-draw an HTML draft for the user to approve. Implementers then build the change, six reviewers check
-it, and the user reviews the code.
+draw an HTML draft for the user to approve. Implementers then build the change, reviewers check it,
+and the user reviews the code.
 
 ## Notes
 
@@ -70,7 +70,7 @@ it, and the user reviews the code.
 - Start the scope reviewer as `workflow-skills:reviewer-scope` and hand it the notes and the
   approved draft. It checks that the change contains everything the user asks for in the notes and
   nothing else.
-- Start the prose reviewer as `workflow-skills:reviewer-prose`, on a small model such as Haiku at
+- Start the prose reviewer as `workflow-skills:reviewer-prose`, on the smallest model available, at
   medium effort. It checks every sentence that the change adds or edits against
   `workflow-skills:writing-style`.
 - Start four more as `workflow-skills:reviewer-layer` and hand each the notes and the lens skills
@@ -84,8 +84,8 @@ it, and the user reviews the code.
   - The structure reviewer checks whether concerns and layers are separate and whether types are
     narrow. It loads `workflow-skills:separation-of-concerns`, `workflow-skills:domain-leakage`,
     `workflow-skills:smearing`, `workflow-skills:code-smell` and `workflow-skills:type-safety`.
-  - The rules and surface reviewer checks which rules the change breaks and how the names and
-    comments in it read. It loads `workflow-skills:project-rule-reader`,
+  - The rules and surface reviewer checks which rules the change breaks and how clean the names
+    and comments in it are. It loads `workflow-skills:project-rule-reader`,
     `workflow-skills:code-cleanliness` and `workflow-skills:quality`.
 
 ## Findings
