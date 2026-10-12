@@ -7,12 +7,12 @@ description: Applies when you review a change against the rules that bind it, in
 
 Check the change against every rule that applies to it, in the change and beside it.
 
-- Read the full rules, `workflow-skills:engineering-principles`, `workflow-skills:code-writing`,
-  `workflow-skills:writing-style` and `workflow-skills:hygiene`, the project's instruction files,
-  the instruction files of the directories the change touches and the global instruction file,
-  with every rulebook they require for the changed files, and apply each rule only within its
-  scope.
+- Read the full rules, `workflow-skills:engineering-principles`, `workflow-skills:code-writing`
+  and `workflow-skills:hygiene`, the project's instruction files, the instruction files of the
+  directories the change touches and the global instruction file, with every rulebook they require
+  for the changed files, and apply each rule only within its scope.
 - Say which rule source you could not read and which rules conflict, and never invent a rule.
+- Leave the wording of sentences to `workflow-skills:reviewer-prose`.
 - Read every changed file in full, never only its diff, and inspect a deleted file's deletion and
   its earlier contents.
 - Report every rule violation in those files, introduced by the change or already beside it, with

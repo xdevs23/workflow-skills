@@ -10,7 +10,7 @@ document, commit message and reply you write while you follow this skill. Load i
 with this plugin.
 
 A change starts as a talk between you and the user. You write down what the user says in notes and
-draw an HTML draft that the user approves. Implementers then build the change, five reviewers check
+draw an HTML draft for the user to approve. Implementers then build the change, six reviewers check
 it, and the user reviews the code.
 
 ## Notes
@@ -70,8 +70,11 @@ it, and the user reviews the code.
 - Start the scope reviewer as `workflow-skills:reviewer-scope` and hand it the notes and the
   approved draft. It checks that the change contains everything the user asks for in the notes and
   nothing else.
-- Start each of the other four as `workflow-skills:reviewer-layer` and hand it the notes and the
-  lens skills listed for its layer below.
+- Start the prose reviewer as `workflow-skills:reviewer-prose`, on a small model such as Haiku at
+  medium effort. It checks every sentence that the change adds or edits against
+  `workflow-skills:writing-style`.
+- Start four more as `workflow-skills:reviewer-layer` and hand each the notes and the lens skills
+  listed for its layer below.
   - The correctness reviewer checks whether the change works and how the cost of running it grows.
     It loads `workflow-skills:reviewer-correctness`, `workflow-skills:missing-gaps` and
     `workflow-skills:runtime-cost`.
