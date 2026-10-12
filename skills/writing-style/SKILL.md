@@ -17,7 +17,7 @@ description: Applies to every text you write that a person reads, such as code c
 - Apply plain language most strictly in a message to a person:
   - Leave out words about how the work was organized, such as stage names, reviewer names and
     session narration.
-  - Say every term of art in plain words that a reader outside the project understands.
+  - Say every term of art in plain words, understood by a reader outside the project.
 
 ## Sentence shape
 
@@ -38,8 +38,8 @@ description: Applies to every text you write that a person reads, such as code c
   contains, sets, uses, calls, returns, shows, sends, fails, expects, needs, skips, affects or
   changes. Never give it a human verb such as holds, keeps, stays, carries, reaches, answers, says,
   states, refuses, decides, serves, names or touches.
-- Name a thing with words the reader already knows. Never invent a label for it, such as "the fast
-  way" for a lookup that finds its result in the cache.
+- Name a thing with words already known to the reader. Never invent a label for it, such as "the
+  fast way" for a lookup that finds its result in the cache.
 - Say what is there or what happens, instead of listing what is absent with `no` and a noun.
 - Where the absence itself is the point, write it as a sentence with a verb, such as "The reviewer
   does not see the notes."
@@ -51,16 +51,20 @@ description: Applies to every text you write that a person reads, such as code c
   only where it tells two owners apart.
 - Keep subject, verb and object in their usual order, with the subject close to its verb. Rewrite a
   sentence the reader has to read twice, such as "the values only the second migration of the
-  payment schema adds" into "the values that the second migration adds to the payment schema".
+  payment schema adds" into "the values added to the payment schema by the second migration".
+- Where a noun is the object of the clause after it, put the verb after the noun as a participle:
+  "the file read by the importer", never "the file that the importer reads" or "the file the
+  importer reads". Keep `that` where the noun itself does what the verb says, as in "the request
+  that fails".
 
 | Instead of | Write |
 |---|---|
 | the store's Reports tab | the Reports tab on the store page |
 | the store's orders | every order placed in that store |
-| the upload's token | the token that the upload needs |
-| the importer's file | the file that the importer reads |
+| the upload's token | the token needed by the upload |
+| the importer's file | the file read by the importer |
 | the retry budget | how often the request is retried |
-| the check has no rules of its own | the check applies the rules it is handed |
+| the check has no rules of its own | the check applies the rules handed to it |
 | no request goes out | the page sends the request once the form is complete |
 | give it no notes | hand it only the diff |
 | the service answers the totals | the service returns the totals |
@@ -76,7 +80,7 @@ description: Applies to every text you write that a person reads, such as code c
 
   > The Reports tab on the store page sends six requests when it opens. Each of those requests
   > loads every order placed in that store again before it adds them up. The report pages can load
-  > the orders only once if they ask for the data they need in a different way.
+  > the orders only once if they ask for that data in a different way.
 
 ## Patterns to avoid
 
@@ -168,14 +172,15 @@ pin, owner, masthead, flagging.
 - Cut any closing offer or commentary on next steps.
 - Do not write a wall of text.
 - Base every question, blocker and open decision on evidence before you put it to the user:
-  - Read the earlier words the user wrote on it in full, together with the discussion around them.
+  - Read the earlier words written by the user on it in full, together with the discussion around
+    them.
   - Check the code or the mechanism it is about.
   - State with file and line why those words do not already answer it.
-- Never take a saved report or a result that a stage returned as the only proof that the user has
-  not answered.
-- Name the code you mean by what it is, in a question, a page or a picture alike: the main branch,
-  the develop branch, production, the merged code or the unmerged work on a branch. Never call it
-  today, now or current.
+- Never take a saved report or a result returned by a stage as the only proof that the user has not
+  answered.
+- Name code by what it is, in a question, a page or a picture alike: the main branch, the develop
+  branch, production, the merged code or the unmerged work on a branch. Never call it today, now or
+  current.
 - Call a shape that is not built yet After, or the proposed shape.
 
 ## Text written before these rules
