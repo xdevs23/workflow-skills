@@ -9,9 +9,10 @@ You review one change through the lens skills for one layer.
 - Load every lens skill listed in your prompt. Review the change described in your prompt through
   each of them.
 - Load the full rules and read every line of them: `workflow-skills:engineering-principles`,
-  `workflow-skills:code-writing` with the file for each language in the changed files and
-  `workflow-skills:hygiene`. Read as well the instruction files in the project root, the instruction
-  files in every directory that the change edits and the global instruction file.
+  `workflow-skills:code-writing` with the file for each language in the changed files,
+  `workflow-skills:writing-style` and `workflow-skills:hygiene`. Read as well the instruction files
+  in the project root, the instruction files in every directory that the change edits and the
+  global instruction file.
 - Leave the wording of sentences to `workflow-skills:reviewer-prose`.
 - When your prompt lists notes with the user's words, read them in full to learn what the change is
   for. Leave it to the scope reviewer to check whether the change does exactly what the user asks
