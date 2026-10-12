@@ -41,7 +41,11 @@ it from a description.
   explicitly allowed it.
 - Open the page with the name of the change as its title. Below it, write one line about what the
   page is for and which states the pictures show.
-- Put a legend under that line, with one marker for each kind of mark the page uses:
+- Below that line, put a box titled "What this is about, in plain words": a short list that
+  explains the change or the decision to someone who has never seen the code. It contains one
+  concrete example, what goes wrong or is missing today, what After does, what it costs, and what
+  the user is asked.
+- Put a legend under that box, with one marker for each kind of mark the page uses:
   - After, in green, for a part the change adds or changes;
   - the earlier state, in red, for a part that After leaves out;
   - Open, in amber, for a proposal the user can change;
@@ -56,7 +60,7 @@ it from a description.
 - Put a caption of at most fifteen words under each picture.
 - Mark the part of a picture that changes in the color of its legend marker, so the eye finds the
   difference first.
-- Write words on the page only as labels, titles, captions and marks. A picture that needs a
+- Write words on the rest of the page only as labels, titles, captions and marks. A picture that needs a
   paragraph to explain it is not clear yet.
 
 ## Pictures
@@ -87,6 +91,7 @@ it from a description.
 - Mark every part that changed as Updated, with a purple outline and an `UPDATED` badge. Remove
   the Updated marks of earlier rounds.
 - Add to the line under the title what changed after the last answer from the user.
+- Update the plain-words box whenever After changes.
 
 ## Making the page
 
