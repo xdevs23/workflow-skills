@@ -5,23 +5,56 @@ Run as `watch-prs.py --state <file> [--interval <seconds>] <pull request>...`. A
 named as `owner/repo#number`, or as `owner/repo@branch` for the open pull request whose head is
 that branch.
 
-Events: every issue comment, review other than a pending one, review thread comment and failed
-check run on the head commit of each pull request, and the pull request closing or merging. The
-ids of every printed event are kept in the state file, so a restarted watch prints only what is
-new. The tool exits when every pull request is closed or merged.
+The watcher prints every issue comment, review other than a pending one, review thread comment,
+failed check run and failed commit status on the head commit of each pull request, and the pull
+request closing or merging. The state file contains the id of every printed event, so a restarted
+watch prints only what is new. The tool exits when every pull request is closed or merged.
 """
 
 import argparse
+import enum
 import json
 import re
 import subprocess
 import sys
 import time
+from dataclasses import dataclass
 from pathlib import Path
 
-FAILED = {"failure", "timed_out", "cancelled", "action_required", "startup_failure"}
+FAILED_CONCLUSIONS = {"failure", "timed_out", "cancelled", "action_required", "startup_failure"}
+MINIMUM_GH_VERSION = "2.48.0"  # the first release with `gh api --slurp`
+GH_VERSION = re.compile(r"gh version (\d+\.\d+\.\d+)")
+DELETED_ACCOUNT_LOGIN = "ghost"  # the login GitHub shows for a deleted account
 BY_NUMBER = re.compile(r"([^/@#\s]+/[^/@#\s]+)#([1-9][0-9]*)")
 BY_BRANCH = re.compile(r"([^/@#\s]+/[^/@#\s]+)@(\S+)")
+
+
+class StatusState(enum.Enum):
+    ERROR = "error"
+    FAILURE = "failure"
+    PENDING = "pending"
+    SUCCESS = "success"
+    UNKNOWN = "unknown"
+
+    @classmethod
+    def _missing_(cls, value: object) -> "StatusState":
+        return cls.UNKNOWN
+
+    @property
+    def failed(self) -> bool:
+        return self in (StatusState.ERROR, StatusState.FAILURE)
+
+
+@dataclass(frozen=True)
+class CommitStatus:
+    id: int
+    context: str
+    state: StatusState
+    target_url: str | None
+
+    @classmethod
+    def from_json(cls, status: dict) -> "CommitStatus":
+        return cls(status["id"], status["context"], StatusState(status["state"]), status["target_url"])
 
 
 def target(text: str) -> tuple[str, dict]:
@@ -62,6 +95,22 @@ def check_login() -> None:
         sys.exit(f"watch-prs: gh is not logged in: {error.stderr.strip()}")
 
 
+def version_numbers(version: str) -> tuple[int, ...]:
+    return tuple(map(int, version.split(".")))
+
+
+def check_version() -> None:
+    try:
+        printed = subprocess.run(["gh", "--version"], check=True, capture_output=True, text=True).stdout
+    except subprocess.CalledProcessError as error:
+        sys.exit(f"watch-prs: gh --version failed: {error.stderr.strip()}")
+    first_line = printed.partition("\n")[0]
+    found = GH_VERSION.search(first_line)
+    if not found or version_numbers(found[1]) < version_numbers(MINIMUM_GH_VERSION):
+        sys.exit(f"watch-prs: gh {MINIMUM_GH_VERSION} or later is needed for gh api --slurp, but gh --version "
+                 f"printed {first_line!r}. Upgrade gh, see https://github.com/cli/cli#installation")
+
+
 def resolve(repo: str, target: dict) -> int:
     if "number" in target:
         return target["number"]
@@ -80,6 +129,12 @@ def resolve(repo: str, target: dict) -> int:
     return numbers[0]
 
 
+def author(item: dict) -> str:
+    # GitHub returns "user": null for a deleted account.
+    user = item["user"]
+    return user["login"] if user else DELETED_ACCOUNT_LOGIN
+
+
 def emit(**event) -> None:
     print(json.dumps(event, ensure_ascii=False), flush=True)
 
@@ -90,23 +145,30 @@ def poll(repo: str, number: int, seen: set[str]) -> bool:
     head = pr["head"]["sha"]
     events = []
     for c in flat(api(f"repos/{repo}/issues/{number}/comments")):
-        events.append((f"ic{c['id']}", dict(kind="comment", author=c["user"]["login"], url=c["html_url"],
+        events.append((f"ic{c['id']}", dict(kind="comment", author=author(c), url=c["html_url"],
                                             body=c["body"])))
     for r in flat(api(f"repos/{repo}/pulls/{number}/reviews")):
         if r["state"] == "PENDING":
             continue
-        events.append((f"rv{r['id']}", dict(kind="review", state=r["state"], author=r["user"]["login"],
+        events.append((f"rv{r['id']}", dict(kind="review", state=r["state"], author=author(r),
                                             url=r["html_url"], body=r["body"], commit=r["commit_id"])))
     for c in flat(api(f"repos/{repo}/pulls/{number}/comments")):
-        events.append((f"rc{c['id']}", dict(kind="review-comment", author=c["user"]["login"], url=c["html_url"],
+        events.append((f"rc{c['id']}", dict(kind="review-comment", author=author(c), url=c["html_url"],
                                             path=c["path"], line=c.get("line"),
                                             in_reply_to=c.get("in_reply_to_id"), body=c["body"],
                                             commit=c["commit_id"])))
     for page in api(f"repos/{repo}/commits/{head}/check-runs"):
         for run in page["check_runs"]:
-            if run["status"] == "completed" and run["conclusion"] in FAILED:
+            if run["status"] == "completed" and run["conclusion"] in FAILED_CONCLUSIONS:
                 events.append((f"ck{run['id']}", dict(kind="check-failed", name=run["name"],
                                                       conclusion=run["conclusion"], url=run["html_url"],
+                                                      commit=head)))
+    for page in api(f"repos/{repo}/commits/{head}/status"):
+        for payload in page["statuses"]:
+            status = CommitStatus.from_json(payload)
+            if status.state.failed:
+                events.append((f"st{status.id}", dict(kind="status-failed", name=status.context,
+                                                      state=status.state.value, url=status.target_url,
                                                       commit=head)))
     for key, event in events:
         if f"{where}:{key}" not in seen:
@@ -135,6 +197,7 @@ def main() -> None:
     args = parser.parse_args()
 
     check_login()
+    check_version()
     seen = set(json.loads(args.state.read_text())) if args.state.exists() else set()
     args.state.parent.mkdir(parents=True, exist_ok=True)
     open_prs = [(repo, resolve(repo, target)) for repo, target in args.prs]

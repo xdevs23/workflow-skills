@@ -27,7 +27,7 @@ Then the skills appear in the skill list and each has a matching slash command (
 | `resume-interrupted-run` | Recover a workflow run that was stopped while agents were mid-flight: hand each interrupted seat its own prior transcript, leave every completed prompt byte-identical, resume near-losslessly. |
 | `visual-verification` | Check a change to any rendered user interface, in a browser, a native mobile or desktop toolkit or a terminal, with a reproducible visual harness: real screenshots, controlled data, measured checks and strict before and after comparisons. A project without a harness adopts one from the implementation guide bundled with the skill. |
 | `visual-decisions` | Draw the draft of a change, or open product decisions, as one page of side-by-side pictures of named code states and After, with a legend, alternatives drawn as optional picks and marks for what changed after each answer. |
-| `babysit-pr` | Watch a submitted pull request until it is closed or merged, and act on every comment, review and failed check that reaches it. |
+| `babysit-pr` | Watch a submitted pull request until it is closed or merged, and act on every comment, review, failed check and failed commit status that reaches it. |
 | `pr-comment-replies` | Write and post replies on pull requests and issues: the note alert on top, inline replies that start with their outcome and a reason for every declined finding. |
 | `report-plugin-issues` | File every problem found in this plugin as an issue on its repository, or as a comment on the open issue that already describes it, with project details and private data kept out, in place of patching its scripts silently. |
 | `hygiene` | Keep private conversation content, the user's words, setup facts, secrets and third-party material that may not ship out of everything that leaves the machine: commits, posts, documents and packages. |
@@ -53,7 +53,8 @@ also be loaded alone to review a change through its lens.
 
 - Claude Code with the Workflow tool for skills that launch stages.
 - Bun for the tests.
-- Python 3 and an authenticated GitHub CLI for `babysit-pr`.
+- Python 3 and an authenticated GitHub CLI for `babysit-pr`, in version 2.48.0 or later, the first
+  release with `gh api --slurp`, which the watcher calls.
 
 ## Tests
 
