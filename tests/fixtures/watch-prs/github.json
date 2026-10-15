@@ -1,4 +1,5 @@
 {
+  "version": "2.48.0",
   "loggedIn": true,
   "api": {
     "repos/acme/widgets/pulls?state=open&per_page=100": [
@@ -114,6 +115,46 @@
               "status": "completed",
               "conclusion": "timed_out",
               "html_url": "https://github.com/acme/widgets/runs/404"
+            }
+          ]
+        }
+      ] }
+    ],
+    "repos/acme/widgets/commits/bbb2/status": [
+      { "json": [
+        {
+          "state": "failure",
+          "total_count": 4,
+          "statuses": [
+            {
+              "id": 501,
+              "context": "ci/legacy",
+              "state": "failure",
+              "target_url": "https://ci.example.com/builds/501"
+            },
+            {
+              "id": 502,
+              "context": "ci/lint",
+              "state": "success",
+              "target_url": "https://ci.example.com/builds/502"
+            }
+          ]
+        },
+        {
+          "state": "failure",
+          "total_count": 4,
+          "statuses": [
+            {
+              "id": 503,
+              "context": "ci/deploy",
+              "state": "error",
+              "target_url": null
+            },
+            {
+              "id": 504,
+              "context": "ci/docs",
+              "state": "pending",
+              "target_url": "https://ci.example.com/builds/504"
             }
           ]
         }

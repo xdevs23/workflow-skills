@@ -64,11 +64,14 @@ const EVENTS = [
     url: 'https://github.com/acme/widgets/runs/401', commit: 'bbb2' },
   { pr: PR, head: 'bbb2', kind: 'check-failed', name: 'deploy', conclusion: 'timed_out',
     url: 'https://github.com/acme/widgets/runs/404', commit: 'bbb2' },
+  { pr: PR, head: 'bbb2', kind: 'status-failed', name: 'ci/legacy', state: 'failure',
+    url: 'https://ci.example.com/builds/501', commit: 'bbb2' },
+  { pr: PR, head: 'bbb2', kind: 'status-failed', name: 'ci/deploy', state: 'error', url: null, commit: 'bbb2' },
   { pr: PR, kind: 'merged' },
   { kind: 'done' },
 ]
 
-test('prints each event kind with its fields and skips a pending review and checks on an older commit', async () => {
+test('prints each event kind with its fields and skips a pending review, checks on an older commit and statuses that are not failed', async () => {
   const run = await watch(await fixture(), [PR])
   expect(run.stderr).toBe('')
   expect(run.status).toBe(0)
@@ -80,7 +83,8 @@ test('prints each event kind with its fields and skips a pending review and chec
 
 test('a restart with the same state prints only what is new', async () => {
   expect((await watch(await fixture(), [PR])).events).toStrictEqual(EVENTS)
-  const ids = ['ck401', 'ck404', 'ic101', 'rc301', 'rc302', 'rc303', 'rv201'].map((id) => `${PR}:${id}`)
+  const ids = ['ck401', 'ck404', 'ic101', 'rc301', 'rc302', 'rc303', 'rv201', 'st501', 'st503']
+    .map((id) => `${PR}:${id}`)
   expect(JSON.parse(await readFile(join(directory, 'state.json'), 'utf8'))).toStrictEqual(ids)
 
   const again = await watch(await fixture(), [PR])
@@ -98,6 +102,55 @@ test('a restart with the same state prints only what is new', async () => {
     { pr: PR, head: 'bbb2', kind: 'comment', author: 'reviewer', url: comment.html_url, body: 'One more thing.' },
     { pr: PR, kind: 'merged' },
     { kind: 'done' },
+  ])
+})
+
+test('a comment, review and review comment of a deleted account show the author ghost', async () => {
+  const run = await watch(await fixture((github) => {
+    for (const path of ['issues/12/comments', 'pulls/12/reviews', 'pulls/12/comments']) {
+      github.api[`repos/acme/widgets/${path}`][0].json[0][0].user = null
+    }
+    return github
+  }), [PR])
+  expect(run.stderr).toBe('')
+  expect(run.status).toBe(0)
+  expect(run.events.filter((event) => event.author).map((event) => [event.kind, event.author])).toStrictEqual([
+    ['comment', 'ghost'], ['review', 'ghost'], ['review-comment', 'ghost'],
+    ['review-comment', 'author'], ['review-comment', 'reviewer'],
+  ])
+})
+
+test('a status that turns successful prints nothing and a failure with a new id prints again', async () => {
+  const status = (id, state) => ({ json: [{ statuses: [
+    { id, context: 'ci/legacy', state, target_url: `https://ci.example.com/builds/${id}` },
+  ] }] })
+  const run = await watch(await fixture((github) => {
+    github.api[PULL] = [pull('open', false), pull('open', false), pull('closed', true)]
+    github.api['repos/acme/widgets/commits/bbb2/status'] = [
+      status(601, 'failure'), status(602, 'success'), status(603, 'failure'),
+    ]
+    return github
+  }), [PR])
+  expect(run.status).toBe(0)
+  expect(run.events.filter((event) => event.kind === 'status-failed').map((event) => event.url)).toStrictEqual([
+    'https://ci.example.com/builds/601', 'https://ci.example.com/builds/603',
+  ])
+})
+
+test('a status in a state the watcher does not know prints nothing and the watch goes on', async () => {
+  const status = (id, state) => ({ json: [{ statuses: [
+    { id, context: 'ci/legacy', state, target_url: `https://ci.example.com/builds/${id}` },
+  ] }] })
+  const run = await watch(await fixture((github) => {
+    github.api[PULL] = [pull('open', false), pull('open', false), pull('closed', true)]
+    github.api['repos/acme/widgets/commits/bbb2/status'] = [
+      status(701, 'queued'), status(702, 'failure'), status(702, 'failure'),
+    ]
+    return github
+  }), [PR])
+  expect(run.status).toBe(0)
+  expect(run.events.filter((event) => event.kind === 'status-failed').map((event) => event.url)).toStrictEqual([
+    'https://ci.example.com/builds/702',
   ])
 })
 
@@ -160,6 +213,14 @@ test('a missing login ends the tool with an error before it looks at any pull re
   expect(run.stdout).toBe('')
   expect(run.stderr).toContain('gh is not logged in')
   expect(run.calls).toStrictEqual([['auth', 'status']])
+})
+
+test('a gh older than the one that added --slurp ends the tool with an error before it looks at any pull request', async () => {
+  const run = await watch(await fixture((github) => ({ ...github, version: '2.47.0' })), [PR])
+  expect(run.status).not.toBe(0)
+  expect(run.stdout).toBe('')
+  expect(run.stderr).toContain("gh 2.48.0 or later is needed for gh api --slurp, but gh --version printed 'gh version 2.47.0 (2024-04-17)'")
+  expect(run.calls).toStrictEqual([['auth', 'status'], ['--version']])
 })
 
 test('a missing gh ends the tool with an error', async () => {

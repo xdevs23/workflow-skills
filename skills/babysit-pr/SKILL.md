@@ -1,6 +1,6 @@
 ---
 name: babysit-pr
-description: Watches a submitted pull request until it is closed or merged, and acts on every comment, review and failed check that reaches it.
+description: Watches a submitted pull request until it is closed or merged, and acts on every comment, review, failed check and failed commit status that reaches it.
 ---
 
 # Babysit a pull request
@@ -25,11 +25,11 @@ dedicated skill prescribes. It does not say who pushes a change or how a push is
   prints is one event, and otherwise in a shell where `gh` is logged in, reading the lines it
   prints.
 - The watcher prints each event as one JSON line. Its first poll prints every comment, review and
-  reply in a review thread already on the pull request and every failed check on its head commit.
-  Read the output and handle what you haven't taken care of yet.
+  reply in a review thread already on the pull request and every failed check run and failed commit
+  status on its head commit. Read the output and handle what you haven't taken care of yet.
 - After the initial dump, it polls every 60 seconds and prints each new comment, review or reply in
-  a review thread, each check that fails on the head commit, and the pull request being closed or
-  merged.
+  a review thread, each check run or commit status that fails on the head commit, and the pull
+  request being closed or merged.
 - The state file keeps the ids of what the watcher already printed, so a restarted watch prints only
   what is new. An event printed just before the watcher stops may print again after a restart.
 - Post nothing if you don't have anything with value to contribute.
@@ -52,7 +52,10 @@ dedicated skill prescribes. It does not say who pushes a change or how a push is
 
 - Tell a failure the repository causes apart from a failure of the infrastructure, and fix the
   failure the repository causes.
-- Skip check results on a commit older than the newest push.
+- Handle a `status-failed` event like a `check-failed` event. It reports a commit status in the
+  failure or error state, which a CI service posts through the commit status API instead of check
+  runs.
+- Skip a `check-failed` or `status-failed` event for a commit older than the newest push.
 
 ## Asking the user
 
