@@ -29,13 +29,13 @@ and the user reviews the code.
 
 - Once the notes are done, draw the draft of the change as `workflow-skills:visual-decisions`
   describes.
-- Save the draft as `<change>.html` in the same folder as the notes.
+- Save the draft as `<change>.html` in the same folder as the notes. Number the pages of a draft
+  that is split into several, as `<change>-2.html`.
 - When the user says what should be different, change the notes, and update the draft as
   `workflow-skills:visual-decisions` describes.
 - Start the implementation once the user approves the draft.
 - If the user can't give a clear direction or define the scope, task a workflow with draft writing,
-  marking suggested options as open and providing multiple options on scope, UI/UX design
-  and architecture.
+  providing multiple options on scope, UI/UX design and architecture as optional picks.
 
 ## Implementation
 
