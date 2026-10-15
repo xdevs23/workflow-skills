@@ -52,13 +52,21 @@ description: Applies to everything that leaves the machine or goes to someone el
 - Never edit or delete a comment a person wrote.
 - Correct a comment of your own with a new one.
 
-## Secrets
+## Secrets and personal data
 
 - Never put a secret into a tracked file, a chat message, a command argument, a log, an error
   message or a screenshot.
 - Keep a secret only in protected storage, such as a file readable by its own account alone, and
   read it from there at runtime.
+- Pass a secret to and from a helper process only as JSON on its standard input and output, never
+  as a command-line argument or an environment variable, which other processes can see.
 - Strip a credential from any output that would show it, such as a remote URL that carries a token.
+- Never keep a password given for one operation after that operation is done.
+- Treat the configuration of a remote server as possibly secret.
+- Inspect a received file for credentials and embedded host names before you use, copy or forward
+  it.
+- Never read a file of personal data or credentials into the conversation.
+- Keep a tool that logs sensitive data outside every project folder.
 
 ## Before a repository goes public
 
@@ -78,6 +86,7 @@ description: Applies to everything that leaves the machine or goes to someone el
   approves it. A font package that carries the font's license, such as a Fontsource package, is one
   way to do without the download.
 - Keep every license and notice that comes with third-party material.
+- Keep the author attribution of copied code.
 - Never relicense adopted code silently.
 - Never put a third-party mark under the project's own license.
 - Keep downloaded research material in the project cache that `workflow-skills:local-cache` defines.
