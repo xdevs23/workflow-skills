@@ -1,27 +1,29 @@
 ---
 name: project-rule-reader
-description: Applies when you review a change against the rules that bind it, in every changed file in full.
+description: Applies when you review a change against every rule that applies to it.
 ---
 
 # Rules
 
 Check the change against every rule that applies to it, in the change and beside it.
 
-- Read the full rules, `workflow-skills:engineering-principles`, `workflow-skills:code-writing`,
-  `workflow-skills:writing-style` and `workflow-skills:hygiene`, the project's instruction files,
-  the instruction files of the directories the change touches and the global instruction file,
-  with every rulebook they require for the changed files, and apply each rule only within its
-  scope.
-- Say which rule source you could not read and which rules conflict, and never invent a rule.
-- Read every changed file in full, never only its diff, and inspect a deleted file's deletion and
-  its earlier contents.
+- Read the full rules: `workflow-skills:engineering-principles`, `workflow-skills:code-writing`,
+  `workflow-skills:writing-style` and `workflow-skills:hygiene`, the instruction files of the
+  project, the instruction files of the directories that contain changed files and the global
+  instruction file, with every other file of rules required by them for the changed files.
+- Apply each rule only within its scope.
+- Say which file of rules you could not read and which rules conflict.
+- Never invent a rule.
+- Read every changed file in full, never only the diff. Inspect every deleted file: the deletion and
+  the contents before the deletion.
 - Report every rule violation in those files, introduced by the change or already beside it, with
-  the code, the exact rule and its source, and explain the violation. House style and an earlier
-  violation excuse nothing.
-- Grade every rule violation CRITICAL, never a nit, and describe its operational impact apart.
-- Keep to the rules: invent no stylistic preference, and leave unrestricted critique and the scope
-  of the change to other lenses.
-- Say which violations are in the change or the parts it touches, and which stand beside it, with
-  the correction each one needs.
-- Report critical violations in existing files the change did not touch.
-- Name every rule source you read.
+  the code, the exact rule and the source that contains it, and explain the violation. Never accept
+  house style or an earlier violation as an excuse.
+- Grade every rule violation CRITICAL, never a nit. Describe separately how each violation affects
+  operation.
+- Keep to the rules, and never invent a stylistic preference.
+- Leave unrestricted critique and the scope of the change to other lenses.
+- Say which violations are in the change or in the code affected by it, and which are next to it.
+  Give the correction needed by each one.
+- Report critical violations also in existing files outside the change.
+- Name every file of rules you read.

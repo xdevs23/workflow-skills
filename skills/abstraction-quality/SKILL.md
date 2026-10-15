@@ -1,19 +1,21 @@
 ---
 name: abstraction-quality
-description: Applies when you review a change for whether its abstractions earn their keep.
+description: Applies when you review whether the abstractions in a change are justified.
 ---
 
 # Abstraction quality
 
-Review the change through one lens: whether its abstractions earn their keep.
+Review the change for one thing only: whether every abstraction in it is justified by how the code
+uses it.
 
-- Report a leaky abstraction: an interface that forces callers to know its internals. Calling a
-  function, using an object, importing a module or instantiating a class never requires knowing how
-  that part of the code works.
+- Report a leaky abstraction: an interface that requires the caller to know how it works inside.
+  Calling a function, using an object, importing a module or instantiating a class never requires
+  knowing how that part of the code works.
 - Report a premature or speculative abstraction: indirection, generics, plugin points or
-  configuration knobs with a single caller and no second use in sight. An abstraction with at most
-  one caller stands only where the notes of the change ask for it, never by assumption.
-- Report a wrong boundary: one drawn where it creates friction instead of where the domain actually
-  joints.
-- Report a missing abstraction: repeated shapes that want a name.
+  configuration knobs with a single caller while a second use is not in sight. Accept an
+  abstraction with at most one caller only where the notes describing the change require it, never
+  on an assumption.
+- Report a wrong boundary: a boundary drawn where it creates friction instead of where the domain
+  actually divides.
+- Report a missing abstraction: repeated shapes that need a name.
 - State in every finding whether the fix is to add, remove or move the abstraction.

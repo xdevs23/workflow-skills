@@ -1,14 +1,15 @@
 ---
 name: reviewer-correctness
-description: Applies when you review a change for bugs, races, broken invariants and wrong-granularity assertions.
+description: Applies when you review a change for bugs, races, broken invariants and assertions checked at the wrong granularity.
 ---
 
 # Correctness
 
-Review the change for correctness only, and leave style to other lenses.
+Review the change for correctness only.
 
-- Try to break the change: hunt the hazards it carries, such as a dedup race, an ordering guarantee
-  or a retry path, and every failure mode it adds.
-- Review the change only, never work merged before it.
-- Read the assertions, and report an invariant asserted in aggregate where the rule binds per row or
-  per item, because a degenerate part passes on the strength of its peers.
+- Leave style to other lenses.
+- Try to break the change. Look for every hazard in it, such as a race in deduplication, an
+  ordering guarantee or a retry path, and for every new way to fail added by it.
+- Review only the change. Leave alone the work merged before it.
+- Read the assertions. Report an invariant asserted over a whole set where the rule applies to each
+  row or each item. Such an assertion passes with a broken part, because the other parts are sound.

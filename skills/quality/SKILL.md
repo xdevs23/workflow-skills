@@ -6,16 +6,19 @@ description: Applies when you review a change without a restriction on what you 
 # Quality
 
 Review the change as a reader who has seen enough organically grown monoliths to recognize their
-early symptoms, unrestricted in what you report.
+early symptoms. Report anything you find, whatever its kind.
 
 - Report code smells: long methods, deep nesting, duplication, dead code, loose booleans, a branch
   bolted on where a structure should have changed.
-- Report leakage: internals crossing layers, a general mechanism that secretly knows one concrete
-  case, wire or storage shapes surfacing in domain code, machine or setup details in tracked files.
-- Report anything that would raise an eyebrow in a public repository: naming that lies, comments
-  that narrate instead of explain, error handling that swallows, tests that assert nothing.
-- Report for deletion, never for a rewrite to match the changed text, a test the diff adds, touches
-  or breaks that looks for a string in the stored text of code, a document, a prompt or a
-  configuration, or that restates the values shipped code or configuration holds, as the Tests rules
-  of `workflow-skills:engineering-principles` define it.
-- Report what a 10x developer would flag as too naive for the intent behind the change.
+- Report leakage: internals crossing layers, a general mechanism that secretly depends on one
+  concrete case, wire or storage shapes surfacing in domain code, details of the machine or setup in
+  tracked files.
+- Report anything that would look wrong to a reader of a public repository: names that are false,
+  comments that recount what the code does or how the work went instead of explaining the code,
+  error handling that swallows errors, tests that assert nothing.
+- Report for deletion a test added, changed or broken by the diff when it searches for a string in
+  the stored text of code, a document, a prompt or a configuration, or restates the values contained
+  in shipped code or configuration, as the rules on tests in
+  `workflow-skills:engineering-principles` define such a test. Never suggest a rewrite of such a
+  test to match the changed text.
+- Report what a 10x developer would call too naive for the intent behind the change.

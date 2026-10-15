@@ -1,33 +1,33 @@
 # Part 11: diff coloring
 
-The difference image recolors the pixels the comparison component counted as changed, so a reader
-can tell what appeared from what disappeared. The coloring is a presentation step. Which pixels
-changed, how many, their ratio and the failure rule stay with the comparison component and its
-recorded options; the coloring runs afterwards on that per-pixel change mask and the changed count
-alone, and never touches a pixel outside the mask.
+The difference image recolors every pixel counted as changed by the comparison component, so a
+reader can tell what appeared from what disappeared. The coloring is a presentation step. The
+comparison component and the options recorded for it set which pixels changed, how many changed,
+the ratio of changed pixels and the rule for failure. The coloring runs afterwards and reads only
+the mask of changed pixels and the changed count. It never changes a pixel outside the mask.
 
-The coloring's parameters live in one place in the harness code. Every comparison result records
-them beside the comparison options, and every comparison report opens with a legend.
+The parameters of the coloring are defined in one place in the harness code. Every comparison
+result contains them next to the comparison options. Every comparison report starts with a legend.
 
 ## The algorithm
 
-For each changed pixel, the local contrast is the absolute distance between the pixel's luma and the
-mean luma of its surrounding window in the same image. The window has a radius of 2 pixels, so it is
-5 by 5 pixels, clipped at the image edges, with the center pixel excluded. A pixel whose clipped
-window is empty, as in a 1 by 1 image, has a local contrast of zero.
+For each changed pixel, the local contrast is the absolute distance between the luma of the pixel
+and the mean luma of the window around it in the same image. The window has a radius of 2 pixels,
+so it is 5 by 5 pixels, clipped at the image edges, with the center pixel excluded. A pixel with an
+empty clipped window, as in a 1 by 1 image, has a local contrast of zero.
 
-Luma uses the same coefficients as the reference's comparison component:
+Luma is computed with the same coefficients as in the comparison component used by the reference:
 
     luma = (0.29889531 * red + 0.58662247 * green + 0.11448223 * blue) * opacity
          + 255 * (1 - opacity)
 
 In that formula, red, green and blue are 0 to 255 and opacity is the alpha channel divided by 255.
 Partial alpha is thereby composited over white: half-opaque black has a luma of 127 over white, and
-a fully transparent pixel reads as white.
+a fully transparent pixel counts as white.
 
-The pixel is painted by comparing its local contrast in the after image with its local contrast in
-the before image. The gain is the after contrast minus the before contrast, and the margin is 10
-luma units.
+The color of a changed pixel depends on how the local contrast measured for that pixel changed from
+the before image to the after image. The gain is the after contrast minus the before contrast. The
+margin is 10 luma units.
 
 * Green, meaning added, is painted when the gain is larger than the margin. A mark now stands out
   where nothing did, or stands out more.
@@ -39,78 +39,86 @@ luma units.
 The colors are green as red 0, green 150, blue 0; red as red 220, green 0, blue 0; and blue as red
 40, green 90, blue 255. The same pass that paints the pixels counts the pixels of each kind and
 records the bounding box of all changed pixels, which is empty when nothing changed. The evidence
-sheet of part 12 uses that box.
+sheet described in part 12 uses that box.
 
-The mask is read from the comparison component's own output. The reference's component painted every
-counted changed pixel in one fixed diff color, opaque red, and the coloring recognized changed
-pixels by that exact color and alpha; the comparison left that color at its default for this reason.
-A different component supplies its mask through whatever interface it has, and the coloring reads it
-from there.
+The coloring reads the mask from the image written by the comparison component. In the reference,
+the comparison component painted every pixel counted as changed in one fixed diff color, opaque red.
+The coloring found the changed pixels by that exact color and alpha, which is why the comparison
+left that color at the default set in the component. With a different component, the coloring reads
+the mask through whatever interface that component offers.
 
 ## Why it reads correctly
 
-Because contrast is measured against each image's own surroundings, dark marks on a light theme and
-light marks on a dark theme read the same way, and a moved mark shows red at its old position and
-green at its new one. The coloring is a heuristic for reading the picture. It is no evidence that
-elements were inserted into or removed from the interface. It is chosen for bounded interface
-screenshots and makes no claim for images in general.
+Contrast is measured against the surrounding pixels in the same image. Dark marks on a light theme
+and light marks on a dark theme therefore read the same way. A moved mark shows red where it used to
+sit and green where it sits now. The coloring is a heuristic for reading the picture. It is not
+evidence that elements were inserted into or removed from the interface. It is chosen for bounded
+interface screenshots and is not claimed to hold for images in general.
 
 ## Known limits
 
-Interiors of solid areas larger than the window, and mid-tone anti-aliasing pixels enclosed by ink,
-have no surroundings to stand out from and stay neutral. In the reference's historical regression
-comparison these were six to eight percent of the changed pixels. A recolor of text that also
-changes its luma reads as a gain or a loss. A shift smaller than the window still separates into
-red and green only while the old and new positions leave the window means apart by more than the
-margin.
+The interior of a solid area larger than the window and a mid-tone anti-aliasing pixel enclosed by
+ink do not stand out from the pixels around them, so they are painted neutral. In the historical
+regression comparison run for the reference, such pixels made up six to eight percent of the
+changed pixels. Recolored text that also changes in luma is painted as a gain or a loss. A shift
+smaller than the window is still painted red and green, but only while the window means computed
+with the mark at the old and at the new position differ by more than the margin.
 
-Changing the radius or the margin is a tooling decision recorded in the project's harness contract,
-never a tolerance change. The changed count is unaffected either way.
+A change of the radius or the margin is a tooling decision, recorded in the harness contract in the
+project. It changes neither the tolerance nor the changed count.
 
 ## The legend
 
-Every comparison report and every evidence sheet carries a legend that states: changed pixels are
-recolored by a local-contrast heuristic and not by evidence from the interface's element tree; green
-marks gained contrast against their surroundings, meaning they appeared; red marks lost it, meaning
-they disappeared; blue marks other changes without a clear direction; a moved mark shows red at its
-old place and green at its new place; the window radius in pixels and the margin in luma units; and
-that unchanged pixels keep the blended grayscale of the before image. Each color is shown as a small
-swatch beside its words.
+Every comparison report and every evidence sheet contains a legend with these statements:
+
+* Changed pixels are recolored by a local-contrast heuristic, and the colors do not come from the
+  element tree of the interface.
+* Green marks gained contrast against the pixels around them, meaning they appeared.
+* Red marks lost it, meaning they disappeared.
+* Blue marks other changes without a clear direction.
+* A moved mark shows red where it used to sit and green where it sits now.
+* The window radius in pixels and the margin in luma units.
+* Unchanged pixels show the blended grayscale of the before image.
+
+Each color appears as a small swatch next to the words about it.
 
 ## Acceptance rules
 
-The self-test suite of part 14 and the historical comparison of part 17 verify the coloring with
-these rules:
+The self-test suite described in part 14 and the historical comparison described in part 17 check
+the coloring against these rules:
 
-1. The difference function returns the same changed count as the comparison component with the
-   recorded options, the three kind counts sum to it, and every pixel outside the mask is
-   byte-identical to the comparison component's raw output. Every recolored pixel uses one of the
-   three legend colors, and comparing an image with itself gives zero of each kind.
-2. Synthetic fixtures paint an inserted 3 by 3 mark green and a removed one red, on both a white
-   field and a near-black field; a moved mark yields nine red and nine green pixels and a changed
-   count of eighteen.
-3. A faint-to-bold mark paints green and a bold-to-faint mark red. A uniform fill, a hue change of
-   equal luma, a 1 by 1 image and a pixel whose clipped window is all ink stay neutral. A mark at
-   the image corner is painted by its clipped window, so a 2 by 2 mark there paints four green
-   pixels, and a 3 by 3 mark there paints eight green pixels and one neutral pixel enclosed by ink.
-   A mark on a fully transparent field paints green, and clearing white to transparent stays
-   neutral. Half-opaque black has luma 127 over white, and a half-opaque mark appearing, vanishing,
-   becoming opaque or fading from opaque on a transparent field paints green, red, green and red
-   respectively.
-4. The project's historical regression comparison keeps its recorded changed counts per variant, and
-   the newly visible element paints green and the old one red in the light and the dark variants.
+1. The difference function returns the same changed count as the comparison component run with the
+   recorded options. The counts of the three kinds add up to that count. Every pixel outside the
+   mask is byte-identical to the raw image written by the comparison component. Every recolored
+   pixel has one of the three legend colors. Comparing an image with itself gives zero pixels of
+   each kind.
+2. On synthetic fixtures with a white field and with a near-black field, an inserted 3 by 3 mark is
+   painted green and a removed one red. A moved mark gives nine red and nine green pixels and a
+   changed count of eighteen.
+3. A mark that turns from faint to bold is painted green, and a mark that turns from bold to faint
+   red. A uniform fill, a hue change of equal luma, a 1 by 1 image and a pixel with a clipped window
+   made only of ink are painted neutral. A mark in a corner of the image is painted by the clipped
+   window: a 2 by 2 mark there gives four green pixels, and a 3 by 3 mark there gives eight green
+   pixels and one neutral pixel enclosed by ink. A mark on a fully transparent field is painted
+   green. Clearing white to transparent is painted neutral. Half-opaque black has luma 127 over
+   white. On a transparent field, a half-opaque mark that appears, vanishes, becomes opaque or fades
+   from opaque is painted green, red, green and red respectively.
+4. The historical regression comparison run in the project gives the changed counts recorded for
+   each variant. In the light and the dark variant, the newly visible element is painted green and
+   the old one red.
 
 ## Web realization in the reference
 
-The reference implemented the coloring in a small TypeScript module operating on the decoded PNG
-buffers of `pngjs`, after `pixelmatch` had written its difference image. It recolored that image in
-place.
+The reference implemented the coloring in a small TypeScript module that worked on PNG buffers
+decoded by `pngjs`, after `pixelmatch` had written the difference image. The module recolored that
+image in place.
 
 ## Native and terminal realizations
 
-The coloring works on PNG pixels and is the same for every platform. A terminal harness whose images
-come from a terminal emulator gets clean glyph edges and solid cell backgrounds, so most changed
-glyphs separate into green and red and changed cell backgrounds read as neutral fills.
+The coloring works on PNG pixels and is the same on every platform. Images taken by a terminal
+harness from a terminal emulator have clean glyph edges and solid cell backgrounds. Most changed
+glyphs are therefore painted green and red, and changed cell backgrounds are painted as neutral
+fills.
 
 The recolored difference images are written into the comparison directory inside the harness
-directory in the project cache, the location `workflow-skills:local-cache` defines.
+directory in the project cache, the location defined by `workflow-skills:local-cache`.
