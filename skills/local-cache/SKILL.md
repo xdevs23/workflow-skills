@@ -5,30 +5,32 @@ description: Applies when you decide where to put a file that is not meant for t
 
 # The project cache
 
-When the session has a skill named `local-cache` without the plugin prefix, that skill applies
-and this one does not. This skill, `workflow-skills:local-cache`, applies only when it is the only
-`local-cache` skill available. The user's global preferences about this directory take priority
-over this file wherever the two differ.
+- Use a skill named `local-cache` without the plugin prefix in place of this one when the session
+  has it. Use this skill, `workflow-skills:local-cache`, only when it is the only `local-cache`
+  skill available.
+- Follow the user's global preferences about this directory wherever they differ from this file.
 
 ## The directory
 
-- Use the `.cache/` directory at the project root as the project cache, ignored and untracked.
-- Make sure the project's ignore rules cover it before you write anything there.
+- Use the `.cache/` directory at the project root as the project cache. It is ignored and
+  untracked.
+- Make sure the ignore rules of the project cover it before you write anything there.
 - Never commit anything in it.
 
 ## What goes there
 
-Put these files of the work, which are not meant for the repository, in the project cache:
+Put these files, which are not meant for the repository, in the project cache:
 
 - temporary files, logs, research documents and plans;
 - private specs, under `.cache/specs/`;
 - workflow worktrees, under `.cache/worktrees/`;
-- a writing stage's scratch files, under `.cache/<agent-scope>/`, one directory per agent. A
-  writing stage that works inside a worktree puts them under that worktree's own `.cache/`.
+- the scratch files written by a writing stage, under `.cache/<agent-scope>/`, one directory per
+  agent. A writing stage that works inside a worktree puts them under the `.cache/` inside that
+  worktree.
 
 ## Reading stages
 
-- A reading stage writes nothing, in the project cache or anywhere else: no copies of files and no
-  notes.
-- The one exception is the output of a command that cannot be read directly, which a reading stage
-  may write to the system temporary directory.
+- Write nothing in a reading stage, in the project cache or anywhere else: neither copies of files
+  nor notes.
+- As the only exception, a reading stage may write the output of a command that cannot be read
+  directly to the system temporary directory.

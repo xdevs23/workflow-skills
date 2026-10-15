@@ -1,23 +1,22 @@
 ---
 name: report-plugin-issues
-description: Applies when you find a problem with the workflow-skills plugin itself, such as one of its skills, scripts, agent templates or tools failing, contradicting itself or standing in the way of the work.
+description: Applies when you find a problem with the workflow-skills plugin itself, such as one of its skills, scripts, agent templates or tools failing, contradicting itself or blocking the work.
 ---
 
 # Reporting issues and obstacles in the workflow-skills plugin
 
-**Load the `workflow-skills:writing-style` skill first.** It binds every comment, document, commit
-message and reply this skill produces, and it is not optional when working with this plugin.
+**Load the `workflow-skills:writing-style` skill first.** The rules in it apply to every comment,
+document, commit message and reply you write while you follow this skill. Load it whenever you work
+with this plugin.
 
-Every problem you find in the plugin becomes an issue on its GitHub repository,
-`xdevs23/workflow-skills`.
-
-- File an issue for every problem you find in the plugin itself, such as a shipped script that fails
-  or judges its input wrongly, a check that stops a run for a reason the plugin's rules do not give,
-  two rules that contradict each other, a skill or template that states something the code does not
-  do, or a tool or command the plugin names that is missing.
+- File every problem you find in the plugin itself as an issue on the GitHub repository
+  `xdevs23/workflow-skills`, which contains the plugin. Such problems include a shipped script that
+  fails or wrongly judges the input it is given, a check that stops a run for a reason not given in
+  the rules of the plugin, two rules that contradict each other, a skill or template that describes
+  something not done by the code, and a tool or command named by the plugin but missing.
 - Never patch the plugin's scripts silently to get past a problem. File the issue instead.
-- When you work as a stage that writes nothing, such as a reviewer, report the problem in what you
-  return, and the session that runs you files the issue.
+- When you work as a stage that writes nothing, such as a reviewer, report the problem in your
+  result. The session that runs you files the issue.
 
 ## An issue that already exists
 
@@ -27,27 +26,28 @@ Every problem you find in the plugin becomes an issue on its GitHub repository,
   of filing a new issue, with this command:
   `gh issue comment <number> --repo xdevs23/workflow-skills --body-file <file>`.
 
-## What the issue says
+## Contents of the issue
 
-- Give the issue a title that names the problem in plain words.
+- Title the issue with the problem in plain words.
 - Describe one problem per issue.
-- State the plugin version from its manifest, and the skill, script, template or tool where the
-  problem sits.
-- State what you did, what happened and what the plugin's own text says should happen, with the
-  error text quoted.
+- State the version of the plugin, from the plugin manifest.
+- Name the skill, script, template or tool with the problem.
+- State what you did, what happened and what should happen according to the text of the plugin,
+  and quote the error message.
 
-## What stays out
+## What to keep out
 
-- Keep out everything of the project you work in: its name, paths, code, data, people and decisions.
-- Keep out everything `workflow-skills:hygiene` keeps out of a public post.
+- Keep out everything about the project in which you work: the name of the project, its paths, code,
+  data and decisions, and the people involved in it.
+- Follow `workflow-skills:hygiene` for what must stay out of a public post.
 - Rewrite every example and every quoted error into a made-up one of the same shape before it goes
   into the issue.
 
 ## Filing
 
-- Open the body of every issue and every comment with the note alert that
-  `workflow-skills:pr-comment-replies` describes.
-- Write the body to a file in the project cache that `workflow-skills:local-cache` defines.
+- Open the body of every issue and every comment with the note alert described in
+  `workflow-skills:pr-comment-replies`.
+- Write the body to a file in the project cache defined by `workflow-skills:local-cache`.
 - File the issue directly with
   `gh issue create --repo xdevs23/workflow-skills --title "<title>" --body-file <file>`.
-- Tell the user the number of the issue or comment you posted.
+- Tell the user the number of the posted issue or comment.

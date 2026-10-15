@@ -5,298 +5,331 @@ description: Applies whenever you design, build, change, test or debug software,
 
 # Engineering principles
 
-**Load the `workflow-skills:writing-style` skill first.** It binds every comment, document, commit
-message and reply this skill produces.
-
-These principles bind the shape of every system you design or change and the way you do the work,
-in every language. `workflow-skills:code-writing` holds how the code itself reads.
+- Load `workflow-skills:writing-style` first, and follow it in every comment, document, commit
+  message and reply you write under this skill.
+- Follow these principles in every language whenever you design or change a system, both for the
+  shape of the system and for the way you do the work. `workflow-skills:code-writing` contains the
+  rules for how the code itself reads.
 
 ## The hollow lattice
 
-- Design the architecture as a hollow lattice: a new module slots in without a change to the core,
-  and a core that knows details of the modules plugged into it is defective.
+- Design the architecture as a hollow lattice, into which a new module slots without a change to
+  the core. A core that contains details of the modules plugged into it is defective.
 - Add a new kind of thing, such as a message type, a provider or a module, by registering it in a
-  registry, never by editing a shared switch or enum. Dispatch data to its handler by an identifier
-  the data carries for that purpose, such as its declared type, never by matching names or pulling
-  a key out of the payload.
-- Let the shape of the data flow carry the intent. Before you write a step whose name states an
-  outcome, such as "ensure first" or "start turn", check whether the data flow already produces that
+  registry, never by editing a shared switch or enum.
+- Dispatch data to the handler for it by an identifier included in the data for that purpose, such
+  as the type declared in the data, never by matching names or pulling a key out of the payload.
+- Let the shape of the data flow show the intent. Before you write a step named after an outcome,
+  such as "ensure first" or "start turn", check whether the data flow already produces that
   outcome, or would after a small change.
-- Never name a concrete case in shared code: no module types, no provider shapes and no domain words
-  in generic code. Design, name and word a platform concept without its first consumer, and plug
-  the consumers in as subsystems under it.
-- Let nothing cross a layer boundary unchanged. Convert arriving data into typed fields of the
-  receiving layer that name no detail of the other layer, and convert it back into the other
-  layer's own form when it goes back. Map every field of the other layer's form, or drop it on
-  purpose.
+- Never name a concrete case in shared code. Leave module types, the shapes of providers and words
+  from the domain out of generic code.
+- Design, name and word a platform concept apart from the first consumer that uses it, and plug the
+  consumers in as subsystems under the concept.
+- Let nothing cross a boundary between layers unchanged. Convert data arriving at a layer into
+  typed fields defined in that layer, which do not mention any detail of the other layer. Convert
+  the data back into the form used by the other layer when it goes back.
+- Map every field of the form used by the other layer, or drop the field on purpose.
 - Hand collaborators in, never fetch them from a global registry.
-- Put into a base interface only the members every implementation has.
-- Connect two subsystems that must talk through one named bridge, so neither knows the other.
+- Put into a base interface only the members present in every implementation.
+- Connect two subsystems that must communicate through one named bridge, so neither contains
+  details of the other.
 - Keep contracts tiny: one or two required members, the rest optional or derived.
 - Discover an interface from the inside out, from what the code implementing it does and needs, one
   piece at a time, never as a full interface written up front from assumptions.
 - Shape the architecture so requirements fit naturally.
 - Refactor a wrong foundation and delete the machinery compensating for it.
-- Preserve useful abstractions, and choose structures that carry the intent.
-- Reject a specification that mandates an architectural violation.
-- Build code in distinct modules, layers and interfaces: one adapter handles the input, another the
-  output, the core stays agnostic, and the UI is decoupled from the renderer that draws it.
+- Preserve useful abstractions.
+- Choose structures that show the intent.
+- Reject a specification that requires breaking the architecture.
+- Build code in distinct modules, layers and interfaces: one adapter handles the input and another
+  the output, the core contains details of neither, and the user interface is separate from the
+  renderer that draws it.
 
 ## Separation and ownership
 
-- Keep data, logic and presentation in distinct layers, and give each component one job. Put a
-  check into the component whose concern it is.
-- Keep business logic out of a boundary such as an endpoint or a command handler: the boundary only
-  passes the caller's intent on to the code that holds the logic. A shell or an adapter is
-  packaging only, with no application logic.
-- Let each entity own its state and lifecycle: no god objects, no state bags and no global mutable
-  state behind a lock. Prefer asking another entity through its contract over reading its stored
-  state directly.
-- Run every query of a data store in the component that owns that collection or table, through the
-  one place in the project that runs queries. A mapping, a provider, a worker or a route asks that
-  component for the data, and only that component has a handle to the store.
+- Keep data, logic and presentation in distinct layers.
+- Give each component one job, and put a check into the component responsible for what it checks.
+- Keep business logic out of a boundary such as an endpoint or a command handler. The boundary only
+  passes what the caller asked for on to the code that contains the logic.
+- Let a shell or an adapter only package the application, without any of the logic of the
+  application.
+- Let each entity own its state and lifecycle. Never build a god object, a bag of loose state or
+  global mutable state behind a lock.
+- Prefer asking another entity through its contract over reading its stored state directly.
+- Run every query against a data store in the component that owns that collection or table, through
+  the one place in the project that runs queries. A mapping, a provider, a worker or a route
+  requests the data from that component. Only that component has a handle to the store.
 - Write the field names of stored data only in the component that owns the data. Another component
-  hands the owner typed values, and the owner builds the record from them.
-- Never change what was passed into a function. Convert an input into a new value, and change the
-  caller's data only when that is the function's stated purpose.
+  passes typed values to the component that owns the data, which builds the record from them.
+- Never change what was passed into a function. Convert an input into a new value, and change data
+  passed in by the caller only when changing it is the stated purpose of the function.
 - Represent one resource, such as a device, a connection or an open file, by exactly one object that
   can't be copied by accident.
-- Give every concurrent task a scope that waits for it to finish or cancels it. State shared between
-  tasks lives with one task, and the others send it messages. No fire-and-forget thread, and no flag
-  read across threads.
-- Run code bound to a thread, such as rendering or UI, on that thread, and assert at its entry point
-  that it runs there.
+- Give every concurrent task a scope that waits for it to finish or cancels it.
+- Keep state shared between tasks in one task, and let the other tasks send that task messages.
+- Never start a fire-and-forget thread, and never read a flag across threads.
+- Run code bound to a thread, such as rendering or the user interface, on that thread, and assert at
+  its entry point that it runs there.
 - Never let a shared component, such as a web server, a database or a message bus, wait for or
   depend on the setup of the services that use it.
 
 ## Truth, state and decisions
 
-- Make each decision in one place, record it once, and let all other code read the record. A check
-  that derives the same decision a second time means the decision isn't recorded: record it and
-  delete the second derivation. A value two programs or languages must agree on has one definition,
-  never a copy in each.
+- Make each decision in one place, record it once, and let all other code read the record.
+- A check that derives the same decision a second time shows that the decision isn't recorded.
+  Record the decision and delete the second derivation.
+- Define a value on which two programs or languages must agree once, never as a copy in each.
 - Keep the truth in durable state, such as a database. An event only signals that the stored data
-  changed, the receiver reads the current data from the store, and recovery from a crash inspects
-  the stored data.
-- Let a signal carry ids and flags, never content. The receiver fetches what it needs by id.
-- Act in a handler on the source the event names, never on an ambient "current" instance.
-- Derive state, and never store it beside the data it follows from. This rule comes before the
-  preference for asking through a contract: read another entity's stored state directly before you
-  store data derived from it.
-- Never treat a cache, a shortcut or any other optimization as the truth: everything works without
-  it, only slower. A derived form, such as one consumer's format of the source data or a display
-  form, stays rebuildable from its source and is never read back as data. Make optimizations,
-  caches and jitter-smoothing buffers pluggable, so each can be removed and tested without.
-- Compute an expensive derived value, such as a layout or text measurements, once per change of its
-  inputs, never on every read during a frame. The computed form is never the truth. Events,
-  observers, subscriptions or another push mechanism may report the change.
-- Keep state deterministic and reloadable. Correctness never depends on ephemeral client state.
-- Never let an unordered collection decide a result. When several items can match, define which one
-  wins or make the ambiguity an error, and never depend on the order a map, a directory listing or
-  an unsorted query returns.
-- Show on a screen what the backend decided, and never decide again in the screen's code: no
-  optimistic state and no second copy of the backend's data.
-- Let a mutation answer only success or failure. Read the data afresh when a notification says it
-  changed, and let side effects react to that notification, never run inside the mutation. A
-  frontend sends the new data, never reads it back from the response, and reloads it, fully or
-  partly where supported, through the same code path as a full reload or restart. Use a
-  subscription, such as websockets, long polling or an event stream, wherever one can be used.
+  changed. The receiver reads the current data from the store, and recovery from a crash reads the
+  stored data.
+- Let a signal contain ids and flags, never content. The receiver fetches what it needs by id.
+- Act in a handler on the source identified in the event, never on an ambient "current" instance.
+- Derive state, and never store it beside the data from which it follows. This rule comes before
+  the preference for asking through a contract: read the stored state of another entity directly
+  before you store data derived from it.
+- Never treat a cache, a shortcut or any other optimization as the truth. Everything works without
+  it, only slower.
+- Make a derived form, such as the source data formatted for one consumer or a form for display,
+  rebuildable from the data it was derived from, and never read it back as data.
+- Make optimizations, caches and buffers that smooth jitter pluggable, so each of them can be
+  removed and the system tested without it.
+- Compute an expensive derived value, such as a layout or the measurements made on text, once per
+  change of the inputs it is computed from, never on every read during a frame. The computed form is
+  never the truth. Events, observers, subscriptions or another push mechanism may report the change.
+- Keep state deterministic and reloadable. Correctness never depends on short-lived state in the
+  client.
+- Never let an unordered collection determine a result. When several items can match, define which
+  one wins or make the ambiguity an error. Never depend on the order in which a map, a directory
+  listing or an unsorted query returns items.
+- Show on a screen the decision made by the backend, and never make the decision again in the code
+  of the screen. Keep neither optimistic state nor a second copy of the data from the backend there.
+- Let a mutation return only success or failure.
+- Read the data again when a notification reports that it changed. Let side effects react to that
+  notification, never run inside the mutation.
+- Let a frontend send the new data and never read it back from the response. The frontend reloads
+  the data, fully or partly where supported, through the same code path as a full reload or
+  restart.
+- Use a subscription, such as websockets, long polling or an event stream, wherever one can be used.
 - Prefer reactive, event-driven and data-driven designs over chains of calls in which each step
   starts the next.
-- Never synchronize by time: no sleep, delay or polling loop in place of waiting on the event or
-  state that signals readiness.
+- Never synchronize by time. Wait on the event or the state that signals readiness, never on a
+  sleep, a delay or a polling loop.
 - Count progress in the unit of the work, such as ticks, frames or samples. Use wall time only when
   the intent is real time, such as waiting 200 ms, and measure it on a monotonic clock.
-- Write one change in a single transaction of the data store, never spread across several store
-  calls in separate transactions.
-- Write in an update only what the caller supplied. A field the caller left out keeps its stored
-  value.
+- Write one change in a single transaction of the data store, never spread across several calls to
+  the store in separate transactions.
+- Write in an update only what the caller supplied. The update does not change a field left out by
+  the caller.
 - Never run a network call inside a database transaction.
-- Make work demand-driven with backpressure: nothing is fetched, read or computed before the next
-  stage can take it, a stream owns its resources, and dropping the consumer releases them.
-- Stream files and request or response bodies, never load them whole, and prefer asynchronous code
-  wherever it fits.
-- Add no queue, buffer or cache unless the design names it with its purpose.
-- Make work idempotent at a stated granularity, checked against durable state. Derive the ids
-  another system receives from durable positions, such as the id of the stored row or the log
-  offset the work came from.
-- Record first, then act: durably write what the action acts on before performing it, so the action
-  names its own record and recovery after a crash replays from it. Never compute first and insert
-  later, and never predict a future id.
+- Make work demand-driven with backpressure. Fetch, read or compute something only when the next
+  stage can take it.
+- Let a stream own its resources, and release them when the consumer is dropped.
+- Stream files and the bodies of requests and responses, never load them whole.
+- Prefer asynchronous code wherever it fits.
+- Add a queue, a buffer or a cache only where the design includes it together with its purpose.
+- Make work idempotent at a stated granularity, checked against durable state.
+- Derive the ids sent to another system from durable positions, such as the id of the stored row or
+  the offset in the log from which the work came.
+- Record first, then act. Before you perform an action, durably write what it acts on, so the
+  action refers to that stored record and recovery after a crash replays from it.
+- Never compute first and insert later, and never predict a future id.
 
 ## Write once, no hacks
 
-- Write every part once. Duplication is a defect wherever it is found, and a defect in a shared
-  component is fixed inside it, never by giving each consumer a copy.
-- Reuse the project's utilities, patterns, dependencies and code paths. Prior art in the codebase
-  decides how a new piece behaves.
-- Bolt on no hack, band-aid, workaround or protective check: fix a hazard through the architecture.
-  When a change needs a bolt-on, change the architecture so the work slots in, and redesign a shape
-  that keeps collecting such checks.
-- At a roadblock, stop and ask before any workaround or compatibility shim.
-- Add no carve-out where the existing path already covers the case.
+- Write every part once. Duplication is a defect wherever it is found.
+- Fix a defect in a shared component inside that component, never by giving each consumer a copy.
+- Reuse the utilities, patterns, dependencies and code paths of the project. Prior art in the
+  codebase determines how a new piece behaves.
+- Fix a hazard through the architecture, never by bolting on a hack, a band-aid, a workaround or a
+  protective check.
+- When a change needs a bolt-on, change the architecture so the work slots in.
+- Redesign a shape to which such checks are added again and again.
+- At a roadblock, stop and ask before you add any workaround or compatibility shim.
+- Never add a carve-out where the existing path already covers the case.
 - Keep branches small and few. Replace a growing conditional with indirection, abstraction or a
   structure that makes the case impossible instead of handled.
 - Build critical paths, such as boot, init and deployment, on robust, declarative mechanisms, never
   on fragile shell scripts.
-- Keep builds reproducible: lock every dependency to an exact version fetched with a checksum, and
-  run every build, release included, from a clean checkout with one command and no manual step.
-- Write no parser by hand for an established format, and never parse structured data as text.
-- Keep communication structured, and build output from typed parts, never by string interpolation.
-- Read the state the mechanism already reports instead of adding a parallel flag, sentinel or magic
-  string.
+- Keep builds reproducible. Lock every dependency to an exact version fetched with a checksum, and
+  run every build, release included, from a clean checkout with one command and without a manual
+  step.
+- Never write a parser by hand for an established format.
+- Never parse structured data as text.
+- Keep communication structured.
+- Build output from typed parts, never by string interpolation.
+- Read the state already reported by the mechanism instead of adding a parallel flag, sentinel or
+  magic string.
 - Represent absence as absence: an empty collection, a null or optional, or an error, never a
   placeholder of the same type.
 
 ## Types, input, limits and errors
 
-- Type data everywhere: no raw JSON lookups, no stringly-typed dispatch and no anonymous structures
-  on a bus. Make illegal states unrepresentable.
+- Type data everywhere. Never look up keys in raw JSON, dispatch on strings or send an anonymous
+  structure on a bus.
+- Make illegal states unrepresentable.
 - Read and write a stored record as a typed model, converted where it enters or leaves the store.
   Never build or read a stored record as a dictionary literal or by looking up its keys.
-- Judge a string in code by its purpose. A string standing for something the language can type
-  becomes an enum or a class. A string whose purpose is text, such as a message or a name an outside
-  format fixes, stays a string, defined in one place.
+- Judge a string in code by its purpose. Turn a string standing for something that can be typed in
+  the language into an enum or a class. Keep a string whose purpose is text, such as a message or
+  a name fixed by an outside format, as a string, defined in one place.
 - Define a closed set of domain values, such as the outcomes of a decision or the states of a job,
-  once, as an enum in the form the language file of `workflow-skills:code-writing` names. A set
-  that modules extend, such as message types or providers, is not closed and goes into a registry.
-- Put the definition of a closed set in the module of its concept, such as the user roles in the
-  access model, and in no other module in any form, as strings, a collection of them or an enum of
-  its own, also not in a module that uses the concept. An edge adapter that maps outside spellings
-  and a test name the values through the definition and define no set.
-- State an order among the values of a closed set in its definition, as a rank or a comparison
-  written out with the values. Never read the order from position, in a list or in the declaration,
-  such as the last entry as the highest role or a comparison of ordinals.
-- Write the text of a value of a closed set only in its definition, and name the value through the
-  definition everywhere else, also where a type lists the allowed strings.
-- Map an outside spelling of a value of a closed set, such as a wire or database spelling, in the
-  adapter of that edge, never in the definition.
-- Keep the behavior that belongs to a value of a closed set with the set's definition, never in
-  conditions over the value's text spread across the callers.
+  once, as an enum in the form given in the file for the language in
+  `workflow-skills:code-writing`.
+- Treat a set extended by modules, such as message types or providers, as not closed, and put it
+  into a registry.
+- Put the definition of a closed set in the module for the concept it belongs to, such as the user
+  roles in the access model. Never define the set in another module or in another form, whether as
+  strings, a collection of strings or a separate enum, also not in a module that uses the concept.
+- Let an adapter at the edge that maps outside spellings, and a test, refer to the values through
+  the definition. Neither of them defines a set.
+- State an order among the values of a closed set in the definition of the set, as a rank or a
+  comparison written out with the values. Never read the order from position, in a list or in the
+  declaration, such as the last entry as the highest role or a comparison of ordinals.
+- Write the text of a value of a closed set only in the definition of the set, and name the value
+  through the definition everywhere else, also where a type lists the allowed strings.
+- Map an outside spelling of a value of a closed set, such as the spelling on the wire or in a
+  database, in the adapter at that edge, never in the definition.
+- Keep the behavior that belongs to a value of a closed set with the definition of the set, never
+  in conditions over the text of the value spread across the callers.
 - Convert text into a value of a closed set once, where the text arrives, such as from a JSON field
-  or a stored value, with a check that reads text naming no value as unknown, never with a cast or
-  as a default value.
-- Turn a value of a closed set back into text only where it leaves.
+  or a stored value. Use a check that reads text matching none of the values as unknown, never a
+  cast or a default value.
+- Turn a value of a closed set back into text only where it leaves the program.
 - Store a value as a stable identifier: an enum by a stable name or value, never by its position in
-  the declaration, and nothing as the text shown to the user.
-- Read a value the data defines, such as a currency, a unit, a locale or a timezone, from that data,
-  never hardcoded, defaulted or inferred, and fail when it is missing. Where only one value is
-  allowed, validate the input against it and use the validated value.
-- Read input resiliently: a malformed field reads as unknown and the rest stays usable.
-- Accept one form per input, and refuse tolerance that has no technical reason.
+  the declaration, and never any value as the text shown to the user.
+- Read a value defined by the data, such as a currency, a unit, a locale or a timezone, from that
+  data, never hardcoded, defaulted or inferred, and fail when it is missing. Where only one value
+  is allowed, validate the input against it and use the validated value.
+- Read input resiliently. Read a malformed field as unknown, and keep the rest usable.
+- Accept one form per input, and refuse tolerance without a technical reason.
 - Make a conversion exact or fail. Never apply automatically a conversion that could lose or
   reinterpret a value, such as narrowing a number, a number to text or a negative to unsigned.
-- Make a configuration that can't work fail the build or the start, never its first use, by
+- Make a configuration that can't work fail the build or the start, never the first use of it, by
   checking conflicting or impossible settings where they are defined.
-- Set no limit of your own: the machine's resources and an external system's own refusal are the
-  only limits. Add no fixed or configurable cap and no shape that caps a count or rate below what
-  the hardware carries, such as a single point every request passes one at a time, a scan that
-  grows with the count or a table that can't grow.
-- Never assume an external system's limit: handle it when the system refuses, and accept it only
-  with its cost, its official source, the date that source was checked and a person's sign-off.
-  Never accept a limitation yourself: report the evidence and stop.
-- Reserve memory as data arrives, never up front from a length the other side claims.
-- Let a measurement on one machine inform an experiment, never decide a constant, a default, a
-  threshold or which design is built. Derive such a value from the design, such as from what the
-  data structure or the algorithm requires, find it at runtime on the machine the software runs on,
-  or remove the mechanism that needs it.
-- Keep no hand-curated list where judgment is needed: keep the mechanical check strict and give the
-  caller an explicit override.
-- Let a check tell "the value is wrong" apart from "I couldn't tell": its answer carries an explicit
-  status that outranks the exit code, and a transient failure never discards a good value.
-- Fail loud: something that must be handled raises when nothing handles it, and no silent check
-  hides a broken state. Handle or pass on every error a call returns.
-- Report success from a confirmed result: a step that can fail returns its outcome, and the next
+- Never set a limit yourself. The resources of the machine and a refusal from an external system
+  are the only limits.
+- Never add a fixed or configurable cap, or a shape that caps a count or a rate below what the
+  hardware can handle, such as a single point through which every request passes one at a time, a
+  scan that grows with the count or a table that can't grow.
+- Never assume a limit of an external system. Handle the limit when the system rejects a request,
+  and accept it only together with what it costs, the official source that documents it, the date
+  that source was checked and approval from a person.
+- Never accept a limitation yourself. Report the evidence and stop.
+- Reserve memory as data arrives, never up front from a length claimed by the other side.
+- Let a measurement on one machine inform an experiment, never set a constant, a default, a
+  threshold or the choice of which design is built. Derive such a value from the design, such as
+  from what the data structure or the algorithm requires, find it at runtime on the machine where
+  the software runs, or remove the mechanism that needs it.
+- Where judgment is needed, never keep a hand-curated list. Keep the mechanical check strict and
+  give the caller an explicit override.
+- Let a check distinguish "the value is wrong" from "I couldn't tell". Its result contains an
+  explicit status that takes precedence over the exit code.
+- Never let a transient failure discard a good value.
+- Fail loud. Something that must be handled raises an error when nothing handles it, and a silent
+  check never hides a broken state.
+- Handle or pass on every error returned by a call.
+- Report success from a confirmed result. A step that can fail returns its outcome, and the next
   step and the message to the user depend on it.
-- Fail closed: an unknown, missing or malformed identity resolves to no access, never to the most
-  powerful one, and a refusal never reveals that something the caller can't see exists. Check a
-  permission by its exact identifier, never by a pattern or substring over text.
-- Never let a default open access or share an identity: no default password, root shell or automatic
-  login, and no seed, UUID or key two installations would share. A value that must be chosen per
-  installation has no default.
-- Store a security record, such as a password hash or an encrypted blob, with its algorithm and
-  parameters, and check the parameters against minimums before you trust it.
-- Make a secret impossible to print: hold it in a type whose printed and debug forms are redacted,
-  and clean a diagnostic that may repeat it before shortening it.
-- Never switch transport security off. Certificate checks stay on, and a private certificate
-  authority goes into the trust store instead of a skipped verification.
-- Keep authority, whether this caller may reach something, and consent, whether a person agreed to
-  this act, apart, each answered by its own mechanism. Consent never grants authority, authority
-  never counts as consent, and an automatic approval never grants reach.
-- Return a decision's verdict together with the facts it read, and let each place that shows the
-  outcome, such as a command line, a user interface or an API response, write its own message from
-  those facts, so no message describes a different moment than the decision.
+- Fail closed. Deny all access to an unknown, missing or malformed identity, never give it the most
+  powerful access, and never reveal in a refusal that something hidden from the caller exists.
+- Check a permission by its exact identifier, never by a pattern or substring over text.
+- Never let a default open access or share an identity. Never ship a default password, a root shell
+  or an automatic login, or a seed, a UUID or a key shared by two installations.
+- Leave a value that must be chosen per installation without a default.
+- Store a security record, such as a password hash or an encrypted blob, with the algorithm and the
+  parameters used to make it, and check the parameters against minimums before you trust it.
+- Make a secret impossible to print. Keep it in a type whose printed and debug forms are redacted,
+  and remove it from a diagnostic that may contain it before you shorten the diagnostic.
+- Never switch transport security off. Keep certificate checks on, and put a private certificate
+  authority into the trust store instead of skipping verification.
+- Keep authority and consent apart, and check each with a separate mechanism. Authority is whether
+  this caller may access something, and consent is whether a person agreed to this act.
+- Never let consent grant authority, never count authority as consent, and never let an automatic
+  approval grant access.
+- Return each verdict together with the facts it was based on. Let each place
+  that shows the outcome, such as a command line, a user interface or an API response, write a
+  separate message from those facts, so that every message describes the same moment as the
+  decision.
 - Pass a failure across a language or process boundary as data, never as a panic or an exception
   that unwinds across it.
 - Choose what leaves a system by an allowlist of fields, never by a denylist.
 
 ## Recovery and error messages
 
-- Show an error to a person or an agent only when the system can't recover on its own and only a
+- Show an error to a person or an agent only when the system can't recover by itself and only a
   person can fix the cause, such as the one who sees it, someone they can ask, or the developers.
-  Until then the system recovers: it retries a temporary failure, or carries on without the failed
-  part.
-- Give every error that reaches a person or an agent a next step, drawn from one central source,
-  never a hint written for one case. An error that only says what happened is incomplete, such as
-  "Image processing failed.", and so is one that asks for what the system could have done itself,
+  Until then, let the system recover: it retries a temporary failure, or continues without the
+  failed part.
+- Give every error shown to a person or an agent a next step, drawn from one central source, never a
+  hint written for one case. An error that only reports what happened is incomplete, such as "Image
+  processing failed.". So is an error whose next step is what the system could have done itself,
   such as "Image processing failed. Try again later."
-  - A cause they can fix gets how to fix it: "Image couldn't be processed, because its metadata is
-    invalid. Upload an image with valid metadata, or convert it to another format first."
-  - A cause in the system gets what they can try in the meantime: "Image failed to process due to a
-    server error. We have recorded the failure and will work on a fix. In the meantime, try a
+  - For a cause they can fix, show how to fix it: "Image couldn't be processed, because its
+    metadata is invalid. Upload an image with valid metadata, or convert it to another format
+    first."
+  - For a cause in the system, show what they can try in the meantime: "Image failed to process due
+    to a server error. We have recorded the failure and will work on a fix. In the meantime, try a
     smaller resolution or another format."
-  - When nothing is left to try, the error says that the failure was recorded and where to check on
-    it later.
+  - When nothing is left to try, report in the error that the failure was recorded, and show where
+    to check on it later.
 - Log every failure whose cause lies in the system, each failed try of a retry included, and say in
-  plain words in its error that it was recorded.
-- Always answer a waiting caller: send a failure back to whoever waits, never only log it on the
+  plain words in the error shown for it that it was recorded.
+- Always answer a waiting caller. Send a failure back to whoever waits, never only log it on the
   other side.
-- Make the system retry by itself a failure it knows to be temporary, such as a refusal saying the
-  other side is busy or a network failure, as long as the operation is safe to repeat: it changes
-  nothing, or it carries an id derived from durable state that lets the other side recognize a
-  repeat. Retry a write whose connection dropped only under that condition.
+- Make the system retry by itself a failure known to be temporary, such as a refusal reporting that
+  the other side is busy or a network failure, as long as the operation is safe to repeat. An
+  operation is safe to repeat when it changes nothing, or when it contains an id derived from
+  durable state by which the other side recognizes a repeat.
+- Retry a write whose connection dropped only under that condition.
 - Never retry automatically a failure not known to be temporary, such as a refused validation or a
-  failure that can't be classified: show it as an error with a next step.
+  failure that can't be classified. Show it as an error with a next step.
 - Show a running retry as progress with the number of tries so far, such as "Image processing
   failed, retrying (3 attempts)…", never as an error.
-- Wait between tries as long as the refusing system names, such as in a `Retry-After` header, or
-  else for a randomized pause that grows up to the longest wait the work's purpose tolerates.
-- Retry until the work succeeds or its purpose is gone, never until a count or a time limit of the
-  system's own. Work that would need such a limit gets no retry. A retry that keeps failing is a
-  defect in the code, found through the logs and fixed there.
-- Give a person who waits on a retry a way to cancel it, and give a retry nobody watches the
-  condition that makes its result no longer needed.
+- Wait between tries for the time given by the refusing system, such as in a `Retry-After` header,
+  or else for a randomized pause that grows up to the longest wait acceptable for the purpose of
+  the work.
+- Retry until the work succeeds or the purpose of it is gone, never until a count or a time limit
+  set by the system itself. Do not retry work that would need such a limit.
+- Treat a retry that fails again and again as a defect in the code, found through the logs and
+  fixed there.
+- Give a person who waits on a retry a way to cancel it.
+- Give every retry that nobody watches a condition under which its result is no longer needed.
 - Once a retry has failed several times, show beside its progress, as information and never as an
   error, that the problem is known and being taken care of and where to check on the work later,
   such as "We're having trouble processing this request and have recorded the incident. Come back
-  later to check on its status." A caller waiting on the work gets the same information as its
-  answer.
-- When an external system refuses an optional part of a request, degrade the result instead of
-  failing: send a fallback request without that part and show a visible note that it was left out.
-  Retry a temporary failure of the fallback like any other, and show its refusal as an error.
+  later to check on its status."
+- Give a caller waiting on the work the same information as the response.
+- When an external system rejects an optional part of a request, degrade the result instead of
+  failing. Send a fallback request without that part, and show a visible note that it was left out.
+- Retry a temporary failure of the fallback like any other, and show a refusal from the fallback as
+  an error.
 
 ## Correctness and change
 
-- Fix a known defect, and never offer leaving it unfixed as an option. A race the change leaves
-  possible is a defect.
-- Keep what works through a change: carrying a working view or contract across is part of the
+- Fix a known defect, and never offer leaving it unfixed as an option. A race left possible by the
+  change is a defect.
+- Keep what works through a change. Carrying a working view or contract across is part of the
   change.
-- Build every configuration the code claims to support on every change, and remove a configuration
-  that isn't built.
+- Build every configuration declared as supported by the code on every change.
+- Remove a configuration that isn't built.
 - Never roll back a settled migration, bring back a retired pattern or reopen settled, approved
-  work. Find a bug's root cause within the current architecture, and correct a wrong migration with
-  a forward migration.
+  work.
+- Find the root cause of a bug within the current architecture.
+- Correct a wrong migration with a forward migration.
 - Let a migration or backfill copy data into its new shape and leave the old data as it is. Remove
   the old data in a separate, later step, and only when something truly needs deleting.
-- Before you change where data lives, such as a mount, a volume or a replaced instance, check what
-  data is there and recover what the change would hide or destroy.
+- Before you change where data is stored, such as a mount, a volume or a replaced instance, check
+  what data is there and recover what the change would hide or destroy.
 - Ship persistent storage in the same change as the feature that writes to it.
-- Let destruction wait for proof and a named yes. Formatting, wiping or replacing runs only on a
-  state a check positively proved, an inconclusive check blocks, and the confirmation names exactly
-  what will be destroyed, with no default, flag or heuristic that skips it.
-- Never force in a requirement that doesn't fit the architecture: say why, and refactor the
-  structure until it slots in. "Too hard" is not an outcome, and a test that still fails is no proof
-  of a dead end: keep working through its concrete causes.
+- Destroy something only after proof and an explicit yes. Run formatting, wiping or replacing only
+  on a state positively proved by a check, and let an inconclusive check block it.
+- Ask for a confirmation that lists exactly what will be destroyed, and never let a default, a flag
+  or a heuristic skip it.
+- Never force in a requirement that doesn't fit the architecture. Say why, and refactor the
+  structure until the requirement slots in.
+- Never accept "Too hard" as an outcome. A test that still fails does not prove a dead end, so keep
+  working through the concrete causes of the failure.
 - Never relax an invariant for one change. A change that seems to need it is a design problem.
 - In a user interface, show an error only on the part that fails, and a loading indicator for a
   loading state, never an error.
@@ -305,117 +338,127 @@ in every language. `workflow-skills:code-writing` holds how the code itself read
 - Leave the view as it was when an optional feature can't apply.
 - Count as text that explains a product any text on a product screen, where the reader uses the
   product, about how the product computes or stores something, why it was built that way, which
-  features it does not offer, or where things sit on the screen. Text about a state of the reader's
-  own data or action is a state, such as an empty list, a failed save or a retry in progress.
-- Make a product screen explain itself through its labels, controls and layout, and put no text that
-  explains the product on it. When a part needs such text because its behavior is not evident,
-  change the part, such as its label, its grouping or its control, and explain nothing to a tester
-  either. A marketing page, where the reader decides whether to use the product, follows
-  `workflow-skills:copywriting`.
-- Word a state of the reader's own data or action by what happened and what the reader can do next,
-  including where to check on the work later.
-- Avoid imperative or procedural checks: make the condition fall out of the design where possible.
+  features it does not offer, or where things sit on the screen.
+- Text that describes a state of the data or an action of the reader, such as an empty list, a
+  failed save or a retry in progress, does not count as text that explains the product.
+- Make a product screen self-evident through its labels, controls and layout, and never put text
+  that explains the product on it.
+- When a part needs such text because its behavior is not evident, change the part, such as its
+  label, its grouping or its control. Do not explain it to a tester either.
+- Follow `workflow-skills:copywriting` for a marketing page, where the reader decides whether to use
+  the product.
+- Word a state of the data or the action of the reader by what happened and what the reader can do
+  next, including where to check on the work later.
+- Avoid imperative or procedural checks. Make the condition fall out of the design where possible.
 - Use a conditional database update where possible instead of checking a condition in the program,
-  which the data can change between the check and the write.
+  since the data can change after the check and before it is written.
 
 ## Tests
 
-- Test an expectation: state the rule the code follows, run the code on input the test builds, and
-  check the result against what that rule gives for that input. The values the shipped code or
-  configuration holds are no expectation, and a test that restates them proves nothing.
+- Test an expectation. State the rule followed by the code, run the code on input built by the
+  test, and check the result against what that rule gives for that input.
+- Never treat the values contained in the shipped code or configuration as an expectation. A test
+  that restates them proves nothing.
 - Never write a test that checks whether the text of code, a document, a prompt or a configuration,
-  as the repository holds it, contains, lacks or matches a string. A check of text the code produced
-  from the test's own input is an expectation and stays allowed.
+  as stored in the repository, contains, lacks or matches a string. A check of text produced by the
+  code from input built by the test is an expectation and is allowed.
 - Delete a test that checks stored text for a string or restates shipped values when your change
-  touches it or makes it fail, and keep any assertion in it that runs the code. Never rewrite such a
-  test to match the changed text.
+  alters it in any way or makes it fail, and keep any assertion in it that runs the code. Never
+  rewrite such a test to match the changed text.
 - Report a test of that kind outside your change, and leave it in place.
-- Keep tests deterministic and reproducible, with no dependence on the clock or anything outside the
+- Keep tests deterministic and reproducible, independent of the clock and of anything outside the
   test.
-- Ship no test code: shipped code takes the same path whether tests exist or not. Put failure
-  injection only in an artifact that never ships, and let it run through the real error handling.
-- Expose nothing for debugging in a release build: debug access is absent from it, and the build
-  configuration decides which kind of build is produced, never a constant edited in source.
+- Never ship test code. Shipped code takes the same path whether tests exist or not.
+- Put failure injection only in an artifact that never ships, and let it run through the real error
+  handling.
+- Expose nothing for debugging in a release build. Leave debug access out of it, and let the build
+  configuration select which kind of build is produced, never a constant edited in source.
 - Run tests and probes on synthetic fixtures in throwaway locations, never on real user data or a
   real data store.
-- Put test doubles exactly where your own infrastructure ends and nowhere earlier. Never double the
-  thing under test, and watch for a permissive double that silently switches off the mechanism being
-  tested.
-- Let tests reach no service beyond the infrastructure you run for them: block the network beneath
-  every client. Keep infrastructure you own, such as the database, real, at a locked version and in
-  the configuration production needs.
+- Put test doubles exactly where your own infrastructure ends and nowhere earlier.
+- Never double the thing under test, and watch for a permissive double that silently switches off
+  the mechanism being tested.
+- Let tests contact only the infrastructure you run for them, and block the network beneath every
+  client.
+- Keep your infrastructure, such as the database, real, at a locked version and in the
+  configuration needed in production.
 - Keep tests fast and parallel.
-- Fail a test that can't get a capability it needs, and never skip it. Only a test that needs an
-  external artifact, such as a downloaded file, may skip when that artifact is missing, and the
-  tests of the same suite that use synthetic fixtures still run.
+- Fail a test that can't get a needed capability, and never skip it. Only a test that needs an
+  external artifact, such as a downloaded file, may skip when that artifact is missing. The tests
+  in the same suite that use synthetic fixtures still run.
 - Reset process-wide state between tests.
 - Test each invariant at exactly one level, and don't prove it again at higher levels.
-- Prove a rewrite that must give identical results with an equivalence suite: before the change,
-  record the old code's outputs in a canonical serialized form, one that always gives the same bytes
-  for the same value, and compare the new code's outputs with those bytes. State why for every
-  comparison that is loosened. The old code's outputs are the expectation of the rewrite.
-- Name the failure mechanism in a regression test, never a ticket, and show it failing against the
-  old code.
-- Give each acceptance criterion of a design its own test group, and give a known limitation a test
-  that asserts it.
+- Prove a rewrite that must give identical results with a suite of equivalence tests. Before the
+  change, record the outputs produced by the old code in a canonical serialized form, one that
+  always gives the same bytes for the same value, and compare the outputs produced by the new code
+  with those bytes. The outputs produced by the old code are the expectation for the rewrite.
+- State why for every comparison that is loosened.
+- Name the failure mechanism in a regression test, never a ticket, and show the test failing
+  against the old code.
+- Give each acceptance criterion of a design a separate group of tests.
+- Give a known limitation a test that asserts it.
 
 ## Scope and size
 
 - Build only what the task needs, and remove unused, unasked-for or overbuilt code.
-- Choose the clean, sophisticated option at the smallest size that stays clean: a one-line filter
-  beats a separate system that buys nothing. No premature abstraction.
-- Ship a change through every layer it touches in the same pass, and check every consumer of shared
-  code.
-- Leave a part that isn't defined yet as an empty stub until it is. A finished unit ships no stub,
-  no placeholder text, no skeleton page and no link to a destination that doesn't exist yet.
-- Let a later planned item put no requirement on current work. At most it hints at what the current
-  architecture can leave room for.
+- Choose the clean, sophisticated option at the smallest size at which it is still clean. A
+  one-line filter is better than a separate system that adds nothing.
+- Never abstract prematurely.
+- Ship a change through every layer affected by it in the same pass.
+- Check every consumer of shared code.
+- Leave a part that isn't defined yet as an empty stub until it is.
+- Never ship a stub, placeholder text, a skeleton page or a link to a destination that doesn't exist
+  yet in a finished unit.
+- Never let a later planned item put a requirement on current work. At most it shows what the
+  current architecture can leave room for.
 
 ## How the work is done
 
-- Read the code first, in full around every search hit, and trace the flow in every direction. Look
-  for patterns, prior art and documentation before you propose an architecture.
+- Read the code first, in full around every search hit, and trace the flow in every direction.
+- Look for patterns, prior art and documentation before you propose an architecture.
 - Debug from the mechanism: name what controls the behavior, state hypotheses, and change one
   variable at a time. A symptom is never evidence of its cause.
-- Prove a change on the real path and across the whole chain: a green build is no proof. A check
-  that can't run the real thing reports itself blocked, never passed on a stand-in, and no parallel
-  simulation is built to check again what the real environment already has.
-- Check code carried over from another version against the target: every name it uses exists there
-  with the same signature and meaning.
+- Prove a change on the real path and across the whole chain. A green build is not proof.
+- Let a check that can't run the real thing report itself as blocked, never as passed on a
+  stand-in.
+- Never build a parallel simulation to check again what the real environment already has.
+- Check code carried over from another version against the target. Every name used in it must exist
+  there with the same signature and meaning.
 - Read the error before you retry, and change something before the next try.
-- Put only the generator's output into a generated artifact, never diagnostics.
+- Put into a generated artifact only the output produced by the generator, never diagnostics.
 - Operate an interface from its observed state: one action, check the result, then the next, never
   a chain of inputs against an assumed screen.
-- Stop a process by its own process id, never by a name pattern or the port it listens on.
+- Stop a process by its process id, never by a name pattern or the port on which it listens.
 - Undo only your own edit, by applying its inverse. Never reset, restore or stash a file that may
-  hold other uncommitted work.
+  contain other uncommitted work.
 - Before you add a dependency, choose its version or write against its API, look up its current
   release and documentation online, check that release for known compromise, and record the check
   with its date.
-- Research and pick which library to use yourself, and ask the user before you decide where a
-  dependency is fetched from, such as a registry or a git repository, and before you vendor a
-  binary.
+- Research and pick which library to use yourself.
+- Ask the user before you decide where a dependency is fetched from, such as a registry or a git
+  repository, and before you vendor a binary.
 - State how every claim is known, without blurring the classes: measured (a probe ran),
   compile-proven (it builds but never ran), proven by reading the source, decided, or open with the
-  experiment that would answer it. Base a claim about state or cause on raw evidence inspected for
-  that claim, never on a summary or a verdict icon. An observation beats a reading of the code, an
-  experiment that found nothing is recorded too, and work that depends on an open point waits for
-  its experiment.
+  experiment that would resolve it.
+- Base a claim about state or cause on raw evidence inspected for that claim, never on a summary or
+  a verdict icon. An observation outweighs a conclusion drawn from reading the code.
+- Record an experiment that found nothing too.
+- Let work that depends on an open point wait for the experiment that resolves it.
 - Make every architectural decision deliberately, and write it down with acceptance criteria that
   can be checked, in the commit message or the pull request for the change.
-- Change the documentation of an interface others use, such as an API, a command or a screen, in the
-  same change as that interface.
+- Change the documentation that describes an interface used by others, such as an API, a command or
+  a screen, in the same change as that interface.
 - Build in layers, scaffolding first and then one piece at a time. This orders the building only:
   each feature still ships through all its layers in the same pass.
-- Don't copy the bad. If the pre-existing code already violates the rules, don't excuse writing the
-  same kind of code by arguing with prior art. Bad code is not art, it's debt. Where scope allows,
-  rewrite the existing code cleanly, or do your best by integrating your part well and leaving the
-  rest as-is.
+- Never copy code that breaks the rules. If the existing code already violates the rules, never use
+  it as prior art to excuse writing the same kind of code. Bad code is debt.
+- Where scope allows, rewrite the existing code cleanly. Otherwise integrate your part well and
+  leave the rest as it is.
 
-## Rules other skills hold
+## Rules in other skills
 
 - Follow `workflow-skills:code-writing` for how code reads: its style, comments, names and the
-  crafts of each language.
+  practices for each language.
 - Follow `workflow-skills:writing-style` for the words of comments, documents and messages.
 - Follow `workflow-skills:hygiene` for what may leave the machine.
 - Follow `workflow-skills:implement` for how a change goes from the user's words to the user's

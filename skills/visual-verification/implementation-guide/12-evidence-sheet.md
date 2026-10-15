@@ -1,48 +1,53 @@
 # Part 12: the evidence sheet
 
-The evidence sheet is one PNG image for a person reading a pull request. It shows two complete
+The evidence sheet is one PNG image for a person who reads a pull request. It shows two complete
 captures of the same scene, one variant section after another, with every changed checkpoint side by
-side. It is a view of the two captures and carries no verdict: it never passes or fails a pair, and
-the comparison of part 10 stays the verdict with its compatibility check, semantic results and
-nonzero exit for any difference.
+side. The sheet only shows the two captures and does not give a verdict. It never marks a pair as
+passed or failed. The verdict comes from the comparison described in part 10, with the compatibility
+check, the semantic results and the nonzero exit for any difference.
 
-The sheet deliberately skips the compatibility check. An edit to a translation or a fixture changes
-the scene fingerprint, which makes the two captures incompatible for the comparison, and the sheet
-still shows what that edit did on screen. It uses the same pixel comparison and the same recoloring
-of part 11 for every checkpoint.
+The sheet skips the compatibility check on purpose. An edit to a translation or a fixture changes
+the fingerprint that identifies the scene, so the comparison marks the two captures as
+incompatible. The sheet still shows what that edit changed on screen. For every checkpoint, the
+sheet compares pixels the same way as the comparison and recolors them as described in part 11.
 
 ## The sheet for an intended input change
 
-A change that alters a compatibility input on purpose, as part 10 describes, makes the comparison
-refuse its pair. The refusal is returned together with an evidence sheet of the same two captures,
-rendered under an output name never used before, and the outcome is judged by reading that sheet,
-the two receipts and the after capture's measured checks. The sheet still carries no verdict. A
-sheet larger than the size limit is split into several sheets through the variant option, each
-under its own new output name.
+When a change alters a compatibility input on purpose, as described in part 10, the comparison
+refuses the pair as incompatible. The refusal is returned together with an evidence sheet of the
+same two captures, rendered under an output name never used before. The outcome is judged by reading
+that sheet, the two receipts and the measured checks of the after capture. The sheet still does not
+give a verdict. A sheet larger than the size limit is split into several sheets with the variant
+option, each under a different new output name.
 
 ## Refusals
 
-The sheet refuses to run without the launcher's variables, and names the launcher command.
+The sheet refuses to run without the variables set by the launcher, with a message that contains the
+launcher command.
 
-The output option is required, must name a file ending in `.png`, and is never overwritten. An
-existing output file fails with a message asking for a new output path. The output path lies inside
-the project cache, the location `workflow-skills:local-cache` defines: in the harness directory, or
-in the prepared directory of a pull request batch that is kept inside the project cache as well.
+The output option is required and must be the path of a file ending in `.png`. That file is never
+overwritten. When the output file exists, the sheet refuses to run, with a message that contains the
+instruction to choose a new output path. The output path is inside the project cache, the location
+defined by `workflow-skills:local-cache`: in the harness directory, or in the directory prepared for
+a batch of pull requests, which is inside the project cache as well.
 
-A capture that does not exist is refused by name, with the instruction to capture it first. A
-capture without a readable receipt is refused by name, with the instruction to capture the complete
-scene again. A capture whose receipt carries no source revision is refused by name the same way,
-since a sheet has to say which commit each side shows.
+When a capture does not exist, the sheet refuses to run, with a message that contains the capture
+name and the instruction to capture it first. When the receipt of a capture is missing or
+unreadable, the sheet refuses to run, with a message that contains the capture name and the
+instruction to capture the complete scene again. When the receipt of a capture does not record a
+source revision, the sheet refuses to run the same way with the capture name, since a sheet has to
+show which commit each side comes from.
 
-Two captures of different scenes are refused, and the message names both captures with their scene
-names and asks for the same scene to be captured twice.
+When the two captures show different scenes, the sheet refuses to run, with a message that contains
+both capture names, the scene of each, and the instruction to capture the same scene twice.
 
-A requested variant that the after capture does not contain is refused, and the message lists the
-variants that are available. Without a variant option the sheet covers every variant of the after
-capture, in capture order; with one or more, it covers only those.
+When a requested variant is missing from the after capture, the sheet refuses to run, with a message
+that lists the available variants. Without a variant option, the sheet covers every variant in the
+after capture, in capture order. With one or more variant options, it covers only those variants.
 
-A finished sheet larger than the size limit is deleted and refused, with a message naming the limit
-and suggesting the variant option to split the sheet into smaller ones.
+When the finished sheet is larger than the size limit, the sheet is deleted and refused, with a
+message that contains the limit and suggests the variant option for splitting the sheet into smaller
+ones.
 
 ## Grouping
 
@@ -51,79 +56,85 @@ both captures and have at least one changed pixel or different dimensions. New c
 present only in the after capture. Identical checkpoints are present in both with zero changed
 pixels. Before-only checkpoints are present only in the before capture.
 
-A changed checkpoint of equal dimensions gets its changed count, its recolored difference image and
-a region: the bounding box of its changed pixels from part 11, grown by a margin on each side and
-clamped to the image. A changed checkpoint of different dimensions gets no difference image, and
-its caption says the sizes differ.
+A changed checkpoint with equal dimensions gets a changed count, a recolored difference image and a
+region. The region is the bounding box of the changed pixels from part 11, grown by a margin on each
+side and clamped to the image. A changed checkpoint with different dimensions gets the note that the
+sizes differ in its caption, in place of a difference image.
 
 ## Layout
 
-The sheet opens with the scene name as its title and one line naming the before capture with its
-short revision and the after capture with its short revision. Each variant section opens with the
+The sheet starts with the scene name as the title, followed by one line with the name and the short
+revision of the before capture and of the after capture. Each variant section starts with the
 variant name.
 
 A section with changed checkpoints has a header row with the three column labels before, after and
-region. Each changed checkpoint has a caption with its name and its changed-pixel count, grouped in
-thousands, or the note that the sizes differ, followed by a row of three cells. The first cell is
-the before image. The second is the after image with the region outlined by a solid border in the
-accent color, positioned in percent of the image so it scales with the cell. The third holds three
-labeled strips cropped to the region: the before image, the after image and the recolored
-difference.
+region. Each changed checkpoint has a caption with the checkpoint name and the changed-pixel count,
+grouped in thousands, or the note that the sizes differ. A row of three cells follows the caption.
+The first cell is the before image. The second is the after image with the region outlined by a
+solid border in the accent color, positioned in percent of the image so it scales with the cell. The
+third contains three labeled strips cropped to the region: the before image, the after image and the
+recolored difference.
 
-New checkpoints follow under a heading saying they have no baseline in the before capture, as a grid
-of their after images with their names. Identical checkpoints follow under a heading saying both
-captures are identical for them, as a grid of the same kind. Before-only checkpoints are named in
-one muted line. The sheet ends with the legend of part 11.
+New checkpoints follow as a grid of after images with the checkpoint names. Their heading reads that
+the before capture has no baseline for them. Identical checkpoints follow as a grid of the same
+kind, with a heading that reads that both captures are identical for them. Before-only checkpoints
+are listed by name in one muted line. The sheet ends with the legend described in part 11.
 
 The sheet is rendered as an HTML page with a fixed width, fixed colors and a locked font, opened in
 the locked rendering engine at a pixel density of one, and captured as one full-page screenshot.
-Every image is embedded; nothing external loads. A successful run prints the written sheet's path
-relative to the working directory.
+Every image is embedded in the page, so the page loads nothing from outside. A successful run prints
+the path of the written sheet, relative to the working directory.
 
 ## Numbers and their reasons
 
 The reference used a cell width of 870 pixels, a gap of 24 pixels and a page padding of 40 pixels,
 which made the sheet exactly 2,738 pixels wide: three cells, two gaps and the padding on both sides.
 The self-test suite asserts that width. The region margin was 24 pixels. The page background was
-`#f6f6f7`, the text `#1a1a1c`, secondary text `#6b6b70` and the accent `#d3202a`; the outline was
-3 pixels wide. The body text was 20 pixels in DejaVu Sans, a font of the locked fallback set, with
+`#f6f6f7`, the text `#1a1a1c`, secondary text `#6b6b70` and the accent `#d3202a`. The outline was 3
+pixels wide. The body text was 20 pixels in DejaVu Sans, a font from the locked fallback set, with
 headings at 40, 32 and 24 pixels and strip labels at 16 pixels.
 
-The size limit was 10 MiB, the largest image attachment the reference's pull request host accepted.
-A project uses its own host's limit.
+The size limit was 10 MiB, the largest image attachment accepted by the pull request host used in
+the reference. A project uses the limit set by the pull request host used by the project.
 
 ## Attaching sheets to a pull request
 
 A project that requires visual evidence attaches one sheet for every changed surface, built from a
-capture on the pull request's base commit and one on its candidate. The sheets are prepared before
-the pull request is created, listed as its attachments, and shown in its description under a heading
-of their own. The reference's host uploaded attachments only through its command-line client's
-create command, so a sheet added after creation meant a new draft or a comment. The reference's
-publisher accepted, per pull request, at most 50 attachments, each a nonempty PNG, JPEG, GIF or WebP
-file of at most 10 MiB inside the prepared batch's directory, listed once, and referenced in the
-description by its exact listed path; the client rewrote those references to the uploaded addresses
-on creation, and a later update of the description kept them without uploading again. When any
-entry of a batch carried attachments, the publisher checked once that the installed client supported
-them and refused the whole batch otherwise, naming the found and the required capability.
+capture on the base commit of the pull request and one on the candidate commit. The sheets are
+prepared before the pull request is created. They are listed as attachments of the pull request and
+shown in the description under a separate heading.
 
-A pull request that touches rendered output without a sheet is complete only when none of its
-commits changes rendered output, and its description says so. A surface without a scene gets one
-first, tracked or local, before the pull request is prepared. A surface that does not exist on the
-base has its sheet form decided while its scene is curated: either a capture of what the base shows
-at the same place, or the candidate's checkpoints shown as new.
+The pull request host used in the reference uploaded attachments only through the create command of
+the host command-line client. A sheet added after creation therefore needed a new draft or a
+comment. The publisher used in the reference accepted at most 50 attachments per pull request. Each
+attachment had to be a nonempty PNG, JPEG, GIF or WebP file of at most 10 MiB inside the directory
+prepared for the batch, listed once, and referenced in the description by the exact listed path. On
+creation, the client rewrote those references to the uploaded addresses. A later update of the
+description left them unchanged and uploaded nothing again. When any entry of a batch had
+attachments, the publisher checked once that the installed client supported them. Otherwise it
+failed the whole batch with a message that contained the capability found and the capability
+required.
+
+A pull request that affects rendered output and comes without a sheet is complete only when none of
+its commits changes rendered output and its description mentions that. A surface that does not yet
+have a scene gets one first, tracked or local, before the pull request is prepared. For a surface
+missing on the base commit, the form of the sheet for that surface is decided while the scene for it
+is curated. The sheet either shows a capture of what the base commit shows at the same place, or
+shows the checkpoints of the candidate commit as new.
 
 ## Web realization in the reference
 
-The reference built the sheet's HTML with the server-side renderer of its interface framework,
-decoded and cropped images with `pngjs`, opened the page in the locked Chromium through Playwright
-with a viewport of the sheet width, waited for the document's fonts, and took a full-page
-screenshot. The sheet was written to the output path the caller gave, which for a pull request batch
-was inside that batch's prepared directory.
+The reference built the HTML of the sheet with the server-side renderer of the interface framework
+used by the reference. It decoded and cropped images with `pngjs`, opened the page in the locked
+Chromium through Playwright with a viewport as wide as the sheet, waited for the fonts of the
+document to load and took a full-page screenshot. The sheet was written to the output path given by
+the caller. For a batch of pull requests, that path was inside the directory prepared for the
+batch.
 
 ## Native and terminal realizations
 
-The sheet works on PNG captures and is the same for every platform. A project without a browser
-engine in its harness composes the sheet with an image library instead, drawing its captions with a
-locked font file, or adds a locked headless browser only for rendering sheets. The captures it reads
-live in the harness directory inside the project cache, the location `workflow-skills:local-cache`
-defines.
+The sheet works on PNG captures and is the same on every platform. When the harness of a project
+does not include a browser engine, the project either composes the sheet with an image library and
+draws the captions with a locked font file, or adds a locked headless browser only for rendering
+sheets. The sheet reads the captures from the harness directory inside the project cache, the
+location defined by `workflow-skills:local-cache`.

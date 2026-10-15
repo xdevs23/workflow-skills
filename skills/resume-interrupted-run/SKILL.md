@@ -1,166 +1,172 @@
 ---
 name: resume-interrupted-run
-description: Resumes a workflow run interrupted after agents did substantial work but before they returned results. Not for completed agents with bad results.
+description: Applies when a workflow run was interrupted after agents did substantial work but before they returned results. Not for agents that completed with bad results.
 ---
 
-# Resume an Interrupted Run: hand each mid-flight seat its own transcript back
+# Resume an interrupted run
 
-**Load the `workflow-skills:writing-style` skill first.** It binds every comment, document, commit
-message and reply this skill produces, and it is not optional when working with this plugin.
+**Load the `workflow-skills:writing-style` skill first.** The rules in it apply to every comment,
+document, commit message and reply you write while you follow this skill. Load it whenever you work
+with this plugin.
 
-A run's journal holds the result of every `agent()` call that finished, and a resume replays those
-results as far as the next section describes. An agent that was still working when the run stopped
-has **no journaled result**, so the resume starts it from an empty context: every file it read,
-every finding it had already established, gone, re-derived from scratch on the resumed run's
-budget. Meanwhile its transcript is sitting on disk, complete up to the moment of the stop.
+The journal of a run contains the result of every `agent()` call that finished. A resume replays
+those results as far as the next section describes. The journal does not contain a result for an
+agent that was still working when the run stopped, so the resume starts that agent from an empty
+context. The agent reads every file again and works out every finding again from scratch, on the
+budget of the resumed run. The transcript of that agent is on disk all the while, complete up to
+the moment the run stopped.
 
-This skill is that one move: **give each interrupted seat its own prior transcript back, inside its own
-prompt, before resuming.** Everything else here exists to keep that move from damaging the run it is
-rescuing.
+Before you resume, point each interrupted agent, inside the prompt of that agent, at the transcript
+of the earlier attempt by that agent. Everything else in this skill prevents that step from damaging
+the run you are rescuing.
 
 ## What a resume runs again
 
-- Expect the journal key of a call to come from its prompt, from its options `schema`, `model`,
-  `effort`, `isolation`, `agentType`, `disallowedTools` and `bashCommandClamp`, and from the key of
-  the call the script made just before it. A new key for one call therefore gives every call the
-  script makes after it a new key as well.
-- Expect an edit of a call's prompt, a word or a space, or of one of those options, a resume note
-  or a switched model alike, to give that call a new key. An edit of any other option, such as
-  `label`, `phase` or `stallMs`, leaves the key as it was.
-- Expect a resume to replay journaled results, in the order the script makes its calls, up to the
-  first call that has no journaled result and was not interrupted. The journal shows an interrupted
-  call as started, with no failure recorded for it. From that call on, every call runs live, also
-  one whose key the journal holds with a result.
-- Expect each of these calls to end the replay: a call whose key the journal does not hold, such as
-  an edited one, a call that failed or returned no result, such as an attempt that died on an API
-  error before its stage retried it, and a call that had not started when the run stopped. An
-  attempt that returned an object the script's check then refused holds a journaled result, so it
-  replays and does not end the replay. After an edited call this means, for example, that the
-  reviewers listed after an edited reviewer run again.
+- Expect the key of a call in the journal to come from the prompt of that call, from the options
+  `schema`, `model`, `effort`, `isolation`, `agentType`, `disallowedTools` and `bashCommandClamp`
+  set on that call, and from the key of the call made by the script just before it. A new key for
+  one call therefore gives every later call made by the script a new key as well.
+- Expect an edit of the prompt of a call, a word or a space, or of one of those options, a resume
+  note or a switched model alike, to give that call a new key. An edit of any other option, such as
+  `label`, `phase` or `stallMs`, does not change the key.
+- Expect a resume to replay journaled results, in the order in which the script makes its calls, up
+  to the first call that does not have a journaled result and was not interrupted. The journal shows
+  an interrupted call as started, without a recorded failure. From that call on, every call runs
+  live, also a call whose key and result are in the journal.
+- Expect each of these calls to end the replay: a call whose key is not in the journal, such as an
+  edited one; a call that failed or did not return a result, such as an attempt that died on an API
+  error before its stage retried it; and a call that had not started when the run stopped. An
+  attempt whose returned object then failed a check in the script has a journaled result, so it
+  replays and does not end the replay. For example, the reviewers listed after an edited reviewer
+  run again.
 - Expect an interrupted call whose prompt and options you leave unchanged to run live without
   ending the replay, so the finished calls made after it replay until one of the calls above ends
   the replay.
-- Expect a call the script makes only once an earlier result arrives, such as a retry, to take its
-  place in the order from when that result arrived. A resume can hand replayed results back in
-  another order than the live run received them, so such a call can get a key the journal does not
-  hold and end the replay, even when nothing was edited.
-- Expect a later resume of the same run to replay the calls an earlier resume ran live only when it
-  makes them in the same order with the same keys and no call before them ends the replay. The
-  order depends on when results arrive, so one resume does not settle it for the next.
-- Expect a call that runs live again to receive other input than its earlier attempt saw whenever a
-  call before it returned something new, such as a later stage reading reviewer reports that were
-  written again.
+- Expect a call made by the script only once an earlier result arrives, such as a retry, to take
+  its place in the order from when that result arrived. A resume can return replayed results in
+  another order than the order in which they arrived in the live run. Such a call can then get a key
+  that is not in the journal and end the replay, even when nothing was edited.
+- Expect a later resume of the same run to replay the calls run live by an earlier resume only when
+  it makes them in the same order with the same keys, while none of the calls before them ends the
+  replay. The order depends on when results arrive, so it can differ from one resume to the next.
+- Expect a call that runs live again to receive other input than in its earlier attempt whenever a
+  call before it returned something new, such as a later stage reading reports written again by the
+  reviewers.
 
-## When to reach for it
+## When to use it
 
-- A run was stopped, killed, or crashed while one or more agents were **still working**, and those
-  agents had done real work you do not want repaid twice.
-- The persisted script file and the run's transcript directory still exist on disk.
+- Use this skill when a run was stopped, killed or crashed while one or more agents were **still
+  working**, and you do not want to pay twice for the real work done by those agents.
+- Use it only while the persisted script file and the directory with the transcripts of the run
+  still exist on disk.
 
-## When NOT to
+## When not to use it
 
-- The run died **before any agent produced substantial work**. There is nothing to carry forward;
-  resume plainly.
-- **Every agent completed** and the run failed after them (an error in the workflow script, a throw
-  between phases). Their results are journaled; a plain resume replays them as far as the section
-  above describes, and this procedure buys nothing.
-- An agent **completed with a bad result**. That is the opposite problem. See the boundary section
-  at the end.
-- The run **ended on its own**, whatever its exit. This skill is never a way to run a finished run
-  again.
+- Resume plainly when the run died **before any agent produced substantial work**, since there is
+  nothing to carry forward.
+- Resume plainly when **every agent completed** and the run failed after them, such as on an error
+  in the workflow script or a throw between phases. The journal contains the results returned by
+  those agents, and a plain resume replays them as far as the first section describes. This
+  procedure gains nothing there.
+- Do not use this skill when an agent **completed with a bad result**, which is the opposite
+  problem. The last section of this file describes that case.
+- Never use this skill to run a run again that **ended without being stopped**, whatever its exit.
 
 ## The procedure
 
-### 1. Locate the run transcript directory
+### 1. Find the transcripts of the run
 
-- Find the run transcript directory at the path returned at launch, under the session's
-  `subagents/workflows/<runId>/`. It holds `journal.jsonl` (the cached results, one result line
-  per completed agent) plus, per spawned agent, an `agent-<id>.jsonl` transcript and a matching
-  `agent-<id>.meta.json`. The meta file carries the agent type, the model and a spawn depth.
-- Read the journal first: it is the evidence of which seats completed, so a seat holding a
-  transcript with no result line against it is the one to treat as interrupted.
-- Treat a result line that is itself EMPTY as a different case: that seat COMPLETED, and no prompt
-  edit will make it replay as anything else. See the boundary section at the end of this file.
+- Find the directory with the transcripts of the run at the path returned at launch, under
+  `subagents/workflows/<runId>/` in the directory of the session. It contains `journal.jsonl`, with
+  the cached results in one line per completed agent, and, for each spawned agent, an
+  `agent-<id>.jsonl` transcript and a matching `agent-<id>.meta.json`. The meta file contains the
+  agent type, the model and the depth at which the agent was spawned.
+- Read the journal first, since it shows which agents completed. Treat an agent as interrupted when
+  it has a transcript but no result line in the journal.
+- Treat an EMPTY result line as a different case. That agent COMPLETED, and an edit of the prompt
+  written for that agent cannot make it replay as anything else. The last section of this file
+  describes that case.
 
-### 2. Map transcripts to seats: meta narrows, the transcript head decides
+### 2. Match each transcript to an agent
 
-- Do not guess from filenames. The mapping is a two-stage discrimination, because the meta file
-  holds a type, a model and a depth and nothing finer: no seat label, no prompt hash, no attempt
-  marker.
-- **Narrow a transcript to a seat TYPE with its meta.** Where every seat in the phase has a
-  *distinct* agent type, that is the whole answer and the meta file alone maps it.
-- **Settle same-type ties by reading the transcript's HEAD.** Two seats sharing an agent type *and*
-  a model within the same attempt are indistinguishable in their metas. Open each transcript and
-  read the **prompt at its head**: the seat brief sits verbatim at the top, and it is the thing
-  that actually tells the seats apart. There is no cheaper discriminator; do not substitute one.
-- **Use size and mtime only as a WEAK FIRST SORT across ATTEMPTS, never siblings, never
-  conclusive.** A stopped-then-resumed run **reuses the same run id and the same transcript
-  directory**, appending the new agents' files beside the old ones, which is why one seat can end
-  up owning several transcripts. Size and mtime are good enough to pull those candidates out of the
-  directory and order them, and no further: they do not establish which attempt holds the work.
-  That is settled by rule 2's content test: open the transcript and look for findings, verdicts,
-  intermediate conclusions. And between two same-type *siblings* they say nothing whatever.
+- Do not guess from filenames. Match in two steps, because the meta file contains only a type, a
+  model and a depth. It does not contain the label of the agent, a hash of the prompt or the number
+  of the attempt.
+- **First narrow a transcript down to an agent TYPE with the meta file beside it.** Where every
+  agent in the phase has a *distinct* agent type, the meta file alone is enough to match it.
+- **Tell agents of the same type apart by the start of each transcript.** Two agents with the same
+  agent type *and* the same model in the same attempt have identical meta files. Open each
+  transcript and read the **prompt at the start of the transcript**. The brief given to the agent is
+  there verbatim, and only that brief differs between the agents. Use nothing cheaper in its place,
+  since nothing cheaper works.
+- **Use size and mtime only to sort the transcripts of several ATTEMPTS roughly, never to tell
+  siblings apart and never as proof.** A run that was stopped and resumed **uses the same run id
+  and the same directory of transcripts again**, and the files of the new agents are added beside
+  the old ones. One agent can therefore have several transcripts. Size and mtime are good enough to
+  pick those candidates out of the directory and order them, and no further. Decide which attempt
+  contains the work by the content test of rule 2: open the transcript and look for findings,
+  verdicts and intermediate conclusions. Between two *siblings* of the same type, size and mtime
+  show nothing at all.
+- Get the mapping right before you go on. With a wrong mapping you hand an agent the work of
+  another agent, which is the damage prevented by rule 1.
 
-Get this mapping wrong and you hand a seat someone else's work, which is the damage rule 1 exists to
-prevent.
+### 3. Append a resume note to the prompts of the INTERRUPTED agents only
 
-### 3. Append a resume note to the INTERRUPTED prompts only
-
-- List the finished calls the script makes after the first interrupted call you would edit, before
-  you edit it. Each of them runs live again, so a note saves the interrupted agent's work at the
-  price of theirs.
-- Add the notes only when the interrupted work they save outweighs the finished work they re-run,
-  and resume plainly otherwise.
-- Edit **the persisted script file**, whose path is also returned at launch, and append the resume
-  note to the prompts of the interrupted agents and nothing else.
-- Make the note tell the interrupted agent all seven things:
-  - an earlier attempt **of this exact seat** was interrupted **through no fault of its own**,
-    because the seat has to know the transcript is its own sound work, not output handed to it
-    under suspicion;
-  - its complete transcript is at `<absolute path>`;
+- Before you edit anything, list the finished calls made by the script after the first interrupted
+  call to edit. Each of them runs live again, so a note saves the work of the interrupted agent at
+  the price of running those finished calls again.
+- Add the notes only when the interrupted work saved by them outweighs the finished work run again
+  because of them. Resume plainly otherwise.
+- Edit **the persisted script file**, whose path is also returned at launch.
+- Append the resume note to the prompts of the interrupted agents and to nothing else.
+- Tell the interrupted agent all seven of these things in the note:
+  - an earlier attempt **by this exact agent** was interrupted **through no fault of the agent**,
+    because the agent has to know that the transcript contains sound work done by this agent and
+    can be trusted;
+  - the complete transcript of that attempt is at `<absolute path>`;
   - **read it first**, then pick up where it left off;
-  - its prompt is the authority on its input, where an input differs from what the transcript
-    shows;
-  - **re-verify only what the code or an input that differs from the transcript changed
-    underneath**, the findings that rest on it included (rule 4, not optional);
+  - where an input in the prompt of the agent differs from what the transcript shows, the prompt
+    is the authority on that input;
+  - **verify again only what the code or an input that differs from the transcript changed
+    underneath**, the findings based on it included (rule 4, not optional);
   - carry every other finding it already made **forward verbatim**;
-  - do not redo any other investigation it already completed; spend the effort on what it had **not
-    yet covered**.
+  - do not redo any other investigation it already completed, and spend the effort on what it had
+    **not yet covered**.
 
-### 4. Leave every COMPLETED stage prompt byte-identical
+### 4. Leave the prompt of every COMPLETED stage byte-identical
 
-- Leave every completed stage's prompt byte-identical, and leave the options its key covers
-  unchanged. **Any** edit of either, a word or a space, gives that call a new key and ends the
-  replay there, as the first section describes, and its own result is thrown away as well. One
-  stray edit early in the script can re-execute most of the run you were trying to salvage.
-- Never reach a single seat by editing a shared constant either. A constant such as `RULES`
-  goes into the prompt of every stage built from it, so an edit of it edits the completed prompts
-  among them as well.
+- Leave the prompt of every completed stage byte-identical, together with the options that make up
+  its key. **Any** edit of either, a word or a space, gives that call a new key and ends the replay
+  there, as the first section describes. The result of that call is thrown away as well. One stray
+  edit early in the script can make most of the run execute again.
+- Never change the prompt of a single agent by editing a shared constant either. A constant such as
+  `RULES` is part of the prompt of every stage built from it, so editing it also edits the
+  completed prompts among them.
 
-### 5. Re-invoke
+### 5. Invoke the workflow again
 
-- Re-invoke the workflow with the persisted script path and the **prior run id**. Finished calls
-  replay from the journal up to the first call that ends the replay, as the first section
-  describes. That call and every call after it run live, the interrupted ones with their own
-  transcript in hand.
+- Invoke the workflow again with the persisted script path and the **earlier run id**. Finished
+  calls replay from the journal up to the first call that ends the replay, as the first section
+  describes. That call and every call after it run live, the interrupted ones with the transcripts
+  of their earlier attempts in hand.
 
-## The resume note: where it goes in a prompt
+## Where the resume note goes in a prompt
 
-Append the resume note last, after the shared blocks, on that seat's prompt alone:
+- Append the resume note last, after the shared blocks, to the prompt of that one agent alone:
 
 ```js
-// ONE seat's note. Built per seat - the path is that seat's own transcript, nobody else's.
+// The note for ONE agent. Build one per agent: the path points at the transcript of that agent.
 const RESUME_NOTE = [
-  'RESUME NOTE. An earlier attempt at THIS EXACT SEAT was interrupted mid-flight, through no',
-  'fault of its own. Its complete transcript is at <ABS>/agent-<id>.jsonl.',
+  'RESUME NOTE. An earlier attempt by THIS EXACT AGENT was interrupted mid-flight, through no',
+  'fault of that attempt. Its complete transcript is at <ABS>/agent-<id>.jsonl.',
   'READ IT FIRST and pick up where it left off. Where an input in this prompt differs from what',
-  'the transcript shows, this prompt is the authority on that input. RE-VERIFY ONLY WHAT THE CODE',
-  'OR SUCH A DIFFERING INPUT CHANGED UNDERNEATH, the findings that rest on it included. Carry',
+  'the transcript shows, this prompt is the authority on that input. VERIFY AGAIN ONLY WHAT THE',
+  'CODE OR SUCH A DIFFERING INPUT CHANGED UNDERNEATH, the findings based on it included. Carry',
   'every other finding it already made forward VERBATIM. Do not redo any other investigation it',
-  'already completed - spend your effort on what it had not yet covered.',
+  'already completed. Spend your effort on what it had not yet covered.',
 ].join('\n')
 
-// Editing this call also changes every later call's key.
+// Editing this call also changes the key of every later call.
 const correctnessPrompt = [RULES, SEAT_BRIEF, RESUME_NOTE].join('\n\n')
 // Replays only when made before the first call that ends the replay.
 const scopePrompt = [RULES, SEAT_BRIEF].join('\n\n')
@@ -168,49 +174,52 @@ const scopePrompt = [RULES, SEAT_BRIEF].join('\n\n')
 
 ## The rules
 
-1. **SEAT ISOLATION: give each seat ONLY its own prior transcript.** Handing a seat another seat's
-   transcript destroys the independence the whole review design rests on: seats are split by concern
-   and kept unbriefed on purpose, and one that has read a peer's reasoning is no longer an
-   independent verdict. An unbriefed seat that has been shown someone else's findings is not
-   unbriefed any more.
-2. **Reference a transcript only if it CARRIES FINDINGS, otherwise re-run the seat clean.** The
-   test is content, not size: open the transcript and look for a finding, a verdict, an intermediate
-   conclusion. One that holds only orientation work, such as tools loading or a first file read or
-   two, has nothing to carry forward and will anchor a fresh agent on a half-formed direction; that
-   seat gets **no resume note at all** and runs clean, like any seat with no prior attempt. Byte
-   size is a weak first sort for picking candidates out of a directory and nothing more, never a
-   threshold, because transcripts include harness echo and any figure stated in bytes rots the
-   moment that volume changes. Where a seat does own several transcripts, point at the one bearing
-   the findings and only that one: naming the others adds nothing to recover, dilutes the
-   instruction, and the agent has no way to know which one you meant it to trust.
-3. **Edit only the INTERRUPTED prompts, and count what each edit re-runs.** An interrupted agent has
-   no result to throw away, so its own call costs nothing extra, but its new key gives every call
-   made after it a new key too, and the finished calls among them run live. Editing a COMPLETED
-   prompt throws away its result on top of that. Never edit prompts as a batch; edit exactly the
-   interrupted set.
-4. **Always include the re-verify-only-if-the-code-or-input-changed clause.** Without it, a resumed
-   seat treats its own prior findings as unproven and burns its budget re-proving what was already
-   established, which is the exact cost this procedure exists to avoid. With it, the seat re-checks
-   what the tree or a differing input changed underneath it, the findings that rest on that
+1. **Give each agent ONLY the transcript of the earlier attempt by that same agent.** Never hand an
+   agent the transcript of another agent.
+2. **Point at a transcript only if it CONTAINS FINDINGS. Otherwise run the agent again from a clean
+   start.** Judge by the content of the transcript: open it and look for a finding, a verdict or an
+   intermediate conclusion. A transcript with only orientation work, such as tools loading or a
+   first file read or two, has nothing to carry forward and pulls a fresh agent toward a half-formed
+   direction. Do not give that agent a resume note at all, and let it run from a clean start, like
+   any agent without an earlier attempt. Use byte size only to sort candidates roughly as you pick
+   them out of a directory, never as a threshold, because transcripts include output echoed by the
+   harness and any figure in bytes goes stale the moment that output grows or shrinks. Where an
+   agent does have several transcripts, point at the one with the findings and only that one.
+   Naming the others adds nothing to recover and weakens the instruction. The agent also cannot
+   know which one you meant it to trust.
+3. **Edit only the prompts of the INTERRUPTED agents, and count what each edit runs again.** An
+   interrupted agent does not have a result to throw away, so its call costs nothing extra. Its new
+   key still gives every call made after it a new key too, and the finished calls among them run
+   live. Editing the prompt of a COMPLETED agent throws away the result returned by that agent on
+   top of that. Never edit prompts as a batch. Edit exactly the prompts of the interrupted agents.
+4. **Always include the clause on verifying again only what the code or a differing input changed.**
+   Without it, a resumed agent treats the findings made in the earlier attempt as unproven and
+   spends its budget proving again what was already established.  With the clause, the agent checks
+   again what the tree or a differing input changed underneath it, the findings based on that
    included, and spends the rest of its effort on what it had not yet covered.
 
 ## What to expect
 
-A seat that had effectively finished before the stop reads its transcript and re-emits its findings
-almost immediately, instead of redoing the work. A partially-done seat continues from where it was.
-The recovery is near-lossless, not lossless: the note is an instruction to the resumed agent, not a
-restored context, so treat a resumed seat's output as its own work product and hold it to the same
-contract as any other seat. The finished calls after the first call that ends the replay run again
-as well, and their results can differ from the ones they returned before the stop.
+- Expect an agent that had effectively finished before the stop to read the transcript of that
+  attempt and return the findings in it again almost at once, instead of redoing the work.
+- Expect an agent that was partly done to continue from where it was.
+- Treat the output of a resumed agent as work done by that agent, and hold it to the same contract
+  as the output of any other agent. The note instructs the resumed agent but does not bring back the
+  context of the earlier attempt. The recovery therefore loses very little of the earlier work, yet
+  more than nothing.
+- Expect the finished calls after the first call that ends the replay to run again as well. The
+  results of those calls can differ from the results returned before the stop.
 
-## Boundary: this is NOT the poisoned-result case
+## Interrupted runs and bad results
 
-An interrupted run and a poisoned result are two different failures with two different fixes:
+An interrupted run and an agent that completed with a bad result are different failures with
+different fixes.
 
-- **Interrupted** (this skill): no cached result exists for the interrupted call, so its edit costs
-  no result of its own, only the re-run of the calls made after it. The fix is a resume note.
+- **Interrupted**, the case of this skill: the journal does not contain a cached result for the
+  interrupted call, so editing it costs only the new run of the calls made after it. The fix is a
+  resume note.
 - **Completed with a bad result, an EMPTY journaled result included**: the bad result **is cached**
-  and will replay verbatim on resume, so fixing the underlying cause and re-invoking changes nothing.
-  Editing its prompt to make it run again is the edit of a completed prompt that step 4 forbids.
-  The run treats the replayed result like any other result it receives, and you fix what the result
-  leaves wrong once the run has ended, the way you fix any other wrong result of the run.
+  and replays verbatim on resume, so fixing the underlying cause and invoking the workflow again
+  changes nothing. Do not edit the prompt of that agent to make it run again. It is a completed
+  prompt, so step 4 applies. The run treats the replayed result like any other result. Once the run
+  has ended, fix what is wrong in the result the way you fix any other wrong result of the run.

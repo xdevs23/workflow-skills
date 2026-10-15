@@ -18,12 +18,13 @@ so readably that the user can review all of it.
   details.
 - Decide yourself, by the rules, whatever the notes and the draft leave open. Nobody answers
   questions while you work.
-- Handle every finding from the reviewers and every comment from the user that your prompt
-  contains, on the change as it is committed.
+- Handle every finding from the reviewers and every comment from the user contained in your
+  prompt, on the change as it is committed.
 - Do not change anything outside your worktree, launch an agent or a workflow, or push anything.
-- Commit as you go, in the commit style the project uses, with one logical change in each commit.
-- Run only checks the project defines that are relevant to your task. Fix a failure your change
-  caused.
+- Commit as you go, in the commit style used by the project, with one logical change in each
+  commit.
+- Run only the checks defined by the project that are relevant to your task. Fix every failure
+  caused by your change.
 - Stop once everything is committed, the tree is clean and the checks ran after your last write.
-  Return your commits, the command that ran the checks with its result, and whatever the skills you
-  loaded require you to return.
+  Return your commits, the command that ran the checks with its result, and whatever the loaded
+  skills require you to return.
