@@ -19,7 +19,6 @@ it from a description.
   overall shape, direction, architecture and design of the change.
 - Draw a page when one or more product decisions need an answer from the user, each changing what
   someone sees or does, the scope of the product or which data is kept.
-- Leave a choice off the page when the rules already decide it.
 
 ## Before you draw
 
@@ -48,10 +47,12 @@ it from a description.
 - Put a legend under that box, with one marker for each kind of mark the page uses:
   - After, in green, for a part the change adds or changes;
   - the earlier state, in red, for a part that After leaves out;
-  - Open, in amber, for a proposal the user can change;
-  - Optional pick, in blue, for an alternative approach the user can choose;
+  - Optional pick, in blue, for one more After picture with an alternative approach;
   - a dashed box, for a file the change does not edit;
   - Updated, in purple, for a part that changed after the last answer from the user.
+- Keep each page within one browser window where you can. When the decisions need more room, split
+  them into separate pages, and draw the next page once the user has answered the one before. Never
+  draw them all at once.
 - Split the page into numbered sections, each with a title of at most eight words.
 - Name the sample in one line under the title of the first section that uses it.
 - Put the pictures of a section side by side, each with a label above it for the state it shows: the
@@ -60,8 +61,8 @@ it from a description.
 - Put a caption of at most fifteen words under each picture.
 - Mark the part of a picture that changes in the color of its legend marker, so the eye finds the
   difference first.
-- Write words on the rest of the page only as labels, titles, captions and marks. A picture that needs a
-  paragraph to explain it is not clear yet.
+- Write words on the rest of the page only as labels, titles, captions and marks. A picture that
+  needs a paragraph to explain it is not clear yet.
 
 ## Pictures
 
@@ -75,14 +76,16 @@ it from a description.
   description of them, such as "⋯ the two fingerprint sensor values", and highlight every line the
   change adds or edits.
 
-## Open and settled points
+## Choices and optional picks
 
-- Put every choice you made yourself in an amber box that starts with `Open:`, so the user can
-  change it.
-- When the user decides an Open point, keep it on the page, struck through, and start it with
-  `Settled:`.
-- Show every alternative approach you see in a blue box that starts with `Optional pick:`, with what
-  it changes. The change includes it only when the user picks it.
+- Make yourself every choice left open by the words of the user and the rules, and draw it as part
+  of After.
+- Ask the user nothing beyond the decisions that need an answer on this page.
+- Draw every alternative approach as one more After picture beside the others of its section, with
+  the label `Optional pick:` in blue in place of the state label. The change includes it only when
+  the user picks it.
+- Never show an optional pick as text alone. Draw an alternative that happens out of sight as boxes
+  and arrows, like any other picture.
 
 ## Updating the page
 
@@ -91,6 +94,8 @@ it from a description.
 - Mark every part that changed as Updated, with a purple outline and an `UPDATED` badge. Remove
   the Updated marks of earlier rounds.
 - Add to the line under the title what changed after the last answer from the user.
+- When the user picks an optional pick, make it the After picture of its section and remove the
+  other optional picks there. Remove an optional pick the user declines.
 - Update the plain-words box whenever After changes.
 
 ## Making the page
