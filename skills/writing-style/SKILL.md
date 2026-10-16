@@ -44,7 +44,7 @@ description: Applies to every text you write that a person reads, such as code c
   changes. Never give it a human verb such as holds, keeps, stays, carries, reaches, answers, says,
   states, refuses, decides, serves, names or touches.
 - Never write that code takes something in the sense of receiving or handling it, as in "the
-  import takes the tour". Keep takes only for the arguments of a function or a command.
+  import takes the file". Keep takes only for the arguments of a function or a command.
 - Name a thing with words already known to the reader. Never invent a label for it, such as "the
   fast way" for a lookup that finds its result in the cache.
 - Say what is there or what happens, instead of listing what is absent with `no` and a noun.
