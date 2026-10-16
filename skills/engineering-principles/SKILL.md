@@ -162,6 +162,9 @@ description: Applies whenever you design, build, change, test or debug software,
   magic string.
 - Represent absence as absence: an empty collection, a null or optional, or an error, never a
   placeholder of the same type.
+- Never let a value that the caller has to supply fall back silently to an empty or default one,
+  such as a request body sent empty because none was built. Make the value required, so a call that
+  leaves it out fails.
 
 ## Types, input, limits and errors
 
@@ -170,6 +173,16 @@ description: Applies whenever you design, build, change, test or debug software,
 - Make illegal states unrepresentable.
 - Read and write a stored record as a typed model, converted where it enters or leaves the store.
   Never build or read a stored record as a dictionary literal or by looking up its keys.
+- Build a request to another system, and read the response to it, as a typed model, converted to
+  the wire form in the adapter for that system. Outside that conversion, never build a request
+  body or a part of one, such as a filter, a sort order or paging, as a dictionary literal.
+- Define the models for the requests to one system, and the fixed values built from them such as a
+  standard sort order, once, in the module shared by all code that calls that system.
+- Give the function that sends a request a typed parameter for each part of the request, such as
+  the filter, the sort order and the paging. Never merge the parts of a request by combining untyped
+  maps.
+- Never give an untyped structure a name that makes it look typed, such as an alias for a mapping
+  of strings to objects. The alias is only a second name for the untyped structure.
 - Judge a string in code by its purpose. Turn a string standing for something that can be typed in
   the language into an enum or a class. Keep a string whose purpose is text, such as a message or
   a name fixed by an outside format, as a string, defined in one place.
@@ -251,6 +264,9 @@ description: Applies whenever you design, build, change, test or debug software,
   that shows the outcome, such as a command line, a user interface or an API response, write a
   separate message from those facts, so that every message describes the same moment as the
   decision.
+- Hand the code that writes a message the facts it needs, such as the operation and the ids it acts
+  on, and let that code write the whole sentence. Never define, return or pass a fragment of a
+  sentence, such as "for item 42", to be glued into a message.
 - Pass a failure across a language or process boundary as data, never as a panic or an exception
   that unwinds across it.
 - Choose what leaves a system by an allowlist of fields, never by a denylist.

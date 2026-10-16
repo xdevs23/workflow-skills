@@ -31,5 +31,18 @@ Review the change for type safety only.
   domain. The fix is usually to make invalid states unconstructable.
 - Report a stored record built or read as a dictionary or by looking up its keys, where a typed
   model converted at the store belongs.
+- Report a request to another system or a response from it, or a part of a request such as a
+  filter, a sort order or paging, built or read as a dictionary outside the conversion in the
+  adapter, where a typed model belongs.
+- Report a request model, or a fixed value built from one such as a sort order, defined in a
+  caller, where the module shared by all code that calls that system belongs.
+- Report a function that sends a request and takes its parts as one untyped body, or merges them as
+  untyped maps, where each part belongs in a typed parameter.
+- Report a type alias, or any other name, that makes an untyped structure look typed, such as an
+  alias for `Mapping[str, object]` or `dict[str, Any]`.
+- Report a value that the caller has to supply and that falls back silently to an empty or default
+  one, such as `body or {}`, where the value belongs in a required parameter.
+- Report a fragment of a sentence defined, returned or passed as a value, such as
+  `"for item 42"`, to be glued into a message, where the facts about the operation belong.
 - Report validation at the wrong boundary: untrusted input typed as if already validated.
 - State in every finding the tighter type that would make the bug unrepresentable.
