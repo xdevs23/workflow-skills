@@ -49,8 +49,9 @@ Those four skills contain the full rules. The reviewers check every change again
   Everywhere else, say how two things relate: where one sits, what it contains, what it needs or
   what it does.
 - Say what a thing is or does in place of stacking nouns into a new name.
-- Join two clauses with `, and` only when they are one thought. Write two sentences otherwise.
-  Delete a second clause that adds nothing.
+- Join two main clauses with `, and`, `, so`, `, but` or `, or` only when they are one thought.
+  Write two sentences otherwise.
+- Delete a second clause that adds nothing.
 - Say what is there or what happens in place of listing absences with `no` and a noun. Where the
   absence itself is the point, write it as a sentence with a verb.
 - Give code, a file, a value or a tool the verb for what it does or what happens to it, such as is,

@@ -36,9 +36,11 @@ description: Applies to every text you write that a person reads, such as code c
   store owned the tab, just like "the store's Reports tab".
 - Never stack nouns into a name the reader has not seen before, such as "retry budget", "fetch
   plan" or "session handoff record". Say what the thing is or what it does.
-- Join two clauses with `, and` only when they are one thought. Write two sentences otherwise.
+- Join two main clauses with `, and`, `, so`, `, but` or `, or` only when they are one thought.
+  Write two sentences otherwise. "The report goes out by mail, so a page that fails is skipped"
+  joins two thoughts. Write "The report goes out by mail. A page that fails is skipped."
 - Delete a second clause that adds nothing to the first. In "The script stops at the first failure,
-  and nothing after it runs", the second clause only repeats the first, so delete it.
+  and nothing after it runs", the second clause only repeats the first. Delete it.
 - Give code, a file, a value or a tool the verb for what happens to it or what it does: is, has,
   contains, sets, uses, calls, returns, shows, sends, fails, expects, needs, skips, affects or
   changes. Never give it a human verb such as holds, keeps, stays, carries, reaches, answers, says,
