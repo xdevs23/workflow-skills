@@ -18,4 +18,9 @@ trustworthy but is missing.
 - Report a missing cleanup, teardown, release of a resource or cancellation.
 - Report silent failures, such as swallowed errors and ignored return values, that should surface.
 - Report a documented case left unimplemented.
+- Report a fact copied from an outside specification, such as the status codes of a protocol,
+  where a data file published with the specification or a library generated from it can supply
+  the fact. Name that source in the finding.
+- Report a fact copied from an outside specification that cannot be read from such a source, where
+  the link to the section from which it comes or the date that section was checked is missing.
 - Name in every finding the specific missing case and what should happen instead.

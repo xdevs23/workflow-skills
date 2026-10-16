@@ -214,6 +214,10 @@ description: Applies whenever you design, build, change, test or debug software,
 - Read a value defined by the data, such as a currency, a unit, a locale or a timezone, from that
   data, never hardcoded, defaulted or inferred, and fail when it is missing. Where only one value
   is allowed, validate the input against it and use the validated value.
+- Read a fact defined by an outside specification, such as the status codes of a protocol, from
+  the authoritative source, such as a data file published with the specification or a library
+  generated from it. Where that is not possible, copy the fact together with a link to the section
+  from which it comes and the date that section was checked.
 - Read input resiliently. Read a malformed field as unknown, and keep the rest usable.
 - Accept one form per input, and refuse tolerance without a technical reason.
 - Make a conversion exact or fail. Never apply automatically a conversion that could lose or

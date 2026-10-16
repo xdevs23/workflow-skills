@@ -17,6 +17,9 @@ Review the change for code cleanliness only: readability and hygiene.
     services and registries (`ShopServices`);
   - a function named after a role instead of what it returns, such as `owners` for a function that
     finds the carts still referencing a product (`cartsReferencingProduct`).
+- Report a library call whose flags decide the shape of its result, such as a serializer called
+  with several flags, written at the place that uses the result, where a function or method named
+  for that result in the module that owns the type belongs.
 - Report comments that are false, restate the code or are stale, and commented-out code left in.
 - Report magic numbers or strings that need a named constant.
 - Report text that explains a product, as defined in `workflow-skills:engineering-principles`. Name

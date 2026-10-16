@@ -32,6 +32,9 @@ description: Applies whenever you write or change code in any language, includin
 - Apply the naming test to each name as you write it: hide the docstring for it and read only the
   name and a line that uses it. Rename it when you then can't say what the value contains or what
   the code does.
+- Write a library call whose flags decide the shape of its result, such as a serializer called with
+  several flags, once, as a function or method named for that result in the module that owns the
+  type, and call that function wherever the result is needed. This applies with one caller too.
 - Treat a file past about 500 lines as a candidate for splitting.
 - Keep the public surface small. Make implementation types internal or private, and make public
   only what a consumer calls.
