@@ -14,7 +14,8 @@ uses it.
 - Report a premature or speculative abstraction: indirection, generics, plugin points or
   configuration knobs with a single caller while a second use is not in sight. Accept an
   abstraction with at most one caller only where the notes describing the change require it, never
-  on an assumption.
+  on an assumption. Accept also a function that names a library call whose flags decide the shape
+  of its result, as `workflow-skills:code-writing` requires.
 - Report a wrong boundary: a boundary drawn where it creates friction instead of where the domain
   actually divides.
 - Report a missing abstraction: repeated shapes that need a name.

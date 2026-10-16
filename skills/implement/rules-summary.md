@@ -23,6 +23,8 @@ Those four skills contain the full rules. The reviewers check every change again
 - Build a request to another system and read its response as typed models, defined once in the
   module shared by all code that calls that system. Never hide an untyped structure behind an
   alias, and never let a value that the caller has to supply fall back silently to an empty one.
+- Read a fact defined by an outside specification from the authoritative source, or copy it with a
+  link to its section and the date that section was checked.
 - Never write a parser by hand for an established format. Build output from typed parts.
 - Never set a limit yourself. Accept an external limit only together with the official source that
   documents it, what it costs, the date the source was checked and approval from a person.
@@ -40,7 +42,8 @@ Those four skills contain the full rules. The reviewers check every change again
 - Prove a change on the code path that really runs, and state for every claim how you know it.
 - Write code that reads like the code around it. Use plain names, write comments only for what the
   code can't show, and use the idioms of the language, including the form of a closed set in
-  that language.
+  that language. Write a library call whose flags decide the shape of its result once, as a
+  function named for that result.
 - Write simple language. Leave out filler, jargon, preambles and mannered speech.
 - Use `'s` or an `of` that could become `'s` only for real ownership, such as Anna's book.
   Everywhere else, say how two things relate: where one sits, what it contains, what it needs or

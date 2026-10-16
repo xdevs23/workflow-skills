@@ -38,6 +38,8 @@ Review the change for type safety only.
   caller, where the module shared by all code that calls that system belongs.
 - Report a function that sends a request and takes its parts as one untyped body, or merges them as
   untyped maps, where each part belongs in a typed parameter.
+- Report a parameter, a return type or a field annotated with a container whose items are untyped,
+  such as `list[dict]` or a bare `dict`, and name the typed model that describes the items.
 - Report a type alias, or any other name, that makes an untyped structure look typed, such as an
   alias for `Mapping[str, object]` or `dict[str, Any]`.
 - Report a value that the caller has to supply and that falls back silently to an empty or default
