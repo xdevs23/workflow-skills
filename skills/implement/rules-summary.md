@@ -20,6 +20,9 @@ Those four skills contain the full rules. The reviewers check every change again
   protective check. Do not add a special case where the existing path covers the case.
 - Type all data. Define a closed set of values once, as an enum in the module for the concept it
   belongs to. Convert text to that enum once, where the text enters the program.
+- Build a request to another system and read its response as typed models, defined once in the
+  module shared by all code that calls that system. Never hide an untyped structure behind an
+  alias, and never let a value that the caller has to supply fall back silently to an empty one.
 - Never write a parser by hand for an established format. Build output from typed parts.
 - Never set a limit yourself. Accept an external limit only together with the official source that
   documents it, what it costs, the date the source was checked and approval from a person.
@@ -27,6 +30,7 @@ Those four skills contain the full rules. The reviewers check every change again
   permission.
 - Keep secrets unprintable and out of every tracked file, log and message. Keep transport security
   on.
+- Hand the code that writes a message the facts it needs, never fragments of a sentence.
 - Give every error shown to a person a next step. Retry a failure automatically only when it is
   known to be temporary.
 - Fix every known defect, keep what works, and never relax an invariant.
