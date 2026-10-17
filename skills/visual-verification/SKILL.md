@@ -134,39 +134,37 @@ Curate a scene when none of the existing scenes exposes the surface affected by 
     passing;
   - for a change that alters a compatibility input on purpose, such as a translation, a fixture, the
     scene module or a dependency lock, the intended input change.
-- Have the first implementer of the change capture the before state in the worktree it works in,
-  from the commit where the change starts, before its first edit, under a name not used before in
-  that worktree.
-- Have the after state captured on the branch that contains the whole change, after the last commit
-  of the change, under a name not used before in that worktree:
-  - When one implementer built the change, or several one after the other, have the last of them
-    capture it.
-  - When implementers ran at the same time, start one implementer on the branch that contains their
-    merged work to capture it there, and hand it the path of the before capture.
-- Have the implementer that captures the after state run the comparison against the before capture.
-  It returns the comparison command and its output, which contain the names of both captures,
-  together with the checks it ran. That implementer proves pass or fail with the check command of
-  the project, because the comparison exits nonzero for every intended change.
-- After any fix to a visual change, capture the after state again under a name not used before and
-  compare it against the before capture. When an implementer makes the fix, hand it the path of the
-  before capture. It then captures and compares.
-- Have the implementer return every capture, comparison report and evidence sheet it made, each with
-  its absolute path and what it shows.
-- Hand those paths to the scope reviewer, which opens by name the captures compared by the
-  implementer.
+- Run every scene, capture and comparison, and the self-test suite of the harness, yourself in
+  your build. An implementer writes scenes, fixtures and harness code and runs none of them.
+- Capture the before state yourself, before the first implementer starts, from the commit where the
+  change starts, in the worktree where your build runs, under a name not used before in that
+  worktree.
+- Capture the after state in your build, run on the branch that contains the whole change after its
+  last commit, under a name not used before in that worktree. Run that build before the reviewers
+  start on the change.
+- Run the comparison against the before capture in the same build. Keep the comparison command and
+  its output, which contain the names of both captures, together with the checks you ran. Prove
+  pass or fail with the check command of the project, because the comparison exits nonzero for
+  every intended change.
+- Hand a failed comparison to an implementer like any other failure of the build, with the
+  comparison report.
+- After any fix to a visual change, capture the after state again in your next build under a name
+  not used before, and compare it against the before capture.
+- Hand the scope reviewer the absolute path to every capture, comparison report and evidence sheet
+  you made, each with what it shows. The scope reviewer opens by name the captures you compared.
 - For a change of the third form, the comparison refuses the pair as incompatible and is still
-  strict. Have the implementer return the output of that comparison together with an evidence sheet
-  built from the same two captures, rendered under an output name not used before. Never loosen the
-  comparison for the intended input change.
+  strict. Keep the output of that comparison together with an evidence sheet built from the same
+  two captures, rendered under an output name not used before. Never loosen the comparison for the
+  intended input change.
 - The scope reviewer opens the PNGs, the receipts and the comparison reports in the harness
-  directory inside the project cache of that worktree, the location defined by
+  directory inside the project cache of the worktree where your build runs, the location defined by
   `workflow-skills:local-cache`. For a change of the third form, the scope reviewer judges the
   outcome by reading the evidence sheet, the two receipts and the measured checks of the after
   capture in its receipt and report.
 - The scope reviewer checks that the receipt of the after capture records the commit under review as
   source revision, and that the receipt of the before capture records the commit where the change
   starts. An after capture of another commit proves nothing about this commit.
-- Send a point that needs a new capture to the implementer. Reviewers do not write anything.
+- Take a point that needs a new capture into your next build. Reviewers do not write anything.
 
 ## Known pitfalls
 
