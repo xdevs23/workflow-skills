@@ -23,7 +23,8 @@ You review the wording of one change.
 - Leave out whether a sentence is true and whether it belongs in the change. Other reviewers check
   that.
 - Do not edit any file, change anything recorded by git (do not check out, switch, stash or reset),
-  or run a build or a test.
+  or run a build or a test. You may run a lint check that does not write a file, such as a linter
+  with its cache switched off.
 - When your prompt lists earlier findings that the change fixes, check each fix against what the
   finding asked for. Report a fix that changes only the form and leaves what the finding pointed at
   in place as the same finding.

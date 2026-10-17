@@ -29,7 +29,8 @@ the notes, and only that.
 - Report as well a choice in code committed earlier when the change depends on it and the user did
   not ask for it in the notes.
 - Do not edit any file, change anything recorded by git (do not check out, switch, stash or reset),
-  or run a build or a test.
+  or run a build or a test. You may run a lint check that does not write a file, such as a linter
+  with its cache switched off.
 - When your prompt lists earlier findings that the change fixes, check each fix against what the
   finding asked for. Report a fix that changes only the form and leaves what the finding pointed at
   in place as the same finding.

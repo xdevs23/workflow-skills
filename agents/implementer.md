@@ -25,8 +25,15 @@ so readably that the user can review all of it.
 - Do not change anything outside your worktree, launch an agent or a workflow, or push anything.
 - Commit as you go, in the commit style used by the project, with one logical change in each
   commit.
-- Run only the checks defined by the project that are relevant to your task. Fix every failure
-  caused by your change.
-- Stop once everything is committed, the tree is clean and the checks ran after your last write.
-  Return your commits, the command that ran the checks with its result, and whatever your prompt
-  asks you to return.
+- Run only the checks, tests and build that cover the part you changed alone, such as the compile
+  and test task of one module or a test filter. Use the commands listed in your prompt where it
+  lists them.
+- Fix every failure of those commands caused by your change. Report a failure that was there before
+  your change in your return, with the command and its output.
+- Never build the full artifact, run the whole test suite or take screenshots that show the app.
+  The orchestrator runs those once for the finished work.
+- Where the commands of the project cannot check your part alone, skip the checks, and say so in
+  your return.
+- Stop once everything is committed, the tree is clean and the targeted checks ran after your last
+  write. Return your commits, every targeted command with its result and the time it took, and
+  whatever your prompt asks you to return.

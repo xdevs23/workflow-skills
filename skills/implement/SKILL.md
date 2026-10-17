@@ -49,8 +49,9 @@ and the user reviews the code.
   points every project in the tree at its worktree, and sync it without fetching.
 - Where a tree has too many repositories to copy, such as a ROM tree of a thousand repositories,
   let the implementer work in that tree.
-- Hand every implementer only the paths to the full notes and the approved draft. When you split
-  the work, add which part of the change it builds. Never reword the notes for it.
+- Hand every implementer the paths to the full notes and the approved draft, the part of the change
+  it builds when you split the work, and the commands of the project that build, check and test
+  that part alone, where the project has them. Never reword the notes for it.
 - When you run several implementers, give each of them a separate worktree. Merge the branches
   they worked on into one branch before the reviewers start, if needed in a separate merge step.
 - Run parts of the work that depend on each other one implementer after the other. Start the
@@ -106,6 +107,23 @@ and the user reviews the code.
 - Show the user every optional pick a reviewer returns, and build it only when the user picks it.
   Don't wait for the user to respond: show them the options and treat it as asynchronous.
 
+## Builds
+
+- Run the full build, the whole test suite and the visual captures yourself, never in an
+  implementer or a reviewer.
+- Build a change once its findings are fixed. When several changes are ready at the same time,
+  merge their branches into one build branch and build them together.
+- Build a change with visual work before its reviewers start, so that the scope reviewer gets the
+  captures, as `workflow-skills:visual-verification` describes.
+- Hand each failure, with its output, to one implementer on the branch used by the change that
+  caused it. Hand a failure that only the combination of branches shows to one implementer on the
+  build branch. Build again once the fixes are merged into the build branch.
+- Where a project has no command that builds, checks or tests one part alone within seconds, design
+  commands that do, such as one build target for each module, a test filter or an incremental
+  build. Record them as a unit of work with `workflow-skills:todo-md`, and implement that unit once
+  the user approves it.
+- Until such commands exist, cover the changes of the implementers with your full build.
+
 ## User review
 
 - Send the change to the user through the review system the project uses. Open a pull request and
@@ -120,6 +138,3 @@ and the user reviews the code.
 
 - After each workflow, assess what took the longest and try to optimize it so that the next run needs less time. Aim
   for a maximum of 20 minutes per agent. Anything under 20 minutes does not need to be inspected.
-- The implementer is not supposed to run full tests or checks if they take considerable time to run. Instead, they
-  are supposed to run just the tests and checks that concern their task, and you are supposed to run the full check
-  at the right time.

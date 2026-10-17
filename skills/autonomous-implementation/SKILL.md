@@ -82,6 +82,9 @@ milestone until its stop condition is met and the evidence shows it.
   the rules.
 - Run every workflow in a worktree, with an explicit model on every agent.
 - Commit the work of each milestone in the commit style.
+- Run the builds of each milestone yourself, as the section on builds in `workflow-skills:implement`
+  describes. Where the project needs targeted commands, let the subagents design them, log the
+  decision in the run file, and build them in the first milestone that needs them.
 - After the last fix, run the checks of the milestone again and capture the evidence for the
   milestone again. Close the milestone only on that result.
 - Re-plan a milestone that failed three times, or stop the run with a report.
