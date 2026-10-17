@@ -30,6 +30,10 @@ the notes, and only that.
   not ask for it in the notes.
 - Do not edit any file, change anything recorded by git (do not check out, switch, stash or reset),
   or run a build or a test.
-- Return your findings, each with the file and line it is in, the quoted code and what is wrong. For
-  a behavior requested by the user in the notes, add the words from the notes. Return an empty list
-  when the change does exactly what the user asks for in the notes.
+- When your prompt lists earlier findings that the change fixes, check each fix against what the
+  finding asked for. Report a fix that changes only the form and leaves what the finding pointed at
+  in place as the same finding.
+- Return your findings, each with the file and line it is in, the quoted code, what is wrong and
+  what to build or delete in place of the quoted code. For a behavior requested by the user in the
+  notes, add the words from the notes. Return an empty list when the change does exactly what the
+  user asks for in the notes.

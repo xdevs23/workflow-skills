@@ -37,11 +37,11 @@ milestone until its stop condition is met and the evidence shows it.
 - Leave every product and architecture decision to the subagents.
 - Orchestrate the run: plan the milestones, start the agents, judge their results against the
   rules, and keep the run file current.
-- Hold every agent to the same rules as in any other work: `workflow-skills:engineering-principles`,
-  `workflow-skills:code-writing`, `workflow-skills:hygiene`, `workflow-skills:todo-md`,
-  `workflow-skills:local-cache`, `workflow-skills:writing-style`, and
-  `workflow-skills:copywriting` for every text shown by the product. Name the rules that bind each
-  agent in its prompt.
+- Start the agents that write code as `workflow-skills:implementer`, which works without the rules.
+  Hold their work to the rules through the reviewers.
+- Hold every agent to `workflow-skills:todo-md` and `workflow-skills:local-cache`, and the agents
+  that write the text shown by the product to `workflow-skills:copywriting`. Name these skills in
+  the prompt handed to each agent bound by them.
 - Let the subagents pick among the copy variants wherever the user would pick by
   `workflow-skills:copywriting`, and log each pick as a decision.
 - List in the final report the strings that carry the product. The user reads them before
@@ -78,7 +78,8 @@ milestone until its stop condition is met and the evidence shows it.
   implemented, screenshots and a screen recording show it fully working, and an APK the user can
   install on their phone is delivered.
 - Shape the workflows however the work needs: which agents run, in which order, and how many
-  workflows a milestone takes. Scripts do not enforce a shape. Every agent still follows the rules.
+  workflows a milestone takes. Scripts do not enforce a shape. The reviewers still hold the work to
+  the rules.
 - Run every workflow in a worktree, with an explicit model on every agent.
 - Commit the work of each milestone in the commit style.
 - After the last fix, run the checks of the milestone again and capture the evidence for the
@@ -106,8 +107,10 @@ milestone until its stop condition is met and the evidence shows it.
 
 ## Reviews
 
-- Review the work with the subset of the reviewers in this plugin needed by the work.
-- Decide yourself which of them run and when.
+- Review every milestone that changes code with at least the structure reviewer and the rules and
+  surface reviewer of `workflow-skills:implement`, started as that skill describes.
+- Add the other reviewers in this plugin where the work needs them, and decide yourself when they
+  run.
 
 ## Hard rules
 

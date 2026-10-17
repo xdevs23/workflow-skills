@@ -49,9 +49,8 @@ and the user reviews the code.
   points every project in the tree at its worktree, and sync it without fetching.
 - Where a tree has too many repositories to copy, such as a ROM tree of a thousand repositories,
   let the implementer work in that tree.
-- Hand every implementer the paths to the full notes, the approved draft and the rules summary in
-  `rules-summary.md` next to this skill. When you split the work, add which part of the change it
-  builds. Never reword the notes for it.
+- Hand every implementer only the paths to the full notes and the approved draft. When you split
+  the work, add which part of the change it builds. Never reword the notes for it.
 - When you run several implementers, give each of them a separate worktree. Merge the branches
   they worked on into one branch before the reviewers start, if needed in a separate merge step.
 - Run parts of the work that depend on each other one implementer after the other. Start the
@@ -71,30 +70,37 @@ and the user reviews the code.
   starts and ends.
 - Start the scope reviewer as `workflow-skills:reviewer-scope` and hand it the notes and the
   approved draft. It checks that the change contains everything the user asks for in the notes and
-  nothing else.
+  nothing else. It works without the rules.
 - Start the prose reviewer as `workflow-skills:reviewer-prose`, on the smallest model available, at
   medium effort. It checks every sentence that the change adds or edits against
   `workflow-skills:writing-style`.
-- Start four more as `workflow-skills:reviewer-layer` and hand each the notes and the lens skills
-  listed for its layer below.
+- Start four more as `workflow-skills:reviewer-layer` and hand each the notes and the skills that
+  the list below gives to that layer. The rules are `workflow-skills:engineering-principles`,
+  `workflow-skills:code-writing` with the file for each language in the changed files,
+  `workflow-skills:writing-style`, `workflow-skills:hygiene`, and the instruction files in the
+  project root, in every directory edited by the change and the global instruction file.
   - The correctness reviewer checks whether the change works and how the cost of running it grows.
     It loads `workflow-skills:reviewer-correctness`, `workflow-skills:missing-gaps` and
-    `workflow-skills:runtime-cost`.
+    `workflow-skills:runtime-cost`, without the rules.
   - The simpler shape reviewer checks what could be deleted, shared or left out. It loads
     `workflow-skills:cold-alternatives`, `workflow-skills:duplicate-checker` and
-    `workflow-skills:abstraction-quality`.
+    `workflow-skills:abstraction-quality`, without the rules.
   - The structure reviewer checks whether concerns and layers are separate and whether types are
     narrow. It loads `workflow-skills:separation-of-concerns`, `workflow-skills:domain-leakage`,
-    `workflow-skills:smearing`, `workflow-skills:code-smell` and `workflow-skills:type-safety`.
-  - The rules and surface reviewer checks which rules the change breaks and how clean the names
-    and comments in it are. It loads `workflow-skills:project-rule-reader`,
-    `workflow-skills:code-cleanliness` and `workflow-skills:quality`.
+    `workflow-skills:smearing`, `workflow-skills:code-smell`, `workflow-skills:type-safety` and the
+    rules.
+  - The rules and surface reviewer checks the change against every rule, and checks how clean the
+    names and comments in it are. It loads `workflow-skills:project-rule-reader`, which reads the
+    rules, `workflow-skills:code-cleanliness` and `workflow-skills:quality`.
+- When the change fixes findings of an earlier review, hand the scope, prose and layer reviewers
+  those findings.
 
 ## Findings
 
 - Read what the reviewers found.
-- Fix small findings yourself by hand, or hand the findings to one implementer in whatever form you
-  see fit.
+- Fix small findings yourself by hand, or hand the findings to one implementer, each with the shape
+  to build as the reviewer named it.
+- Start no review round of your own on the fix.
 - Record a finding about code outside the change with `workflow-skills:todo-md`, and leave it out
   of this change.
 - Show the user every optional pick a reviewer returns, and build it only when the user picks it.

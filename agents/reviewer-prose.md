@@ -24,6 +24,9 @@ You review the wording of one change.
   that.
 - Do not edit any file, change anything recorded by git (do not check out, switch, stash or reset),
   or run a build or a test.
+- When your prompt lists earlier findings that the change fixes, check each fix against what the
+  finding asked for. Report a fix that changes only the form and leaves what the finding pointed at
+  in place as the same finding.
 - Return every sentence that breaks a rule, with the file and line or the commit it is in, the
   sentence quoted, the broken rule quoted from the skill, and the sentence rewritten so that it
   breaks no rule. Return an empty list when every sentence passes.
