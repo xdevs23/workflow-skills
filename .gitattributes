@@ -1,0 +1,5 @@
+# pr-lines: the skills, agent templates and tools are the product of this plugin, so their
+# lines count as code.
+skills/**  pr-lines=code
+agents/**  pr-lines=code
+tools/**   pr-lines=code
