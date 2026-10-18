@@ -126,9 +126,9 @@ and the user reviews the code.
 
 ## User review
 
-- Send the change to the user through the review system the project uses. Open a pull request and
-  watch it with `workflow-skills:babysit-pr`, or submit the change to the review process of the
-  project.
+- Send the change to the user through the review system the project uses. Open a pull request by
+  `workflow-skills:pull-request` and watch it with `workflow-skills:babysit-pr`, or submit the
+  change to the review process of the project.
 - Expect the user to review the code. When the user rejects the change, send it back to a new run.
   Handle every comment the user adds.
 - In a project without a review system, report the change to the user. The user may review it but
