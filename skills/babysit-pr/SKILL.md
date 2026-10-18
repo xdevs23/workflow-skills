@@ -10,8 +10,8 @@ document, commit message and reply you write while you follow this skill. Load i
 with this plugin.
 
 Use this skill once a pull request exists. Creating and updating the pull request lie outside it:
-update the pull request the way the project or another skill for that requires. Who pushes a change
-and how a push gets approved lie outside this skill as well.
+open and update the pull request by `workflow-skills:pull-request`. Who pushes a change and how a
+push gets approved lie outside this skill as well.
 
 ## Start and watch
 
@@ -50,11 +50,15 @@ and how a push gets approved lie outside this skill as well.
 - Check a reported problem against the code before you edit anything.
 - Make the change needed by the comment, or decline a finding disproved by the check.
 - Reply in both cases by `workflow-skills:pr-comment-replies`.
+- After you push a fix for a comment, update the description and the pictures by the section
+  "Opening and updating" of `workflow-skills:pull-request`.
 
 ## Failed checks
 
 - Tell a failure caused by the repository apart from a failure of the infrastructure.
 - Fix a failure caused by the repository.
+- After you push a fix for a failure, update the description and the pictures by the section
+  "Opening and updating" of `workflow-skills:pull-request`.
 - Handle a `status-failed` event like a `check-failed` event. It reports a commit status in the
   failure or error state, posted by a CI service through the commit status API in place of check
   runs.

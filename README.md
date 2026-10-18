@@ -4,7 +4,7 @@ workflow-skills is a Claude Code plugin with skills for multi-agent workflows, s
 for engineering, code, writing and hygiene, and a library of review-lens skills. The workflow
 skills cover implementing and reviewing a change from notes of the user's words and a draft
 approved by the user, autonomous implementation, copywriting, visual decisions and visual
-verification, watching a pull request and recovering an interrupted workflow run.
+verification, opening and watching a pull request and recovering an interrupted workflow run.
 
 ## Install
 
@@ -28,6 +28,7 @@ such as `/workflow-skills:implement`.
 | `resume-interrupted-run` | Recover a workflow run that was stopped while agents were still working: hand each interrupted agent the transcript of the earlier attempt by that agent, leave every completed prompt byte-identical, and resume with almost nothing lost. |
 | `visual-verification` | Check a change to any rendered user interface, in a browser, a native mobile or desktop toolkit or a terminal, with a reproducible visual harness: real screenshots, controlled data, measured checks and strict before and after comparisons. A project without a harness adopts one from the implementation guide bundled with the skill. |
 | `visual-decisions` | Draw the draft of a change, or product decisions that need an answer, as pages of side-by-side pictures that show the code in named states next to After, one page at a time, with a legend, alternatives drawn as optional picks and marks for what changed after each answer. |
+| `pull-request` | Open a pull request with a description in a fixed shape: the value first, the earlier problem, the change with what it leaves out, evidence led by a picture, the impact, where to start reading and a graphic of the diff lines by kind of file. The evidence picture is the evidence sheet that the visual harness draws for rendered output, otherwise a short before and after picture drawn new from what changed. `tools/pr-lines.py` draws the line graphic. |
 | `babysit-pr` | Watch a submitted pull request until it is closed or merged, and act on every comment, review, failed check and failed commit status on it. |
 | `pr-comment-replies` | Write and post replies on pull requests and issues: the note alert on top, inline replies that start with their outcome and a reason for every declined finding. |
 | `report-plugin-issues` | File every problem found in this plugin as an issue on the plugin repository, or as a comment on the open issue that already describes it, with details of the project and private data kept out, instead of patching the scripts of the plugin silently. |
@@ -57,12 +58,22 @@ also be loaded alone to review a change through its lens.
 - Bun for the tests.
 - Python 3 and an authenticated GitHub CLI for `babysit-pr`, in version 2.48.0 or later, the first
   release with `gh api --slurp`, which the watcher calls.
+- Python 3.10 or later, git 2.40 or later, resvg and the Mona Sans font for `pull-request`, which
+  draws the line graphic with them, and the GitHub CLI in version
+  [2.99.0](https://github.com/cli/cli/releases/tag/v2.99.0) or later, the first release with
+  `--attach`. On Linux and on macOS with Apple silicon, the `pr-lines` app of the flake brings
+  Python, git, resvg and the font along. An Intel Mac installs them without Nix, as the skill
+  describes.
 
 ## Tests
 
 ```sh
 bun test --timeout 60000 tests/
 ```
+
+The rendering test of `pr-lines` runs when `PR_LINES_FONTS` names the Mona Sans directory and resvg
+is on the `PATH` or named by `PR_LINES_RESVG`, and reports as skipped otherwise. With Nix,
+`nix run path:.#test` runs the whole suite with resvg and the fonts, the rendering test included.
 
 ## License
 
