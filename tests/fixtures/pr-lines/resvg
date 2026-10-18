@@ -1,0 +1,24 @@
+#!/usr/bin/env python3
+"""A stand-in for resvg that needs no fonts.
+
+With --query-all it gives every text a width of 7 px per character. Otherwise it writes, as the
+picture, one JSON line for the svg element and for every rect and text in it, with the position,
+the size, the fill and the text of each, so a test can read what the tool drew.
+"""
+
+import json
+import sys
+import xml.etree.ElementTree as ET
+
+SVG = "{http://www.w3.org/2000/svg}"
+root = ET.fromstring(sys.stdin.buffer.read())
+if "--query-all" in sys.argv:
+    for node in root.iter(f"{SVG}text"):
+        print(f"{node.get('id')},0,0,{7 * len(node.text)},13")
+else:
+    for node in root.iter():
+        tag = node.tag.removeprefix(SVG)
+        if tag in ("svg", "rect", "text"):
+            place = {name: float(node.get(name)) for name in ("x", "y", "width", "height")
+                     if node.get(name) is not None}
+            print(json.dumps({"tag": tag, **place, "fill": node.get("fill"), "text": node.text}))

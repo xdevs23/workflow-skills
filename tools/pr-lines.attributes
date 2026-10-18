@@ -1,0 +1,146 @@
+# pr-lines: the kind of file each path counts as, one of code, tests, assets,
+# tooling, docs or other. A path that matches none of these lines counts as
+# other. Git applies these lines in order. A later matching line overrides an
+# earlier one.
+#
+# These lines name only file types and folder names that mean the same kind in
+# most repositories. A repository overrides them with lines of its own in the
+# .gitattributes at its root, such as `docs/** pr-lines=code`. pr-lines reads
+# that file at the head commit, and its lines win for every path they match.
+
+# 1. Product source, by file type.
+*.py            pr-lines=code
+*.ts            pr-lines=code
+*.tsx           pr-lines=code
+*.js            pr-lines=code
+*.jsx           pr-lines=code
+*.mjs           pr-lines=code
+*.cjs           pr-lines=code
+*.vue           pr-lines=code
+*.kt            pr-lines=code
+*.java          pr-lines=code
+*.swift         pr-lines=code
+*.m             pr-lines=code
+*.mm            pr-lines=code
+*.h             pr-lines=code
+*.c             pr-lines=code
+*.cpp           pr-lines=code
+*.go            pr-lines=code
+*.rs            pr-lines=code
+*.sql           pr-lines=code
+*.css           pr-lines=code
+*.html          pr-lines=code
+*.storyboard    pr-lines=code
+*.xib           pr-lines=code
+*.plist         pr-lines=code
+*.entitlements  pr-lines=code
+*.xcprivacy     pr-lines=code
+AndroidManifest.xml pr-lines=code
+**/res/**       pr-lines=code
+
+# 2. Build, check, CI, dependency and environment files, by name.
+Dockerfile      pr-lines=tooling
+.dockerignore   pr-lines=tooling
+*.yml           pr-lines=tooling
+*.yaml          pr-lines=tooling
+*.toml          pr-lines=tooling
+*.nix           pr-lines=tooling
+*.sh            pr-lines=tooling
+*.mk            pr-lines=tooling
+*.kts           pr-lines=tooling
+*.properties    pr-lines=tooling
+*.pro           pr-lines=tooling
+*.jks           pr-lines=tooling
+*.lock          pr-lines=tooling
+*.lockb         pr-lines=tooling
+package.json    pr-lines=tooling
+package-lock.json pr-lines=tooling
+Package.resolved pr-lines=tooling
+Gemfile         pr-lines=tooling
+justfile        pr-lines=tooling
+Makefile        pr-lines=tooling
+gradlew         pr-lines=tooling
+gradlew.bat     pr-lines=tooling
+deno.json       pr-lines=tooling
+tsconfig*.json  pr-lines=tooling
+.eslintrc*      pr-lines=tooling
+eslint.config.* pr-lines=tooling
+.prettierrc*    pr-lines=tooling
+.editorconfig   pr-lines=tooling
+.gitignore      pr-lines=tooling
+.gitattributes  pr-lines=tooling
+.env            pr-lines=tooling
+.env.*          pr-lines=tooling
+vite.config.*   pr-lines=tooling
+vitest.config.* pr-lines=tooling
+jest.config.*   pr-lines=tooling
+
+# 3. Images, fonts, models, media and texts shown to people, by file type and
+#    by the directories that platforms put them in.
+*.png           pr-lines=assets
+*.jpg           pr-lines=assets
+*.jpeg          pr-lines=assets
+*.gif           pr-lines=assets
+*.webp          pr-lines=assets
+*.svg           pr-lines=assets
+*.ico           pr-lines=assets
+*.pdf           pr-lines=assets
+*.ttf           pr-lines=assets
+*.otf           pr-lines=assets
+*.woff          pr-lines=assets
+*.woff2         pr-lines=assets
+*.glb           pr-lines=assets
+*.gltf          pr-lines=assets
+*.mp3           pr-lines=assets
+*.m4a           pr-lines=assets
+*.wav           pr-lines=assets
+*.mp4           pr-lines=assets
+*.mov           pr-lines=assets
+*.strings       pr-lines=assets
+**/assets/**    pr-lines=assets
+**/*.xcassets/** pr-lines=assets
+**/*.lproj/**   pr-lines=assets
+**/res/drawable*/** pr-lines=assets
+**/res/mipmap*/** pr-lines=assets
+**/res/font/**  pr-lines=assets
+**/res/raw/**   pr-lines=assets
+**/res/values*/strings.xml pr-lines=assets
+**/i18n/**/*.json pr-lines=assets
+**/locales/**   pr-lines=assets
+
+# 4. Directories that contain scripts and tools.
+.github/**      pr-lines=tooling
+.vscode/**      pr-lines=tooling
+.idea/**        pr-lines=tooling
+.bundle/**      pr-lines=tooling
+**/*.xcodeproj/** pr-lines=tooling
+**/*.xcworkspace/** pr-lines=tooling
+gradle/**       pr-lines=tooling
+scripts/**      pr-lines=tooling
+tools/**        pr-lines=tooling
+deploy/**       pr-lines=tooling
+
+# 5. Documentation: prose files anywhere, and everything in a docs
+#    directory, images included.
+*.md            pr-lines=docs
+*.mdx           pr-lines=docs
+*.rst           pr-lines=docs
+*.adoc          pr-lines=docs
+LICENSE*        pr-lines=docs
+**/docs/**      pr-lines=docs
+
+# 6. Tests: test sources and the fixtures, doubles and resources that they use.
+**/test/**      pr-lines=tests
+**/tests/**     pr-lines=tests
+**/__tests__/** pr-lines=tests
+**/androidTest/** pr-lines=tests
+**/*Tests/**    pr-lines=tests
+*.test.*        pr-lines=tests
+*.spec.*        pr-lines=tests
+test_*.py       pr-lines=tests
+*_test.py       pr-lines=tests
+*_test.go       pr-lines=tests
+conftest.py     pr-lines=tests
+
+# 7. Third-party code copied into a repository.
+**/vendor/**    pr-lines=other
