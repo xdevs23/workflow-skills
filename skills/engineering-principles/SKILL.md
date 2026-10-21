@@ -218,6 +218,18 @@ description: Applies whenever you design, build, change, test or debug software,
 - Read a value defined by the data, such as a currency, a unit, a locale or a timezone, from that
   data, never hardcoded, defaulted or inferred, and fail when it is missing. Where only one value
   is allowed, validate the input against it and use the validated value.
+- Treat as a tunable every value whose right setting depends on the hardware, the load, the data
+  or the environment, such as a size, a count, an interval or a threshold.
+- Make every tunable dynamic: derive it at runtime from what it depends on, such as the image count
+  required by a graphics surface, and adjust it to what the code observes while it runs. Never
+  hardcode, guess or choose it.
+- Count a tunable moved somewhere else as still chosen: a name given to it, a parameter filled in
+  by a caller with a value of its own choosing, and a value computed from another chosen value all
+  leave it hardcoded.
+- Replace a timeout with the event or the state it waits for, as the rules on time describe.
+- Write a value as a constant only when it is a product choice, a truth that nothing can change,
+  such as a constant of mathematics, or a limit of an external system accepted as the rules below
+  describe. Name beside the constant the decision or the definition behind it.
 - Read a fact defined by an outside specification, such as the status codes of a protocol, from
   the authoritative source, such as a data file published with the specification or a library
   generated from it. Where that is not possible, copy the fact together with a link to the section
