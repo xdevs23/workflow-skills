@@ -45,7 +45,7 @@ export function rowsOf({ findings, failures, retrying }: RuleCheckerNote, column
       ? []
       : [
           `${PREFIX}${counted(findings.length, 'break')} reported to the agent`,
-          ...findings.map(finding => `  ${finding.place}: ${finding.wrong}`),
+          ...findings.map(finding => `  ${finding.wrong} (${finding.place})`),
         ]
   const retried = retrying === null ? [] : [`${PREFIX}trying again after ${retrying}`]
   const failed =
