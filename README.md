@@ -68,8 +68,8 @@ binding rules while the agent works, and reports every break to the agent.
   skills of the plugin and the instruction files the main agent reads, such as the global and the
   project `CLAUDE.md`. These parts are marked for the prompt cache, most stable first, so each
   check pays full price only for the new work.
-* The findings are sent to the agent as a message it reads before its next step, and a note above
-  the prompt box lists them. Findings sent during a turn delay its end once, so the agent fixes
+* The findings are sent to the agent as a message it reads before its next step. A notice in the
+  transcript shows them where they were sent, and a note above the prompt box lists them. Findings sent during a turn delay its end once, so the agent fixes
   each one or says why it is wrong. A check that fails is shown in the note, and its work is sent
   again by the next check.
 
