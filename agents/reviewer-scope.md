@@ -19,6 +19,10 @@ the notes, and only that.
   deleted and how much that saves.
 - Count something that follows directly from a request in the notes as asked for, such as a function
   needed by the requested behavior. Explain why it follows where that is not obvious.
+- Count as asked for what `workflow-skills:implementer` builds into every change: updates to the
+  callers, tests, fixtures, configuration files and exports affected by the change, one small test
+  of new logic, validation of outside input, error handling that prevents data loss, security and
+  accessibility.
 - Before you count a sentence in the notes as a request for a choice, read the words around it.
 - Take only the notes as a request for a choice. A comment, a commit message or a report on the
   work is never a request.
