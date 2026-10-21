@@ -32,6 +32,10 @@ where things stand.
 - Write an entry only for work the user asked for, work that is planned with the user, and work
   being done.
 - Write no entry for a task that changes nothing in the project.
+- Treat a state in `TODO.md` as the last state someone wrote down. Before you report a state or
+  act on it, check the work against the branches, the history of the main branch, the pull
+  requests and the deployment where it would show up, and correct the entry first. Ask the user
+  for what you cannot check yourself.
 
 `TODO.md` is **gitignored and untracked**: it is a working file on one machine and is not part of
 the repository. A fresh clone does not contain it.
@@ -261,14 +265,15 @@ An item can be finished but deliberately withheld.
 
 ## 7. When to write
 
-- Write into `TODO.md` without being asked, at any moment during and after turns, at each of these
-  moments:
+- Write into `TODO.md` without being asked, during and after turns, in the same turn as each of
+  these moments:
   - When `TODO.md` does not exist: record whatever work is currently in flight, or create an empty
     file.
-  - The user asks for a unit of work or approves one. Write it in the same turn, with its status
-    marker and its origin pointer.
+  - The user asks for a unit of work or approves one. Write it with its status marker and its origin
+    pointer.
   - You start the fix of an older defect, as §3.2 describes.
-  - A state changes: something starts, finishes, gets committed or deployed, or gets held.
+  - A state changes: something starts, finishes, gets committed, merged, pushed or deployed, gets
+    a pull request opened or merged, or gets held.
   - A decision is made, or a new one becomes owed.
   - The order changes.
   - Something is deployed. Record the commit, the run, and what the boot logs showed.
