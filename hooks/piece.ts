@@ -9,7 +9,7 @@ export type TurnEnd = { todo: string | null; tasks: readonly BackgroundTaskSumma
 const runningWorkflows = (tasks: readonly BackgroundTaskSummary[]) =>
   tasks
     .filter(task => task.type === 'workflow' && task.status === 'running')
-    .map(task => ({ workflow: task.name ?? task.description }))
+    .map(task => ({ workflow: task.name, description: task.description }))
 
 // The message of one check, as JSON: the work, and at the end of a turn the text of TODO.md in a
 // separate block ahead of it, so an unchanged file is read from the prompt cache.
