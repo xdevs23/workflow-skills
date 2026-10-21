@@ -59,6 +59,14 @@ description: Applies whenever you write or change code in any language, includin
 - Where in scope, refactor an existing untyped structure into the clean structure it should have
   had all along.
 
+## Tests
+
+- Bound a test by the progress of the work it runs, such as ticks or event-loop turns, never by
+  wall time.
+- Fail a test once nothing is left that could move it on, such as when the channel it waits on is
+  closed, the process it waits for has exited or the event loop has no pending work.
+- Switch off the wall-time limit set by default by the test runner.
+
 ## Strings in code
 
 - Address a string meant for a model to the model.
