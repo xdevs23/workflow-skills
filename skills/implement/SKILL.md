@@ -116,9 +116,10 @@ and the user reviews the code.
 - Fix by hand every finding left after that fix run, and every finding of a later review of the
   change.
 - Start no review round of your own on the fix.
-- Record a finding about code outside the change with `workflow-skills:todo-md`, and leave it out
-  of this change. A silenced check in a file the change edits belongs to the change, also when it
-  was there before.
+- Leave a finding about code outside the change out of this change. Fix it as a separate unit in
+  parallel, as `workflow-skills:todo-md` describes.
+- Remove a silenced check in a file edited by the change as part of the change, also when it was
+  there before.
 - Put every rule that an implementer reports as standing in the way of its work to the user, with
   the place where it stood in the way.
 - Show the user every optional pick a reviewer returns, and build it only when the user picks it.
@@ -137,8 +138,8 @@ and the user reviews the code.
   build branch. Build again once the fixes are merged into the build branch.
 - Where a project has no command that builds, checks or tests one part alone within seconds, design
   commands that do, such as one build target for each module, a test filter or an incremental
-  build. Record them as a unit of work with `workflow-skills:todo-md`, and implement that unit once
-  the user approves it.
+  build. Put them to the user as a unit of work, and record and implement that unit once the user
+  approves it.
 - Until such commands exist, cover the changes of the implementers with your full build.
 
 ## User review

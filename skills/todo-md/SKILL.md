@@ -27,6 +27,11 @@ where things stand.
   write status into either one.
 - Record in `TODO.md` every fact about how far the project has progressed that is recorded nowhere
   else.
+- Use `TODO.md` as a tracker of units of work, like an issue tracker. Never use it as a diary or a
+  scratchpad.
+- Write an entry only for work the user asked for, work that is planned with the user, and work
+  being done.
+- Write no entry for a task that changes nothing in the project.
 
 `TODO.md` is **gitignored and untracked**: it is a working file on one machine and is not part of
 the repository. A fresh clone does not contain it.
@@ -41,7 +46,11 @@ The work of keeping track is split across four records:
 | task list inside the session | Only the steps of this session, thrown away when it ends |
 
 - When an item is finished, leave the **design** in the design documents and the **diff** in git,
-  and shrink the entry for the item in `TODO.md` to a receipt.
+  and delete the entry for the item from `TODO.md`. An item is finished once it is `VERIFIED`, or
+  `PUSHED` in a project that is not deployed.
+- Delete an entry also when the user says so, or when it is the fix of an older defect that §3.2
+  describes and the fix is merged. Never delete an entry for any other reason.
+- Remove a deleted entry from every `Builds on:` line that names it.
 - Do not explain again in `TODO.md` a design already written in a design document.
 
 # 2. Layout of the file
@@ -63,14 +72,15 @@ The work of keeping track is split across four records:
    - Write into that line the entry set aside, the entry that has to finish first, and where to go
      back to once that entry is done.
    - Remove the line when the work is resumed or finished.
-4. **Deploy state**: what is live where, with commit hashes and verification receipts.
+4. **Deploy state**: what is live where, with commit hashes and the evidence for `SHIPPED` and
+   `VERIFIED`.
 5. **Open sections by area**: the entries for single items, grouped by area of the project.
 
 # 3. Anatomy of an entry
 
 ```
 ### #142 - Reaction emoji support - RECORDED
-<body: what it is, where it stands, what proves it, the full theory if known>
+<body: what it is, where it stands and what is owed>
 ```
 
 - **`### #<number> - <title>`**: the number is the id in the tracker and never changes. Write in
@@ -83,8 +93,9 @@ The work of keeping track is split across four records:
   See §4.
 - **Date**: do not add a date. Commit messages and the time the file was last changed already give
   the date.
-- **Body**: prose with what the item is, what has been proven and what is owed. Put the receipts
-  into the body: commit hashes, workflow ids, run numbers and counts from a real run.
+- **Body**: prose with what the item is, where it stands and what is still to be done. Put run
+  logs and the history of the work into the project cache, never into the entry. The evidence for
+  `SHIPPED` and `VERIFIED` goes into the deploy state section.
 - **Origin pointer**: `<transcript>.jsonl:<line>:<promptId or uuid>`, the session transcript and
   the line with the first message of the conversation that raised the item. Give every entry one.
   To find the line, search the directory with the session transcripts of the project for the
@@ -129,9 +140,28 @@ The work of keeping track is split across four records:
   there. A pull request is a request that can be rejected.
 - When the delivery of a sub-unit is rejected, deliver none of the sub-units that build on it, and
   ask the user how to go on.
-- Record a finding about a behavior outside the unit as a new entry at the end of the file. Keep the
-  finding with the unit when the change made for the unit caused it, or when it keeps the unit from
-  working as intended.
+
+## 3.2. Findings raised while building a unit
+
+- Fix a finding about code the unit adds or edits in the unit itself, and never record it.
+- Put a finding, also one about older code, to the user as a question when fixing it needs a
+  decision by the user.
+- Record work left over from a unit as a sub-unit of the entry for that unit, never as a new entry.
+  Its origin pointer is the message that asked for the unit.
+- Record work left over from a unit whose entry was deleted as finished as a new entry, and name
+  the finished unit in its body.
+- Fix a defect in older code outside the unit, such as a flaky test harness, as a separate unit in
+  parallel with the unit.
+- Start the fix of an older defect without asking the user. It is the one unit you start without
+  the user's word.
+- Build the fix of an older defect by `workflow-skills:implement`, with the defect and its evidence
+  in place of the notes and without a draft, in its own worktree and on its own branch.
+- Deliver the fix of an older defect on its own, through its own pull request or review.
+- Record the fix of an older defect as an `IN PROGRESS` entry while it runs. Its origin pointer is
+  the message that asked for the unit that found the defect. Delete the entry once the fix is
+  merged.
+- Add the fix of an older defect to the `Builds on:` line of the unit when the unit cannot work
+  without it.
 
 # 4. The states an entry can take
 
@@ -158,7 +188,8 @@ item stands.
 - `TODO`/`QUEUED`: the unit can be built at any time, even if the session is wiped and started
   fresh.
 
-Whether a unit is ready to build follows from the words of the user alone.
+Whether a unit is ready to build follows from the words of the user alone, except for the fix of
+an older defect that §3.2 describes.
 
 - Never decide it yourself.
 - When you infer authorization from a prompt of the user because its words are ambiguous, state that
@@ -199,9 +230,6 @@ An item can be finished but deliberately withheld.
 
 - **Write for a reader who knows nothing of the context.** Every entry is read fresh. A reader who
   was not there must be able to act on it without asking anything.
-- **State the fact, then the evidence.** A claim without a receipt turns into folklore over time.
-  Prefer "boot clean: zero index-creation failures, backfill matched=6 updated=6" over "deployed
-  fine".
 - **Write dates as absolute dates.** Never "today", "last week", "recently". Write `2026-08-08`.
   Give timestamps `Z` with UTC when the hour matters.
 - **Use uppercase sparingly.** Uppercase marks a state, a hard constraint, or something that costs
@@ -237,8 +265,9 @@ An item can be finished but deliberately withheld.
   moments:
   - When `TODO.md` does not exist: record whatever work is currently in flight, or create an empty
     file.
-  - Anything is discussed as a potential unit of work, or anything is decided. Write it in the same
-    turn, with its status marker and its origin pointer, even when the answer was "not now".
+  - The user asks for a unit of work or approves one. Write it in the same turn, with its status
+    marker and its origin pointer.
+  - You start the fix of an older defect, as §3.2 describes.
   - A state changes: something starts, finishes, gets committed or deployed, or gets held.
   - A decision is made, or a new one becomes owed.
   - The order changes.
@@ -246,5 +275,7 @@ An item can be finished but deliberately withheld.
   - Something is owed to whoever operates production: a manual step, an index to drop, a backfill
     to run. These are easy to lose and expensive to forget.
   - An item turns out to be already done, or wrongly described.
+- Put an idea of your own for a unit of work to the user as a question, and write it down only once
+  the user asks for it or approves it.
 - Test whether an update is needed by asking: **if the session ended right now, would the next
   reader know what to do?** If not, the file is stale.
