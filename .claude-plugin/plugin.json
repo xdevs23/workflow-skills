@@ -1,7 +1,7 @@
 {
   "name": "workflow-skills",
   "version": "0.62.0",
-  "description": "Multi-agent workflow skills (implementation from notes of the user's words and an approved draft, autonomous implementation, copywriting, visual decisions and visual verification, opening and watching a pull request, recovery of an interrupted run) plus skills with the rules for engineering, code, writing and hygiene, a library of model-neutral review-lens skills and the agents run by each workflow stage.",
+  "description": "Multi-agent workflow skills (implementation from notes of the user's words and an approved draft, autonomous implementation, copywriting, visual decisions and visual verification, opening and watching a pull request, recovery of an interrupted run) plus skills with the rules for engineering, code, writing and hygiene, a library of model-neutral review-lens skills and the agents run by each workflow stage, and a rule checker that has a second model check the work of the main agent against the binding rules while it works.",
   "author": {
     "name": "xdevs23",
     "url": "https://github.com/xdevs23"
@@ -13,5 +13,37 @@
     "audit",
     "verification",
     "research"
-  ]
+  ],
+  "hooks": "./hooks/hooks.json",
+  "types": "./types/index.d.ts",
+  "userConfig": {
+    "ruleChecker": {
+      "type": "boolean",
+      "title": "Rule checker",
+      "description": "Check the work of the main agent against the binding rules with a second model",
+      "default": false
+    },
+    "ruleCheckerModel": {
+      "type": "string",
+      "title": "Rule checker model",
+      "description": "The model that checks the work",
+      "options": ["claude-haiku-5-5", "claude-sonnet-5-5"],
+      "default": "claude-haiku-5-5"
+    },
+    "ruleCheckerSkills": {
+      "type": "string",
+      "multiple": true,
+      "title": "Rule checker skills",
+      "description": "The skills of this plugin whose rules the checker applies",
+      "default": [
+        "todo-md",
+        "implement",
+        "wall-of-shame",
+        "writing-style",
+        "hygiene",
+        "engineering-principles",
+        "code-writing"
+      ]
+    }
+  }
 }

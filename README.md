@@ -52,6 +52,34 @@ The fifteen review-lens skills are `reviewer-correctness`, `missing-gaps`, `runt
 `rule-bypass`, `code-cleanliness` and `quality`. The reviewers of `implement` load them by layer.
 Each one can also be loaded alone to review a change through its lens.
 
+### Rule checker
+The plugin also has a rule checker: a second model checks the work of the main agent against the
+binding rules while the agent works, and reports every break to the agent.
+
+* A check runs after a step in which the agent wrote text and called tools, after a commit, when an
+  agent or a workflow starts, and at the end of a turn. Each check covers the work since the last
+  successful check.
+* A check sends the work as JSON: the prompts the user sent, the text of the agent and every tool
+  call with its arguments, with edits as diffs and lookups by path or pattern alone. A tool result
+  is sent only where its call failed. At the end of a turn the check also sends the text of
+  `TODO.md` and the workflows that are running. Thinking, the output of lookups and the work of
+  subagents are not sent.
+* The system prompt of a check contains the instructions of the checker, the rules of the binding
+  skills of the plugin and the instruction files the main agent reads, such as the global and the
+  project `CLAUDE.md`. These parts are marked for the prompt cache, most stable first, so each
+  check pays full price only for the new work.
+* The findings are sent to the agent as a message it reads before its next step, and a note above
+  the prompt box lists them. Findings sent during a turn delay its end once, so the agent fixes
+  each one or says why it is wrong. A check that fails is shown in the note, and its work is sent
+  again by the next check.
+
+The checker uses `claude-haiku-5-5` by default, and `claude-sonnet-5-5` can be picked instead. Each
+check is one more request to that model, charged to the account the session uses. The checker is
+off until the row `Rule checker` in `/config` switches it on. The rows `Rule checker model` and
+`Rule checker skills` there pick the model and the skills whose rules it applies. Where an
+organization manages Claude Code, only a plugin listed in the managed settings runs the check at
+the end of a turn and reads the instruction files.
+
 ## Requirements
 
 - Claude Code with the Workflow tool for skills that launch stages.
@@ -70,6 +98,8 @@ Each one can also be loaded alone to review a change through its lens.
 ```sh
 bun test --timeout 60000 tests/
 ```
+
+The tests of the rule checker run against Claude Code itself, with `claude plugin test .`.
 
 The rendering test of `pr-lines` runs when `PR_LINES_FONTS` names the Mona Sans directory and resvg
 is on the `PATH` or named by `PR_LINES_RESVG`, and reports as skipped otherwise. With Nix,
