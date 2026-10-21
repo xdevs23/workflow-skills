@@ -39,8 +39,8 @@
   - Catch panics before they cross it.
   - Return errors as data.
   - Give each allocation handed out a matching free function.
-- Set `unsafe_code` to deny, clippy `all` and `pedantic`, and the clippy lint
-  `undocumented_unsafe_blocks` in the workspace lints, and let warnings fail the check.
+- Set clippy `all` and `pedantic`, the clippy lint `undocumented_unsafe_blocks` and the lint
+  `unsafe_op_in_unsafe_fn` to deny in the workspace lints, and let warnings fail the check.
 - Turn on the lints `unused_results` and clippy `let_underscore_must_use` in the workspace lints,
   so a value left unused in a statement and a `#[must_use]` value discarded with `let _ =` fail the
   check.
@@ -50,9 +50,7 @@
   form costs so much in time or memory that the cost justifies a small `unsafe` block.
 - Keep every `unsafe` block as small as possible, ideally one line or a few, and check, test and
   verify it rigorously.
-- Allow unsafe code with `#[allow(unsafe_code)]` only on the smallest function, method or `impl`
-  that declares or contains it, such as an `unsafe` block, an `unsafe fn` or an `unsafe impl`.
-- Never put `#[allow(unsafe_code)]` on a crate or a module.
+- Never write `#[allow]` or `#[expect]` for `unsafe_code`.
 - Write a `// SAFETY:` comment directly above every `unsafe` block and every `unsafe impl`. Explain
   in the comment why the code is unavoidable, how that was checked, such as the safe form that was
   tried or the cost that was measured, and why each condition required by the unsafe operation is

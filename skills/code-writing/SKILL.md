@@ -47,9 +47,7 @@ description: Applies whenever you write or change code in any language, includin
 - Make code pass the formatter and linter configuration of the tree into which it goes, or of the
   upstream project for which it is written, with warnings treated as errors.
 - Never silence a lint check or a warning, such as with a suppression comment, an excluded file or
-  folder, a disabled or lowered setting, or a warning left standing in the output. An allowance of
-  unsafe code on the smallest item that needs it, with its `SAFETY` comment, as a language file of
-  this skill describes, is not a silenced check.
+  folder, a disabled or lowered setting, or a warning left standing in the output.
 - Remove every silenced check in the files your change edits, also one from before your change,
   and fix what it hid. Removing it is always part of the change.
 - Give a new small file, such as a configuration file, a one-line SPDX license identifier, never a
