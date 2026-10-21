@@ -84,8 +84,7 @@ the end of a turn and reads the instruction files.
 
 - Claude Code with the Workflow tool for skills that launch stages.
 - Bun for the tests.
-- Python 3 and an authenticated GitHub CLI for `babysit-pr`, in version 2.48.0 or later, the first
-  release with `gh api --slurp`, which the watcher calls.
+- Python 3 and an authenticated GitHub CLI for `babysit-pr`.
 - Python 3.10 or later, git 2.40 or later, resvg and the Mona Sans font for `pull-request`, which
   draws the line graphic with them, and the GitHub CLI in version
   [2.99.0](https://github.com/cli/cli/releases/tag/v2.99.0) or later, the first release with

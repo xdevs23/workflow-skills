@@ -34,9 +34,14 @@ push gets approved lie outside this skill as well.
   one JSON line. The first poll prints every comment, review and reply in a review thread already on
   the pull request, and every failed check run and failed commit status on the head commit of the
   pull request.
-- Expect the watcher to poll every 60 seconds after the first poll, and to print each new comment,
-  review or reply in a review thread, each check run or commit status that fails on the head commit,
-  and the pull request being closed or merged.
+- Expect the watcher to poll again after the first poll, and to print each new comment, review or
+  reply in a review thread, each check run or commit status that fails on the head commit, and the
+  pull request being closed or merged.
+- Expect a page that did not change to cost nothing against the GitHub rate limit of the `gh`
+  login, since the watcher asks for it again with the ETag of its last answer. The watcher plans
+  its rounds as if every request counted. Of the requests left, it takes the part that matches its
+  part of the use of the login seen since GitHub last restored the limit, and spreads that part
+  until GitHub restores the limit again. More other use of the login makes it poll more rarely.
 - Expect a restarted watcher to print only new events, since the state file contains the ids of
   every event printed before. An event printed just before the watcher stopped may print again
   after a restart.
