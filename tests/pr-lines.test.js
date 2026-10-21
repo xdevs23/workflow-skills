@@ -65,7 +65,7 @@ const prLines = async (base, head, { tool = TOOL, resvg = STAND_IN, fontDirector
   out = join(directory, 'lines.png'), env = {} } = {}) => {
   const child = Bun.spawn(
     [PYTHON, tool, base, head, '--out', out, '--repo', repository, '--resvg', resvg, '--fonts', fontDirectory],
-    { env: { ...process.env, ...env }, stdout: 'pipe', stderr: 'pipe', timeout: 20000 })
+    { env: { ...process.env, ...env }, stdout: 'pipe', stderr: 'pipe' })
   const [stdout, stderr, status] = await Promise.all([
     new Response(child.stdout).text(), new Response(child.stderr).text(), child.exited,
   ])

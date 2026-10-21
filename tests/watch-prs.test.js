@@ -16,20 +16,28 @@ const DATE = 1800000000
 
 // Runs the main function of the watcher with a fake clock and a fake sleep. Each reading of the
 // clock passes ten seconds, the time of a round, and a sleep passes the time it was given and
-// prints that time as a wait.
+// prints that time as a wait. A sleep never blocks and the stand-in gh repeats the last answer of
+// a list, so a fixture that never closes the pull request would send the tool around forever.
+// Every round and every refusal takes a fresh answer, so the tool sleeps no more often than the
+// fixture has answers, and a sleep beyond that fails the run: nothing is left that could end it.
 const LOADER = [
-  'import importlib.util, json, sys',
+  'import importlib.util, json, os, sys',
   'spec = importlib.util.spec_from_file_location("watch_prs", sys.argv[1])',
   'tool = importlib.util.module_from_spec(spec)',
   'spec.loader.exec_module(tool)',
   'sys.argv = sys.argv[1:]',
-  'now = 0',
+  'with open(os.environ["GH_STANDIN_FIXTURE"]) as file:',
+  '    answers = sum(len(list_) for list_ in json.load(file)["api"].values())',
+  'now = sleeps = 0',
   'def clock():',
   '    global now',
   '    now += 10',
   '    return now',
   'def sleep(seconds):',
-  '    global now',
+  '    global now, sleeps',
+  '    sleeps += 1',
+  '    if sleeps > answers:',
+  '        sys.exit("the tool sleeps more often than the fixture has answers, so nothing can end the watch")',
   '    now += seconds',
   '    print(json.dumps({"wait": seconds}), flush=True)',
   'tool.main(clock, sleep)',
@@ -61,7 +69,7 @@ const watch = async (github, targets, { path = `${STAND_IN}:${process.env.PATH}`
   await writeFile(fixtureFile, JSON.stringify(github))
   const child = Bun.spawn([PYTHON, '-B', '-c', LOADER, TOOL, '--state', join(directory, 'state.json'), ...targets], {
     env: { ...process.env, PATH: path, GH_STANDIN_FIXTURE: fixtureFile, GH_STANDIN_LOG: log },
-    stdout: 'pipe', stderr: 'pipe', timeout: 20000,
+    stdout: 'pipe', stderr: 'pipe',
   })
   const [stdout, stderr, status] = await Promise.all([
     new Response(child.stdout).text(), new Response(child.stderr).text(), child.exited,
@@ -251,6 +259,16 @@ test('a refused request waits as long as GitHub asks and is sent again', async (
   ])
   expect(run.waits).toStrictEqual([30, 45, 60])
   expect(run.events.slice(-2)).toStrictEqual([{ pr: PR, kind: 'closed' }, { kind: 'done' }])
+})
+
+test('a fixture that never ends the watch fails the run instead of sending the tool around forever', async () => {
+  for (const answers of [[pull('open', false)], [{ refuse: { retryAfter: 30 } }]]) {
+    const run = await watch(await fixture((github) => {
+      github.api[PULL] = answers
+      return github
+    }), [PR])
+    expect(run.status).not.toBe(0)
+  }
 })
 
 // A round of the fixture sends 9 requests: the pull request and 8 pages of its lists.
