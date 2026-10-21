@@ -226,7 +226,8 @@ description: Applies whenever you design, build, change, test or debug software,
   required by a graphics surface, and adjust it to what the code observes while it runs. Never
   hardcode, guess or choose it.
 - Count a tunable moved somewhere else as still chosen: a name given to it, a parameter filled in
-  by a caller with a value of its own choosing, and a value computed from another chosen value all
+  by a caller with a value of its own choosing, a value computed from another chosen value, and a
+  default of a framework or a tool, such as the time limit put on each test by a test runner, all
   leave it hardcoded.
 - Replace a timeout with the event or the state it waits for, as the rules on time describe.
 - Write a value as a constant only when it is a product choice, a truth that nothing can change,
