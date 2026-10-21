@@ -1,8 +1,12 @@
 {
-  "version": "2.48.0",
   "loggedIn": true,
   "api": {
-    "repos/acme/widgets/pulls?state=open&per_page=100": [
+    "rate_limit": [
+      { "date": 1800000000, "json": [{ "resources": { "core": {
+        "limit": 5000, "used": 1382, "remaining": 3618, "reset": 1800003610
+      } } }] }
+    ],
+    "repos/acme/widgets/pulls?state=open": [
       { "json": [[
         { "number": 9, "head": { "ref": "fix/typo", "sha": "ccc3" } },
         { "number": 12, "head": { "ref": "feature/login", "sha": "bbb2" } }

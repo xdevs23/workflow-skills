@@ -1,16 +1,25 @@
 #!/usr/bin/env python3
 """A stand-in for the GitHub CLI that answers from fixture JSON.
 
-GH_STANDIN_FIXTURE is a JSON file with `version`, the version number `gh --version` prints,
-`loggedIn`, a boolean, and `api`, which maps each path given to `gh api --paginate --slurp` to a
-list of answers, one per call, the last repeated once the list runs out. An answer is
-`{"json": <printed output>}` or `{"fail": <stderr text>}`.
-GH_STANDIN_LOG names a file that receives every call as one JSON line.
+GH_STANDIN_FIXTURE is a JSON file with `loggedIn`, a boolean, and `api`, which maps a path without
+its `per_page` and `page` parameters to a list of answers, one per call to the same page, the last
+repeated once the list runs out. An answer is `{"json": [<page>...]}`, with an optional `date`, the
+time of the response in seconds since the epoch, `{"fail": <stderr text>}`, or `{"refuse": {...}}`
+for a request refused over a rate limit, with `retryAfter` in seconds, `reset` and `date` in
+seconds since the epoch, or `status` alone for a refusal that names no wait.
+
+`gh api --include [-H 'If-None-Match: <etag>'] <path>` prints the status line, the headers and the
+page named by the `page` parameter, with a Link header to the next page where there is one. When
+the If-None-Match header matches the ETag of the page, it prints a 304 Not Modified and fails, as
+gh does. GH_STANDIN_LOG names a file that receives every call as one JSON line.
 """
 
+import hashlib
 import json
 import os
 import sys
+from email.utils import formatdate
+from urllib.parse import parse_qsl, urlencode, urlsplit
 
 args = sys.argv[1:]
 fixture = json.loads(open(os.environ["GH_STANDIN_FIXTURE"]).read())
@@ -19,21 +28,47 @@ calls = [json.loads(line) for line in open(log)] if os.path.exists(log) else []
 with open(log, "a") as out:
     out.write(json.dumps(args) + "\n")
 
-if args == ["--version"]:
-    print(f"gh version {fixture['version']} (2024-04-17)")
-    sys.exit(0)
-
 if args == ["auth", "status"]:
     if fixture["loggedIn"]:
         sys.exit(0)
     sys.exit("You are not logged into any GitHub hosts. To log in, run: gh auth login")
 
-if args[:3] != ["api", "--paginate", "--slurp"] or len(args) != 4:
+if args[:2] != ["api", "--include"] or len(args) not in (3, 5) or (len(args) == 5 and args[2] != "-H"):
     sys.exit(f"stand-in gh: unexpected call {args}")
-answers = fixture["api"].get(args[3])
+path = args[-1]
+url = urlsplit(path)
+query = dict(parse_qsl(url.query))
+page = int(query.pop("page", 1))
+query.pop("per_page", None)
+key = f"{url.path}?{urlencode(query)}" if query else url.path
+answers = fixture["api"].get(key)
 if not answers:
-    sys.exit(f"stand-in gh: no answer for {args[3]}")
-answer = answers[min(calls.count(args), len(answers) - 1)]
+    sys.exit(f"stand-in gh: no answer for {key}")
+answer = answers[min(sum(call[-1] == path for call in calls), len(answers) - 1)]
 if "fail" in answer:
     sys.exit(answer["fail"])
-print(json.dumps(answer["json"]))
+if "refuse" in answer:
+    refusal = answer["refuse"]
+    headers = {"Date": formatdate(refusal.get("date"), usegmt=True)}
+    if "retryAfter" in refusal:
+        headers["Retry-After"] = str(refusal["retryAfter"])
+    elif "reset" in refusal:
+        headers |= {"X-RateLimit-Remaining": "0", "X-RateLimit-Reset": str(refusal["reset"])}
+    status = refusal.get("status", 429)
+    body = json.dumps({"message": "You have exceeded a secondary rate limit."})
+    sys.stdout.write(f"HTTP/2.0 {status} Refused\r\n"
+                     + "".join(f"{name}: {value}\r\n" for name, value in headers.items()) + "\r\n" + body)
+    sys.exit("gh: API rate limit exceeded (HTTP 429)")
+
+pages = answer["json"]
+body = json.dumps(pages[page - 1])
+headers = {"Date": formatdate(answer.get("date"), usegmt=True),
+           "ETag": f'"{hashlib.sha256(body.encode()).hexdigest()}"'}
+if page < len(pages):
+    headers["Link"] = f'<{url.path}?{urlencode({**dict(parse_qsl(url.query)), "page": page + 1})}>; rel="next"'
+modified = len(args) == 3 or args[3] != f"If-None-Match: {headers['ETag']}"
+status = "200 OK" if modified else "304 Not Modified"
+sys.stdout.write(f"HTTP/2.0 {status}\r\n" + "".join(f"{name}: {value}\r\n" for name, value in headers.items())
+                 + "\r\n" + (body if modified else ""))
+if not modified:
+    sys.exit("gh: HTTP 304")
