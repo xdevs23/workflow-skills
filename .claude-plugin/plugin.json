@@ -1,6 +1,6 @@
 {
   "name": "workflow-skills",
-  "version": "0.60.1",
+  "version": "0.61.0",
   "description": "Multi-agent workflow skills (implementation from notes of the user's words and an approved draft, autonomous implementation, copywriting, visual decisions and visual verification, opening and watching a pull request, recovery of an interrupted run) plus skills with the rules for engineering, code, writing and hygiene, a library of model-neutral review-lens skills and the agents run by each workflow stage.",
   "author": {
     "name": "xdevs23",
