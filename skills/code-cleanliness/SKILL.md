@@ -7,6 +7,10 @@ description: Applies when you review a change for readability and hygiene at the
 
 Review the change for code cleanliness only: readability and hygiene.
 
+- Follow every rule by what it is for. Getting a result forbidden by a rule through another route,
+  such as a cast hidden in a helper, a type widened until a value fits or a term redefined until
+  the work passes, breaks the rule just as the forbidden form does. When a rule stands in the way
+  of your work, name it where you report your work, and never go around it.
 - Leave structural concerns to other lenses. Still name the rule violation behind a comment.
 - Report a name that fails the naming test: with the docstring hidden, the name and a line that uses
   it do not show what the value contains or what the code does. Report in particular:

@@ -8,6 +8,10 @@ description: Applies when you review whether the abstractions in a change are ju
 Review the change for one thing only: whether every abstraction in it is justified by how the code
 uses it.
 
+- Follow every rule by what it is for. Getting a result forbidden by a rule through another route,
+  such as a cast hidden in a helper, a type widened until a value fits or a term redefined until
+  the work passes, breaks the rule just as the forbidden form does. When a rule stands in the way
+  of your work, name it where you report your work, and never go around it.
 - Report a leaky abstraction: an interface that requires the caller to know how it works inside.
   Calling a function, using an object, importing a module or instantiating a class never requires
   knowing how that part of the code works.

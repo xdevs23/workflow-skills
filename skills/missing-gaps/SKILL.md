@@ -8,6 +8,10 @@ description: Applies when you review a change for omissions in its code.
 Review the change for one thing only: code that should be present for the change to be complete and
 trustworthy but is missing.
 
+- Follow every rule by what it is for. Getting a result forbidden by a rule through another route,
+  such as a cast hidden in a helper, a type widened until a value fits or a term redefined until
+  the work passes, breaks the rule just as the forbidden form does. When a rule stands in the way
+  of your work, name it where you report your work, and never go around it.
 - Leave code that is present but wrong to other lenses.
 - Report an error or exception path that nothing handles.
 - Report edge cases left uncovered, such as an empty, null or zero value, an overflow, concurrent

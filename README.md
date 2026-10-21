@@ -21,7 +21,7 @@ such as `/workflow-skills:implement`.
 ### Skills
 | Skill | What it does |
 |---|---|
-| `implement` | Write the user's words about a change into notes and draw an HTML draft for the user to approve. Implementers then write the smallest clean change that does the task from the notes and the draft, by a short list of rules in their template and without the rule skills. Reviewers check it: some against the rules in `engineering-principles`, `code-writing`, `writing-style` and `hygiene`, others against the notes or by the review lenses alone. Every finding names the shape to build. Implementers run only quick checks of the part they made. The session that runs the skill runs the full builds. The change then goes to the user for review. |
+| `implement` | Write the user's words about a change into notes and draw an HTML draft for the user to approve. Implementers then write the smallest clean change that does the task from the notes and the draft, by a short list of rules in their template and without the rule skills. Reviewers check it: some against the rules in `engineering-principles`, `code-writing`, `writing-style` and `hygiene`, others against the notes or by the review lenses alone. Every finding names the shape to build and is fixed right away, in at most one fix run and otherwise by hand. Implementers run only quick checks of the part they made. The session that runs the skill runs the full builds. The change then goes to the user for review. |
 | `review-pass` | Run the reviewers of `implement` alone on a change that is already committed, such as one edited directly. |
 | `autonomous-implementation` | Implement without asking, once the user grants it for a task, a session or a timeframe. Subagents make the decisions, each milestone ends with evidence, a subset of the reviewers checks the work, and the result is libre and built with Nix. |
 | `copywriting` | Write the user-visible strings of an increment before the implementation starts: an intent catalog and a writing system, one writer per area and locale, a mechanical check, a check against the sources and a fresh-context critic, and the user picks and reads the crucial strings. |
@@ -46,11 +46,11 @@ such as a `todo-md` written by the user, that skill is used in place of the one 
 skill in the plugin is used only when it is the only one of that name available.
 
 ### Review lenses
-The fourteen review-lens skills are `reviewer-correctness`, `missing-gaps`, `runtime-cost`,
+The fifteen review-lens skills are `reviewer-correctness`, `missing-gaps`, `runtime-cost`,
 `cold-alternatives`, `duplicate-checker`, `abstraction-quality`, `separation-of-concerns`,
 `domain-leakage`, `smearing`, `code-smell`, `type-safety`, `project-rule-reader`,
-`code-cleanliness` and `quality`. The reviewers of `implement` load them by layer. Each one can
-also be loaded alone to review a change through its lens.
+`rule-bypass`, `code-cleanliness` and `quality`. The reviewers of `implement` load them by layer.
+Each one can also be loaded alone to review a change through its lens.
 
 ## Requirements
 

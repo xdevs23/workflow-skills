@@ -9,6 +9,10 @@ description: Applies when you find a problem with the workflow-skills plugin its
 document, commit message and reply you write while you follow this skill. Load it whenever you work
 with this plugin.
 
+- Follow every rule by what it is for. Getting a result forbidden by a rule through another route,
+  such as a cast hidden in a helper, a type widened until a value fits or a term redefined until
+  the work passes, breaks the rule just as the forbidden form does. When a rule stands in the way
+  of your work, name it where you report your work, and never go around it.
 - File every problem you find in the plugin itself as an issue on the GitHub repository
   `xdevs23/workflow-skills`, which contains the plugin. Such problems include a shipped script that
   fails or wrongly judges the input it is given, a check that stops a run for a reason not given in

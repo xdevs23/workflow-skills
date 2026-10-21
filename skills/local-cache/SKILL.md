@@ -5,6 +5,10 @@ description: Applies when you decide where to put a file that is not meant for t
 
 # The project cache
 
+- Follow every rule by what it is for. Getting a result forbidden by a rule through another route,
+  such as a cast hidden in a helper, a type widened until a value fits or a term redefined until
+  the work passes, breaks the rule just as the forbidden form does. When a rule stands in the way
+  of your work, name it where you report your work, and never go around it.
 - Use a skill named `local-cache` without the plugin prefix in place of this one when the session
   has it. Use this skill, `workflow-skills:local-cache`, only when it is the only `local-cache`
   skill available.

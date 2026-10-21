@@ -13,6 +13,11 @@ A change starts as a talk between you and the user. You write down what the user
 draw an HTML draft for the user to approve. Implementers then build the change, reviewers check it,
 and the user reviews the code.
 
+- Follow every rule by what it is for. Getting a result forbidden by a rule through another route,
+  such as a cast hidden in a helper, a type widened until a value fits or a term redefined until
+  the work passes, breaks the rule just as the forbidden form does. When a rule stands in the way
+  of your work, name it where you report your work, and never go around it.
+
 ## Notes
 
 - Write down what the user says about the change in a Markdown file while you talk, by hand.
@@ -52,6 +57,10 @@ and the user reviews the code.
 - Hand every implementer the paths to the full notes and the approved draft, the part of the change
   it builds when you split the work, and the commands of the project that build, check and test
   that part alone, where the project has them. Never reword the notes for it.
+- Word the part of the work handed to an implementer by what the rule or the request behind it is
+  for, such as "a value sent by the server and unknown to this build becomes an explicit unknown
+  value where it arrives". Never word it by the check it should make pass, such as "make the lint
+  pass".
 - When you run several implementers, give each of them a separate worktree. Merge the branches
   they worked on into one branch before the reviewers start, if needed in a separate merge step.
 - Run parts of the work that depend on each other one implementer after the other. Start the
@@ -90,20 +99,28 @@ and the user reviews the code.
     narrow. It loads `workflow-skills:separation-of-concerns`, `workflow-skills:domain-leakage`,
     `workflow-skills:smearing`, `workflow-skills:code-smell`, `workflow-skills:type-safety` and the
     rules.
-  - The rules and surface reviewer checks the change against every rule, and checks how clean the
-    names and comments in it are. It loads `workflow-skills:project-rule-reader`, which reads the
-    rules, `workflow-skills:code-cleanliness` and `workflow-skills:quality`.
+  - The rules and surface reviewer checks the change against every rule, looks for ways around
+    them, and checks how clean the names and comments in it are. It loads
+    `workflow-skills:project-rule-reader`, which reads the rules, `workflow-skills:rule-bypass`,
+    `workflow-skills:code-cleanliness` and `workflow-skills:quality`.
 - When the change fixes findings of an earlier review, hand the scope, prose and layer reviewers
   those findings.
 
 ## Findings
 
 - Read what the reviewers found.
-- Fix small findings yourself by hand, or hand the findings to one implementer, each with the shape
-  to build as the reviewer named it.
+- Fix every finding about code that the change adds or edits right away, and never record one as
+  work for later. Ask the user about a finding whose fix needs a decision by the user.
+- Start at most one fix run for the findings of a change, with one implementer that gets all of
+  them, each with the shape to build as the reviewer named it, or fix them all yourself by hand.
+- Fix by hand every finding left after that fix run, and every finding of a later review of the
+  change.
 - Start no review round of your own on the fix.
 - Record a finding about code outside the change with `workflow-skills:todo-md`, and leave it out
-  of this change.
+  of this change. A silenced check in a file the change edits belongs to the change, also when it
+  was there before.
+- Put every rule that an implementer reports as standing in the way of its work to the user, with
+  the place where it stood in the way.
 - Show the user every optional pick a reviewer returns, and build it only when the user picks it.
   Don't wait for the user to respond: show them the options and treat it as asynchronous.
 

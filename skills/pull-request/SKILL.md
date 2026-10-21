@@ -13,6 +13,11 @@ Use this skill to write the title and the description of a pull request, draw th
 request needs and open it. Once the pull request is open, follow `workflow-skills:babysit-pr`. Who
 pushes a change and how a push gets approved lie outside this skill.
 
+- Follow every rule by what it is for. Getting a result forbidden by a rule through another route,
+  such as a cast hidden in a helper, a type widened until a value fits or a term redefined until
+  the work passes, breaks the rule just as the forbidden form does. When a rule stands in the way
+  of your work, name it where you report your work, and never go around it.
+
 ## The template
 
 - Write the description from this template into a file in the project cache defined by

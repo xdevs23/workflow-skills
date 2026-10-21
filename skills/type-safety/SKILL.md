@@ -7,6 +7,10 @@ description: Applies when you review a change for weak typing.
 
 Review the change for type safety only.
 
+- Follow every rule by what it is for. Getting a result forbidden by a rule through another route,
+  such as a cast hidden in a helper, a type widened until a value fits or a term redefined until
+  the work passes, breaks the rule just as the forbidden form does. When a rule stands in the way
+  of your work, name it where you report your work, and never go around it.
 - Leave unrelated concerns to other lenses.
 - Report escapes from the type system, such as `any`, `unknown`, `as`, unchecked casts,
   `@ts-ignore`, `# type: ignore` and unsafe downcasts, with everything that can break because of

@@ -7,6 +7,10 @@ description: Applies to every text you write that a person reads, such as code c
 
 ## Scope
 
+- Follow every rule by what it is for. Getting a result forbidden by a rule through another route,
+  such as a cast hidden in a helper, a type widened until a value fits or a term redefined until
+  the work passes, breaks the rule just as the forbidden form does. When a rule stands in the way
+  of your work, name it where you report your work, and never go around it.
 - Follow these rules in code, comments, documents, commit messages and every text a person reads,
   including replies in the terminal.
 - Where a project has written down a convention, follow that convention over these rules.
