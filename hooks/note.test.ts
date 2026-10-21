@@ -3,11 +3,11 @@ import { describe, expect, test } from 'claude-code/testing'
 import type { RuleCheckerFinding, RuleCheckerNote } from '../types'
 import { rowsOf } from './note.ts'
 
-const finding = (place: string): RuleCheckerFinding => ({
+const finding = (wrong: string): RuleCheckerFinding => ({
   rule: 'r',
   source: 's',
-  place,
-  wrong: 'x'.repeat(200),
+  place: 'x'.repeat(200),
+  wrong,
   instead: 'i',
 })
 const shown = (note: Partial<RuleCheckerNote>): RuleCheckerNote => ({
@@ -22,12 +22,12 @@ describe('the note', () => {
     expect(rowsOf(shown({}), 80)).toEqual([])
   })
 
-  test('gives each finding a row of its own within the columns, beside a failed check', () => {
-    const findings = ['a.ts:1', 'b.ts:2', 'c.ts:3'].map(finding)
+  test('gives each finding a row of its own within the columns, what is wrong first', () => {
+    const findings = ['It guesses.', 'It sleeps.', 'It drops a result.'].map(finding)
     const rows = rowsOf(shown({ findings, failures: ['refused'] }), 40)
 
     expect(rows).toHaveLength(5)
     expect(rows.every(row => row.length <= 40)).toBe(true)
-    findings.forEach(({ place }, index) => expect(rows[index + 1]).toContain(place))
+    findings.forEach(({ wrong }, index) => expect(rows[index + 1]).toContain(wrong))
   })
 })
