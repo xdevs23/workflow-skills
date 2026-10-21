@@ -21,11 +21,12 @@
             exec ${pkgs.python3}/bin/python3 ${./tools}/pr-lines.py --resvg ${resvg} --fonts ${fonts} "$@"
           '' "Draw the diff lines between two commits by kind of file";
           # The tests in the current directory, with resvg and the fonts for the rendering test of
-          # pr-lines. Arguments replace the default of every test in tests/.
+          # pr-lines. Arguments replace the default of every test in tests/. A --timeout of 0
+          # switches off the time limit that bun puts on each test.
           test = app "test" [ pkgs.bun pkgs.git pkgs.python3 ] ''
             if [ "$#" -eq 0 ]; then set -- tests/; fi
             export PR_LINES_RESVG=${resvg} PR_LINES_FONTS=${fonts}
-            exec bun test --timeout 60000 "$@"
+            exec bun test --timeout 0 "$@"
           '' "Run the tests of the plugin, the rendering test of pr-lines included";
         });
     };

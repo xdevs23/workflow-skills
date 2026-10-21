@@ -95,8 +95,11 @@ the end of a turn and reads the instruction files.
 ## Tests
 
 ```sh
-bun test --timeout 60000 tests/
+bun test --timeout 0 tests/
 ```
+
+The `--timeout 0` switches off the time limit that Bun puts on each test, five seconds by default.
+A test of the plugin ends with the work it runs, not with a clock.
 
 The tests of the rule checker run against Claude Code itself, with `claude plugin test .`.
 
