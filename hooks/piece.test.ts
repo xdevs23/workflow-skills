@@ -24,7 +24,7 @@ describe('the piece of work', () => {
     expect(JSON.parse(piece?.text ?? '')).toEqual({
       turnEnded: true,
       work: [SAY],
-      running: [{ workflow: 'build' }],
+      running: [{ workflow: 'build', description: 'd' }],
     })
     expect(rest).toEqual([])
   })
