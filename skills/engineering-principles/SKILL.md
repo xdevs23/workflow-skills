@@ -128,6 +128,8 @@ description: Applies whenever you design, build, change, test or debug software,
 - Never run a network call inside a database transaction.
 - Make work demand-driven with backpressure. Fetch, read or compute something only when the next
   stage can take it.
+- Never drain a queue or a channel in a loop only to discard its values. Process every value in the
+  loop, or keep a slot replaced by each new value where only the latest one is needed.
 - Let a stream own its resources, and release them when the consumer is dropped.
 - Stream files and the bodies of requests and responses, never load them whole.
 - Prefer asynchronous code wherever it fits.
@@ -261,7 +263,14 @@ description: Applies whenever you design, build, change, test or debug software,
 - Never let a transient failure discard a good value.
 - Fail loud. Something that must be handled raises an error when nothing handles it, and a silent
   check never hides a broken state.
-- Handle or pass on every error returned by a call.
+- Use, handle or pass on every value returned by a call, errors included. When a part of it is
+  never needed, change the call so it no longer returns that part. For a call that you can't
+  change, bind that part to a name saying why it is not needed.
+- Return an error as a typed value that identifies what failed and contains the error that caused
+  it, so a caller can match on it.
+- Turn an error into text only where it is shown or logged.
+- Return a boolean only for a yes-or-no question. Return a value that may not arrive as an optional
+  or an error, and an outcome with several causes as an enum whose variants identify each cause.
 - Report success from a confirmed result. A step that can fail returns its outcome, and the next
   step and the message to the user depend on it.
 - Fail closed. Deny all access to an unknown, missing or malformed identity, never give it the most
