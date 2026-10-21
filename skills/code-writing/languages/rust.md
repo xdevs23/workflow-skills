@@ -23,12 +23,23 @@
 - At a foreign-function boundary:
   - Catch panics before they cross it.
   - Return errors as data.
-  - Document the `# Safety` contract of every unsafe entry point.
   - Give each allocation handed out a matching free function.
-- Forbid `unsafe_code` and turn on clippy `all` and `pedantic` in the workspace lints, and let
-  warnings fail the check.
-- Use `unsafe` only in code where it is unavoidable, such as the parts of an OS kernel that require
-  it. Keep that code separate and as small as possible, and check, test and verify it rigorously.
+- Set `unsafe_code` to deny, clippy `all` and `pedantic`, and the clippy lint
+  `undocumented_unsafe_blocks` in the workspace lints, and let warnings fail the check.
+- Forbid unsafe code with `#![forbid(unsafe_code)]` at the root of every crate that has none.
+- Write `unsafe` code only where it is unavoidable: the code does not work without it, or the safe
+  form costs so much in time or memory that the cost justifies a small `unsafe` block.
+- Keep every `unsafe` block as small as possible, ideally one line or a few, and check, test and
+  verify it rigorously.
+- Allow unsafe code with `#[allow(unsafe_code)]` only on the smallest function, method or `impl`
+  that declares or contains it, such as an `unsafe` block, an `unsafe fn` or an `unsafe impl`.
+- Never put `#[allow(unsafe_code)]` on a crate or a module.
+- Write a `// SAFETY:` comment directly above every `unsafe` block and every `unsafe impl`. Explain
+  in the comment why the code is unavoidable, how that was checked, such as the safe form that was
+  tried or the cost that was measured, and why each condition required by the unsafe operation is
+  met.
+- Give every `unsafe fn` and `unsafe trait` a `# Safety` section in its documentation, naming what
+  the callers of the function or the implementers of the trait must ensure.
 - Put features needed only by tests in the development dependencies, so they never compile into
   consumers.
 - Model a closed set of domain values as an `enum`.
