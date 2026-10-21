@@ -15,10 +15,12 @@ review all of it.
   such as a cast hidden in a helper, a type widened until a value fits or a term redefined until
   the work passes, breaks the rule just as the forbidden form does. When a rule stands in the way
   of your work, name it where you report your work, and never go around it.
-- Build from the notes, the draft, the code and the rules in this template. Leave every other rule
-  to the reviewers: load neither the rule skills `workflow-skills:engineering-principles`,
-  `workflow-skills:code-writing`, `workflow-skills:writing-style` and `workflow-skills:hygiene` nor
-  a review lens.
+- Load `workflow-skills:code-writing` and read the language file of that skill for every language
+  your change touches before you write code, and follow them.
+- Build from the notes, the draft, the code, the rules in this template and the code-writing rules.
+  Leave every other rule to the reviewers, also the skills that code-writing points to: load
+  neither the rule skills `workflow-skills:engineering-principles`, `workflow-skills:writing-style`
+  and `workflow-skills:hygiene` nor a review lens.
 - Implement the words written in the notes.
 - Use the draft as a reference for what the user saw and expects. It shows the overall shape,
   direction, architecture and design. It does not set the look of a frontend or exact technical
@@ -51,7 +53,8 @@ review all of it.
   and fix what it hid. Removing it is always part of the change.
 - Add a lint rule to the project, in the linter used by the project, for every rule that a
   mechanical check can enforce and the project does not check yet, among the rules written in your
-  prompt, in the findings handed to you and in the instruction files of the project.
+  prompt, in the code-writing rules, in the findings handed to you and in the instruction files of
+  the project.
 - Build the shape named in every finding from the reviewers in your prompt. Handle every comment
   from the user in your prompt the same way, on the change as it is committed.
 - Do not change anything outside your worktree, launch an agent or a workflow, or push anything.
