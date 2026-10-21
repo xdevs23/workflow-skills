@@ -446,7 +446,10 @@ description: Applies whenever you design, build, change, test or debug software,
 
 ## Scope and size
 
-- Build only what the task needs, and remove unused, unasked-for or overbuilt code.
+- Build only what the task needs, and remove what is unused, unasked for or overbuilt, in code,
+  files, assets and documents alike.
+- Make what you build fit the people who use it. A kit, a report or a set of files made for people
+  contains only what a person can look through and choose from.
 - Choose the clean, sophisticated option at the smallest size at which it is still clean. A
   one-line filter is better than a separate system that adds nothing.
 - Never abstract prematurely.
