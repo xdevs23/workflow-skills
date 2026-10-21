@@ -10,6 +10,10 @@ description: Applies whenever you design, build, change, test or debug software,
 - Follow these principles in every language whenever you design or change a system, both for the
   shape of the system and for the way you do the work. `workflow-skills:code-writing` contains the
   rules for how the code itself reads.
+- Follow every rule by what it is for. Getting a result forbidden by a rule through another route,
+  such as a cast hidden in a helper, a type widened until a value fits or a term redefined until
+  the work passes, breaks the rule just as the forbidden form does. When a rule stands in the way
+  of your work, name it where you report your work, and never go around it.
 
 ## The hollow lattice
 
@@ -327,8 +331,9 @@ description: Applies whenever you design, build, change, test or debug software,
 
 ## Correctness and change
 
-- Fix a known defect, and never offer leaving it unfixed as an option. A race left possible by the
-  change is a defect.
+- Fix a known defect in code that your change adds or edits right away, never record it as work
+  for later, and never offer leaving it unfixed as an option. A race left possible by the change
+  and a way around a rule are such defects.
 - Keep what works through a change. Carrying a working view or contract across is part of the
   change.
 - Build every configuration declared as supported by the code on every change.

@@ -7,6 +7,10 @@ description: Applies to everything that leaves the machine or goes to someone el
 
 - Load `workflow-skills:writing-style` first. It applies to every comment, document, commit message
   and reply you write under this skill.
+- Follow every rule by what it is for. Getting a result forbidden by a rule through another route,
+  such as a cast hidden in a helper, a type widened until a value fits or a term redefined until
+  the work passes, breaks the rule just as the forbidden form does. When a rule stands in the way
+  of your work, name it where you report your work, and never go around it.
 - Apply these rules to everything that leaves the machine: a commit and its message, a pushed
   branch, a pull request, an issue, a comment, a published document or package, and a message to
   someone else. Rules written down by a project add to these rules.

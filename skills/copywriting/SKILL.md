@@ -16,6 +16,10 @@ with the facts, which is the source, a set of voice samples and an intent catalo
 does not mention a brand or a product, so the same workflow writes for a different product once the
 inputs change.
 
+- Follow every rule by what it is for. Getting a result forbidden by a rule through another route,
+  such as a cast hidden in a helper, a type widened until a value fits or a term redefined until
+  the work passes, breaks the rule just as the forbidden form does. When a rule stands in the way
+  of your work, name it where you report your work, and never go around it.
 - Run it as a `Workflow()` with one intent phase, a fan-out of writers with one writer per area and
   locale, a mechanical check, verification reviewers running in parallel, and a user who decides
   what ships.

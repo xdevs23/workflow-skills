@@ -13,6 +13,11 @@ code as it is, labeled by the state it is in, next to After, what the user would
 happen once the change is made. The user sees the difference at a glance and never has to rebuild
 it from a description.
 
+- Follow every rule by what it is for. Getting a result forbidden by a rule through another route,
+  such as a cast hidden in a helper, a type widened until a value fits or a term redefined until
+  the work passes, breaks the rule just as the forbidden form does. When a rule stands in the way
+  of your work, name it where you report your work, and never go around it.
+
 ## When it applies
 
 - Draw a page when `workflow-skills:implement` asks for the draft of a change. Show on it the

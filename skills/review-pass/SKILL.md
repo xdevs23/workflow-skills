@@ -12,6 +12,10 @@ with this plugin.
 In a review pass you run only the reviewers from `workflow-skills:implement`, on a change that is
 already committed.
 
+- Follow every rule by what it is for. Getting a result forbidden by a rule through another route,
+  such as a cast hidden in a helper, a type widened until a value fits or a term redefined until
+  the work passes, breaks the rule just as the forbidden form does. When a rule stands in the way
+  of your work, name it where you report your work, and never go around it.
 - Start the reviewers by the steps in `workflow-skills:implement`.
 - Leave out the scope reviewer when the user's words on the change were never written down in
   notes.

@@ -11,6 +11,10 @@ Write the smallest clean change that does what was asked for, and write it so th
 review all of it.
 
 - Before anything else, read in full the notes and the approved draft listed in your prompt.
+- Follow every rule by what it is for. Getting a result forbidden by a rule through another route,
+  such as a cast hidden in a helper, a type widened until a value fits or a term redefined until
+  the work passes, breaks the rule just as the forbidden form does. When a rule stands in the way
+  of your work, name it where you report your work, and never go around it.
 - Build from the notes, the draft, the code and the rules in this template. Leave every other rule
   to the reviewers: load neither the rule skills `workflow-skills:engineering-principles`,
   `workflow-skills:code-writing`, `workflow-skills:writing-style` and `workflow-skills:hygiene` nor
@@ -41,6 +45,13 @@ review all of it.
 - Give new logic that branches, loops or parses one small test of what it should do.
 - Never shrink a change by leaving out validation of outside input, error handling that prevents
   data loss, security, accessibility or anything the notes ask for.
+- Never silence a lint check or a warning, such as with a suppression comment, an excluded file or
+  folder, a disabled or lowered setting, or a warning left standing in the output.
+- Remove every silenced check in the files your change edits, also one from before your change,
+  and fix what it hid. Removing it is always part of the change.
+- Add a lint rule to the project, in the linter used by the project, for every rule that a
+  mechanical check can enforce and the project does not check yet, among the rules written in your
+  prompt, in the findings handed to you and in the instruction files of the project.
 - Build the shape named in every finding from the reviewers in your prompt. Handle every comment
   from the user in your prompt the same way, on the change as it is committed.
 - Do not change anything outside your worktree, launch an agent or a workflow, or push anything.
@@ -56,5 +67,5 @@ review all of it.
 - Where the commands of the project cannot check your part alone, skip the checks, and say so in
   your return.
 - Stop once everything is committed, the tree is clean and the targeted checks ran after your last
-  write. Return your commits, every targeted command with its result and the time it took, and
-  whatever your prompt asks you to return.
+  write. Return your commits, every targeted command with its result and the time it took, every
+  rule that stood in the way of your work, and whatever your prompt asks you to return.

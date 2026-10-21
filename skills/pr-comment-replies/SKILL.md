@@ -9,6 +9,10 @@ description: Applies whenever you write or post a reply on a pull request or an 
 document, commit message and reply you write while you follow this skill. Load it whenever you work
 with this plugin.
 
+- Follow every rule by what it is for. Getting a result forbidden by a rule through another route,
+  such as a cast hidden in a helper, a type widened until a value fits or a term redefined until
+  the work passes, breaks the rule just as the forbidden form does. When a rule stands in the way
+  of your work, name it where you report your work, and never go around it.
 - Follow the user's rules for comments posted on the user's behalf wherever they differ from this
   skill, also on resolving threads.
 

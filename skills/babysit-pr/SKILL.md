@@ -13,6 +13,11 @@ Use this skill once a pull request exists. Creating and updating the pull reques
 open and update the pull request by `workflow-skills:pull-request`. Who pushes a change and how a
 push gets approved lie outside this skill as well.
 
+- Follow every rule by what it is for. Getting a result forbidden by a rule through another route,
+  such as a cast hidden in a helper, a type widened until a value fits or a term redefined until
+  the work passes, breaks the rule just as the forbidden form does. When a rule stands in the way
+  of your work, name it where you report your work, and never go around it.
+
 ## Start and watch
 
 - Watch the pull request with `watch-prs`, the pull request watcher shipped with this plugin. The

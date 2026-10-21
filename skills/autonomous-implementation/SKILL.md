@@ -14,6 +14,11 @@ notes of the user's words and a draft before anything is built. Here, subagents 
 decisions, the user's input is optional and never waited for, and the work goes milestone by
 milestone until its stop condition is met and the evidence shows it.
 
+- Follow every rule by what it is for. Getting a result forbidden by a rule through another route,
+  such as a cast hidden in a helper, a type widened until a value fits or a term redefined until
+  the work passes, breaks the rule just as the forbidden form does. When a rule stands in the way
+  of your work, name it where you report your work, and never go around it.
+
 ## The grant
 
 - Work this way only when the user asked for it. The user grants it for one task, for the whole
@@ -37,8 +42,8 @@ milestone until its stop condition is met and the evidence shows it.
 - Leave every product and architecture decision to the subagents.
 - Orchestrate the run: plan the milestones, start the agents, judge their results against the
   rules, and keep the run file current.
-- Start the agents that write code as `workflow-skills:implementer`, which works without the rules.
-  Hold their work to the rules through the reviewers.
+- Start the agents that write code as `workflow-skills:implementer`, which works without the rule
+  skills. Hold their work to the rules through the reviewers.
 - Hold every agent to `workflow-skills:todo-md` and `workflow-skills:local-cache`, and the agents
   that write the text shown by the product to `workflow-skills:copywriting`. Name these skills in
   the prompt handed to each agent bound by them.
@@ -92,6 +97,8 @@ milestone until its stop condition is met and the evidence shows it.
 - Fix every defect introduced by the run itself, in whichever milestone it shows up.
 - Record defects present before the run, and findings beyond the granted work, in the todo record
   defined by `workflow-skills:todo-md`. Never work on them.
+- Remove a silenced check in a file the run edits, also one from before the run, as part of the
+  run.
 
 ## Decisions
 
@@ -114,6 +121,8 @@ milestone until its stop condition is met and the evidence shows it.
   surface reviewer of `workflow-skills:implement`, started as that skill describes.
 - Add the other reviewers in this plugin where the work needs them, and decide yourself when they
   run.
+- Handle the findings as the section on findings in `workflow-skills:implement` describes, with
+  each milestone as the change.
 
 ## Hard rules
 

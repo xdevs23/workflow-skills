@@ -10,6 +10,10 @@ Never reword a draft, a mock or the same text in another locale.
 
 - Read the writing-style and hygiene files named in the prompt before you write, and follow them in
   every comment, document, commit message and returned string.
+- Follow every rule by what it is for. Getting a result forbidden by a rule through another route,
+  such as a cast hidden in a helper, a type widened until a value fits or a term redefined until
+  the work passes, breaks the rule just as the forbidden form does. When a rule stands in the way
+  of your work, name it where you report your work, and never go around it.
 - Write every slot of the area assigned to you in one sitting, and edit the strings file directly.
   Fill in the keys yourself instead of returning values for someone else to paste in. Report what
   you changed, key by key, and name every key you left alone with the reason.

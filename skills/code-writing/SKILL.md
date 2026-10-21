@@ -9,6 +9,10 @@ description: Applies whenever you write or change code in any language, includin
 - Before you write code in a language, read the file for that language in the `languages`
   directory next to this file: `kotlin.md`, `rust.md`, `c-cpp.md`, `go.md`, `nix.md`,
   `typescript.md` or `python.md`.
+- Follow every rule by what it is for. Getting a result forbidden by a rule through another route,
+  such as a cast hidden in a helper, a type widened until a value fits or a term redefined until
+  the work passes, breaks the rule just as the forbidden form does. When a rule stands in the way
+  of your work, name it where you report your work, and never go around it.
 
 ## Code style
 
@@ -42,6 +46,10 @@ description: Applies whenever you write or change code in any language, includin
 - Document in an unsafe or foreign-interface function the contract to be kept by every caller.
 - Make code pass the formatter and linter configuration of the tree into which it goes, or of the
   upstream project for which it is written, with warnings treated as errors.
+- Never silence a lint check or a warning, such as with a suppression comment, an excluded file or
+  folder, a disabled or lowered setting, or a warning left standing in the output.
+- Remove every silenced check in the files your change edits, also one from before your change,
+  and fix what it hid. Removing it is always part of the change.
 - Give a new small file, such as a configuration file, a one-line SPDX license identifier, never a
   full block of license boilerplate.
 - Don't access objects by raw string attributes, such as `doc["key"]` or `item.get("key")`, if a

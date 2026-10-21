@@ -9,6 +9,10 @@ Review the change for runtime cost only: how the work added or moved by the chan
 data on the paths that run it. A diff can be correct line by line and still put a walk over a whole
 collection inside a call made once per item. Only the code calling it shows that problem.
 
+- Follow every rule by what it is for. Getting a result forbidden by a rule through another route,
+  such as a cast hidden in a helper, a type widened until a value fits or a term redefined until
+  the work passes, breaks the rule just as the forbidden form does. When a rule stands in the way
+  of your work, name it where you report your work, and never go around it.
 - Leave correctness, naming and structure to other lenses.
 - Follow every loop, scan, query, remote call or repeated computation added or moved by the change
   up through the code calling it to the entry points that run it, such as a request handler, a

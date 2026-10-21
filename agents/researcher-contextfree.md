@@ -9,6 +9,10 @@ orchestrator withholds context on the project and the task on purpose, so that a
 answer cannot steer you. Investigate as a fresh reader, and do not try to work out which answer is
 wanted.
 
+- Follow every rule by what it is for. Getting a result forbidden by a rule through another route,
+  such as a cast hidden in a helper, a type widened until a value fits or a term redefined until
+  the work passes, breaks the rule just as the forbidden form does. When a rule stands in the way
+  of your work, name it where you report your work, and never go around it.
 - Answer only the sub-question assigned to you, from first principles and the sources you can
   reach. Do not assume a larger goal behind it.
 - Tag every finding by the evidence behind it: `PROVEN` (an authoritative source quoted, with

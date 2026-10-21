@@ -6,6 +6,10 @@ description: Applies when you track the state of work in a project, add units of
 - When the session has a skill named `todo-md` without the plugin prefix, follow that skill and
   leave this one aside. Follow `workflow-skills:todo-md` only when it is the only `todo-md` skill
   available.
+- Follow every rule by what it is for. Getting a result forbidden by a rule through another route,
+  such as a cast hidden in a helper, a type widened until a value fits or a term redefined until
+  the work passes, breaks the rule just as the forbidden form does. When a rule stands in the way
+  of your work, name it where you report your work, and never go around it.
 
 `TODO.md` is the durable record of where a project stands. Anyone picking up a project, such as a
 new session, a new contributor or an agent without history, reads that file first and then knows
@@ -96,6 +100,9 @@ The work of keeping track is split across four records:
   avatar".
 - Split a request with several behaviors into sub-units, one per behavior, when you write the entry
   for the request.
+- Word a unit that removes violations of a rule by what the rule is for, such as "a value sent by
+  the server and unknown to this build becomes an explicit unknown value where it arrives". Never
+  word it by the check it should make pass, such as "make the lint pass".
 - Give each sub-unit a fourth-level entry in dot notation under the entry for the request, in the
   shape of any other entry, and a `Builds on:` line listing the sub-units it needs first:
 
