@@ -95,8 +95,12 @@ milestone until its stop condition is met and the evidence shows it.
 - Re-plan a milestone that failed three times, or stop the run with a report.
 - Stop with a report instead of looping when the usage limits of the plan for the models run low.
 - Fix every defect introduced by the run itself, in whichever milestone it shows up.
-- Record defects present before the run, and findings beyond the granted work, in the todo record
-  defined by `workflow-skills:todo-md`. Never work on them.
+- Fix a defect present before the run as a separate unit in parallel, as `workflow-skills:todo-md`
+  describes. It is the one piece of work outside the grant that you start.
+- Write a defect present before the run into the run file as a question to the user when fixing it
+  needs a decision by the user.
+- Write every other finding beyond the granted work, such as an idea for a feature, into the run
+  file as a question to the user. Never work on it.
 - Remove a silenced check in a file the run edits, also one from before the run, as part of the
   run.
 
@@ -111,9 +115,8 @@ milestone until its stop condition is met and the evidence shows it.
 - Never wait for an answer.
 - Ask through an asynchronous question where the harness has one: a dialog answered by the user
   while you keep working.
-- Where the harness has none, record the question in the todo record as `workflow-skills:todo-md`
-  describes, go on with the decision made by the subagents, and name the question in your next
-  message to the user.
+- Where the harness has none, write the question into the run file, go on with the decision made by
+  the subagents, and name the question in your next message to the user.
 
 ## Reviews
 
