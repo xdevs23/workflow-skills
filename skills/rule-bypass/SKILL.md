@@ -23,7 +23,8 @@ still gets a result forbidden by the rule.
 - Report every silenced check, also one from before the change in a file the change edits: a
   suppression comment, an excluded file or folder, a disabled or lowered lint or compiler setting,
   a warning left standing, or a test that is skipped or ignored where the rules require it to
-  run.
+  run. An allowance of unsafe code on the smallest item that needs it, with its `SAFETY` comment,
+  as a language file of `workflow-skills:code-writing` describes, is not a silenced check.
 - Report a swallowed error in a new form, such as an empty catch turned into a catch that only
   logs, or a catch that returns a default value.
 - Report a test rewritten to match a changed value in the shipped code, where the test only
