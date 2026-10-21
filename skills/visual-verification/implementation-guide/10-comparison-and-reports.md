@@ -87,14 +87,18 @@ private permissions.
 
 ## Numbers and their reasons
 
-The reference compared with a threshold of 0.1, which is the default perceptual color distance in
-the library below which two pixels count as equal. It counted anti-aliased pixels as changes, since
-detecting and ignoring them would hide edge changes of text and borders, which are exactly the
-shifts produced by a layout defect. It drew the unchanged pixels of the difference image as the
-before image in grayscale, blended halfway towards white with an alpha of 0.5, so the difference
-image still shows where on the screen a change is. For the same reason, it did not draw the mask
-alone on a transparent background. A different comparison component uses options chosen for the
-same effects and records them the same way.
+Two pixels count as equal only when the library measures no color distance between them, which is a
+threshold of zero. A library that compares by a perceptual color distance, as the one of the
+reference does, blends a pixel that is not fully opaque with white before it measures, so two pixels
+count as equal when they are identical after that blending. The locked environment gives the same
+pixels for the same inputs, so a threshold above zero has no noise to absorb and would only hide a
+small change of color. The reference counted anti-aliased pixels as changes, since detecting and
+ignoring them would hide edge changes of text and borders, which are exactly the shifts produced by
+a layout defect. It drew the unchanged pixels of the difference image as the before image in
+grayscale, blended halfway towards white with an alpha of 0.5, so the difference image still shows
+where on the screen a change is. For the same reason, it did not draw the mask alone on a
+transparent background. A different comparison component uses options chosen for the same effects
+and records them the same way.
 
 ## Web realization in the reference
 

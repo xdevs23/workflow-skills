@@ -47,11 +47,13 @@ endpoints is exact.
 
 The refresh denies redirects. It fails on any response with a status other than success and on any
 redirected response. Only a successful response that was not redirected is projected. The refresh
-sends the credential only to that origin. It does not inherit the general deployment environment.
-It never prints headers, bodies, tokens, query identifiers or raw service errors. When a request
-fails, the refresh reports that it is incomplete, that raw service errors are not logged on purpose
-and that the complete samples already present are unchanged. Every request has a timeout. The
-reference used fifteen seconds.
+sends the credential only to that origin. It does not inherit the general deployment environment. It
+never prints headers, bodies, tokens, query identifiers or raw service errors. When a request fails,
+the refresh reports that it is incomplete, that raw service errors are not logged on purpose and
+that the complete samples already present are unchanged. A request waits for its response or for its
+connection to fail, never for a time limit. The connections use TCP keepalive, so a service that is
+gone fails the connection on the probe schedule of the operating system. A service that keeps the
+connection open without answering keeps the refresh waiting until the user who runs it stops it.
 
 ## Projection
 
@@ -77,17 +79,17 @@ sample reader fail on a scene that does not have a projection.
 ## Publication
 
 Every response and every required manifest entry is validated before a sample is published, with the
-same validation as in part 8. The refresh writes into a fresh directory marked incomplete. It first
-writes a manifest that marks the sample as incomplete. Only after validation does it write the
-responses and a complete manifest, and then it moves the directory to the label. The step that moves
-the directory fails when a sample with that label exists, so a complete sample is never overwritten
-in place.
+same validation as in part 8. Before its first request, the refresh creates a fresh directory and
+writes into it a manifest that marks the sample as incomplete. Only after validation does it write
+the responses and a complete manifest, and then it moves the directory to the label. The step that
+moves the directory fails when a sample with that label exists, so a complete sample is never
+overwritten in place.
 
 Publishing another profile under a label already used by a complete sample needs a deliberate step
 first: retain the existing sample, or manage the local cache explicitly, such as by removing that
-sample by hand. The refresh performs neither step automatically. The output of a failed or partial
-refresh is left in the directory marked incomplete. It is visibly unusable and can never be
-selected.
+sample by hand. The refresh performs neither step automatically. The output of a failed, stopped or
+partial refresh is left in the directory marked incomplete, since the mark is written before the
+first request. It is visibly unusable and can never be selected.
 
 The manifest contains the projection version, the completeness, the overall provenance, the capture
 time, the provenance and a content hash for each response key, and the hash of the whole response

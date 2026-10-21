@@ -142,8 +142,12 @@ A popover or menu that closes when focus leaves its control is opened with a dis
 event that does not move focus, since the capture sequence clears focus. Where the popover takes
 focus by itself, the scene prevents the one focus-leaving event caused by the capture from getting
 to the popover. Transitions are advanced by running frames of the paused clock until the element is
-either fully shown, with its opacity complete and its animations finished, or gone. A deadline fails
-the scene when neither happens in time, and the failure message contains the name of the element.
+either fully shown, with its opacity complete and its animations finished, or gone. The scene fails
+when neither has happened and nothing is left that could still change the element: no finite
+animation runs on the element or on an ancestor of it, and the paused clock holds no pending timer
+and no frame callback. A timer or a frame callback that schedules itself again keeps the scene
+running until the user who runs the harness stops it. The failure message contains the name of the
+element.
 
 A hover state is produced with a dispatched pointer event at computed coordinates, since the capture
 sequence moves the real pointer away and would end a real hover.
