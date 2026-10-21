@@ -25,7 +25,10 @@ Review the change for code cleanliness only: readability and hygiene.
   with several flags, written at the place that uses the result, where a function or method named
   for that result in the module that owns the type belongs.
 - Report comments that are false, restate the code or are stale, and commented-out code left in.
-- Report magic numbers or strings that need a named constant.
+- Report magic numbers or strings that need a name.
+- Report every tunable, as defined in `workflow-skills:engineering-principles`, that is written
+  into the code or handed in by a caller, also when a named constant or a parameter contains it.
+  Name what it derives from at runtime and how it adjusts while the code runs.
 - Report text that explains a product, as defined in `workflow-skills:engineering-principles`. Name
   the part of the interface that has to change so the text can be removed.
 - Report inconsistent style within a file or module, and noisy or accidental debug logging.

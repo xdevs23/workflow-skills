@@ -22,7 +22,5 @@ change later.
 - Report boolean or flag parameters that switch behavior.
 - Report direct access by string key, such as `doc["key"]` and `item.get("key")`, where the change
   adds it.
-- Report an arbitrary constant whose reason is not documented, such as a page size or a limit on
-  parallelism.
 - Name the smell in every finding.
 - Rank the findings by how likely each one is to cause real cost later.
