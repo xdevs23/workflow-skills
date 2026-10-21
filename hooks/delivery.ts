@@ -25,7 +25,9 @@ const formatFindings = (findings: readonly Finding[]): string =>
   ].join('\n')
 
 // Sends the findings not sent before in this session to the agent, as a message it reads before
-// its next step, and shows them in the note.
+// its next step, and shows them in the note and as a notice in the transcript where they were sent.
+// The model reads the message alone, since the transcript draws no message a plugin appended and
+// the model reads no notice.
 export async function deliver($: EngineInterface, findings: readonly Finding[]): Promise<void> {
   const keys = new Set(await read($, sent))
   const fresh = findings.filter(finding => {
@@ -35,9 +37,9 @@ export async function deliver($: EngineInterface, findings: readonly Finding[]):
     return isFresh
   })
   if (fresh.length === 0) return
-  await $.session.append({
-    message: { type: 'user', content: [{ type: 'text', text: formatFindings(fresh) }] },
-  })
+  const content = [{ type: 'text' as const, text: formatFindings(fresh) }]
+  await $.session.append({ message: { type: 'user', content } })
+  await $.session.append({ message: { type: 'system', content } })
   await update($, sent, before => [...before, ...fresh.map(keyOf)])
   await noteFindings($, fresh)
 }

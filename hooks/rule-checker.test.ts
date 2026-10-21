@@ -111,6 +111,11 @@ const world = (on: On, replies: readonly Reply[], files: Record<string, string> 
 const testOn = (name: string, body: TestBody) =>
   test(name, { options: { ruleChecker: true } }, body)
 
+// The rows the plugin appended of one type: the messages the agent reads, or the notices the
+// transcript shows.
+const sentTo = (session: ReturnType<typeof mock.session>, type: 'user' | 'system') =>
+  session.appended().filter(row => row.door === 'note' && row.message.type === type)
+
 const stop = (stopHookActive = false) => ({
   stop_hook_active: stopHookActive,
   background_tasks: [],
@@ -225,7 +230,7 @@ describe('the work', () => {
     await prompt($, 'go')
     await say($, 'first')
     await $.classic.Stop(stop())
-    expect(session.appended().filter(row => row.door === 'note')).toHaveLength(0)
+    expect(sentTo(session, 'user')).toHaveLength(0)
     expect(await noteOf($)).toBeDefined()
     await say($, 'second')
     await $.classic.Stop(stop())
@@ -247,7 +252,7 @@ describe('the model call', () => {
     await clock.advance(1_000)
 
     expect(requests).toHaveLength(2)
-    expect(session.appended().filter(row => row.door === 'note')).toHaveLength(1)
+    expect(sentTo(session, 'user')).toHaveLength(1)
   })
 
   testOn('shows an error that stays as a failed check, and keeps the work', async ($, on) => {
@@ -340,10 +345,10 @@ describe('the findings', () => {
     const passed = await $.classic.Stop(stop(true))
 
     expect(passed.block).toBeUndefined()
-    expect(session.appended().filter(row => row.door === 'note')).toHaveLength(2)
+    expect(sentTo(session, 'user')).toHaveLength(2)
   })
 
-  testOn('of a check during the turn are appended, and delay the stop', async ($, on) => {
+  testOn('of a check during the turn are appended, shown where they were sent, and delay the stop', async ($, on) => {
     const { clock, session } = world(on, [BROKEN, CLEAN])
 
     await prompt($, 'go')
@@ -351,7 +356,9 @@ describe('the findings', () => {
     await $.tool.call({ tool: 'Agent', description: 'd', prompt: 'p' })
     await clock.settle()
 
-    expect(session.appended().filter(row => row.door === 'note')).toHaveLength(1)
+    const contentOf = (type: 'user' | 'system') => sentTo(session, type).map(row => row.message.content)
+    expect(contentOf('user')).toHaveLength(1)
+    expect(contentOf('system')).toEqual(contentOf('user'))
     expect((await $.classic.Stop(stop())).block).toBeDefined()
   })
 
@@ -365,7 +372,7 @@ describe('the findings', () => {
     await $.classic.Stop(stop(true))
 
     expect(requests).toHaveLength(2)
-    expect(session.appended().filter(row => row.door === 'note')).toHaveLength(1)
+    expect(sentTo(session, 'user')).toHaveLength(1)
   })
 })
 
