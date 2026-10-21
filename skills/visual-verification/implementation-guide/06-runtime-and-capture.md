@@ -90,10 +90,12 @@ variant, UTC as the timezone, the color scheme of the theme set by the variant a
 motion preference. It also blocks service workers and downloads. The data boundary is installed on
 the context before the first page exists.
 
-Before the first render, a clock is installed at a fixed time and paused at a fixed later time.
-While the clock is paused, timer-based states never advance by themselves, such as a randomized
-blink, a relative time label or polling after the first request. The stability check of part 7 and
-the steps of the scene advance the clock frame by frame, and only to named observable transitions.
+Before the first render, a clock is installed at a fixed time and paused at a fixed later time. The
+context fixes the frame interval, the time by which the paused clock advances in one frame, so an
+animation or a transition takes the same number of frames on every machine. While the clock is
+paused, timer-based states never advance by themselves, such as a randomized blink, a relative time
+label or polling after the first request. The stability check of part 7 and the steps of the scene
+advance the clock frame by frame, and only to named observable transitions.
 
 Before any application code runs, the harness seeds a synthetic session, together with the locale
 and theme of the variant, into the storage from which the application reads them. The harness seeds
@@ -108,8 +110,11 @@ persisted login. Adaptation point: the storage keys, the claims and the role.
 The runtime then opens the route given by the scene for a page scene, or the component entry for a
 component scene. When the variant sets a container width, the runtime passes it to the entry as a
 parameter. It then passes the run context of part 4 to the scene. Waiting for start-up or a reload
-allows up to sixty seconds for the module graph of the real entry to load. That limit is a timeout.
-The wait ends as soon as the module graph has loaded.
+ends when the module graph of the real entry has loaded. The wait fails when a module request fails,
+when the page reports an error, when the serving process exits, or when the entry has not finished
+evaluating while no module request is in flight, since nothing is then left that could complete the
+graph. A failure is recorded as error output by part 5. A serving process that stays up without
+answering keeps the wait open until the user who runs the harness stops it.
 
 ## The capture sequence
 

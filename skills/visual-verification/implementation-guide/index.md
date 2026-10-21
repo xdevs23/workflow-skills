@@ -97,9 +97,9 @@ decodes images and produces a changed-pixel count and a per-pixel change mask wi
 options. The environment locks the runtime, the rendering engine and the fonts. The same inputs give
 the same pixels on every machine that runs the harness.
 
-A numeric setting tied to one component, such as a socket path limit or a comparison threshold, is
-given as the value used by the reference, together with the reason for that value. A different
-component can need another value, derived from the same reason.
+A numeric setting tied to one component, such as a socket path limit, is given as the value used
+by the reference, together with the reason for that value. A different component can need another
+value, derived from the same reason.
 
 ## Adaptation points
 

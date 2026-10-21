@@ -24,8 +24,8 @@ comparison to be meaningful:
   engine executable;
 * the hash of the font configuration and the hashes of the shipped font assets;
 * the fixed settings: pixel density, timezone, the instants at which the clock is installed and
-  paused, the motion preference, the animation and caret settings of the screenshot, the screenshot
-  scale and the comparison options of part 10.
+  paused, the frame interval of the clock, the motion preference, the animation and caret settings
+  of the screenshot, the screenshot scale and the comparison options of part 10.
 
 The source group contains the fully resolved revision of the application source. For a capture of
 the working tree, it also contains a fingerprint of the relevant content of the working tree and a

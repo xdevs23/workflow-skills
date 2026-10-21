@@ -78,7 +78,8 @@ address, that redirects are denied and that the method is a read. The test check
 * the sample replays without credentials, with mixed provenance and without the credential or any
   excluded field in it;
 * a selection with an extra operation fails before any request;
-* a transport failure is reported without the raw service error in the message.
+* a transport failure is reported without the raw service error in the message;
+* a refresh stopped before it finishes leaves its output marked incomplete.
 
 The count of requests shows which refreshes sent requests to the transport.
 
