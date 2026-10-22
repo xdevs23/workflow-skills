@@ -1,10 +1,11 @@
 import type { EngineInterface, PluginOptions, Register } from 'claude-code'
 
-import { checkAtEnd, checkBeside, checksOf } from './checker.ts'
+import { backgroundOf, recordStop, startTurn } from './background.ts'
+import { checkAtEnd } from './checker.ts'
 import { SENT_FINDINGS } from './delivery.ts'
 import { clearNote, hasFindings, noteRows } from './note.ts'
+import { collectPrompt } from './prompts.ts'
 import { storeInstructions, storeNestedInstructions } from './rules.ts'
-import { collect, collectWords } from './work.ts'
 
 const isStringList = (value: PluginOptions[string] | undefined): value is readonly string[] =>
   Array.isArray(value) && value.every(item => typeof item === 'string')
@@ -25,7 +26,7 @@ export const register: Register = (on, options) => {
   if (!isStringList(skills)) {
     throw new Error(`ruleCheckerSkills is not a list of skills: ${String(skills)}`)
   }
-  const checks = checksOf(model, skills)
+  const checks = { model, skills }
   // The project root as the session first reported it, so TODO.md is read from one place.
   let root: Promise<string> | undefined
 
@@ -51,61 +52,41 @@ export const register: Register = (on, options) => {
     return shown
   })
 
-  on('session.append', { door: ['response', 'tool-result'] }, async ($, e, next) => {
-    const stored = await next(e)
-    if (e.agentId === undefined && stored.deny === undefined) {
-      await collect($, { door: e.door, message: stored.message })
-    }
-    return stored
-  })
-
   // The words of a prompt come from its submission: a prompt delivered into a running turn is
   // stored inside the engine's notice of it.
   on('prompt.submit', async ($, e, next) => {
     await clearNote($)
     const entered = await next(e)
     if (entered.drop === undefined && e.isMeta !== true) {
-      await collectWords($, { text: entered.text, origin: e.origin })
+      await collectPrompt($, { text: entered.text, origin: e.origin })
     }
     return entered
   })
 
-  on('turn.step', async function* ($, e, next) {
-    const step = yield* next(e)
-    if (e.agentId === undefined && step.answer !== '' && step.toolUses.length > 0) {
-      checkBeside(checks, $)
-    }
-    return step
-  })
-
-  on('tool.call', { tool: ['Agent', 'Workflow'] }, ($, e, next) => {
-    if (e.agentId === undefined) checkBeside(checks, $)
+  // A new turn of the main agent starts from the background work of the last stop. A stop that a
+  // hook delays continues its turn, which starts no new turn.
+  on('turn.start', async ($, e, next) => {
+    if (e.agentId === undefined) await startTurn($)
     return next(e)
   })
 
-  on('tool.call', { tool: 'Bash' }, async ($, e, next) => {
-    const ran = await next(e)
-    if (
-      e.agentId === undefined &&
-      ran.isError !== true &&
-      ran.result?.gitOperation?.commit !== undefined
-    ) {
-      checkBeside(checks, $)
-    }
-    return ran
-  })
-
-  // The check at the end of a turn delays the stop. Findings sent for the current prompt make the
-  // agent work once more, and a stop that follows such a delay only appends them. The two models
-  // never loop.
+  // Every stop is checked, and the check delays the stop. Findings sent for the current prompt make
+  // the agent work once more, and the check at a stop that follows such a delay only appends its
+  // findings. The two models never loop.
   on('classic.Stop', async ($, e, next) => {
     root ??= $.session.root()
-    const end = { todo: await todoOf($, await root), tasks: e.background_tasks ?? [] }
+    const message = e.last_assistant_message
+    const inFlight = { tasks: e.background_tasks ?? [], crons: e.session_crons ?? [] }
+    const { running, waiting } = await backgroundOf($, inFlight)
     await checkAtEnd(checks, $, {
-      end,
+      final: message === undefined || message.trim() === '' ? null : message,
+      todo: await todoOf($, await root),
+      running,
+      waiting,
       signal: next.signal,
       canWait: ms => ms < next.budget.remainingMs,
     })
+    await recordStop($, inFlight)
     const below = await next(e)
     if (e.stop_hook_active || !(await hasFindings($))) return below
 

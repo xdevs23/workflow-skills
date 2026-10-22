@@ -93,8 +93,7 @@ export async function fixedSystem(
 }
 
 // The system prompt of a check, most stable first, with a cache mark after each part that can
-// change apart from the others. A request takes four cache marks, and TODO.md takes the last one,
-// so the nested instruction files share the mark of the project files.
+// change apart from the others. The nested instruction files share the mark of the project files.
 export async function systemOf(
   $: EngineInterface,
   fixed: readonly ModelTextBlock[],

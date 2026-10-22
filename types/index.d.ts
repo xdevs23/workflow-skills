@@ -1,22 +1,20 @@
-// One step of the work of the main agent, in the order it happened, as the rule checker reads it:
-// words the user typed, text the agent wrote, a tool call, and the failure of a call.
-export type RuleCheckerEntry =
-  | { kind: 'user'; text: string }
-  | { kind: 'say'; text: string }
-  | { kind: 'call'; tool: string; input: unknown }
-  | { kind: 'failure'; tool: string; input: unknown; text: string }
-
-// A call whose result has not arrived yet: its tool, and its arguments without the work they
-// contain, which the failure of the call repeats.
-export type RuleCheckerCall = { tool: string; input: unknown }
-
-// The work collected since the last successful check. `first` is the number of the first entry,
-// counted from the start of the session, so a check removes exactly the entries it sent.
-export type RuleCheckerWork = {
+// The prompts the user typed or sent since the last successful check. `first` is the number of the
+// first of them, counted from the start of the session, so a check removes exactly the prompts it
+// sent.
+export type RuleCheckerPrompts = {
   first: number
-  entries: RuleCheckerEntry[]
-  calls: Record<string, RuleCheckerCall>
+  prompts: string[]
 }
+
+// A workflow that runs at the end of a turn.
+export type RunningWorkflow = { id: string; name?: string; description: string }
+
+// A background task or a scheduled wakeup started during the current turn, with a kind, such as
+// shell, subagent, monitor or wakeup, and a description of what it does.
+export type WaitingTask = { kind: string; description: string }
+
+// The ids of the background tasks and of the scheduled wakeups of the session at one moment.
+export type BackgroundIds = { tasks: string[]; crons: string[] }
 
 // The fields of a finding, in the order the instructions of the checker list them.
 export type RuleCheckerFindingFields = readonly ['rule', 'source', 'place', 'wrong', 'instead']
@@ -36,13 +34,16 @@ export type RuleCheckerInstructionFile = { kind: string; path: string; content: 
 declare module 'claude-code' {
   interface PluginState {
     'workflow-skills': {
-      ruleCheckerWork: RuleCheckerWork
+      ruleCheckerPrompts: RuleCheckerPrompts
+      // The text of TODO.md and the running workflows at the last successful check, as one JSON
+      // string, or null before the first one.
+      ruleCheckerLastState: string | null
+      ruleCheckerIdsAtLastStop: BackgroundIds
+      ruleCheckerIdsAtTurnStart: BackgroundIds
       ruleCheckerNote: RuleCheckerNote
       ruleCheckerInstructions: RuleCheckerInstructionFile[]
       // The texts of the instruction files the engine loaded during the conversation.
       ruleCheckerNestedInstructions: string[]
-      // The place and the wrong of every finding sent to the agent in this session.
-      ruleCheckerSent: string[]
     }
   }
 }

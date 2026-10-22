@@ -53,29 +53,35 @@ The fifteen review-lens skills are `reviewer-correctness`, `missing-gaps`, `runt
 Each one can also be loaded alone to review a change through its lens.
 
 ### Rule checker
-The plugin also has a rule checker: a second model checks the work of the main agent against the
-binding rules while the agent works, and reports every break to the agent.
+The plugin also has a rule checker: each time the main agent stops, a second model checks how the
+turn ended against the binding rules and reports to the agent only three things.
 
-* A check runs after a step in which the agent wrote text and called tools, after a commit, when an
-  agent or a workflow starts, and at the end of a turn. Each check covers the work since the last
-  successful check.
-* A check sends the work as JSON: the prompts the user sent, the text of the agent and every tool
-  call with its arguments, with edits as diffs and lookups by path or pattern alone. A tool result
-  is sent only where its call failed. At the end of a turn the check also sends the text of
-  `TODO.md` and the workflows that are running. Thinking, the output of lookups and the work of
-  subagents are not sent.
-* The system prompt of a check contains the instructions of the checker, the rules of the binding
-  skills of the plugin and the instruction files the main agent reads, such as the global and the
-  project `CLAUDE.md`. These parts are marked for the prompt cache, most stable first, so each
-  check pays full price only for the new work.
-* The findings are sent to the agent as a message it reads before its next step. A notice in the
-  transcript shows them where they were sent, and a note above the prompt box lists them. Findings sent during a turn delay its end once, so the agent fixes
-  each one or says why it is wrong. A check that fails is shown in the note, and its work is sent
-  again by the next check.
+* The final message contains the announcement of work, such as "Next I'll ...", that no running
+  workflow, background task or scheduled wakeup does. A background task or a wakeup counts only
+  when started during the same turn.
+* The final message contains words that clearly break a rule. What the user asked for in their own
+  words is accepted.
+* No workflow is running although `TODO.md` has work that is ready to build or being built.
+
+A check sends as JSON the final message of the turn, the prompts the user typed or sent since the
+last successful check, the workflows that are running, and the other background tasks and the
+scheduled wakeups started during the turn. It sends the text of `TODO.md` only while
+no workflow runs, and only when `TODO.md` or the running workflows changed since the last
+successful check. Work waiting in an unchanged `TODO.md` is therefore reported once.
+
+The system prompt of a check contains the instructions of the checker, the rules of the binding
+skills of the plugin and the instruction files the main agent reads, such as the global and the
+project `CLAUDE.md`. These parts are marked for the prompt cache, most stable first.
+
+The findings are sent to the agent as a message it reads before its next step. A notice in the
+transcript shows them where they were sent, and a note above the prompt box lists them. Findings
+delay the end of the turn once, so the agent fixes each one or says why it is wrong, and the stop
+that follows is checked again. A check that fails is shown in the note, and the next check sends
+the same prompts and `TODO.md` again.
 
 The checker uses `claude-haiku-5-5` by default, and `claude-sonnet-5-5` can be picked instead. Each
-check is one more request to that model, charged to the account the session uses. The checker is
-off until the row `Rule checker` in `/config` switches it on. The rows `Rule checker model` and
+stop costs at most one request to that model, charged to the account the session uses. The checker
+is off until the row `Rule checker` in `/config` switches it on. The rows `Rule checker model` and
 `Rule checker skills` there pick the model and the skills whose rules it applies. Where an
 organization manages Claude Code, only a plugin listed in the managed settings runs the check at
 the end of a turn and reads the instruction files.
