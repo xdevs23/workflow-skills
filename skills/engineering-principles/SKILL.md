@@ -152,6 +152,9 @@ description: Applies whenever you design, build, change, test or debug software,
 - When a change needs a bolt-on, change the architecture so the work slots in.
 - Redesign a shape to which such checks are added again and again.
 - At a roadblock, stop and ask before you add any workaround or compatibility shim.
+- Record the work that replaces an approved workaround as a unit of work in `TODO.md`, and name the
+  workaround and the condition that ends it in that entry. Start that work right away, and remove
+  the workaround once the condition is met.
 - Never add a carve-out where the existing path already covers the case.
 - Keep branches small and few. Replace a growing conditional with indirection, abstraction or a
   structure that makes the case impossible instead of handled.
@@ -245,6 +248,9 @@ description: Applies whenever you design, build, change, test or debug software,
   checking conflicting or impossible settings where they are defined.
 - Never set a limit yourself. The resources of the machine and a refusal from an external system
   are the only limits.
+- Never set a limit yourself on how the work runs either. Never order, queue or hold back approved
+  work behind other work it does not depend on, a lock, a time of day or a core count that you set
+  yourself.
 - Never add a fixed or configurable cap, or a shape that caps a count or a rate below what the
   hardware can handle, such as a single point through which every request passes one at a time, a
   scan that grows with the count or a table that can't grow.
