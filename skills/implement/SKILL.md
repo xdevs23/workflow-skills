@@ -154,5 +154,7 @@ and the user reviews the code.
 
 ## Wrapping up
 
+- While a build or a test runs longer than the work needs, measure where the time goes and work on
+  the biggest time sink in a worktree of its own, without waiting for the run to end.
 - After each workflow, assess what took the longest and try to optimize it so that the next run needs less time. Aim
   for a maximum of 20 minutes per agent. Anything under 20 minutes does not need to be inspected.
