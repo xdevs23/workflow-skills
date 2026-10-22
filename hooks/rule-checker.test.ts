@@ -1,13 +1,15 @@
 import { describe, expect, mock, test } from 'claude-code/testing'
 import type { Engine, TestBody } from 'claude-code/testing'
 import type {
-  ApiContentBlock,
+  BackgroundTaskSummary,
   ModelCompleteInput,
   ModelCompleteResult,
   On,
   PromptSubmitInput,
-  SessionAppendInput,
+  SessionCronSummary,
 } from 'claude-code'
+
+import type { WaitingTask } from '../types'
 
 const USAGE = {
   input_tokens: 1,
@@ -37,35 +39,10 @@ type Reply = string | ModelCompleteResult
 // A prompt the engine refuses beneath the plugin.
 const DROPPED = 'a prompt that never enters'
 
-let rows = 0
-const append = (
-  $: Engine,
-  door: SessionAppendInput['door'],
-  origin: SessionAppendInput['origin'],
-  role: 'user' | 'assistant',
-  content: ApiContentBlock[],
-  agentId?: string,
-) => {
-  rows += 1
-  return $.session.append({
-    door,
-    origin,
-    uuid: `row-${rows}`,
-    agentId,
-    message: { type: role, role, content },
-  })
-}
+const TODO = '/project/TODO.md'
+
 const prompt = ($: Engine, text: string, more: Partial<PromptSubmitInput> = {}) =>
   $.prompt.submit({ text, origin: { kind: 'composer' }, wait: false, ...more })
-const say = ($: Engine, text: string, agentId?: string) =>
-  append(
-    $,
-    'response',
-    { kind: 'model', model: 'm' },
-    'assistant',
-    [{ type: 'text', text }],
-    agentId,
-  )
 
 // The engine beneath the plugin: a project with the files named, and a checker model that gives the
 // replies in order, the last one again once they run out, and keeps every request it got.
@@ -90,19 +67,11 @@ const world = (on: On, replies: readonly Reply[], files: Record<string, string> 
   on('prompt.submit', ($, e) => (e.text === DROPPED ? { drop: 'refused' } : { text: e.text }))
   on('prompt.attachment', ($, e) => ({ text: e.text }))
   on('classic.Stop', () => ({}))
-  on('tool.call', ($, e) =>
-    e.tool === 'Bash' && e.command.startsWith('git commit')
-      ? {
-          result: {
-            stdout: '',
-            stderr: '',
-            interrupted: false,
-            gitOperation: { commit: { sha: 'abc', kind: 'committed' } },
-          },
-        }
-      : { result: {} },
-  )
-  const pieces = () => requests.map(request => request.prompt)
+  // The blocks of each request, read back as JSON.
+  const pieces = () =>
+    requests.map(request =>
+      (request.promptBlocks ?? []).map((block): unknown => JSON.parse(block.text)),
+    )
 
   return { requests, clock, session, pieces }
 }
@@ -116,9 +85,39 @@ const testOn = (name: string, body: TestBody) =>
 const sentTo = (session: ReturnType<typeof mock.session>, type: 'user' | 'system') =>
   session.appended().filter(row => row.door === 'note' && row.message.type === type)
 
-const stop = (stopHookActive = false) => ({
-  stop_hook_active: stopHookActive,
-  background_tasks: [],
+const workflow = (id: string): BackgroundTaskSummary => ({
+  id,
+  type: 'workflow',
+  status: 'running',
+  description: 'review the parser',
+  name: 'review',
+})
+
+const shell = (id: string, description: string): BackgroundTaskSummary => ({
+  id,
+  type: 'shell',
+  status: 'running',
+  description,
+})
+
+const wakeup = (id: string): SessionCronSummary => ({
+  id,
+  schedule: '30 9 23 10 *',
+  recurring: false,
+  prompt: 'merge once CI is green',
+})
+
+type Stop = {
+  isDelayed?: boolean
+  tasks?: BackgroundTaskSummary[]
+  crons?: SessionCronSummary[]
+}
+
+const stop = (final: string, { isDelayed = false, tasks = [], crons = [] }: Stop = {}) => ({
+  stop_hook_active: isDelayed,
+  last_assistant_message: final,
+  background_tasks: tasks,
+  session_crons: crons,
 })
 
 const BAND = {
@@ -140,103 +139,128 @@ const noteOf = async ($: Engine) => {
   return band.find({ type: 'Text' })
 }
 
-describe('the check points', () => {
-  testOn('are text with calls, a commit, an agent or a workflow, and the end of the turn', async ($, on) => {
-    const { requests, clock } = world(on, [CLEAN])
-    let steps = 0
-    on('turn.step', async function* () {
-      steps += 1
-      return {
-        turnId: 't',
-        index: 0,
-        answer: steps === 1 ? 'Let me look.' : '',
-        toolUses: [{ name: 'Read', input: {} }],
-        stopReason: 'tool_use',
-        usage: null,
-      }
-    })
-    const step = async () => {
-      for await (const _ of $.turn.step({ turnId: 't', index: 0, model: 'm', messageCount: 1 })) {
-        // the bottom yields nothing
-      }
-      await clock.settle()
-    }
-
-    await prompt($, 'go')
-    await say($, 'one')
-    await step()
-    expect(requests).toHaveLength(1)
-    await say($, 'two')
-    await step()
-    await $.tool.call({ tool: 'Bash', command: 'git status' })
-    await clock.settle()
-    expect(requests).toHaveLength(1)
-    await $.tool.call({ tool: 'Bash', command: 'git commit -m x' })
-    await clock.settle()
-    expect(requests).toHaveLength(2)
-    await say($, 'three')
-    await $.tool.call({ tool: 'Agent', description: 'd', prompt: 'p' })
-    await clock.settle()
-    expect(requests).toHaveLength(3)
-    await say($, 'four')
-    await $.classic.Stop(stop())
-    expect(requests).toHaveLength(4)
-    expect(JSON.parse(requests[3]?.promptBlocks?.at(-1)?.text ?? '')).toHaveProperty(
-      'turnEnded',
-      true,
-    )
-  })
-})
-
-describe('the work', () => {
-  testOn('is sent once, and a subagent and the plugin itself add none', async ($, on) => {
-    const { requests, pieces } = world(on, [BROKEN, CLEAN])
-
-    await prompt($, 'fix the parser')
-    await say($, 'first')
-    await say($, 'in a subagent', 'agent-1')
-    await $.classic.Stop(stop())
-    await say($, 'second')
-    await $.classic.Stop(stop(true))
-    await $.classic.Stop(stop(true))
-
-    expect(requests).toHaveLength(2)
-    expect(pieces()[0]).toContain('fix the parser')
-    expect(pieces()[0]).not.toContain('in a subagent')
-    expect(pieces()[1]).toContain('second')
-    expect(pieces()[1]).not.toContain('first')
-    expect(pieces()[1]).not.toContain(FINDING.wrong)
-  })
-
-  testOn('has the words the user typed or sent, also during a turn, and no other prompt', async ($, on) => {
-    const { requests } = world(on, [CLEAN])
+describe('the check', () => {
+  testOn('sends the final message, the words of the user and the workflows', async ($, on) => {
+    const { pieces } = world(on, [CLEAN])
 
     await prompt($, 'fix the parser')
     await prompt($, 'and the lexer', { turnId: 't' })
     await prompt($, 'a task ended', { origin: { kind: 'task-notification' } })
     await prompt($, 'a hidden prompt', { isMeta: true })
     await prompt($, DROPPED)
-    await $.classic.Stop(stop())
+    await $.classic.Stop(stop('Next I will review it.', { tasks: [workflow('w1')] }))
 
-    expect(JSON.parse(requests[0]?.promptBlocks?.at(-1)?.text ?? '')).toHaveProperty('work', [
-      { kind: 'user', text: 'fix the parser' },
-      { kind: 'user', text: 'and the lexer' },
+    expect(pieces()).toEqual([
+      [
+        {
+          final: 'Next I will review it.',
+          user: ['fix the parser', 'and the lexer'],
+          running: [{ workflow: 'review', description: 'review the parser' }],
+          waiting: [],
+        },
+      ],
     ])
   })
 
-  testOn('of a failed check is sent again by the next check', async ($, on) => {
-    const { pieces, session } = world(on, ['Looks clean to me.', CLEAN])
+  testOn('sends the words of the user once, and again after a failed check', async ($, on) => {
+    const { pieces } = world(on, ['Looks clean to me.', CLEAN])
+
+    await prompt($, 'first')
+    await $.classic.Stop(stop('one'))
+    expect(await noteOf($)).toBeDefined()
+    await prompt($, 'second')
+    await $.classic.Stop(stop('two'))
+    await $.classic.Stop(stop('three'))
+
+    expect(pieces()).toEqual([
+      [{ final: 'one', user: ['first'], running: [], waiting: [] }],
+      [{ final: 'two', user: ['first', 'second'], running: [], waiting: [] }],
+      [{ final: 'three', user: [], running: [], waiting: [] }],
+    ])
+  })
+
+  testOn('sends only the tasks and wakeups started during the current turn', async ($, on) => {
+    const { pieces } = world(on, [BROKEN, CLEAN, CLEAN, CLEAN])
+    on('turn.start', ($, e) => ({ turnId: e.turnId }))
+    const ci = shell('s1', 'watch the CI run')
+    const deploy = shell('s2', 'watch the deploy')
+    const turn = (turnId: string) => $.turn.start({ text: 'go', turnId })
+    const piece = (final: string, waiting: WaitingTask[]) => [
+      { final, user: [], running: [], waiting },
+    ]
+
+    await turn('t1')
+    await $.classic.Stop(stop('Next I will merge.', { tasks: [ci], crons: [wakeup('c1')] }))
+    await $.classic.Stop(stop('Fixed.', { isDelayed: true, tasks: [ci] }))
+    await turn('t2')
+    await $.classic.Stop(stop('Next I will release.', { tasks: [ci, deploy] }))
+    await turn('t3')
+    await $.classic.Stop(stop('Still waiting.', { tasks: [ci, deploy] }))
+
+    expect(pieces()).toEqual([
+      piece('Next I will merge.', [
+        { kind: 'shell', description: 'watch the CI run' },
+        { kind: 'wakeup', description: 'merge once CI is green' },
+      ]),
+      piece('Fixed.', [{ kind: 'shell', description: 'watch the CI run' }]),
+      piece('Next I will release.', [{ kind: 'shell', description: 'watch the deploy' }]),
+      piece('Still waiting.', []),
+    ])
+  })
+
+  testOn('is not sent without a final message or a TODO.md to send', async ($, on) => {
+    const { requests } = world(on, [CLEAN])
 
     await prompt($, 'go')
-    await say($, 'first')
-    await $.classic.Stop(stop())
-    expect(sentTo(session, 'user')).toHaveLength(0)
-    expect(await noteOf($)).toBeDefined()
-    await say($, 'second')
-    await $.classic.Stop(stop())
+    await $.classic.Stop(stop(''))
 
-    expect(pieces()[1]).toContain('first')
-    expect(pieces()[1]).toContain('second')
+    expect(requests).toHaveLength(0)
+  })
+})
+
+describe('TODO.md', () => {
+  testOn(
+    'is sent while no workflow runs, when TODO.md or the running workflows changed',
+    async ($, on) => {
+      const files: Record<string, string> = { [TODO]: '#160 - Slim it - QUEUED' }
+      const { pieces } = world(on, [CLEAN], files)
+
+      await $.classic.Stop(stop('one'))
+      await $.classic.Stop(stop('two'))
+      files[TODO] = '#160 - Slim it - IN PROGRESS'
+      await $.classic.Stop(stop('three', { tasks: [workflow('w1')] }))
+      await $.classic.Stop(stop('four'))
+
+      expect(pieces().map(blocks => blocks.slice(0, -1))).toEqual([
+        [{ todo: '#160 - Slim it - QUEUED' }],
+        [],
+        [],
+        [{ todo: '#160 - Slim it - IN PROGRESS' }],
+      ])
+    },
+  )
+
+  testOn('that a check did not get is sent by the next one', async ($, on) => {
+    const { pieces } = world(on, ['Looks clean to me.', CLEAN], { [TODO]: '#4 - Parser - TODO' })
+
+    await $.classic.Stop(stop(''))
+    await $.classic.Stop(stop(''))
+    await $.classic.Stop(stop(''))
+
+    expect(pieces()).toHaveLength(2)
+    expect(pieces()[1]?.[0]).toEqual({ todo: '#4 - Parser - TODO' })
+  })
+
+  testOn('is sent at the first stop after the running workflow ended', async ($, on) => {
+    const { pieces } = world(on, [CLEAN], { [TODO]: '#4 - Parser - TODO' })
+
+    await $.classic.Stop(stop('', { tasks: [workflow('w1')] }))
+    expect(pieces()).toEqual([])
+    await $.classic.Stop(stop(''))
+
+    expect(pieces()).toEqual([
+      [{ todo: '#4 - Parser - TODO' }, { final: null, user: [], running: [], waiting: [] }],
+    ])
   })
 })
 
@@ -244,55 +268,36 @@ describe('the model call', () => {
   testOn('tries again after an error that passes by itself', async ($, on) => {
     const { requests, clock, session } = world(on, [OVERLOADED, BROKEN])
 
-    await prompt($, 'go')
-    await say($, 'done')
-    await $.tool.call({ tool: 'Agent', description: 'd', prompt: 'p' })
+    const stopped = $.classic.Stop(stop('done'))
     await clock.settle()
     expect(requests).toHaveLength(1)
     await clock.advance(1_000)
+    await stopped
 
     expect(requests).toHaveLength(2)
     expect(sentTo(session, 'user')).toHaveLength(1)
   })
 
-  testOn('shows an error that stays as a failed check, and keeps the work', async ($, on) => {
+  testOn('shows an error that stays as a failed check', async ($, on) => {
     const refused: ModelCompleteResult = {
       ...OVERLOADED,
       status: 401,
       error: 'authentication_failed',
     }
     const empty: ModelCompleteResult = { isAnswered: false, reason: 'empty-reply', usage: USAGE }
-    const { requests, pieces } = world(on, [refused, empty, CLEAN])
+    const { requests } = world(on, [refused, empty])
 
-    await prompt($, 'go')
-    await say($, 'done')
-    await $.classic.Stop(stop())
-    await $.classic.Stop(stop())
+    await $.classic.Stop(stop('done'))
+    await $.classic.Stop(stop('done'))
+
     expect(requests).toHaveLength(2)
     expect(await noteOf($)).toBeDefined()
-    await $.classic.Stop(stop())
-
-    expect(pieces()[2]).toContain('done')
-  })
-
-  testOn('beside the turn is aborted by the end of the turn, which sends its work', async ($, on) => {
-    const { requests, clock, pieces } = world(on, [OVERLOADED, CLEAN])
-
-    await prompt($, 'go')
-    await say($, 'done')
-    await $.tool.call({ tool: 'Agent', description: 'd', prompt: 'p' })
-    await clock.settle()
-    await $.classic.Stop(stop())
-    await clock.advance(1_000)
-
-    expect(requests).toHaveLength(2)
-    expect(pieces()[1]).toContain('done')
   })
 })
 
 describe('the request', () => {
   testOn('has the rules in the system prompt, most stable first, each part cached', async ($, on) => {
-    const { requests } = world(on, [CLEAN], { '/project/TODO.md': '### #4 - Parser - IN PROGRESS' })
+    const { requests } = world(on, [CLEAN], { [TODO]: '### #4 - Parser - IN PROGRESS' })
     await $.prompt.context({
       blocks: [],
       instructionFiles: [
@@ -307,7 +312,7 @@ describe('the request', () => {
     await $.prompt.attachment({ ...nested, text: 'a subagent rule', agentId: 'agent-1' })
 
     await prompt($, 'go')
-    await $.classic.Stop(stop())
+    await $.classic.Stop(stop('done'))
 
     const system = requests[0]?.systemBlocks ?? []
     expect(system.map(block => block.cache)).toEqual([undefined, true, true, true])
@@ -317,62 +322,36 @@ describe('the request', () => {
       { source: 'project /project/CLAUDE.md', text: 'project rules' },
       { source: 'nested instruction file', text: 'nested rules' },
     ])
-    const [todo] = requests[0]?.promptBlocks ?? []
-    expect(JSON.parse(todo?.text ?? '')).toEqual({ todo: '### #4 - Parser - IN PROGRESS' })
-  })
-
-  testOn('at the end of a turn with no new work is sent only for a TODO.md', async ($, on) => {
-    const { requests } = world(on, [CLEAN])
-
-    await $.classic.Stop(stop())
-
-    expect(requests).toHaveLength(0)
   })
 })
 
 describe('the findings', () => {
-  testOn('delay the stop once, and are appended when the stop was delayed already', async ($, on) => {
+  testOn('are appended, shown where they were sent, and delay the stop once', async ($, on) => {
     const { session } = world(on, [
       BROKEN,
       JSON.stringify({ findings: [{ ...FINDING, place: 'b.ts:1' }] }),
     ])
 
-    await prompt($, 'go')
-    await say($, 'done')
-    const delayed = await $.classic.Stop(stop())
+    const delayed = await $.classic.Stop(stop('done'))
     expect(delayed.block).toBeDefined()
-    await say($, 'fixed')
-    const passed = await $.classic.Stop(stop(true))
+    const passed = await $.classic.Stop(stop('fixed', { isDelayed: true }))
 
+    const contentOf = (type: 'user' | 'system') =>
+      sentTo(session, type).map(row => row.message.content)
     expect(passed.block).toBeUndefined()
-    expect(sentTo(session, 'user')).toHaveLength(2)
-  })
-
-  testOn('of a check during the turn are appended, shown where they were sent, and delay the stop', async ($, on) => {
-    const { clock, session } = world(on, [BROKEN, CLEAN])
-
-    await prompt($, 'go')
-    await say($, 'done')
-    await $.tool.call({ tool: 'Agent', description: 'd', prompt: 'p' })
-    await clock.settle()
-
-    const contentOf = (type: 'user' | 'system') => sentTo(session, type).map(row => row.message.content)
-    expect(contentOf('user')).toHaveLength(1)
+    expect(contentOf('user')).toHaveLength(2)
     expect(contentOf('system')).toEqual(contentOf('user'))
-    expect((await $.classic.Stop(stop())).block).toBeDefined()
   })
 
-  testOn('already sent in this session are not sent again', async ($, on) => {
-    const { requests, session } = world(on, [BROKEN])
+  testOn('are sent again when TODO.md or the running workflows changed', async ($, on) => {
+    const { requests, session } = world(on, [BROKEN], { [TODO]: '#160 - Slim it - QUEUED' })
 
-    await prompt($, 'go')
-    await say($, 'one')
-    await $.classic.Stop(stop())
-    await say($, 'two')
-    await $.classic.Stop(stop(true))
+    await $.classic.Stop(stop(''))
+    await $.classic.Stop(stop('', { tasks: [workflow('w1')] }))
+    await $.classic.Stop(stop(''))
 
     expect(requests).toHaveLength(2)
-    expect(sentTo(session, 'user')).toHaveLength(1)
+    expect(sentTo(session, 'user')).toHaveLength(2)
   })
 })
 
@@ -380,9 +359,7 @@ describe('the switch', () => {
   test('is off by default, so no check runs', async ($, on) => {
     const { requests } = world(on, [BROKEN])
 
-    await prompt($, 'go')
-    const answer = await $.classic.Stop(stop())
-    await $.tool.call({ tool: 'Agent', description: 'd', prompt: 'p' })
+    const answer = await $.classic.Stop(stop('done'))
 
     expect(answer.block).toBeUndefined()
     expect(requests).toHaveLength(0)

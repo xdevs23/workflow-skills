@@ -1,27 +1,29 @@
-import type { BackgroundTaskSummary, ModelTextBlock } from 'claude-code'
+import type { ModelTextBlock } from 'claude-code'
 
-import type { RuleCheckerEntry } from '../types'
+import type { RunningWorkflow, WaitingTask } from '../types'
 
-// What a check at the end of a turn also sends: the text of TODO.md, or null without one, and the
-// background tasks of the session.
-export type TurnEnd = { todo: string | null; tasks: readonly BackgroundTaskSummary[] }
+// The message of one check, as JSON: the final message of the agent, or null without one, the
+// prompts of the user since the last successful check, the running workflows, and the other tasks
+// and wakeups started by the turn. The text of TODO.md, where the check sends it, goes in a
+// separate block ahead of the rest.
+export const pieceOf = ({
+  final,
+  user,
+  running,
+  waiting,
+  todo,
+}: {
+  final: string | null
+  user: readonly string[]
+  running: readonly RunningWorkflow[]
+  waiting: readonly WaitingTask[]
+  todo: string | null
+}): ModelTextBlock[] => {
+  const workflows = running.map(workflow => ({
+    workflow: workflow.name,
+    description: workflow.description,
+  }))
+  const turn = { text: JSON.stringify({ final, user, running: workflows, waiting }) }
 
-const runningWorkflows = (tasks: readonly BackgroundTaskSummary[]) =>
-  tasks
-    .filter(task => task.type === 'workflow' && task.status === 'running')
-    .map(task => ({ workflow: task.name, description: task.description }))
-
-// The message of one check, as JSON: the work, and at the end of a turn the text of TODO.md in a
-// separate block ahead of it, so an unchanged file is read from the prompt cache.
-export const pieceOf = (
-  entries: readonly RuleCheckerEntry[],
-  end: TurnEnd | undefined,
-): ModelTextBlock[] => {
-  if (end === undefined) return [{ text: JSON.stringify({ turnEnded: false, work: entries }) }]
-  const piece = { turnEnded: true, work: entries, running: runningWorkflows(end.tasks) }
-
-  return [
-    { text: JSON.stringify({ todo: end.todo }), cache: true },
-    { text: JSON.stringify(piece) },
-  ]
+  return todo === null ? [turn] : [{ text: JSON.stringify({ todo }) }, turn]
 }
