@@ -51,8 +51,8 @@ export function askForInstructions($: EngineInterface): void {
 }
 
 // Stores the text of an instruction file the engine loads during the conversation, when the main
-// agent works in a directory that contains one. The attachment carries no path, so an edited file
-// stays in the list beside its earlier text until the conversation starts again.
+// agent works in a directory that contains one. The attachment has no path, so an edited file is
+// in the list beside its earlier text until the conversation starts again.
 export function storeNestedInstructions($: EngineInterface, text: string) {
   return update($, nestedInstructions, known => (known.includes(text) ? known : [...known, text]))
 }
@@ -99,7 +99,7 @@ async function skillRules($: EngineInterface, skill: string): Promise<Rules[]> {
   )
 }
 
-// The part of the system prompt that stays the same while the plugin is loaded: the instructions
+// The part of the system prompt that does not change while the plugin is loaded: the instructions
 // of the checker and the rules of the binding skills, marked for the prompt cache.
 export async function fixedSystem(
   $: EngineInterface,
