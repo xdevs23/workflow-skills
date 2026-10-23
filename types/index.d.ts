@@ -31,6 +31,22 @@ export type RuleCheckerNote = {
 // An instruction file the main agent reads, as the engine loaded it for the conversation.
 export type RuleCheckerInstructionFile = { kind: string; path: string; content: string }
 
+// The models that can check the work.
+export type RuleCheckerModel = 'claude-haiku-5-5' | 'claude-sonnet-5-5'
+
+// The settings of the checker for one session: whether it runs, the model that checks, and the
+// skills of the plugin whose rules it applies.
+export type RuleCheckerSettings = {
+  enabled: boolean
+  model: RuleCheckerModel
+  skills: readonly string[]
+}
+
+// The folder of the session beside its transcript: not known before the first classic event of the
+// session, and none for a session without a local transcript.
+export type SessionFolder =
+  { kind: 'unknown' } | { kind: 'no-transcript' } | { kind: 'known'; path: string }
+
 declare module 'claude-code' {
   interface PluginState {
     'workflow-skills': {
@@ -44,6 +60,8 @@ declare module 'claude-code' {
       ruleCheckerInstructions: RuleCheckerInstructionFile[]
       // The texts of the instruction files the engine loaded during the conversation.
       ruleCheckerNestedInstructions: string[]
+      sessionFolder: SessionFolder
+      ruleCheckerSettings: RuleCheckerSettings
     }
   }
 }

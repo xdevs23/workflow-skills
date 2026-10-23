@@ -15,35 +15,5 @@
     "research"
   ],
   "hooks": "./hooks/hooks.json",
-  "types": "./types/index.d.ts",
-  "userConfig": {
-    "ruleChecker": {
-      "type": "boolean",
-      "title": "Rule checker",
-      "description": "Check the work of the main agent against the binding rules with a second model",
-      "default": false
-    },
-    "ruleCheckerModel": {
-      "type": "string",
-      "title": "Rule checker model",
-      "description": "The model that checks the work",
-      "options": ["claude-haiku-5-5", "claude-sonnet-5-5"],
-      "default": "claude-haiku-5-5"
-    },
-    "ruleCheckerSkills": {
-      "type": "string",
-      "multiple": true,
-      "title": "Rule checker skills",
-      "description": "The skills of this plugin whose rules the checker applies",
-      "default": [
-        "todo-md",
-        "implement",
-        "wall-of-shame",
-        "writing-style",
-        "hygiene",
-        "engineering-principles",
-        "code-writing"
-      ]
-    }
-  }
+  "types": "./types/index.d.ts"
 }
