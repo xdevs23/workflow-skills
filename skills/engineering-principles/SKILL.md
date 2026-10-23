@@ -53,6 +53,10 @@ description: Applies whenever you design, build, change, test or debug software,
 ## Separation and ownership
 
 - Keep data, logic and presentation in distinct layers.
+- Put each part of a new feature into the layer the project already has for its kind, such as the
+  model into the models, the queries into the services and the handlers into the routes. A package
+  or module for one feature that bundles several layers is not a layer of its own, also when each
+  layer is a separate file inside it.
 - Give each component one job, and put a check into the component responsible for what it checks.
 - Keep business logic out of a boundary such as an endpoint or a command handler. The boundary only
   passes what the caller asked for on to the code that contains the logic.
