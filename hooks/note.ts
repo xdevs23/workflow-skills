@@ -39,7 +39,10 @@ const PREFIX = 'Rule checker · '
 // The rows of the note, each cut to `columns`, and none while there is nothing to show: a row
 // that counts the findings and a row for each of them, then the retry and the failed checks. The
 // band scrolls rows that do not fit.
-export function rowsOf({ findings, failures, retrying }: RuleCheckerNote, columns: number): string[] {
+export function rowsOf(
+  { findings, failures, retrying }: RuleCheckerNote,
+  columns: number,
+): string[] {
   const reported =
     findings.length === 0
       ? []
