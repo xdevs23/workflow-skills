@@ -53,7 +53,8 @@ description: Applies whenever you write or change code in any language, includin
 - Give a new small file, such as a configuration file, a one-line SPDX license identifier, never a
   full block of license boilerplate.
 - Don't access objects by raw string attributes, such as `doc["key"]` or `item.get("key")`, if a
-  cleaner way of access is possible.
+  cleaner way of access is possible. The cleaner way is a typed model of the object. A constant
+  that contains the key is the same access by a string.
 - Where in scope, refactor an existing untyped structure into the clean structure it should have
   had all along.
 
