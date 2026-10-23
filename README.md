@@ -73,11 +73,11 @@ The system prompt of a check contains the instructions of the checker, the rules
 skills of the plugin and the instruction files the main agent reads, such as the global and the
 project `CLAUDE.md`. These parts are marked for the prompt cache, most stable first.
 
-The findings are sent to the agent as a message it reads before its next step. A notice in the
-transcript shows them where they were sent, and a note above the prompt box lists them. Findings
-delay the end of the turn once, so the agent fixes each one or says why it is wrong, and the stop
-that follows is checked again. A check that fails is shown in the note, and the next check sends
-the same prompts and `TODO.md` again.
+The findings are sent to the agent as a message it reads before its next step. The transcript shows
+each of them as a dim line where they were sent, with the text the agent got, and a note above
+the prompt box lists them in color. Findings delay the end of the turn once, so the agent fixes each
+one or says why it is wrong, and the stop that follows is checked again. A check that fails is shown
+in the note, and the next check sends the same prompts and `TODO.md` again.
 
 The checker uses `claude-haiku-5-5` by default, and `claude-sonnet-5-5` can be picked instead. Each
 stop costs at most one request to that model, charged to the account the session uses.

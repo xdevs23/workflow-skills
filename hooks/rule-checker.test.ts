@@ -73,6 +73,7 @@ const world = (
   isFailing: (path: string) => boolean = () => false,
 ) => {
   const requests: ModelCompleteInput[] = []
+  const logged: string[] = []
   const clock = mock.clock(on)
   const session = mock.session(on)
   on('session.root', () => ({ value: '/project' }))
@@ -113,13 +114,17 @@ const world = (
   on('classic.UserPromptSubmit', () => ({}))
   on('turn.start', ($, e) => ({ turnId: e.turnId }))
   on('ui.render', { component: 'AbovePrompt' }, ($, e) => $.ui.resolve(e).Box({}))
+  on('ui.log', ($, e) => {
+    logged.push(e.text)
+    return { value: undefined }
+  })
   // The blocks of each request, read back as JSON.
   const pieces = () =>
     requests.map(request =>
       (request.promptBlocks ?? []).map((block): unknown => JSON.parse(block.text)),
     )
 
-  return { requests, clock, session, pieces }
+  return { requests, logged, clock, session, pieces }
 }
 
 // Runs the command of the checker as the user types it.
@@ -141,10 +146,9 @@ const switchOn = async ($: Engine) => {
   await ruleChecker($, 'on')
 }
 
-// The rows the plugin appended of one type: the messages the agent reads, or the notices the
-// transcript shows.
-const sentTo = (session: ReturnType<typeof mock.session>, type: 'user' | 'system') =>
-  session.appended().filter(row => row.door === 'note' && row.message.type === type)
+// The messages the plugin appended for the agent to read.
+const sentTo = (session: ReturnType<typeof mock.session>) =>
+  session.appended().filter(row => row.door === 'note' && row.message.type === 'user')
 
 const workflow = (id: string): BackgroundTaskSummary => ({
   id,
@@ -340,7 +344,7 @@ describe('the model call', () => {
     await stopped
 
     expect(requests).toHaveLength(2)
-    expect(sentTo(session, 'user')).toHaveLength(1)
+    expect(sentTo(session)).toHaveLength(1)
   })
 
   test('shows an error that stays as a failed check', async ($, on) => {
@@ -394,9 +398,14 @@ describe('the request', () => {
 
 describe('the findings', () => {
   test('are appended, shown where they were sent, and delay the stop once', async ($, on) => {
-    const { session } = world(on, [
+    const { session, logged } = world(on, [
       BROKEN,
-      JSON.stringify({ findings: [{ ...FINDING, place: 'b.ts:1' }] }),
+      JSON.stringify({
+        findings: [
+          { ...FINDING, place: 'b.ts:1' },
+          { ...FINDING, wrong: 'It\nsleeps.' },
+        ],
+      }),
     ])
     await switchOn($)
 
@@ -404,11 +413,10 @@ describe('the findings', () => {
     expect(delayed.block).toBeDefined()
     const passed = await $.classic.Stop(stop('fixed', { isDelayed: true }))
 
-    const contentOf = (type: 'user' | 'system') =>
-      sentTo(session, type).map(row => row.message.content)
     expect(passed.block).toBeUndefined()
-    expect(contentOf('user')).toHaveLength(2)
-    expect(contentOf('system')).toEqual(contentOf('user'))
+    expect(sentTo(session)).toHaveLength(2)
+    expect(logged).toHaveLength(3)
+    expect(logged[2]).toContain('It sleeps.')
   })
 
   test('are sent again when TODO.md or the running workflows changed', async ($, on) => {
@@ -420,7 +428,7 @@ describe('the findings', () => {
     await $.classic.Stop(stop(''))
 
     expect(requests).toHaveLength(2)
-    expect(sentTo(session, 'user')).toHaveLength(2)
+    expect(sentTo(session)).toHaveLength(2)
   })
 })
 
