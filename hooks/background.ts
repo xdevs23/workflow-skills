@@ -60,6 +60,11 @@ export function recordStop($: EngineInterface, { tasks, crons }: InFlight) {
   return update($, atLastStop, () => ids)
 }
 
+export async function clearBackground($: EngineInterface) {
+  await update($, atLastStop, () => NONE)
+  await update($, atTurnStart, () => NONE)
+}
+
 export async function startTurn($: EngineInterface) {
   const ids = await read($, atLastStop)
   await update($, atTurnStart, () => ids)

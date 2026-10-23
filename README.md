@@ -80,11 +80,22 @@ that follows is checked again. A check that fails is shown in the note, and the 
 the same prompts and `TODO.md` again.
 
 The checker uses `claude-haiku-5-5` by default, and `claude-sonnet-5-5` can be picked instead. Each
-stop costs at most one request to that model, charged to the account the session uses. The checker
-is off until the row `Rule checker` in `/config` switches it on. The rows `Rule checker model` and
-`Rule checker skills` there pick the model and the skills whose rules it applies. Where an
-organization manages Claude Code, only a plugin listed in the managed settings runs the check at
-the end of a turn and reads the instruction files.
+stop costs at most one request to that model, charged to the account the session uses.
+
+The checker is off in every new session. Its command changes the current session alone:
+
+* `/rule-checker on` and `/rule-checker off` switch the checker on and off.
+* `/rule-checker model <name>` sets the model.
+* `/rule-checker skills <names>` sets the skills of the plugin whose rules it applies.
+* `/rule-checker` alone shows the settings of the session.
+
+The settings are stored under the key `ruleChecker` in `workflow-skills.json`, in the folder of the
+session beside its transcript, so a resumed session reads them again. A session started by `/clear`
+and a fork get a new folder and start with the defaults. A session that loads the plugin while it
+runs gets its folder from its next prompt, and the command saves nothing until then. A session
+without a transcript has no folder, so the command changes its settings without saving them. Where
+an organization manages Claude Code, only a plugin listed in the managed settings runs the check at
+the end of a turn, reads the instruction files and gets the folder of the session.
 
 ## Requirements
 

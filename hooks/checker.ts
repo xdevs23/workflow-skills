@@ -1,6 +1,6 @@
 import type { EngineInterface, ModelTextBlock } from 'claude-code'
 
-import type { RunningWorkflow, WaitingTask } from '../types'
+import type { RuleCheckerSettings, RunningWorkflow, WaitingTask } from '../types'
 import { deliver } from './delivery.ts'
 import { recordState, sendsTodo, stateOf } from './last-check.ts'
 import { noteFailure, noteRetry } from './note.ts'
@@ -20,11 +20,35 @@ type Run = {
   canWait: (ms: number) => boolean
 }
 
-// The checks of one loaded module.
-type Checks = {
-  readonly model: string
-  readonly skills: readonly string[]
-  fixed?: Promise<ModelTextBlock[]>
+// The fixed part of the system prompt as last read, and the list of skills it was read for.
+type FixedSystem = { skills: readonly string[]; blocks: Promise<ModelTextBlock[]> }
+
+// The fixed part of the system prompt of the checks of one loaded module, read again only when the
+// list of skills changes, or after a read that failed.
+export type FixedSystemCache = { last: FixedSystem | null }
+
+// The settings of a check, and the cache of its fixed system prompt.
+type Checks = { settings: RuleCheckerSettings; cache: FixedSystemCache }
+
+export const fixedSystemCache = (): FixedSystemCache => ({ last: null })
+
+const isSameList = (a: readonly string[], b: readonly string[]): boolean =>
+  a.length === b.length && a.every((item, index) => item === b[index])
+
+async function cachedFixedSystem(
+  cache: FixedSystemCache,
+  $: EngineInterface,
+  skills: readonly string[],
+): Promise<ModelTextBlock[]> {
+  if (cache.last !== null && isSameList(cache.last.skills, skills)) return cache.last.blocks
+  const blocks = fixedSystem($, skills)
+  cache.last = { skills, blocks }
+  try {
+    return await blocks
+  } catch (error) {
+    if (cache.last?.blocks === blocks) cache.last = null
+    throw error
+  }
 }
 
 // Checks the end of a turn. A check succeeds when a reply decoded to a list of findings, or when it
@@ -53,10 +77,10 @@ async function sendCheck(
   todo: string | null,
 ): Promise<boolean> {
   const { prompts, upTo } = await takePrompts($)
-  checks.fixed ??= fixedSystem($, checks.skills)
+  const { settings, cache } = checks
   const request = {
-    model: checks.model,
-    system: await systemOf($, await checks.fixed),
+    model: settings.model,
+    system: await systemOf($, await cachedFixedSystem(cache, $, settings.skills)),
     prompt: pieceOf({ final, user: prompts, running, waiting, todo }),
   }
   const answer = await ask($, request, { signal, canWait, onRetry: error => noteRetry($, error) })

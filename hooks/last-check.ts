@@ -23,3 +23,7 @@ export async function sendsTodo(
 export function recordState($: EngineInterface, state: string) {
   return update($, lastState, () => state)
 }
+
+export function clearState($: EngineInterface) {
+  return update($, lastState, () => null)
+}

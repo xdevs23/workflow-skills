@@ -1,6 +1,7 @@
 import type { EngineInterface, ModelApiError, ModelCompleteRequest } from 'claude-code'
 
 import type { RuleCheckerFinding, RuleCheckerFindingFields } from '../types'
+import { isRecord } from './json.ts'
 
 export type Finding = RuleCheckerFinding
 
@@ -25,12 +26,9 @@ const TEMPORARY_ERRORS: ReadonlySet<ModelApiError> = new Set([
 const FIRST_RETRY_WAIT_MS = 1_000
 
 const RETRIED = 'The next check sends this work again.'
-const CHECK_SETTINGS = 'Check the rule checker model in /config.'
+const CHECK_SETTINGS = 'Check the rule checker model with /rule-checker.'
 
 const failed = (reason: string): Answer => ({ kind: 'failed', reason })
-
-const isRecord = (value: unknown): value is Record<string, unknown> =>
-  typeof value === 'object' && value !== null && !Array.isArray(value)
 
 const isFinding = (value: unknown): value is Finding =>
   isRecord(value) && FINDING_FIELDS.every(field => typeof value[field] === 'string')

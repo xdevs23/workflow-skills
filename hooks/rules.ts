@@ -43,6 +43,13 @@ export async function storeInstructions(
   await update($, nestedInstructions, () => [])
 }
 
+// Requests the instruction files from the engine again, which the engine resolved before the
+// checker ran.
+export function askForInstructions($: EngineInterface): void {
+  $.ui.invalidate('prompt.context')
+  $.ui.invalidate('prompt.attachment')
+}
+
 // Stores the text of an instruction file the engine loads during the conversation, when the main
 // agent works in a directory that contains one. The attachment carries no path, so an edited file
 // stays in the list beside its earlier text until the conversation starts again.
@@ -66,8 +73,22 @@ async function markdownFiles($: EngineInterface, dir: string): Promise<string[]>
   return nested.flat()
 }
 
+function skillsDir($: EngineInterface): string {
+  return `${$.plugin.root}/skills`
+}
+
+// The names of the skills of this plugin, in name order.
+export async function pluginSkills($: EngineInterface): Promise<string[]> {
+  const entries = await $.fs.list(skillsDir($))
+
+  return entries
+    .filter(entry => entry.kind === 'dir')
+    .map(entry => entry.name)
+    .sort()
+}
+
 async function skillRules($: EngineInterface, skill: string): Promise<Rules[]> {
-  const dir = `${$.plugin.root}/skills/${skill}`
+  const dir = `${skillsDir($)}/${skill}`
   const name = `${$.plugin.name}:${skill}`
 
   return Promise.all(

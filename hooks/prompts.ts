@@ -45,3 +45,8 @@ export async function takePrompts($: EngineInterface) {
 export function removeSent($: EngineInterface, upTo: number) {
   return update($, userPrompts, before => withoutSent(before, upTo))
 }
+
+// Removes every prompt collected so far, as a check that sent them all does.
+export function clearPrompts($: EngineInterface) {
+  return update($, userPrompts, before => withoutSent(before, before.first + before.prompts.length))
+}
