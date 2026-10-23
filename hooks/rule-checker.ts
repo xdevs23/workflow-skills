@@ -30,11 +30,13 @@ export const register: Register = (on, options) => {
   // The project root as the session first reported it, so TODO.md is read from one place.
   let root: Promise<string> | undefined
 
-  // A checker switched on during a session asks again for the instruction files the engine
-  // resolved before it was loaded.
-  on('session.start', ($, e, next) => {
+  on('session.start', async ($, e, next) => {
+    // A checker switched on during a session asks again for the instruction files the engine
+    // resolved before it was loaded.
     $.ui.invalidate('prompt.context')
     $.ui.invalidate('prompt.attachment')
+    // Session state survives a reload, so the note written by the code loaded before is cleared.
+    await clearNote($)
     return next(e)
   })
 

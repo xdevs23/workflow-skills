@@ -355,6 +355,20 @@ describe('the findings', () => {
   })
 })
 
+describe('the note', () => {
+  testOn('is cleared by a fresh load of the checker', async ($, on) => {
+    world(on, [BROKEN])
+    on('session.start', () => ({ cwd: '/project' }))
+    on('ui.render', { component: 'AbovePrompt' }, ($, e) => $.ui.resolve(e).Box({}))
+
+    await $.classic.Stop(stop('done'))
+    expect(await noteOf($)).toBeDefined()
+    await $.session.start({ cwd: '/project', surface: 'terminal', isInteractive: true })
+
+    expect(await noteOf($)).toBeUndefined()
+  })
+})
+
 describe('the switch', () => {
   test('is off by default, so no check runs', async ($, on) => {
     const { requests } = world(on, [BROKEN])
