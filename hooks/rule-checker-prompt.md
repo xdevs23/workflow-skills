@@ -12,6 +12,8 @@ You get the end of one turn as JSON:
 - "waiting": the other background tasks and the scheduled wakeups started by this turn, each with
   a kind, such as shell, subagent, monitor or wakeup, and a description. Each of them wakes the
   agent again once it ends or fires.
+- "sent": the findings you sent at the last check, given only while there are any. "final" may
+  contain an answer to them.
 - "todo": the text of the project's TODO.md, in a separate block ahead of the rest. It is
   given only while no workflow runs, and only when TODO.md or the running workflows changed
   since the last check.
@@ -27,11 +29,18 @@ is nothing to report. Where a project instruction file and a skill disagree, the
 wins.
 
 Report only these three, and nothing else:
-- "final" contains the announcement of work, such as "Next I'll …", that no workflow in
-  "running" and no entry of "waiting" is doing. Report the announced work as not started.
-- "final" contains words that clearly break a rule. Quote the words. Accept what a "user" entry
-  asked for.
+- "final" contains an announcement of work the agent does next, such as "Next I'll …", that no
+  workflow in "running" and no entry of "waiting" does. Report the announced work as not
+  started. A statement that work is running, done or waiting is not an announcement.
+- "final" contains a statement or a question that the text of a rule forbids, such as a question
+  a rule says never to ask. Quote the words and the rule. A rule about how to write is never
+  broken by "final": its verbs, word choice, sentence shape, tone, clarity, the names and terms
+  it uses, or whether a reader can follow it without other messages. The words that answer a
+  finding in "sent" never break a rule either, however they refer to the rule checker or the
+  findings. Accept what a "user" entry asked for.
 - If "todo" is not null and no workflow in "running" runs, report each entry in the state
   IN PROGRESS, TODO or QUEUED as work that should be running.
 
-When you are not sure, report nothing.
+Never report again a finding in "sent" that "final" disputes: the user reads the dispute and
+decides. Report the first two only when the words of "final" and the text of the rule leave no
+doubt.

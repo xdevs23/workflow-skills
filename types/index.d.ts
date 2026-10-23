@@ -57,6 +57,8 @@ declare module 'claude-code' {
       ruleCheckerIdsAtLastStop: BackgroundIds
       ruleCheckerIdsAtTurnStart: BackgroundIds
       ruleCheckerNote: RuleCheckerNote
+      // The findings the last successful check sent to the agent.
+      ruleCheckerSentFindings: RuleCheckerFinding[]
       ruleCheckerInstructions: RuleCheckerInstructionFile[]
       // The texts of the instruction files the engine loaded during the conversation.
       ruleCheckerNestedInstructions: string[]

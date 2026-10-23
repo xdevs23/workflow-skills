@@ -56,16 +56,19 @@ Each one can also be loaded alone to review a change through its lens.
 The plugin also has a rule checker: each time the main agent stops, a second model checks how the
 turn ended against the binding rules and reports to the agent only three things.
 
-* The final message contains the announcement of work, such as "Next I'll ...", that no running
-  workflow, background task or scheduled wakeup does. A background task or a wakeup counts only
-  when started during the same turn.
-* The final message contains words that clearly break a rule. What the user asked for in their own
-  words is accepted.
+* The final message contains an announcement of work the agent does next, such as "Next I'll ...",
+  that no running workflow, background task or scheduled wakeup does. A background task or a
+  wakeup counts only when started during the same turn. A statement that work is running, done or
+  waiting is not an announcement.
+* The final message contains a statement or a question that a rule forbids. How the message is
+  written, such as its verbs, its tone or whether it can be read without other messages, is never
+  reported. What the user asked for in their own words is accepted.
 * No workflow is running although `TODO.md` has work that is ready to build or being built.
 
 A check sends as JSON the final message of the turn, the prompts the user typed or sent since the
 last successful check, the workflows that are running, and the other background tasks and the
-scheduled wakeups started during the turn. It sends the text of `TODO.md` only while
+scheduled wakeups started during the turn. It also sends the findings of the last successful check,
+so an answer to them is not reported. It sends the text of `TODO.md` only while
 no workflow runs, and only when `TODO.md` or the running workflows changed since the last
 successful check. Work waiting in an unchanged `TODO.md` is therefore reported once.
 

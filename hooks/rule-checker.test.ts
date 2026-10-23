@@ -247,7 +247,7 @@ describe('the check', () => {
   })
 
   test('sends only the tasks and wakeups started during the current turn', async ($, on) => {
-    const { pieces } = world(on, [BROKEN, CLEAN, CLEAN, CLEAN])
+    const { pieces } = world(on, [CLEAN])
     await switchOn($)
     const ci = shell('s1', 'watch the CI run')
     const deploy = shell('s2', 'watch the deploy')
@@ -258,7 +258,7 @@ describe('the check', () => {
 
     await turn('t1')
     await $.classic.Stop(stop('Next I will merge.', { tasks: [ci], crons: [wakeup('c1')] }))
-    await $.classic.Stop(stop('Fixed.', { isDelayed: true, tasks: [ci] }))
+    await $.classic.Stop(stop('Fixed.', { tasks: [ci] }))
     await turn('t2')
     await $.classic.Stop(stop('Next I will release.', { tasks: [ci, deploy] }))
     await turn('t3')
@@ -272,6 +272,25 @@ describe('the check', () => {
       piece('Fixed.', [{ kind: 'shell', description: 'watch the CI run' }]),
       piece('Next I will release.', [{ kind: 'shell', description: 'watch the deploy' }]),
       piece('Still waiting.', []),
+    ])
+  })
+
+  test('sends the findings of the last successful check, also after a new prompt', async ($, on) => {
+    const { pieces } = world(on, [BROKEN, BROKEN, CLEAN])
+    await switchOn($)
+
+    await prompt($, 'go')
+    await $.classic.Stop(stop('one'))
+    await $.classic.Stop(stop('two', { isDelayed: true }))
+    await prompt($, 'next')
+    await $.classic.Stop(stop('three'))
+    await $.classic.Stop(stop('four', { isDelayed: true }))
+
+    expect(pieces().map(([turn]) => turn)).toEqual([
+      { final: 'one', user: ['go'], running: [], waiting: [] },
+      { final: 'two', user: [], running: [], waiting: [], sent: [FINDING] },
+      { final: 'three', user: ['next'], running: [], waiting: [], sent: [FINDING] },
+      { final: 'four', user: [], running: [], waiting: [] },
     ])
   })
 

@@ -11,6 +11,7 @@ import { clearNote, hasFindings, noteOf } from './note.ts'
 import { noteTree, rowsOf } from './note-view.ts'
 import { clearPrompts, collectPrompt } from './prompts.ts'
 import { askForInstructions, storeInstructions, storeNestedInstructions } from './rules.ts'
+import { clearSent } from './sent-findings.ts'
 import { enterSession } from './session-file.ts'
 
 async function todoOf($: EngineInterface, root: string): Promise<string | null> {
@@ -25,11 +26,13 @@ async function todoOf($: EngineInterface, root: string): Promise<string | null> 
 async function startChecker($: EngineInterface): Promise<void> {
   askForInstructions($)
   await clearNote($)
+  await clearSent($)
 }
 
 // Clears what the checker collected for the conversation of another session.
 async function clearConversation($: EngineInterface): Promise<void> {
   await clearNote($)
+  await clearSent($)
   await clearPrompts($)
   await clearState($)
   await clearBackground($)

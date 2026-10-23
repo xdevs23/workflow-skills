@@ -8,6 +8,7 @@ import { pieceOf } from './piece.ts'
 import { removeSent, takePrompts } from './prompts.ts'
 import { ask, thrownFailure } from './reply.ts'
 import { fixedSystem, systemOf } from './rules.ts'
+import { lastSent, recordSent } from './sent-findings.ts'
 
 // The end of a turn: the final message of the agent and the text of TODO.md, each null without
 // one, the running workflows, and the other background tasks and wakeups started by the turn.
@@ -81,13 +82,14 @@ async function sendCheck(
   const request = {
     model: settings.model,
     system: await systemOf($, await cachedFixedSystem(cache, $, settings.skills)),
-    prompt: pieceOf({ final, user: prompts, running, waiting, todo }),
+    prompt: pieceOf({ final, user: prompts, running, waiting, sent: await lastSent($), todo }),
   }
   const answer = await ask($, request, { signal, canWait, onRetry: error => noteRetry($, error) })
   await noteRetry($, null)
   switch (answer.kind) {
     case 'findings':
       await deliver($, answer.findings)
+      await recordSent($, answer.findings)
       await removeSent($, upTo)
       return true
     case 'failed':
