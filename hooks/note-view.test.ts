@@ -2,8 +2,10 @@ import { describe, expect, test } from 'claude-code/testing'
 
 import type { RuleCheckerFinding, RuleCheckerNote } from '../types'
 import { PartKind, RowKind, rowsOf } from './note-view.ts'
+import { Report } from './reply.ts'
 
 const finding = (wrong: string): RuleCheckerFinding => ({
+  report: Report.Forbidden,
   rule: 'r',
   source: 's',
   place: 'p',
