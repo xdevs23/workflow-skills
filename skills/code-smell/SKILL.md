@@ -21,6 +21,7 @@ change later.
 - Report deep nesting and arrow-shaped control flow.
 - Report boolean or flag parameters that switch behavior.
 - Report direct access by string key, such as `doc["key"]` and `item.get("key")`, where the change
-  adds it.
+  adds it. Name a typed model of the structure as the fix. A constant that contains the key is
+  still access by a string.
 - Name the smell in every finding.
 - Rank the findings by how likely each one is to cause real cost later.
