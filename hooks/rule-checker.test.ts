@@ -12,6 +12,7 @@ import type {
 import type { WaitingTask } from '../types'
 import { RuleCheckerModel } from './checker-settings.ts'
 import { Report } from './reply.ts'
+import type { Finding } from './reply.ts'
 
 const USAGE = {
   input_tokens: 1,
@@ -19,16 +20,25 @@ const USAGE = {
   cache_creation_input_tokens: 0,
   cache_read_input_tokens: 0,
 }
-const CLEAN = '{"findings": []}'
 const FINDING = {
-  report: Report.Forbidden,
   rule: 'Never guess.',
   source: 'engineering-principles',
   place: 'a.ts:3',
   wrong: 'It guesses.',
   instead: 'Measure.',
 }
-const BROKEN = JSON.stringify({ findings: [FINDING] })
+// The text of a reply with the given finding for each report, and null for every other report.
+const replyOf = (findings: Partial<Record<Report, Finding>>): string =>
+  JSON.stringify({
+    findings: {
+      [Report.NextWork]: null,
+      [Report.Forbidden]: null,
+      [Report.Todo]: null,
+      ...findings,
+    },
+  })
+const CLEAN = replyOf({})
+const BROKEN = replyOf({ [Report.Forbidden]: FINDING })
 const OVERLOADED: ModelCompleteResult = {
   isAnswered: false,
   reason: 'api-error',
@@ -421,11 +431,9 @@ describe('the findings', () => {
   test('are appended, shown where they were sent, and delay the stop once', async ($, on) => {
     const { session, logged } = world(on, [
       BROKEN,
-      JSON.stringify({
-        findings: [
-          { ...FINDING, place: 'b.ts:1' },
-          { ...FINDING, report: Report.NextWork, wrong: 'It\nsleeps.' },
-        ],
+      replyOf({
+        [Report.NextWork]: { ...FINDING, place: 'b.ts:1' },
+        [Report.Forbidden]: { ...FINDING, wrong: 'It\nsleeps.' },
       }),
     ])
     await switchOn($)

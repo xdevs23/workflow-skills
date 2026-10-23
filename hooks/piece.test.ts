@@ -1,7 +1,6 @@
 import { describe, expect, test } from 'claude-code/testing'
 
 import { pieceOf } from './piece.ts'
-import { Report } from './reply.ts'
 
 const END = {
   final: 'Next I will review it.',
@@ -24,9 +23,7 @@ describe('the piece', () => {
   })
 
   test('adds the findings already sent for the current prompt, while there are any', () => {
-    const sent = [
-      { report: Report.Forbidden, rule: 'r', source: 's', place: 'p', wrong: 'w', instead: 'i' },
-    ]
+    const sent = [{ rule: 'r', source: 's', place: 'p', wrong: 'w', instead: 'i' }]
     const [turn] = pieceOf({ ...END, sent, todo: null })
 
     expect(JSON.parse(turn?.text ?? '')).toHaveProperty('sent', sent)
