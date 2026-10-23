@@ -16,15 +16,9 @@ export type WaitingTask = { kind: string; description: string }
 // The ids of the background tasks and of the scheduled wakeups of the session at one moment.
 export type BackgroundIds = { tasks: string[]; crons: string[] }
 
-// The three things the checker reports: work announced as next that nothing does, words a rule
-// forbids, and open work in TODO.md while no workflow runs.
-export type RuleCheckerReport = 'next-work' | 'forbidden' | 'todo'
-
-// The text fields of a finding, in the order the instructions of the checker list them.
+// The fields of a finding, in the order the instructions of the checker list them.
 export type RuleCheckerFindingFields = readonly ['rule', 'source', 'place', 'wrong', 'instead']
-export type RuleCheckerFinding = Record<RuleCheckerFindingFields[number], string> & {
-  report: RuleCheckerReport
-}
+export type RuleCheckerFinding = Record<RuleCheckerFindingFields[number], string>
 
 // What the note above the prompt box shows for the current prompt: the findings sent to the agent,
 // the checks that failed, and the error a check is waiting out before it tries again.

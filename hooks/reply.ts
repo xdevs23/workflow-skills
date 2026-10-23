@@ -1,18 +1,17 @@
 import type { EngineInterface, ModelApiError, ModelCompleteRequest } from 'claude-code'
 
-import type { RuleCheckerFinding, RuleCheckerFindingFields, RuleCheckerReport } from '../types'
+import type { RuleCheckerFinding, RuleCheckerFindingFields } from '../types'
 import { isRecord } from './json.ts'
 
 export type Finding = RuleCheckerFinding
 
 const FINDING_FIELDS: RuleCheckerFindingFields = ['rule', 'source', 'place', 'wrong', 'instead']
 
-export const Report = {
-  NextWork: 'next-work',
-  Forbidden: 'forbidden',
-  Todo: 'todo',
-} as const satisfies Record<string, RuleCheckerReport>
-const REPORTS: readonly RuleCheckerReport[] = Object.values(Report)
+// The three things a check reports, as the keys of the findings in its reply. Each key has one
+// finding or null, so a check sends at most one finding per report.
+export const Report = { NextWork: 'next-work', Forbidden: 'forbidden', Todo: 'todo' } as const
+export type Report = (typeof Report)[keyof typeof Report]
+const REPORTS: readonly Report[] = Object.values(Report)
 
 type Answer =
   | { kind: 'findings'; findings: Finding[] }
@@ -38,15 +37,10 @@ const CHECK_SETTINGS = 'Check the rule checker model with /rule-checker.'
 const failed = (reason: string): Answer => ({ kind: 'failed', reason })
 
 const isFinding = (value: unknown): value is Finding =>
-  isRecord(value) &&
-  REPORTS.some(report => report === value.report) &&
-  FINDING_FIELDS.every(field => typeof value[field] === 'string')
+  isRecord(value) && FINDING_FIELDS.every(field => typeof value[field] === 'string')
 
-// The first finding of each report in the reply, so a check sends at most one finding per report.
-const firstOfEachReport = (findings: readonly Finding[]): Finding[] =>
-  findings.filter(
-    (finding, index) => findings.findIndex(f => f.report === finding.report) === index,
-  )
+const isFindingPerReport = (value: unknown): value is Record<Report, Finding | null> =>
+  isRecord(value) && REPORTS.every(report => value[report] === null || isFinding(value[report]))
 
 export const readReply = (text: string): Answer => {
   let reply: unknown
@@ -56,11 +50,11 @@ export const readReply = (text: string): Answer => {
     return failed(`the reply is not JSON. ${RETRIED}`)
   }
   const findings = isRecord(reply) ? reply.findings : undefined
-  if (!Array.isArray(findings) || !findings.every(isFinding)) {
-    return failed(`the reply does not contain a list of findings. ${RETRIED}`)
+  if (!isFindingPerReport(findings)) {
+    return failed(`the reply does not contain a finding or null for each report. ${RETRIED}`)
   }
 
-  return { kind: 'findings', findings: firstOfEachReport(findings) }
+  return { kind: 'findings', findings: REPORTS.flatMap(report => findings[report] ?? []) }
 }
 
 type Asking = {
