@@ -66,8 +66,10 @@ description: Applies whenever you design, build, change, test or debug software,
   global mutable state behind a lock.
 - Prefer asking another entity through its contract over reading its stored state directly.
 - Run every query against a data store in the component that owns that collection or table, through
-  the one place in the project that runs queries. A mapping, a provider, a worker or a route
-  requests the data from that component. Only that component has a handle to the store.
+  the one place in the project that runs queries. Create the component for a new collection or
+  table in that place, shaped and named like the components already there. A mapping, a provider,
+  a worker or a route requests the data from that component. Only that component has a handle to
+  the store, whatever a class elsewhere is called.
 - Write the field names of stored data only in the component that owns the data. Another component
   passes typed values to the component that owns the data, which builds the record from them.
 - Never change what was passed into a function. Convert an input into a new value, and change data
