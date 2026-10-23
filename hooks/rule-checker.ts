@@ -7,7 +7,8 @@ import { activeSettings, LoadKind, loadSessionSettings } from './checker-setting
 import { COMMAND, loadProblemText, runCommand } from './command.ts'
 import { SENT_FINDINGS } from './delivery.ts'
 import { clearState } from './last-check.ts'
-import { clearNote, hasFindings, noteRows } from './note.ts'
+import { clearNote, hasFindings, noteOf } from './note.ts'
+import { noteTree, rowsOf } from './note-view.ts'
 import { clearPrompts, collectPrompt } from './prompts.ts'
 import { askForInstructions, storeInstructions, storeNestedInstructions } from './rules.ts'
 import { enterSession } from './session-file.ts'
@@ -159,11 +160,10 @@ export const register: Register = on => {
 
   on('ui.render', { component: 'AbovePrompt' }, ($, e, next) =>
     whenOn($, e, next, async () => {
-      const rows = await noteRows($, e.props.bodyColumns)
+      const rows = rowsOf(await noteOf($))
       if (e.props.hasSurvey || rows.length === 0) return next(e)
-      const { Box, Text } = $.ui.resolve(e)
 
-      return Box({ flexDirection: 'column', children: rows.map(row => Text({ children: row })) })
+      return noteTree($.ui.resolve(e), rows)
     }),
   )
 }
