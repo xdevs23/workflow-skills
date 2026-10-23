@@ -11,6 +11,7 @@ import type {
 
 import type { WaitingTask } from '../types'
 import { RuleCheckerModel } from './checker-settings.ts'
+import { Report } from './reply.ts'
 
 const USAGE = {
   input_tokens: 1,
@@ -20,6 +21,7 @@ const USAGE = {
 }
 const CLEAN = '{"findings": []}'
 const FINDING = {
+  report: Report.Forbidden,
   rule: 'Never guess.',
   source: 'engineering-principles',
   place: 'a.ts:3',
@@ -422,7 +424,7 @@ describe('the findings', () => {
       JSON.stringify({
         findings: [
           { ...FINDING, place: 'b.ts:1' },
-          { ...FINDING, wrong: 'It\nsleeps.' },
+          { ...FINDING, report: Report.NextWork, wrong: 'It\nsleeps.' },
         ],
       }),
     ])

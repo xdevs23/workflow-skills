@@ -60,11 +60,17 @@ turn ended against the binding rules and reports to the agent only three things.
 * The final message contains an announcement of work the agent does next, such as "Next I'll ...",
   that no running workflow, background task or scheduled wakeup does. A background task or a
   wakeup counts only when started during the same turn. A statement that work is running, done or
-  waiting is not an announcement.
+  waiting is not an announcement, and neither is work announced for when a background task or a
+  wakeup ends.
 * The final message contains a statement or a question that a rule forbids. How the message is
   written, such as its verbs, its tone or whether it can be read without other messages, is never
   reported. What the user asked for in their own words is accepted.
-* No workflow is running although `TODO.md` has work that is ready to build or being built.
+* No workflow is running although `TODO.md` has work that is ready to build or being built. The
+  finding quotes one such entry, and an entry whose work waits for a background task or a wakeup
+  does not count.
+
+Each finding names which of the three it belongs to, and a check sends at most one finding for
+each of them. The plugin keeps the first one of each when the reply lists more.
 
 A check sends as JSON the final message of the turn, the prompts the user typed or sent since the
 last successful check, the workflows that are running, and the other background tasks and the
