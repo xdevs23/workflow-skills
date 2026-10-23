@@ -7,6 +7,7 @@ const END = {
   user: ['fix it'],
   running: [{ id: '1', name: 'build', description: 'd' }],
   waiting: [{ kind: 'monitor', description: 'CI' }],
+  sent: [],
 }
 
 describe('the piece', () => {
@@ -19,6 +20,13 @@ describe('the piece', () => {
         waiting: [{ kind: 'monitor', description: 'CI' }],
       },
     ])
+  })
+
+  test('adds the findings already sent for the current prompt, while there are any', () => {
+    const sent = [{ rule: 'r', source: 's', place: 'p', wrong: 'w', instead: 'i' }]
+    const [turn] = pieceOf({ ...END, sent, todo: null })
+
+    expect(JSON.parse(turn?.text ?? '')).toHaveProperty('sent', sent)
   })
 
   test('puts a TODO.md it sends in a block ahead of the rest', () => {
