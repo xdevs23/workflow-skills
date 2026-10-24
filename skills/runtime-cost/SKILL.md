@@ -9,7 +9,7 @@ Review the change for runtime cost only: how the work added or moved by the chan
 data on the paths that run it. A diff can be correct line by line and still put a walk over a whole
 collection inside a call made once per item. Only the code calling it shows that problem.
 
-- Leave correctness, naming and structure to other lenses.
+- Leave correctness, naming and structure to other reviewers.
 - Follow every loop, scan, query, remote call or repeated computation added or moved by the change
   up through the code calling it to the entry points that run it, such as a request handler, a
   request that loads a page or a list, each tick of a worker or startup.

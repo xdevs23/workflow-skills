@@ -8,7 +8,7 @@ description: Review a change for leaks between the domain core and the infrastru
 Review the change for domain leakage only: code that crosses the boundary between the domain core
 and the mechanisms around it, such as HTTP, databases, queues, user interfaces and third-party SDKs.
 
-- Leave unrelated concerns to other lenses.
+- Leave unrelated concerns to other reviewers.
 - Report domain logic that depends on delivery: business rules that reference HTTP status, ORM
   entities, request or response shapes, framework types or SQL.
 - Report infrastructure vocabulary in the core: DTOs, database rows or wire formats used as the

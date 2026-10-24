@@ -8,7 +8,7 @@ description: Review a change for classic code smells.
 Review the change for code smells only: structural warning signs that the code will be costly to
 change later.
 
-- Leave unrelated concerns to other lenses.
+- Leave unrelated concerns to other reviewers.
 - Report long functions and large classes or modules.
 - Report long parameter lists and data clumps, where the same group of parameters is passed
   together again and again.

@@ -7,7 +7,7 @@ description: Review a change for readability and hygiene at the surface of the c
 
 Review the change for code cleanliness only: readability and hygiene.
 
-- Leave structural concerns to other lenses. Still name the rule violation behind a comment.
+- Leave structural concerns to other reviewers. Still name the rule violation behind a comment.
 - Report a name that fails the naming test: with the docstring hidden, the name and a line that uses
   it do not show what the value contains or what the code does. Report in particular:
   - a type named with a generic noun, such as `Entry` or `Item`, where the module containing it has

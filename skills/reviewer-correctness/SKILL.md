@@ -7,7 +7,7 @@ description: Review a change for bugs, races, broken invariants and assertions c
 
 Review the change for correctness only.
 
-- Leave style to other lenses.
+- Leave style to other reviewers.
 - Try to break the change. Look for every hazard in it, such as a race in deduplication, an
   ordering guarantee or a retry path, and for every new way to fail added by it.
 - Review only the change. Leave alone the work merged before it.

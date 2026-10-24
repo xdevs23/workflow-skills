@@ -8,7 +8,7 @@ description: Review a change for omissions in its code.
 Review the change for one thing only: code that should be present for the change to be complete and
 trustworthy but is missing.
 
-- Leave code that is present but wrong to other lenses.
+- Leave code that is present but wrong to other reviewers.
 - Report an error or exception path that nothing handles.
 - Report edge cases left uncovered, such as an empty, null or zero value, an overflow, concurrent
   use or a boundary.

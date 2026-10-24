@@ -8,7 +8,7 @@ description: Review a change for ways around a rule or a check.
 Review the change for one thing only: places where it meets the wording of a rule or a check and
 still gets a result forbidden by the rule.
 
-- Leave unrelated concerns to other lenses.
+- Leave unrelated concerns to other reviewers.
 - Judge each rule handed to you, and each rule in the instruction files of the project, by what it
   is for, and report every place where the change defeats that purpose.
 - Report a forbidden form moved to where the check does not look, such as a cast hidden in a

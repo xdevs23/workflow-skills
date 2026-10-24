@@ -22,7 +22,7 @@ Check the change against every rule that applies to it, in the change and beside
 - Grade every rule violation CRITICAL, never a nit. Describe separately how each violation affects
   operation.
 - Keep to the rules, and never invent a stylistic preference.
-- Leave unrestricted critique and the scope of the change to other lenses.
+- Leave unrestricted critique and the scope of the change to other reviewers.
 - Say which violations are in the change or in the code affected by it, and which are next to it.
   Give the correction needed by each one.
 - Report critical violations also in existing files outside the change.
