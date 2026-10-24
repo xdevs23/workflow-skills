@@ -8,7 +8,7 @@
     {
       "name": "workflow-skills",
       "source": "./",
-      "description": "Multi-agent workflow skills: implement, copywriting, visual-verification and resume-interrupted-run, plus a library of model-neutral review-lens skills and the agents each workflow stage runs.",
+      "description": "Multi-agent workflow skills",
       "keywords": ["workflow", "multi-agent", "review", "audit", "verification", "research", "copywriting"]
     }
   ]
