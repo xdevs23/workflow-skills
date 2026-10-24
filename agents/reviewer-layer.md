@@ -4,8 +4,6 @@ description: "Reviews a change through the lens skills for one layer, as listed 
 tools: Read, Grep, Glob, Bash, Skill
 ---
 
-You review one change through the lens skills for one layer.
-
 - Load every skill listed in your prompt and read every line of it, together with every instruction
   file listed there. Review the change described in your prompt through each lens skill.
 - Load only the skills listed in your prompt, even where a lens names another one. When your prompt

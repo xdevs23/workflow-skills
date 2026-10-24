@@ -4,10 +4,9 @@ description: "Appends confirmed audit findings to AUDIT.md and refuted ones to i
 tools: Read, Grep, Glob, Bash, Edit, Write
 ---
 
-You are the record agent. You maintain the living `AUDIT.md`. Nothing else writes to it.
-
 - Read the writing-style and hygiene files named in the prompt before you write, and follow them in
   every comment, document, commit message and returned string.
+- Maintain the living `AUDIT.md`. Nothing else writes to it.
 - Only append. Never delete or reword an existing entry. The only edit allowed is to mark a stale
   confirmed entry `~~resolved?~~` in place. Never mark a ledger line that way.
 - Put confirmed findings under the dated heading of this round, grouped by lens. Put refuted

@@ -9,11 +9,6 @@ description: Implement a change autonomously, only when the user has asked for i
 document, commit message and reply you write while you follow this skill. Load it whenever you work
 with this plugin.
 
-Autonomous implementation is `workflow-skills:implement` turned around. There, the user approves
-notes of the user's words and a draft before anything is built. Here, subagents make the
-decisions, the user's input is optional and never waited for, and the work goes milestone by
-milestone until its stop condition is met and the evidence shows it.
-
 ## The grant
 
 - Work this way only when the user asked for it. The user grants it for one task, for the whole

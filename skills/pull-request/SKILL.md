@@ -9,10 +9,6 @@ description: Open a pull request, and write or update the description of one.
 apply to the title, the description and every picture attached to the pull request. Load them
 whenever you work with this plugin.
 
-Use this skill to write the title and the description of a pull request, draw the pictures the pull
-request needs and open it. Once the pull request is open, follow `workflow-skills:babysit-pr`. Who
-pushes a change and how a push gets approved lie outside this skill.
-
 ## The template
 
 - Write the description from this template into a file in the project cache defined by

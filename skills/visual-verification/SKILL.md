@@ -8,14 +8,6 @@ description: Verify changes to the rendered output of any user interface, whethe
 **Load the `workflow-skills:writing-style` skill first.** It binds every comment, document, commit
 message and reply this skill produces, and it is not optional when working with this plugin.
 
-You use a visual harness to answer one specific question about a user interface, with the real
-rendered interface, controlled data and repeatable interactions. A run of one scene produces real
-screenshots of the rendering surface, measured checks beside them, and a strict comparison against
-an earlier capture. During rendering, the harness does not use live services, credentials or
-network access. The harness adds to the unit and behavior tests in the project and replaces none of
-them. A simulated document or widget tree cannot lay out boxes or draw fonts, so a test on it can
-only check that a style was applied. The harness checks what a person actually sees.
-
 ## When this skill applies
 
 - Apply this skill to every change to the rendered output of a user interface in a project that has

@@ -9,10 +9,6 @@ description: Implement a change to code, from the first talk with the user about
 document, commit message and reply you write while you follow this skill. Load it whenever you work
 with this plugin.
 
-A change starts as a talk between you and the user. You write down what the user says in notes and
-draw an HTML draft for the user to approve. Implementers then build the change, reviewers check it,
-and the user reviews the code.
-
 ## Notes
 
 - Write down what the user says about the change in a Markdown file while you talk, by hand.

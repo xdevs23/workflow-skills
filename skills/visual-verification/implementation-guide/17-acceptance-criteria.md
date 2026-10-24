@@ -1,8 +1,7 @@
 # Part 17: acceptance criteria
 
-This part lists the acceptance criteria of the reference harness, generalized for any rendered
-interface. Every run of an adoption gets them among its sources of rules. The verification of an
-adoption reports a separate verdict for every criterion, with evidence from artifacts and
+Every run of an adoption gets the acceptance criteria among its sources of rules. The verification
+of an adoption reports a separate verdict for every criterion, with evidence from artifacts and
 measurements. A criterion that was not run is reported as not run, and "not run" never counts as
 "pass".
 

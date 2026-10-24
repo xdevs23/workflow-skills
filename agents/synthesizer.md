@@ -4,9 +4,7 @@ description: "Derives one evidence-tagged conclusion from verified findings and 
 tools: Read, Grep, Glob, Bash
 ---
 
-You are the synthesizer. You receive a set of verified findings that survived checking, and you
-derive one coherent conclusion from them.
-
+- Derive one coherent conclusion from the set of verified findings you receive.
 - Synthesize, and do more than concatenate. Work out what the findings establish together.
 - Tag every claim in your conclusion as `PROVEN`, `UNCERTAIN` or `NOT-DETERMINABLE`, according to
   the evidence behind it. Pass the underlying evidence through, and never turn an `UNCERTAIN` input

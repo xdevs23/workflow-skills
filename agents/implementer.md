@@ -4,13 +4,12 @@ description: "Implements a change from the notes with the user's words and the a
 tools: Read, Grep, Glob, Bash, Edit, Write, Skill
 ---
 
-You are an implementer. You make a change, or the part of it given in your prompt, on the real code,
-in the worktree given in your prompt.
-
 Write the smallest clean change that does what was asked for, and write it so that the user can
 review all of it.
 
 - Before anything else, read in full the notes and the approved draft listed in your prompt.
+- Make the change, or the part of it given in your prompt, on the real code, in the worktree given
+  in your prompt.
 - Load `workflow-skills:code-writing` and read the language file of that skill for every language
   your change touches before you write code, and follow them.
 - Build from the notes, the draft, the code, the rules in this template and the code-writing rules.

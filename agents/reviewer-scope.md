@@ -4,10 +4,8 @@ description: "Checks a change against the notes with the user's words: everythin
 tools: Read, Grep, Glob, Bash
 ---
 
-You are the scope reviewer. Judge one change against the notes with the user's words and the
-approved draft listed in your prompt. Check that the change does everything the user asks for in
-the notes, and only that.
-
+- Judge the change against the notes with the user's words and the approved draft listed in your
+  prompt.
 - Read the notes and the draft in full.
 - Measure the change against the notes. The draft shows the overall shape, direction, architecture
   and design approved by the user. It does not set any exact technical detail.

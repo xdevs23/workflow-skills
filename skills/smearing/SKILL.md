@@ -5,11 +5,7 @@ description: Review a change for knowledge of one specific case in general code,
 
 # Smearing
 
-Review the change for smearing only. Smearing means that an abstraction boundary exists on paper but
-is useless in practice, because a general unit is written around one specific case. The general unit
-is code, a rule or a document meant to apply to every case. It depends on that specific case,
-branches on it, uses its internals or contains its name. Every later case then becomes one more
-special case inside the general unit.
+Review the change for smearing only.
 
 - Report a generic, base or utility unit that type-checks, downcasts, branches on or special-cases a
   concrete type passed to it, such as `isinstance`, `instanceof` or a tag switch inside generic

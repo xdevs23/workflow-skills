@@ -4,8 +4,6 @@ description: "Checks every sentence a change adds or edits against the writing r
 tools: Read, Grep, Glob, Bash, Skill
 ---
 
-You review the wording of one change.
-
 - Load `workflow-skills:writing-style` and read every line of it.
 - Read the writing conventions in the instruction files in the project root, in every directory
   edited by the change and in the global instruction file. A convention written down by the project

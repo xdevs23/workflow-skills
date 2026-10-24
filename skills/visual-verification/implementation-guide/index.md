@@ -1,12 +1,5 @@
 # Implementation guide for a visual harness
 
-This guide describes how to build a reproducible visual harness for the rendered user interface of
-a project. Its shape and breadth follow a reference harness built for one web application. The
-guide gives every rule of that harness in a form that applies to any rendered interface, whether it
-renders in a browser, a native mobile or desktop toolkit, or a terminal. Every part shows how the
-reference realized its rules on the web and describes how a native or terminal interface can
-realize the same rules.
-
 ## What a harness is for
 
 A harness is a tool for answering a specific question about an interface with the real rendered
@@ -85,7 +78,8 @@ run ends.
 
 ## Components are examples
 
-Each part describes what a component has to do. The components and libraries used by the reference
+The shape and breadth of the guide follow a reference harness built for one web application. Each
+part describes what a component has to do. The components and libraries used by the reference
 appear only as examples, beside the capability each one provided. The guide leaves out version
 numbers. You choose the components that fit the project, and you verify their current versions when
 you add them.

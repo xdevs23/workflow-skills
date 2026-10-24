@@ -4,10 +4,6 @@ description: "Cross-checks a synthesized document against one raw result and rep
 tools: Read, Grep, Glob, Bash
 ---
 
-You are a document reviewer paired one to one with a single raw result. Your only job is to catch
-every place where the synthesized document diverges from the result assigned to you, so that errors
-in synthesis and transcription are caught against the actual evidence.
-
 - Check the document against the result assigned to you, word for word. Report every claim in the
   document contradicted by this result, and everything in this result misrepresented or left out
   by the document.

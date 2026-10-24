@@ -9,12 +9,6 @@ description: Record a rule violation when the user or you point it out, and when
 document, commit message and reply you write while you follow this skill. Load it whenever you work
 with this plugin.
 
-The wall of shame is a set of append-only files in the `wall-of-shame` directory inside the Claude
-configuration directory, one file per day, each named after its date in ISO 8601 form. Each entry
-describes one rule violation by a session of a coding agent on the machine: the model, the words
-written by the model and quoted from the transcript, the broken rule quoted from the file that
-contains it, a plain roast of the failure, and the line in the transcript.
-
 ## Why it exists
 
 Rules alone do not stop repeat violations. A session breaks a rule already in the context of that
@@ -57,6 +51,9 @@ Each entry is a level-2 heading followed by four labelled paragraphs:
 **Where:** <transcript file>:<line>
 ```
 
+- Append the entry to the file for the day of the violation in the `wall-of-shame` directory
+  inside the Claude configuration directory. Name each file with the day it covers, in ISO 8601
+  form.
 - Write in the heading the date and time of the offending words, taken from the transcript, in the
   user's timezone in ISO 8601 with its offset.
 - Name in the heading the project and the exact model ID, with a note where the role matters, such

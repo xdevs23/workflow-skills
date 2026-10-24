@@ -7,9 +7,6 @@ description: Design, build, change, test or debug software, and plan or carry ou
 
 - Load `workflow-skills:writing-style` first, and follow it in every comment, document, commit
   message and reply you write under this skill.
-- Follow these principles in every language whenever you design or change a system, both for the
-  shape of the system and for the way you do the work. `workflow-skills:code-writing` contains the
-  rules for how the code itself reads.
 
 ## The hollow lattice
 

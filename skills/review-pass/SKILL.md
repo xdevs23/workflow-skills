@@ -9,9 +9,6 @@ description: Review a change that is already committed and needs only a review, 
 document, commit message and reply you write while you follow this skill. Load it whenever you work
 with this plugin.
 
-In a review pass you run only the reviewers from `workflow-skills:implement`, on a change that is
-already committed.
-
 - Start the reviewers by the steps in `workflow-skills:implement`.
 - Leave out the scope reviewer when the user's words on the change were never written down in
   notes.

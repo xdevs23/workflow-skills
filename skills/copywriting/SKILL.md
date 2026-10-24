@@ -8,17 +8,9 @@ description: Write text shown to people on a product screen or a marketing page,
 - **Load the `workflow-skills:writing-style` skill first.** It applies to every comment, document,
   commit message and reply written under this skill, and it is not optional when you work with
   this plugin.
-
-This skill describes a workflow of several agents together with a document called the writing
-system. The writing system goes VERBATIM into every prompt for a copy agent, and the workflow turns
-it into the strings in the code. Everything specific to a project arrives as **INPUTS**: a document
-with the facts, which is the source, a set of voice samples and an intent catalog. The skill itself
-does not mention a brand or a product, so the same workflow writes for a different product once the
-inputs change.
-
-- Run it as a `Workflow()` with one intent phase, a fan-out of writers with one writer per area and
-  locale, a mechanical check, verification reviewers running in parallel, and a user who decides
-  what ships.
+- Run the copy phase as a `Workflow()` with one intent phase, a fan-out of writers with one writer
+  per area and locale, a mechanical check, verification reviewers running in parallel, and a user
+  who decides what ships.
 
 ## When to use it
 

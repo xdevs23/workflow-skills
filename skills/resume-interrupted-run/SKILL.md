@@ -9,17 +9,6 @@ description: Resume a workflow run that was interrupted after agents did substan
 document, commit message and reply you write while you follow this skill. Load it whenever you work
 with this plugin.
 
-The journal of a run contains the result of every `agent()` call that finished. A resume replays
-those results as far as the next section describes. The journal does not contain a result for an
-agent that was still working when the run stopped, so the resume starts that agent from an empty
-context. The agent reads every file again and works out every finding again from scratch, on the
-budget of the resumed run. The transcript of that agent is on disk all the while, complete up to
-the moment the run stopped.
-
-Before you resume, point each interrupted agent, inside the prompt of that agent, at the transcript
-of the earlier attempt by that agent. Everything else in this skill prevents that step from damaging
-the run you are rescuing.
-
 ## What a resume runs again
 
 - Expect the key of a call in the journal to come from the prompt of that call, from the options

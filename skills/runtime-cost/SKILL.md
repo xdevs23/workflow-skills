@@ -6,8 +6,7 @@ description: Review a change for added work that grows with the data on a path r
 # Runtime cost
 
 Review the change for runtime cost only: how the work added or moved by the change grows with the
-data on the paths that run it. A diff can be correct line by line and still put a walk over a whole
-collection inside a call made once per item. Only the code calling it shows that problem.
+data on the paths that run it.
 
 - Leave correctness, naming and structure to other reviewers.
 - Follow every loop, scan, query, remote call or repeated computation added or moved by the change

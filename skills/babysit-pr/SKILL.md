@@ -9,10 +9,6 @@ description: Look after a submitted pull request until it is closed or merged.
 document, commit message and reply you write while you follow this skill. Load it whenever you work
 with this plugin.
 
-Use this skill once a pull request exists. Creating and updating the pull request lie outside it:
-open and update the pull request by `workflow-skills:pull-request`. Who pushes a change and how a
-push gets approved lie outside this skill as well.
-
 ## Start and watch
 
 - Watch the pull request with `watch-prs`, the pull request watcher shipped with this plugin. The
