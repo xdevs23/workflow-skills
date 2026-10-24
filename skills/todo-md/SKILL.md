@@ -55,16 +55,15 @@ the repository. A fresh clone does not contain it.
 - **Date**: do not add a date. Commit messages and the time the file was last changed already give
   the date.
 - **Body**: prose with what the item is, where it stands and what is still to be done. Put run
-  logs and the history of the work into the project cache, never into the entry. The evidence for
-  `SHIPPED` and `VERIFIED` goes into the deploy state section.
+  logs and the history of the work into the project cache, never into the entry.
 - **Origin pointer**: `<transcript>.jsonl:<line>:<promptId or uuid>`, the session transcript and
   the line with the first message of the conversation that raised the item. Give every entry one.
   To find the line, search the directory with the session transcripts of the project for the
   promptId or uuid, or read the given line directly.
 - **`Builds on:`**: a line with every entry that has to be built first. Write a dependency between
   entries in this line and nowhere else.
-- When you report on several entries, show in the message the chains of `Builds on:` lines and the
-  lines in the queue about work set aside that concern them.
+- When you report on several entries, show in the message the chains of `Builds on:` lines that
+  concern them.
 
 ## One behavior to a unit
 
@@ -131,7 +130,7 @@ item stands.
 
 **Recorded**
 
-- `RECORDED`: captured so it is not lost, and deliberately left out of the queue.
+- `RECORDED`: captured so it is not lost, and deliberately not started.
 
 **Waiting on a decision**
 
@@ -140,7 +139,6 @@ item stands.
   missing, which would start a discussion thread about the feature.
 - **A decision still owed blocks only the item it concerns.** Skip and mark the item, and move the
   work on to the next one.
-- Never stop the whole queue on an open question: doing so is a recorded incident.
 
 **Ready to build**
 
@@ -166,7 +164,7 @@ Whether a unit is ready to build follows from the words of the user alone.
 
 - `PUSHED`: pushed, but deployment is not confirmed. Ask the user if you need confirmation.
 - `SHIPPED`: deployed to production, with the commit and the deployment receipt, if available.
-- `VERIFIED`: observed working in production. This is a stronger claim than `LIVE` and needs an
+- `VERIFIED`: observed working in production. This is a stronger claim than `SHIPPED` and needs an
   observation to back it: a log line, a count, a screenshot reference. Reading the code is not
   verification.
 
@@ -214,9 +212,8 @@ Whether a unit is ready to build follows from the words of the user alone.
     pointer.
   - You start the fix of an older defect.
   - A state changes: something starts, finishes, gets committed, merged, pushed or deployed, gets
-    a pull request opened or merged, or gets held.
+    a pull request opened or merged.
   - A decision is made, or a new one becomes owed.
-  - The order changes.
   - Something is deployed. Record the commit, the run, and what the boot logs showed.
   - Something is owed to whoever operates production: a manual step, an index to drop, a backfill
     to run. These are easy to lose and expensive to forget.
