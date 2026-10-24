@@ -25,10 +25,10 @@ The launcher clears the environment. The run receives only an allowlisted set of
 search path of the locked environment, a private home directory inside the harness directory, the
 scratch directory, a cache directory inside the harness directory, the locked font configuration,
 the path of the locked rendering engine, an identifier of the system type of the machine, and the
-refresh variables. Every other variable from the environment of the caller is
-left out of the run. Deployment settings, service credentials and developer preferences cannot
-change a capture. The runtime is configured not to load environment files from the repository, such
-as dotenv files.
+refresh variables, which never contain the credential. Every other variable from the environment of
+the caller is left out of the run. Deployment settings, service credentials and developer
+preferences cannot change a capture. The runtime is configured not to load environment files from
+the repository, such as dotenv files.
 
 The launcher creates a private scratch directory in the system temporary directory, one for each run
 and never shared across runs. It removes the directory when the run ends, on every exit path. The
@@ -56,9 +56,9 @@ run with an error message containing the instruction to update the project lock 
 installed dependency directory never counts as a valid cache just because it exists. A missing lock
 fails the run, as does a mismatched one. Locks are never rewritten silently.
 
-Refresh credentials are passed only to the refresh command. The bootstrap reads the refresh
-variables, removes them from the environment of the bootstrap, and hands them to the child process
-only when the verb is the refresh verb. Every other verb runs without them.
+Refresh credentials are passed only to the refresh command. The bootstrap reads them from its
+standard input and hands them to the child process as JSON on its standard input, only when the verb
+is the refresh verb. Every other verb runs without them.
 
 The bootstrap then copies the harness code into the dependency cache keyed by the lock and runs the
 requested verb from that copy. It passes the dependency cache and the repository root as variables

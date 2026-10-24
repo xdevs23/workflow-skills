@@ -38,12 +38,11 @@ runs a refresh operation.
 
 ## Credentials and transport
 
-The credential is short-lived and supplied at run time through a dedicated environment variable or
-another protected input, never as a command argument, in a committed file or inside the rendering
-context. The launcher passes it only to the refresh verb. The service origin is
-supplied explicitly and must be a bare encrypted origin. It uses the secure scheme and does not
-contain user information, a path beyond the root, a query or a fragment. The allowlist of
-endpoints is exact.
+The credential is short-lived and supplied at run time on standard input, never as a command
+argument, in an environment variable, in a committed file or inside the rendering context. The
+launcher passes it only to the refresh verb. The service origin is supplied explicitly and must be a
+bare encrypted origin. It uses the secure scheme and does not contain user information, a path
+beyond the root, a query or a fragment. The allowlist of endpoints is exact.
 
 The refresh denies redirects. It fails on any response with a status other than success and on any
 redirected response. Only a successful response that was not redirected is projected. The refresh
