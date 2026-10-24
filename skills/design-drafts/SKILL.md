@@ -33,13 +33,10 @@ description: Applies when the user asks for several design drafts or designs to 
 - Name each direction in one to three words for its idea.
 - Give each draft a one-line description: the view it shows, whether it is still or animated, and
   the resolution.
-- Draw each draft as the real screen at its real size, with the shell around it, the sample data
-  and every element the screen shows.
+- Draw each draft with the sample data and every element the screen shows.
 - Animate a draft where the screen it imitates animates.
 - Draw the states that change the layout as separate drafts, such as a smaller screen, values the
   source does not report or text too long for its space.
-- Write a measurement into the picture only where the size is part of the question, such as the
-  height of a keyboard.
 - Write no open points on the drafts.
 - Put a point you need answered into the question at the end of the message.
 
@@ -63,8 +60,8 @@ description: Applies when the user asks for several design drafts or designs to 
   modes, as one page of `workflow-skills:visual-decisions`, with one numbered section per
   direction.
 - Draw each direction inside the real screen around that part, labeled with its name.
-- End the page with a section that shows all directions side by side at a small size, each with a
-  caption of its main property.
+- End the page with the section of `workflow-skills:visual-decisions` that shows the variants side
+  by side, at a small size, each direction with a caption of its main property.
 
 ## Checking
 

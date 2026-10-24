@@ -42,7 +42,9 @@ and in the chat message that comes with it.
   - the earlier state, in red, for a part that After leaves out;
   - Optional pick, in blue, for one more After picture with a better, alternative approach;
   - a dashed box, for a file the change does not edit;
-  - Updated, in purple, for a part that changed after the last answer from the user.
+  - Updated, in purple, for a part that changed after the last answer from the user;
+  - a short bar with its value, for a number needed by the decision, filled in green where the
+    value fits and in red where it is over the limit.
 - Keep each page within one browser window where you can. When the decisions need more room, split
   them into separate pages, and draw the next page once the user has answered the one before. Never
   draw them all at once.
@@ -52,6 +54,8 @@ and in the chat message that comes with it.
   branch with its unpushed commits, a release, or one variant of After, such as "After, two
   maintainers". Show the earlier states first and After last.
 - Put a caption of at most fifteen words under each picture.
+- End a page that has several variants of After with a section that shows them side by side, one
+  column for each variant and one row for each state.
 - Mark the part of a picture that changes in the color of its legend marker, so the eye finds the
   difference first.
 - Write words on the rest of the page only as labels, titles, captions and marks. A picture that
@@ -65,6 +69,11 @@ and in the chat message that comes with it.
 - Draw a visible change as an imitation of the real screen, with its structure, its labels and its
   look. Where possible and cheap, make real screenshots or import the real screen so the user sees
   how it actually looks like.
+- Draw a picture at the real size of what it shows, together with what surrounds it.
+- Draw what goes wrong at the place in the picture where it happens, in the color of the state it
+  belongs to.
+- Where a decision depends on a number, show that number above each picture of the decision as the
+  short bar named in the legend.
 - Draw technical details, such as migrations, data models and schemas, as pictures or graphs.
 - Draw a change that happens out of sight, such as where in the code a decision is made, as boxes
   and arrows: which part calls which, and what passes between them, in each state.
