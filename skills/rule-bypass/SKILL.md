@@ -1,6 +1,6 @@
 ---
 name: rule-bypass
-description: Applies when you review a change for ways around a rule or a check.
+description: Review a change for ways around a rule or a check.
 ---
 
 # Rule bypass

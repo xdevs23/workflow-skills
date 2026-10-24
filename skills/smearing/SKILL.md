@@ -1,6 +1,6 @@
 ---
 name: smearing
-description: Applies when you review a change for knowledge of one specific case in general code, rules and documents meant to work for every case.
+description: Review a change for knowledge of one specific case in general code, rules and documents meant to work for every case.
 ---
 
 # Smearing

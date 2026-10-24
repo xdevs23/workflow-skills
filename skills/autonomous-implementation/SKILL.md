@@ -1,6 +1,6 @@
 ---
 name: autonomous-implementation
-description: Applies only when the user has asked for autonomous implementation, for one task, for the session until revoked or for a timeframe, such as for an experiment or a novel approach whose architecture is not decided yet.
+description: Implement a change autonomously, only when the user has asked for it, for one task, for the session until revoked or for a timeframe, such as for an experiment or a novel approach whose architecture is not decided yet.
 ---
 
 # Autonomous implementation

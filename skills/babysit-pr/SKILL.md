@@ -1,6 +1,6 @@
 ---
 name: babysit-pr
-description: Applies once a pull request is submitted, until it is closed or merged.
+description: Look after a submitted pull request until it is closed or merged.
 ---
 
 # Babysit a pull request

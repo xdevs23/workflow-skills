@@ -1,6 +1,6 @@
 ---
 name: runtime-cost
-description: Applies when you review a change for added work that grows with the data on a path run once per call, per item or per row.
+description: Review a change for added work that grows with the data on a path run once per call, per item or per row.
 ---
 
 # Runtime cost

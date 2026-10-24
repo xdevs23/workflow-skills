@@ -1,6 +1,6 @@
 ---
 name: review-pass
-description: Applies to a change that is already committed and needs only a review, such as a change you edited directly.
+description: Review a change that is already committed and needs only a review, such as a change you edited directly.
 ---
 
 # Review a committed change

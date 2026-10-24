@@ -1,6 +1,6 @@
 ---
 name: code-writing
-description: Applies whenever you write or change code in any language, including its comments, names and strings.
+description: Write or change code in any language, including its comments, names and strings.
 ---
 
 # Code writing

@@ -1,6 +1,6 @@
 ---
 name: code-cleanliness
-description: Applies when you review a change for readability and hygiene at the surface of the code.
+description: Review a change for readability and hygiene at the surface of the code.
 ---
 
 # Code cleanliness

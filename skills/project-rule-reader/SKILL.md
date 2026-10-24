@@ -1,6 +1,6 @@
 ---
 name: project-rule-reader
-description: Applies when you review a change against every rule that applies to it.
+description: Review a change against every rule that applies to it.
 ---
 
 # Rules

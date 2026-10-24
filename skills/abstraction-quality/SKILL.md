@@ -1,6 +1,6 @@
 ---
 name: abstraction-quality
-description: Applies when you review whether the abstractions in a change are justified.
+description: Review whether the abstractions in a change are justified.
 ---
 
 # Abstraction quality

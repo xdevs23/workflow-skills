@@ -1,6 +1,6 @@
 ---
 name: local-cache
-description: Applies when you decide where to put a file that is not meant for the repository, such as a temporary file, a log, research, a plan, a private spec, a workflow worktree or a scratch file.
+description: Decide where to put a file that is not meant for the repository, such as a temporary file, a log, research, a plan, a private spec, a workflow worktree or a scratch file.
 ---
 
 # The project cache

@@ -1,6 +1,6 @@
 ---
 name: quality
-description: Applies when you review a change without a restriction on what you report.
+description: Review a change without a restriction on what you report.
 ---
 
 # Quality

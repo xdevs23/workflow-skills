@@ -1,6 +1,6 @@
 ---
 name: separation-of-concerns
-description: Applies when you review a change for units that do several unrelated jobs and layers fused together.
+description: Review a change for units that do several unrelated jobs and layers fused together.
 ---
 
 # Separation of concerns

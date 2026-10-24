@@ -1,6 +1,6 @@
 ---
 name: visual-verification
-description: Applies to changes to the rendered output of any user interface, whether it renders in a browser, a native mobile or desktop toolkit or a terminal, and to adopting a visual harness in a project without one.
+description: Verify changes to the rendered output of any user interface, whether it renders in a browser, a native mobile or desktop toolkit or a terminal, and adopt a visual harness in a project without one.
 ---
 
 # Visual verification

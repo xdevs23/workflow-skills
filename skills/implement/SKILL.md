@@ -1,6 +1,6 @@
 ---
 name: implement
-description: Applies when you implement a change to code, from the first talk with the user about it until the user reviews the code.
+description: Implement a change to code, from the first talk with the user about it until the user reviews the code.
 ---
 
 # Implement a change

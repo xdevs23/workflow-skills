@@ -1,6 +1,6 @@
 ---
 name: duplicate-checker
-description: Applies when you review a change for a rule enforced in a second place, a second path to the same outcome and copied logic.
+description: Review a change for a rule enforced in a second place, a second path to the same outcome and copied logic.
 ---
 
 # One path to each decision, recorded once

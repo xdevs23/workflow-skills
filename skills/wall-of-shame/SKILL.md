@@ -1,6 +1,6 @@
 ---
 name: wall-of-shame
-description: Applies when the user or you point out a rule violation, and when the user voices frustration with your work or you overstep.
+description: Record a rule violation when the user or you point it out, and when the user voices frustration with your work or you overstep.
 ---
 
 # The wall of shame

@@ -1,6 +1,6 @@
 ---
 name: hygiene
-description: Applies to everything that leaves the machine or goes to someone else, such as code, comments, documentation, commits and their messages, pull requests, issues and comments on them, packages and anything else published or sent.
+description: Decide what may go into everything that leaves the machine or goes to someone else, such as code, comments, documentation, commits and their messages, pull requests, issues and comments on them, packages and anything else published or sent.
 ---
 
 # Hygiene

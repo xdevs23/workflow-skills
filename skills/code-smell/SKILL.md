@@ -1,6 +1,6 @@
 ---
 name: code-smell
-description: Applies when you review a change for classic code smells.
+description: Review a change for classic code smells.
 ---
 
 # Code smell

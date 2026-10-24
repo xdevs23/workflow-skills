@@ -1,6 +1,6 @@
 ---
 name: engineering-principles
-description: Applies whenever you design, build, change, test or debug software, and whenever you plan or carry out engineering work.
+description: Design, build, change, test or debug software, and plan or carry out engineering work.
 ---
 
 # Engineering principles

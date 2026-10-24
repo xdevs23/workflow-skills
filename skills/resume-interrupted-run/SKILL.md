@@ -1,6 +1,6 @@
 ---
 name: resume-interrupted-run
-description: Applies when a workflow run was interrupted after agents did substantial work but before they returned results. Not for agents that completed with bad results.
+description: Resume a workflow run that was interrupted after agents did substantial work but before they returned results. Not for agents that completed with bad results.
 ---
 
 # Resume an interrupted run

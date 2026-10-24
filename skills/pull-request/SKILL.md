@@ -1,6 +1,6 @@
 ---
 name: pull-request
-description: Applies when you open a pull request, and when you write or update the description of one.
+description: Open a pull request, and write or update the description of one.
 ---
 
 # Open a pull request

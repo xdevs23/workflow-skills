@@ -1,6 +1,6 @@
 ---
 name: copywriting
-description: Applies when you write text shown to people on a product screen or a marketing page, such as onboarding, interface states and translations. It does not apply to logs or code comments.
+description: Write text shown to people on a product screen or a marketing page, such as onboarding, interface states and translations. Not for logs or code comments.
 ---
 
 # Copywriting: copy first, then implement
