@@ -36,8 +36,6 @@ you follow this skill.
 
 - Append an entry in the same turn when the user points out a violation of yours.
 - Append an entry without being told when you catch yourself breaking a rule.
-- When the user reports to you a violation by another session, read the transcript of that session
-  for the verbatim words, their date and time and their line, then append the entry.
 - When a finding returned by a reviewer turns out to come from a model breaking a rule, record it
   as a violation by that model.
 - Expect a stage that writes nothing, such as a reviewer, to report the violation. Record it when
