@@ -31,6 +31,8 @@ description: Applies whenever you write or change code in any language, includin
 - Never restate the next line in a comment, narrate a change in it ("used to be A, now B") or
   address a reviewer in it.
 - Name things with plain words for what they do.
+- Start the name of a function that does something with a verb for what it does, such as
+  `findCartsReferencingProduct` or `convertToRgb`.
 - Never invent a metaphor for a name, and never use `util`, `misc`, `helper` or a similar grab-bag
   name.
 - Apply the naming test to each name as you write it: hide the docstring for it and read only the

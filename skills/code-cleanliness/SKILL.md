@@ -19,8 +19,8 @@ Review the change for code cleanliness only: readability and hygiene.
   - a metaphor, such as `Weather` for the state of a supplier's catalogue (`CatalogueStatus`);
   - a name whose word contradicts the contents, such as `ShopData` for a type that contains
     services and registries (`ShopServices`);
-  - a function named after a role instead of what it returns, such as `owners` for a function that
-    finds the carts still referencing a product (`cartsReferencingProduct`).
+  - a function named after a role or a noun instead of what it does, such as `owners` for a
+    function that finds the carts still referencing a product (`findCartsReferencingProduct`).
 - Report a library call whose flags decide the shape of its result, such as a serializer called
   with several flags, written at the place that uses the result, where a function or method named
   for that result in the module that owns the type belongs.
