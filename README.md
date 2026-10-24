@@ -106,6 +106,20 @@ without a transcript has no folder, so the command changes its settings without 
 an organization manages Claude Code, only a plugin listed in the managed settings runs the check at
 the end of a turn, reads the instruction files and gets the folder of the session.
 
+### TODO.md reminder
+The plugin hands the main agent the rules of `todo-md` and the open work of the project each time a
+context starts: at the start of a session, at a resume, after `/clear`, after a summary of the
+conversation and in a fork. The agent gets the text of the skill and the headings of the entries in
+`TODO.md` in the project root whose state is `IN PROGRESS`, `QUEUED` or `TODO`. Without `TODO.md`,
+or without such an entry, it gets the text of the skill alone.
+
+After the agent edits or writes `TODO.md` in the project root, each entry with more than 20 lines
+of text besides its heading is reported to the agent, with the advice to shorten it by the rules of
+`todo-md`. The transcript shows the same report as a line.
+
+The reminder runs whether the rule checker is on or off, and it does not read any setting. Where an
+organization manages Claude Code, it runs only in a plugin listed in the managed settings.
+
 ## Requirements
 
 - Claude Code with the Workflow tool for skills that launch stages.
@@ -127,7 +141,8 @@ bun test --timeout 0 tests/
 The `--timeout 0` switches off the time limit that Bun puts on each test, five seconds by default.
 A test of the plugin ends with the work it runs, not with a clock.
 
-The tests of the rule checker run against Claude Code itself, with `claude plugin test .`.
+The tests of the rule checker and the `TODO.md` reminder run against Claude Code itself, with
+`claude plugin test .`.
 
 The rendering test of `pr-lines` runs when `PR_LINES_FONTS` names the Mona Sans directory and resvg
 is on the `PATH` or named by `PR_LINES_RESVG`, and reports as skipped otherwise. With Nix,
