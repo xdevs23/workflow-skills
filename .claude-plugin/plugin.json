@@ -1,7 +1,7 @@
 {
   "name": "workflow-skills",
-  "version": "0.71.1",
-  "description": "Multi-agent workflow skills (implementation from notes of the user's words and an approved draft, autonomous implementation, copywriting, visual decisions and visual verification, opening and watching a pull request, recovery of an interrupted run) plus skills with the rules for engineering, code, writing and hygiene, a library of model-neutral review-lens skills and the agents run by each workflow stage, and a rule checker that has a second model check the end of each turn of the main agent against the binding rules.",
+  "version": "0.72.0",
+  "description": "Multi-agent workflow skills",
   "author": {
     "name": "xdevs23",
     "url": "https://github.com/xdevs23"
@@ -14,6 +14,5 @@
     "verification",
     "research"
   ],
-  "hooks": "./hooks/hooks.json",
   "types": "./types/index.d.ts"
 }
