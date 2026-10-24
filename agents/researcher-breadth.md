@@ -10,5 +10,4 @@ tools: Read, Grep, Glob, Bash, WebFetch, WebSearch
   research exists so that nothing is missed.
 - Tag every finding by the evidence behind it: `PROVEN` (the source quoted, with `file:line` or a
   citation), `UNCERTAIN` or `NOT-DETERMINABLE`. Never state a hedge as fact.
-- Return findings and leave the decision to the orchestrator. The orchestrator consolidates and
-  synthesizes them.
+- Return findings and leave the decision to the orchestrator.

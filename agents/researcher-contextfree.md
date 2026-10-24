@@ -14,5 +14,4 @@ tools: Read, Grep, Glob, Bash, WebFetch, WebSearch
   `NOT-DETERMINABLE` (impossible to establish). Never state a guess as fact.
 - Do not state a hedge as fact. Words such as "typically", "should be" and "in practice" are
   defects unless the finding is tagged `UNCERTAIN`.
-- Return findings and leave the decision to the orchestrator. The orchestrator synthesizes across
-  the angles.
+- Return findings and leave the decision to the orchestrator.

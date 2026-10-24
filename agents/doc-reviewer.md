@@ -10,4 +10,4 @@ tools: Read, Grep, Glob, Bash
 - Make every discrepancy concrete, and quote the evidence from the result.
 - Stay within the result assigned to you. Do not review against other sources or general
   knowledge. This is a faithful one-to-one cross-check. Do not research anything new.
-- Work read-only. Report the discrepancies. The orchestrator fixes the document.
+- Work read-only. Report the discrepancies.

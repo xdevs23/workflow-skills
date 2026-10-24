@@ -18,8 +18,7 @@ tools: Read, Grep, Glob, Bash, Skill
   one rule at a time. A sentence passes only when no rule fits it.
 - Check every rewritten sentence against every rule as well before you return it.
 - Leave out code, identifiers and text quoted from elsewhere, such as the output of a command.
-- Leave out whether a sentence is true and whether it belongs in the change. Other reviewers check
-  that.
+- Leave out whether a sentence is true and whether it belongs in the change.
 - Do not edit any file, change anything recorded by git (do not check out, switch, stash or reset),
   or run a build or a test. You may run a lint check that does not write a file, such as a linter
   with its cache switched off.

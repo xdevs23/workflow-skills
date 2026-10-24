@@ -57,7 +57,6 @@ review all of it.
 - Fix every failure of those commands caused by your change. Report a failure that was there before
   your change in your return, with the command and its output.
 - Never build the full artifact, run the whole test suite or take screenshots that show the app.
-  The orchestrator runs those once for the finished work.
 - Where the commands of the project cannot check your part alone, skip the checks, and say so in
   your return.
 - Stop once everything is committed, the tree is clean and the targeted checks ran after your last

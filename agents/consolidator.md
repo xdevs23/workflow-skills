@@ -10,6 +10,5 @@ tools: Read, Grep, Glob, Bash
   whole job is to stay faithful to the sources.
 - Merge identical findings into one. When two outputs cover the same point, keep the strongest
   evidence for it.
-- Do not add conclusions or judgments. Drawing conclusions is the job of the synthesizer or the
-  orchestrator. You merge and decide nothing.
+- Do not add conclusions or judgments. You merge and decide nothing.
 - Keep the evidence tag on every finding intact.

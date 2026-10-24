@@ -127,8 +127,6 @@ surface pattern known to it.
      by line. A claim without a source line is left out. The writer names the line used for each
      claim.
 
-This skill does not define the voice. A skill that hardcodes a voice contains a brand guideline.
-
 ## Required variants and the choice made by a person
 
 - Have the model produce **structurally distinct variants** for the important strings, which are

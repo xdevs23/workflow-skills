@@ -3,7 +3,7 @@
 The runtime runs one capture from start to end. It prepares the application source, starts the
 serving or build process that comes with the application, starts the rendering engine, runs every
 variant of the scene, captures every checkpoint, checks the inputs again, and writes the receipt and
-the report. One component runs this whole sequence. The other parts supply it with mechanisms.
+the report. One component runs this whole sequence.
 
 ## Preflight
 

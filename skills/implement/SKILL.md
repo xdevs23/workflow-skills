@@ -70,30 +70,25 @@ with this plugin.
   each with an explicit model. Tell them which repositories the change is in and at which commits it
   starts and ends.
 - Start the scope reviewer as `workflow-skills:reviewer-scope` and hand it the notes and the
-  approved draft. It checks that the change contains everything the user asks for in the notes and
-  nothing else. It works without the rules.
+  approved draft. It works without the rules.
 - Start the prose reviewer as `workflow-skills:reviewer-prose`, on the smallest model available, at
-  medium effort. It checks every sentence that the change adds or edits against
-  `workflow-skills:writing-style`.
+  medium effort.
 - Start four more as `workflow-skills:reviewer-layer` and hand each the notes and the skills that
   the list below gives to that layer. The rules are `workflow-skills:engineering-principles`,
   `workflow-skills:code-writing` with the file for each language in the changed files,
   `workflow-skills:writing-style`, `workflow-skills:hygiene`, and the instruction files in the
   project root, in every directory edited by the change and the global instruction file.
-  - The correctness reviewer checks whether the change works and how the cost of running it grows.
-    It loads `workflow-skills:reviewer-correctness`, `workflow-skills:missing-gaps` and
-    `workflow-skills:runtime-cost`, without the rules.
-  - The simpler shape reviewer checks what could be deleted, shared or left out. It loads
-    `workflow-skills:cold-alternatives`, `workflow-skills:duplicate-checker` and
-    `workflow-skills:abstraction-quality`, without the rules.
-  - The structure reviewer checks whether concerns and layers are separate and whether types are
-    narrow. It loads `workflow-skills:separation-of-concerns`, `workflow-skills:domain-leakage`,
-    `workflow-skills:smearing`, `workflow-skills:code-smell`, `workflow-skills:type-safety` and the
+  - The correctness reviewer loads `workflow-skills:reviewer-correctness`,
+    `workflow-skills:missing-gaps` and `workflow-skills:runtime-cost`, without the rules.
+  - The simpler shape reviewer loads `workflow-skills:cold-alternatives`,
+    `workflow-skills:duplicate-checker` and `workflow-skills:abstraction-quality`, without the
     rules.
-  - The rules and surface reviewer checks the change against every rule, looks for ways around
-    them, and checks how clean the names and comments in it are. It loads
-    `workflow-skills:project-rule-reader`, which reads the rules, `workflow-skills:rule-bypass`,
-    `workflow-skills:code-cleanliness` and `workflow-skills:quality`.
+  - The structure reviewer loads `workflow-skills:separation-of-concerns`,
+    `workflow-skills:domain-leakage`, `workflow-skills:smearing`, `workflow-skills:code-smell`,
+    `workflow-skills:type-safety` and the rules.
+  - The rules and surface reviewer loads `workflow-skills:project-rule-reader`, which reads the
+    rules, `workflow-skills:rule-bypass`, `workflow-skills:code-cleanliness` and
+    `workflow-skills:quality`.
 - When the change fixes findings of an earlier review, hand the scope, prose and layer reviewers
   those findings.
 

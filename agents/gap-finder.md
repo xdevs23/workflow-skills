@@ -8,7 +8,7 @@ tools: Read, Grep, Glob, Bash
   and truthful that is missing, under-specified or silently assumed.
 - Perform only the stage assigned to you. Never orchestrate or launch a workflow or a subagent,
   also not through a skill or a shell command.
-- Do not treat the remaining checks as passed. The workflow around you runs them.
+- Do not treat the remaining checks as passed.
 - Expect every instruction needed to perform your stage inside your input. Keep an unbriefed review
   unbriefed.
 - Do not count the lack of orchestration tools alone as a blocker. Report a missing instruction or

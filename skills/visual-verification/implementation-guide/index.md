@@ -107,41 +107,20 @@ project before any harness code exists. An adaptation point is marked in the tex
 
 Read every file in full, in this order, before writing any harness code.
 
-1. `01-integration-survey.md` covers the table of integration points filled in by the adopting
-   project before any code is written, with source evidence and a design consequence for each row.
-2. `02-launcher.md` covers the one command that starts the harness, the locked runtime, engine and
-   fonts, the cleared environment, the scratch directory and frozen dependency installation.
-3. `03-command-line-and-scene-registry.md` covers the verbs, the options accepted by each verb, the
-   scene registry, untracked local scenes and the scene fingerprint computed over the import graph
-   of the scene.
-4. `04-scene-types.md` covers variants, response fixtures, fixture sets, measurements, the scene
-   run context, the page and component scene kinds, the shared variant set and target selection.
-5. `05-data-boundary.md` covers interception of every data source, exact matching, the failures
-   for undeclared, mismatched and exhausted responses, blocked connections to external systems,
-   error output and stored state after a write.
-6. `06-runtime-and-capture.md` covers source snapshots, the serving or build configuration, the
-   fresh rendering context, fixed settings, the paused clock, the synthetic session, component
-   scenes, the capture sequence and the output contract of the command.
-7. `07-geometry-measurements.md` covers content boxes, text line boxes, hit tests, one-line text,
-   sticky headers and the frame-by-frame stability check.
-8. `08-fixtures-and-drift.md` covers the shared shell responses, typed fixtures, runtime assertions
-   on parsed data, drift checks and consistency of referenced identifiers.
-9. `09-receipts-and-fingerprints.md` covers every field recorded by a capture, the fingerprints
-   before and after a run and what a receipt never contains.
-10. `10-comparison-and-reports.md` covers the compatibility check, the review of an input changed
-    on purpose through the evidence sheet, the receipts and the measured checks, checkpoint
-    matching, the zero changed-pixel rule, fixed comparison options and self-contained reports.
-11. `11-diff-coloring.md` covers the local contrast recoloring of the change mask with its numbers,
-    colors, legend, known limits and acceptance rules.
-12. `12-evidence-sheet.md` covers the layout, grouping, output and refusal rules of the evidence
-    sheet for a pull request, and the sheet read in the review of an input changed on purpose.
-13. `13-optional-real-samples.md` covers the explicit, allowlisted and projected refresh of real
-    data samples and their privacy rules.
-14. `14-self-test-suite.md` covers every category of test in the self-test suite of the harness and
-    how the suite is kept out of ordinary test discovery.
-15. `15-hygiene-and-production-isolation.md` covers where artifacts are stored, file watchers, and
-    how harness code is kept out of production output.
-16. `16-project-records.md` covers the entry in the project instructions and the harness contract
-    of the project with the scene documentation in it.
-17. `17-acceptance-criteria.md` covers the generalized acceptance criteria of a harness, including
-    the regression proof.
+1. `01-integration-survey.md`
+2. `02-launcher.md`
+3. `03-command-line-and-scene-registry.md`
+4. `04-scene-types.md`
+5. `05-data-boundary.md`
+6. `06-runtime-and-capture.md`
+7. `07-geometry-measurements.md`
+8. `08-fixtures-and-drift.md`
+9. `09-receipts-and-fingerprints.md`
+10. `10-comparison-and-reports.md`
+11. `11-diff-coloring.md`
+12. `12-evidence-sheet.md`
+13. `13-optional-real-samples.md`
+14. `14-self-test-suite.md`
+15. `15-hygiene-and-production-isolation.md`
+16. `16-project-records.md`
+17. `17-acceptance-criteria.md`

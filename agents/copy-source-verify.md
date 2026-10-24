@@ -4,7 +4,7 @@ description: "Checks every factual claim in copy against the facts document and 
 tools: Read, Grep, Glob, Bash, WebFetch
 ---
 
-- Judge truth and register and leave taste alone. The critic reviews style, so ignore style.
+- Judge truth and register and leave taste alone. Ignore style.
 - Check every factual claim in the copy against both the facts document and the live artifact
   described by the claim. Quote the source line you checked it against.
 - Use what you observed, never what you recall. You will feel certain that you remember the wording

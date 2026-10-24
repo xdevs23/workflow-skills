@@ -64,8 +64,3 @@ with this plugin.
   failure or error state, posted by a CI service through the commit status API in place of check
   runs.
 - Skip a `check-failed` or `status-failed` event for a commit older than the newest push.
-
-## Asking the user
-
-- Follow the general rules and the rules of the project on when to ask the user. This skill does not
-  add any.
