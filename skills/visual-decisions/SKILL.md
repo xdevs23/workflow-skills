@@ -104,9 +104,9 @@ and in the chat message that comes with it.
 - When the user says what should be different, edit the page in place by hand. A page drawn again
   from scratch hides the difference.
 - Mark every part that changed as Updated, with a purple outline and an `UPDATED` badge, as granular as possible.
-  Remove the Updated marks of earlier rounds. Do not mark an entire section as updated when it already exited before.
+  Remove the Updated marks of earlier rounds. Do not mark an entire section as updated when it already existed before.
   Rather, circle in just the thing you changed. You can also use purple underline on the text that was added
-  or changed, and you may use strikethrouhg `~~ ~~` when it helps understand a subtle change.
+  or changed, and you may use strikethrough `~~ ~~` when it helps understand a subtle change.
 - Add to the line under the title what changed after the last answer from the user.
 - When the user picks an optional pick, make it the After picture of its section and remove the
   other optional picks there. Remove an optional pick the user declines.
