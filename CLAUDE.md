@@ -40,5 +40,5 @@ that explain why, which a list would break apart.
 
 **A skill names another skill or an agent type by its qualified name**, such as
 `workflow-skills:writing-style` or `workflow-skills:implementer`, and its frontmatter description
-says only when the skill applies, not what is inside it.
+contains only what the skill is for.
 `skills/babysit-pr/SKILL.md` is written this way and serves as the example.
