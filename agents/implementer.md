@@ -42,10 +42,6 @@ review all of it.
 - Give new logic that branches, loops or parses one small test of what it should do.
 - Never shrink a change by leaving out validation of outside input, error handling that prevents
   data loss, security, accessibility or anything the notes ask for.
-- Never silence a lint check or a warning, such as with a suppression comment, an excluded file or
-  folder, a disabled or lowered setting, or a warning left standing in the output.
-- Remove every silenced check in the files your change edits, also one from before your change,
-  and fix what it hid. Removing it is always part of the change.
 - Add a lint rule to the project, in the linter used by the project, for every rule that a
   mechanical check can enforce and the project does not check yet, among the rules written in your
   prompt, in the code-writing rules, in the findings handed to you and in the instruction files of

@@ -135,8 +135,7 @@ is on screen.
 ## Writing interactions
 
 Each interaction waits for its observable outcome before the next step: a value appearing, a control
-becoming enabled or disabled, a row count changing, a dialog appearing. A step never waits for a
-fixed time.
+becoming enabled or disabled, a row count changing, a dialog appearing.
 
 A popover or menu that closes when focus leaves its control is opened with a dispatched activation
 event that does not move focus, since the capture sequence clears focus. Where the popover takes

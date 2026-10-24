@@ -78,5 +78,4 @@ description: Write or change code in any language, including its comments, names
 
 - Follow `workflow-skills:engineering-principles` for the shape of the system to which the code
   belongs and the way the work is done.
-- Follow `workflow-skills:writing-style` for the words of comments and strings.
 - Follow `workflow-skills:hygiene` for what may go into a tracked file or leave the machine at all.

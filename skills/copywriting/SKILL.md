@@ -150,8 +150,6 @@ This skill does not define the voice. A skill that hardcodes a voice contains a 
 - Never translate from a pivot language, and never translate from one locale into another. An
   approved string in the source language is only the version of the intent written in *that
   language*. Translating from a pivot gives a translated register to every other locale at once.
-- Put the intent into a **comment where the component source references the key**, so whoever
-  writes the string again later can read what it was meant to do.
 - **Check the syntax rules mechanically.** String libraries reserve meta-characters, such as the
   separators for plurals or context and the delimiters for interpolation. One of them left
   unescaped can cut a rendered string short silently, without an error anywhere. Ban them

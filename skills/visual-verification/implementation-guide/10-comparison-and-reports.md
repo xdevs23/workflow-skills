@@ -82,7 +82,7 @@ with the result for that checkpoint below them.
 Reports are self-contained. Images are embedded as data addresses, and a report does not load any
 external script, style sheet, font or image. Every label is escaped. Scene names, predicates and
 measured text can contain markup characters. Reports are generated with a templating or rendering
-library that escapes by default. They are never built by joining strings. Reports are written with
+library that escapes by default. Reports are written with
 private permissions.
 
 ## Numbers and their reasons

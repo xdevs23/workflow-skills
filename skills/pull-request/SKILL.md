@@ -61,8 +61,6 @@ Closes #<n>
 
 ## The parts
 
-- Open with the note alert in the form `workflow-skills:pr-comment-replies` gives for every reply:
-  the name and version of the model and the handle on whose behalf you open the pull request.
 - Write under "What value this provides" one or two plain sentences on what is better for the
   reader or the user once the change is merged.
 - Name the benefit for the reader or the user under "What value this provides", and leave out every
@@ -101,9 +99,7 @@ Closes #<n>
   on the base commit and one on the head commit, as `workflow-skills:visual-verification` describes.
   Give a surface without a scene one first.
 - Attach to any other change, such as one to logic, data, a flow, tooling or a skill, one before and
-  after picture drawn as `workflow-skills:visual-decisions` describes: boxes and arrows for what
-  happens out of sight, the data model or the schema, or an excerpt of the real file with the
-  untouched lines folded and the edited lines highlighted.
+  after picture drawn as `workflow-skills:visual-decisions` describes.
 - Do not attach a picture to a change with nothing to draw, such as a wording fix or a dependency
   raise, and say why in one line under "Evidence".
 - Show the base commit on the left of a before and after picture, labeled "Before, <short base

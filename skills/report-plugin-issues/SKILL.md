@@ -45,8 +45,6 @@ with this plugin.
 
 ## Filing
 
-- Open the body of every issue and every comment with the note alert described in
-  `workflow-skills:pr-comment-replies`.
 - Write the body to a file in the project cache defined by `workflow-skills:local-cache`.
 - File the issue directly with
   `gh issue create --repo xdevs23/workflow-skills --title "<title>" --body-file <file>`.

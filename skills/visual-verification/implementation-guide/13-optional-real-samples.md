@@ -58,8 +58,8 @@ connection open without answering keeps the refresh waiting until the user who r
 ## Projection
 
 Each decoded response is projected right away through an allowlist of fields defined per operation.
-Decoding uses the standard JSON decoder and then explicit assertions on types and shapes. A custom
-parser is never used. The projection contains the displayed fields and the relationships needed by
+Decoding uses the standard JSON decoder and then explicit assertions on types and shapes.
+The projection contains the displayed fields and the relationships needed by
 the scene. It excludes email addresses, contact details, the bodies of sessions and reports,
 unrelated organization fields, attachment metadata and unused private text. A service response is
 never serialized as a whole.

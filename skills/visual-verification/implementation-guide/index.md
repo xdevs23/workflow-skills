@@ -81,8 +81,7 @@ run ends.
 The shape and breadth of the guide follow a reference harness built for one web application. Each
 part describes what a component has to do. The components and libraries used by the reference
 appear only as examples, beside the capability each one provided. The guide leaves out version
-numbers. You choose the components that fit the project, and you verify their current versions when
-you add them.
+numbers. You choose the components that fit the project.
 
 The choice depends on three capabilities. The automation component intercepts every data source
 before the first render, blocks every connection to an external system, controls a clock, and

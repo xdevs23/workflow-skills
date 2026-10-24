@@ -33,7 +33,7 @@ It then prints one usage line that lists every verb with its options, and exits 
 of another verb is rejected like an unknown one.
 
 The command line uses the standard argument parser of the language in its strict mode, with
-positional arguments allowed. Arguments are never parsed by hand. Every structured format used by
+positional arguments allowed. Every structured format used by
 the harness is read and written with standard libraries: JSON, URLs and query strings, HTML, tokens
 and images.
 

@@ -100,17 +100,11 @@ with this plugin.
 ## Findings
 
 - Read what the reviewers found.
-- Fix every finding about code that the change adds or edits right away, and never record one as
-  work for later. Ask the user about a finding whose fix needs a decision by the user.
 - Start at most one fix run for the findings of a change, with one implementer that gets all of
   them, each with the shape to build as the reviewer named it, or fix them all yourself by hand.
 - Fix by hand every finding left after that fix run, and every finding of a later review of the
   change.
 - Start no review round of your own on the fix.
-- Leave a finding about code outside the change out of this change. Fix it as a separate unit in
-  parallel, as `workflow-skills:todo-md` describes.
-- Remove a silenced check in a file edited by the change as part of the change, also when it was
-  there before.
 - Put every rule that an implementer reports as standing in the way of its work to the user, with
   the place where it stood in the way.
 - Show the user every optional pick a reviewer returns, and build it only when the user picks it.

@@ -91,8 +91,6 @@ with this plugin.
   needs a decision by the user.
 - Write every other finding beyond the granted work, such as an idea for a feature, into the run
   file as a question to the user. Never work on it.
-- Remove a silenced check in a file the run edits, also one from before the run, as part of the
-  run.
 
 ## Decisions
 
@@ -168,6 +166,5 @@ with this plugin.
 
 - Capture screenshots and screen recordings as `workflow-skills:visual-verification` describes, keep
   them in the project cache, and list them in the index of the evidence in the run file.
-- Keep signing keys and other secrets out of the repository, as `workflow-skills:hygiene` requires.
 - End the run with a report: what was built, how to build and install it, the evidence, the
   decisions made by the agents, the open questions, and what was recorded for later.
