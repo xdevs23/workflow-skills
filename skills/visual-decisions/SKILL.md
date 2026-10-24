@@ -1,22 +1,12 @@
 ---
 name: visual-decisions
-description: Applies when you draw a page for the user to look at and answer, such as the draft of a change or product decisions that need an answer.
+description: Draw a page for the user to look at and answer, such as the draft of a change or product decisions that need an answer.
 ---
 
 # Visual decisions
 
 **Load the `workflow-skills:writing-style` skill first.** Its rules apply to every word on the page
 and in the chat message that comes with it.
-
-A visual decision page shows a change, or the decisions it needs, as pictures side by side: the
-code as it is, labeled by the state it is in, next to After, what the user would see or what would
-happen once the change is made. The user sees the difference at a glance and never has to rebuild
-it from a description.
-
-- Follow every rule by what it is for. Getting a result forbidden by a rule through another route,
-  such as a cast hidden in a helper, a type widened until a value fits or a term redefined until
-  the work passes, breaks the rule just as the forbidden form does. When a rule stands in the way
-  of your work, name it where you report your work, and never go around it.
 
 ## When it applies
 
@@ -31,8 +21,6 @@ it from a description.
   or the working tree with the changes nobody has committed yet. An After that the code does not
   define yet is the exception.
 - Draw every state that has code from what that code does.
-- Where a statement about a state turns out wrong in its code, draw what the code really does, and
-  add one line starting `CORRECTION:` under that section.
 - Pick one realistic sample for the whole page, with real-looking names, texts and values, and at
   least one long value where length matters.
 
@@ -52,7 +40,7 @@ it from a description.
 - Put a legend under that box, with one marker for each kind of mark the page uses:
   - After, in green, for a part the change adds or changes;
   - the earlier state, in red, for a part that After leaves out;
-  - Optional pick, in blue, for one more After picture with an alternative approach;
+  - Optional pick, in blue, for one more After picture with a better, alternative approach;
   - a dashed box, for a file the change does not edit;
   - Updated, in purple, for a part that changed after the last answer from the user.
 - Keep each page within one browser window where you can. When the decisions need more room, split
@@ -68,36 +56,48 @@ it from a description.
   difference first.
 - Write words on the rest of the page only as labels, titles, captions and marks. A picture that
   needs a paragraph to explain it is not clear yet.
+- The page must be drawn in a very visual way, so that the user looking at it sees at first glance
+  what the end result is and how the change feels like. Resist the temptation to puke out a huge
+  wall of text on the HTML page.
 
 ## Pictures
 
 - Draw a visible change as an imitation of the real screen, with its structure, its labels and its
-  look.
-- Draw technical details, such as migrations, data models and schemas, as pictures as well.
+  look. Where possible and cheap, make real screenshots or import the real screen so the user sees
+  how it actually looks like.
+- Draw technical details, such as migrations, data models and schemas, as pictures or graphs.
 - Draw a change that happens out of sight, such as where in the code a decision is made, as boxes
   and arrows: which part calls which, and what passes between them, in each state.
-- Show code as an excerpt of the real file, under a header with the component and the path.
+- Show code as an excerpt of the real file, under a header with the component and the path. Keep
+  the snippets short and to the point. The code must be well readable. If you show internal details
+  of the code, then you're missing the point: go one layer up and abstract away, so that the
+  functions, variables and other declarations read like what it actually does in the real world.
 - Fold the lines of the file that the change does not edit into one gray line with a short
-  description of them, such as "⋯ the two fingerprint sensor values", and highlight every line the
-  change adds or edits.
+  description of them, and highlight every line the change adds or edits.
 
 ## Choices and optional picks
 
-- Make yourself every choice left open by the words of the user and the rules, and draw it as part
-  of After.
-- Ask the user nothing beyond the decisions that need an answer on this page.
-- Draw every alternative approach as one more After picture beside the others of its section, with
+- Make every choice left open by the words of the user and the rules, and draw it as part of After.
+  Do not ask questions in the draft, do not add open points and do not try to nudge the user into accepting
+  a real tradeoff.
+- Draw every better, alternative approach as one more After picture beside the others of its section, with
   the label `Optional pick:` in blue in place of the state label. The change includes it only when
-  the user picks it.
+  the user picks it explicitly. An approval without mentioning an optional pick means the user accepts the "After"
+  shape.
 - Never show an optional pick as text alone. Draw an alternative that happens out of sight as boxes
-  and arrows, like any other picture.
+  and arrows, like any other picture or graph. Optional picks are not allowed to pose a downgrade or
+  introduce a real tradeoff that "After" doesn't already introduce. Use optional picks to suggest
+  objectively better solutions that the user can pick, even if it means it needs more code or another round
+  of drafts.
 
 ## Updating the page
 
 - When the user says what should be different, edit the page in place by hand. A page drawn again
   from scratch hides the difference.
-- Mark every part that changed as Updated, with a purple outline and an `UPDATED` badge. Remove
-  the Updated marks of earlier rounds.
+- Mark every part that changed as Updated, with a purple outline and an `UPDATED` badge, as granular as possible.
+  Remove the Updated marks of earlier rounds. Do not mark an entire section as updated when it already exited before.
+  Rather, circle in just the thing you changed. You can also use purple underline on the text that was added
+  or changed, and you may use strikethrouhg `~~ ~~` when it helps understand a subtle change.
 - Add to the line under the title what changed after the last answer from the user.
 - When the user picks an optional pick, make it the After picture of its section and remove the
   other optional picks there. Remove an optional pick the user declines.
@@ -106,7 +106,7 @@ it from a description.
 ## Making the page
 
 - Draw the page yourself, or hand the first drawing to one agent when the code to read is large.
-  List in its prompt the files to read, the file of `workflow-skills:writing-style` to read before
+  List in the files to read at a minimum in its prompt, the file of `workflow-skills:writing-style` to read before
   writing, every section with the states it shows, the rules of this skill and the output path, and
   tell the agent to write exactly that one file.
 - Give that agent, for every state it draws that has code, the repository and either the full
@@ -119,11 +119,8 @@ it from a description.
   a file for the user, show the page the way the harness allows, such as an inline artifact, inline
   HTML or an embedded screenshot.
 
-## Asking
+## Implementation
 
-- End the message with one question: whether the user approves the page, or, on a page of
-  decisions, the answer to each decision.
-- Keep the chat message to the path of the page and one line for each section.
 - Take an answer exactly as written. An answer that approves an After picture with one change asks
   for that picture with that change.
 

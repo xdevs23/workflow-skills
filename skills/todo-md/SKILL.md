@@ -1,86 +1,44 @@
 ---
 name: todo-md
-description: Applies when you track the state of work in a project, add units of work to the todo list or record feature requests for the project.
+description: Track the work of the project, see what's in progress and what should be done next.
 ---
 
-- When the session has a skill named `todo-md` without the plugin prefix, follow that skill and
-  leave this one aside. Follow `workflow-skills:todo-md` only when it is the only `todo-md` skill
-  available.
-- Follow every rule by what it is for. Getting a result forbidden by a rule through another route,
-  such as a cast hidden in a helper, a type widened until a value fits or a term redefined until
-  the work passes, breaks the rule just as the forbidden form does. When a rule stands in the way
-  of your work, name it where you report your work, and never go around it.
-
-`TODO.md` is the durable record of where a project stands. Anyone picking up a project, such as a
+`TODO.md` is the record of where a project stands. Anyone picking up a project, such as a
 new session, a new contributor or an agent without history, reads that file first and then knows
-where things stand.
+where things stand. The file is not authority about state outside itself – read the code and git state first before trusting anything in this file.
 
-- Where a project defines a different convention for recording the state of runs, or a different
-  location for the file, follow the convention of the project.
+# Purpose
 
-# 1. What it is, and what it is not
-
-`TODO.md` contains **the work left to do, and where each item currently stands**.
-
-- Keep the local status of the project in `TODO.md` and nowhere else. A task list inside the
-  session disappears when the session ends. Private notes are invisible to everyone else. Never
-  write status into either one.
+- Keep the local status of the project in `TODO.md`.
 - Record in `TODO.md` every fact about how far the project has progressed that is recorded nowhere
-  else.
-- Use `TODO.md` as a tracker of units of work, like an issue tracker. Never use it as a diary or a
-  scratchpad.
+  else. Do not use it as a diary, for internal facts or for decisions that don't need to be recorded.
+  You can use the notes from `workflow-skills:implement` to write down user decisions for a unit.
+- Use `TODO.md` as a tracker of units of work, like an issue tracker would be used for.
 - Write an entry only for work the user asked for, work that is planned with the user, and work
   being done.
-- Write no entry for a task that changes nothing in the project.
+- Do not write an entry for a task that changes nothing in the project.
 - Treat a state in `TODO.md` as the last state someone wrote down. Before you report a state or
   act on it, check the work against the branches, the history of the main branch, the pull
   requests and the deployment where it would show up, and correct the entry first. Ask the user
-  for what you cannot check yourself.
+  for what you cannot check yourself before making a claim the user would get upset about.
 
 `TODO.md` is **gitignored and untracked**: it is a working file on one machine and is not part of
 the repository. A fresh clone does not contain it.
 
-The work of keeping track is split across four records:
-
-| Record | Contains |
-|---|---|
-| `TODO.md` | Open work, its order, its current state, and the decisions still owed |
-| git history | What changed, and when it was committed |
-| design documents, wherever the project has them | The durable design for a change |
-| task list inside the session | Only the steps of this session, thrown away when it ends |
-
-- When an item is finished, leave the **design** in the design documents and the **diff** in git,
-  and delete the entry for the item from `TODO.md`. An item is finished once it is `VERIFIED`, or
+- When an item is finished, the code represents the **design** and the **diff** is in git.
+  Then delete the entry for the item from `TODO.md`. An item is finished once it is `VERIFIED`, or
   `PUSHED` in a project that is not deployed.
-- Delete an entry also when the user says so, or when it is the fix of an older defect that §3.2
-  describes and the fix is merged. Never delete an entry for any other reason.
-- Remove a deleted entry from every `Builds on:` line that names it.
-- Do not explain again in `TODO.md` a design already written in a design document.
+- Delete an entry also when the user says so, or when it is the fix of an older defect and the fix is merged.
+  Never delete an entry for any other reason.
+- Remove a deleted entry from every `Builds on:` line that names the deleted entry.
+- Do not explain again in `TODO.md` what is already tracked somewhere else, even if uncommitted.
 
-# 2. Layout of the file
+# Layout of the file
 
-- Write the entries in the order of their numbers, so the newest entry is the last one in the
-  file.
-- Put the reference material, such as the header and the conventions, first and the record after
-  it, in the order of the ids, in these sections:
+- Write the entries in the order of their numbers, so the newest entry is the last one in the file.
+- Write nothing else into the file. The file is neither a diary, nor your personal scratchpad.
 
-1. **Header**: what the file is, and the conventions that apply to every entry, with a reference to
-   this skill.
-2. **Incidents**: recorded failures, written down verbatim so they do not repeat. Write in each one
-   what happened, the cost and the sharper instruction learned from it. Once code, tests or the way
-   the system is built prevent the incident by structure, remove the entry, and explain in the
-   change that resolves it which type of incident the change addresses.
-3. **Current queue**: the active order of work, with the deployment state that comes before it.
-   Rewrite the queue when the order changes.
-   - When new work sets other work aside, add a line to the queue before you start the new work.
-   - Write into that line the entry set aside, the entry that has to finish first, and where to go
-     back to once that entry is done.
-   - Remove the line when the work is resumed or finished.
-4. **Deploy state**: what is live where, with commit hashes and the evidence for `SHIPPED` and
-   `VERIFIED`.
-5. **Open sections by area**: the entries for single items, grouped by area of the project.
-
-# 3. Anatomy of an entry
+# Anatomy of an entry
 
 ```
 ### #142 - Reaction emoji support - RECORDED
@@ -94,7 +52,6 @@ The work of keeping track is split across four records:
   `#142 - GH #73 - Reaction emoji support - RECORDED`
   `#165 - ABC-210 - User type 'editor' - IN PROGRESS`
 - **`- <STATE>`**: the state marker, in uppercase, after the separator dash used by the format.
-  See §4.
 - **Date**: do not add a date. Commit messages and the time the file was last changed already give
   the date.
 - **Body**: prose with what the item is, where it stands and what is still to be done. Put run
@@ -109,7 +66,7 @@ The work of keeping track is split across four records:
 - When you report on several entries, show in the message the chains of `Builds on:` lines and the
   lines in the queue about work set aside that concern them.
 
-## 3.1. One behavior to a unit
+## One behavior to a unit
 
 - Give a unit one behavior: something stated in one sentence, such as "the profile page shows the
   avatar".
@@ -145,7 +102,7 @@ The work of keeping track is split across four records:
 - When the delivery of a sub-unit is rejected, deliver none of the sub-units that build on it, and
   ask the user how to go on.
 
-## 3.2. Findings raised while building a unit
+## Findings raised while building a unit
 
 - Fix a finding about code the unit adds or edits in the unit itself, and never record it.
 - Put a finding, also one about older code, to the user as a question when fixing it needs a
@@ -167,7 +124,7 @@ The work of keeping track is split across four records:
 - Add the fix of an older defect to the `Builds on:` line of the unit when the unit cannot work
   without it.
 
-# 4. The states an entry can take
+# The states an entry can take
 
 The state is a fixed enum: either no marker or one of the markers listed here, grouped by where the
 item stands.
@@ -187,13 +144,10 @@ item stands.
 
 **Ready to build**
 
-- `READY`: the design is agreed and written down. Name the design document in the entry. Work does
-  not start yet.
-- `TODO`/`QUEUED`: the unit can be built at any time, even if the session is wiped and started
-  fresh.
+- `READY`: the design is agreed and written down, for example in the notes of `workflow-skills:implement`.
+- `QUEUED`: the unit can be built at any time, even if the session is wiped and started fresh.
 
-Whether a unit is ready to build follows from the words of the user alone, except for the fix of
-an older defect that §3.2 describes.
+Whether a unit is ready to build follows from the words of the user alone.
 
 - Never decide it yourself.
 - When you infer authorization from a prompt of the user because its words are ambiguous, state that
@@ -221,16 +175,7 @@ an older defect that §3.2 describes.
 - `PARKED`: deliberately not being done. State why, so the reason can be examined again instead of
   derived again.
 
-**Held**
-
-An item can be finished but deliberately withheld.
-
-- Mark it `HELD CHANGE` inside the entry it belongs to.
-- State exactly what must happen first, and state what would go wrong if it shipped early.
-- Never commit it: a held change is the one case where a correct, passing change must not be
-  committed.
-
-## 5. Writing style
+## Writing style
 
 - **Write for a reader who knows nothing of the context.** Every entry is read fresh. A reader who
   was not there must be able to act on it without asking anything.
@@ -249,7 +194,7 @@ An item can be finished but deliberately withheld.
   bullet lists, never as run-on sentences joined by dashes or semicolons. Do not use mannered
   speech.
 
-## 6. What never goes in
+## What never goes in
 
 - **Never write absolute local paths, machine names or personal details.** Use paths relative to
   the repository only.
@@ -258,12 +203,8 @@ An item can be finished but deliberately withheld.
   the decision and its date, and leave out the conversation that produced it.
 - **Never write credentials of any kind**, even though the file is local. They leak by being
   copied.
-- Record in `TODO.md`, where it helps, operational detail that must never enter a commit, such as
-  which models or accounts ran a step and details specific to the local machine.
-- Never let any of that detail cross into a tracked file, a document or a commit message. Which rule
-  applies depends on the destination.
 
-## 7. When to write
+## When to write
 
 - Write into `TODO.md` without being asked, during and after turns, in the same turn as each of
   these moments:
@@ -271,7 +212,7 @@ An item can be finished but deliberately withheld.
     file.
   - The user asks for a unit of work or approves one. Write it with its status marker and its origin
     pointer.
-  - You start the fix of an older defect, as §3.2 describes.
+  - You start the fix of an older defect.
   - A state changes: something starts, finishes, gets committed, merged, pushed or deployed, gets
     a pull request opened or merged, or gets held.
   - A decision is made, or a new one becomes owed.
@@ -284,3 +225,20 @@ An item can be finished but deliberately withheld.
   the user asks for it or approves it.
 - Test whether an update is needed by asking: **if the session ended right now, would the next
   reader know what to do?** If not, the file is stale.
+
+## Your action
+
+The first thing you do when you see this skill is check what work is currently running (workflows, background tasks),
+then check the TODO.md for entries that are `IN PROGRESS` or `QUEUED`.
+
+When reading through TODO.md, here's what to do for each status:
+
+- `RECORDED` – Don't do anything about it. The user says something when they want to do anything about it.
+- `QUEUED` – Start the work. Set it to `IN PROGRESS` after you launched the work (code edits, workflows, commands).
+- `IN PROGRESS` – Check the current progress on the item, and resume the work if it is not running.
+- `NEEDS DECISION` – Wait for the user to be ready and present, then bring the decision to them.
+                     Use `workflow-skills:visual-decisions` when you can already draw a draft.
+- `BUILT` – Verify the result, check its current state and update the status if it has progressed.
+- `SHIPPED` – Check the current status, and update the status if it has progressed.
+- `VERIFIED` – The unit is done and should be removed.
+
