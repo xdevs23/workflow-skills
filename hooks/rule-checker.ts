@@ -6,6 +6,7 @@ import { checkAtEnd, fixedSystemCache } from './checker.ts'
 import { activeSettings, LoadKind, loadSessionSettings } from './checker-settings.ts'
 import { COMMAND, loadProblemText, runCommand } from './command.ts'
 import { SENT_FINDINGS } from './delivery.ts'
+import { failureOf } from './failure.ts'
 import { clearState } from './last-check.ts'
 import { clearNote, hasFindings, noteOf } from './note.ts'
 import { noteTree, rowsOf } from './note-view.ts'
@@ -13,12 +14,7 @@ import { clearPrompts, collectPrompt } from './prompts.ts'
 import { askForInstructions, storeInstructions, storeNestedInstructions } from './rules.ts'
 import { clearSent } from './sent-findings.ts'
 import { enterSession } from './session-file.ts'
-
-async function todoOf($: EngineInterface, root: string): Promise<string | null> {
-  const path = `${root}/TODO.md`
-
-  return (await $.fs.exists(path)) ? $.fs.read(path) : null
-}
+import { todoOf } from './todo-file.ts'
 
 // Starts the checker as a fresh load does: with an empty note, and requesting the instruction
 // files again, which the engine resolved while the checker was off or before this module was
@@ -70,8 +66,6 @@ async function whenOn<E, R>(
 
 export const register: Register = on => {
   const fixed = fixedSystemCache()
-  // The project root as the session first reported it, so TODO.md is read from one place.
-  let root: Promise<string> | undefined
 
   on('session.start', async ($, e, next) => {
     // Session state survives a reload, so a checker that is on starts again.
@@ -90,7 +84,7 @@ export const register: Register = on => {
     if (reply.isStarted) await startChecker($)
     return { text: reply.text }
   }).catch(($, e, next) => ({
-    text: `The rule checker command failed: ${next.error.message ?? next.error.kind}`,
+    text: failureOf('The rule checker command', next.error),
   }))
 
   on('prompt.context', ($, e, next) =>
@@ -138,13 +132,12 @@ export const register: Register = on => {
   // findings. The two models never loop.
   on('classic.Stop', ($, e, next) =>
     whenOn($, e, next, async settings => {
-      root ??= $.session.root()
       const message = e.last_assistant_message
       const inFlight = { tasks: e.background_tasks ?? [], crons: e.session_crons ?? [] }
       const { running, waiting } = await backgroundOf($, inFlight)
       await checkAtEnd({ settings, cache: fixed }, $, {
         final: message === undefined || message.trim() === '' ? null : message,
-        todo: await todoOf($, await root),
+        todo: await todoOf($),
         running,
         waiting,
         signal: next.signal,

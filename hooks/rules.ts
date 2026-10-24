@@ -87,9 +87,15 @@ export async function pluginSkills($: EngineInterface): Promise<string[]> {
     .sort()
 }
 
-async function skillRules($: EngineInterface, skill: string): Promise<Rules[]> {
+// The qualified name of a skill of this plugin, such as `workflow-skills:todo-md`.
+export function skillName($: EngineInterface, skill: string): string {
+  return `${$.plugin.name}:${skill}`
+}
+
+// The text of every Markdown file of a skill of this plugin, each with the name of its source.
+export async function skillRules($: EngineInterface, skill: string): Promise<Rules[]> {
   const dir = `${skillsDir($)}/${skill}`
-  const name = `${$.plugin.name}:${skill}`
+  const name = skillName($, skill)
 
   return Promise.all(
     (await markdownFiles($, dir)).map(async file => ({
