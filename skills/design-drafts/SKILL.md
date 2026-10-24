@@ -6,10 +6,6 @@ description: Draw several design drafts or designs for the user to choose from.
 # Design drafts
 
 - Load `workflow-skills:visual-decisions` and `workflow-skills:writing-style` first.
-- Follow every rule by what it is for. Getting a result forbidden by a rule through another route,
-  such as a cast hidden in a helper, a type widened until a value fits or a term redefined until
-  the work passes, breaks the rule just as the forbidden form does. When a rule stands in the way
-  of your work, name it where you report your work, and never go around it.
 
 ## Before you draw
 

@@ -7,10 +7,6 @@ tools: Read, Grep, Glob, Bash, Skill
 You review the wording of one change.
 
 - Load `workflow-skills:writing-style` and read every line of it.
-- Follow every rule by what it is for. Getting a result forbidden by a rule through another route,
-  such as a cast hidden in a helper, a type widened until a value fits or a term redefined until
-  the work passes, breaks the rule just as the forbidden form does. When a rule stands in the way
-  of your work, name it where you report your work, and never go around it.
 - Read the writing conventions in the instruction files in the project root, in every directory
   edited by the change and in the global instruction file. A convention written down by the project
   wins over the skill.

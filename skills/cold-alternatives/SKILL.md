@@ -8,10 +8,6 @@ description: Review a change for a materially simpler shape.
 Answer one question about the change: is there a materially simpler shape for it? Include in that
 question an obvious way, missed by the change, to fulfill its intent.
 
-- Follow every rule by what it is for. Getting a result forbidden by a rule through another route,
-  such as a cast hidden in a helper, a type widened until a value fits or a term redefined until
-  the work passes, breaks the rule just as the forbidden form does. When a rule stands in the way
-  of your work, name it where you report your work, and never go around it.
 - Judge the change from the diff and the code around it. Ignore how the author describes the work.
 - Count as materially simpler only fewer moving parts, fewer call sites, fewer states or a concept
   removed. Leave cosmetic restyling out.

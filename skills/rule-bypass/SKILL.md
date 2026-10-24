@@ -8,10 +8,6 @@ description: Review a change for ways around a rule or a check.
 Review the change for one thing only: places where it meets the wording of a rule or a check and
 still gets a result forbidden by the rule.
 
-- Follow every rule by what it is for. Getting a result forbidden by a rule through another route,
-  such as a cast hidden in a helper, a type widened until a value fits or a term redefined until
-  the work passes, breaks the rule just as the forbidden form does. When a rule stands in the way
-  of your work, name it where you report your work, and never go around it.
 - Leave unrelated concerns to other lenses.
 - Judge each rule handed to you, and each rule in the instruction files of the project, by what it
   is for, and report every place where the change defeats that purpose.

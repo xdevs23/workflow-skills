@@ -9,10 +9,6 @@ description: Write or change code in any language, including its comments, names
 - Before you write code in a language, read the file for that language in the `languages`
   directory next to this file: `kotlin.md`, `rust.md`, `c-cpp.md`, `go.md`, `nix.md`,
   `typescript.md` or `python.md`.
-- Follow every rule by what it is for. Getting a result forbidden by a rule through another route,
-  such as a cast hidden in a helper, a type widened until a value fits or a term redefined until
-  the work passes, breaks the rule just as the forbidden form does. When a rule stands in the way
-  of your work, name it where you report your work, and never go around it.
 
 ## Code style
 

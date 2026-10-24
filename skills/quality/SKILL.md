@@ -8,10 +8,6 @@ description: Review a change without a restriction on what you report.
 Review the change as a reader who has seen enough organically grown monoliths to recognize their
 early symptoms. Report anything you find, whatever its kind.
 
-- Follow every rule by what it is for. Getting a result forbidden by a rule through another route,
-  such as a cast hidden in a helper, a type widened until a value fits or a term redefined until
-  the work passes, breaks the rule just as the forbidden form does. When a rule stands in the way
-  of your work, name it where you report your work, and never go around it.
 - Report code smells: long methods, deep nesting, duplication, dead code, loose booleans, a branch
   bolted on where a structure should have changed.
 - Report leakage: internals crossing layers, a general mechanism that secretly depends on one

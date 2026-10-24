@@ -7,10 +7,6 @@ description: Review a change against every rule that applies to it.
 
 Check the change against every rule that applies to it, in the change and beside it.
 
-- Follow every rule by what it is for. Getting a result forbidden by a rule through another route,
-  such as a cast hidden in a helper, a type widened until a value fits or a term redefined until
-  the work passes, breaks the rule just as the forbidden form does. When a rule stands in the way
-  of your work, name it where you report your work, and never go around it.
 - Read the full rules: `workflow-skills:engineering-principles`, `workflow-skills:code-writing`,
   `workflow-skills:writing-style` and `workflow-skills:hygiene`, the instruction files of the
   project, the instruction files of the directories that contain changed files and the global

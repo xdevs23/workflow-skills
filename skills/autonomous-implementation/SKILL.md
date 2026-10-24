@@ -14,11 +14,6 @@ notes of the user's words and a draft before anything is built. Here, subagents 
 decisions, the user's input is optional and never waited for, and the work goes milestone by
 milestone until its stop condition is met and the evidence shows it.
 
-- Follow every rule by what it is for. Getting a result forbidden by a rule through another route,
-  such as a cast hidden in a helper, a type widened until a value fits or a term redefined until
-  the work passes, breaks the rule just as the forbidden form does. When a rule stands in the way
-  of your work, name it where you report your work, and never go around it.
-
 ## The grant
 
 - Work this way only when the user asked for it. The user grants it for one task, for the whole

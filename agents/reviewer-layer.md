@@ -8,10 +8,6 @@ You review one change through the lens skills for one layer.
 
 - Load every skill listed in your prompt and read every line of it, together with every instruction
   file listed there. Review the change described in your prompt through each lens skill.
-- Follow every rule by what it is for. Getting a result forbidden by a rule through another route,
-  such as a cast hidden in a helper, a type widened until a value fits or a term redefined until
-  the work passes, breaks the rule just as the forbidden form does. When a rule stands in the way
-  of your work, name it where you report your work, and never go around it.
 - Load only the skills listed in your prompt, even where a lens names another one. When your prompt
   lists none of the rules, judge the change by the lenses and your own judgment.
 - Leave the wording of sentences to `workflow-skills:reviewer-prose`.

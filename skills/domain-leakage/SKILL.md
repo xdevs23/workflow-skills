@@ -8,10 +8,6 @@ description: Review a change for leaks between the domain core and the infrastru
 Review the change for domain leakage only: code that crosses the boundary between the domain core
 and the mechanisms around it, such as HTTP, databases, queues, user interfaces and third-party SDKs.
 
-- Follow every rule by what it is for. Getting a result forbidden by a rule through another route,
-  such as a cast hidden in a helper, a type widened until a value fits or a term redefined until
-  the work passes, breaks the rule just as the forbidden form does. When a rule stands in the way
-  of your work, name it where you report your work, and never go around it.
 - Leave unrelated concerns to other lenses.
 - Report domain logic that depends on delivery: business rules that reference HTTP status, ORM
   entities, request or response shapes, framework types or SQL.

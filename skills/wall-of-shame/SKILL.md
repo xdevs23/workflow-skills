@@ -15,11 +15,6 @@ describes one rule violation by a session of a coding agent on the machine: the 
 written by the model and quoted from the transcript, the broken rule quoted from the file that
 contains it, a plain roast of the failure, and the line in the transcript.
 
-- Follow every rule by what it is for. Getting a result forbidden by a rule through another route,
-  such as a cast hidden in a helper, a type widened until a value fits or a term redefined until
-  the work passes, breaks the rule just as the forbidden form does. When a rule stands in the way
-  of your work, name it where you report your work, and never go around it.
-
 ## Why it exists
 
 Rules alone do not stop repeat violations. A session breaks a rule already in the context of that

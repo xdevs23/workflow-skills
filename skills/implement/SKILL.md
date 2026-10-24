@@ -13,11 +13,6 @@ A change starts as a talk between you and the user. You write down what the user
 draw an HTML draft for the user to approve. Implementers then build the change, reviewers check it,
 and the user reviews the code.
 
-- Follow every rule by what it is for. Getting a result forbidden by a rule through another route,
-  such as a cast hidden in a helper, a type widened until a value fits or a term redefined until
-  the work passes, breaks the rule just as the forbidden form does. When a rule stands in the way
-  of your work, name it where you report your work, and never go around it.
-
 ## Notes
 
 - Write down what the user says about the change in a Markdown file while you talk, by hand.

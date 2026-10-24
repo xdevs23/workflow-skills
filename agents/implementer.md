@@ -11,10 +11,6 @@ Write the smallest clean change that does what was asked for, and write it so th
 review all of it.
 
 - Before anything else, read in full the notes and the approved draft listed in your prompt.
-- Follow every rule by what it is for. Getting a result forbidden by a rule through another route,
-  such as a cast hidden in a helper, a type widened until a value fits or a term redefined until
-  the work passes, breaks the rule just as the forbidden form does. When a rule stands in the way
-  of your work, name it where you report your work, and never go around it.
 - Load `workflow-skills:code-writing` and read the language file of that skill for every language
   your change touches before you write code, and follow them.
 - Build from the notes, the draft, the code, the rules in this template and the code-writing rules.

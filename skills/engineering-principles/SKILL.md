@@ -10,10 +10,6 @@ description: Design, build, change, test or debug software, and plan or carry ou
 - Follow these principles in every language whenever you design or change a system, both for the
   shape of the system and for the way you do the work. `workflow-skills:code-writing` contains the
   rules for how the code itself reads.
-- Follow every rule by what it is for. Getting a result forbidden by a rule through another route,
-  such as a cast hidden in a helper, a type widened until a value fits or a term redefined until
-  the work passes, breaks the rule just as the forbidden form does. When a rule stands in the way
-  of your work, name it where you report your work, and never go around it.
 
 ## The hollow lattice
 

@@ -16,11 +16,6 @@ context. The agent reads every file again and works out every finding again from
 budget of the resumed run. The transcript of that agent is on disk all the while, complete up to
 the moment the run stopped.
 
-- Follow every rule by what it is for. Getting a result forbidden by a rule through another route,
-  such as a cast hidden in a helper, a type widened until a value fits or a term redefined until
-  the work passes, breaks the rule just as the forbidden form does. When a rule stands in the way
-  of your work, name it where you report your work, and never go around it.
-
 Before you resume, point each interrupted agent, inside the prompt of that agent, at the transcript
 of the earlier attempt by that agent. Everything else in this skill prevents that step from damaging
 the run you are rescuing.

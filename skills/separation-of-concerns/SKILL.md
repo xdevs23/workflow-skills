@@ -7,10 +7,6 @@ description: Review a change for units that do several unrelated jobs and layers
 
 Review the change for separation of concerns only.
 
-- Follow every rule by what it is for. Getting a result forbidden by a rule through another route,
-  such as a cast hidden in a helper, a type widened until a value fits or a term redefined until
-  the work passes, breaks the rule just as the forbidden form does. When a rule stands in the way
-  of your work, name it where you report your work, and never go around it.
 - Leave bugs, performance and naming to other lenses, unless one of them shows up as a violation of
   the separation of concerns.
 - Report a unit, such as a function, a class or a module, with more than one reason to change:

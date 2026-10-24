@@ -5,10 +5,6 @@ description: Decide where to put a file that is not meant for the repository, su
 
 # The project cache
 
-- Follow every rule by what it is for. Getting a result forbidden by a rule through another route,
-  such as a cast hidden in a helper, a type widened until a value fits or a term redefined until
-  the work passes, breaks the rule just as the forbidden form does. When a rule stands in the way
-  of your work, name it where you report your work, and never go around it.
 - Follow the user's global preferences about this directory wherever they differ from this file.
 
 ## The directory

@@ -11,10 +11,6 @@ is code, a rule or a document meant to apply to every case. It depends on that s
 branches on it, uses its internals or contains its name. Every later case then becomes one more
 special case inside the general unit.
 
-- Follow every rule by what it is for. Getting a result forbidden by a rule through another route,
-  such as a cast hidden in a helper, a type widened until a value fits or a term redefined until
-  the work passes, breaks the rule just as the forbidden form does. When a rule stands in the way
-  of your work, name it where you report your work, and never go around it.
 - Report a generic, base or utility unit that type-checks, downcasts, branches on or special-cases a
   concrete type passed to it, such as `isinstance`, `instanceof` or a tag switch inside generic
   code.
