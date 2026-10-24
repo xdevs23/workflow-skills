@@ -1,4 +1,4 @@
-# Part 8: fixtures and drift
+# Fixtures and drift
 
 Fixtures are the data rendered by every scene. Drift is the difference that appears when the real
 data shapes of the application change and the fixtures do not. The harness makes drift fail visibly
@@ -9,7 +9,7 @@ fixtures.
 ## The shared shell responses
 
 One helper builds the responses for the shell of the application. Every page scene builds on it.
-The read requests sent by the shell are those listed by the survey of part 1: navigation badges and
+The read requests sent by the shell are those listed by the survey: navigation badges and
 counters, the version line, account or organization switchers, health signals and held
 subscriptions. A scene that needs a different shell state, such as a switcher that is drawn because
 the account belongs to several organizations, declares that state explicitly through the helper.

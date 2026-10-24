@@ -1,4 +1,4 @@
-# Part 9: receipts and fingerprints
+# Receipts and fingerprints
 
 Every capture writes a receipt next to its images. The receipt contains everything that affects the
 pixels. A later comparison can then prove that two captures differ only where they are meant to
@@ -13,7 +13,7 @@ The receipt contains a format version and the scene name, followed by four group
 The compatibility group contains everything that must be identical between two captures for a
 comparison to be meaningful:
 
-* the scene fingerprint over the local import graph of the scene, from part 3;
+* the scene fingerprint over the local import graph of the scene;
 * a hash of the harness code;
 * the projection version of the fixtures, and a digest of the fixture set for every variant, which
   covers the response hashes and, for a real sample, the hash and provenance of the sample;
@@ -25,7 +25,7 @@ comparison to be meaningful:
 * the hash of the font configuration and the hashes of the shipped font assets;
 * the fixed settings: pixel density, timezone, the instants at which the clock is installed and
   paused, the frame interval of the clock, the motion preference, the animation and caret settings
-  of the screenshot, the screenshot scale and the comparison options of part 10.
+  of the screenshot, the screenshot scale and the comparison options.
 
 The source group contains the fully resolved revision of the application source. For a capture of
 the working tree, it also contains a fingerprint of the relevant content of the working tree and a
@@ -37,7 +37,7 @@ name, the file name of the image, what was captured, the readiness record from t
 and every measurement with its predicate, result, actual values and diagnostic flag. The
 interactions performed by a scene are identified by the checkpoints they lead to.
 
-The run group contains every failure message, the record written by the data boundary of part 5
+The run group contains every failure message, the record written by the data boundary
 for each variant, with required keys, matched and delivered counts, held keys, failures and pending
 local assets, and whether the inputs were stable during the capture.
 

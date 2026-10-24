@@ -1,4 +1,4 @@
-# Part 17: acceptance criteria
+# Acceptance criteria
 
 Every run of an adoption gets the acceptance criteria among its sources of rules. The verification
 of an adoption reports a separate verdict for every criterion, with evidence from artifacts and
@@ -120,7 +120,7 @@ The proof does not include a patch to production code. When the chosen viewport 
 defect, the real screen container is investigated and the scene is refined with measurements. A
 proof is claimed only after both outcomes have been observed. The scene that produced the proof is
 kept permanently. The changed counts recorded for each variant become a fixed expectation in the
-fourth acceptance rule for the diff coloring in part 11.
+fourth acceptance rule for the diff coloring.
 
 A project without such a commit pair makes any deliberate visible change instead, on a commit that
 is never merged, such as a changed padding, color or text in a component captured by a scene. The

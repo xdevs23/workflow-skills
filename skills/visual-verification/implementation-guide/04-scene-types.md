@@ -1,4 +1,4 @@
-# Part 4: scene types
+# Scene types
 
 A scene is a typed module written in the same language as the application, checked by the same
 compiler or type checker. The harness defines a small set of types used by every scene, and those
@@ -48,7 +48,7 @@ request failure is still a failure. A failing status on an undeclared path is ne
 A fixture set is the complete data used when one variant runs. It contains the version of the
 projection it was built from, a provenance, the main records used to build the screens in the scene,
 and the list of response fixtures. The provenance is synthetic for a fixture written by hand, and
-mixed-projected for a set that combines a projected real sample described in part 13 with synthetic
+mixed-projected for a set that combines a projected real sample with synthetic
 responses. Adaptation point: the main record types, such as the item edited on an item editor
 screen.
 
@@ -76,7 +76,7 @@ flag. Measurements attach to the next checkpoint captured by the scene. A run th
 after its last checkpoint fails, since those checks would belong to no image.
 
 The capture function takes a checkpoint name and optionally a target element. It runs the capture
-sequence described in part 6 and writes one PNG. The stored checkpoint name is the variant name
+sequence and writes one PNG. The stored checkpoint name is the variant name
 joined with the checkpoint name. A duplicate checkpoint name in one variant fails the run.
 
 A scene can also stop a variant with a hard assertion, for facts without which the rest of the scene
@@ -96,7 +96,7 @@ consumer on that screen and in the shell.
 A component scene contains the harness entry that mounts the component. The entry mounts the actual
 component with its real parameters and model updates inside the contextual container that surrounds
 it in the application, with the same start-up, styles, translations, theme and shipped fonts as the
-application, as described in part 6. A component scene may declare an empty set of responses. Any
+application. A component scene may declare an empty set of responses. Any
 request then fails the scene.
 
 ## Component hosts
@@ -173,8 +173,8 @@ region, each region as a separate checkpoint, after a viewport checkpoint of the
 
 ## Where scenes live
 
-Tracked scenes are stored beside the harness code, one module per scene, and registered as described
-in part 3. Exploratory scenes are stored in the harness directory inside the project cache, the
+Tracked scenes are stored beside the harness code, one module per scene, and registered in the scene
+registry. Exploratory scenes are stored in the harness directory inside the project cache, the
 location defined by `workflow-skills:local-cache`, until they are promoted.
 
 ## Web realization in the reference

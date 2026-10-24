@@ -1,4 +1,4 @@
-# Part 13: optional real samples
+# Optional real samples
 
 Synthetic scenes are mandatory and run without credentials. Samples of real data are an optional
 source of evidence. The harness is proven without them. A harness may ship without the refresh
@@ -40,7 +40,7 @@ runs a refresh operation.
 
 The credential is short-lived and supplied at run time through a dedicated environment variable or
 another protected input, never as a command argument, in a committed file or inside the rendering
-context. The launcher described in part 2 passes it only to the refresh verb. The service origin is
+context. The launcher passes it only to the refresh verb. The service origin is
 supplied explicitly and must be a bare encrypted origin. It uses the secure scheme and does not
 contain user information, a path beyond the root, a query or a fragment. The allowlist of
 endpoints is exact.
@@ -79,10 +79,10 @@ sample reader fail on a scene that does not have a projection.
 ## Publication
 
 Every response and every required manifest entry is validated before a sample is published, with the
-same validation as in part 8. Before its first request, the refresh creates a fresh directory and
-writes into it a manifest that marks the sample as incomplete. Only after validation does it write
-the responses and a complete manifest, and then it moves the directory to the label. The step that
-moves the directory fails when a sample with that label exists, so a complete sample is never
+same validation as a fixture set. Before its first request, the refresh creates a fresh directory
+and writes into it a manifest that marks the sample as incomplete. Only after validation does it
+write the responses and a complete manifest, and then it moves the directory to the label. The step
+that moves the directory fails when a sample with that label exists, so a complete sample is never
 overwritten in place.
 
 Publishing another profile under a label already used by a complete sample needs a deliberate step
@@ -135,7 +135,7 @@ locally with its provenance and that a refresh does not verify live visual compa
 
 Without credentials or a selection, the refresh fails before any request, with actionable
 instructions that list the missing inputs. A capture never starts the refresh. The self-test suite
-described in part 14 checks the refresh against a synthetic transport. It cannot verify a
+checks the refresh against a synthetic transport. It cannot verify a
 credentialed refresh.
 
 ## Web realization in the reference

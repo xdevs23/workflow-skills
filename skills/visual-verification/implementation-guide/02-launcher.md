@@ -1,4 +1,4 @@
-# Part 2: the launcher
+# The launcher
 
 The harness starts through one command, the launcher, run from the repository root with a verb and
 its arguments. The launcher is the only way to run the harness. Every other entry point fails
@@ -25,7 +25,7 @@ The launcher clears the environment. The run receives only an allowlisted set of
 search path of the locked environment, a private home directory inside the harness directory, the
 scratch directory, a cache directory inside the harness directory, the locked font configuration,
 the path of the locked rendering engine, an identifier of the system type of the machine, and the
-refresh variables described in part 13. Every other variable from the environment of the caller is
+refresh variables. Every other variable from the environment of the caller is
 left out of the run. Deployment settings, service credentials and developer preferences cannot
 change a capture. The runtime is configured not to load environment files from the repository, such
 as dotenv files.
@@ -64,7 +64,8 @@ The bootstrap then copies the harness code into the dependency cache keyed by th
 requested verb from that copy. It passes the dependency cache and the repository root as variables
 and disables the automatic installation of packages by the runtime. The self-test verb runs the test
 suite of the harness through the test runner of the runtime. Every other verb runs the command line
-described in part 3. Harness modules resolve packages only from the frozen cache, never from the
+described in the part on the command line and the scene registry.
+Harness modules resolve packages only from the frozen cache, never from the
 dependency directory installed in the project. The content of that directory is not confirmed by a
 lock check.
 
@@ -75,7 +76,7 @@ Fetching dependencies may use the network and happens before any rendering. The 
 itself never uses the network. A dependency missing during rendering is a failure and never triggers
 an installation. The reference met the rule for the frozen cache with `env -i` and a copied harness
 directory, as described in the web realization below, and the rule against network access with the
-request interception and browser settings described in part 5. Neither rule requires enforcement
+request interception and browser settings of the data boundary. Neither rule requires enforcement
 below the runtime, such as kernel namespaces or a sandbox.
 
 ## Two locks
@@ -83,8 +84,8 @@ below the runtime, such as kernel namespaces or a sandbox.
 The harness relies on two locks, and neither replaces the other. The dependency lock of the project
 locks the application, the framework it uses and the font packages shipped with it. After adoption,
 it also locks the automation and image libraries used by the harness. The environment lock locks the
-runtime, the rendering engine, the font configuration and the fallback fonts. The receipt described
-in part 9 records the hash of both.
+runtime, the rendering engine, the font configuration and the fallback fonts. The receipt records
+the hash of both.
 
 The automation library and the rendering engine are locked together, as a combination verified to
 work together during implementation: the version of the library in the dependency lock and the

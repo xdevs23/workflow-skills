@@ -1,4 +1,4 @@
-# Part 6: the runtime and the capture
+# The runtime and the capture
 
 The runtime runs one capture from start to end. It prepares the application source, starts the
 serving or build process that comes with the application, starts the rendering engine, runs every
@@ -9,7 +9,7 @@ the report. One component runs this whole sequence. The other parts supply it wi
 
 The runtime does not start when the variables set by the launcher are missing. The error message
 shown then contains the launcher command. Before anything else, the runtime fingerprints the
-application inputs and the harness code, as described in part 9.
+application inputs and the harness code.
 
 The capture directory is created with private permissions inside the harness directory in the
 project cache, at the location defined by `workflow-skills:local-cache`. Creating it fails when the
@@ -35,7 +35,7 @@ come from the selected revision. The receipt records the harness version and the
 separately.
 
 The runtime installs the dependencies listed in the frozen lock of the exported source into the
-dependency cache of part 2, which is keyed by the lock, and links them into the export. A lock
+dependency cache of the launcher, which is keyed by the lock, and links them into the export. A lock
 mismatch fails the capture with the instruction to fix the lock of the selected source deliberately.
 The component entries of the harness are copied into the export so the serving process can load
 them. The export directory is recorded as a path relative to the harness directory.
@@ -58,8 +58,8 @@ settings, the serving process:
 * uses a separate cache directory for every run;
 * sends only files from the export and the dependency cache.
 
-The combined configuration replaces the data origins with local values handled by the data boundary
-of part 5, sets the realtime endpoint to empty, and fixes build-time values such as the version
+The combined configuration replaces the data origins with local values handled by the data boundary,
+sets the realtime endpoint to empty, and fixes build-time values such as the version
 string and the build date. Adaptation point: the names of the origin, storage and realtime settings
 and of the build-time values in the application.
 
@@ -94,7 +94,7 @@ Before the first render, a clock is installed at a fixed time and paused at a fi
 context fixes the frame interval, the time by which the paused clock advances in one frame, so an
 animation or a transition takes the same number of frames on every machine. While the clock is
 paused, timer-based states never advance by themselves, such as a randomized blink, a relative time
-label or polling after the first request. The stability check of part 7 and the steps of the scene
+label or polling after the first request. The stability check and the steps of the scene
 advance the clock frame by frame, and only to named observable transitions.
 
 Before any application code runs, the harness seeds a synthetic session, together with the locale
@@ -109,12 +109,12 @@ persisted login. Adaptation point: the storage keys, the claims and the role.
 
 The runtime then opens the route given by the scene for a page scene, or the component entry for a
 component scene. When the variant sets a container width, the runtime passes it to the entry as a
-parameter. It then passes the run context of part 4 to the scene. Waiting for start-up or a reload
+parameter. It then passes the run context to the scene. Waiting for start-up or a reload
 ends when the module graph of the real entry has loaded. The wait fails when a module request fails,
 when the page reports an error, when the serving process exits, or when the entry has not finished
 evaluating while no module request is in flight, since nothing is then left that could complete the
-graph. A failure is recorded as error output by part 5. A serving process that stays up without
-answering keeps the wait open until the user who runs the harness stops it.
+graph. A failure is recorded as error output by the data boundary. A serving process that is running
+but sends no response leaves the wait open until the user who runs the harness stops it.
 
 ## The capture sequence
 
@@ -128,10 +128,10 @@ Every checkpoint runs the same sequence, with the same settings for every captur
    never accepted. Adaptation point: the list of shipped font faces.
 3. Every visible image is decoded and has nonzero natural dimensions.
 4. The focus is removed from the focused element, and the pointer is parked at a fixed corner.
-5. The geometry of the target is stable according to the check of part 7. The readiness record from
+5. The geometry of the target is stable according to the stability check. The readiness record from
    that check is saved.
 6. Every required response except the declared held ones has been delivered, according to the
-   check of part 5.
+   delivery check of the data boundary.
 7. The screenshot is taken with animations disabled and the text caret hidden, in layout pixels.
 
 A checkpoint of the shell captures the whole viewport. Every other checkpoint captures its target
@@ -212,5 +212,5 @@ through the display server.
 For every variant, a terminal harness starts the application in a fresh pseudo-terminal of fixed
 size. The application runs with UTC, the locale of the variant, a controlled clock such as a
 time-faking preload library or an injected clock, and a home directory that contains the fixture
-files. Once the screen buffer is stable, as described in part 7, the capture renders the terminal
+files. Once the screen buffer is stable, the capture renders the terminal
 screen to an image with a locked terminal emulator.

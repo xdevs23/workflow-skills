@@ -1,4 +1,4 @@
-# Part 7: geometry measurements
+# Geometry measurements
 
 Measurements read geometry from the layout engine that drew the screen. They never read it from
 style declarations. A style name shows what a developer intended, while a measured box shows what
@@ -98,7 +98,7 @@ opens, so the checks of that row run again for each open state.
 Before every screenshot, the target is scrolled into view and its geometry is read repeatedly: the
 boxes of the target and of the inputs, text fields, buttons and inline text elements inside it.
 Between two readings the paused clock advances exactly one frame, by the frame interval fixed by
-the rendering context of part 6, which runs pending frame callbacks and due timers without letting
+the rendering context, which runs pending frame callbacks and due timers without letting
 random cadences drift. The geometry is stable when three consecutive readings match the previous one
 within half a layout unit in every coordinate. The check fails the capture when the readings still
 differ and nothing is left that could still move the geometry: the paused clock has passed the end
@@ -119,7 +119,7 @@ for the flush sticky header, since those checks compare the same element with it
 edge of the container around it. The non-overlap check in reading order and the floor check for
 truncating labels also used half a CSS pixel instead of the one-pixel tolerance for containment. A
 full pixel there would accept controls that overlap by a pixel, and labels that are a pixel narrower
-than the floor. The reference fixed the frame interval of part 6 at 16 milliseconds, one frame at 60
+than the floor. The reference fixed the frame interval at 16 milliseconds, one frame at 60
 frames per second. A toolkit with integer layout units uses one unit where the reference used one
 pixel. It compares in the finest unit available in that toolkit, so the half-unit tolerances still
 mean something.

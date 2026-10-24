@@ -1,4 +1,4 @@
-# Part 15: hygiene and production isolation
+# Hygiene and production isolation
 
 The harness is tooling. It does not change application behavior or stored data, does not need a
 migration, and leaves the production build exactly as it was. The harness code is in one tracked
@@ -29,15 +29,15 @@ scenes, engine profiles, optional traces and logs, and the scratch directories o
 suite.
 
 There are two exceptions. The caller may write an evidence sheet prepared for a pull request to the
-directory prepared for the batch of pull requests, as described in part 12, which is also inside the
-project cache. The scratch directory of a run, described in part 2, is in the system temporary
+directory prepared for the batch of pull requests, which is also inside the
+project cache. The scratch directory of a run is in the system temporary
 directory and is removed when the run ends. Only scene modules, synthetic fixtures and harness code
 are tracked. Artifacts that contain sample data or screenshots are written with private
 permissions.
 
 Capture and comparison leave the version control state and the application files unchanged. They
 leave every reference, index entry, branch and working tree file as it was, including the
-translation files and existing tests read by a scene. The acceptance criteria in part 17 check this
+translation files and existing tests read by a scene. The acceptance criteria check this
 against the starting revision.
 
 Source exports and server caches accumulate with every run, one directory each, until someone

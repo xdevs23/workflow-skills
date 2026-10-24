@@ -1,4 +1,4 @@
-# Part 5: the data boundary
+# The data boundary
 
 The data boundary is the point where the application receives data. It is the only point where the
 harness substitutes anything. Interception covers every data source used by the application. It is

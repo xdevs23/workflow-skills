@@ -1,19 +1,19 @@
-# Part 12: the evidence sheet
+# The evidence sheet
 
 The evidence sheet is one PNG image for a person who reads a pull request. It shows two complete
 captures of the same scene, one variant section after another, with every changed checkpoint side by
 side. The sheet only shows the two captures and does not give a verdict. It never marks a pair as
-passed or failed. The verdict comes from the comparison described in part 10, with the compatibility
+passed or failed. The verdict comes from the comparison, with the compatibility
 check, the semantic results and the nonzero exit for any difference.
 
 The sheet skips the compatibility check on purpose. An edit to a translation or a fixture changes
 the fingerprint that identifies the scene, so the comparison marks the two captures as
 incompatible. The sheet still shows what that edit changed on screen. For every checkpoint, the
-sheet compares pixels the same way as the comparison and recolors them as described in part 11.
+sheet compares pixels the same way as the comparison and recolors them with the diff coloring.
 
 ## The sheet for an intended input change
 
-When a change alters a compatibility input on purpose, as described in part 10, the comparison
+When a change alters a compatibility input on purpose, the comparison
 refuses the pair as incompatible. The refusal is returned together with an evidence sheet of the
 same two captures, rendered under an output name never used before. The outcome is judged by reading
 that sheet, the two receipts and the measured checks of the after capture. The sheet still does not
@@ -57,9 +57,9 @@ present only in the after capture. Identical checkpoints are present in both wit
 pixels. Before-only checkpoints are present only in the before capture.
 
 A changed checkpoint with equal dimensions gets a changed count, a recolored difference image and a
-region. The region is the bounding box of the changed pixels from part 11, grown by a margin on each
-side and clamped to the image. A changed checkpoint with different dimensions gets the note that the
-sizes differ in its caption, in place of a difference image.
+region. The region is the bounding box of the changed pixels recorded by the diff coloring, grown by
+a margin on each side and clamped to the image. A changed checkpoint with different dimensions gets
+the note that the sizes differ in its caption, in place of a difference image.
 
 ## Layout
 
@@ -78,7 +78,7 @@ recolored difference.
 New checkpoints follow as a grid of after images with the checkpoint names. Their heading reads that
 the before capture has no baseline for them. Identical checkpoints follow as a grid of the same
 kind, with a heading that reads that both captures are identical for them. Before-only checkpoints
-are listed by name in one muted line. The sheet ends with the legend described in part 11.
+are listed by name in one muted line. The sheet ends with the legend of the diff coloring.
 
 The sheet is rendered as an HTML page with a fixed width, fixed colors and a locked font, opened in
 the locked rendering engine at a pixel density of one, and captured as one full-page screenshot.

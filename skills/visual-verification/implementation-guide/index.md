@@ -100,7 +100,7 @@ value, derived from the same reason.
 The reference relied on facts about the application it was built for: the framework, the
 development server, the authentication storage, the data paths, the fonts, the shell consumers, the
 routes and the locales. The guide gives the rule behind each such fact and marks the fact as an
-adaptation point. The integration survey in part 1 fills in every adaptation point for the adopting
+adaptation point. The integration survey fills in every adaptation point for the adopting
 project before any harness code exists. An adaptation point is marked in the text with the words
 "adaptation point".
 

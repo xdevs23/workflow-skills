@@ -1,4 +1,4 @@
-# Part 11: diff coloring
+# Diff coloring
 
 The difference image recolors every pixel counted as changed by the comparison component, so a
 reader can tell what appeared from what disappeared. The coloring is a presentation step. The
@@ -39,7 +39,7 @@ margin is 10 luma units.
 The colors are green as red 0, green 150, blue 0; red as red 220, green 0, blue 0; and blue as red
 40, green 90, blue 255. The same pass that paints the pixels counts the pixels of each kind and
 records the bounding box of all changed pixels, which is empty when nothing changed. The evidence
-sheet described in part 12 uses that box.
+sheet uses that box.
 
 The coloring reads the mask from the image written by the comparison component. In the reference,
 the comparison component painted every pixel counted as changed in one fixed diff color, opaque red.
@@ -84,8 +84,8 @@ Each color appears as a small swatch next to the words about it.
 
 ## Acceptance rules
 
-The self-test suite described in part 14 and the historical comparison described in part 17 check
-the coloring against these rules:
+The self-test suite and the historical comparison of the regression proof check the
+coloring against these rules:
 
 1. The difference function returns the same changed count as the comparison component run with the
    recorded options. The counts of the three kinds add up to that count. Every pixel outside the

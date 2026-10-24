@@ -1,4 +1,4 @@
-# Part 10: comparison and reports
+# Comparison and reports
 
 The comparison is the verdict. It takes two complete captures, checks that they are compatible,
 compares every checkpoint pixel by pixel, and exits nonzero for any difference. An intended change
@@ -8,7 +8,7 @@ approved. The harness never updates, overwrites or promotes a capture automatica
 ## The compatibility check
 
 Two captures are compatible when their receipts have the same format version and the same scene
-name, and when the compatibility groups of part 9 in both receipts are identical, compared as
+name, and when the compatibility groups in both receipts are identical, compared as
 digests. The check is strict and expects the same scene fingerprint, fixture data, harness code,
 locks, runtime, engine, fonts, variants, clock and capture settings. The application source may
 differ. The comparison records that difference and never rejects the pair because of it.
@@ -29,7 +29,7 @@ module or a dependency lock. The user's words for the unit of work identify such
 work starts. The comparison fails such a pair as incompatible, like any other incompatible pair. It
 is still the strict automatic verdict. It is never loosened for an input changed on purpose.
 
-The result for the incompatible pair is returned together with an evidence sheet of part 12, built
+The result for the incompatible pair is returned together with an evidence sheet, built
 from the same two captures. The comparison of an incompatible pair checks nothing. The outcome is
 therefore judged by reading that sheet, the two receipts, and the measured checks of the after
 capture in its receipt and report.
@@ -47,9 +47,9 @@ per scene or to make a run pass. Two clean captures of the same scene with the s
 zero changed pixels.
 
 For each checkpoint, the result contains the checkpoint name, the number of changed pixels, the
-number for each kind of change from part 11, the ratio of changed pixels to the image area, the
-measurements of both captures and the name of the difference image. Any changed pixel makes the
-comparison fail.
+number for each kind of change from the diff coloring, the ratio of changed pixels to the image
+area, the measurements of both captures and the name of the difference image. Any changed pixel
+makes the comparison fail.
 
 Semantic checks complement the pixel comparison and are independent of it. A comparison fails when
 either capture failed its checks, even with zero changed pixels. A pair with passing checks still
@@ -75,7 +75,7 @@ Every capture and every comparison has an HTML report. A capture report starts w
 then shows the failures, the records from the data boundary and whether the inputs were stable,
 followed by the image of every checkpoint with its measurements. A comparison report starts with
 the verdict. On failure, the verdict reports that a difference was found and that no baseline
-has been approved. The report then shows the legend of part 11
+has been approved. The report then shows the legend of the diff coloring
 and, for each checkpoint, the before image, the after image and the difference image side by side,
 with the result for that checkpoint below them.
 

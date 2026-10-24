@@ -55,15 +55,15 @@ with this plugin.
   nothing to carry forward.
 - Resume plainly when **every agent completed** and the run failed after them, such as on an error
   in the workflow script or a throw between phases. The journal contains the results returned by
-  those agents, and a plain resume replays them as far as the first section describes. This
-  procedure gains nothing there.
+  those agents, and a plain resume replays them as far as the section on what a resume runs again
+  describes. This procedure gains nothing there.
 - Do not use this skill when an agent **completed with a bad result**, which is the opposite
   problem. The last section of this file describes that case.
 - Never use this skill to run a run again that **ended without being stopped**, whatever its exit.
 
 ## The procedure
 
-### 1. Find the transcripts of the run
+### Find the transcripts of the run
 
 - Find the directory with the transcripts of the run at the path returned at launch, under
   `subagents/workflows/<runId>/` in the directory of the session. It contains `journal.jsonl`, with
@@ -76,7 +76,7 @@ with this plugin.
   written for that agent cannot make it replay as anything else. The last section of this file
   describes that case.
 
-### 2. Match each transcript to an agent
+### Match each transcript to an agent
 
 - Do not guess from filenames. Match in two steps, because the meta file contains only a type, a
   model and a depth. It does not contain the label of the agent, a hash of the prompt or the number
@@ -99,7 +99,7 @@ with this plugin.
 - Get the mapping right before you go on. With a wrong mapping you hand an agent the work of
   another agent, which is the damage prevented by rule 1.
 
-### 3. Append a resume note to the prompts of the INTERRUPTED agents only
+### Append a resume note to the prompts of the INTERRUPTED agents only
 
 - Before you edit anything, list the finished calls made by the script after the first interrupted
   call to edit. Each of them runs live again, so a note saves the work of the interrupted agent at
@@ -122,22 +122,22 @@ with this plugin.
   - do not redo any other investigation it already completed, and spend the effort on what it had
     **not yet covered**.
 
-### 4. Leave the prompt of every COMPLETED stage byte-identical
+### Leave the prompt of every COMPLETED stage byte-identical
 
 - Leave the prompt of every completed stage byte-identical, together with the options that make up
   its key. **Any** edit of either, a word or a space, gives that call a new key and ends the replay
-  there, as the first section describes. The result of that call is thrown away as well. One stray
-  edit early in the script can make most of the run execute again.
+  there, as the section on what a resume runs again describes. The result of that call is thrown
+  away as well. One stray edit early in the script can make most of the run execute again.
 - Never change the prompt of a single agent by editing a shared constant either. A constant such as
   `RULES` is part of the prompt of every stage built from it, so editing it also edits the
   completed prompts among them.
 
-### 5. Invoke the workflow again
+### Invoke the workflow again
 
 - Invoke the workflow again with the persisted script path and the **earlier run id**. Finished
-  calls replay from the journal up to the first call that ends the replay, as the first section
-  describes. That call and every call after it run live, the interrupted ones with the transcripts
-  of their earlier attempts in hand.
+  calls replay from the journal up to the first call that ends the replay, as the section on what a
+  resume runs again describes. That call and every call after it run live, the interrupted ones
+  with the transcripts of their earlier attempts in hand.
 
 ## Where the resume note goes in a prompt
 
@@ -210,5 +210,6 @@ different fixes.
 - **Completed with a bad result, an EMPTY journaled result included**: the bad result **is cached**
   and replays verbatim on resume, so fixing the underlying cause and invoking the workflow again
   changes nothing. Do not edit the prompt of that agent to make it run again. It is a completed
-  prompt, so step 4 applies. The run treats the replayed result like any other result. Once the run
-  has ended, fix what is wrong in the result the way you fix any other wrong result of the run.
+  prompt, so leave it byte-identical. The run treats the replayed result like any other result.
+  Once the run has ended, fix what is wrong in the result the way you fix any other wrong result of
+  the run.

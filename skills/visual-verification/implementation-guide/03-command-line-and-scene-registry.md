@@ -1,7 +1,7 @@
-# Part 3: the command line and the scene registry
+# The command line and the scene registry
 
 The command line has six verbs: `list`, `scene`, `compare`, `sheet`, `test` and `refresh`. The
-launcher described in part 2 runs `test` through the test runner of the runtime, and every other
+launcher runs `test` through the test runner of the runtime, and every other
 verb through the command-line module. The verb names here come from the reference. A project may
 name them differently, but the set of responsibilities is the same.
 
@@ -12,20 +12,20 @@ no arguments.
 
 The `scene` verb runs one scene: every variant, every interaction, every check and every checkpoint,
 and writes one capture. It takes exactly one scene name and accepts four options: a capture name, a
-source revision to export the application from, a sample label that selects a real data sample
-described in part 13, and a port for the local server. Without a capture name, it generates a new
+source revision to export the application from, a sample label that selects a real data sample,
+and a port for the local server. Without a capture name, it generates a new
 unique name from the scene name and a random identifier and prints it.
 
-The `compare` verb compares two complete captures and gives the verdict described in part 10. It
+The `compare` verb compares two complete captures and gives the verdict. It
 takes exactly two capture names and rejects every option.
 
-The `sheet` verb renders the evidence sheet described in part 12 from two captures. It takes
+The `sheet` verb renders the evidence sheet from two captures. It accepts
 exactly two capture names, requires an output file option, and accepts a repeatable variant option
 that limits the sheet to named variants.
 
-The `test` verb runs the self-test suite of the harness, described in part 14.
+The `test` verb runs the self-test suite of the harness.
 
-The `refresh` verb fetches an optional real data sample described in part 13. It takes exactly one
+The `refresh` verb fetches an optional real data sample. It accepts exactly one
 scene name and requires a sample label and a selection file option.
 
 The command line rejects every other option of a verb and a wrong number of positional arguments.
@@ -75,8 +75,8 @@ downloaded at run time.
 
 A local scene imports fixtures and mechanisms from the tracked scenes, changes only the variant or
 the interactions needed by its question, and contains its selectors and expected outcomes itself. A
-local scene is promoted to the tracked scenes only after deliberate curation, as described in part
-16 and in the curation steps of the skill.
+local scene is promoted to the tracked scenes only after deliberate curation, as described in the
+part on the records in the project and in the curation steps of the skill.
 
 ## The scene fingerprint
 
@@ -94,7 +94,7 @@ extensions and JSON modules allowed, to resolve each one. A relative import that
 fails the run with a message requesting explicit local imports.
 
 The fingerprint includes the bytes of a local scene and of every local fixture imported by it. An
-edited fixture changes the fingerprint even when nothing is staged. The runtime described in part 6
+edited fixture changes the fingerprint even when nothing is staged. The runtime
 computes the fingerprint again after the run, and a difference invalidates the capture.
 
 ## Native and terminal realizations

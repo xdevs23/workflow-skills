@@ -1,4 +1,4 @@
-# Part 14: the self-test suite
+# The self-test suite
 
 The harness has a bounded test suite, run through the test verb of the launcher. The suite tests the
 fixtures, the comparison, the coloring, the network denial, the lock check in the launcher, the port
@@ -42,11 +42,11 @@ The zero tolerance tests check that comparing an image with itself gives zero ch
 one changed pixel gives a count of one, and that images of different dimensions fail with a message
 about the dimensions.
 
-The coloring tests cover the four acceptance rules listed in part 11: marks appearing and vanishing
-on a light and a dark field, and a moved mark; contrast gain and loss; neutral fills, equal-luma hue
-changes and a 1 by 1 image; edge clipping, enclosed pixels and alpha compositing over white,
-including the luma of half-opaque black; and the equality of the count with the count from the
-comparison component, the sum of the kinds, the legend colors of recolored pixels and the byte
+The coloring tests cover the four acceptance rules of the diff coloring: marks appearing and
+vanishing on a light and a dark field, and a moved mark; contrast gain and loss; neutral fills,
+equal-luma hue changes and a 1 by 1 image; edge clipping, enclosed pixels and alpha compositing over
+white, including the luma of half-opaque black; and the equality of the count with the count from
+the comparison component, the sum of the kinds, the legend colors of recolored pixels and the byte
 equality of every other pixel.
 
 The launcher lock test runs the bootstrap in a scratch copy with a package manifest that requires an
@@ -86,8 +86,8 @@ The count of requests shows which refreshes sent requests to the transport.
 The network denial test runs in the locked engine. One probe each attempts an external image, an
 external data request, a navigation to an external address, an external frame, an external socket,
 an undeclared local data request and a service worker registration, while the application swallows
-the errors. Each probe must add a failure, and the delivery check before the next checkpoint,
-described in part 5, must throw. A trap server that stands in for the outside world must receive
+the errors. Each probe must add a failure, and the delivery check before the next checkpoint
+must throw. A trap server that stands in for the outside world must receive
 zero requests. The local server must receive zero data requests. A declared write sent twice is
 delivered once. The second attempt records an exhausted response, and the check at the end of the
 variant that counts how often each fixture was delivered throws.

@@ -1,4 +1,4 @@
-# Part 16: the records in the project
+# The records in the project
 
 A harness is used only when the records in the project show that the harness exists and that it is
 required. The project that adopts the harness therefore adds two records: an entry in the project
@@ -28,8 +28,8 @@ written during adoption and updated with every change to the harness or its scen
 these sections, each a record of facts about this project:
 
 1. Status and purpose: what the harness is for, what it is not, and what has and has not been
-   verified, with the verification boundary from part 13 written out openly.
-2. Integration points: the filled table from the survey in part 1.
+   verified, with the verification boundary of the optional real samples written out openly.
+2. Integration points: the filled table from the integration survey.
 3. Operator flow and commands: every verb with a complete example invocation from the repository
    root, what each prints, the rules for capture names, and the exact runtime, engine and library
    versions locked by the project.
@@ -40,7 +40,7 @@ these sections, each a record of facts about this project:
 7. Drift, receipts and comparison, including the recorded comparison options and the parameters of
    the diff coloring. A change to the radius or the margin of the coloring is recorded here as a
    tooling decision.
-8. Acceptance criteria, in the general form given in part 17.
+8. Acceptance criteria, in the general form given in the part on the acceptance criteria.
 9. Recorded verification: for each criterion or group of criteria, the captures and runs that
    verified it and what they showed, with observed product findings listed separately.
 10. Engineering process: the working practice, where exploratory scenes are, where reports and

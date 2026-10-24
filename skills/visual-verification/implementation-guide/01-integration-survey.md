@@ -1,4 +1,4 @@
-# Part 1: the integration survey
+# The integration survey
 
 Before any harness code exists, the adopting project fills in a table of its integration points.
 Each row contains one responsibility, the evidence found in the source code of the project for how
@@ -109,7 +109,7 @@ The survey derives a list of responses from reading the code, for the shell and 
 The contract records that list as a manifest to verify during implementation. It is never presented
 as a trace of requests observed in the rendering engine. The survey is written before any scene
 runs. Start-up can still reveal a consumer that a first pass over the code missed, as described in
-part 5.
+the part on the data boundary.
 
 The table is the only tracked output of the survey. Notes and exploratory reads made while
 filling it in are stored in the harness directory inside the project cache, the location defined by
