@@ -69,13 +69,16 @@ the repository. A fresh clone does not contain it.
 
 - Give a unit one behavior: something stated in one sentence, such as "the profile page shows the
   avatar".
-- Split a request with several behaviors into sub-units, one per behavior, when you write the entry
-  for the request.
+- Split a feature, or anything bigger than a small patch, into sub-units, each covering one aspect,
+  such as one behavior or one module.
+- Add the sub-units of a unit once its draft is approved, as `workflow-skills:implement` describes,
+  before building of the unit starts. Never write sub-units in advance.
 - Word a unit that removes violations of a rule by what the rule is for, such as "a value sent by
   the server and unknown to this build becomes an explicit unknown value where it arrives". Never
   word it by the check it should make pass, such as "make the lint pass".
-- Give each sub-unit a fourth-level entry in dot notation under the entry for the request, in the
-  shape of any other entry, and a `Builds on:` line listing the sub-units it needs first:
+- Give each sub-unit a fourth-level entry in dot notation under the entry it belongs to, in the
+  shape of any other entry, and a `Builds on:` line listing the sub-units it needs first. Nest
+  sub-units deeper in the dot notation, such as `#383.1.1` under `#383.1`:
 
   ```
   ### #383 - Profile avatars - IN PROGRESS
@@ -92,9 +95,10 @@ the repository. A fresh clone does not contain it.
   Origin: <pointer>
   ```
 
-- Give the entry for the request the state of the least advanced sub-unit under it.
-- Build each sub-unit as a separate unit, in a separate worktree and on a separate branch, with one
-  or more workflow runs. You may start building on whatever base suits the work.
+- Give every entry that has sub-units the state of the least advanced sub-unit under it.
+- Build each sub-unit without sub-units of its own as a separate unit, in a separate worktree and
+  on a separate branch, with one or more workflow runs. You may start building on whatever base
+  suits the work.
 - Deliver each sub-unit separately, such as through a separate pull request against the main
   branch of the project, and only once every sub-unit listed in its `Builds on:` line is merged
   there. A pull request is a request that can be rejected.
@@ -137,12 +141,14 @@ item stands.
 - `NEEDS DECISION`: the work cannot go on until a question is answered or the theory is defined.
   Write into the entry, in plain terms, the question and the options, or that the theory is
   missing, which would start a discussion thread about the feature.
+- Mark a unit or sub-unit that does not have enough information to start `NEEDS DECISION`.
 - **A decision still owed blocks only the item it concerns.** Skip and mark the item, and move the
   work on to the next one.
 
 **Ready to build**
 
 - `READY`: the design is agreed and written down, for example in the notes of `workflow-skills:implement`.
+- Mark a sub-unit `READY` once everything it needs is clear.
 - `QUEUED`: the unit can be built at any time, even if the session is wiped and started fresh.
 
 Whether a unit is ready to build follows from the words of the user alone.

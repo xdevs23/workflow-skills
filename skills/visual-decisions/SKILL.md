@@ -45,9 +45,12 @@ and in the chat message that comes with it.
   - Updated, in purple, for a part that changed after the last answer from the user;
   - a short bar with its value, for a number needed by the decision, filled in green where the
     value fits and in red where it is over the limit.
-- Keep each page within one browser window where you can. When the decisions need more room, split
-  them into separate pages, and draw the next page once the user has answered the one before. Never
-  draw them all at once.
+- Keep the draft of a change within one regular browser window. When it does not fit or is too
+  complicated to read, split the unit into sub-units as `workflow-skills:todo-md` describes, and
+  never add pages to the draft.
+- Keep a page of product decisions within one browser window where you can. When the decisions need
+  more room, split them into separate pages, and draw the next page once the user has answered the
+  one before. Never draw them all at once.
 - Split the page into numbered sections, each with a title of at most eight words.
 - Name the sample in one line under the title of the first section that uses it.
 - Put the pictures of a section side by side, each with a label above it for the state it shows: the
@@ -87,6 +90,8 @@ and in the chat message that comes with it.
 ## Choices and optional picks
 
 - Make every choice left open by the words of the user and the rules, and draw it as part of After.
+  Leave out of the draft of a change what depends on a decision still open for the user, as
+  `workflow-skills:implement` describes.
   Do not ask questions in the draft, do not add open points and do not try to nudge the user into accepting
   a real tradeoff.
 - Draw every better, alternative approach as one more After picture beside the others of its section, with

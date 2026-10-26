@@ -515,8 +515,7 @@ description: Design, build, change, test or debug software, and plan or carry ou
   can be checked, in the commit message or the pull request for the change.
 - Change the documentation that describes an interface used by others, such as an API, a command or
   a screen, in the same change as that interface.
-- Build in layers, scaffolding first and then one piece at a time. This orders the building only:
-  each feature still ships through all its layers in the same pass.
+- Build in layers, scaffolding first and then one piece at a time.
 - Never copy code that breaks the rules. If the existing code already violates the rules, never use
   it as prior art to excuse writing the same kind of code. Bad code is debt.
 - Where scope allows, rewrite the existing code cleanly. Otherwise integrate your part well and

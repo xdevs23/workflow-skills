@@ -23,13 +23,24 @@ with this plugin.
 
 ## Draft
 
-- Once the notes are done, draw the draft of the change as `workflow-skills:visual-decisions`
-  describes.
-- Save the draft as `<change>.html` in the same folder as the notes. Number the pages of a draft
-  that is split into several, as `<change>-2.html`.
+- Write the feature down first, as one entry in `TODO.md` as `workflow-skills:todo-md` describes.
+- Once the notes are done and you already have enough to work with, draw the draft for the change
+  as `workflow-skills:visual-decisions` describes.
+- Show on the draft the UI/UX where there is one, how the state is represented in the backend, and
+  the modules the feature is split into, with what each module may know of the others, such as a
+  core that stays agnostic and one module for each implementation, where the modules do not know of
+  each other.
+- Draw a draft only from decisions already made. Keep what depends on a decision still open for the
+  user out of the draft, and write it as a rough "not yet specified" note in the entry of the unit.
+- Once a draft is approved, add the sub-units for its modules and for the gaps under it as
+  `workflow-skills:todo-md` describes, each with its own draft, and move down until you have
+  everything you need.
+- Find the facts yourself, and leave the decisions to the user.
+- Save the draft of the feature as `<change>.html` in the same folder as the notes, and the draft of
+  a sub-unit as `<change>-<sub-unit number>.html`.
 - When the user says what should be different, change the notes, and update the draft as
   `workflow-skills:visual-decisions` describes.
-- Start the implementation once the user approves the draft.
+- Start building as soon as the user says it can start.
 - If the user can't give a clear direction or define the scope, task a workflow with draft writing,
   providing multiple options on scope, UI/UX design and architecture as optional picks.
 
@@ -45,9 +56,10 @@ with this plugin.
   points every project in the tree at its worktree, and sync it without fetching.
 - Where a tree has too many repositories to copy, such as a ROM tree of a thousand repositories,
   let the implementer work in that tree.
-- Hand every implementer the paths to the full notes and the approved draft, the part of the change
-  it builds when you split the work, and the commands of the project that build, check and test
-  that part alone, where the project has them. Never reword the notes for it.
+- Hand every implementer the paths to the full notes and the approved drafts of its part and of
+  the units above it, the part of the change it builds when you split the work, and the commands of
+  the project that build, check and test that part alone, where the project has them. Never reword
+  the notes for it.
 - Word the part of the work handed to an implementer by what the rule or the request behind it is
   for, such as "a value sent by the server and unknown to this build becomes an explicit unknown
   value where it arrives". Never word it by the check it should make pass, such as "make the lint
