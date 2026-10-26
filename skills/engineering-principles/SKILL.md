@@ -28,6 +28,9 @@ description: Design, build, change, test or debug software, and plan or carry ou
   the data back into the form used by the other layer when it goes back.
 - Map every field of the form used by the other layer, or drop the field on purpose.
 - Hand collaborators in, never fetch them from a global registry.
+- Give each source of a value and each way of building a dependency one unit, and hand that unit
+  to the code that uses it. A change of the source then edits only that unit and the composition
+  root, the place where the app creates the dependencies and hands them in.
 - Put into a base interface only the members present in every implementation.
 - Connect two subsystems that must communicate through one named bridge, so neither contains
   details of the other.

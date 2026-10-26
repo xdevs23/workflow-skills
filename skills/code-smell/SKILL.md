@@ -14,6 +14,11 @@ change later.
   together again and again.
 - Report feature envy: a unit that uses the data of another unit more than its own data.
 - Report duplicated logic and dead or unreachable code.
+- Report shotgun surgery: one change of a concept, such as where a value comes from or how a
+  dependency is built, that edits many of the units using the concept.
+- Name in a finding on shotgun surgery the one place that would have kept the change local.
+- Ask for that place as a separate change before the change under review. That separate change
+  moves every unit using the concept to the place in one edit.
 - Report deep nesting and arrow-shaped control flow.
 - Report boolean or flag parameters that switch behavior.
 - Report direct access by string key, such as `doc["key"]` and `item.get("key")`, where the change
