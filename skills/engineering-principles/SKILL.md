@@ -157,6 +157,15 @@ description: Design, build, change, test or debug software, and plan or carry ou
 - Record the work that replaces an approved workaround as a unit of work in `TODO.md`, and name the
   workaround and the condition that ends it in that entry. Start that work right away, and remove
   the workaround once the condition is met.
+- When something fails or hits a limit, ask first whether the design is the right one, including the
+  code that was there before your change.
+- Work out how the failing part would be built cleanly: which phase or component does the work, what
+  it has in memory and what it writes for later.
+- Where the clean design differs from the code, rewrite the part or change how it works in place of
+  a fix around the failure.
+- Propose a rewrite of code outside your change to the user before you start it.
+- When one of your own changes caused the failure, change or remove that change in place of
+  building around it.
 - Never add a carve-out where the existing path already covers the case.
 - Keep branches small and few. Replace a growing conditional with indirection, abstraction or a
   structure that makes the case impossible instead of handled.
@@ -370,7 +379,7 @@ description: Design, build, change, test or debug software, and plan or carry ou
 - Remove a configuration that isn't built.
 - Never roll back a settled migration, bring back a retired pattern or reopen settled, approved
   work.
-- Find the root cause of a bug within the current architecture.
+- Find the root cause of a bug. A design that makes the bug possible is a root cause too.
 - Correct a wrong migration with a forward migration.
 - Let a migration or backfill copy data into its new shape and leave the old data as it is. Remove
   the old data in a separate, later step, and only when something truly needs deleting.
