@@ -1,5 +1,5 @@
 import type { Question } from '../types'
-import { ASK_TOOL, LIST_TOOL } from './names'
+import { ASK_TOOL, LIST_TOOL, QUESTION_SKILL } from './names'
 import { Withdrawal, isAnswered, isWithdrawn, openQuestionsOf, sortedByNumber } from './questions'
 import type { AnsweredQuestion } from './questions'
 
@@ -9,11 +9,19 @@ export const ASK_DESCRIPTION = [
   'this session has ended. The call returns at once with the number of the question, and the',
   'answer is sent to you later as a note with one of your tool results, or as a new message of',
   'the user. Use it for every question whose answer the rest of the work does not wait on.',
-  'Ask the question first as the skill workflow-skills:question describes, and call this tool',
-  'only when the subagent finds no answer in the project.',
+  `Ask the question first as the skill ${QUESTION_SKILL} describes, and call this tool only`,
+  'when the subagent finds no answer in the project.',
   `Call ${LIST_TOOL} first, and never ask a question again that is open or answered there.`,
   'Write the question so the user can answer it days later without this conversation: name the',
   'work it concerns and what each answer would change.',
+].join(' ')
+
+/** The text given to the model when it asks before the Skill tool loaded the question skill. */
+export const QUESTION_SKILL_MISSING = [
+  'The question was not asked: your context contains no successful call to the Skill tool that',
+  `loaded ${QUESTION_SKILL}, such as after a compaction. Load ${QUESTION_SKILL} with the Skill`,
+  'tool and follow it, so its subagent looks for the answer in the project first. Call',
+  `${ASK_TOOL} only when it finds none.`,
 ].join(' ')
 
 export const LIST_DESCRIPTION = [

@@ -14,6 +14,12 @@ export const ASK_TOOL = toolName(ASK)
 export const LIST_TOOL = toolName(LIST)
 export const WITHDRAW_TOOL = toolName(WITHDRAW)
 
+/** The built-in tool that loads a skill into the context of its caller. */
+export const SKILL_TOOL = 'Skill'
+
+/** The qualified name for the skill to load before a question is put to the user. */
+export const QUESTION_SKILL = `${PLUGIN}:question`
+
 export const ANSWER_COMMAND = 'answer'
 
 /** The id of the pane that lists the open questions. */

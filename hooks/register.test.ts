@@ -1,8 +1,16 @@
 import { describe, expect, mock, test } from 'claude-code/testing'
 import type { Engine, MockClock } from 'claude-code/testing'
-import type { On, PromptSubmitInput, RenderPropsOf } from 'claude-code'
+import type { ApiMessage, On, PromptSubmitInput, RenderPropsOf } from 'claude-code'
 
-import { ANSWER_COMMAND, ASK_TOOL, LIST_TOOL, PANE, PLUGIN, WITHDRAW_TOOL } from './names'
+import {
+  ANSWER_COMMAND,
+  ASK_TOOL,
+  LIST_TOOL,
+  PANE,
+  PLUGIN,
+  QUESTION_SKILL,
+  WITHDRAW_TOOL,
+} from './names'
 import { projectDigestOf, storeKeyOf } from './questionStore'
 
 const ROOT = '/work/project'
@@ -25,6 +33,23 @@ const PANE_PROPS: RenderPropsOf['Pane'] = {
   view: {},
 }
 
+/** The summary left by a compaction in place of the messages replaced by it. */
+const COMPACTION_SUMMARY: ApiMessage = {
+  role: 'user',
+  content: [
+    {
+      type: 'text',
+      text: 'This session is being continued from a previous conversation. Summary: work on the API.',
+    },
+  ],
+}
+
+/** A message that mentions the question skill without loading it. */
+const QUESTION_SKILL_NAMED: ApiMessage = {
+  role: 'user',
+  content: [{ type: 'text', text: `Load ${QUESTION_SKILL} before you ask.` }],
+}
+
 const BAND_PROPS: RenderPropsOf['AbovePrompt'] = {
   hasSurvey: false,
   isWorking: false,
@@ -43,6 +68,8 @@ type Session = {
   panes: string[]
   toasts: string[]
   logs: string[]
+  /** The messages in the main conversation seen by the model, in the api form. */
+  context: ApiMessage[]
   /** The lines written into the chat history. Lines sent only to the debug log are left out. */
   chatLines: string[]
   registered: string[]
@@ -81,6 +108,7 @@ async function startSession(
     panes: [],
     toasts: [],
     logs: [],
+    context: skillLoad(QUESTION_SKILL),
     chatLines: [],
     registered: [],
     isScopeDropped: false,
@@ -102,6 +130,8 @@ async function startSession(
     session.rootRefusal === undefined ? { value: session.root } : { deny: session.rootRefusal },
   )
   on('session.id', () => ({ value: session.id }))
+  // The hook returns the main conversation for the api form and an empty list for the rows form.
+  on('session.messages', ($, e) => ({ value: e.as === 'api' ? session.context : [] }))
   on('store.keys', () => ({ value: [...session.store.keys()] }))
   on('store.get', ($, e) => ({ value: session.store.get(e.key) }))
   on('store.delete', ($, e) => {
@@ -168,6 +198,42 @@ async function startSession(
   return session
 }
 
+/** A tool call and its result as the api form contains them. */
+function toolCall(call: {
+  tool: string
+  input: Record<string, string>
+  isFailed: boolean
+  resultOf?: string
+}): ApiMessage[] {
+  const id = `call-${call.tool}`
+
+  return [
+    {
+      role: 'assistant',
+      content: [{ type: 'tool_use', id, name: call.tool, input: call.input }],
+    },
+    {
+      role: 'user',
+      content: [
+        {
+          type: 'tool_result',
+          tool_use_id: call.resultOf ?? id,
+          content: 'the result',
+          is_error: call.isFailed,
+        },
+      ],
+    },
+  ]
+}
+
+function skillLoad(skill: string): ApiMessage[] {
+  return toolCall({ tool: 'Skill', input: { skill }, isFailed: false })
+}
+
+function failedSkillLoad(skill: string): ApiMessage[] {
+  return toolCall({ tool: 'Skill', input: { skill }, isFailed: true })
+}
+
 /**
  * Switches the process to another session as /resume is assumed to do: the session id changes, no
  * start is raised, and the host has no scope for the session it switched to.
@@ -194,8 +260,12 @@ function askWhichDatabase($: Engine) {
   })
 }
 
-function askAboutFriday($: Engine) {
-  return $.tool.call({ tool: ASK_TOOL, question: 'Ship on Friday?' })
+function askAboutFriday($: Engine, agentId?: string) {
+  return $.tool.call({
+    tool: ASK_TOOL,
+    question: 'Ship on Friday?',
+    ...(agentId === undefined ? {} : { agentId }),
+  })
 }
 
 async function listQuestions($: Engine): Promise<string> {
@@ -695,6 +765,92 @@ describe('asking without waiting', () => {
       expect(session.registered).toEqual([])
       expect((await askWhichDatabase($)).deny).toBeDefined()
       expect(session.store.size).toBe(0)
+    },
+  )
+})
+
+describe('asking with the question skill in context', () => {
+  test(
+    'a question asked by a session that has not loaded the question skill is denied and not ' +
+      'stored',
+    NO_TIME_LIMIT,
+    async ($, on) => {
+      const session = await startSession($, on)
+      session.context = []
+
+      expect((await askWhichDatabase($)).deny).toBeDefined()
+      expect(session.store.size).toBe(0)
+      expect(session.chatLines).toEqual([])
+    },
+  )
+
+  const notLoaded: [string, () => ApiMessage[]][] = [
+    ['another skill loaded by the Skill tool', () => skillLoad(`${PLUGIN}:writing-style`)],
+    ['a Skill tool call for the question skill that failed', () => failedSkillLoad(QUESTION_SKILL)],
+    ['a message that mentions the question skill', () => [QUESTION_SKILL_NAMED]],
+    [
+      'another tool called with the name of the question skill',
+      () => toolCall({ tool: 'Read', input: { skill: QUESTION_SKILL }, isFailed: false }),
+    ],
+    [
+      'a Skill tool call for the question skill without its result',
+      () =>
+        toolCall({
+          tool: 'Skill',
+          input: { skill: QUESTION_SKILL },
+          isFailed: false,
+          resultOf: 'call-other',
+        }),
+    ],
+  ]
+  for (const [contains, context] of notLoaded) {
+    test(
+      `a question asked from a context with ${contains} is denied`,
+      NO_TIME_LIMIT,
+      async ($, on) => {
+        const session = await startSession($, on)
+        session.context = context()
+
+        expect((await askWhichDatabase($)).deny).toBeDefined()
+        expect(session.store.size).toBe(0)
+      },
+    )
+  }
+
+  test(
+    'a question asked after a Skill tool call with spaces and a slash around the name is stored',
+    NO_TIME_LIMIT,
+    async ($, on) => {
+      const session = await startSession($, on)
+      session.context = skillLoad(` /${QUESTION_SKILL} `)
+
+      expect((await askWhichDatabase($)).deny).toBeUndefined()
+      expect(session.store.size).toBe(1)
+    },
+  )
+
+  test(
+    'a question asked after a compaction removed the question skill from context is denied',
+    NO_TIME_LIMIT,
+    async ($, on) => {
+      const session = await startSession($, on)
+      expect((await askWhichDatabase($)).deny).toBeUndefined()
+      session.context = [COMPACTION_SUMMARY]
+
+      expect((await askAboutFriday($)).deny).toBeDefined()
+      expect(session.store.size).toBe(1)
+    },
+  )
+
+  test(
+    'a question asked by a subagent is stored without a check of the main conversation',
+    NO_TIME_LIMIT,
+    async ($, on) => {
+      const session = await startSession($, on)
+      session.context = []
+
+      expect((await askAboutFriday($, 'agent-1')).deny).toBeUndefined()
+      expect(session.store.size).toBe(1)
     },
   )
 })

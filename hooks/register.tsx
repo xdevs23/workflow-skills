@@ -32,6 +32,7 @@ import {
 import {
   ASK_DESCRIPTION,
   LIST_DESCRIPTION,
+  QUESTION_SKILL_MISSING,
   WITHDRAWAL_TEXTS,
   WITHDRAW_DESCRIPTION,
   describeAnswers,
@@ -53,6 +54,7 @@ import {
   WITHDRAW_TOOL,
 } from './names'
 import { Withdrawal, isAwaitingAnswers, openQuestionsOf, sortedByNumber } from './questions'
+import { hasLoadedQuestionSkill } from './questionSkill'
 import { QuestionStoreError, messageOf, saveNewQuestion, saveWithdrawal } from './questionStore'
 import {
   establishSessionScope,
@@ -141,6 +143,9 @@ export const register: Register = on => {
 
   on('tool.call', { tool: ASK_TOOL }, async ($, e) => {
     const scope = await scopeForUse($)
+    if (e.agentId === undefined && !(await hasLoadedQuestionSkill($))) {
+      return { deny: QUESTION_SKILL_MISSING }
+    }
     const input = readAskInput(e)
     if (input.outcome !== AskOutcome.Valid) {
       return { deny: ASK_PROBLEMS[input.outcome] }

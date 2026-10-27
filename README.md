@@ -9,9 +9,10 @@ verification, opening and watching a pull request and recovering an interrupted 
 
 The plugin also ships a hooks module that lets Claude ask questions without waiting for the
 answers, in interactive sessions. A session run with `-p` or the Agent SDK gets none of its tools.
-The tool `ask_question` stores a question and returns at once. `list_questions` lists the open
-ones, the answered ones and the withdrawn ones, and `withdraw_question` takes back a question that
-Claude no longer needs answered.
+The tool `ask_question` stores a question and returns at once. In the main conversation, it
+returns a denial until the Skill tool has loaded `workflow-skills:question` there.
+`list_questions` lists the open ones, the answered ones and the withdrawn ones, and
+`withdraw_question` takes back a question that Claude no longer needs answered.
 
 The questions of a project are saved across sessions until they are answered, in the file
 `~/.claude/plugins/store/workflow-skills_<suffix>.json` that the plugin writes. On a machine that
