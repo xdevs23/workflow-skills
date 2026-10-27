@@ -38,6 +38,7 @@ import {
   describeAsked,
   describeFailedUse,
   describeOpenQuestion,
+  describeQuestionInChat,
   describeQuestions,
   describeUnfinishedUse,
 } from './modelText'
@@ -147,6 +148,8 @@ export const register: Register = on => {
     const asked = { text: input.question, choices: input.choices, askedAt: await $.clock.now() }
     const { question, questions } = await saveNewQuestion($, scope, asked)
     await updateQuestions($, () => questions)
+    // The host shows the tool call in the chat only once the turn is idle.
+    $.ui.log(describeQuestionInChat(question))
 
     return { result: describeAsked(question) }
   }).catch(denyHookFailure)

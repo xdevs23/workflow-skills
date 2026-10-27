@@ -43,6 +43,8 @@ type Session = {
   panes: string[]
   toasts: string[]
   logs: string[]
+  /** The lines written into the chat history. Lines sent only to the debug log are left out. */
+  chatLines: string[]
   registered: string[]
   /**
    * Whether the host reports that the session has no scope until the plugin writes one. This is
@@ -79,6 +81,7 @@ async function startSession(
     panes: [],
     toasts: [],
     logs: [],
+    chatLines: [],
     registered: [],
     isScopeDropped: false,
     root: ROOT,
@@ -140,6 +143,9 @@ async function startSession(
   })
   on('ui.log', ($, e) => {
     session.logs.push(e.text)
+    if (e.to !== 'debug') {
+      session.chatLines.push(e.text)
+    }
 
     return { value: undefined }
   })
@@ -278,6 +284,21 @@ describe('asking without waiting', () => {
       },
     )
   }
+
+  test(
+    'an asked question is written into the chat history with its number and choices',
+    NO_TIME_LIMIT,
+    async ($, on) => {
+      const session = await startSession($, on)
+      await askWhichDatabase($)
+      await askAboutFriday($)
+
+      expect(session.chatLines).toEqual([
+        'Question #1 (choices: sqlite / postgres): Which database?',
+        'Question #2: Ship on Friday?',
+      ])
+    },
+  )
 
   test(
     'an answer given during a turn is added to the next tool result once',
@@ -630,10 +651,11 @@ describe('asking without waiting', () => {
 
     expect((await askWhichDatabase($)).deny).toContain('the store is over 4 MiB')
     expect(session.store.size).toBe(0)
+    expect(session.chatLines).toEqual([])
   })
 
   test('input the model gives outside the schema fails the check', NO_TIME_LIMIT, async ($, on) => {
-    await startSession($, on)
+    const session = await startSession($, on)
 
     expect((await $.tool.call({ tool: ASK_TOOL, question: '  ' })).deny).toBeDefined()
     expect(
@@ -646,6 +668,7 @@ describe('asking without waiting', () => {
       (await $.tool.call({ tool: ASK_TOOL, question: 'Pick?', choices: [] })).deny,
     ).toBeDefined()
     expect((await $.tool.call({ tool: WITHDRAW_TOOL, number: 0 })).deny).toBeDefined()
+    expect(session.chatLines).toEqual([])
   })
 
   test(

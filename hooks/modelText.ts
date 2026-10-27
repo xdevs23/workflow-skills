@@ -112,3 +112,13 @@ export function describeOpenQuestion(question: Question): string {
 
   return `#${question.number}: ${question.text}${choices}`
 }
+
+/**
+ * The line written into the chat history when a question is asked. The number and the choices come
+ * before the text, so a terminal that cuts a long line keeps them.
+ */
+export function describeQuestionInChat(question: Question): string {
+  return question.choices.length > 0
+    ? `Question #${question.number} (choices: ${question.choices.join(' / ')}): ${question.text}`
+    : `Question #${question.number}: ${question.text}`
+}
