@@ -5,6 +5,9 @@ import type { QuestionSkillDenial } from './questionSkill'
 import { Withdrawal, isAnswered, isWithdrawn, openQuestionsOf, sortedByNumber } from './questions'
 import type { AnsweredQuestion } from './questions'
 
+/** The reply of the answer command and the text of the pane while no question is open. */
+export const ALL_CLOSED = 'Every question of this project is answered or withdrawn.'
+
 export const ASK_DESCRIPTION = [
   'Puts a question to the user without waiting for the answer, so you keep working.',
   'The question is stored until the user answers it, in any order and at any time, also after',

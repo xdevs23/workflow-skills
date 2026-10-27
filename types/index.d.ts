@@ -50,6 +50,12 @@ declare module 'claude-code' {
       questions: readonly Question[]
       /** The ids of the questions whose answers this session is delivering right now. */
       deliveringAnswers: readonly string[]
+      /**
+       * The id of the session whose last turn of the main conversation ended on a message that
+       * waits for an answer from the user, and null otherwise. The next prompt of that session
+       * receives the reminder to look for the answer first, and sets it back to null.
+       */
+      nudgeDueInSession: string | null
     }
   }
 }

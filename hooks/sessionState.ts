@@ -6,8 +6,8 @@ import type { AnsweredQuestion } from './questions'
 import { projectDigestOf, readProjectQuestions } from './questionStore'
 
 // The engine lists the state a module reads and writes from the source of the module, so every
-// state reference is written in this file with its plugin and key as literals, and the other
-// modules read and write the state through the functions below.
+// state reference of the questions is written in this file with its plugin and key as literals,
+// and the other modules read and write that state through the functions below.
 const isTurnRunning = atom({ plugin: 'workflow-skills', key: 'isTurnRunning' } as const, false)
 const sessionScope = atom({ plugin: 'workflow-skills', key: 'session' } as const, null)
 const projectQuestions = atom({ plugin: 'workflow-skills', key: 'questions' } as const, [])

@@ -1,6 +1,7 @@
 import type { EngineInterface } from 'claude-code'
 
 import type { Question, SessionScope } from '../types'
+import { messageOf } from './errorMessage'
 import {
   Withdrawal,
   findOpenQuestion,
@@ -72,10 +73,6 @@ export class QuestionNotSavedError extends QuestionStoreError {
     )
     this.key = key
   }
-}
-
-export function messageOf(error: unknown): string {
-  return error instanceof Error ? error.message : String(error)
 }
 
 /**

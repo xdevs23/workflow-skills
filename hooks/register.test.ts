@@ -18,19 +18,16 @@ import {
   QuestionSkillLoadState,
 } from './questionSkill'
 import { projectDigestOf, questionSkillLoadKeyOf, storeKeyOf } from './questionStore'
+import { NO_TIME_LIMIT, TURN, endTurn, recordPrompts, typePrompt } from './testSupport'
+import { NUDGE } from './waitingNudge'
 
 const ROOT = '/work/project'
 const WORKTREE = '/work/project/.worktrees/feature'
 const FIRST_SESSION = 'session-1'
 const SECOND_SESSION = 'session-2'
-const TURN = 'turn-1'
 const LOCK_REFUSAL = 'Lock file is already being held'
 /** The context size of a session when it starts and loads the question skill. */
 const TOKENS_AT_START = 1000
-
-// The kit stops a test after five seconds unless told otherwise. These tests end once the work
-// they start has settled, so they disable the time limit.
-const NO_TIME_LIMIT = { timeoutMs: Number.POSITIVE_INFINITY }
 
 const PANE_PROPS: RenderPropsOf['Pane'] = {
   title: 'Questions',
@@ -118,7 +115,12 @@ async function startSession(
     id: FIRST_SESSION,
     clock: mock.clock(on, { now: 1000 }),
     store: new Map(options.stored),
-    prompts: [],
+    prompts: recordPrompts(on, prompt => {
+      const drop = prompt.origin.kind === 'plugin' ? session.droppedPrompt : undefined
+      session.droppedPrompt = undefined
+
+      return drop
+    }),
     panes: [],
     toasts: [],
     logs: [],
@@ -205,16 +207,6 @@ async function startSession(
     }
 
     return { value: undefined }
-  })
-  on('prompt.submit', ($, e) => {
-    session.prompts.push(e)
-    const drop = e.origin.kind === 'plugin' ? session.droppedPrompt : undefined
-    session.droppedPrompt = undefined
-    if (drop !== undefined) {
-      return { drop }
-    }
-
-    return e.context === undefined ? { text: e.text } : { text: e.text, context: e.context }
   })
   on('session.start', ($, e) => ({ cwd: e.cwd }))
   on('turn.start', ($, e) => ({ turnId: e.turnId }))
@@ -345,25 +337,11 @@ async function answerByCommand($: Engine, args: string): Promise<string> {
   return String(ran.text)
 }
 
-function typePrompt($: Engine, text: string) {
-  return $.prompt.submit({ text, origin: { kind: 'composer' }, wait: false })
-}
-
 function startTurn($: Engine, agentId?: string) {
   return $.turn.start({
     text: 'go on',
     turnId: TURN,
     ...(agentId === undefined ? {} : { agentId }),
-  })
-}
-
-function endTurn($: Engine, isAborted: boolean) {
-  return $.turn.complete({
-    answer: '',
-    durationMs: 5,
-    isAborted,
-    turnId: TURN,
-    reason: isAborted ? 'aborted' : 'answer',
   })
 }
 
@@ -435,7 +413,7 @@ describe('asking without waiting', () => {
 
       expect((await readFile($)).context?.join('\n')).toContain('postgres')
       expect((await readFile($)).context).toBeUndefined()
-      await endTurn($, false)
+      await endTurn($)
       await session.clock.settle()
       expect(session.prompts).toHaveLength(0)
     },
@@ -454,7 +432,7 @@ describe('asking without waiting', () => {
       await session.clock.settle()
 
       expect(session.prompts).toHaveLength(0)
-      await endTurn($, false)
+      await endTurn($)
       await session.clock.settle()
       expect(session.prompts).toHaveLength(1)
       expect(session.prompts[0]?.text).toContain('neither, keep the files')
@@ -469,7 +447,7 @@ describe('asking without waiting', () => {
       await askWhichDatabase($)
       await startTurn($)
       await answerByCommand($, '1 sqlite')
-      await endTurn($, true)
+      await endTurn($, { reason: 'aborted' })
       await session.clock.settle()
 
       expect(session.prompts).toHaveLength(0)
@@ -507,7 +485,7 @@ describe('asking without waiting', () => {
 
       expect((await readFile($, 'agent-1')).context).toBeUndefined()
       expect((await readFile($)).context?.join('\n')).toContain('postgres')
-      await endTurn($, false)
+      await endTurn($)
       await startTurn($, 'agent-1')
       await askAboutFriday($)
       await answerByCommand($, '2 yes')
@@ -1072,6 +1050,55 @@ describe('asking with the question skill in context', () => {
 
       expect((await askAboutFriday($, 'agent-1')).deny).toBeUndefined()
       expect(await questionCountOf(session)).toBe(1)
+    },
+  )
+})
+
+describe('the nudge together with the answers to the questions', () => {
+  const WAITING = 'Your question about the database is still open.'
+  const NUDGE_REFUSAL = 'The state of the plugin is not readable'
+
+  test(
+    'a typed prompt receives the nudge and the answers that wait, both once',
+    NO_TIME_LIMIT,
+    async ($, on) => {
+      const session = await startSession($, on)
+      await askWhichDatabase($)
+      resumeAnother(session, SECOND_SESSION)
+      await answerByCommand($, '1 sqlite')
+      resumeAnother(session, FIRST_SESSION)
+      await endTurn($, { answer: WAITING })
+      await session.clock.settle()
+      await typePrompt($, 'go on')
+      await typePrompt($, 'go on')
+
+      expect(session.prompts).toHaveLength(2)
+      expect(session.prompts[0]?.context).toHaveLength(2)
+      expect(session.prompts[0]?.context?.[0]).toBe(NUDGE)
+      expect(session.prompts[0]?.context?.[1]).toContain('sqlite')
+      expect(session.prompts[1]?.context).toBeUndefined()
+    },
+  )
+
+  test(
+    'a nudge that cannot be read leaves the answers and the next prompt going out without it',
+    NO_TIME_LIMIT,
+    async ($, on) => {
+      on('state.get', { plugin: PLUGIN, key: 'nudgeDueInSession' }, () => ({
+        deny: NUDGE_REFUSAL,
+      }))
+      const session = await startSession($, on)
+      await askWhichDatabase($)
+      await startTurn($)
+      await answerByCommand($, '1 sqlite')
+      await endTurn($, { answer: WAITING })
+      await session.clock.settle()
+      await typePrompt($, 'go on')
+
+      expect(session.prompts).toHaveLength(2)
+      expect(session.prompts[0]?.text).toContain('sqlite')
+      expect(session.prompts[1]?.context).toBeUndefined()
+      expect(session.logs.filter(line => line.includes(NUDGE_REFUSAL))).toHaveLength(2)
     },
   )
 })

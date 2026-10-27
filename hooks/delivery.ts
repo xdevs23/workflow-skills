@@ -1,16 +1,11 @@
 import type { EngineInterface } from 'claude-code'
 
 import type { Question, SessionScope } from '../types'
+import { messageOf } from './errorMessage'
 import { describeAnswers } from './modelText'
 import { undeliveredAnswersOf } from './questions'
 import type { AnsweredQuestion } from './questions'
-import {
-  QuestionStoreError,
-  messageOf,
-  readProjectQuestions,
-  saveAnswer,
-  saveDelivery,
-} from './questionStore'
+import { QuestionStoreError, readProjectQuestions, saveAnswer, saveDelivery } from './questionStore'
 import {
   claimAnswers,
   readIsTurnRunning,

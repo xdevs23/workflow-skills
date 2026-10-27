@@ -1,5 +1,6 @@
 import type { EngineInterface, Frozen, ToolCallInput, ToolCallResult } from 'claude-code'
 
+import { isMainConversation } from './conversation'
 import { QUESTION_SKILL } from './names'
 import {
   deleteQuestionSkillLoad,
@@ -53,7 +54,7 @@ export async function recordQuestionSkillLoad(
   ran: ToolCallResult,
 ): Promise<void> {
   const isCounted =
-    call.agentId === undefined &&
+    isMainConversation(call) &&
     ran.deny === undefined &&
     ran.isError !== true &&
     readSkillName(call) === QUESTION_SKILL
