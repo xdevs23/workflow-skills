@@ -20,15 +20,15 @@ Review the change for type safety only.
 - Report hardcoded domain values: a value in a closed set written as text outside the definition of
   the set, such as in a return, an argument, a key or a comparison, also where a type lists the
   allowed strings. The rules on closed sets of domain values in
-  `workflow-skills:engineering-principles` define what is required. Name the tighter type in the
-  form given by the language file of `workflow-skills:code-writing`. Leave alone a string whose
+  `workflow-skills:writing-code` define what is required. Name the tighter type in the
+  form given by the language file of `workflow-skills:writing-code`. Leave alone a string whose
   purpose is text and which is defined in one place.
 - Report code that reads meaning from where a value sits in a closed set, in a list or in the
   declaration, such as `ROLES[-1]` for the most privileged role, a comparison of two indexes or
   ordinals, a slice taken as a tier or a sort by list order. Name the type for the closed set in
-  the form given by the language file of `workflow-skills:code-writing`. Name the order as a rank or
+  the form given by the language file of `workflow-skills:writing-code`. Name the order as a rank or
   a comparison written out beside the values, as the rules on closed sets in
-  `workflow-skills:engineering-principles` require.
+  `workflow-skills:writing-code` require.
 - Report a value that can be null or undefined and is passed to code written as if the value were
   always present.
 - Report illegal states representable by the types: types that allow combinations forbidden by the

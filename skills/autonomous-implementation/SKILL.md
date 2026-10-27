@@ -32,8 +32,8 @@ with this plugin.
 - Leave every product and architecture decision to the subagents.
 - Orchestrate the run: plan the milestones, start the agents, judge their results against the
   rules, and keep the run file current.
-- Start the agents that write code as `workflow-skills:implementer`, which works without the rule
-  skills. Hold their work to the rules through the reviewers.
+- Start the agents that write code as `workflow-skills:implementer`. Hold their work to the rules
+  through the reviewers.
 - Hold every agent to `workflow-skills:todo-md` and `workflow-skills:local-cache`, and the agents
   that write the text shown by the product to `workflow-skills:copywriting`. Name these skills in
   the prompt handed to each agent bound by them.

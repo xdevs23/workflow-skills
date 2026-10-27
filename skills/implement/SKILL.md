@@ -89,8 +89,12 @@ with this plugin.
 - Start the prose reviewer as `workflow-skills:reviewer-prose`, on the smallest model available, at
   medium effort.
 - Start four more as `workflow-skills:reviewer-layer` and hand each the notes and the skills that
-  the list below gives to that layer. The rules are `workflow-skills:engineering-principles`,
-  `workflow-skills:code-writing` with the file for each language in the changed files,
+  the list below gives to that layer. The rules are `workflow-skills:designing-architecture`,
+  `workflow-skills:writing-code` with the file in its `languages` directory for each language in
+  the changed files, `workflow-skills:handling-errors`, `workflow-skills:writing-tests`,
+  `workflow-skills:debugging`, `workflow-skills:building-screens`, `workflow-skills:storing-data`,
+  `workflow-skills:securing-access`, `workflow-skills:changing-the-build`,
+  `workflow-skills:verifying-work`, `workflow-skills:working-with-outside-systems`,
   `workflow-skills:writing-style`, `workflow-skills:hygiene`, and the instruction files in the
   project root, in every directory edited by the change and the global instruction file.
   - The correctness reviewer loads `workflow-skills:reviewer-correctness`,

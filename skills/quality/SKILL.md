@@ -18,7 +18,6 @@ early symptoms. Report anything you find, whatever its kind.
   error handling that swallows errors, tests that assert nothing.
 - Report for deletion a test added, changed or broken by the diff when it searches for a string in
   the stored text of code, a document, a prompt or a configuration, or restates the values contained
-  in shipped code or configuration, as the rules on tests in
-  `workflow-skills:engineering-principles` define such a test. Never suggest a rewrite of such a
-  test to match the changed text.
+  in shipped code or configuration, as the rules in `workflow-skills:writing-tests` define such a
+  test. Never suggest a rewrite of such a test to match the changed text.
 - Report what a 10x developer would call too naive for the intent behind the change.

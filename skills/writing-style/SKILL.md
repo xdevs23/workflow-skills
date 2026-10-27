@@ -128,7 +128,7 @@ pin, owner, masthead, flagging.
 
 ## Code and comments
 
-- Write code, its comments, its names and its strings by `workflow-skills:code-writing`.
+- Write code, its comments, its names and its strings by `workflow-skills:writing-code`.
 - Follow this skill in comments and strings as in all other text.
 
 ## Commits

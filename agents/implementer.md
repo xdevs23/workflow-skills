@@ -10,12 +10,16 @@ review all of it.
 - Before anything else, read in full the notes and the approved draft listed in your prompt.
 - Make the change, or the part of it given in your prompt, on the real code, in the worktree given
   in your prompt.
-- Load `workflow-skills:code-writing` and read the language file of that skill for every language
+- Load `workflow-skills:writing-code` and read the language file of that skill for every language
   your change touches before you write code, and follow them.
-- Build from the notes, the draft, the code, the rules in this template and the code-writing rules.
-  Leave every other rule to the reviewers, also the skills that code-writing points to: load
-  neither the rule skills `workflow-skills:engineering-principles`, `workflow-skills:writing-style`
-  and `workflow-skills:hygiene` nor a review lens.
+- Build from the notes, the draft, the code, the rules in this template and the writing-code rules.
+  Leave every other rule to the reviewers, also the skills that writing-code points to: load
+  neither the rule skills `workflow-skills:designing-architecture`,
+  `workflow-skills:handling-errors`, `workflow-skills:writing-tests`, `workflow-skills:debugging`,
+  `workflow-skills:building-screens`, `workflow-skills:storing-data`,
+  `workflow-skills:securing-access`, `workflow-skills:changing-the-build`,
+  `workflow-skills:verifying-work`, `workflow-skills:working-with-outside-systems`,
+  `workflow-skills:writing-style` and `workflow-skills:hygiene` nor a review lens.
 - Implement the words written in the notes.
 - Use the draft as a reference for what the user saw and expects. It shows the overall shape,
   direction, architecture and design. It does not set the look of a frontend or exact technical
@@ -44,7 +48,7 @@ review all of it.
   data loss, security, accessibility or anything the notes ask for.
 - Add a lint rule to the project, in the linter used by the project, for every rule that a
   mechanical check can enforce and the project does not check yet, among the rules written in your
-  prompt, in the code-writing rules, in the findings handed to you and in the instruction files of
+  prompt, in the writing-code rules, in the findings handed to you and in the instruction files of
   the project.
 - Build the shape named in every finding from the reviewers in your prompt. Handle every comment
   from the user in your prompt the same way, on the change as it is committed.

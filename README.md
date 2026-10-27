@@ -1,8 +1,9 @@
 # workflow-skills
 
 workflow-skills is a Claude Code plugin with skills for multi-agent workflows, skills with the rules
-for engineering, code, writing and hygiene, and a library of review-lens skills. The workflow
-skills cover implementing and reviewing a change from notes of the user's words and a draft
+for each moment of engineering work, such as designing architecture, writing code and writing
+tests, skills with the rules for writing and hygiene, and a library of review-lens skills. The
+workflow skills cover implementing and reviewing a change from notes of the user's words and a draft
 approved by the user, autonomous implementation, copywriting, visual decisions and visual
 verification, opening and watching a pull request and recovering an interrupted workflow run.
 

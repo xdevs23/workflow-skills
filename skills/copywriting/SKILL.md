@@ -68,8 +68,8 @@ description: Write text shown to people on a product screen or a marketing page,
   - Then cut, read the text aloud and test it on a stranger.
 - Give it a **product-screen layer**, in which every string is a label, an action or a state for
   the reader to act on:
-  - Copy into the layer, word for word, the bullets in `workflow-skills:engineering-principles`
-    with the definition of text that explains a product and the rule for wording a state.
+  - Copy into the layer, word for word, the bullets in `workflow-skills:building-screens` with
+    the definition of text that explains a product and the rule for wording a state.
   - A sentence that explains the product fails the check in this layer.
 - Give it a **marketing-page layer**:
   - Give each page one action.

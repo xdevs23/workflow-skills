@@ -23,11 +23,11 @@ Review the change for code cleanliness only: readability and hygiene.
 - Report comments that are false, restate the code or are stale, and commented-out code left in.
 - Report magic numbers or strings that need a name, in the lines the change adds or edits. A key
   of a structure is not such a string.
-- Report every tunable, as defined in `workflow-skills:engineering-principles`, that is written
+- Report every tunable, as defined in `workflow-skills:writing-code`, that is written
   into the code or handed in by a caller, also when a named constant or a parameter contains it.
   Name what it derives from at runtime and how it adjusts while the code runs.
-- Report text that explains a product, as defined in `workflow-skills:engineering-principles`. Name
-  the part of the interface that has to change so the text can be removed.
+- Report text that explains a product, as defined in `workflow-skills:building-screens`. Name the
+  part of the interface that has to change so the text can be removed.
 - Report inconsistent style within a file or module, and noisy or accidental debug logging.
 - Report orphaned TODO and FIXME comments, dead imports and unused variables.
 - Report formatting that hides the intent of the code, such as giant expressions or misleading

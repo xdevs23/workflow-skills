@@ -16,7 +16,7 @@ Review the change for smearing only.
 - Report as CRITICAL a module that defines a closed set belonging to another concept, in any form,
   such as `ROLES = ("user", "editor", "admin")` in the module that lists prices, also when the
   module uses the concept. Name the module that defines the concept as the only place where the set
-  is defined, as the rules on closed sets in `workflow-skills:engineering-principles` require.
+  is defined, as the rules on closed sets in `workflow-skills:writing-code` require.
 - Report a general rule, skill or document that refers to one specific language, tool or product,
   such as a rule meant for every language that contains a construct of one language, where that
   case belongs in the file or section dedicated to it.
