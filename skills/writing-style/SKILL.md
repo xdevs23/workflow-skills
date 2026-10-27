@@ -25,8 +25,10 @@ description: Writing text read by a person, such as code comments, documents, co
 - Where one thing does not own the other, say how the two relate.
 - Do not fix a possessive by turning it around. "The Reports tab of the store" still reads as
   if the store owned the tab, just like "the store's Reports tab".
-- Do not stack nouns into a complex compound, such as "retry budget", "fetch
-  plan" or "session handoff record".
+- Do not stack nouns into a compound made up for the sentence, such as "fetch plan" or "session
+  handoff record".
+- Keep a compound that is already in use outside the text as the name for a real thing, such as
+  "content security policy".
 - Join two main clauses with `, and`, `, so`, `, but` or `, or` only when they are one thought.
   Write two sentences otherwise. "The report goes out by mail, so a page that fails is skipped"
   joins two thoughts. Write "The report goes out by mail. A page that fails is skipped."
@@ -62,7 +64,7 @@ description: Writing text read by a person, such as code comments, documents, co
 | the store's orders | the orders in the store |
 | the upload's token | the token needed by the upload |
 | the importer's file | the file read by the importer |
-| the retry budget | how often the request is retried |
+| the fetch plan | the list of pages to fetch |
 | the check has no rules of its own | the check applies the rules handed to it |
 | no request goes out | the page sends the request once the form is complete |
 | the service answers the totals | the service returns the totals |
