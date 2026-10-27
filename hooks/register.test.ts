@@ -11,7 +11,13 @@ import {
   QUESTION_SKILL,
   WITHDRAW_TOOL,
 } from './names'
-import { projectDigestOf, storeKeyOf } from './questionStore'
+import { describeQuestionSkillDenial } from './modelText'
+import {
+  QUESTION_SKILL_LOAD_MAX_AGE_MS,
+  QUESTION_SKILL_MAX_TOKENS_AFTER_LOAD,
+  QuestionSkillLoadState,
+} from './questionSkill'
+import { projectDigestOf, questionSkillLoadKeyOf, storeKeyOf } from './questionStore'
 
 const ROOT = '/work/project'
 const WORKTREE = '/work/project/.worktrees/feature'
@@ -19,6 +25,8 @@ const FIRST_SESSION = 'session-1'
 const SECOND_SESSION = 'session-2'
 const TURN = 'turn-1'
 const LOCK_REFUSAL = 'Lock file is already being held'
+/** The context size of a session when it starts and loads the question skill. */
+const TOKENS_AT_START = 1000
 
 // The kit stops a test after five seconds unless told otherwise. These tests end once the work
 // they start has settled, so they disable the time limit.
@@ -70,6 +78,12 @@ type Session = {
   logs: string[]
   /** The messages in the main conversation seen by the model, in the api form. */
   context: ApiMessage[]
+  /** The input tokens counted for the last response, as `session.usage` reports them. */
+  contextTokens: number | undefined
+  /** Whether the Skill tool reports an error for the next call. */
+  isSkillFailing: boolean
+  /** Whether a hook beneath the plugin denies the next Skill tool call. */
+  isSkillDenied: boolean
   /** The lines written into the chat history. Lines sent only to the debug log are left out. */
   chatLines: string[]
   registered: string[]
@@ -109,6 +123,9 @@ async function startSession(
     toasts: [],
     logs: [],
     context: skillLoad(QUESTION_SKILL),
+    contextTokens: TOKENS_AT_START,
+    isSkillFailing: false,
+    isSkillDenied: false,
     chatLines: [],
     registered: [],
     isScopeDropped: false,
@@ -132,6 +149,16 @@ async function startSession(
   on('session.id', () => ({ value: session.id }))
   // The hook returns the main conversation for the api form and an empty list for the rows form.
   on('session.messages', ($, e) => ({ value: e.as === 'api' ? session.context : [] }))
+  on('session.usage', () => ({
+    value: {
+      startedAt: 0,
+      context:
+        session.contextTokens === undefined
+          ? { window: 1_000_000 }
+          : { tokens: session.contextTokens, window: 1_000_000 },
+      rateLimits: [],
+    },
+  }))
   on('store.keys', () => ({ value: [...session.store.keys()] }))
   on('store.get', ($, e) => ({ value: session.store.get(e.key) }))
   on('store.delete', ($, e) => {
@@ -193,7 +220,17 @@ async function startSession(
   on('turn.start', ($, e) => ({ turnId: e.turnId }))
   on('turn.complete', () => ({ text: '' }))
   on('tool.call', { tool: 'Read' }, () => ({ result: 'the file' }))
+  on('tool.call', { tool: 'Skill' }, () => {
+    if (session.isSkillDenied) {
+      return { deny: 'The Skill tool is not allowed' }
+    }
+
+    return session.isSkillFailing
+      ? { result: 'Unknown skill', isError: true }
+      : { result: 'Launching skill' }
+  })
   await startAgain($, options.isInteractive ?? true)
+  await callSkillTool($, QUESTION_SKILL)
 
   return session
 }
@@ -224,6 +261,23 @@ function toolCall(call: {
       ],
     },
   ]
+}
+
+/** Calls the Skill tool for `skill`, as the model in the main conversation or in `agentId` does. */
+function callSkillTool($: Engine, skill: string, agentId?: string) {
+  return $.tool.call({ tool: 'Skill', skill, ...(agentId === undefined ? {} : { agentId }) })
+}
+
+/** The number of questions in the store, leaving out the other records of the plugin. */
+async function questionCountOf(session: Session): Promise<number> {
+  const prefix = storeKeyOf(await projectDigestOf(ROOT), '')
+
+  return [...session.store.keys()].filter(key => key.startsWith(prefix)).length
+}
+
+/** Removes the load record of the session, as for a load never seen by the plugin. */
+function forgetQuestionSkillLoad(session: Session) {
+  session.store.delete(questionSkillLoadKeyOf(session.id))
 }
 
 function skillLoad(skill: string): ApiMessage[] {
@@ -517,6 +571,7 @@ describe('asking without waiting', () => {
       await askWhichDatabase($)
       session.id = SECOND_SESSION
       await startAgain($)
+      await callSkillTool($, QUESTION_SKILL)
 
       expect(await listQuestions($)).toContain('Which database?')
       await startTurn($)
@@ -537,6 +592,7 @@ describe('asking without waiting', () => {
       const session = await startSession($, on)
       await askWhichDatabase($)
       resumeAnother(session, SECOND_SESSION)
+      await callSkillTool($, QUESTION_SKILL)
 
       expect(await listQuestions($)).toContain('Which database?')
       expect((await askAboutFriday($)).deny).toBeUndefined()
@@ -552,6 +608,7 @@ describe('asking without waiting', () => {
       const session = await startSession($, on)
       await askWhichDatabase($)
       session.id = SECOND_SESSION
+      await callSkillTool($, QUESTION_SKILL)
       await startTurn($)
       await answerByCommand($, '1 sqlite')
 
@@ -617,6 +674,7 @@ describe('asking without waiting', () => {
       await askWhichDatabase($)
       session.root = WORKTREE
       resumeAnother(session, SECOND_SESSION)
+      await callSkillTool($, QUESTION_SKILL)
       await askAboutFriday($)
       const worktreeKeys = storeKeyOf(await projectDigestOf(WORKTREE), '')
 
@@ -711,7 +769,7 @@ describe('asking without waiting', () => {
     await session.clock.advance(60_000)
 
     expect((await asking).deny).toBeUndefined()
-    expect(session.store.size).toBe(1)
+    expect(await questionCountOf(session)).toBe(1)
     expect(session.toasts).toEqual([])
   })
 
@@ -720,7 +778,7 @@ describe('asking without waiting', () => {
     session.refusedWrites.push('the store is over 4 MiB')
 
     expect((await askWhichDatabase($)).deny).toContain('the store is over 4 MiB')
-    expect(session.store.size).toBe(0)
+    expect(await questionCountOf(session)).toBe(0)
     expect(session.chatLines).toEqual([])
   })
 
@@ -752,7 +810,8 @@ describe('asking without waiting', () => {
 
       expect((await askWhichDatabase($)).deny).toContain(key)
       expect((await $.tool.call({ tool: LIST_TOOL })).deny).toContain(key)
-      expect(session.store).toEqual(new Map([[key, { questions: 'not a list' }]]))
+      expect(session.store.get(key)).toEqual({ questions: 'not a list' })
+      expect(await questionCountOf(session)).toBe(1)
     },
   )
 
@@ -764,12 +823,14 @@ describe('asking without waiting', () => {
 
       expect(session.registered).toEqual([])
       expect((await askWhichDatabase($)).deny).toBeDefined()
-      expect(session.store.size).toBe(0)
+      expect(await questionCountOf(session)).toBe(0)
     },
   )
 })
 
 describe('asking with the question skill in context', () => {
+  const NOT_RECORDED = describeQuestionSkillDenial({ state: QuestionSkillLoadState.NotRecorded })
+
   test(
     'a question asked by a session that has not loaded the question skill is denied and not ' +
       'stored',
@@ -779,7 +840,7 @@ describe('asking with the question skill in context', () => {
       session.context = []
 
       expect((await askWhichDatabase($)).deny).toBeDefined()
-      expect(session.store.size).toBe(0)
+      expect(await questionCountOf(session)).toBe(0)
       expect(session.chatLines).toEqual([])
     },
   )
@@ -812,7 +873,7 @@ describe('asking with the question skill in context', () => {
         session.context = context()
 
         expect((await askWhichDatabase($)).deny).toBeDefined()
-        expect(session.store.size).toBe(0)
+        expect(await questionCountOf(session)).toBe(0)
       },
     )
   }
@@ -825,7 +886,167 @@ describe('asking with the question skill in context', () => {
       session.context = skillLoad(` /${QUESTION_SKILL} `)
 
       expect((await askWhichDatabase($)).deny).toBeUndefined()
-      expect(session.store.size).toBe(1)
+      expect(await questionCountOf(session)).toBe(1)
+    },
+  )
+
+  test(
+    'a question is denied once more tokens than the limit came into the context after the load ' +
+      'of the question skill',
+    NO_TIME_LIMIT,
+    async ($, on) => {
+      const session = await startSession($, on)
+      session.contextTokens = TOKENS_AT_START + QUESTION_SKILL_MAX_TOKENS_AFTER_LOAD
+      expect((await askWhichDatabase($)).deny).toBeUndefined()
+      session.contextTokens = TOKENS_AT_START + QUESTION_SKILL_MAX_TOKENS_AFTER_LOAD + 1
+
+      expect((await askAboutFriday($)).deny).toBe(
+        describeQuestionSkillDenial({
+          state: QuestionSkillLoadState.OverLimit,
+          tokensAfterLoad: QUESTION_SKILL_MAX_TOKENS_AFTER_LOAD + 1,
+        }),
+      )
+      expect(await questionCountOf(session)).toBe(1)
+    },
+  )
+
+  test(
+    'a question is denied when the plugin did not see a load of the question skill, although ' +
+      'the context contains one',
+    NO_TIME_LIMIT,
+    async ($, on) => {
+      const session = await startSession($, on)
+      forgetQuestionSkillLoad(session)
+
+      expect((await askWhichDatabase($)).deny).toBe(NOT_RECORDED)
+      expect(await questionCountOf(session)).toBe(0)
+    },
+  )
+
+  test(
+    'a failed or denied Skill tool call, a load by a subagent and a load of another skill do ' +
+      'not count as a load of the question skill',
+    NO_TIME_LIMIT,
+    async ($, on) => {
+      const session = await startSession($, on)
+      forgetQuestionSkillLoad(session)
+      session.isSkillFailing = true
+      await callSkillTool($, QUESTION_SKILL)
+      expect((await askWhichDatabase($)).deny).toBe(NOT_RECORDED)
+      session.isSkillFailing = false
+      session.isSkillDenied = true
+      await callSkillTool($, QUESTION_SKILL)
+      expect((await askWhichDatabase($)).deny).toBe(NOT_RECORDED)
+      session.isSkillDenied = false
+      await callSkillTool($, QUESTION_SKILL, 'agent-1')
+      expect((await askWhichDatabase($)).deny).toBe(NOT_RECORDED)
+      await callSkillTool($, `${PLUGIN}:writing-style`)
+
+      expect((await askAboutFriday($)).deny).toBe(NOT_RECORDED)
+      expect(await questionCountOf(session)).toBe(0)
+    },
+  )
+
+  test(
+    'a question asked after the question skill was loaded again is stored',
+    NO_TIME_LIMIT,
+    async ($, on) => {
+      const session = await startSession($, on)
+      session.contextTokens = 2 * (TOKENS_AT_START + QUESTION_SKILL_MAX_TOKENS_AFTER_LOAD)
+      await callSkillTool($, ` /${QUESTION_SKILL}`)
+
+      expect((await askWhichDatabase($)).deny).toBeUndefined()
+      expect(await questionCountOf(session)).toBe(1)
+    },
+  )
+
+  test(
+    'a load made while the engine does not report the context size removes the earlier record',
+    NO_TIME_LIMIT,
+    async ($, on) => {
+      const session = await startSession($, on)
+      session.contextTokens = undefined
+      await callSkillTool($, QUESTION_SKILL)
+      expect(session.store.has(questionSkillLoadKeyOf(session.id))).toBe(false)
+      session.contextTokens = TOKENS_AT_START
+
+      expect((await askWhichDatabase($)).deny).toBe(NOT_RECORDED)
+      expect(await questionCountOf(session)).toBe(0)
+    },
+  )
+
+  test(
+    'a question asked while the engine does not report the context size is denied',
+    NO_TIME_LIMIT,
+    async ($, on) => {
+      const session = await startSession($, on)
+      session.contextTokens = undefined
+
+      expect((await askWhichDatabase($)).deny).toBe(
+        describeQuestionSkillDenial({ state: QuestionSkillLoadState.NoContextSize }),
+      )
+      expect(await questionCountOf(session)).toBe(0)
+    },
+  )
+
+  test(
+    'a question asked after a compaction kept the load in a smaller context is denied',
+    NO_TIME_LIMIT,
+    async ($, on) => {
+      const session = await startSession($, on)
+      session.contextTokens = TOKENS_AT_START - 1
+
+      expect((await askWhichDatabase($)).deny).toBe(NOT_RECORDED)
+      expect(await questionCountOf(session)).toBe(0)
+    },
+  )
+
+  test(
+    'a load record of another shape fails the check and is left unchanged',
+    NO_TIME_LIMIT,
+    async ($, on) => {
+      const session = await startSession($, on)
+      const key = questionSkillLoadKeyOf(session.id)
+      for (const damaged of [{ contextTokens: 'many', savedAt: 1000 }, { contextTokens: 1000 }]) {
+        session.store.set(key, damaged)
+
+        expect((await askWhichDatabase($)).deny).toContain(key)
+        expect(session.store.get(key)).toEqual(damaged)
+      }
+      expect(await questionCountOf(session)).toBe(0)
+    },
+  )
+
+  test(
+    'a load record the store refuses is shown with its reason, and the next question is denied',
+    NO_TIME_LIMIT,
+    async ($, on) => {
+      const session = await startSession($, on)
+      forgetQuestionSkillLoad(session)
+      session.refusedWrites.push('the store is over 4 MiB')
+      await callSkillTool($, QUESTION_SKILL)
+
+      expect(session.toasts).toHaveLength(1)
+      expect(session.toasts[0]).toContain('the store is over 4 MiB')
+      expect((await askWhichDatabase($)).deny).toBe(NOT_RECORDED)
+    },
+  )
+
+  test(
+    'a load deletes the load records of other sessions once they are older than the age limit',
+    NO_TIME_LIMIT,
+    async ($, on) => {
+      const session = await startSession($, on)
+      const firstKey = questionSkillLoadKeyOf(session.id)
+      session.id = SECOND_SESSION
+      await session.clock.advance(QUESTION_SKILL_LOAD_MAX_AGE_MS)
+      await callSkillTool($, QUESTION_SKILL)
+      expect(session.store.has(firstKey)).toBe(true)
+      await session.clock.advance(1)
+      await callSkillTool($, QUESTION_SKILL)
+
+      expect(session.store.has(firstKey)).toBe(false)
+      expect(session.store.has(questionSkillLoadKeyOf(SECOND_SESSION))).toBe(true)
     },
   )
 
@@ -838,7 +1059,7 @@ describe('asking with the question skill in context', () => {
       session.context = [COMPACTION_SUMMARY]
 
       expect((await askAboutFriday($)).deny).toBeDefined()
-      expect(session.store.size).toBe(1)
+      expect(await questionCountOf(session)).toBe(1)
     },
   )
 
@@ -850,7 +1071,7 @@ describe('asking with the question skill in context', () => {
       session.context = []
 
       expect((await askAboutFriday($, 'agent-1')).deny).toBeUndefined()
-      expect(session.store.size).toBe(1)
+      expect(await questionCountOf(session)).toBe(1)
     },
   )
 })

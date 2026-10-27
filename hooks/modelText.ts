@@ -1,5 +1,7 @@
 import type { Question } from '../types'
 import { ASK_TOOL, LIST_TOOL, QUESTION_SKILL } from './names'
+import { QUESTION_SKILL_MAX_TOKENS_AFTER_LOAD, QuestionSkillLoadState } from './questionSkill'
+import type { QuestionSkillDenial } from './questionSkill'
 import { Withdrawal, isAnswered, isWithdrawn, openQuestionsOf, sortedByNumber } from './questions'
 import type { AnsweredQuestion } from './questions'
 
@@ -16,13 +18,53 @@ export const ASK_DESCRIPTION = [
   'work it concerns and what each answer would change.',
 ].join(' ')
 
-/** The text given to the model when it asks before the Skill tool loaded the question skill. */
-export const QUESTION_SKILL_MISSING = [
-  'The question was not asked: your context contains no successful call to the Skill tool that',
-  `loaded ${QUESTION_SKILL}, such as after a compaction. Load ${QUESTION_SKILL} with the Skill`,
-  'tool and follow it, so its subagent looks for the answer in the project first. Call',
-  `${ASK_TOOL} only when it finds none.`,
+const LOAD_QUESTION_SKILL_FIRST = [
+  `Load ${QUESTION_SKILL} with the Skill tool and follow it, so its subagent looks for the answer`,
+  `in the project first. Call ${ASK_TOOL} only when it finds none.`,
 ].join(' ')
+
+/** The text given to the model when its load of the question skill does not count, by the cause. */
+export function describeQuestionSkillDenial(check: QuestionSkillDenial): string {
+  switch (check.state) {
+    case QuestionSkillLoadState.NotInContext:
+      return [
+        'The question was not asked: your context does not contain a successful call to the Skill',
+        `tool that loaded ${QUESTION_SKILL}, such as after a compaction.`,
+        LOAD_QUESTION_SKILL_FIRST,
+      ].join(' ')
+    case QuestionSkillLoadState.NotRecorded:
+      return [
+        `The question was not asked: the plugin has not recorded a load of ${QUESTION_SKILL} that`,
+        'counts for your current context, such as for a load made in another session, or before',
+        'a compaction or a rewind of your context.',
+        LOAD_QUESTION_SKILL_FIRST,
+      ].join(' ')
+    case QuestionSkillLoadState.NoContextSize:
+      return [
+        'The question was not asked: the engine does not report the size of your context yet, as',
+        `right after a compaction, so the tokens since your load of ${QUESTION_SKILL} are unknown.`,
+        LOAD_QUESTION_SKILL_FIRST,
+      ].join(' ')
+    case QuestionSkillLoadState.OverLimit:
+      return [
+        `The question was not asked: ${check.tokensAfterLoad.toLocaleString('en')} tokens came`,
+        `into your context after you loaded ${QUESTION_SKILL}, and a load counts for`,
+        `${QUESTION_SKILL_MAX_TOKENS_AFTER_LOAD.toLocaleString('en')} tokens.`,
+        LOAD_QUESTION_SKILL_FIRST,
+      ].join(' ')
+  }
+}
+
+/**
+ * What the person at the prompt is told when the store refused the load record of the question
+ * skill with the message `message`.
+ */
+export function describeUnrecordedLoad(message: string): string {
+  return (
+    `The load of ${QUESTION_SKILL} was not recorded, so Claude cannot ask questions until it ` +
+    `loads the skill again with the Skill tool. ${message}`
+  )
+}
 
 export const LIST_DESCRIPTION = [
   `Lists the questions put to the user in this project with ${ASK_TOOL}, by this session and`,

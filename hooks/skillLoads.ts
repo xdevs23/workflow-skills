@@ -42,7 +42,7 @@ export function readLoadedSkills(context: readonly ApiMessage[]): ReadonlySet<st
 function readBlock(block: ApiContentBlock): ReadBlock {
   const { type, id, name, input, tool_use_id: resultOf, is_error: isError } = block
   if (type === 'tool_use' && name === SKILL_TOOL && typeof id === 'string') {
-    const skill = readSkillName(input)
+    const skill = isArgumentMap(input) ? readSkillName(input) : undefined
 
     return skill === undefined
       ? { kind: BlockKind.Other }
@@ -55,12 +55,16 @@ function readBlock(block: ApiContentBlock): ReadBlock {
   return { kind: BlockKind.Other }
 }
 
-/** The Skill tool loads a skill also when its name has surrounding spaces or a leading slash. */
-function readSkillName(input: unknown): string | undefined {
-  if (typeof input !== 'object' || input === null || !('skill' in input)) {
-    return undefined
-  }
+/**
+ * Reads the name of the skill from the input of a Skill tool call. The Skill tool loads a skill
+ * also when its name has surrounding spaces or a leading slash.
+ */
+export function readSkillName(input: { readonly [argument: string]: unknown }): string | undefined {
   const { skill } = input
 
   return typeof skill === 'string' ? skill.trim().replace(/^\//, '') : undefined
+}
+
+function isArgumentMap(value: unknown): value is { readonly [argument: string]: unknown } {
+  return typeof value === 'object' && value !== null && !Array.isArray(value)
 }

@@ -22,20 +22,26 @@ const LOCK_REFUSAL = 'Lock file is already being held'
 const LOCK_RETRY_DELAY_MS = 50
 
 /**
- * The kinds of record stored for a question, each under a key of its own. A question is written by
- * the session that asks it, an answer by the session it is given in, a withdrawal and a delivery by
- * the session that asked. Every key therefore has one writer, and two sessions never overwrite each
- * other, although the store has no compare-and-set.
+ * The kinds of record stored for a question, and the record of the last load of the question skill
+ * in a session, each under a key of its own. A question is written by the session that asks it, an
+ * answer by the session it is given in, a withdrawal and a delivery by the session that asked, and
+ * a load by the session that loaded the skill. Every key therefore has one writer, and two sessions
+ * never overwrite each other, although the store has no compare-and-set. The one exception is an
+ * old load record, which any session deletes.
  */
 enum RecordKind {
   Question = 'questions',
   Answer = 'answers',
   Withdrawal = 'withdrawals',
   Delivery = 'deliveries',
+  QuestionSkillLoad = 'questionSkillLoads',
 }
 
 type StoredQuestion = Omit<Question, 'answer' | 'withdrawnAt'>
 type StoredAnswer = { text: string; answeredAt: number }
+
+/** The context size of a session when the Skill tool loaded the question skill, and when saved. */
+export type QuestionSkillLoad = { contextTokens: number; savedAt: number }
 
 /** A failure of the store of the plugin that a person can act on, its next step in the message. */
 export class QuestionStoreError extends Error {}
@@ -58,7 +64,7 @@ export class QuestionNotSavedError extends QuestionStoreError {
 
   constructor(key: string, cause: unknown) {
     super(
-      `The store did not save the question under the key ${key}: ${messageOf(cause)}. ` +
+      `The store did not save the change to the key ${key}: ${messageOf(cause)}. ` +
         'The store of the plugin is limited to 4 MiB of JSON for the questions of all projects ' +
         'together. When it is full, delete answered questions from the store file of the plugin ' +
         `in ${STORE_FOLDER}, then try again.`,
@@ -88,6 +94,11 @@ function prefixOf(record: RecordKind, project: string): string {
 
 export function storeKeyOf(project: string, id: string): string {
   return `${prefixOf(RecordKind.Question, project)}${id}`
+}
+
+/** The key of the load record of the session `sessionId`, and with an empty id their prefix. */
+export function questionSkillLoadKeyOf(sessionId: string): string {
+  return `${RecordKind.QuestionSkillLoad}:${sessionId}`
 }
 
 /**
@@ -244,10 +255,71 @@ export async function saveDelivery(
   return answered.map(question => ({ ...question, answer: { ...question.answer, isDelivered: true } }))
 }
 
-async function saveRecord($: EngineInterface, key: string, value: unknown) {
+/** The load record of the session `sessionId`, undefined when the store has none. */
+export async function readQuestionSkillLoad(
+  $: EngineInterface,
+  sessionId: string,
+): Promise<QuestionSkillLoad | undefined> {
+  return readQuestionSkillLoadUnder($, questionSkillLoadKeyOf(sessionId))
+}
+
+export async function saveQuestionSkillLoad(
+  $: EngineInterface,
+  sessionId: string,
+  load: QuestionSkillLoad,
+): Promise<void> {
+  await saveRecord($, questionSkillLoadKeyOf(sessionId), load)
+}
+
+export async function deleteQuestionSkillLoad(
+  $: EngineInterface,
+  sessionId: string,
+): Promise<void> {
+  await deleteRecord($, questionSkillLoadKeyOf(sessionId))
+}
+
+/** Deletes every load record saved before the time `time`. */
+export async function deleteQuestionSkillLoadsSavedBefore(
+  $: EngineInterface,
+  time: number,
+): Promise<void> {
+  const prefix = questionSkillLoadKeyOf('')
+  const keys = (await $.store.keys()).filter(key => key.startsWith(prefix))
+  await Promise.all(
+    keys.map(async key => {
+      const load = await readQuestionSkillLoadUnder($, key)
+      if (load !== undefined && load.savedAt < time) {
+        await deleteRecord($, key)
+      }
+    }),
+  )
+}
+
+async function readQuestionSkillLoadUnder(
+  $: EngineInterface,
+  key: string,
+): Promise<QuestionSkillLoad | undefined> {
+  const value: unknown = await $.store.get(key)
+
+  return value === undefined ? undefined : parseQuestionSkillLoad(key, value)
+}
+
+function saveRecord($: EngineInterface, key: string, value: unknown): Promise<void> {
+  return writeRecord($, key, () => $.store.set(key, value))
+}
+
+function deleteRecord($: EngineInterface, key: string): Promise<void> {
+  return writeRecord($, key, () => $.store.delete(key))
+}
+
+/**
+ * Runs the change `write` to the key `key`, and again after a short wait while another process
+ * writes the store file.
+ */
+async function writeRecord($: EngineInterface, key: string, write: () => Promise<void>) {
   for (;;) {
     try {
-      await $.store.set(key, value)
+      await write()
 
       return
     } catch (error) {
@@ -286,6 +358,18 @@ function parseTime(field: string) {
 
     return time
   }
+}
+
+function parseQuestionSkillLoad(key: string, value: unknown): QuestionSkillLoad {
+  if (
+    !isRecord(value) ||
+    typeof value.contextTokens !== 'number' ||
+    typeof value.savedAt !== 'number'
+  ) {
+    throw new UnreadableQuestionError(key)
+  }
+
+  return { contextTokens: value.contextTokens, savedAt: value.savedAt }
 }
 
 function isQuestion(value: unknown): value is StoredQuestion {
