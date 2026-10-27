@@ -1,4 +1,12 @@
-import type { EngineInterface, Register, ToolCallResult } from 'claude-code'
+import type {
+  Caught,
+  EngineInterface,
+  Frozen,
+  HookFailure,
+  Register,
+  ToolCallInput,
+  ToolCallResult,
+} from 'claude-code'
 
 import type { Question, SessionScope } from '../types'
 import {
@@ -24,13 +32,14 @@ import {
 import {
   ASK_DESCRIPTION,
   LIST_DESCRIPTION,
-  NOT_STARTED,
   WITHDRAWAL_TEXTS,
   WITHDRAW_DESCRIPTION,
   describeAnswers,
   describeAsked,
+  describeFailedUse,
   describeOpenQuestion,
   describeQuestions,
+  describeUnfinishedUse,
 } from './modelText'
 import {
   ANSWER_COMMAND,
@@ -45,21 +54,25 @@ import {
 import { Withdrawal, isAwaitingAnswers, openQuestionsOf, sortedByNumber } from './questions'
 import { QuestionStoreError, messageOf, saveNewQuestion, saveWithdrawal } from './questionStore'
 import {
+  establishSessionScope,
+  hasPersonAtPrompt,
   readQuestions,
   readSessionScope,
+  recordPersonAtPrompt,
   refreshQuestions,
   setTurnRunning,
-  startSessionScope,
   updateQuestions,
 } from './sessionState'
 
 const ALL_CLOSED = 'Every question of this project is answered or withdrawn.'
+const NO_PERSON_AT_PROMPT = 'they work only in a session with a person at the prompt'
 
 export const register: Register = on => {
   // In a session without a person at the prompt, such as a -p run or the Agent SDK, the plugin
-  // registers neither the tools nor the command and leaves the scope empty, so every hook below
-  // passes its event on unchanged.
+  // registers neither the tools nor the command and fixes no scope, so every hook below passes its
+  // event on unchanged.
   on('session.start', async ($, e, next) => {
+    recordPersonAtPrompt(e.isInteractive)
     if (!e.isInteractive) {
       return next(e)
     }
@@ -84,10 +97,11 @@ export const register: Register = on => {
         immediate: true,
       }),
     ])
-    const scope = await startSessionScope($)
     await handleStoreFailure(
       $,
-      () => refreshQuestions($, scope),
+      async () => {
+        await scopeForUse($)
+      },
       message => $.ui.toast(message),
     )
 
@@ -125,83 +139,61 @@ export const register: Register = on => {
   })
 
   on('tool.call', { tool: ASK_TOOL }, async ($, e) => {
-    const scope = await readSessionScope($)
-    if (scope === null) {
-      return { deny: NOT_STARTED }
-    }
+    const scope = await scopeForUse($)
     const input = readAskInput(e)
     if (input.outcome !== AskOutcome.Valid) {
       return { deny: ASK_PROBLEMS[input.outcome] }
     }
     const asked = { text: input.question, choices: input.choices, askedAt: await $.clock.now() }
+    const { question, questions } = await saveNewQuestion($, scope, asked)
+    await updateQuestions($, () => questions)
 
-    return handleStoreFailure<ToolCallResult>(
-      $,
-      async () => {
-        const { question, questions } = await saveNewQuestion($, scope, asked)
-        await updateQuestions($, () => questions)
-
-        return { result: describeAsked(question) }
-      },
-      message => ({ deny: message }),
-    )
-  })
+    return { result: describeAsked(question) }
+  }).catch(denyHookFailure)
 
   // A subagent reads the list too, but only the main conversation takes the answers as read.
   on('tool.call', { tool: LIST_TOOL }, async ($, e) => {
-    const scope = await readSessionScope($)
-    if (scope === null) {
-      return { deny: NOT_STARTED }
-    }
+    const scope = await scopeForUse($)
 
-    return handleStoreFailure<ToolCallResult>(
-      $,
-      () =>
-        deliverAnswers($, scope, async (_, questions) => ({
-          result: { result: describeQuestions(questions) },
-          isAccepted: e.agentId === undefined,
-        })),
-      message => ({ deny: message }),
-    )
-  })
+    return deliverAnswers<ToolCallResult>($, scope, async (_, questions) => ({
+      result: { result: describeQuestions(questions) },
+      isAccepted: e.agentId === undefined,
+    }))
+  }).catch(denyHookFailure)
 
   on('tool.call', { tool: WITHDRAW_TOOL }, async ($, e) => {
-    const scope = await readSessionScope($)
-    if (scope === null) {
-      return { deny: NOT_STARTED }
-    }
+    const scope = await scopeForUse($)
     const number = readWithdrawInput(e)
     if (number === undefined) {
       return { deny: WITHDRAW_PROBLEM }
     }
+    const { withdrawal, questions } = await saveWithdrawal($, scope, number)
+    await updateQuestions($, () => questions)
+    const text = WITHDRAWAL_TEXTS[withdrawal](number)
 
-    return handleStoreFailure(
-      $,
-      async () => {
-        const { withdrawal, questions } = await saveWithdrawal($, scope, number)
-        await updateQuestions($, () => questions)
-        const text = WITHDRAWAL_TEXTS[withdrawal](number)
-
-        return withdrawal === Withdrawal.Withdrawn ? { result: text } : { deny: text }
-      },
-      message => ({ deny: message }),
-    )
-  })
+    return withdrawal === Withdrawal.Withdrawn ? { result: text } : { deny: text }
+  }).catch(denyHookFailure)
 
   // A prompt the user sends carries the answers that wait, such as the ones given during a turn
-  // the user interrupted. They count as read once the prompt entered with them.
+  // the user interrupted, or before /resume switched back to the session. They count as read once
+  // the prompt entered with them.
   on('prompt.submit', async ($, e, next) => {
-    const isTypedByUser = e.origin.kind === 'composer' || e.origin.kind === 'bridge'
-    const scope = e.command === undefined && isTypedByUser ? await awaitingScopeOf($) : null
-    if (scope === null) {
+    const isTypedByUser =
+      e.command === undefined && (e.origin.kind === 'composer' || e.origin.kind === 'bridge')
+    if (!isTypedByUser || !hasPersonAtPrompt()) {
       return next(e)
     }
 
     // A failure of the store comes only from reading the questions, before `next` runs.
     return handleStoreFailure(
       $,
-      () =>
-        deliverAnswers($, scope, async answered => {
+      async () => {
+        const scope = await scopeForUse($)
+        if (!isAwaitingAnswers(await readQuestions($), scope.sessionId)) {
+          return next(e)
+        }
+
+        return deliverAnswers($, scope, async answered => {
           if (answered.length === 0) {
             return { result: await next(e), isAccepted: false }
           }
@@ -209,7 +201,8 @@ export const register: Register = on => {
           const entered = await next({ ...e, context: [...(e.context ?? []), note] })
 
           return { result: entered, isAccepted: entered.context?.includes(note) === true }
-        }),
+        })
+      },
       message => {
         $.ui.toast(message)
 
@@ -243,38 +236,27 @@ export const register: Register = on => {
   })
 
   on('command.run', { command: ANSWER_COMMAND }, async ($, e) => {
-    const scope = await readSessionScope($)
-    if (scope === null) {
-      return { text: NOT_STARTED }
-    }
+    const scope = await scopeForUse($)
     const request = readAnswerArguments(e.args)
+    switch (request.request) {
+      case AnswerRequest.List:
+        return { text: await listOpenQuestions($, scope) }
+      case AnswerRequest.Unreadable:
+        return { text: ANSWER_USAGE_PROBLEM }
+      case AnswerRequest.Answer: {
+        const { number, text } = request
+        const isOpen = await recordAnswerAndDeliver($, scope, number, text)
 
-    return handleStoreFailure(
-      $,
-      async () => {
-        switch (request.request) {
-          case AnswerRequest.List:
-            return { text: await listOpenQuestions($, scope) }
-          case AnswerRequest.Unreadable:
-            return { text: ANSWER_USAGE_PROBLEM }
-          case AnswerRequest.Answer: {
-            const { number, text } = request
-            const isOpen = await recordAnswerAndDeliver($, scope, number, text)
-
-            return {
-              text: isOpen ? `Answered question #${number}.` : `Question #${number} is not open.`,
-            }
-          }
+        return {
+          text: isOpen ? `Answered question #${number}.` : `Question #${number} is not open.`,
         }
-      },
-      message => ({ text: message }),
-    )
-  })
+      }
+    }
+  }).catch(($, e, next) => ({ text: logAndDescribeHookFailure($, next.error) }))
 
   on('ui.render', { component: 'AbovePrompt' }, async ($, e, next) => {
-    const scope = await readSessionScope($)
     const open = openQuestionsOf(await readQuestions($))
-    if (scope === null || e.props.hasSurvey || open.length === 0) {
+    if (e.props.hasSurvey || open.length === 0) {
       return next(e)
     }
     const { Box, Button, Text } = $.ui.resolve(e)
@@ -285,22 +267,21 @@ export const register: Register = on => {
         <Button
           key="answer"
           label="Answer"
-          onPress={() => runOnScreen($, () => showPane($, scope))}
+          onPress={() => runOnScreen($, () => showPane($))}
         />
       </Box>
     )
   })
 
   on('ui.render', { component: 'Pane', requestId: PANE }, async ($, e) => {
-    const scope = await readSessionScope($)
     const open = sortedByNumber(openQuestionsOf(await readQuestions($)))
     const elements = $.ui.resolve(e)
     const { Box, Text } = elements
-    if (scope === null || open.length === 0) {
+    if (open.length === 0) {
       return <Text dimColor>{ALL_CLOSED}</Text>
     }
     const answer = (question: Question, text: string) =>
-      runOnScreen($, () => answerOnScreen($, scope, question, text))
+      runOnScreen($, () => answerOnScreen($, question, text))
     // The mobile surface does not draw input fields or choice lists, so the pane shows the
     // command instead.
     const drawAnswerFields =
@@ -359,7 +340,7 @@ async function awaitingScopeOf($: EngineInterface): Promise<SessionScope | null>
 }
 
 /**
- * Runs `work`, and answers a failure of the store with what `answer` makes of its message, after
+ * Runs `work`, and on a failure of the store returns what `answer` makes of its message, after
  * writing the message to the debug log. Every other error is passed on.
  */
 async function handleStoreFailure<T>(
@@ -379,6 +360,50 @@ async function handleStoreFailure<T>(
   }
 }
 
+/**
+ * Denies the call of a question tool whose hook failed, such as on a scope that cannot be fixed or
+ * a write the store refuses, with the reason, which is written to the debug log too.
+ */
+function denyHookFailure(
+  $: EngineInterface,
+  _e: Frozen<ToolCallInput>,
+  next: Caught,
+): ToolCallResult {
+  return { deny: logAndDescribeHookFailure($, next.error) }
+}
+
+/** What a failed hook of the questions tells the model or the person at the prompt, by its kind. */
+const HOOK_FAILURE_TEXTS: Record<HookFailure['kind'], (message: string | undefined) => string> = {
+  throw: describeFailedUse,
+  timeout: describeUnfinishedUse,
+}
+
+/** Writes why a hook of the questions failed to the debug log, and returns the text of the reply. */
+function logAndDescribeHookFailure($: EngineInterface, failure: HookFailure): string {
+  const text = HOOK_FAILURE_TEXTS[failure.kind](failure.message)
+  $.ui.log(text, { to: 'debug' })
+
+  return text
+}
+
+/**
+ * Returns the scope of the session for a use of the questions, fixed at the first use in the
+ * session, and reads the questions of its project for the band and the pane when this use fixed
+ * it. Every use of the questions gets its scope here, and only in a session with a person at the
+ * prompt.
+ */
+async function scopeForUse($: EngineInterface): Promise<SessionScope> {
+  if (!hasPersonAtPrompt()) {
+    throw new Error(NO_PERSON_AT_PROMPT)
+  }
+  const { scope, isNew } = await establishSessionScope($)
+  if (isNew) {
+    await refreshQuestions($, scope)
+  }
+
+  return scope
+}
+
 /** Lists the open questions for the answer command, and opens the pane with them. */
 async function listOpenQuestions($: EngineInterface, scope: SessionScope): Promise<string> {
   await refreshQuestions($, scope)
@@ -396,8 +421,8 @@ async function listOpenQuestions($: EngineInterface, scope: SessionScope): Promi
   ].join('\n')
 }
 
-async function showPane($: EngineInterface, scope: SessionScope): Promise<void> {
-  await refreshQuestions($, scope)
+async function showPane($: EngineInterface): Promise<void> {
+  await refreshQuestions($, await scopeForUse($))
   const opened = await $.ui.open({ id: PANE, title: 'Questions', focus: true })
   if (!opened.isPlaced) {
     $.ui.toast(
@@ -407,15 +432,11 @@ async function showPane($: EngineInterface, scope: SessionScope): Promise<void> 
   }
 }
 
-async function answerOnScreen(
-  $: EngineInterface,
-  scope: SessionScope,
-  question: Question,
-  text: string,
-): Promise<void> {
+async function answerOnScreen($: EngineInterface, question: Question, text: string): Promise<void> {
   if (text.trim() === '') {
     return
   }
+  const scope = await scopeForUse($)
   const isOpen = await recordAnswerAndDeliver($, scope, question.number, text.trim())
   if (!isOpen) {
     $.ui.toast(`Question #${question.number} is no longer open.`)

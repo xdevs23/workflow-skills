@@ -16,26 +16,59 @@ const deliveringAnswers = atom(
   [],
 )
 
-/**
- * Fixes the scope of the session to the project root it starts in, so a later move of the
- * session, such as into a worktree, keeps the questions of that project. A start the session
- * raises again, after the engine replaced the hooks module, keeps the scope it has.
- */
-export async function startSessionScope($: EngineInterface): Promise<SessionScope> {
-  const [sessionId, root, kept] = await Promise.all([
-    $.session.id(),
-    $.session.root(),
-    read($, sessionScope),
-  ])
-  const scope =
-    kept?.sessionId === sessionId ? kept : { sessionId, project: await projectDigestOf(root) }
-  await update($, sessionScope, () => scope)
+// Whether a person is at the prompt, as the start of the session tells. The module and not the
+// state of the host has it: a session that /resume or /clear switched to raises no start, and the
+// host may have no state for it. A fresh copy of the module raises the start again.
+let isPersonAtPrompt = false
 
-  return scope
+export function recordPersonAtPrompt(isInteractive: boolean): void {
+  isPersonAtPrompt = isInteractive
 }
 
-export function readSessionScope($: EngineInterface): Promise<SessionScope | null> {
-  return read($, sessionScope)
+export function hasPersonAtPrompt(): boolean {
+  return isPersonAtPrompt
+}
+
+/** The scope of the session, and whether the call that returned it was the one that fixed it. */
+type EstablishedScope = { scope: SessionScope; isNew: boolean }
+
+/**
+ * Returns the scope of the session, and fixes it at the first call in the session. A session that
+ * /resume or /clear switched to raises no start, so every use of the questions calls this.
+ *
+ * A later move of the session, such as into a worktree, does not change the project of the scope.
+ * A session that /resume or /clear switched to takes the project of the scope stored before the
+ * switch. Only where the host has no scope stored, as in a new process, is the project the root
+ * the session is in at that call. Whether the host drops the stored scope at /resume is not
+ * confirmed. Where it does, a session that moved into a worktree before /resume takes the worktree
+ * as its project.
+ */
+export async function establishSessionScope($: EngineInterface): Promise<EstablishedScope> {
+  const [sessionId, stored] = await Promise.all([$.session.id(), read($, sessionScope)])
+  const current = scopeOfSession(stored, sessionId)
+  if (current !== null) {
+    return { scope: current, isNew: false }
+  }
+  const project = stored?.project ?? (await projectDigestOf(await $.session.root()))
+  const scope = { sessionId, project }
+  await update($, sessionScope, () => scope)
+
+  return { scope, isNew: true }
+}
+
+/**
+ * The scope of the session once a use of the questions fixed it, and null before that and in a
+ * session without a person at the prompt.
+ */
+export async function readSessionScope($: EngineInterface): Promise<SessionScope | null> {
+  const [sessionId, stored] = await Promise.all([$.session.id(), read($, sessionScope)])
+
+  return scopeOfSession(stored, sessionId)
+}
+
+/** The stored scope when it belongs to the session `sessionId`, and null otherwise. */
+function scopeOfSession(stored: SessionScope | null, sessionId: string): SessionScope | null {
+  return stored?.sessionId === sessionId ? stored : null
 }
 
 /** Reads the questions of the project from the store into the state that the screens draw. */

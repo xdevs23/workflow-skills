@@ -23,7 +23,10 @@ export type Question = {
   withdrawnAt?: number
 }
 
-/** The session and the project it started in, fixed when the session starts. */
+/**
+ * The session and the project of its questions, fixed at the first use of the questions in the
+ * session. A session that /resume or /clear switched to takes the project of the scope before.
+ */
 export type SessionScope = {
   sessionId: string
   /** The digest of the project root that the store keys of the project begin with. */
@@ -38,7 +41,10 @@ declare module 'claude-code' {
        * during a turn than while idle.
        */
       isTurnRunning: boolean
-      /** The scope of an interactive session once it started; null in every other session. */
+      /**
+       * The scope of the session that last used the questions; null before any use and in a
+       * session without a person at the prompt.
+       */
       session: SessionScope | null
       /** The questions of the project, as this session last read or wrote them. */
       questions: readonly Question[]

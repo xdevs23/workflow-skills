@@ -29,9 +29,28 @@ export const WITHDRAW_DESCRIPTION = [
   'Only the session that asked a question can withdraw it.',
 ].join(' ')
 
-export const NOT_STARTED =
-  'The questions of this session are not ready yet, because the session has not started. Try ' +
-  'again after the first prompt.'
+/**
+ * What the model or the person at the prompt is told of a hook of the questions that failed with
+ * `reason`, such as a scope that cannot be fixed or a write the store refuses.
+ */
+export function describeFailedUse(reason: string | undefined): string {
+  return [
+    `The questions could not be used: ${reason ?? 'the hook failed without a reason'}`,
+    'The debug log has this too. Until the cause is fixed, go on without the questions.',
+  ].join('\n')
+}
+
+/**
+ * What the model or the person at the prompt is told of a hook of the questions that ran past its
+ * time, possibly after it saved a change, with the last failure before that, if any.
+ */
+export function describeUnfinishedUse(lastFailure: string | undefined): string {
+  return [
+    'The questions did not finish in time, so whether the change was saved is unknown.',
+    ...(lastFailure === undefined ? [] : [`The last failure before that: ${lastFailure}`]),
+    'List the questions before you try again. The debug log has this too.',
+  ].join('\n')
+}
 
 export function describeAsked(question: Question): string {
   return (

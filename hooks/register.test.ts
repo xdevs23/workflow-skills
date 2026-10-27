@@ -6,6 +6,7 @@ import { ANSWER_COMMAND, ASK_TOOL, LIST_TOOL, PANE, PLUGIN, WITHDRAW_TOOL } from
 import { projectDigestOf, storeKeyOf } from './questionStore'
 
 const ROOT = '/work/project'
+const WORKTREE = '/work/project/.worktrees/feature'
 const FIRST_SESSION = 'session-1'
 const SECOND_SESSION = 'session-2'
 const TURN = 'turn-1'
@@ -41,7 +42,18 @@ type Session = {
   prompts: PromptSubmitInput[]
   panes: string[]
   toasts: string[]
+  logs: string[]
   registered: string[]
+  /**
+   * Whether the host reports that the session has no scope until the plugin writes one. This is
+   * the case assumed for a session that /resume switched to, because /resume raises no start. That
+   * the host drops the scope there is not confirmed.
+   */
+  isScopeDropped: boolean
+  /** The project root the engine returns, which a move into a worktree changes. */
+  root: string
+  /** The reason the engine returns in place of the project root. */
+  rootRefusal: string | undefined
   /** The reasons the store refuses its next writes with, one write each. */
   refusedWrites: string[]
   /** Runs once before the next write of the store, as another session writing at that moment. */
@@ -66,12 +78,26 @@ async function startSession(
     prompts: [],
     panes: [],
     toasts: [],
+    logs: [],
     registered: [],
+    isScopeDropped: false,
+    root: ROOT,
+    rootRefusal: undefined,
     refusedWrites: [],
     beforeNextWrite: undefined,
     droppedPrompt: undefined,
   }
-  on('session.root', () => ({ value: ROOT }))
+  on('state.get', { plugin: PLUGIN, key: 'session' }, ($, e, next) =>
+    session.isScopeDropped ? { value: { value: undefined, version: 0 } } : next(e),
+  )
+  on('state.set', { plugin: PLUGIN, key: 'session' }, ($, e, next) => {
+    session.isScopeDropped = false
+
+    return next(e)
+  })
+  on('session.root', () =>
+    session.rootRefusal === undefined ? { value: session.root } : { deny: session.rootRefusal },
+  )
   on('session.id', () => ({ value: session.id }))
   on('store.keys', () => ({ value: [...session.store.keys()] }))
   on('store.get', ($, e) => ({ value: session.store.get(e.key) }))
@@ -112,7 +138,11 @@ async function startSession(
 
     return { value: undefined }
   })
-  on('ui.log', () => ({ value: undefined }))
+  on('ui.log', ($, e) => {
+    session.logs.push(e.text)
+
+    return { value: undefined }
+  })
   on('prompt.submit', ($, e) => {
     session.prompts.push(e)
     const drop = e.origin.kind === 'plugin' ? session.droppedPrompt : undefined
@@ -130,6 +160,15 @@ async function startSession(
   await startAgain($, options.isInteractive ?? true)
 
   return session
+}
+
+/**
+ * Switches the process to another session as /resume is assumed to do: the session id changes, no
+ * start is raised, and the host has no scope for the session it switched to.
+ */
+function resumeAnother(session: Session, id: string) {
+  session.id = id
+  session.isScopeDropped = true
 }
 
 /** Raises the start of a session, as a new session in the same project does. */
@@ -397,6 +436,118 @@ describe('asking without waiting', () => {
       session.id = FIRST_SESSION
       await startAgain($)
       expect((await readFile($)).context?.join('\n')).toContain('sqlite')
+    },
+  )
+
+  test(
+    'a session that /resume switched to uses the tools as itself',
+    NO_TIME_LIMIT,
+    async ($, on) => {
+      const session = await startSession($, on)
+      await askWhichDatabase($)
+      resumeAnother(session, SECOND_SESSION)
+
+      expect(await listQuestions($)).toContain('Which database?')
+      expect((await askAboutFriday($)).deny).toBeUndefined()
+      expect((await $.tool.call({ tool: WITHDRAW_TOOL, number: 1 })).deny).toBeDefined()
+      expect((await $.tool.call({ tool: WITHDRAW_TOOL, number: 2 })).deny).toBeUndefined()
+    },
+  )
+
+  test(
+    'a session that /clear switched to does not use the answers given in the session before',
+    NO_TIME_LIMIT,
+    async ($, on) => {
+      const session = await startSession($, on)
+      await askWhichDatabase($)
+      session.id = SECOND_SESSION
+      await startTurn($)
+      await answerByCommand($, '1 sqlite')
+
+      expect((await readFile($)).context).toBeUndefined()
+      expect((await askAboutFriday($)).deny).toBeUndefined()
+      expect((await $.tool.call({ tool: WITHDRAW_TOOL, number: 2 })).deny).toBeUndefined()
+    },
+  )
+
+  test(
+    'the first prompt typed after /resume switched back carries the answers given meanwhile',
+    NO_TIME_LIMIT,
+    async ($, on) => {
+      const session = await startSession($, on)
+      await askWhichDatabase($)
+      resumeAnother(session, SECOND_SESSION)
+      await answerByCommand($, '1 sqlite')
+      resumeAnother(session, FIRST_SESSION)
+      await typePrompt($, 'go on')
+
+      expect(session.prompts).toHaveLength(1)
+      expect(session.prompts[0]?.context?.join('\n')).toContain('sqlite')
+    },
+  )
+
+  test(
+    'the band and the pane of a session that /resume switched to answer as that session',
+    NO_TIME_LIMIT,
+    async ($, on) => {
+      const session = await startSession($, on)
+      await askWhichDatabase($)
+      resumeAnother(session, SECOND_SESSION)
+      const band = await mountBand($)
+      await band.press({ key: 'answer' })
+      const pane = await mountPane($, 'terminal')
+      await pane.input({ key: 'answer-1', text: 'sqlite' })
+
+      expect(session.panes).toEqual([PANE])
+      expect(session.toasts).toEqual([])
+      expect(await listQuestions($)).toContain('Answer: sqlite')
+    },
+  )
+
+  test(
+    'a session that /clear switched to after a move into a worktree uses the project before',
+    NO_TIME_LIMIT,
+    async ($, on) => {
+      const session = await startSession($, on)
+      await askWhichDatabase($)
+      session.root = WORKTREE
+      session.id = SECOND_SESSION
+
+      expect(await listQuestions($)).toContain('#1: Which database?')
+    },
+  )
+
+  test(
+    'a session that /resume switched to after a move into a worktree with the scope dropped ' +
+      'asks in the project of the worktree',
+    NO_TIME_LIMIT,
+    async ($, on) => {
+      const session = await startSession($, on)
+      await askWhichDatabase($)
+      session.root = WORKTREE
+      resumeAnother(session, SECOND_SESSION)
+      await askAboutFriday($)
+      const worktreeKeys = storeKeyOf(await projectDigestOf(WORKTREE), '')
+
+      expect(await listQuestions($)).not.toContain('Which database?')
+      expect([...session.store.keys()].filter(key => key.startsWith(worktreeKeys))).toHaveLength(1)
+    },
+  )
+
+  test(
+    'a scope that cannot be set makes the tools fail with the reason, which the debug log shows too',
+    NO_TIME_LIMIT,
+    async ($, on) => {
+      const session = await startSession($, on)
+      resumeAnother(session, SECOND_SESSION)
+      const refusal = 'the project root is unknown'
+      session.rootRefusal = refusal
+
+      expect((await askWhichDatabase($)).deny).toContain(refusal)
+      expect((await $.tool.call({ tool: LIST_TOOL })).deny).toContain(refusal)
+      expect((await $.tool.call({ tool: WITHDRAW_TOOL, number: 1 })).deny).toContain(refusal)
+      expect(await answerByCommand($, '')).toContain(refusal)
+      expect(session.logs.filter(line => line.includes(refusal))).toHaveLength(4)
     },
   )
 
