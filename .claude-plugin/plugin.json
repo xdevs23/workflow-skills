@@ -13,5 +13,6 @@
     "audit",
     "verification",
     "research"
-  ]
+  ],
+  "types": "./types/index.d.ts"
 }

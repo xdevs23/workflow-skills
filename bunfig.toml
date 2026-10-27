@@ -1,0 +1,5 @@
+# SPDX-License-Identifier: MIT
+# Bun runs the tests in tests/ alone. The tests of the hooks module in hooks/ run under
+# `claude plugin test`, which provides the claude-code/testing module imported by those tests.
+[test]
+root = "tests"

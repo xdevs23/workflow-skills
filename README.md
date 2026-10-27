@@ -6,6 +6,23 @@ skills cover implementing and reviewing a change from notes of the user's words 
 approved by the user, autonomous implementation, copywriting, visual decisions and visual
 verification, opening and watching a pull request and recovering an interrupted workflow run.
 
+The plugin also ships a hooks module that lets Claude ask questions without waiting for the
+answers, in interactive sessions. A session run with `-p` or the Agent SDK gets none of its tools.
+The tool `ask_question` stores a question and returns at once. `list_questions` lists the open
+ones, the answered ones and the withdrawn ones, and `withdraw_question` takes back a question that
+Claude no longer needs answered.
+
+The questions of a project are saved across sessions until they are answered, in the file
+`~/.claude/plugins/store/workflow-skills_<suffix>.json` that the plugin writes. On a machine that
+keeps only some of its files across restarts, add that file to the kept ones. A project is the
+folder a session started in, so a session that moves into a worktree keeps the questions of that
+folder.
+
+You answer them in any order: in the pane opened from the row above the prompt, which has input
+fields and choice lists, or with `/answer <number> <answer>`. An answer is sent to Claude as a note
+with the next tool result while Claude works, or as a new message while the session is idle. An
+answer given during a turn you interrupted is sent with your next message.
+
 ## Install
 
 ```text
@@ -19,7 +36,10 @@ such as `/workflow-skills:implement`.
 ## Requirements
 
 - Claude Code with the Workflow tool for skills that launch stages.
-- Bun for the tests.
+- Bun and Node.js for the tests in `tests/` and for the type check and the lint of the hooks
+  module in `hooks/`, and the `claude` command for the tests of the hooks module. The `test` app of
+  the flake runs all of them. The type check reads the declarations of the mod API from
+  `.claude-plugin/types/`, which an interactive session started with `--plugin-dir .` writes.
 - Python 3 and an authenticated GitHub CLI for `babysit-pr`.
 - Python 3.10 or later, git 2.40 or later, resvg and the Mona Sans font for `pull-request`, which
   draws the line graphic with them, and the GitHub CLI in version

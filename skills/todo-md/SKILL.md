@@ -104,13 +104,13 @@ the repository. A fresh clone does not contain it.
   branch of the project, and only once every sub-unit listed in its `Builds on:` line is merged
   there. A pull request is a request that can be rejected.
 - When the delivery of a sub-unit is rejected, deliver none of the sub-units that build on it, and
-  ask the user how to go on.
+  ask the user how to go on as the section `Questions to the user` describes.
 
 ## Findings raised while building a unit
 
 - Fix a finding about code the unit adds or edits in the unit itself, and never record it.
 - Put a finding, also one about older code, to the user as a question when fixing it needs a
-  decision by the user.
+  decision by the user, as the section `Questions to the user` describes.
 - Record work left over from a unit as a sub-unit of the entry for that unit, never as a new entry.
   Its origin pointer is the message that asked for the unit.
 - Record work left over from a unit whose entry was deleted as finished as a new entry, and name
@@ -127,6 +127,14 @@ the repository. A fresh clone does not contain it.
   merged.
 - Add the fix of an older defect to the `Builds on:` line of the unit when the unit cannot work
   without it.
+
+# Questions to the user
+
+- Put each question to the user with the tool `mcp__workflow-skills__ask_question`. The entry the
+  question concerns waits for the answer, and you go on with the next entry in the meantime.
+- Name the entry in each question by its number and title.
+- Take an answer that arrives with a tool result, or as a message, as the user's own reply, and act
+  on it as on any other reply of the user.
 
 # The states an entry can take
 
@@ -146,7 +154,8 @@ item stands.
 - **A decision still owed blocks only the item it concerns.** Skip and mark the item, and move the
   work on to the next one.
 - Work on the smallest change you can do where the answer from the user does not change the outcome.
-- Ask a question once, and do not repeat it while the user is away.
+- Ask a question once, as the section `Questions to the user` describes, and do not repeat it
+  while the user is away.
 
 **Ready to build**
 
@@ -227,8 +236,9 @@ Whether a unit is ready to build follows from the words of the user alone.
   - Something is owed to whoever operates production: a manual step, an index to drop, a backfill
     to run. These are easy to lose and expensive to forget.
   - An item turns out to be already done, or wrongly described.
-- Put an idea of your own for a unit of work to the user as a question, and write it down only once
-  the user asks for it or approves it.
+- Put an idea of your own for a unit of work to the user as a question, as the section
+  `Questions to the user` describes, and write it down only once the user asks for it or approves
+  it.
 - Test whether an update is needed by asking: **if the session ended right now, would the next
   reader know what to do?** If not, the file is stale.
 
@@ -242,8 +252,10 @@ When reading through TODO.md, here's what to do for each status:
 - `RECORDED` – Don't do anything about it. The user says something when they want to do anything about it.
 - `QUEUED` – Start the work right away, also while other work runs. Set it to `IN PROGRESS` after you launched the work (code edits, workflows, commands).
 - `IN PROGRESS` – Check the current progress on the item, and resume the work if it is not running. Keep working until the entry is `BUILT`.
-- `NEEDS DECISION` – Wait for the user to be ready and present, then bring the decision to them.
-                     Use `workflow-skills:visual-decisions` when you can already draw a draft.
+- `NEEDS DECISION` – Put the decision to the user as the section `Questions to the user`
+                     describes, and move on to the next item. Draw a draft by
+                     `workflow-skills:visual-decisions` first when you can already draw one, and
+                     name its page in the question.
 - `BUILT` – Verify the result, check its current state and update the status if it has progressed.
 - `SHIPPED` – Check the current status, and update the status if it has progressed.
 - `VERIFIED` – The unit is done and should be removed.

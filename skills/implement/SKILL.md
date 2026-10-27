@@ -117,8 +117,8 @@ with this plugin.
 - Start no review round of your own on the fix.
 - Put every rule that an implementer reports as standing in the way of its work to the user, with
   the place where it stood in the way.
-- Show the user every optional pick a reviewer returns, and build it only when the user picks it.
-  Don't wait for the user to respond: show them the options and treat it as asynchronous.
+- Put every optional pick a reviewer returns to the user as the section `Questions to the user` of
+  `workflow-skills:todo-md` describes, and build it only when the user picks it.
 
 ## Builds
 

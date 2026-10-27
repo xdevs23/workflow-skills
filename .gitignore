@@ -2,3 +2,5 @@
 .claude/
 .DS_Store
 .local/
+node_modules/
+.claude-plugin/types/

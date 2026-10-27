@@ -1,0 +1,136 @@
+import type { EngineInterface } from 'claude-code'
+
+import type { Question, SessionScope } from '../types'
+import { describeAnswers } from './modelText'
+import { undeliveredAnswersOf } from './questions'
+import type { AnsweredQuestion } from './questions'
+import {
+  QuestionStoreError,
+  messageOf,
+  readProjectQuestions,
+  saveAnswer,
+  saveDelivery,
+} from './questionStore'
+import {
+  claimAnswers,
+  readIsTurnRunning,
+  releaseAnswers,
+  updateQuestions,
+} from './sessionState'
+
+/** The result of a delivery, and whether the model received the answers handed to it. */
+export type Delivery<T> = { result: T; isAccepted: boolean }
+
+/**
+ * Hands the undelivered answers to questions of the session to `send`, with the questions of the
+ * project, and stores them as delivered once `send` reports them accepted. `send` runs also when
+ * the list of answers is empty. Answers another delivery of the session is sending are left to
+ * that delivery, so parallel tool calls give each answer to the model once.
+ */
+export async function deliverAnswers<T>(
+  $: EngineInterface,
+  scope: SessionScope,
+  send: (
+    answered: readonly AnsweredQuestion[],
+    questions: readonly Question[],
+  ) => Promise<Delivery<T>>,
+): Promise<T> {
+  const questions = await readProjectQuestions($, scope.project)
+  await updateQuestions($, () => questions)
+  const answered = await claimAnswers($, undeliveredAnswersOf(questions, scope.sessionId))
+  try {
+    const delivery = await send(answered, questions)
+    if (delivery.isAccepted && answered.length > 0) {
+      await storeDelivery($, scope, answered)
+    }
+
+    return delivery.result
+  } finally {
+    if (answered.length > 0) {
+      await releaseAnswers($, answered)
+    }
+  }
+}
+
+/**
+ * Stores the answers as delivered. A refused write leaves them undelivered, so the model reads
+ * them again with a later delivery, and the user is told.
+ */
+async function storeDelivery(
+  $: EngineInterface,
+  scope: SessionScope,
+  answered: readonly AnsweredQuestion[],
+): Promise<void> {
+  try {
+    const delivered = await saveDelivery($, scope.project, answered)
+    await updateQuestions($, questions =>
+      questions.map(question => delivered.find(each => each.id === question.id) ?? question),
+    )
+  } catch (error) {
+    if (!(error instanceof QuestionStoreError)) {
+      throw error
+    }
+    reportStoreFailure($, error)
+  }
+}
+
+export function reportStoreFailure($: EngineInterface, error: QuestionStoreError): void {
+  $.ui.log(error.message, { to: 'debug' })
+  $.ui.toast(error.message)
+}
+
+/**
+ * Stores the answer of the user to the open question numbered `number`, and returns whether such a
+ * question was open. An answer to a question of this session given while a turn does not run is
+ * sent to the model as a prompt.
+ */
+export async function recordAnswerAndDeliver(
+  $: EngineInterface,
+  scope: SessionScope,
+  number: number,
+  text: string,
+): Promise<boolean> {
+  const answer = { text, answeredAt: await $.clock.now() }
+  const { answered, questions } = await saveAnswer($, scope.project, number, answer)
+  await updateQuestions($, () => questions)
+  if (answered?.sessionId === scope.sessionId && !(await readIsTurnRunning($))) {
+    deliverWhenIdle($, scope)
+  }
+
+  return answered !== undefined
+}
+
+/**
+ * Sends the undelivered answers of the session to the model as a prompt in the name of the user,
+ * and stores them as delivered once the prompt is accepted. The delivery runs in a timer of its
+ * own: a prompt starts its turn once the session is idle, and the call resolves only then, so the
+ * hook that asks for the delivery does not wait for it.
+ */
+export function deliverWhenIdle($: EngineInterface, scope: SessionScope): void {
+  $.clock.after(0, () => {
+    deliverAsPrompt($, scope).catch((error: unknown) => {
+      const text =
+        `The answers to your questions could not be sent to Claude: ${messageOf(error)}. ` +
+        'They are sent with your next prompt or the next tool result.'
+      $.ui.log(text, { to: 'debug' })
+      $.ui.toast(text)
+    })
+  })
+}
+
+async function deliverAsPrompt($: EngineInterface, scope: SessionScope): Promise<void> {
+  await deliverAnswers($, scope, async answered => {
+    if (answered.length === 0) {
+      return { result: undefined, isAccepted: false }
+    }
+    const entered = await $.prompt.submit({ text: describeAnswers(answered), asUser: true })
+    if (entered.drop !== undefined) {
+      $.ui.toast(
+        `The answers to your questions were not sent to Claude: ${entered.drop}. ` +
+          'They are sent with your next prompt or the next tool result.',
+      )
+    }
+
+    return { result: undefined, isAccepted: entered.drop === undefined }
+  })
+}

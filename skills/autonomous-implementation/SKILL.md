@@ -102,10 +102,9 @@ with this plugin.
 ## Questions to the user
 
 - Never wait for an answer.
-- Ask through an asynchronous question where the harness has one: a dialog answered by the user
-  while you keep working.
-- Where the harness has none, write the question into the run file, go on with the decision made by
-  the subagents, and name the question in your next message to the user.
+- Ask each question as the section `Questions to the user` of `workflow-skills:todo-md`
+  describes, and go on with the decision made by the subagents until the answer arrives.
+- Write each question into the run file as well.
 
 ## Reviews
 
