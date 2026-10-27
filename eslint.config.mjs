@@ -25,5 +25,6 @@ export default defineConfig({
     '@typescript-eslint/consistent-type-assertions': ['error', { assertionStyle: 'never' }],
     '@typescript-eslint/no-non-null-assertion': 'error',
     '@typescript-eslint/no-floating-promises': ['error', { ignoreVoid: false }],
+    '@typescript-eslint/no-unused-vars': 'error',
   },
 })
