@@ -7,10 +7,8 @@ description: Review a change against every rule that applies to it.
 
 Check the change against every rule that applies to it, in the change and beside it.
 
-- Read the full rules: `workflow-skills:engineering-principles`, `workflow-skills:code-writing`,
-  `workflow-skills:writing-style` and `workflow-skills:hygiene`, the instruction files of the
-  project, the instruction files of the directories that contain changed files and the global
-  instruction file, with every other file of rules required by them for the changed files.
+- Read the full rules and the instruction files your prompt lists, with every other file of rules
+  required by them for the changed files.
 - Apply each rule only within its scope.
 - Say which file of rules you could not read and which rules conflict.
 - Never invent a rule.

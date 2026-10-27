@@ -101,9 +101,9 @@ with this plugin.
   - The structure reviewer loads `workflow-skills:separation-of-concerns`,
     `workflow-skills:domain-leakage`, `workflow-skills:smearing`, `workflow-skills:code-smell`,
     `workflow-skills:type-safety` and the rules.
-  - The rules and surface reviewer loads `workflow-skills:project-rule-reader`, which reads the
-    rules, `workflow-skills:rule-bypass`, `workflow-skills:code-cleanliness` and
-    `workflow-skills:quality`.
+  - The rules and surface reviewer loads `workflow-skills:project-rule-reader`,
+    `workflow-skills:rule-bypass`, `workflow-skills:code-cleanliness`, `workflow-skills:quality`
+    and the rules.
 - When the change fixes findings of an earlier review, hand the scope, prose and layer reviewers
   those findings.
 
