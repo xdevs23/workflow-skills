@@ -9,6 +9,8 @@ export const ASK_DESCRIPTION = [
   'this session has ended. The call returns at once with the number of the question, and the',
   'answer is sent to you later as a note with one of your tool results, or as a new message of',
   'the user. Use it for every question whose answer the rest of the work does not wait on.',
+  'Ask the question first as the skill workflow-skills:question describes, and call this tool',
+  'only when the subagent finds no answer in the project.',
   `Call ${LIST_TOOL} first, and never ask a question again that is open or answered there.`,
   'Write the question so the user can answer it days later without this conversation: name the',
   'work it concerns and what each answer would change.',

@@ -130,8 +130,11 @@ the repository. A fresh clone does not contain it.
 
 # Questions to the user
 
-- Put each question to the user with the tool `mcp__workflow-skills__ask_question`. The entry the
-  question concerns waits for the answer, and you go on with the next entry in the meantime.
+- Ask each question first as `workflow-skills:question` describes, and act on the answer the
+  subagent finds.
+- Put a question to the user only when the subagent finds no answer in the project, with the tool
+  `mcp__workflow-skills__ask_question`. The entry the question concerns waits for the answer, and
+  you go on with the next entry in the meantime.
 - Name the entry in each question by its number and title.
 - Take an answer that arrives with a tool result, or as a message, as the user's own reply, and act
   on it as on any other reply of the user.
