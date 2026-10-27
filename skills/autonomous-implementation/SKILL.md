@@ -75,7 +75,8 @@ with this plugin.
 - Shape the workflows however the work needs: which agents run, in which order, and how many
   workflows a milestone takes. Scripts do not enforce a shape. The reviewers still hold the work to
   the rules.
-- Run every workflow in a worktree, with an explicit model on every agent.
+- Run every workflow in a worktree.
+- Run every workflow and agent as `workflow-skills:workflows` describes.
 - Commit the work of each milestone in the commit style.
 - Run the builds of each milestone yourself, as the section on builds in `workflow-skills:implement`
   describes. Where the project needs targeted commands, let the subagents design them, log the

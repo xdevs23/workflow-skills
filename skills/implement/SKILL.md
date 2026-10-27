@@ -46,10 +46,13 @@ with this plugin.
 
 ## Implementation
 
+- Make a change of a few lines yourself, without a workflow, and review it with
+  `workflow-skills:review-pass`.
+- Run every workflow and agent as `workflow-skills:workflows` describes.
 - Write a new workflow script for every run. Give it a name and a description that accurately
   describe what the workflow is about.
 - Split the work as you see fit. There is no limit to how many agents you use.
-- Start every implementer as `workflow-skills:implementer` with an explicit model, in a worktree in
+- Start every implementer as `workflow-skills:implementer`, in a worktree in
   the folder that `workflow-skills:local-cache` sets for workflow worktrees.
 - In a project made of several git repositories, give each implementer the whole tree, with a
   worktree for every repository. For a tree that the repo tool manages, add a local manifest that
@@ -78,8 +81,8 @@ with this plugin.
 
 ## Reviewers
 
-- Once all implementers are done, start the following reviewers in parallel on the whole change,
-  each with an explicit model. Tell them which repositories the change is in and at which commits it
+- Once all implementers are done, start the following reviewers in parallel on the whole change.
+  Tell them which repositories the change is in and at which commits it
   starts and ends.
 - Start the scope reviewer as `workflow-skills:reviewer-scope` and hand it the notes and the
   approved draft. It works without the rules.
@@ -122,9 +125,9 @@ with this plugin.
 - Run the full build, the whole test suite and the visual captures yourself, never in an
   implementer or a reviewer.
 - Build a change once its findings are fixed. When several changes are ready at the same time,
-  merge their branches into one build branch and build them together.
-- Build a change with visual work before its reviewers start, so that the scope reviewer gets the
-  captures, as `workflow-skills:visual-verification` describes.
+  merge their branches into one build branch and build them together. In a project without pull
+  requests or another review system, the working branch is the build branch, as the section on
+  merging describes.
 - Hand each failure, with its output, to one implementer on the branch used by the change that
   caused it. Hand a failure that only the combination of branches shows to one implementer on the
   build branch. Build again once the fixes are merged into the build branch.
@@ -132,13 +135,29 @@ with this plugin.
   commands that do, such as one build target for each module, a test filter or an incremental
   build. Put them to the user as a unit of work, and record and implement that unit once the user
   approves it.
-- Until such commands exist, cover the changes of the implementers with your full build.
+- Until such commands exist, leave out the first step of the section on merging. The full build
+  after the merge covers the change.
+
+## Merging
+
+- Take each change through these steps, in this order:
+  1. Build the change on its branch with the targeted checks and builds of the parts it changes.
+     Never run the full build at this step.
+  2. Merge the branch into the working branch, unless the project uses pull requests or another
+     review system.
+  3. Run the full build, the whole test suite and the verification on the branch that now contains
+     the change.
+- Keep the commits made by the implementers and fixers separate until the change is merged.
+- Rebase the unpushed commits of the unit branch into a few logical units.
+- In a project made of several repositories, find out first which repositories the change
+  modified, and merge each of them separately.
+- Check that the working branch is clean, read the result, and only then delete the worktree, in a
+  separate command.
 
 ## User review
 
 - Send the change to the user through the review system the project uses. Open a pull request by
-  `workflow-skills:pull-request` and watch it with `workflow-skills:babysit-pr`, or submit the
-  change to the review process of the project.
+  `workflow-skills:pull-request`, or submit the change to the review process of the project.
 - Expect the user to review the code. When the user rejects the change, send it back to a new run.
   Handle every comment the user adds.
 - In a project without a review system, report the change to the user. The user may review it but
@@ -146,7 +165,14 @@ with this plugin.
 
 ## Wrapping up
 
-- While a build or a test runs longer than the work needs, measure where the time goes and work on
-  the biggest time sink in a worktree of its own, without waiting for the run to end.
-- After each workflow, assess what took the longest and try to optimize it so that the next run needs less time. Aim
-  for a maximum of 20 minutes per agent. Anything under 20 minutes does not need to be inspected.
+- While a build or a test runs longer than the work needs, or while you are idle, measure where the
+  time goes and work on the biggest time sink in a worktree of its own, without waiting for the run
+  to end, so future workflows run faster.
+- After each workflow, read the time taken by each agent, name the biggest time sink and remove it
+  where it comes from, such as by preparing a shared artifact once, by handing context over in the
+  prompt or by cutting a repeated run.
+- Aim for at most 20 minutes per agent. An agent under 20 minutes does not need to be inspected.
+- Count as a time sink only time spent waiting on machines and on rework. Time an agent spends
+  generating output is fine at any length.
+- Run the checks of an agent once, when the agent has finished writing.
+- Remove redundant work from the current task right away.

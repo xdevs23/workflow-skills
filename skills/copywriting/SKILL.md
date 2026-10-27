@@ -226,8 +226,8 @@ The workflow runs five phases: **Intent → Write → Check → Verify → User.
    over the list of work at the end of the run.
 4. **Trace every claim to a named SOURCE line.** Leave out every claim without a source line.
 5. **Recompute every check from the artifacts.** A self-report is never evidence.
-6. **Set an explicit model AND effort on every agent, never inherited ones.** Never run the
-   source-verify reviewer on the smallest model.
+6. **Run every agent as `workflow-skills:workflows` describes.** Never run the source-verify
+   reviewer on the smallest model.
 7. **Let the user pick which important strings ship.** The model supplies structurally distinct
    variants.
 8. **Show the user every slot reported by the copywriter for redesign**, together with the part of

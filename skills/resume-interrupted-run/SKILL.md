@@ -1,6 +1,6 @@
 ---
 name: resume-interrupted-run
-description: Resume a workflow run that was interrupted after agents did substantial work but before they returned results. Not for agents that completed with bad results.
+description: Resume a workflow run that was interrupted after agents did substantial work but before they returned results, and prepare a running workflow for the moment the machine shuts down. Not for agents that completed with bad results.
 ---
 
 # Resume an interrupted run
@@ -42,10 +42,33 @@ with this plugin.
   call before it returned something new, such as a later stage reading reports written again by the
   reviewers.
 
+## A shutdown while a workflow runs
+
+- When the user is about to shut down or reboot while a workflow runs, check that the files of the
+  run are on a persistent disk: the script file, `journal.jsonl` and the `*.jsonl` transcripts of
+  the agents.
+- Parse every line of the journal, since a resume replays from it.
+- Check with `pgrep` that no build or test process is writing, so the shutdown cannot leave a file
+  half written.
+- Write a resume note to `RESUME-<workflow>.md` in the local storage defined by
+  `workflow-skills:local-cache`: the run ID, what is done and replays from the journal, what has
+  not started, the exact call that resumes the run, the environment to bring up first, such as a
+  database stack, and the uncommitted or untracked work left on disk.
+- Tell the user that it is safe to power off, and name the two steps for the return.
+- On the return, first bring up the environment that the agents need, with the safety checks of
+  the project.
+- Then resume with `Workflow({ scriptPath, resumeFromRunId })` from the script file on disk, and
+  never send the script again. A resume needs only the script file and the journal, so any session
+  can run it.
+- Expect the finished agents to replay at once. Expect an agent that was interrupted while it ran
+  to run again.
+
 ## When to use it
 
 - Use this skill when a run was stopped, killed or crashed while one or more agents were **still
   working**, and you do not want to pay twice for the real work done by those agents.
+- Use it also to prepare a running workflow before the machine shuts down, as the section on a
+  shutdown while a workflow runs describes.
 - Use it only while the persisted script file and the directory with the transcripts of the run
   still exist on disk.
 

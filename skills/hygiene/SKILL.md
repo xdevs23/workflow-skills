@@ -80,6 +80,8 @@ description: Decide what may go into everything that leaves the machine or goes 
 
 - Never pass the name or identity of the user to an agent or into an output that does not need it.
 - Never put a personal name into a package root.
+- Never put a git identity into a command, such as `-c user.name=…` or `--author`, unless the user
+  asks for it.
 
 ## Third-party material
 

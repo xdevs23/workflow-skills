@@ -1,6 +1,6 @@
 ---
 name: visual-decisions
-description: Draw a page for the user to look at and answer, such as the draft of a change or product decisions that need an answer.
+description: Draw a page for the user to look at and answer, such as the draft of a change, product decisions that need an answer, a plan or the explanation of a complex problem.
 ---
 
 # Visual decisions
@@ -14,6 +14,8 @@ and in the chat message that comes with it.
   overall shape, direction, architecture and design of the change.
 - Draw a page when one or more product decisions need an answer from the user, each changing what
   someone sees or does, the scope of the product or which data is kept.
+- Draw a page for a substantial plan or design, and for the explanation of a complex code path,
+  problem or trade-off, and open it for the user instead of writing it into the chat.
 
 ## Before you draw
 
@@ -26,8 +28,8 @@ and in the chat message that comes with it.
 
 ## The page
 
-- Write one standalone HTML file in dark mode, with all its CSS inside it and without external
-  resources.
+- Write one standalone HTML file, with all its CSS inside it and without external resources.
+- Write every HTML page meant for the user in dark mode.
 - Keep the file on the filesystem you work on, in the project cache that
   `workflow-skills:local-cache` defines. Upload or publish it elsewhere only when the user has
   explicitly allowed it.

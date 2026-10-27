@@ -16,6 +16,9 @@ with this plugin.
 
 - Open every reply with a note alert, a `> [!NOTE]` block with the name and version of the
   model and the handle on whose behalf you write.
+- When a reply contains an opinion or an assumption you have not checked, add a line to the note
+  alert that says so, such as "This reply is based on an assumption and does not reflect the views
+  of @<handle> on the matter."
 - End the reply on its last point. Do not sign off.
 - Post a reply to a review comment in the same thread as that comment.
 - Post a reply to a top-level comment or to a review summary as a new top-level comment.
@@ -29,6 +32,12 @@ with this plugin.
 - When you decline a finding, give the reason, with the code referred to by the reply in code spans.
 - Resolve every inline thread after your reply, declined findings included, unless by the user's
   rules only the user resolves threads.
+
+## Top-level replies
+
+- Open a top-level reply with one sentence that answers the point.
+- Use bullets only when the reply has several separate points.
+- Close with one sentence on what happens next or what the reader should do.
 
 ## Review requests to a bot
 

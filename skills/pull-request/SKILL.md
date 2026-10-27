@@ -148,6 +148,7 @@ Closes #<n>
 - Open the pull request with `gh pr create --title "<title>" --body-file body.md --attach lines.png
   --attach evidence.png`. Pass each picture to `--attach` with the path the description refers to it
   by. The GitHub CLI uploads the picture and replaces that reference with the address of the upload.
+- Watch the pull request with `workflow-skills:babysit-pr` once it is open.
 - Leave out `--attach` on a host other than github.com and GitHub Enterprise Cloud, such as GitHub
   Enterprise Server, where the GitHub CLI cannot upload pictures. Follow the rules of the project
   for pictures there, or put the pictures where the project hosts images, refer to them by that

@@ -64,8 +64,8 @@ the same settings.
    The report shows which pixels changed and which checks passed. Only the images show whether the
    change looks as intended.
 7. Check the outcome. A change that must not alter the look shows zero changed pixels on every
-   checkpoint. A change that alters the look shows changes only in the checkpoints it is expected to
-   change, with every measured check passing.
+   checkpoint, apart from an accepted artifact. A change that alters the look shows changes only in
+   the checkpoints it is expected to change, with every measured check passing.
 8. When a change alters a compatibility input on purpose, such as a translation, a fixture, the
    scene module or a dependency lock, say so before the change starts. The comparison refuses such a
    pair as incompatible and is still strict. Render an evidence sheet built from the same two
@@ -75,6 +75,11 @@ the same settings.
    product, shown by the scene. A harness failure is a scene that could not run or could not check
    what it declares. Ask for a product decision when the required outcome is still open.
 
+- Accept a difference as an artifact only after you inspected it and captured both states again,
+  and only when it does not appear again or clearly comes from how the browser renders the page.
+- Keep every capture and comparison output, and never report an accepted artifact as a finding.
+- List every accepted artifact in the report as accepted, with its checkpoint, both captures and
+  the reason it was accepted.
 - Never approve a baseline automatically. The comparison exits nonzero for every difference,
   including an intended one. An intended change is still a difference for a person to review.
 - Never loosen the comparison for an input changed on purpose either, since a comparison that
@@ -131,9 +136,8 @@ Curate a scene when none of the existing scenes exposes the surface affected by 
 - Capture the before state yourself, before the first implementer starts, from the commit where the
   change starts, in the worktree where your build runs, under a name not used before in that
   worktree.
-- Capture the after state in your build, run on the branch that contains the whole change after its
-  last commit, under a name not used before in that worktree. Run that build before the reviewers
-  start on the change.
+- Capture the after state in your full build after the merge, on the branch that contains the whole
+  change, as `workflow-skills:implement` describes, under a name not used before in that worktree.
 - Run the comparison against the before capture in the same build. Keep the comparison command and
   its output, which contain the names of both captures, together with the checks you ran. Prove
   pass or fail with the check command of the project, because the comparison exits nonzero for
@@ -142,21 +146,18 @@ Curate a scene when none of the existing scenes exposes the surface affected by 
   comparison report.
 - After any fix to a visual change, capture the after state again in your next build under a name
   not used before, and compare it against the before capture.
-- Hand the scope reviewer the absolute path to every capture, comparison report and evidence sheet
-  you made, each with what it shows. The scope reviewer opens by name the captures you compared.
 - For a change of the third form, the comparison refuses the pair as incompatible and is still
   strict. Keep the output of that comparison together with an evidence sheet built from the same
   two captures, rendered under an output name not used before. Never loosen the comparison for the
   intended input change.
-- The scope reviewer opens the PNGs, the receipts and the comparison reports in the harness
-  directory inside the project cache of the worktree where your build runs, the location defined by
-  `workflow-skills:local-cache`. For a change of the third form, the scope reviewer judges the
-  outcome by reading the evidence sheet, the two receipts and the measured checks of the after
-  capture in its receipt and report.
-- The scope reviewer checks that the receipt of the after capture records the commit under review as
-  source revision, and that the receipt of the before capture records the commit where the change
-  starts. An after capture of another commit proves nothing about this commit.
-- Take a point that needs a new capture into your next build. Reviewers do not write anything.
+- Open the PNGs, the receipts and the comparison reports yourself, in the harness directory inside
+  the project cache of the worktree where your build runs, and judge the outcome from them. For a
+  change of the third form, judge it by reading the evidence sheet, the two receipts and the
+  measured checks of the after capture in its receipt and report.
+- Check that the receipt of the after capture records the commit you built as source revision, and
+  that the receipt of the before capture records the commit where the change starts. An after
+  capture of another commit proves nothing about this commit.
+- Hand the reviewers no captures. You check the visual outcome yourself.
 
 ## Known pitfalls
 

@@ -1,6 +1,6 @@
 ---
 name: local-cache
-description: Decide where to put a file that is not meant for the repository, such as a temporary file, a draft, a plan, a private spec, a workflow worktree, a scratch file, evidence, a log or a report.
+description: Decide where to put a file that is not meant for the repository, such as a temporary file, a draft, a plan, a private spec, a workflow worktree, a scratch file, evidence, a log or a report, what to remove once the tasks are done, and what goes into the project memories.
 ---
 
 # The project cache and the local storage
@@ -40,6 +40,32 @@ description: Decide where to put a file that is not meant for the repository, su
 - Delete a file from the local storage as soon as nothing needs it anymore.
 - Look through the local storage at the end of every unit, and delete every file that is no longer
   needed.
+
+## Cleaning up
+
+- Once all tasks are done, remove the build artifacts not meant for the user, such as build
+  outputs, `result` links, build directories in finished worktrees and test captures.
+- Keep everything made for the user to see, use or keep, such as renders, screenshots, recordings,
+  HTML pages, and binaries and images the user asked for.
+
+## Project memories
+
+- Keep in the project memories only setup facts, preferences of the user for this project and
+  feedback from the user on this project, which apply to this machine alone.
+- Leave out of them what the project already contains, what belongs in its tracked documentation,
+  what a global rule or a skill already contains, and violations or feedback that the next session
+  does not need.
+- Never copy a global rule into a memory, and never link one from a memory.
+- Put knowledge about the project into the project, in a fitting place.
+- Clean up the project memories whenever you change them, so nothing in them is out of date.
+- Delete a memory that refers to something you do not understand. It was not written properly.
+
+## The system temporary directory
+
+- Never keep a large file or anything you need later in the system temporary directory. Treat
+  whatever is there as lost.
+- When something important is lost there, record the violation by `workflow-skills:wall-of-shame`,
+  and recover what was lost without asking the user.
 
 ## Reading stages
 

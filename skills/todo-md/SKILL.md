@@ -145,6 +145,8 @@ item stands.
 - Mark a unit or sub-unit that does not have enough information to start `NEEDS DECISION`.
 - **A decision still owed blocks only the item it concerns.** Skip and mark the item, and move the
   work on to the next one.
+- Work on the smallest change you can do where the answer from the user does not change the outcome.
+- Ask a question once, and do not repeat it while the user is away.
 
 **Ready to build**
 
@@ -238,8 +240,8 @@ then check the TODO.md for entries that are `IN PROGRESS` or `QUEUED`.
 When reading through TODO.md, here's what to do for each status:
 
 - `RECORDED` – Don't do anything about it. The user says something when they want to do anything about it.
-- `QUEUED` – Start the work. Set it to `IN PROGRESS` after you launched the work (code edits, workflows, commands).
-- `IN PROGRESS` – Check the current progress on the item, and resume the work if it is not running.
+- `QUEUED` – Start the work right away, also while other work runs. Set it to `IN PROGRESS` after you launched the work (code edits, workflows, commands).
+- `IN PROGRESS` – Check the current progress on the item, and resume the work if it is not running. Keep working until the entry is `BUILT`.
 - `NEEDS DECISION` – Wait for the user to be ready and present, then bring the decision to them.
                      Use `workflow-skills:visual-decisions` when you can already draw a draft.
 - `BUILT` – Verify the result, check its current state and update the status if it has progressed.

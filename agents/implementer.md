@@ -51,6 +51,7 @@ review all of it.
 - Do not change anything outside your worktree, launch an agent or a workflow, or push anything.
 - Commit as you go, in the commit style used by the project, with one logical change in each
   commit.
+- Put a lint fix or a corrected comment not needed by your change into a separate commit.
 - Run only the checks, tests and build that cover the part you changed alone, such as the compile
   and test task of one module or a test filter. Use the commands listed in your prompt where it
   lists them.

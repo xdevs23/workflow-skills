@@ -147,4 +147,6 @@ pin, owner, masthead, flagging.
   branch, production, the merged code or the unmerged work on a branch. Never call it today, now or
   current.
 - Call a shape that is not built yet After, or the proposed shape.
+- Never infer, comment on or judge the habits, the schedule or the wellbeing of the user, and never
+  suggest sleep, food, a break or another change of behavior.
 
