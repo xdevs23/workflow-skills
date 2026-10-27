@@ -1,155 +1,142 @@
 # Optional real samples
 
-Synthetic scenes are mandatory and run without credentials. Samples of real data are an optional
-source of evidence. The harness is proven without them. A harness may ship without the refresh
-verb. When it has one, every rule in this part applies.
+Synthetic scenes mandatory, run without credentials. Samples of real data: optional source of
+evidence. Harness proven without them. Harness may ship without refresh verb. When it has one, every
+rule in this part applies.
 
 ## Selecting a sample
 
-Sample labels, such as small, average and loaded, are labels picked by the user for a selection.
-They do not claim anything about statistics and do not permit scanning records. A selection file
-lists a bounded set of record identifiers, the related identifiers needed by the screen, and the
-exact read operations allowed. The refresh does not crawl through pages, change data, log in,
-refresh a token automatically or discover endpoints.
+Sample labels such as small, average and loaded: labels picked by user for a selection. Labels claim
+nothing about statistics and do not permit scanning records. Selection file lists bounded set of
+record identifiers, related identifiers needed by screen, and exact read operations allowed. Refresh
+does not crawl through pages, change data, log in, refresh token automatically or discover
+endpoints.
 
-A page sample is a manifest of every response needed by the screen. A saved main record alone is
-not a page sample. A page sample may reference static synthetic shell responses explicitly. The
-provenance of those responses is still recorded as synthetic, and a capture that uses them is
-labeled mixed, never a wholly live page. A required real response never silently falls back to
-synthetic data.
+Page sample: manifest of every response needed by screen. Saved main record alone is not a page
+sample. Page sample may reference static synthetic shell responses explicitly. Provenance of those
+responses still recorded as synthetic. Capture using them labeled mixed, never wholly live page.
+Required real response never silently falls back to synthetic data.
 
-The selection file contains a format version, the name of the set of projected responses, the
-selected record identifier, the exact list of operations with key, method and path, and a list that
-marks every remaining response key as synthetic. Before it sends a request, the refresh fails on any
-other operation and on any synthetic key missing from that list. The selection file contains
-identifiers only, never credentials.
+Selection file contains format version, name of set of projected responses, selected record
+identifier, exact list of operations with key, method and path, and list marking every remaining
+response key as synthetic. Before sending a request, refresh fails on any other operation and on any
+synthetic key missing from that list. Selection file contains identifiers only, never credentials.
 
-The selected record identifier is percent-encoded when it is inserted into the path of the allowed
-operation. The list of operations in the selection must match that exact encoded operation. An
-identifier with reserved characters therefore can never lead to a different path than the one
-listed in the selection.
+Selected record identifier percent-encoded when inserted into path of allowed operation. List of
+operations in selection must match that exact encoded operation. So identifier with reserved
+characters can never lead to a path other than the one listed in selection.
 
 ## Read-only operations
 
-Before a refresh operation is enabled, the code or documentation of the service is checked to
-confirm that the operation is read-only. A read method alone does not prove that. Operations that
-generate content, create sessions or have other side effects on read are excluded. Rendering never
-runs a refresh operation.
+Before refresh operation enabled, code or documentation of service checked to confirm operation
+read-only. Read method alone does not prove that. Operations that generate content, create sessions
+or have other side effects on read: excluded. Rendering never runs refresh operation.
 
 ## Credentials and transport
 
-The credential is short-lived and supplied at run time on standard input, never as a command
-argument, in an environment variable, in a committed file or inside the rendering context. The
-launcher passes it only to the refresh verb. The service origin is supplied explicitly and must be a
-bare encrypted origin. It uses the secure scheme and does not contain user information, a path
-beyond the root, a query or a fragment. The allowlist of endpoints is exact.
+Credential short-lived, supplied at run time on standard input. Never as command argument, in
+environment variable, in committed file or inside rendering context. Launcher passes it only to
+refresh verb. Service origin supplied explicitly, must be bare encrypted origin: secure scheme,
+without user information, path beyond root, query or fragment. Allowlist of endpoints exact.
 
-The refresh denies redirects. It fails on any response with a status other than success and on any
-redirected response. Only a successful response that was not redirected is projected. The refresh
-sends the credential only to that origin. It does not inherit the general deployment environment. It
-never prints headers, bodies, tokens, query identifiers or raw service errors. When a request fails,
-the refresh reports that it is incomplete, that raw service errors are not logged on purpose and
-that the complete samples already present are unchanged. A request waits for its response or for its
-connection to fail, never for a time limit. The connections use TCP keepalive, so a service that is
-gone fails the connection on the probe schedule of the operating system. A service that keeps the
-connection open without answering keeps the refresh waiting until the user who runs it stops it.
+Refresh denies redirects. Fails on any response with status other than success and on any redirected
+response. Only successful response that was not redirected gets projected. Refresh sends credential
+only to that origin. Does not inherit general deployment environment. Never prints headers, bodies,
+tokens, query identifiers or raw service errors. When request fails, refresh reports that it is
+incomplete, that raw service errors are not logged on purpose and that complete samples already
+present are unchanged.
+Request waits for response or for connection to fail, never for a time limit. Connections use TCP
+keepalive, so service that is gone fails connection on probe schedule of operating system. Service
+keeping connection open without answering makes refresh wait until user running it stops it.
 
 ## Projection
 
-Each decoded response is projected right away through an allowlist of fields defined per operation.
-Decoding uses the standard JSON decoder and then explicit assertions on types and shapes.
-The projection contains the displayed fields and the relationships needed by
-the scene. It excludes email addresses, contact details, the bodies of sessions and reports,
-unrelated organization fields, attachment metadata and unused private text. A service response is
-never serialized as a whole.
+Each decoded response projected right away through allowlist of fields defined per operation.
+Decoding: standard JSON decoder, then explicit assertions on types and shapes. Projection contains
+displayed fields and relationships needed by scene. Excludes email addresses, contact details,
+bodies of sessions and reports, unrelated organization fields, attachment metadata and unused
+private text. Service response never serialized as a whole.
 
-Displayed names under inspection are part of the projection and are stored only in the local cache.
-Data altered for safety is labeled projected or redacted and never described as verbatim live
-evidence. Identity links are replaced consistently with local aliases where possible. Addresses of
-external media are removed. Alternatively, assets that were selected explicitly and obtained safely
-are mapped to local fixture addresses. Rendering never downloads them.
+Displayed names under inspection part of projection, stored only in local cache. Data altered for
+safety labeled projected or redacted, never described as verbatim live evidence. Identity links
+replaced consistently with local aliases where possible. Addresses of external media removed.
+Alternatively, assets selected explicitly and obtained safely mapped to local fixture addresses.
+Rendering never downloads them.
 
-A projection has a name and a version, such as the scene name with a version suffix. It also has a
-written description of its content: which fields of which record it contains, which aliases it
-uses, what it removes and which synthetic responses it includes. The provenance of a projection is
-mixed-projected. A scene gets a projection only after the scene is curated. The refresh and the
-sample reader fail on a scene that does not have a projection.
+Projection has name and version, e.g. scene name with version suffix. Also written description of
+content: which fields of which record it contains, which aliases it uses, what it removes, which
+synthetic responses it includes. Provenance of projection: mixed-projected. Scene gets projection
+only after scene curated. Refresh and sample reader fail on scene without projection.
 
 ## Publication
 
-Every response and every required manifest entry is validated before a sample is published, with the
-same validation as a fixture set. Before its first request, the refresh creates a fresh directory
-and writes into it a manifest that marks the sample as incomplete. Only after validation does it
-write the responses and a complete manifest, and then it moves the directory to the label. The step
-that moves the directory fails when a sample with that label exists, so a complete sample is never
-overwritten in place.
+Every response and every required manifest entry validated before sample published, same validation
+as fixture set. Before first request, refresh creates fresh directory, writes into it manifest
+marking sample incomplete. Only after validation, refresh writes responses and complete manifest,
+then moves directory to label. Step moving directory fails when sample with that label exists, so
+complete sample never overwritten in place.
 
-Publishing another profile under a label already used by a complete sample needs a deliberate step
-first: retain the existing sample, or manage the local cache explicitly, such as by removing that
-sample by hand. The refresh performs neither step automatically. The output of a failed, stopped or
-partial refresh is left in the directory marked incomplete, since the mark is written before the
-first request. It is visibly unusable and can never be selected.
+Publishing another profile under label already used by complete sample needs deliberate step first:
+retain existing sample, or manage local cache explicitly, e.g. remove that sample by hand. Refresh
+performs neither step automatically. Output of failed, stopped or partial refresh left in directory
+marked incomplete, since mark written before first request. Visibly unusable, can never be selected.
 
-The manifest contains the projection version, the completeness, the overall provenance, the capture
-time, the provenance and a content hash for each response key, and the hash of the whole response
-set. Neither the manifest nor any receipt ever contains credentials.
+Manifest contains projection version, completeness, overall provenance, capture time, provenance and
+content hash for each response key, and hash of whole response set. Neither manifest nor any receipt
+ever contains credentials.
 
 ## Using a sample
 
-A capture selects a sample by label. The refresh command runs as a separate process with explicit
-permission to use the network. The scene verb, the compare verb and a cache miss never start it, so
-a missing sample never triggers a refresh. The sample reader checks:
+Capture selects sample by label. Refresh command runs as separate process with explicit permission
+to use network. Scene verb, compare verb and cache miss never start it, so missing sample never
+triggers refresh. Sample reader checks:
 
-* the label;
-* the version in the manifest;
-* that the sample is complete;
-* that the hash of the response set matches the manifest;
-* the validation against the set of responses expected by the scene, with the main record from the
-  sample substituted;
-* the mixed provenance.
+* label;
+* version in manifest;
+* that sample complete;
+* that hash of response set matches manifest;
+* validation against set of responses expected by scene, with main record from sample substituted;
+* mixed provenance.
 
-To use a real sample, supply the origin and the credential, run the refresh, remove the credential
-from the environment, and then capture with the sample label.
+To use real sample: supply origin and credential, run refresh, remove credential from environment,
+then capture with sample label.
 
 ## Privacy of artifacts
 
 Samples, selections, screenshots, HTML reports, difference images, engine profiles, optional traces
-and logs are stored in the harness directory inside the project cache, the location defined by
-`workflow-skills:local-cache`. Everything that contains sample data is stored with restrictive
-permissions. Screenshots and reports are private as well. Traces and verbose logs are off by
-default. When they are enabled explicitly for diagnosis, credentials are redacted in them and the
-artifacts are never published.
+and logs stored in harness directory inside project cache, location defined by
+`workflow-skills:local-cache`. Everything containing sample data stored with restrictive
+permissions. Screenshots and reports private too. Traces and verbose logs off by default. When
+enabled explicitly for diagnosis, credentials redacted in them, artifacts never published.
 
-Only synthetic fixtures and scene definitions are committed. A regression found with real data is
-promoted by curating a synthetic equivalent that reproduces the observed failure. Private records
-are never copied into version control.
+Only synthetic fixtures and scene definitions committed. Regression found with real data promoted by
+curating synthetic equivalent that reproduces observed failure. Private records never copied into
+version control.
 
 ## The verification boundary
 
-Whether credentialed samples are fresh, whether live payloads are compatible and how live data looks
-on screen are unverified until an authorized refresh actually runs. The harness contract in the
-project records them as unverified. Local fixtures prove that results are reproducible. They prove
-nothing about the state of production. A successful refresh prints that the sample was published
-locally with its provenance and that a refresh does not verify live visual compatibility.
+Whether credentialed samples fresh, whether live payloads compatible, how live data looks on screen:
+unverified until authorized refresh actually runs. Harness contract in project records them as
+unverified. Local fixtures prove results reproducible. Prove nothing about state of production.
+Successful refresh prints: sample published locally with provenance, refresh does not verify live
+visual compatibility.
 
-Without credentials or a selection, the refresh fails before any request, with actionable
-instructions that list the missing inputs. A capture never starts the refresh. The self-test suite
-checks the refresh against a synthetic transport. It cannot verify a
-credentialed refresh.
+Without credentials or selection, refresh fails before any request, with actionable instructions
+listing missing inputs. Capture never starts refresh. Self-test suite checks refresh against
+synthetic transport. Cannot verify credentialed refresh.
 
 ## Web realization in the reference
 
-The reference curated one projection for the first page scene. The projection contained the map of
-displayed names and the short descriptions of the selected record, used local aliases for identity
-and related records, removed external media, and included synthetic background text and shell
-responses. The refresh took the transport as a parameter, with the fetch function of the platform as
-the default, so the self-test suite could pass a synthetic one. It authenticated with a bearer token
-header and asked for JSON. It inserted the selected identifier into the path of the read operation
-with the standard URI component encoding and sent the request with redirects set to fail. It
-accepted only a response with a success status that had not been redirected.
+Reference curated one projection for first page scene. Projection contained map of displayed names
+and short descriptions of selected record, used local aliases for identity and related records,
+removed external media, included synthetic background text and shell responses. Refresh took
+transport as parameter, with fetch function of platform as default, so self-test suite could pass
+synthetic one. Authenticated with bearer token header, asked for JSON. Inserted selected identifier
+into path of read operation with standard URI component encoding. Sent request with redirects set to
+fail. Accepted only response with success status that had not been redirected.
 
 ## Native and terminal realizations
 
-A sample refresh is a separate program in any stack, independent of the rendering platform. A native
-or terminal harness hands the published sample to the application through the same data boundary as
-the synthetic fixtures, so the application cannot tell the two apart.
+Sample refresh: separate program in any stack, independent of rendering platform. Native or terminal
+harness hands published sample to application through same data boundary as synthetic fixtures, so
+application cannot tell the two apart.

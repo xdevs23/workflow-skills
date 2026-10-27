@@ -1,153 +1,144 @@
 # Geometry measurements
 
-Measurements read geometry from the layout engine that drew the screen. They never read it from
-style declarations. A style name shows what a developer intended, while a measured box shows what
-the engine drew. Every measurement writes the actual values into the receipt, so a failure can be
-understood without running the scene again.
+Measurements read geometry from layout engine that drew screen. Never read it from style
+declarations. Style name shows what developer intended. Measured box shows what engine drew. Every
+measurement writes actual values into receipt, so failure understandable without running scene
+again.
 
 ## Content boxes
 
-A content box is the drawn box of the element minus the computed borders and padding on each side,
-as reported by the layout engine for that element. The harness never takes a padding from a
-design token or a class. A check that controls fill a row compares the outer edges of the controls
-with the content box of the row. A check that something lies inside a container compares it with
-the content box of the container.
+Content box = drawn box of element minus computed borders and padding on each side, as reported by
+layout engine for that element. Harness never reads padding from design token or class. Check that
+controls fill row compares outer edges of controls with content box of row. Check that something
+lies inside container compares it with content box of container.
 
 ## Empty and collapsed measurements
 
-A geometry check fails when the measured set is empty, or when a measured box or gap has zero size.
-A collapsed or missing element would otherwise pass a containment or non-overlap check trivially:
-an empty set does not contain a member outside the container, and a box of zero width overlaps
-nothing. Every check therefore also needs at least one measured element, and a positive width and a
-positive height for each compared box. A check of a gap needs that gap to be positive.
+Geometry check fails when measured set is empty, or when measured box or gap has zero size.
+Collapsed or missing element would otherwise pass containment or non-overlap check trivially: empty
+set does not contain member outside container, box of zero width overlaps nothing. Every check
+therefore also needs at least one measured element, and positive width and positive height for each
+compared box. Check of gap needs that gap to be positive.
 
 ## Text line boxes
 
-Text geometry is read for each drawn line. The harness selects the text of an element and asks the
-engine for the rectangles of each drawn line. A check that text lies inside its box compares every
-line rectangle with the box. A check that text wraps or does not wrap counts the lines.
+Text geometry read for each drawn line. Harness selects text of element, asks engine for rectangles
+of each drawn line. Check that text lies inside its box compares every line rectangle with box.
+Check that text wraps or does not wrap counts lines.
 
-A text is one line when all its line rectangles start at the same height. Parts of one line in
-different font sizes may start a pixel or two apart, while a new line starts more than half a line
-height lower. The height of the element is then at most its line height plus one pixel. When the
-engine does not report a line height, the reference used one and a half times the font size.
+Text is one line when all its line rectangles start at same height. Parts of one line in different
+font sizes may start a pixel or two apart. New line starts more than half a line height lower.
+Height of element is then at most its line height plus one pixel. When engine does not report line
+height, reference used one and a half times font size.
 
-Where text may wrap, the number of lines is recorded as a diagnostic measurement. A change in
-wrapping then shows in the receipt and the report without failing the capture.
+Where text may wrap, number of lines recorded as diagnostic measurement. Change in wrapping then
+shows in receipt and report without failing capture.
 
 ## Hit tests
 
-A hit test proves that nothing covers a control. The harness asks the engine which element is drawn
-at a point, such as the centre of the icon in a control or a point just inside an edge, and checks
-that the element is part of the control. A box inside a container can still be covered by a
-sibling. Only a hit test shows which element a pointer would hit.
+Hit test proves that nothing covers control. Harness asks engine which element is drawn at a point,
+e.g. centre of icon in control or point just inside an edge, checks that element is part of
+control. Box inside container can still be covered by sibling. Only hit test shows which element a
+pointer would hit.
 
 ## Sticky headers
 
-A sticky header inside a scrolling list is checked at three scroll offsets: the top, a point inside
-the second section, and the end. The list must actually scroll, with three distinct offsets. At each
-offset, the check advances the paused clock by one frame and then expects:
+Sticky header inside scrolling list checked at three scroll offsets: top, point inside second
+section, end. List must actually scroll, with three distinct offsets. At each offset, check advances
+paused clock by one frame, then expects:
 
-* the top edge of one header to lie on the inner top edge of the list, within half a layout unit;
-* that header to span the full inner width of the list;
-* the background of that header to be fully opaque;
-* the elements drawn at the left, middle and right of the top edge of the list to be part of that
-  header, so none of the rows shows above it.
+* top edge of one header to lie on inner top edge of list, within half a layout unit;
+* that header to span full inner width of list;
+* background of that header to be fully opaque;
+* elements drawn at left, middle and right of top edge of list to be part of that header, so none
+  of rows shows above it.
 
-Opacity is read from the painted color itself. The reference painted the computed background color
-into a one-pixel canvas, read the alpha value of that pixel, and required the opacity property of
-the element to be one. The list is scrolled back to the top afterwards.
+Opacity read from painted color itself. Reference painted computed background color into one-pixel
+canvas, read alpha value of that pixel, required opacity property of element to be one. List
+scrolled back to top afterwards.
 
 ## Other measured facts
 
-The checks needed by a scene are built from the same few measurements. The scenes in the reference
-used every one of the following checks, each provided by the harness as a small shared function:
+Checks needed by scene built from same few measurements. Scenes in reference used every one of
+following checks, each provided by harness as small shared function:
 
-* The controls in a row extend to both horizontal edges of the content box of the row, within one
-  pixel.
-* A fixed-width control has its expected width within one pixel.
-* A control and the parts of a group lie inside the content box of the surrounding container,
-  within one pixel.
-* Controls in reading order do not overlap the control before them. Where one group ends and the
-  next begins, the controls are at least the gap set for the row apart. Both checks use a tolerance
-  of half a layout unit.
-* A row of controls is one line: the height of the row equals the height of the tallest control in
-  it plus the padding of the row, within one pixel, with every control inside the padded box.
-* A truncating label has a minimum width: it is at least as wide as a stated floor, or as wide as
-  its whole text where that text is shorter, within half a layout unit.
-* Floating content, such as a popover or menu, lies inside the viewport, entirely on the side of the
-  trigger where the design places it, such as above or below, and inside the horizontal edges of the
-  surrounding host or card.
-* Text in a tile or card lies inside the box of the tile within one pixel. Every element inside the
-  tile shows its content without clipping. Clipping shows as a scroll width that exceeds the client
-  width by more than one pixel, on an element whose horizontal overflow is not visible.
-* A resting state draws nothing: the document contains none of the elements of the component, and
-  the content after it starts at the top edge of the container.
-* The options of a choice group have positive rectangles and do not overlap each other. Every label
-  and hint line of an option lies inside the content box of that option. The text in them may wrap.
+* Controls in row extend to both horizontal edges of content box of row, within one pixel.
+* Fixed-width control has its expected width within one pixel.
+* Control and parts of group lie inside content box of surrounding container, within one pixel.
+* Controls in reading order do not overlap control before them. Where one group ends and next
+  begins, controls are at least the gap set for row apart. Both checks use tolerance of half a
+  layout unit.
+* Row of controls is one line: height of row equals height of tallest control in it plus padding of
+  row, within one pixel, with every control inside padded box.
+* Truncating label has minimum width: at least as wide as stated floor, or as wide as its whole
+  text where that text is shorter, within half a layout unit.
+* Floating content, e.g. popover or menu, lies inside viewport, entirely on side of trigger where
+  design places it, e.g. above or below, and inside horizontal edges of surrounding host or card.
+* Text in tile or card lies inside box of tile within one pixel. Every element inside tile shows
+  its content without clipping. Clipping shows as scroll width that exceeds client width by more
+  than one pixel, on element whose horizontal overflow is not visible.
+* Resting state draws nothing: document contains none of elements of component, content after it
+  starts at top edge of container.
+* Options of choice group have positive rectangles, do not overlap each other. Every label and hint
+  line of option lies inside content box of that option. Text in them may wrap.
 
-Single-line text that scrolls natively inside an input is not a failure by itself. A multiline text
-field fills the content width of the row containing it, within one pixel.
+Single-line text that scrolls natively inside input: not a failure by itself. Multiline text field
+fills content width of row containing it, within one pixel.
 
-Row and containment checks must pass both with everything closed and with each popover or menu
-open. Opening floating content can move, resize or cover the controls in the row from which it
-opens, so the checks of that row run again for each open state.
+Row and containment checks must pass both with everything closed and with each popover or menu open.
+Opening floating content can move, resize or cover controls in row from which it opens, so checks of
+that row run again for each open state.
 
 ## The stability check
 
-Before every screenshot, the target is scrolled into view and its geometry is read repeatedly: the
-boxes of the target and of the inputs, text fields, buttons and inline text elements inside it.
-Between two readings the paused clock advances exactly one frame, by the frame interval fixed by
-the rendering context, which runs pending frame callbacks and due timers without letting
-random cadences drift. The geometry is stable when three consecutive readings match the previous one
-within half a layout unit in every coordinate. The check fails the capture when the readings still
-differ and nothing is left that could still move the geometry: the paused clock has passed the end
-time of every finite animation on the target or inside it, and it holds no pending timer and no
-frame callback. A timer or a frame callback that schedules itself again keeps the check running
-until the user who runs the harness stops it. The failure message says that the geometry did not
-stabilize and gives the instruction to inspect the animation of the target.
+Before every screenshot, target scrolled into view, its geometry read repeatedly: boxes of target
+and of inputs, text fields, buttons and inline text elements inside it. Between two readings paused
+clock advances exactly one frame, by frame interval fixed by rendering context. Advancing runs
+pending frame callbacks and due timers without letting random cadences drift. Geometry stable when
+three consecutive readings match previous one within half a layout unit in every coordinate. Check
+fails capture when readings still differ and nothing is left that could still move geometry: paused
+clock has passed end time of every finite animation on target or inside it, and does not have any
+pending timer or frame callback. Timer or frame callback that schedules itself again makes check run
+until user who runs harness stops it. Failure message: geometry did not stabilize, plus instruction
+to inspect animation of target.
 
-The readiness record from the check contains the font families loaded at that moment, the scroll
-positions of every scrolling ancestor of the target, and the number of frames advanced. The receipt
-contains this record for every checkpoint.
+Readiness record from check contains font families loaded at that moment, scroll positions of every
+scrolling ancestor of target, number of frames advanced. Receipt contains this record for every
+checkpoint.
 
 ## Numbers and their reasons
 
-The reference used one CSS pixel as the tolerance for containment and alignment checks, since
-fractional layout positions round differently at edges. It used half a CSS pixel for stability and
-for the flush sticky header, since those checks compare the same element with itself or with the
-edge of the container around it. The non-overlap check in reading order and the floor check for
-truncating labels also used half a CSS pixel instead of the one-pixel tolerance for containment. A
-full pixel there would accept controls that overlap by a pixel, and labels that are a pixel narrower
-than the floor. The reference fixed the frame interval at 16 milliseconds, one frame at 60
-frames per second. A toolkit with integer layout units uses one unit where the reference used one
-pixel. It compares in the finest unit available in that toolkit, so the half-unit tolerances still
-mean something.
+Reference used one CSS pixel as tolerance for containment and alignment checks, since fractional
+layout positions round differently at edges. Used half a CSS pixel for stability and for flush
+sticky header, since those checks compare same element with itself or with edge of container around
+it. Non-overlap check in reading order and floor check for truncating labels also used half a CSS
+pixel instead of one-pixel tolerance for containment. Full pixel there would accept controls that
+overlap by a pixel, and labels a pixel narrower than floor. Reference fixed frame interval at 16
+milliseconds, one frame at 60 frames per second. Toolkit with integer layout units uses one unit
+where reference used one pixel. Compares in finest unit available in that toolkit, so half-unit
+tolerances still mean something.
 
 ## Web realization in the reference
 
-The reference measured boxes with DOM bounding client rectangles, and padding and borders with
-computed styles. It used the client rectangles of a DOM range for text lines, the point-to-element
-lookup on the document for hit tests, and the Playwright page clock to advance frames. Each
-measurement function ran inside the page and returned plain numbers to the scene.
+Reference measured boxes with DOM bounding client rectangles, padding and borders with computed
+styles. Used client rectangles of DOM range for text lines, point-to-element lookup on document for
+hit tests, Playwright page clock to advance frames. Each measurement function ran inside page,
+returned plain numbers to scene.
 
 ## Native and terminal realizations
 
-A native harness reads bounds from the semantics or accessibility tree provided by the toolkit, such
-as the bounds of a composition node relative to its root, the rectangle found by a widget finder,
-the frame of a UI test element or the global visible rectangle of a view. Padding comes from the
-layout parameters provided by the toolkit where it exposes them. Otherwise the content box is taken
-from the bounds of the child elements. Text lines come from the text layout provided by the
-toolkit, such as the line metrics of a laid-out paragraph. Hit tests use the hit testing built into
-the toolkit. Where the test framework has a clock, the stability check advances it one frame at a
-time.
+Native harness reads bounds from semantics or accessibility tree provided by toolkit, e.g. bounds of
+composition node relative to its root, rectangle found by widget finder, frame of UI test element
+or global visible rectangle of view. Padding comes from layout parameters provided by toolkit where
+it exposes them. Otherwise content box taken from bounds of child elements. Text lines come from
+text layout provided by toolkit, e.g. line metrics of laid-out paragraph. Hit tests use hit testing
+built into toolkit. Where test framework has clock, stability check advances it one frame at a time.
 
-A terminal harness measures in cells. The unit is one cell, a box is a rectangle of rows and
-columns, text lines are screen rows, and containment compares cell rectangles. The stability check
-compares complete screen buffers, including attributes and colors, and needs three identical
-consecutive buffers while the controlled clock advances. Overdrawn text shows up as expected text
-missing from its cell positions. This check replaces the hit test.
+Terminal harness measures in cells. Unit = one cell. Box = rectangle of rows and columns.
+Text lines = screen rows. Containment compares cell rectangles. Stability check compares complete
+screen buffers, including attributes and colors, needs three identical consecutive buffers while
+controlled clock advances. Overdrawn text shows up as expected text missing from its cell positions.
+This check replaces hit test.
 
-Measurement helpers are tracked harness code. The values recorded by them are written only to
-receipts in the harness directory inside the project cache, at the location defined by
-`workflow-skills:local-cache`.
+Measurement helpers = tracked harness code. Values recorded by them written only to receipts in
+harness directory inside project cache, at location defined by `workflow-skills:local-cache`.

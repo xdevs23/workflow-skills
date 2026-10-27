@@ -1,43 +1,38 @@
 ---
 name: wall-of-shame
-description: Record a rule violation when the user or you point it out, and when the user voices frustration with your work or you overstep.
+description: Record rule violation when user or you point it out, and when user voices frustration with your work or you overstep.
 ---
 
 # The wall of shame
 
-**Load the `workflow-skills:writing-style` skill first.** The rules in it apply to every comment,
-document, commit message and reply you write while you follow this skill. Load it whenever you work
-with this plugin.
-
 ## Why it exists
 
-Rules alone do not stop repeat violations. A session breaks a rule already in the context of that
-session, apologises, and breaks it again. The wall turns each violation into a permanent record
-tied to a model, a session and a line in a transcript, so the record can be checked and cannot be
-argued away later. Recurring entries show which rules sessions keep breaking and which wording
-fails. The user changes the rules based on that evidence. The user can also follow how well each
-model follows the rules over time.
+Rules alone do not stop repeat violations. Session breaks rule already in its context, apologises,
+breaks it again. Wall turns each violation into permanent record tied to model, session and line in
+transcript. Record is checkable and cannot be argued away later. Recurring entries show which rules
+sessions keep breaking, which wording fails. User changes rules based on that evidence. User can
+also follow how well each model follows rules over time.
 
-Hooks, scripts and harness settings never write or read the files automatically. The wall works only as long as
+Hooks, scripts, harness settings never write or read the files automatically. Wall works only while
 you follow this skill.
 
 ## When you write an entry
 
-- Append an entry in the same turn when the user points out a violation of yours.
-- Append an entry without being told when you catch yourself breaking a rule.
-- When a finding returned by a reviewer turns out to come from a model breaking a rule, record it
-  as a violation by that model.
-- Expect a stage that writes nothing, such as a reviewer, to report the violation. Record it when
-  you read the findings returned by the reviewers.
-- Read a message of the user as a possible report of a violation when it reminds you of something
-  said before, orders you to stop or to revert, says something was never said or approved, is
-  written in capitals, or speaks of disappointment, of invention or of something that makes no
-  sense. Decide whether it concerns a violation before you write the entry.
-- Record each owed entry that was not written as one more violation, in a separate entry.
+- Append entry in same turn when user points out a violation of yours.
+- Append entry without being told when you catch yourself breaking a rule.
+- When finding returned by reviewer turns out to come from a model breaking a rule, record it as
+  violation by that model.
+- Expect stage that writes nothing, e.g. reviewer, to report the violation. Record it when you read
+  findings returned by reviewers.
+- Read message of user as possible report of violation when it: reminds you of something said
+  before, orders you to stop or to revert, says something was never said or approved, is written in
+  capitals, or speaks of disappointment, of invention or of something that makes no sense. Decide
+  whether it concerns a violation before writing the entry.
+- Record each owed entry that was not written as one more violation. Separate entry.
 
 ## The entry
 
-Each entry is a level-2 heading followed by four labelled paragraphs:
+Each entry is level-2 heading followed by four labelled paragraphs:
 
 ```markdown
 ## <date and time> · <project> · <model>: <one-line summary>
@@ -51,29 +46,27 @@ Each entry is a level-2 heading followed by four labelled paragraphs:
 **Where:** <transcript file>:<line>
 ```
 
-- Append the entry to the file for the day of the violation in the `wall-of-shame` directory
-  inside the Claude configuration directory. Name each file with the day it covers, in ISO 8601
-  form.
-- Write in the heading the date and time of the offending words, taken from the transcript, in the
-  user's timezone in ISO 8601 with its offset.
-- Name in the heading the project and the exact model ID, with a note where the role matters, such
-  as root session, implementer or rule reader.
-- Copy the words in **Said:** verbatim from the transcript. A command or a line of code counts as
-  words.
-- Quote the rule in **Broke:** word for word, with its section where it has one. One entry may
-  quote several rules.
-- Name in **Roast:** the failure and why it was avoidable, which is usually that the rule was in
-  context. Say it as bluntly as you would to someone who broke a rule right in front of them.
-- Aim the roast at the output of the model.
-- Point **Where:** at the transcript file in the `projects` directory inside the Claude
-  configuration directory and at the line, so anyone can open the original.
+- Append entry to file for day of violation in `wall-of-shame` directory inside Claude
+  configuration directory. Name each file with day covered by it, ISO 8601 form.
+- Write in heading date and time of offending words, taken from transcript. User's timezone, ISO
+  8601 with its offset.
+- Name in heading project and exact model ID. Add note where role matters, e.g. root session,
+  implementer or rule reader.
+- Copy words in **Said:** verbatim from transcript. Command or line of code counts as words.
+- Quote rule in **Broke:** word for word, with its section where it has one. One entry may quote
+  several rules.
+- Name in **Roast:** the failure and why it was avoidable. Usually: rule was in context. Say it as
+  bluntly as you would to someone who broke a rule right in front of them.
+- Aim roast at output of model.
+- Point **Where:** at transcript file in `projects` directory inside Claude configuration directory,
+  and at the line. Anyone can then open the original.
 
 ## Changes to the wall
 
-- Never edit an old entry, which includes deleting, rewording or softening it.
-- Add a correction entry below a mistaken entry.
-- Never change the rules quoted in an entry. Rules change only at the user's word.
-- Put the fix for a violation to the user, and record it in the todo record defined by
-  `workflow-skills:todo-md` once the user approves it.
-- Put a new rule into the rules files.
-- Write into the wall only the record of what happened.
+- Never edit old entry. Includes deleting, rewording or softening it.
+- Add correction entry below mistaken entry.
+- Never change rules quoted in an entry. Rules change only at user's word.
+- Put fix for violation to user. Record it in todo record defined by `workflow-skills:todo-md` once
+  user approves it.
+- Put new rule into rules files.
+- Write into wall only record of what happened.

@@ -1,108 +1,102 @@
 # The command line and the scene registry
 
-The command line has six verbs: `list`, `scene`, `compare`, `sheet`, `test` and `refresh`. The
-launcher runs `test` through the test runner of the runtime, and every other
-verb through the command-line module. The verb names here come from the reference. A project may
-name them differently, but the set of responsibilities is the same.
+Command line has six verbs: `list`, `scene`, `compare`, `sheet`, `test` and `refresh`. Launcher
+runs `test` through test runner of runtime, every other verb through command-line module. Verb names
+here come from reference. Project may name them differently, but set of responsibilities is same.
 
 ## The verbs and their options
 
-The `list` verb prints every registered scene with its name and its one-sentence purpose. It takes
-no arguments.
+`list` verb prints every registered scene with its name and one-sentence purpose. Does not
+accept any arguments.
 
-The `scene` verb runs one scene: every variant, every interaction, every check and every checkpoint,
-and writes one capture. It takes exactly one scene name and accepts four options: a capture name, a
-source revision to export the application from, a sample label that selects a real data sample,
-and a port for the local server. Without a capture name, it generates a new
-unique name from the scene name and a random identifier and prints it.
+`scene` verb runs one scene: every variant, every interaction, every check, every checkpoint. Writes
+one capture. Expects exactly one scene name, accepts four options: capture name, source revision
+from which to export application, sample label that selects real data sample, port for local server.
+Without capture name, generates new unique name from scene name and random identifier, prints it.
 
-The `compare` verb compares two complete captures and gives the verdict. It
-takes exactly two capture names and rejects every option.
+`compare` verb compares two complete captures, gives verdict. Expects exactly two capture names,
+rejects every option.
 
-The `sheet` verb renders the evidence sheet from two captures. It accepts
-exactly two capture names, requires an output file option, and accepts a repeatable variant option
-that limits the sheet to named variants.
+`sheet` verb renders evidence sheet from two captures. Accepts exactly two capture names, requires
+output file option, accepts repeatable variant option that limits sheet to named variants.
 
-The `test` verb runs the self-test suite of the harness.
+`test` verb runs self-test suite of harness.
 
-The `refresh` verb fetches an optional real data sample. It accepts exactly one
-scene name and requires a sample label and a selection file option.
+`refresh` verb fetches optional real data sample. Accepts exactly one scene name, requires sample
+label and selection file option.
 
-The command line rejects every other option of a verb and a wrong number of positional arguments.
-It then prints one usage line that lists every verb with its options, and exits nonzero. An option
-of another verb is rejected like an unknown one.
+Command line rejects every other option of a verb and wrong number of positional arguments. Then
+prints one usage line listing every verb with its options, exits nonzero. Option of another verb
+rejected like unknown one.
 
-The command line uses the standard argument parser of the language in its strict mode, with
-positional arguments allowed. Every structured format used by
-the harness is read and written with standard libraries: JSON, URLs and query strings, HTML, tokens
-and images.
+Command line uses standard argument parser of language in its strict mode, positional arguments
+allowed. Every structured format used by harness read and written with standard libraries: JSON,
+URLs and query strings, HTML, tokens, images.
 
-Capture names and sample labels are checked against a short safe pattern before they are used in
-the file system. The reference allowed a letter or digit followed by up to a hundred letters,
-digits, hyphens and underscores. It rejected everything else with an error message requesting a
-short name made of those characters.
+Capture names and sample labels checked against short safe pattern before use in file system.
+Reference allowed letter or digit followed by up to a hundred letters, digits, hyphens and
+underscores. Rejected everything else with error message requesting short name made of those
+characters.
 
-Each capture name is used once. A run under an existing capture name fails. A command never
-overwrites a capture implicitly. Every repeated attempt uses a new name.
+Each capture name used once. Run under existing capture name fails. Command never overwrites
+capture implicitly. Every repeated attempt uses new name.
 
-An error prints its message alone, without a stack trace, and sets a nonzero exit status. A
-successful capture or comparison exits zero, and a failed one exits nonzero.
+Error prints its message alone, without stack trace, sets nonzero exit status. Successful capture or
+comparison exits zero, failed one exits nonzero.
 
 ## The scene registry
 
-Tracked scenes are registered in an explicit list inside the command-line module, each imported as
-a typed module. The registry is the only place where the name of a tracked scene resolves. An
-unknown name fails with a message pointing to `list` and to curating a local scene.
+Tracked scenes registered in explicit list inside command-line module, each imported as typed
+module. Registry: only place where name of tracked scene resolves. Unknown name fails with message
+pointing to `list` and to curating local scene.
 
-The module file of a tracked scene is named after the scene, with the scene file suffix used in the
-project, such as `<scene name>.scene.ts` in the reference. The command line finds that file from the
-scene name to compute the scene fingerprint. A module whose file name differs from its scene name is
-fingerprinted from the wrong file or from none.
+Module file of tracked scene named after scene, with scene file suffix used in project, e.g.
+`<scene name>.scene.ts` in reference. Command line finds that file from scene name to compute scene
+fingerprint. Module whose file name differs from its scene name gets fingerprinted from wrong file
+or from none.
 
-The command line validates a scene before running it: its kind is a page or a component scene, it
-declares at least one variant, and it declares the version of the projection that the harness
-currently expects. A scene that fails any of these checks fails as an invalid typed scene.
+Command line validates scene before running it: kind is page or component scene, declares at least
+one variant, declares version of projection currently expected by harness. Scene failing any of
+these checks fails as invalid typed scene.
 
 ## Untracked local scenes
 
-Untracked exploratory scenes run without being staged. A local scene is a module inside the
-local-scenes directory within the harness directory in the project cache, the location defined by
-`workflow-skills:local-cache`, with the scene file suffix used in the project. The command line
-accepts such a path in place of a scene name, resolves it, and rejects it when the resolved path is
-outside the local-scenes directory. Local scenes are trusted local code, written by the user or an
-agent in this checkout. The harness never loads a scene supplied from elsewhere, such as a plugin
-downloaded at run time.
+Untracked exploratory scenes run without being staged. Local scene: module inside local-scenes
+directory within harness directory in project cache, location defined by
+`workflow-skills:local-cache`, with scene file suffix used in project. Command line accepts such
+path in place of scene name, resolves it, rejects it when resolved path lies outside local-scenes
+directory. Local scenes: trusted local code, written by user or agent in this checkout. Harness
+never loads scene supplied from elsewhere, e.g. plugin downloaded at run time.
 
-A local scene imports fixtures and mechanisms from the tracked scenes, changes only the variant or
-the interactions needed by its question, and contains its selectors and expected outcomes itself. A
-local scene is promoted to the tracked scenes only after deliberate curation, as described in the
-part on the records in the project and in the curation steps of the skill.
+Local scene imports fixtures and mechanisms from tracked scenes, changes only variant or
+interactions needed by its question, contains its selectors and expected outcomes itself. Local
+scene promoted to tracked scenes only after deliberate curation, as described in part on records in
+project and in curation steps of skill.
 
 ## The scene fingerprint
 
-Every capture records a fingerprint of the scene it captured, computed over the local import graph
-of the scene. The computation starts at the scene module, hashes its bytes, and follows every
-relative import to the imported module or data file, recursively, visiting each file once. Imports
-of packages are not followed. The hash of the dependency lock covers them. Each entry is keyed by
-its path relative to the repository root. A file outside the root gets a fixed placeholder key. The
-entries are sorted by key, and the fingerprint is a digest of the sorted list.
+Every capture records fingerprint of scene captured by it, computed over local import graph of
+scene. Computation starts at scene module, hashes its bytes, follows every relative import to
+imported module or data file, recursively, visiting each file once. Imports of packages not
+followed. Hash of dependency lock covers them. Each entry keyed by its path relative to repository
+root. File outside root gets fixed placeholder key. Entries sorted by key. Fingerprint: digest of
+sorted list.
 
-Imports are read with the import resolution of the language tooling, never with a pattern match
-over the source text. The reference used the import preprocessor of the TypeScript compiler to list
-the imports of a file, and the module resolution of the compiler, in bundler mode with TypeScript
-extensions and JSON modules allowed, to resolve each one. A relative import that does not resolve
-fails the run with a message requesting explicit local imports.
+Imports read with import resolution of language tooling, never with pattern match over source text.
+Reference used import preprocessor of TypeScript compiler to list imports of a file, and module
+resolution of compiler, in bundler mode with TypeScript extensions and JSON modules allowed, to
+resolve each one. Relative import that does not resolve fails run with message requesting explicit
+local imports.
 
-The fingerprint includes the bytes of a local scene and of every local fixture imported by it. An
-edited fixture changes the fingerprint even when nothing is staged. The runtime
-computes the fingerprint again after the run, and a difference invalidates the capture.
+Fingerprint includes bytes of local scene and of every local fixture imported by it. Edited fixture
+changes fingerprint even when nothing staged. Runtime computes fingerprint again after run.
+Difference invalidates capture.
 
 ## Native and terminal realizations
 
-A native or desktop harness has the same verbs, usually as tasks of the build tool used in the
-project or as a small command-line program in the test source set, and the same registry of typed
-scene classes. The scene fingerprint follows the import or module graph of the language where the
-language tooling exposes one, such as the dependency output of a compiler. Where the tooling does
-not, each scene declares the fixture files it uses explicitly, and the fingerprint hashes the scene
-source and every declared file. A terminal harness written as a script uses the module resolution of
-the script language the same way.
+Native or desktop harness has same verbs, usually as tasks of build tool used in project or as
+small command-line program in test source set, and same registry of typed scene classes. Scene
+fingerprint follows import or module graph of language where language tooling exposes one, e.g.
+dependency output of compiler. Where tooling does not, each scene declares fixture files used by it
+explicitly, and fingerprint hashes scene source and every declared file. Terminal harness written as
+script uses module resolution of script language same way.

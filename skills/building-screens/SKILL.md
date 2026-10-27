@@ -1,35 +1,33 @@
 ---
 name: building-screens
-description: Build or change a user interface, including the text shown on its screens.
+description: Build or change user interface, including text shown on its screens.
 ---
 
 # Building screens
 
-- Show on a screen the decision made by the backend, and never make the decision again in the code
-  of the screen. Keep neither optimistic state nor a second copy of the data from the backend there.
-- Let a frontend send the new data and never read it back from the response. The frontend reloads
-  the data, fully or partly where supported, through the same code path as a full reload or
-  restart.
-- In a user interface, show an error only on the part that fails, and a loading indicator for a
-  loading state, never an error.
-- During a save, show progress, disable every control that could send the save a second time, and
-  wait until the save is done.
-- Leave the view as it was when an optional feature can't apply.
-- Count as text that explains a product any text on a product screen, where the reader uses the
-  product, about how the product computes or stores something, why it was built that way, which
-  features it does not offer, or where things sit on the screen.
-- Text that describes a state of the data or an action of the reader, such as an empty list, a
-  failed save or a retry in progress, does not count as text that explains the product.
-- Make a product screen self-evident through its labels, controls and layout, and never put text
-  that explains the product on it.
-- When a part needs such text because its behavior is not evident, change the part, such as its
-  label, its grouping or its control. Do not explain it to a tester either.
-- Word a state of the data or the action of the reader by what happened and what the reader can do
-  next, including where to check on the work later.
-- Write a string shown on a product screen as a label, an action or a state on which the reader
-  acts.
+- Show backend decision on screen. Never make it again in code of the screen. Keep there neither
+  optimistic state nor second copy of backend data.
+- Let frontend send new data. Never read it back from response. Frontend reloads data, fully or
+  partly where supported, through same code path as full reload or restart.
+- In user interface, show error only on part that fails. Loading state gets loading indicator,
+  never error.
+- During save: show progress. Disable every control that could send save again. Wait until save
+  done.
+- Leave view as it was when optional feature cannot apply.
+- Count as text that explains a product: any text on product screen, where reader uses product,
+  about how product computes or stores something, why it was built that way, which features it
+  does not offer, or where things sit on screen.
+- Text that describes state of data or action of reader, e.g. empty list, failed save, retry in
+  progress: does not count as text that explains the product.
+- Make product screen self-evident through labels, controls, layout. Never put text that explains
+  the product on it.
+- When part needs such text because behavior not evident: change the part, e.g. label, grouping,
+  control. Do not explain it to tester either.
+- Word state of data or action of reader by what happened and what reader can do next. Include
+  where to check on work later.
+- Write string shown on product screen as label, action or state on which reader acts.
 
 ## Rules in other skills
 
-- Follow `workflow-skills:copywriting` for a marketing page, where the reader decides whether to use
-  the product.
+- Follow `workflow-skills:copywriting` for marketing page, where reader decides whether to use
+  product.

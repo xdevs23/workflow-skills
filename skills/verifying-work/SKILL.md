@@ -1,26 +1,25 @@
 ---
 name: verifying-work
-description: Check that a change works, run and operate what it changed, and report what is known about it.
+description: Check that change works, run and operate what it changed, and report what is known about it.
 ---
 
 # Verifying work
 
-- Prove a change on the real path and across the whole chain. A green build is not proof.
-- Let a check that can't run the real thing report itself as blocked, never as passed on a
+- Prove change on real path, across whole chain. Green build is not proof.
+- Check that cannot run the real thing: let it report itself as blocked. Never as passed on
   stand-in.
-- Never build a parallel simulation to check again what the real environment already has.
-- Operate an interface from its observed state: one action, check the result, then the next, never
-  a chain of inputs against an assumed screen.
-- Stop a process by its process id, never by a name pattern or the port on which it listens.
-- State how every claim is known, without blurring the classes: measured (a probe ran),
-  compile-proven (it builds but never ran), proven by reading the source, decided, or open with the
+- Never build parallel simulation to check again what real environment already has.
+- Operate interface from observed state: one action, check result, then next. Never a chain of
+  inputs against assumed screen.
+- Stop process by its process id. Never by name pattern or port on which it listens.
+- State how every claim is known, without blurring the classes: measured (probe ran),
+  compile-proven (builds but never ran), proven by reading source, decided, or open with the
   experiment that would resolve it.
-- Base a claim about state or cause on raw evidence inspected for that claim, never on a summary or
-  a verdict icon. An observation outweighs a conclusion drawn from reading the code.
-- Record an experiment that found nothing too.
+- Base claim about state or cause on raw evidence inspected for that claim. Never on summary or
+  verdict icon. Observation outweighs conclusion drawn from reading code.
+- Record experiment that found nothing too.
 
 ## Rules in other skills
 
-- Follow `workflow-skills:visual-verification` to prove a change to a user interface with
-  screenshots.
+- Follow `workflow-skills:visual-verification` to prove change to user interface with screenshots.
 - Follow `workflow-skills:local-cache` for where scratch files go.

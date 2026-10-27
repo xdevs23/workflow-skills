@@ -1,35 +1,32 @@
 ---
 name: rule-bypass
-description: Review a change for ways around a rule or a check.
+description: Review change for ways around rule or check.
 ---
 
 # Rule bypass
 
-Review the change for one thing only: places where it meets the wording of a rule or a check and
-still gets a result forbidden by the rule.
+Review change for one thing only: places where it meets wording of rule or check and still gets
+result forbidden by rule.
 
 - Leave unrelated concerns to other reviewers.
-- Judge each rule handed to you, and each rule in the instruction files of the project, by what it
-  is for, and report every place where the change defeats that purpose.
-- Report a forbidden form moved to where the check does not look, such as a cast hidden in a
-  helper, a JSON round trip that returns an untyped value, or a type parameter used as an unchecked
-  cast.
-- Report a type widened so that it no longer refuses a wrong value, such as an enum field turned
-  back into plain text, a required field made optional or a record turned into a map.
-- Report every silenced check, also one from before the change in a file the change edits: a
-  suppression comment, an excluded file or folder, a disabled or lowered lint or compiler setting,
-  a warning left standing, or a test that is skipped or ignored where the rules require it to
-  run.
-- Report a swallowed error in a new form, such as an empty catch turned into a catch that only
-  logs, or a catch that returns a default value.
-- Report a test rewritten to match a changed value in the shipped code, where the test only
-  restated that value.
-- Report a value written twice together with a check that the two copies agree, where one
-  definition belongs.
-- Report a check written so it lets through the pattern it is named after.
-- Report a limit chosen by the code and presented as one set by an outside system.
-- Report a term redefined until the work passes, such as an open decision called out of scope.
-- Mark every finding of this lens as a defect in the change, to be fixed before the change is
-  done.
-- State in every finding the defeated rule, quoted word for word, and the shape that
-  follows the rule by what it is for.
+- Judge each rule handed to you, and each rule in instruction files of project, by what it's for.
+  Report every place where change defeats that purpose.
+- Report forbidden form moved to where check does not look, e.g. cast hidden in helper, JSON round
+  trip returning untyped value, or type parameter used as unchecked cast.
+- Report type widened so it no longer rejects wrong value, e.g. enum field turned back into plain
+  text, required field made optional, record turned into map.
+- Report every silenced check, also one from before change in file edited by change: suppression
+  comment, excluded file or folder, disabled or lowered lint or compiler setting, warning left
+  standing, or test skipped or ignored where rules require it to run.
+- Report swallowed error in new form, e.g. empty catch turned into catch that only logs, or catch
+  returning default value.
+- Report test rewritten to match changed value in shipped code, where test only restated that
+  value.
+- Report value written twice together with check that the two copies agree, where one definition
+  belongs.
+- Report check written so it lets through the pattern after which it is named.
+- Report limit chosen by code and presented as one set by outside system.
+- Report term redefined until work passes, e.g. open decision called out of scope.
+- Mark every finding of this lens as defect in change, to be fixed before change is done.
+- In every finding, state defeated rule, quoted word for word, and shape that follows the rule by
+  what it's for.

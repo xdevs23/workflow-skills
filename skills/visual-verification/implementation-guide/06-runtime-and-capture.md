@@ -1,216 +1,193 @@
 # The runtime and the capture
 
-The runtime runs one capture from start to end. It prepares the application source, starts the
-serving or build process that comes with the application, starts the rendering engine, runs every
-variant of the scene, captures every checkpoint, checks the inputs again, and writes the receipt and
-the report. One component runs this whole sequence.
+Runtime runs one capture from start to end. Prepares application source, starts serving or build
+process that comes with application, starts rendering engine, runs every variant of scene, captures
+every checkpoint, checks inputs again, writes receipt and report. One component runs this whole
+sequence.
 
 ## Preflight
 
-The runtime does not start when the variables set by the launcher are missing. The error message
-shown then contains the launcher command. Before anything else, the runtime fingerprints the
-application inputs and the harness code.
+Runtime does not start when variables set by launcher are missing. Error message shown then
+contains launcher command. Before anything else, runtime fingerprints application inputs and harness
+code.
 
-The capture directory is created with private permissions inside the harness directory in the
-project cache, at the location defined by `workflow-skills:local-cache`. Creating it fails when the
-directory already exists, so every capture name can be used only once.
+Capture directory created with private permissions inside harness directory in project cache, at
+location defined by `workflow-skills:local-cache`. Creating it fails when directory already exists,
+so every capture name is usable only once.
 
-A failure before rendering starts still leaves a report. The runtime writes a receipt with
-everything gathered up to that point and adds the failure to it. The failure contains the scene
-name, the word preflight, the message, and the instruction to repair the input shown in the message
-and use a new capture name. The runtime then writes the report and prints the failed verdict with
-the path of the report.
+Failure before rendering starts still leaves report. Runtime writes receipt with everything gathered
+up to that point, adds failure to it. Failure contains scene name, word preflight, message, and
+instruction to repair input shown in message and use new capture name. Runtime then writes report,
+prints failed verdict with path of report.
 
 ## The source snapshot
 
-The serving process reads the application from a snapshot. It never reads the live working tree.
-Without a source revision, the runtime copies the relevant tracked and untracked files of the
-application from the working tree into a fresh export directory, so an edit made during the run
-cannot change the files delivered by the serving process. With a source revision, the runtime
-resolves the revision to a commit locally. It exports the files tracked in that commit into a fresh
-export directory with the archive command built into the version control system and a standard
-archive tool. The export never changes the working tree, the index or any branch. The runner and the
-scene always come from the harness that runs the capture. Only the application source and its locks
-come from the selected revision. The receipt records the harness version and the source revision
-separately.
+Serving process reads application from snapshot. Never reads live working tree. Without source
+revision, runtime copies relevant tracked and untracked files of application from working tree into
+fresh export directory, so edit made during run cannot change files delivered by serving process.
+With source revision, runtime resolves revision to commit locally. Exports files tracked in that
+commit into fresh export directory with archive command built into version control system and
+standard archive tool. Export never changes working tree, index or any branch. Runner and scene
+always come from harness that runs capture. Only application source and its locks come from
+selected revision. Receipt records harness version and source revision separately.
 
-The runtime installs the dependencies listed in the frozen lock of the exported source into the
-dependency cache of the launcher, which is keyed by the lock, and links them into the export. A lock
-mismatch fails the capture with the instruction to fix the lock of the selected source deliberately.
-The component entries of the harness are copied into the export so the serving process can load
-them. The export directory is recorded as a path relative to the harness directory.
+Runtime installs dependencies listed in frozen lock of exported source into dependency cache of
+launcher, keyed by lock, and links them into export. Lock mismatch fails capture with instruction to
+fix lock of selected source deliberately. Component entries of harness copied into export so serving
+process can load them. Export directory recorded as path relative to harness directory.
 
-Adaptation point: which files count as application inputs. The reference counted the source and
-public asset directories, the entry document, the build configuration, the package manifest, the
-lock and the type checker configurations of the application.
+Adaptation point: which files count as application inputs. Reference counted source and public asset
+directories, entry document, build configuration, package manifest, lock, and type checker
+configurations of application.
 
 ## The serving configuration
 
-The build or development configuration of the application is loaded from the export and combined
-with the harness settings. The production configuration is not modified. With the harness
-settings, the serving process:
+Build or development configuration of application loaded from export, combined with harness
+settings. Production configuration not modified. With harness settings, serving process:
 
-* listens on the loopback address only;
-* uses a strict port where it offers that setting;
-* runs without hot reloading and without the file watcher;
-* uses an empty directory as the environment directory, so it loads none of the environment files
-  in the repository;
-* uses a separate cache directory for every run;
-* sends only files from the export and the dependency cache.
+* listens on loopback address only;
+* uses strict port where it offers that setting;
+* runs without hot reloading and without file watcher;
+* uses empty directory as environment directory, so it loads none of environment files in
+  repository;
+* uses separate cache directory for every run;
+* sends only files from export and dependency cache.
 
-The combined configuration replaces the data origins with local values handled by the data boundary,
-sets the realtime endpoint to empty, and fixes build-time values such as the version
-string and the build date. Adaptation point: the names of the origin, storage and realtime settings
-and of the build-time values in the application.
+Combined configuration replaces data origins with local values handled by data boundary, sets
+realtime endpoint to empty, fixes build-time values e.g. version string and build date. Adaptation
+point: names of origin, storage and realtime settings and of build-time values in application.
 
-A requested port is used as given and must be an integer from 1024 to 65535. The run fails at once
-when another process already uses that port. Without a requested port, the runtime asks the
-operating system for a free loopback port. The chosen port is printed either way.
+Requested port used as given, must be integer from 1024 to 65535. Run fails at once when another
+process already uses that port. Without requested port, runtime asks operating system for free
+loopback port. Chosen port printed either way.
 
-The serving process and the rendering engine are closed on every exit path, including failures.
+Serving process and rendering engine closed on every exit path, failures included.
 
 ## Component scenes
 
-A component scene is loaded through a harness entry. That entry mounts the real component with the
-same start-up as the application: the same state store, translations, theme initialization,
-stylesheet and registration of the shipped fonts. The entry must be a module inside the component
-directory of the harness. The serving configuration replaces the entry document with a minimal
-document that loads that module. The harness checks that this start-up matches the start-up of the
-application. System fonts never replace the shipped font faces. The component is drawn inside the
-boxes drawn around it by the shell of the application, so the widths and backgrounds of its
-containers are the real ones. Where a scene asserts the model of the component, the entry shows the
-model value in an output element read by the scene, so interactions are checked against exact
-values.
+Component scene loaded through harness entry. That entry mounts real component with same start-up
+as application: same state store, translations, theme initialization, stylesheet and registration
+of shipped fonts. Entry must be module inside component directory of harness. Serving configuration
+replaces entry document with minimal document that loads that module. Harness checks that this
+start-up matches start-up of application. System fonts never replace shipped font faces. Component
+drawn inside boxes drawn around it by shell of application, so widths and backgrounds of its
+containers are real ones. Where scene asserts model of component, entry shows model value in output
+element read by scene, so interactions checked against exact values.
 
 ## The rendering context
 
-Every variant runs in a fresh rendering context, so storage, caches and state from one variant never
-pass into the next. The context fixes the viewport size, a pixel density of one, the locale of the
-variant, UTC as the timezone, the color scheme of the theme set by the variant and the reduced
-motion preference. It also blocks service workers and downloads. The data boundary is installed on
-the context before the first page exists.
+Every variant runs in fresh rendering context, so storage, caches and state from one variant never
+pass into next. Context fixes viewport size, pixel density of one, locale of variant, UTC as
+timezone, color scheme of theme set by variant, reduced motion preference. Also blocks service
+workers and downloads. Data boundary installed on context before first page exists.
 
-Before the first render, a clock is installed at a fixed time and paused at a fixed later time. The
-context fixes the frame interval, the time by which the paused clock advances in one frame, so an
-animation or a transition takes the same number of frames on every machine. While the clock is
-paused, timer-based states never advance by themselves, such as a randomized blink, a relative time
-label or polling after the first request. The stability check and the steps of the scene
-advance the clock frame by frame, and only to named observable transitions.
+Before first render, clock installed at fixed time and paused at fixed later time. Context fixes
+frame interval, the time by which paused clock advances in one frame, so animation or transition
+takes same number of frames on every machine. While clock paused, timer-based states never advance
+by themselves, e.g. randomized blink, relative time label, polling after first request. Stability
+check and steps of scene advance clock frame by frame, and only to named observable transitions.
 
-Before any application code runs, the harness seeds a synthetic session, together with the locale
-and theme of the variant, into the storage from which the application reads them. The harness seeds
-nothing else. Cached data, feature settings and state from an earlier run are left out, so every
-other value comes from the start-up of the application and from the data boundary. The session
-contains a fixed identity, claims that match the stored role, and a token that is still valid at
-the fixed time of the scene. The session does not contain a refresh credential. The token is
-static, unsigned and not secret. The real decoder in the application reads the claims in it. The
-harness is not an authentication server. The harness never reads a person's browser profile or a
-persisted login. Adaptation point: the storage keys, the claims and the role.
+Before any application code runs, harness seeds synthetic session, together with locale and theme
+of variant, into storage from which application reads them. Harness seeds nothing else. Cached data,
+feature settings and state from earlier run left out, so every other value comes from start-up of
+application and from data boundary. Session contains fixed identity, claims that match stored role,
+and token still valid at fixed time of scene. Session does not contain refresh credential. Token
+static, unsigned, not secret. Real decoder in application reads claims in it. Harness is not
+authentication server. Harness never reads a person's browser profile or persisted login.
+Adaptation point: storage keys, claims, role.
 
-The runtime then opens the route given by the scene for a page scene, or the component entry for a
-component scene. When the variant sets a container width, the runtime passes it to the entry as a
-parameter. It then passes the run context to the scene. Waiting for start-up or a reload
-ends when the module graph of the real entry has loaded. The wait fails when a module request fails,
-when the page reports an error, when the serving process exits, or when the entry has not finished
-evaluating while no module request is in flight, since nothing is then left that could complete the
-graph. A failure is recorded as error output by the data boundary. A serving process that is running
-but sends no response leaves the wait open until the user who runs the harness stops it.
+Runtime then opens route given by scene for page scene, or component entry for component scene.
+When variant sets container width, runtime passes it to entry as parameter. Then passes run context
+to scene. Waiting for start-up or reload ends when module graph of real entry has loaded. Wait fails
+when module request fails, when page reports error, when serving process exits, or when entry has
+not finished evaluating while not a single module request is in flight, since nothing is then left
+that could complete graph. Failure recorded as error output by data boundary. Serving process that
+is running but does not send a response leaves wait open until user who runs harness stops it.
 
 ## The capture sequence
 
-Every checkpoint runs the same sequence, with the same settings for every capture of every revision.
+Every checkpoint runs same sequence, with same settings for every capture of every revision.
 
-1. The screen or route has settled, and the target is mounted with the expected fixture values. The
-   screen does not show a spinner, a load error or a login screen. The waits in the scene check this
-   before the scene calls capture.
-2. Every required shipped font face is loaded explicitly and checked, and the rendering engine has
-   finished loading fonts. A missing face fails the capture. A capture drawn with a fallback font is
-   never accepted. Adaptation point: the list of shipped font faces.
-3. Every visible image is decoded and has nonzero natural dimensions.
-4. The focus is removed from the focused element, and the pointer is parked at a fixed corner.
-5. The geometry of the target is stable according to the stability check. The readiness record from
-   that check is saved.
-6. Every required response except the declared held ones has been delivered, according to the
-   delivery check of the data boundary.
-7. The screenshot is taken with animations disabled and the text caret hidden, in layout pixels.
+1. Screen or route has settled, target mounted with expected fixture values. Screen does not show
+   spinner, load error or login screen. Waits in scene check this before scene calls capture.
+2. Every required shipped font face loaded explicitly and checked. Rendering engine has finished
+   loading fonts. Missing face fails capture. Capture drawn with fallback font never accepted.
+   Adaptation point: list of shipped font faces.
+3. Every visible image decoded, has nonzero natural dimensions.
+4. Focus removed from focused element, pointer parked at fixed corner.
+5. Geometry of target stable according to stability check. Readiness record from that check saved.
+6. Every required response except declared held ones delivered, according to delivery check of
+   data boundary.
+7. Screenshot taken with animations disabled and text caret hidden, in layout pixels.
 
-A checkpoint of the shell captures the whole viewport. Every other checkpoint captures its target
-element. The capture of a targeted checkpoint includes everything meant to appear in it. A capture
-of a group of options includes every option in full, with every edge visible. Floating content that
-opens outside the surrounding card, such as a popover or menu, is captured on the enclosing host.
-For every checkpoint, the receipt records the name, the image, what was captured, the readiness
-record and the checks recorded by the scene since the previous checkpoint.
+Checkpoint of shell captures whole viewport. Every other checkpoint captures its target element.
+Capture of targeted checkpoint includes everything meant to appear in it. Capture of group of
+options includes every option in full, with every edge visible. Floating content that opens outside
+surrounding card, e.g. popover or menu, captured on enclosing host. For every checkpoint, receipt
+records name, image, what was captured, readiness record, checks recorded by scene since previous
+checkpoint.
 
-The harness never hides the real shell. Viewport captures preserve it, and targeted captures add
-detail. The runtime scrolls the actual scrolling container to the target and records that
-position. A full-page screenshot is never claimed to cover a panel that scrolls internally unless
-it actually did. A closed widget is closed through its ordinary initial state. The harness never
-removes it from the document.
+Harness never hides real shell. Viewport captures preserve it, targeted captures add detail.
+Runtime scrolls actual scrolling container to target, records that position. Full-page screenshot
+never claimed to cover panel that scrolls internally unless it actually did. Closed widget closed
+through its ordinary initial state. Harness never removes it from document.
 
-The harness never injects styles that fix the layout and never masks a region under evaluation. An
-animation that cannot be captured deterministically is a failed readiness requirement to be
-resolved. The harness never hides the animation.
+Harness never injects styles that fix layout, never masks region under evaluation. Animation that
+cannot be captured deterministically = failed readiness requirement, to be resolved. Harness never
+hides animation.
 
 ## After the scene
 
-When the run function of the scene returns, the data boundary runs the count check for the end of
-the variant. A failure in the variant is recorded with the variant name, the next checkpoint in the
-scene, the message with the repository path replaced by a placeholder, and the instruction to
-inspect the scene predicate or fixture. Checks not followed by a checkpoint are recorded as a
-failure. The record and the failures from the boundary go into the receipt. Then the boundary and
-the context are closed.
+When run function of scene returns, data boundary runs count check for end of variant. Failure in
+variant recorded with variant name, next checkpoint in scene, message with repository path replaced
+by placeholder, and instruction to inspect scene predicate or fixture. Checks not followed by
+checkpoint recorded as failure. Record and failures from boundary go into receipt. Then boundary and
+context closed.
 
-After every variant, the runtime fingerprints the application inputs, the harness code, the import
-graph of the scene and the fixture data again. Any difference is recorded as a change to the source
-or to a fixture during the capture, with the instruction to repeat the capture on a stable tree. An
-input that became unreadable is recorded as not revalidated. Either case invalidates the capture.
-The evidence written up to then remains in the capture directory.
+After every variant, runtime fingerprints application inputs, harness code, import graph of scene
+and fixture data again. Any difference recorded as change to source or to fixture during capture,
+with instruction to repeat capture on stable tree. Input that became unreadable recorded as not
+revalidated. Either case invalidates capture. Evidence written up to then remains in capture
+directory.
 
 ## The output contract
 
-A successful capture prints the verdict and the report path, relative to the repository root, and
-exits zero. A failed capture prints the failed verdict and the report path, then every failure on
-the error stream, and exits nonzero. Each failure message contains the scene, the variant and
-checkpoint, the failed predicate or the response key, and the corrective action. A capture started
-without a name prints the unique name generated for it. Every capture prints the chosen port.
-Reports are still available after a failure.
+Successful capture prints verdict and report path, relative to repository root, exits zero. Failed
+capture prints failed verdict and report path, then every failure on error stream, exits nonzero.
+Each failure message contains scene, variant and checkpoint, failed predicate or response key,
+corrective action. Capture started without name prints unique name generated for it. Every capture
+prints chosen port. Reports still available after failure.
 
 ## Numbers and their reasons
 
-The reference set the clock to noon on a winter day and paused it one minute later. Date-based
-labels were therefore stable, and timer-based code did not run between start-up and capture. Any
-fixed instant works. A scene with date-dependent content declares the instant on which it depends.
+Reference set clock to noon on winter day, paused it one minute later. Date-based labels therefore
+stable, timer-based code did not run between start-up and capture. Any fixed instant works. Scene
+with date-dependent content declares instant on which it depends.
 
 ## Web realization in the reference
 
-The reference ran the application on the Vite development server. It loaded the configuration of
-the project from the export and merged it with the harness settings. The merge dropped a null
-override, so the watcher was switched off after merging. Chromium ran headless through Playwright,
-with one browser context per variant. The page clock was installed and paused before navigation,
-and an initialization script seeded local storage with the session, the locale and the theme mode
-only. Fonts were checked with the font loading interface of the document, and images with their
-decode function. Page routes were in the fragment of the address. The component entry received the
-container width as a query parameter.
+Reference ran application on Vite development server. Loaded configuration of project from export,
+merged it with harness settings. Merge dropped null override, so watcher switched off after merging.
+Chromium ran headless through Playwright, one browser context per variant. Page clock installed and
+paused before navigation. Initialization script seeded local storage with session, locale and theme
+mode only. Fonts checked with font loading interface of document, images with their decode function.
+Page routes in fragment of address. Component entry received container width as query parameter.
 
 ## Native and terminal realizations
 
-A native mobile harness builds and installs the application from the exported source, clears the
-stored application data before each variant and starts the application fresh. The device profile
-fixes size and density, the locale and timezone are set on the emulator or simulator, dark mode is
-set by the variant, and system animations are switched off, such as through the animator duration
-scales on Android. Where the test framework offers a clock, the harness controls time through it,
-such as a paused composition clock advanced frame by frame or the fake time of a widget test.
-Otherwise the harness uses a clock injected by the test build. The session is written into the
-storage of the application before the first activity or scene of the application starts. The
-capture is an emulator or simulator screenshot, or an image rendered in-process by a renderer from
-the toolkit.
+Native mobile harness builds and installs application from exported source, clears stored
+application data before each variant, starts application fresh. Device profile fixes size and
+density. Locale and timezone set on emulator or simulator. Dark mode set by variant. System
+animations switched off, e.g. through animator duration scales on Android. Where test framework
+offers clock, harness controls time through it, e.g. paused composition clock advanced frame by
+frame or fake time of widget test. Otherwise harness uses clock injected by test build. Session
+written into storage of application before first activity or scene of application starts. Capture:
+emulator or simulator screenshot, or image rendered in-process by renderer from toolkit.
 
-A desktop harness starts the application on a virtual display of fixed size with a fixed scale
-factor. It captures an image of a window or widget through the grab function of the toolkit or
-through the display server.
+Desktop harness starts application on virtual display of fixed size with fixed scale factor.
+Captures image of window or widget through grab function of toolkit or through display server.
 
-For every variant, a terminal harness starts the application in a fresh pseudo-terminal of fixed
-size. The application runs with UTC, the locale of the variant, a controlled clock such as a
-time-faking preload library or an injected clock, and a home directory that contains the fixture
-files. Once the screen buffer is stable, the capture renders the terminal
-screen to an image with a locked terminal emulator.
+For every variant, terminal harness starts application in fresh pseudo-terminal of fixed size.
+Application runs with UTC, locale of variant, controlled clock e.g. time-faking preload library or
+injected clock, and home directory that contains fixture files. Once screen buffer stable, capture
+renders terminal screen to image with locked terminal emulator.

@@ -1,203 +1,188 @@
 # Scene types
 
-A scene is a typed module written in the same language as the application, checked by the same
-compiler or type checker. The harness defines a small set of types used by every scene, and those
-types are the whole scene language. Scenes call functions and the interface of the automation
-component directly. The harness does not build a domain-specific scene language, a configuration
-format or a plugin platform on top.
+Scene = typed module in same language as application, checked by same compiler or type checker.
+Harness defines small set of types used by every scene. Those types = whole scene language. Scenes
+call functions and interface of automation component directly. Harness does not build
+domain-specific scene language, configuration format or plugin platform on top.
 
 ## The variant
 
-A variant is one named combination of rendering settings. It contains a name, the window or viewport
-width and height, the interface locale, the theme, and optionally a container width for component
-scenes. A scene may add a fixture parameter to a variant, such as whether an item has a stored value
-or none. One scene then runs the same question against several states of the fixture. Each variant
-name is unique within a scene.
+Variant = one named combination of rendering settings. Contains name, window or viewport width and
+height, interface locale, theme, optionally container width for component scenes. Scene may add
+fixture parameter to variant, e.g. whether item has stored value or none. One scene then runs same
+question against several states of fixture. Each variant name unique within scene.
 
-The harness defines one shared set of variants. Scenes use it unless their question needs a subset
-or an extension. The set used by the reference had three variants: a desktop size in the primary
-language with a light theme, the same desktop size in a second language with a dark theme, and a
-compact width in the primary language with a light theme. Component scenes in the reference added
-two narrow container widths at the desktop size. These variants probe only a few sizes, languages
-and themes. The contract describes them that way and never presents them as complete coverage of
-responsive layouts or languages. Adaptation point: the sizes, the locales and the themes supported
-by the project.
+Harness defines one shared set of variants. Scenes use it unless their question needs subset or
+extension. Set used by reference had three variants: desktop size, primary language, light theme.
+Same desktop size, second language, dark theme. Compact width, primary language, light theme.
+Component scenes in reference added two narrow container widths at desktop size. These variants
+probe only a few sizes, languages and themes. Contract describes them that way, never presents them
+as complete coverage of responsive layouts or languages. Adaptation point: sizes, locales and themes
+supported by project.
 
 ## The response fixture
 
-A response fixture declares one expected request at the data boundary and the response to it. It
-contains a stable key, the operation or method, the path, the exact query parameters, the exact
-body for a write, the response, a policy and optionally an exact count and a declared status.
+Response fixture declares one expected request at data boundary and response to it. Contains stable
+key, operation or method, path, exact query parameters, exact body for a write, response, policy,
+optionally exact count and declared status.
 
-The policy has one of three values. A once response is delivered exactly one time. A repeat response
-is delivered to every matching request, for requests polled by the shell. A held response is never
-delivered: the request is left open, as for a long-held subscription, until an explicit scene step
-releases it or the teardown cancels it.
+Policy has one of three values. Once response: delivered exactly one time. Repeat response:
+delivered to every matching request, for requests polled by shell. Held response: never delivered.
+Request left open, as for long-held subscription, until explicit scene step releases it or teardown
+cancels it.
 
-The count is the exact total number of deliveries across the reloads declared by the scene, for
-requests that are not polled. A request made by the screen once per load, in a scene that reloads
-once, has a count of two.
+Count = exact total number of deliveries across reloads declared by scene, for requests not polled.
+Request made by screen once per load, in scene that reloads once: count of two.
 
-The status defaults to success. A failing status marks the request as meant to fail. The error
-output caused by that failure no longer counts as a capture failure, for that path alone. The scene
-fails when the declared failure does not happen. Every other error output, application error and
-request failure is still a failure. A failing status on an undeclared path is never excused.
+Status defaults to success. Failing status marks request as meant to fail. Error output caused by
+that failure no longer counts as capture failure, for that path alone. Scene fails when declared
+failure does not happen. Every other error output, application error and request failure is still a
+failure. Failing status on undeclared path never excused.
 
 ## The fixture set
 
-A fixture set is the complete data used when one variant runs. It contains the version of the
-projection it was built from, a provenance, the main records used to build the screens in the scene,
-and the list of response fixtures. The provenance is synthetic for a fixture written by hand, and
-mixed-projected for a set that combines a projected real sample with synthetic
-responses. Adaptation point: the main record types, such as the item edited on an item editor
-screen.
+Fixture set = complete data used when one variant runs. Contains version of projection from which it
+was built, provenance, main records used to build screens in scene, list of response fixtures.
+Provenance: synthetic for fixture written by hand, mixed-projected for set that combines projected
+real sample with synthetic responses. Adaptation point: main record types, e.g. item edited on item
+editor screen.
 
-The reference reused one small family of fixtures across all scenes, extended per surface. A project
-does the same and never generates a registry of fixtures as large as the platform.
+Reference reused one small family of fixtures across all scenes, extended per surface. Project does
+same, never generates registry of fixtures as large as platform.
 
 ## The measurement
 
-A measurement records one check: its predicate as a readable sentence, whether it passed, the actual
-measured values, and a diagnostic flag. Required measurements determine the verdict of the capture.
-Diagnostic measurements record product findings. They are reported and stored in the receipt. A
-failing diagnostic measurement neither fails the capture nor is marked acceptable. The harness never
-repairs the product to make it pass. A diagnostic scene that captured correctly still has to pass
-its execution, content and navigation checks. When a later approved change fixes the finding, the
-requirement agreed for it becomes a required measurement.
+Measurement records one check: its predicate as readable sentence, whether it passed, actual
+measured values, diagnostic flag. Required measurements determine verdict of capture. Diagnostic
+measurements record product findings. Reported and stored in receipt. Failing diagnostic measurement
+neither fails capture nor is marked acceptable. Harness never repairs product to make it pass.
+Diagnostic scene that captured correctly still has to pass its execution, content and navigation
+checks. When later approved change fixes finding, requirement agreed for it becomes required
+measurement.
 
 ## The scene run context
 
-The run context is the object received by the run function of a scene. It contains the automation
-handle for the rendering surface, the current variant, the fixture set, a check function and a
-capture function.
+Run context = object received by run function of scene. Contains automation handle for rendering
+surface, current variant, fixture set, check function, capture function.
 
-The check function records a measurement with its predicate, result, actual values and diagnostic
-flag. Measurements attach to the next checkpoint captured by the scene. A run that records checks
-after its last checkpoint fails, since those checks would belong to no image.
+Check function records measurement with predicate, result, actual values, diagnostic flag.
+Measurements attach to next checkpoint captured by scene. Run that records checks after its last
+checkpoint fails, since those checks would not belong to any image.
 
-The capture function takes a checkpoint name and optionally a target element. It runs the capture
-sequence and writes one PNG. The stored checkpoint name is the variant name
-joined with the checkpoint name. A duplicate checkpoint name in one variant fails the run.
+Capture function expects checkpoint name, optionally target element. Runs capture sequence, writes
+one PNG. Stored checkpoint name = variant name joined with checkpoint name. Duplicate checkpoint
+name in one variant fails run.
 
-A scene can also stop a variant with a hard assertion, for facts without which the rest of the scene
-proves nothing, such as a model value after an edit. A failed assertion fails the variant, and its
-message contains the name of the next checkpoint in the scene.
+Scene can also stop variant with hard assertion, for facts without which rest of scene proves
+nothing, e.g. model value after edit. Failed assertion fails variant. Its message contains name of
+next checkpoint in scene.
 
 ## The scene
 
-A scene contains a stable name, a one-sentence purpose, the version of the projection behind the
-fixtures it uses, its variants, a function from a variant to its fixture set, and its run function.
-It is one of two kinds, as a union type enforced by the type checker.
+Scene contains stable name, one-sentence purpose, version of projection behind fixtures used by it,
+its variants, function from variant to its fixture set, its run function. One of two kinds, as union
+type enforced by type checker.
 
-A page scene contains a function that maps the fixture set to the real route or screen to open. It
-starts the application through its real entry, with the complete set of responses for every
-consumer on that screen and in the shell.
+Page scene contains function that maps fixture set to real route or screen to open. Starts
+application through its real entry, with complete set of responses for every consumer on that screen
+and in shell.
 
-A component scene contains the harness entry that mounts the component. The entry mounts the actual
-component with its real parameters and model updates inside the contextual container that surrounds
-it in the application, with the same start-up, styles, translations, theme and shipped fonts as the
-application. A component scene may declare an empty set of responses. Any
-request then fails the scene.
+Component scene contains harness entry that mounts component. Entry mounts actual component with its
+real parameters and model updates inside contextual container that surrounds it in application,
+with same start-up, styles, translations, theme and shipped fonts as application. Component scene
+may declare empty set of responses. Any request then fails scene.
 
 ## Component hosts
 
-A component scene draws the component in every real host where it appears, at the literal width,
-height and background of that host, including the narrowest host used for it by the application. A
-host is the box around the component on a real screen, such as a side panel, a popover, a dialog or
-a full-width phone view. The scene also draws the component in each state it shows for the requests
-needed by it, such as ready, loading and error.
-Adaptation point: the hosts of each component, with their sizes and backgrounds.
+Component scene draws component in every real host where it appears, at literal width, height and
+background of that host, including narrowest host used for it by application. Host = box around
+component on real screen, e.g. side panel, popover, dialog, full-width phone view. Scene also draws
+component in each state shown by it for requests needed by it, e.g. ready, loading, error.
+Adaptation point: hosts of each component, with sizes and backgrounds.
 
-A container-responsive component, which changes layout with its width, is mounted in one host per
-layout, at the literal widths of the real hosts where it appears. Every host is rendered in every
-named variant. Each layout appears in every language and theme of the variant set.
+Container-responsive component, which changes layout with its width: mounted in one host per layout,
+at literal widths of real hosts where it appears. Every host rendered in every named variant. Each
+layout appears in every language and theme of variant set.
 
-The container widths of a component scene describe the component alone and do not replace evidence
-from the page layout. The geometry checks of the component are applied again in a page scene that
-draws the component inside the real screen where it appears. There, the shell, the neighbouring
-sections and the real container determine how much space the component gets.
+Container widths of component scene describe component alone, do not replace evidence from page
+layout. Geometry checks of component applied again in page scene that draws component inside real
+screen where it appears. There, shell, neighbouring sections and real container determine how much
+space component gets.
 
 ## Target selection
 
-Targets are found through the existing test hooks of the application where present and through
-scoped accessible roles and names elsewhere. The selectors are written in the scene built for the
-question. A missing target fails, and so does an ambiguous target. A scene never silently switches
-to a different element. A selector never asserts a styling class as a substitute for a geometry
-measurement. Selection and toggle states are read from the accessibility state of the controls, such
-as the checked attribute, the way assistive technology reads them.
+Targets found through existing test hooks of application where present, through scoped accessible
+roles and names elsewhere. Selectors written in scene built for the question. Missing target fails.
+Ambiguous target fails too. Scene never silently switches to different element. Selector never
+asserts styling class as substitute for geometry measurement. Selection and toggle states read from
+accessibility state of controls, e.g. checked attribute, the way assistive technology reads them.
 
-Where a test hook is missing, the scene finds a target by its content or by its accessible name in
-the language of the variant. A card is found as the innermost container that contains its known
-controls. A control without an accessible name is found by its position within a group whose other
-members are named. A text field is found by its element type when another field with the same role
-is on screen.
+Where test hook missing, scene finds target by its content or by its accessible name in language of
+variant. Card found as innermost container that contains its known controls. Control without
+accessible name found by its position within group whose other members are named. Text field found
+by element type when another field with same role is on screen.
 
 ## Writing interactions
 
-Each interaction waits for its observable outcome before the next step: a value appearing, a control
-becoming enabled or disabled, a row count changing, a dialog appearing.
+Each interaction waits for its observable outcome before next step: value appearing, control
+becoming enabled or disabled, row count changing, dialog appearing.
 
-A popover or menu that closes when focus leaves its control is opened with a dispatched activation
-event that does not move focus, since the capture sequence clears focus. Where the popover takes
-focus by itself, the scene prevents the one focus-leaving event caused by the capture from getting
-to the popover. Transitions are advanced by running frames of the paused clock until the element is
-either fully shown, with its opacity complete and its animations finished, or gone. The scene fails
-when neither has happened and nothing is left that could still change the element: no finite
-animation runs on the element or on an ancestor of it, and the paused clock holds no pending timer
-and no frame callback. A timer or a frame callback that schedules itself again keeps the scene
-running until the user who runs the harness stops it. The failure message contains the name of the
+Popover or menu that closes when focus leaves its control: opened with dispatched activation event
+that does not move focus, since capture sequence clears focus. Where popover takes focus by itself,
+scene prevents the one focus-leaving event caused by capture from getting to popover. Transitions
+advanced by running frames of paused clock until element either fully shown (opacity complete,
+animations finished) or gone. Scene fails when neither has happened and nothing is left that could
+still change element: no finite animation runs on element or on ancestor of it, and paused clock
+does not have any pending timer or frame callback. Timer or frame callback that schedules itself
+again makes scene run until user who runs harness stops it. Failure message contains name of
 element.
 
-A hover state is produced with a dispatched pointer event at computed coordinates, since the capture
-sequence moves the real pointer away and would end a real hover.
+Hover state produced with dispatched pointer event at computed coordinates, since capture sequence
+moves real pointer away and would end real hover.
 
-A scene that saves a page checks the concrete unsaved and saved states. After an edit, the save and
-discard actions are enabled and the real unsaved indication of the application is visible. The save
-happens once. After it, the actions of the saved state are disabled and the unsaved indication is
-gone. Each of these states is read from the screen and never set through the state store of the
-application.
+Scene that saves page checks concrete unsaved and saved states. After edit: save and discard actions
+enabled, real unsaved indication of application visible. Save happens once. After it: actions of
+saved state disabled, unsaved indication gone. Each of these states read from screen, never set
+through state store of application.
 
-A component whose state would need a visible control to change is switched through a channel that
-draws nothing, such as a fragment of the address or a parameter of the harness entry, which leaves
-every control of the harness out of the picture. A component that picks a random value, such as a
-rotating placeholder, receives a fixed real value from the entry.
+Component whose state would need visible control to change: switched through channel that draws
+nothing, e.g. fragment of address or parameter of harness entry. Channel leaves every control of
+harness out of picture. Component that picks random value, e.g. rotating placeholder, receives
+fixed real value from entry.
 
-Expected strings are read from the translation files of the application for the language of the
-variant, where the scene has access to them. A string written by hand in a scene is written once per
-interface language. Expected numbers and dates are formatted with the formatter of the platform in
-the language of the variant.
+Expected strings read from translation files of application for language of variant, where scene has
+access to them. String written by hand in scene: written once per interface language. Expected
+numbers and dates formatted with formatter of platform in language of variant.
 
-A surface wider or taller than the viewport inside a scrolling container is captured region by
-region, each region as a separate checkpoint, after a viewport checkpoint of the whole shell.
+Surface wider or taller than viewport inside scrolling container: captured region by region, each
+region separate checkpoint, after viewport checkpoint of whole shell.
 
 ## Where scenes live
 
-Tracked scenes are stored beside the harness code, one module per scene, and registered in the scene
-registry. Exploratory scenes are stored in the harness directory inside the project cache, the
-location defined by `workflow-skills:local-cache`, until they are promoted.
+Tracked scenes stored beside harness code, one module per scene, registered in scene registry.
+Exploratory scenes stored in harness directory inside project cache, location defined by
+`workflow-skills:local-cache`, until promoted.
 
 ## Web realization in the reference
 
-The reference wrote its types in TypeScript and checked each scene module with the `satisfies`
-operator against the scene union. Targets were located with Playwright locators on `data-test`
-attributes and with role and accessible name queries scoped to a container. Popovers were opened
-with a dispatched click event and hover states with a dispatched pointer move. Transitions were
-advanced with the frame steps of the page clock. Expected strings came from the JSON translation
-files of the application, and expected numbers and dates from the `Intl` formatters of the browser.
-A component entry drew one host element per real host, with the width and height of the host in CSS
-pixels and its background, and one more host for each state of a request needed by the component.
-A container-responsive panel was mounted in a wide host for its wide layout and in two narrow hosts,
-one of them at the narrowest phone width, for its narrow layout.
+Reference wrote its types in TypeScript, checked each scene module with `satisfies` operator against
+scene union. Targets located with Playwright locators on `data-test` attributes and with role and
+accessible name queries scoped to container. Popovers opened with dispatched click event, hover
+states with dispatched pointer move. Transitions advanced with frame steps of page clock. Expected
+strings came from JSON translation files of application, expected numbers and dates from `Intl`
+formatters of browser. Component entry drew one host element per real host, with width and height
+of host in CSS pixels and its background, plus one more host for each state of a request needed by
+component. Container-responsive panel mounted in wide host for its wide layout and in two narrow
+hosts, one of them at narrowest phone width, for its narrow layout.
 
 ## Native and terminal realizations
 
-A native mobile scene is a test class written in the same language as the application. Its variant
-is a device profile with a screen size in density-independent units, a density, a locale, a dark or
-light mode and a font scale. Its container width is the width of a host view. Targets are found
-through test tags, resource identifiers or accessibility identifiers, and through accessibility
-labels scoped to a container. A desktop scene uses the object names and accessible names provided by
-the toolkit the same way.
+Native mobile scene = test class in same language as application. Its variant: device profile with
+screen size in density-independent units, density, locale, dark or light mode, font scale. Its
+container width: width of host view. Targets found through test tags, resource identifiers or
+accessibility identifiers, and through accessibility labels scoped to container. Desktop scene uses
+object names and accessible names provided by toolkit same way.
 
-The variant of a terminal scene is a terminal size in columns and rows, a locale, a color scheme and
-a color capability. The targets it checks are regions of the screen grid, found by anchoring on text
-drawn by the application. Its checkpoints capture the whole screen or a rectangle of cells.
+Variant of terminal scene: terminal size in columns and rows, locale, color scheme, color
+capability. Targets checked by it: regions of screen grid, found by anchoring on text drawn by
+application. Its checkpoints capture whole screen or rectangle of cells.

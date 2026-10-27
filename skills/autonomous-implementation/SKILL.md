@@ -1,171 +1,160 @@
 ---
 name: autonomous-implementation
-description: Implement a change autonomously, only when the user has asked for it, for one task, for the session until revoked or for a timeframe, such as for an experiment or a novel approach whose architecture is not decided yet.
+description: Implement change autonomously, only when user has asked for it, for one task, for session until revoked or for timeframe, e.g. for experiment or novel approach whose architecture is not decided yet.
 ---
 
 # Autonomous implementation
 
-**Load the `workflow-skills:writing-style` skill first.** The rules in it apply to every comment,
-document, commit message and reply you write while you follow this skill. Load it whenever you work
-with this plugin.
-
 ## The grant
 
-- Work this way only when the user asked for it. The user grants it for one task, for the whole
-  session until they revoke it, or for a timeframe named by the user.
-- Never read a grant into a request that does not give one.
-- Record the grant in the run file: its scope, when it was given, the end of its timeframe, and the
-  revocation once the user revokes it.
-- Check the grant before every decision.
-- Once the grant has lapsed or was revoked, stop the run at once: do not start another agent, stop
-  the running workflow, report, and ask the user as the global rules require.
-- Keep everything outward-facing out of the grant, such as pushing, publishing and posting: it still
-  needs the user's consent.
-- Within the grant, use this skill in place of `workflow-skills:implement` for the granted work.
-  The user chose this skill for that work. The global rule to implement through
-  `workflow-skills:implement` applies to all other work.
+- Work this way only when user asked for it. User grants it for one task, for whole session until
+  they revoke it, or for timeframe named by user.
+- Never read grant into request that does not give one.
+- Record grant in run file: its scope, when it was given, end of its timeframe, and revocation once
+  user revokes it.
+- Check grant before every decision.
+- Once grant lapsed or was revoked, stop run at once: do not start another agent, stop running
+  workflow, report, and ask user as global rules require.
+- Keep everything outward-facing out of grant, such as pushing, publishing and posting. It still
+  needs user's consent.
+- Within grant, use this skill in place of `workflow-skills:implement` for granted work. User chose
+  this skill for that work. Global rule to implement through `workflow-skills:implement` applies to
+  all other work.
 
 ## What is turned around
 
-- Treat the run file as the authority: the user's description, the research done at intake, and the
-  decisions made by the subagents, with the user's answers above all of them.
-- Leave every product and architecture decision to the subagents.
-- Orchestrate the run: plan the milestones, start the agents, judge their results against the
-  rules, and keep the run file current.
-- Start the agents that write code as `workflow-skills:implementer`. Hold their work to the rules
-  through the reviewers.
-- Hold every agent to `workflow-skills:todo-md` and `workflow-skills:local-cache`, and the agents
-  that write the text shown by the product to `workflow-skills:copywriting`. Name these skills in
-  the prompt handed to each agent bound by them.
-- Let the subagents pick among the copy variants wherever the user would pick by
-  `workflow-skills:copywriting`, and log each pick as a decision.
-- List in the final report the strings that carry the product. The user reads them before
-  anything ships, and shipping lies outside the grant.
+- Treat run file as authority: user's description, research done at intake, and decisions made by
+  subagents. User's answers rank above all of them.
+- Leave every product and architecture decision to subagents.
+- Orchestrate run: plan milestones, start agents, judge their results against rules, keep run file
+  current.
+- Start agents that write code as `workflow-skills:implementer`. Hold their work to rules through
+  reviewers.
+- Hold every agent to `workflow-skills:todo-md` and `workflow-skills:local-cache`. Agents that write
+  text shown by product also to `workflow-skills:copywriting`. Name these skills in prompt handed to
+  each agent bound by them.
+- Let subagents pick among copy variants wherever user would pick by `workflow-skills:copywriting`.
+  Log each pick as decision.
+- List strings that carry the product in final report. User reads them before anything ships, and
+  shipping lies outside grant.
 
 ## Intake
 
-- Take the user's description of the idea, the intent, the technologies and the constraints.
-- Research everything needed by the work before the first milestone starts, with research agents
-  such as `workflow-skills:researcher-breadth` and `workflow-skills:researcher-contextfree`.
-- Merge the results returned by those agents with `workflow-skills:consolidator`.
-- Collect the intent, the goal, the technologies, the target platforms and the constraints, and
-  write them into the run file.
-- Ask the user once, with a question that does not block the work, for their jurisdiction, which
-  the hard rules on law refer to, and for the target platforms not named in the description.
-- Do not take an action whose legality depends on the jurisdiction until the jurisdiction is known.
+- Take user's description of idea, intent, technologies and constraints.
+- Research everything needed by work before first milestone starts, with research agents such as
+  `workflow-skills:researcher-breadth` and `workflow-skills:researcher-contextfree`.
+- Merge results returned by those agents with `workflow-skills:consolidator`.
+- Collect intent, goal, technologies, target platforms and constraints. Write them into run file.
+- Ask user once, with question that does not block work, for their jurisdiction, to which hard rules
+  on law refer, and for target platforms not named in description.
+- Do not take action whose legality depends on jurisdiction until jurisdiction known.
 
 ## The run file
 
-- Write the run file at intake into the local storage defined by `workflow-skills:local-cache`, and
-  keep it current: the grant, the description, the intent, the goal, the technologies, the
-  constraints, the jurisdiction, the milestones with the state of each, the decision log and an
-  index that lists the evidence.
-- Record in the run file, for the running milestone, the run ID of the workflow, the paths of the
-  workflow script and journal, the worktree used by the workflow, and the commit checked out in each
-  repository when the milestone started, so that you can find the run and its state after a resume.
-- Reload the whole run from the run file after a crash, a compaction or a resume.
+- Write run file at intake into local storage defined by `workflow-skills:local-cache`. Keep it
+  current: grant, description, intent, goal, technologies, constraints, jurisdiction, milestones
+  with state of each, decision log, and index that lists evidence.
+- Record in run file, for running milestone: run ID of workflow, paths of workflow script and
+  journal, worktree used by workflow, and commit checked out in each repository when milestone
+  started. So you can find run and its state after resume.
+- Reload whole run from run file after crash, compaction or resume.
 
 ## Milestones
 
-- Define each milestone before its work starts: what it is, what it contains, what it delivers, the
+- Define each milestone before its work starts: what it is, what it contains, what it delivers,
   evidence that proves it, and when it stops.
-- Keep the final stop condition as the user stated it, such as: stop only when the full app is
-  implemented, screenshots and a screen recording show it fully working, and an APK the user can
-  install on their phone is delivered.
-- Shape the workflows however the work needs: which agents run, in which order, and how many
-  workflows a milestone takes. Scripts do not enforce a shape. The reviewers still hold the work to
-  the rules.
-- Run every workflow in a worktree.
+- Keep final stop condition as user stated it. Such as: stop only when full app implemented,
+  screenshots and screen recording show it fully working, and APK installable by user on their
+  phone delivered.
+- Shape workflows however work needs: which agents run, in which order, how many workflows a
+  milestone takes. Scripts do not enforce shape. Reviewers still hold work to rules.
+- Run every workflow in worktree.
 - Run every workflow and agent as `workflow-skills:workflows` describes.
-- Commit the work of each milestone in the commit style.
-- Run the builds of each milestone yourself, as the section on builds in `workflow-skills:implement`
-  describes. Where the project needs targeted commands, let the subagents design them, log the
-  decision in the run file, and build them in the first milestone that needs them.
-- After the last fix, run the checks of the milestone again and capture the evidence for the
-  milestone again. Close the milestone only on that result.
-- Re-plan a milestone that failed three times, or stop the run with a report.
-- Stop with a report instead of looping when the usage limits of the plan for the models run low.
-- Fix every defect introduced by the run itself, in whichever milestone it shows up.
-- Fix a defect present before the run as a separate unit in parallel, as `workflow-skills:todo-md`
-  describes. It is the one piece of work outside the grant that you start.
-- Write a defect present before the run into the run file as a question to the user when fixing it
-  needs a decision by the user.
-- Write every other finding beyond the granted work, such as an idea for a feature, into the run
-  file as a question to the user. Never work on it.
+- Commit work of each milestone in commit style.
+- Run builds of each milestone yourself, as section on builds in `workflow-skills:implement`
+  describes. Where project needs targeted commands, let subagents design them, log decision in run
+  file, and build them in first milestone that needs them.
+- After last fix, run checks of milestone again. Capture evidence for milestone again. Close
+  milestone only on that result.
+- Re-plan milestone that failed three times, or stop run with report.
+- Stop with report instead of looping when usage limits of plan for models run low.
+- Fix every defect introduced by run itself, in whichever milestone it shows up.
+- Fix defect present before run as separate unit in parallel, as `workflow-skills:todo-md`
+  describes. It is the one piece of work outside grant started by you.
+- Write defect present before run into run file as question to user when fixing it needs decision
+  by user.
+- Write every other finding beyond granted work, such as idea for feature, into run file as
+  question to user. Never work on it.
 
 ## Decisions
 
-- Log every decision in the run file with its options and its reason, marked as made by an agent,
-  so the user can override any of them later.
-- Apply the user's answers and overrides at the start of the next milestone.
+- Log every decision in run file with its options and its reason, marked as made by agent, so user
+  can override any of them later.
+- Apply user's answers and overrides at start of next milestone.
 
 ## Questions to the user
 
-- Never wait for an answer.
-- Ask each question as the section `Questions to the user` of `workflow-skills:todo-md`
-  describes, and go on with the decision made by the subagents until the answer arrives.
-- Write each question into the run file as well.
+- Never wait for answer.
+- Ask each question as section `Questions to the user` of `workflow-skills:todo-md` describes. Go
+  on with decision made by subagents until answer arrives.
+- Write each question into run file as well.
 
 ## Reviews
 
-- Review every milestone that changes code with at least the structure reviewer and the rules and
-  surface reviewer of `workflow-skills:implement`, started as that skill describes.
-- Add the other reviewers in this plugin where the work needs them, and decide yourself when they
-  run.
-- Handle the findings as the section on findings in `workflow-skills:implement` describes, with
-  each milestone as the change.
+- Review every milestone that changes code with at least structure reviewer and rules and surface
+  reviewer of `workflow-skills:implement`, started as that skill describes.
+- Add other reviewers in this plugin where work needs them. Decide yourself when they run.
+- Handle findings as section on findings in `workflow-skills:implement` describes, with each
+  milestone as the change.
 
 ## Hard rules
 
-- Ship and commit only libre components. A build toolchain may be non-free, such as the Android SDK,
-  as long as nothing of it is shipped or committed. A closed network service or API counts as a
+- Ship and commit only libre components. Build toolchain may be non-free, such as Android SDK, as
+  long as nothing of it is shipped or committed. Closed network service or API counts as
   proprietary component.
-- Use the libre variant of a component wherever one exists.
-- Use no copyrighted material except under a libre licence.
-- Break no law of the user's jurisdiction.
+- Use libre variant of component wherever one exists.
+- Do not use copyrighted material except under libre licence.
+- Do not break any law of user's jurisdiction.
 - Take every action permitted by that law, such as reverse engineering for interoperability where
-  the law allows it.
+  law allows it.
 - Build everything to run locally, without cloud services, with data minimization and with
-  controls for the user over their data.
-- Add no telemetry.
-- Take no image, texture, sound file or other asset from the internet unless it is verified to be
-  CC0.
-- Harm no real-world system. Do not hack without authorization, do not access other devices on the
-  local network, and do not scan for credentials.
-- Make no system-wide modification without the user's consent.
-- Check the licence of everything downloaded from the internet.
-- Run the check of the dependencies against advisories.
-- Record every licence not already contained in the fetched content.
-- For a tool taken from a package set, such as nixpkgs, that is neither shipped nor committed,
-  check its licence only by the licence information in the package set. The advisory check applies
-  to what ships.
+  controls for user over their data.
+- Do not add telemetry.
+- Do not take any image, texture, sound file or other asset from internet unless verified to be CC0.
+- Do not harm any real-world system. Do not hack without authorization, do not access other devices
+  on local network, do not scan for credentials.
+- Do not make any system-wide modification without user's consent.
+- Check licence of everything downloaded from internet.
+- Run check of dependencies against advisories.
+- Record every licence not already contained in fetched content.
+- For tool taken from package set, such as nixpkgs, that is neither shipped nor committed, check
+  its licence only by licence information in package set. Advisory check applies to what ships.
 
 ## Nix and builds
 
-- Use Nix, such as `nix run` and `nix shell`, wherever a component, tool or program is not
-  installed.
-- Provide a `flake.nix` in every project.
+- Use Nix, such as `nix run` and `nix shell`, wherever component, tool or program is not installed.
+- Provide `flake.nix` in every project.
 - Keep everything pure and buildable from source.
-- Run the licence and advisory checks as part of the checks of the flake.
+- Run licence and advisory checks as part of checks of flake.
 - Take emulators and SDKs from nixpkgs wherever it has them.
-- Build the Android SDK from nixpkgs `androidenv.composeAndroidPackages` in the flake, with
-  `allowUnfree` and `android_sdk.accept_license` set in its nixpkgs configuration, and every
-  platform and build-tools version needed by the build listed there.
-- Link the built SDK into a `.cache` directory with `nix build` and its `-o` option, through a
-  `path:` flake reference. The project sets where that directory lies.
+- Build Android SDK from nixpkgs `androidenv.composeAndroidPackages` in flake, with `allowUnfree`
+  and `android_sdk.accept_license` set in its nixpkgs configuration, and every platform and
+  build-tools version needed by build listed there.
+- Link built SDK into `.cache` directory with `nix build` and its `-o` option, through `path:`
+  flake reference. Project sets where that directory lies.
 - Set `ANDROID_HOME` to that shared link.
 - Leave `sdk.dir` out of `local.properties`.
 
 ## Code
 
-- Write the cleanest best-in-class code, with clear abstractions, modules, layers and interfaces.
+- Write cleanest best-in-class code, with clear abstractions, modules, layers and interfaces.
 - Refactor and rewrite code where it needs it.
 - Never extend code that is already broken.
 
 ## Evidence and delivery
 
 - Capture screenshots and screen recordings as `workflow-skills:visual-verification` describes.
-  Copy the ones the report shows from the harness directory into the local storage, and list them
-  in the index in the run file.
-- End the run with a report: what was built, how to build and install it, the evidence, the
-  decisions made by the agents, the open questions, and what was recorded for later.
+  Copy ones shown by report from harness directory into local storage. List them in index in run
+  file.
+- End run with report: what was built, how to build and install it, evidence, decisions made by
+  agents, open questions, and what was recorded for later.

@@ -1,19 +1,18 @@
 ---
 name: cold-alternatives
-description: Review a change for a materially simpler shape.
+description: Review change for materially simpler shape.
 ---
 
 # Simpler alternatives
 
-Answer one question about the change: is there a materially simpler shape for it? Include in that
-question an obvious way, missed by the change, to fulfill its intent.
+Answer one question about change: is there a materially simpler shape for it? Include in that
+question an obvious way, missed by change, to fulfill its intent.
 
-- Judge the change from the diff and the code around it. Ignore how the author describes the work.
+- Judge change from diff and code around it. Ignore how author describes work.
 - Count as materially simpler only fewer moving parts, fewer call sites, fewer states or a concept
   removed. Leave cosmetic restyling out.
-- Return at most two simpler shapes, ranked, each as an optional pick for the user. Never present
-  one as a correction needed by the change.
-- Make every optional pick concrete. Name the shape, what collapses, such as which files and which
-  parts disappear, the cost of the new shape, and the invariants of the code that must still hold
-  in it.
-- Return an empty list when the shape is right. Never invent an alternative to look useful.
+- Return at most two simpler shapes, ranked, each as optional pick for user. Never present one as
+  correction the change needs.
+- Make every optional pick concrete. Name shape, what collapses (e.g. which files and which parts
+  disappear), cost of new shape, and invariants of code that must still hold in it.
+- Return empty list when shape is right. Never invent alternative to look useful.

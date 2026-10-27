@@ -1,81 +1,74 @@
 ---
 name: design-drafts
-description: Draw several design drafts or designs for the user to choose from.
+description: Draw several design drafts or designs for user to choose from.
 ---
 
 # Design drafts
 
-- Load `workflow-skills:visual-decisions` and `workflow-skills:writing-style` first.
+- Load `workflow-skills:visual-decisions` first.
 
 ## Before you draw
 
-- Draw as many drafts as the user asks for, and three when the user names no number.
-- Read the code of the screen the drafts change and of the shell around it, such as a taskbar or a
-  status bar: the layout, the theme and its color values, the fonts, the icon set, the resolution
-  and the density of the target screen.
-- Where the screen has no code yet, take the resolution, the fonts and the shell from what the
-  user named. Ask for the resolution in the question at the end of the message when the user
-  named none, and draw the shell as a plain frame labeled as a stand-in.
-- Copy the font and image files used by the product into the folder of the drafts in the project
-  cache, and draw with them.
-- Load nothing from the network.
-- Use the same sample, picked as `workflow-skills:visual-decisions` describes, in every draft.
+- Draw as many drafts as user asks for. Three when user does not name a number.
+- Read code of screen changed by drafts and of shell around it, e.g. taskbar or status bar: layout,
+  theme and its color values, fonts, icon set, resolution and density of target screen.
+- Where screen does not have code yet, take resolution, fonts and shell from what user named. Ask
+  for resolution in question at end of message when user did not name one, and draw shell as plain
+  frame labeled as stand-in.
+- Copy font and image files used by product into folder of drafts in project cache. Draw with them.
+- Load nothing from network.
+- Use same sample, picked as `workflow-skills:visual-decisions` describes, in every draft.
 
 ## Directions
 
-- Make each draft a different idea, such as a glass panel over the app, a solid panel that
-  shrinks the app, or a floating island over part of the screen. Drafts that differ only in color,
-  spacing or corner radius are one direction.
-- Name each direction in one to three words for its idea.
-- Give each draft a one-line description: the view it shows, whether it is still or animated, and
-  the resolution.
-- Draw each draft with the sample data and every element the screen shows.
-- Animate a draft where the screen it imitates animates.
-- Draw the states that change the layout as separate drafts, such as a smaller screen, values the
-  source does not report or text too long for its space.
-- Write no open points on the drafts.
-- Put a point you need answered into the question at the end of the message.
+- Make each draft a different idea, e.g. glass panel over app, solid panel that shrinks app, or
+  floating island over part of screen. Drafts differing only in color, spacing or corner radius =
+  one direction.
+- Name each direction in 1 to 3 words for its idea.
+- Give each draft one-line description: view shown by it, still or animated, resolution.
+- Draw each draft with sample data and every element shown by the screen.
+- Animate draft where screen imitated by it animates.
+- Draw states that change layout as separate drafts, e.g. smaller screen, values not reported by
+  source, text too long for its space.
+- Do not write open points on drafts.
+- Put point that needs an answer into question at end of message.
 
 ## A whole screen
 
-- Draw each draft of a whole screen, such as a dashboard or the main view of an app, as a separate
-  page that shows only the screen, at the resolution of the target screen.
-- Give each draft a second page that scales it to the browser window, with a header that contains
-  a link to the overview, the name and the one-line description of the draft and a link to the
+- Draw each draft of whole screen, e.g. dashboard or main view of app, as separate page showing
+  only the screen, at resolution of target screen.
+- Give each draft second page that scales it to browser window. Its header contains link to
+  overview, name and one-line description of draft, and link to page at actual size.
+- Write overview page, one entry per draft: name, one-line description, links to scaled page and to
   page at actual size.
-- Write an overview page with one entry per draft: its name, its one-line description and links to
-  the scaled page and to the page at actual size.
-- Follow on the overview the page rules of `workflow-skills:visual-decisions` for dark mode, the
-  title and the line under it. The draft pages and the scaled pages contain nothing beyond what
-  this section names.
-- Draw all drafts and the overview at once.
+- On overview, follow page rules of `workflow-skills:visual-decisions` for dark mode, title and line
+  under it. Draft pages and scaled pages contain nothing beyond what this section lists.
+- Draw all drafts and overview at once.
 
 ## A part of a screen
 
-- Draw drafts of a part of a screen, such as a keyboard, a panel or a way to choose between two
-  modes, as one page of `workflow-skills:visual-decisions`, with one numbered section per
-  direction.
-- Draw each direction inside the real screen around that part, labeled with its name.
-- End the page with the section of `workflow-skills:visual-decisions` that shows the variants side
-  by side, at a small size, each direction with a caption of its main property.
+- Draw drafts of part of screen, e.g. keyboard, panel or way to choose between two modes, as one
+  page of `workflow-skills:visual-decisions`. One numbered section per direction.
+- Draw each direction inside real screen around that part, labeled with its name.
+- End page with section of `workflow-skills:visual-decisions` showing variants side by side, small
+  size, each direction with caption of its main property.
 
 ## Checking
 
-- Render every page at its real size, with its animations running, before you take the screenshot
-  that `workflow-skills:visual-decisions` asks for.
-- Check that no text overflows its box, that nothing is cut at the edge of the screen and that
-  the long value of the sample fits or is shortened the way the product shortens it.
+- Render every page at real size, animations running, before taking the screenshot asked for by
+  `workflow-skills:visual-decisions`.
+- Check: text does not overflow its box, nothing cut at edge of screen, long value of sample fits or
+  is shortened the way product shortens it.
 
 ## After the answer
 
-- For a whole screen, draw the details of the chosen direction as new drafts with their entries on
-  the overview, and keep each earlier draft beside its new version, labeled "Earlier draft".
-- For a part of a screen, draw the details of the chosen direction in new sections of the same
-  page, with a detail that changed next to its earlier version, labeled "Earlier draft" and
-  "After".
+- Whole screen: draw details of chosen direction as new drafts, with their entries on overview.
+  Keep each earlier draft beside its new version, labeled "Earlier draft".
+- Part of screen: draw details of chosen direction in new sections of same page. Put changed
+  detail next to its earlier version, labeled "Earlier draft" and "After".
 
 ## Asking
 
-- Open the overview or the page for the user.
-- Keep the chat message to the path of the overview and one line per direction.
-- End the message with one question: which direction the user picks, or which parts of which.
+- Open overview or page for user.
+- Keep chat message to path of overview and one line per direction.
+- End message with one question: which direction user picks, or which parts of which.

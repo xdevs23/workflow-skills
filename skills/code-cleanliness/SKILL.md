@@ -1,47 +1,45 @@
 ---
 name: code-cleanliness
-description: Review a change for readability and hygiene at the surface of the code.
+description: Review change for readability and hygiene at surface of code.
 ---
 
 # Code cleanliness
 
-Review the change for code cleanliness only: readability and hygiene.
+Review change for code cleanliness only: readability and hygiene.
 
-- Leave structural concerns to other reviewers. Still name the rule violation behind a comment.
-- Report a name that fails the naming test: with the docstring hidden, the name and a line that uses
-  it do not show what the value contains or what the code does. Report in particular:
-  - a type named with a generic noun, such as `Entry` or `Item`, where the module containing it has
-    a more specific word for its contents;
-  - a metaphor, such as `Weather` for the state of a supplier's catalogue (`CatalogueStatus`);
-  - a name whose word contradicts the contents, such as `ShopData` for a type that contains
-    services and registries (`ShopServices`);
-  - a function named after a role or a noun instead of what it does, such as `owners` for a
-    function that finds the carts still referencing a product (`findCartsReferencingProduct`).
-- Report a library call whose flags decide the shape of its result, such as a serializer called
-  with several flags, written at the place that uses the result, where a function or method named
-  for that result in the module that owns the type belongs.
-- Report comments that are false, restate the code or are stale, and commented-out code left in.
-- Report magic numbers or strings that need a name, in the lines the change adds or edits. A key
-  of a structure is not such a string.
-- Report every tunable, as defined in `workflow-skills:writing-code`, that is written
-  into the code or handed in by a caller, also when a named constant or a parameter contains it.
-  Name what it derives from at runtime and how it adjusts while the code runs.
-- Report text that explains a product, as defined in `workflow-skills:building-screens`. Name the
-  part of the interface that has to change so the text can be removed.
-- Report inconsistent style within a file or module, and noisy or accidental debug logging.
-- Report orphaned TODO and FIXME comments, dead imports and unused variables.
-- Report formatting that hides the intent of the code, such as giant expressions or misleading
-  indentation.
-- Report every comment in the change. A comment belongs only where the code alone cannot make its
-  meaning clear, such as at an external limitation or where the comment describes the behavior of
-  something the project does not control.
+- Leave structural concerns to other reviewers. Still name rule violation behind a comment.
+- Report name that fails naming test: with docstring hidden, name and a line using it do not show
+  what value contains or what code does. Report in particular:
+  - type named with generic noun, e.g. `Entry` or `Item`, where module containing it has more
+    specific word for its contents;
+  - metaphor, e.g. `Weather` for state of a supplier's catalogue (`CatalogueStatus`);
+  - name whose word contradicts contents, e.g. `ShopData` for type containing services and
+    registries (`ShopServices`);
+  - function named after role or noun instead of what it does, e.g. `owners` for function that
+    finds carts still referencing a product (`findCartsReferencingProduct`).
+- Report library call whose flags decide shape of its result, e.g. serializer called with several
+  flags, written at place that uses the result, where a function or method named for that result
+  belongs, in module that owns the type.
+- Report comments that are false, restate code or are stale, and commented-out code left in.
+- Report magic numbers or strings that need a name, in lines added or edited by change. Key of a
+  structure is not such a string.
+- Report every tunable, as defined in `workflow-skills:writing-code`, written into code or handed
+  in by caller, also when a named constant or parameter contains it. Name what it derives from at
+  runtime and how it adjusts while code runs.
+- Report text that explains a product, as defined in `workflow-skills:building-screens`. Name part
+  of interface that has to change so text can be removed.
+- Report inconsistent style within file or module, and noisy or accidental debug logging.
+- Report orphaned TODO and FIXME comments, dead imports, unused variables.
+- Report formatting that hides intent of code, e.g. giant expressions or misleading indentation.
+- Report every comment in change. Comment belongs only where code alone cannot make its meaning
+  clear, e.g. at external limitation, or where comment describes behavior of something not
+  controlled by project.
 - Suggest one or more of these steps for every reported comment:
-  - remove the comment;
+  - remove comment;
   - shorten it;
-  - write the code in a cleaner, more readable and more obvious way so it needs no comment;
-  - remove the code described by the comment;
-  - report the content of the comment, or the code described by it, as a rule violation.
-- Look for the rule violation behind a comment that explains something not allowed by the
-  architecture in the first place. Where the tree contains that rule, say in the finding which rule
-  the comment breaks.
-- Give every reported name a replacement that passes the naming test. Say where renaming is cheap.
+  - write code in cleaner, more readable, more obvious way so it does not need a comment;
+  - remove code described by the comment;
+  - report content of comment, or code described by it, as rule violation.
+- Look for rule violation behind a comment that explains something not allowed by architecture in
+  first place. Where tree contains that rule, say in finding which rule comment breaks.
+- Give every reported name a replacement that passes naming test. Say where renaming is cheap.

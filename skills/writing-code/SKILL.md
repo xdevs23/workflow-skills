@@ -1,229 +1,219 @@
 ---
 name: writing-code
-description: Write or change code in any language, including its types, comments, names and strings.
+description: Write or change code in any language, including types, comments, names and strings.
 ---
 
 # Writing code
 
-- Before you write code in a language, read the file for that language in the `languages`
-  directory next to this file: `kotlin.md`, `rust.md`, `c-cpp.md`, `go.md`, `nix.md`,
-  `typescript.md` or `python.md`.
+- Before writing code in a language, read file for that language in `languages` dir next to this
+  file: `kotlin.md`, `rust.md`, `c-cpp.md`, `go.md`, `nix.md`, `typescript.md` or `python.md`.
 
 ## Code style
 
-- Write code that reads like the surrounding code, matching its comment density, its naming and its
-  idioms.
-- When you change code that falls short of a high standard, improve it.
+- Write code that reads like surrounding code. Match its comment density, naming, idioms.
+- When changing code below high standard, improve it.
 - Never rewrite existing code beyond your change.
-- Write code so what it does is visible at a glance, with annotations, decorators, delegates,
-  operator overloads, data classes and abstractions where they make it read better.
-- Use the idioms of each language, listed in the file for that language in `languages`.
-- Write a structure that follows a specification or a hierarchy as a typed DSL, so the code reads
-  like the structure and building a structure that breaks the constraints of the specification
-  fails.
-- Comment only where the logic isn't self-evident, and first try to make such code clearer.
-- Let a comment contain a constraint or a reason not visible in the code.
-- Never restate the next line in a comment, narrate a change in it ("used to be A, now B") or
-  address a reviewer in it.
+- Make what code does visible at a glance. Use annotations, decorators, delegates, operator
+  overloads, data classes and abstractions where they make it read better.
+- Use idioms of each language, listed in file for that language in `languages`.
+- Write structure following specification or hierarchy as typed DSL. Code reads like the structure.
+  Building structure that breaks constraints of specification fails.
+- Comment only where logic is not self-evident. First try making such code clearer.
+- Let comment contain constraint or reason not visible in code.
+- Never restate next line in comment, narrate change in it ("used to be A, now B") or address
+  reviewer in it.
 - Name things with plain words for what they do.
-- Start the name of a function that does something with a verb for what it does, such as
+- Start name of function that does something with verb for what it does, e.g.
   `findCartsReferencingProduct` or `convertToRgb`.
-- Never invent a metaphor for a name, and never use `util`, `misc`, `helper` or a similar grab-bag
-  name.
-- Apply the naming test to each name as you write it: hide the docstring for it and read only the
-  name and a line that uses it. Rename it when you then can't say what the value contains or what
-  the code does.
-- Write a library call whose flags decide the shape of its result, such as a serializer called with
-  several flags, once, as a function or method named for that result in the module that owns the
-  type, and call that function wherever the result is needed. This applies with one caller too.
-- Treat a file past about 500 lines as a candidate for splitting.
-- Keep the public surface small. Make implementation types internal or private, and make public
-  only what a consumer calls.
-- Name the arguments of a call that passes several values of the same type.
-- Document in an unsafe or foreign-interface function the contract to be kept by every caller.
-- Make code pass the formatter and linter configuration of the tree into which it goes, or of the
-  upstream project for which it is written, with warnings treated as errors.
-- Never silence a lint check or a warning, such as with a suppression comment, an excluded file or
-  folder, a disabled or lowered setting, or a warning left standing in the output.
-- Remove every silenced check in the files your change edits, also one from before your change,
-  and fix what it hid. Removing it is always part of the change.
-- Give a new small file, such as a configuration file, a one-line SPDX license identifier, never a
-  full block of license boilerplate.
-- Don't access objects by raw string attributes, such as `doc["key"]` or `item.get("key")`, if a
-  cleaner way of access is possible. The cleaner way is a typed model of the object. A constant
-  that contains the key is the same access by a string.
-- Where in scope, refactor an existing untyped structure into the clean structure it should have
-  had all along.
-- Never change what was passed into a function. Convert an input into a new value, and change data
-  passed in by the caller only when changing it is the stated purpose of the function.
-- Represent one resource, such as a device, a connection or an open file, by exactly one object that
-  can't be copied by accident.
-- Give every concurrent task a scope that waits for it to finish or cancels it.
-- Never start a fire-and-forget thread, and never read a flag across threads.
-- Run code bound to a thread, such as rendering or the user interface, on that thread, and assert at
-  its entry point that it runs there.
-- Never let an unordered collection determine a result. When several items can match, define which
-  one wins or make the ambiguity an error. Never depend on the order in which a map, a directory
-  listing or an unsorted query returns items.
-- Never drain a queue or a channel in a loop only to discard its values. Process every value in the
-  loop, or keep a slot replaced by each new value where only the latest one is needed.
-- Let a stream own its resources, and release them when the consumer is dropped.
-- Stream files and the bodies of requests and responses, never load them whole.
-- Prefer asynchronous code wherever it fits.
+- Never invent metaphor for name. Never use `util`, `misc`, `helper` or similar grab-bag name.
+- Apply naming test to each name as you write it: hide its docstring, read only name and one line
+  using it. Rename when you then cannot say what value contains or what code does.
+- Library call whose flags decide shape of its result, e.g. serializer called with several flags:
+  write it once, as function or method named for that result, in module that owns the type. Call
+  that function wherever result needed. Applies with one caller too.
+- Treat file past about 500 lines as candidate for splitting.
+- Keep public surface small. Make implementation types internal or private. Make public only what
+  consumer calls.
+- Name arguments of call that passes several values of same type.
+- Document in unsafe or foreign-interface function the contract to be kept by every caller.
+- Make code pass formatter and linter configuration of tree into which it goes, or of upstream
+  project for which it is written. Warnings treated as errors.
+- Never silence lint check or warning, e.g. by suppression comment, excluded file or folder,
+  disabled or lowered setting, or warning left standing in output.
+- Remove every silenced check in files edited by your change, also one from before your change.
+  Fix what it hid. Removing it is always part of change.
+- Give new small file, e.g. configuration file, one-line SPDX license identifier. Never full block
+  of license boilerplate.
+- Do not access objects by raw string attributes, e.g. `doc["key"]` or `item.get("key")`, if cleaner
+  access possible. Cleaner way: typed model of object. Constant containing the key = same access by
+  string.
+- Where in scope, refactor existing untyped structure into clean structure, which it should have had
+  all along.
+- Never change what was passed into function. Convert input into new value. Change data passed in
+  by caller only when changing it is stated purpose of function.
+- Represent one resource, e.g. device, connection or open file, by exactly one object that cannot be
+  copied by accident.
+- Give every concurrent task scope that waits for it to finish or cancels it.
+- Never start fire-and-forget thread. Never read flag across threads.
+- Run code bound to thread, e.g. rendering or UI, on that thread. Assert at its entry point that it
+  runs there.
+- Never let unordered collection determine result. When several items can match, define which one
+  wins or make ambiguity an error. Never depend on order in which map, directory listing or unsorted
+  query returns items.
+- Never drain queue or channel in loop only to discard its values. Process every value in loop, or
+  keep slot replaced by each new value where only latest one needed.
+- Let stream own its resources. Release them when consumer dropped.
+- Stream files and bodies of requests and responses. Never load them whole.
+- Prefer async code wherever it fits.
 
 ## Time
 
-- Never synchronize by time. Wait on the event or the state that signals readiness, never on a
-  sleep, a delay or a polling loop.
-- Count progress in the unit of the work, such as ticks, frames or samples. Use wall time only when
-  the intent is real time, such as waiting 200 ms, and measure it on a monotonic clock.
+- Never synchronize by time. Wait on event or state signalling readiness, never on sleep, delay or
+  polling loop.
+- Count progress in unit of the work, e.g. ticks, frames or samples. Use wall time only when intent
+  is real time, e.g. waiting 200 ms. Measure it on monotonic clock.
 
 ## Write once
 
-- Write every part once. Duplication is a defect wherever it is found.
-- Reuse the utilities, patterns, dependencies and code paths of the project. Prior art in the
-  codebase determines how a new piece behaves.
-- Never add a carve-out where the existing path already covers the case.
-- Keep branches small and few. Replace a growing conditional with indirection, abstraction or a
+- Write every part once. Duplication = defect wherever found.
+- Reuse utilities, patterns, dependencies and code paths of project. Prior art in codebase
+  determines how new piece behaves.
+- Never add carve-out where existing path already covers case.
+- Keep branches small and few. Replace growing conditional with indirection, abstraction or
   structure that makes the case impossible instead of handled.
-- Never write a parser by hand for an established format.
+- Never write parser by hand for established format.
 - Never parse structured data as text.
 - Keep communication structured.
 - Build output from typed parts, never by string interpolation.
-- Read the state already reported by the mechanism instead of adding a parallel flag, sentinel or
-  magic string.
-- Represent absence as absence: an empty collection, a null or optional, or an error, never a
-  placeholder of the same type.
-- Never let a value that the caller has to supply fall back silently to an empty or default one,
-  such as a request body sent empty because none was built. Make the value required, so a call that
-  leaves it out fails.
-- Avoid imperative or procedural checks. Make the condition fall out of the design where possible.
+- Read state already reported by mechanism instead of adding parallel flag, sentinel or magic
+  string.
+- Represent absence as absence: empty collection, null or optional, or error. Never placeholder of
+  same type.
+- Never let value to be supplied by caller fall back silently to empty or default one, e.g.
+  request body sent empty because none built. Make value required, so call leaving it out fails.
+- Avoid imperative or procedural checks. Make condition fall out of design where possible.
 
 ## Typed data and requests
 
-- Type data everywhere. Never look up keys in raw JSON, dispatch on strings or send an anonymous
-  structure on a bus.
+- Type data everywhere. Never look up keys in raw JSON, dispatch on strings or send anonymous
+  structure on bus.
 - Make illegal states unrepresentable.
-- Build a request to another system, and read the response to it, as a typed model, converted to
-  the wire form in the adapter for that system. Outside that conversion, never build a request
-  body or a part of one, such as a filter, a sort order or paging, as a dictionary literal.
-- Define the models for the requests to one system, and the fixed values built from them such as a
-  standard sort order, once, in the module shared by all code that calls that system.
-- Give the function that sends a request a typed parameter for each part of the request, such as
-  the filter, the sort order and the paging. Never merge the parts of a request by combining untyped
-  maps.
-- Never give an untyped structure a name that makes it look typed, such as an alias for a mapping
-  of strings to objects. The alias is only a second name for the untyped structure.
-- Judge a string in code by its purpose. Turn a string standing for something that can be typed in
-  the language into an enum or a class. Keep a string whose purpose is text, such as a message or
-  a name fixed by an outside format, as a string, defined in one place.
+- Build request to another system, and read response to it, as typed model, converted to wire form
+  in adapter for that system. Outside that conversion, never build request body or part of one,
+  e.g. filter, sort order or paging, as dictionary literal.
+- Define models for requests to one system, and fixed values built from them, e.g. standard sort
+  order, once, in module shared by all code calling that system.
+- Give function that sends request one typed parameter per part of request, e.g. filter, sort
+  order, paging. Never merge parts of request by combining untyped maps.
+- Never give untyped structure a name that makes it look typed, e.g. alias for mapping of strings
+  to objects. Alias is only second name for the untyped structure.
+- Judge string in code by its purpose. String standing for something that can be typed in the
+  language: turn into enum or class. String whose purpose is text, e.g. message or name fixed by
+  outside format: keep as string, defined in one place.
 
 ## Closed sets
 
-- Define a closed set of domain values, such as the outcomes of a decision or the states of a job,
-  once, as an enum in the form given in the file for the language in `languages`.
-- Treat a set extended by modules, such as message types or providers, as not closed, and put it
-  into a registry.
-- Put the definition of a closed set in the module for the concept it belongs to, such as the user
-  roles in the access model. Never define the set in another module or in another form, whether as
-  strings, a collection of strings or a separate enum, also not in a module that uses the concept.
-- Let an adapter at the edge that maps outside spellings, and a test, refer to the values through
-  the definition. Neither of them defines a set.
-- State an order among the values of a closed set in the definition of the set, as a rank or a
-  comparison written out with the values. Never read the order from position, in a list or in the
-  declaration, such as the last entry as the highest role or a comparison of ordinals.
-- Write the text of a value of a closed set only in the definition of the set, and name the value
-  through the definition everywhere else, also where a type lists the allowed strings.
-- Map an outside spelling of a value of a closed set, such as the spelling on the wire or in a
-  database, in the adapter at that edge, never in the definition.
-- Keep the behavior that belongs to a value of a closed set with the definition of the set, never
-  in conditions over the text of the value spread across the callers.
-- Convert text into a value of a closed set once, where the text arrives, such as from a JSON field
-  or a stored value. Use a check that reads text matching none of the values as unknown, never a
-  cast or a default value.
-- Turn a value of a closed set back into text only where it leaves the program.
-- Store a value as a stable identifier: an enum by a stable name or value, never by its position in
-  the declaration, and never any value as the text shown to the user.
+- Define closed set of domain values, e.g. outcomes of decision or states of job, once, as enum in
+  form given in file for the language in `languages`.
+- Treat set extended by modules, e.g. message types or providers, as not closed. Put it into
+  registry.
+- Put definition of closed set in module for concept it belongs to, e.g. user roles in access
+  model. Never define set in another module or another form, whether as strings, collection of
+  strings or separate enum, also not in module that uses the concept.
+- Let adapter at edge that maps outside spellings, and test, refer to values through definition.
+  Neither of them defines a set.
+- State order among values of closed set in definition of set, as rank or comparison written out
+  with values. Never read order from position, in list or in declaration, e.g. last entry as
+  highest role or comparison of ordinals.
+- Write text of value of closed set only in definition of set. Name value through definition
+  everywhere else, also where a type lists allowed strings.
+- Map outside spelling of value of closed set, e.g. spelling on wire or in database, in adapter at
+  that edge, never in definition.
+- Keep behavior belonging to value of closed set with definition of set, never in conditions over
+  text of value spread across callers.
+- Convert text into value of closed set once, where text arrives, e.g. from JSON field or stored
+  value. Use check that reads text matching none of the values as unknown, never cast or default
+  value.
+- Turn value of closed set back into text only where it leaves program.
+- Store value as stable identifier: enum by stable name or value, never by position in
+  declaration. Never store any value as text shown to user.
 
 ## Reading input and conversions
 
-- Read a value defined by the data, such as a currency, a unit, a locale or a timezone, from that
-  data, never hardcoded, defaulted or inferred, and fail when it is missing. Where only one value
-  is allowed, validate the input against it and use the validated value.
-- Read input resiliently. Read a malformed field as unknown, and keep the rest usable.
-- Accept one form per input, and refuse tolerance without a technical reason.
-- Make a conversion exact or fail. Never apply automatically a conversion that could lose or
-  reinterpret a value, such as narrowing a number, a number to text or a negative to unsigned.
-- Make a configuration that can't work fail the build or the start, never the first use of it, by
-  checking conflicting or impossible settings where they are defined.
-- Reserve memory as data arrives, never up front from a length claimed by the other side.
+- Read value defined by data, e.g. currency, unit, locale or timezone, from that data. Never
+  hardcoded, defaulted or inferred. Fail when missing. Where only one value allowed, validate input
+  against it and use validated value.
+- Read input resiliently. Read malformed field as unknown, keep rest usable.
+- Accept one form per input. Refuse tolerance without technical reason.
+- Make conversion exact or fail. Never apply automatically conversion that could lose or
+  reinterpret value, e.g. narrowing number, number to text or negative to unsigned.
+- Make configuration that cannot work fail build or start, never first use of it. Check conflicting
+  or impossible settings where they are defined.
+- Reserve memory as data arrives, never up front from length claimed by other side.
 
 ## Tunables and constants
 
-- Treat as a tunable every value whose right setting depends on the hardware, the load, the data
-  or the environment, such as a size, a count, an interval or a threshold.
-- Make every tunable dynamic: derive it at runtime from what it depends on, such as the image count
-  required by a graphics surface, and adjust it to what the code observes while it runs. Never
-  hardcode, guess or choose it.
-- Count a tunable moved somewhere else as still chosen: a name given to it, a parameter filled in
-  by a caller with a value of its own choosing, a value computed from another chosen value, and a
-  default of a framework or a tool, such as the time limit put on each test by a test runner, all
-  leave it hardcoded.
-- Replace a timeout with the event or the state it waits for.
-- Write a value as a constant only when it is a product choice, a truth that nothing can change,
-  such as a constant of mathematics, or a limit of an external system accepted as
-  `workflow-skills:working-with-outside-systems` describes. Name beside the constant the decision
-  or the definition behind it.
-- Read a fact defined by an outside specification, such as the status codes of a protocol, from
-  the authoritative source, such as a data file published with the specification or a library
-  generated from it. Where that is not possible, copy the fact together with a link to the section
-  from which it comes and the date that section was checked.
-- Let a measurement on one machine inform an experiment, never set a constant, a default, a
-  threshold or the choice of which design is built. Derive such a value from the design, such as
-  from what the data structure or the algorithm requires, find it at runtime on the machine where
-  the software runs, or remove the mechanism that needs it.
+- Treat as tunable every value whose right setting depends on hardware, load, data or environment,
+  e.g. size, count, interval or threshold.
+- Make every tunable dynamic: derive it at runtime from what it depends on, e.g. image count
+  required by graphics surface, and adjust it to what code observes while running. Never hardcode,
+  guess or choose it.
+- Count tunable moved somewhere else as still chosen: name given to it, parameter filled in by
+  caller with value of its own choosing, value computed from another chosen value, and default of
+  framework or tool, e.g. time limit put on each test by test runner. All leave it hardcoded.
+- Replace timeout with event or state it waits for.
+- Write value as constant only when it is product choice, truth nothing can change, e.g. constant
+  of mathematics, or limit of external system accepted as
+  `workflow-skills:working-with-outside-systems` describes. Beside constant, name decision or
+  definition behind it.
+- Read fact defined by outside specification, e.g. status codes of protocol, from authoritative
+  source, e.g. data file published with specification or library generated from it. Where not
+  possible, copy fact together with link to section from which it comes and date on which that
+  section was checked.
+- Let measurement on one machine inform experiment. Never let it set constant, default, threshold
+  or choice of which design is built. Derive such value from design, e.g. from what data structure
+  or algorithm requires, find it at runtime on machine where software runs, or remove mechanism
+  that needs it.
 
 ## Results, verdicts and messages
 
-- Where judgment is needed, never keep a hand-curated list. Keep the mechanical check strict and
-  give the caller an explicit override.
-- Let a check distinguish "the value is wrong" from "I couldn't tell". Its result contains an
-  explicit status that takes precedence over the exit code.
-- Use, handle or pass on every value returned by a call, errors included. When a part of it is
-  never needed, change the call so it no longer returns that part. For a call that you can't
-  change, bind that part to a name saying why it is not needed.
-- Return a boolean only for a yes-or-no question. Return a value that may not arrive as an optional
-  or an error, and an outcome with several causes as an enum whose variants identify each cause.
-- Return each verdict together with the facts it was based on. Let each place
-  that shows the outcome, such as a command line, a user interface or an API response, write a
-  separate message from those facts, so that every message describes the same moment as the
-  decision.
-- Hand the code that writes a message the facts it needs, such as the operation and the ids it acts
-  on, and let that code write the whole sentence. Never define, return or pass a fragment of a
-  sentence, such as "for item 42", to be glued into a message.
+- Where judgment needed, never keep hand-curated list. Keep mechanical check strict. Give caller
+  explicit override.
+- Let check distinguish "the value is wrong" from "I couldn't tell". Its result contains explicit
+  status that overrides exit code.
+- Use, handle or pass on every value returned by call, errors included. When part of it never
+  needed, change call so it no longer returns that part. For call whose code you cannot change, bind
+  that part to name saying why it is not needed.
+- Return boolean only for yes-or-no question. Return value that may not arrive as optional or
+  error, and outcome with several causes as enum whose variants identify each cause.
+- Return each verdict together with facts on which it was based. Let each place showing outcome,
+  e.g. command line, UI or API response, write separate message from those facts, so every message
+  describes same moment as decision.
+- Hand code that writes message the facts needed by it, e.g. operation and ids on which it acts. Let
+  that code write whole sentence. Never define, return or pass sentence fragment, e.g. "for item
+  42", to be glued into message.
 
 ## How the work is done
 
-- Keep what works through a change. Carrying a working view or contract across is part of the
-  change.
+- Keep what works through a change. Carrying working view or contract across = part of change.
 - Check every consumer of shared code.
-- Read the code first, in full around every search hit, and trace the flow in every direction.
-- Check code carried over from another version against the target. Every name used in it must exist
-  there with the same signature and meaning.
-- Undo only your own edit, by applying its inverse. Never reset, restore or stash a file that may
+- Read code first, in full around every search hit. Trace flow in every direction.
+- Check code carried over from another version against target. Every name used in it must exist
+  there with same signature and meaning.
+- Undo only your own edit, by applying its inverse. Never reset, restore or stash file that may
   contain other uncommitted work.
-- Change the documentation that describes an interface used by others, such as an API, a command or
-  a screen, in the same change as that interface.
-- Never copy code that breaks the rules. If the existing code already violates the rules, never use
-  it as prior art to excuse writing the same kind of code. Bad code is debt.
-- Where scope allows, rewrite the existing code cleanly. Otherwise integrate your part well and
-  leave the rest as it is.
+- Change documentation describing interface used by others, e.g. API, command or screen, in same
+  change as that interface.
+- Never copy code that breaks rules. If existing code already violates rules, never use it as prior
+  art to excuse writing same kind of code. Bad code = debt.
+- Where scope allows, rewrite existing code cleanly. Otherwise integrate your part well, leave rest
+  as is.
 
 ## Strings in code
 
-- Address a string meant for a model to the model.
-- Keep repository paths out of a string meant for a model.
-- Where an i18n key is referenced, add a comment there that describes the intent of the string.
+- Address string meant for model to the model.
+- Keep repository paths out of string meant for model.
+- Where i18n key referenced, add comment there describing intent of string.
 
 ## Rules in other skills
 

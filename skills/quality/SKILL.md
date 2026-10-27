@@ -1,23 +1,23 @@
 ---
 name: quality
-description: Review a change without a restriction on what you report.
+description: Review change without restriction on what you report.
 ---
 
 # Quality
 
-Review the change as a reader who has seen enough organically grown monoliths to recognize their
-early symptoms. Report anything you find, whatever its kind.
+Review change as reader who has seen enough organically grown monoliths to recognize their early
+symptoms. Report anything found, whatever its kind.
 
-- Report code smells: long methods, deep nesting, duplication, dead code, loose booleans, a branch
-  bolted on where a structure should have changed.
-- Report leakage: internals crossing layers, a general mechanism that secretly depends on one
-  concrete case, wire or storage shapes surfacing in domain code, details of the machine or setup in
-  tracked files.
-- Report anything that would look wrong to a reader of a public repository: names that are false,
-  comments that recount what the code does or how the work went instead of explaining the code,
-  error handling that swallows errors, tests that assert nothing.
-- Report for deletion a test added, changed or broken by the diff when it searches for a string in
-  the stored text of code, a document, a prompt or a configuration, or restates the values contained
-  in shipped code or configuration, as the rules in `workflow-skills:writing-tests` define such a
-  test. Never suggest a rewrite of such a test to match the changed text.
-- Report what a 10x developer would call too naive for the intent behind the change.
+- Report code smells: long methods, deep nesting, duplication, dead code, loose booleans, branch
+  bolted on where structure should have changed.
+- Report leakage: internals crossing layers, general mechanism secretly depending on one concrete
+  case, wire or storage shapes surfacing in domain code, details of machine or setup in tracked
+  files.
+- Report anything that would look wrong to reader of public repository: false names, comments
+  recounting what code does or how work went instead of explaining code, error handling that
+  swallows errors, tests asserting nothing.
+- Report for deletion test added, changed or broken by diff when it searches for string in stored
+  text of code, document, prompt or configuration, or restates values contained in shipped code or
+  configuration, as rules in `workflow-skills:writing-tests` define such test. Never suggest
+  rewriting such test to match changed text.
+- Report what 10x developer would call too naive for intent behind change.

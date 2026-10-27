@@ -1,125 +1,113 @@
 # The self-test suite
 
-The harness has a bounded test suite, run through the test verb of the launcher. The suite tests the
-fixtures, the comparison, the coloring, the network denial, the lock check in the launcher, the port
-and server settings, the sample refresh against a synthetic transport, and the evidence sheet. The
-suite runs only through the launcher, since several tests need the locked engine and the variables
-set by the launcher. Those tests assert that the variables are present and fail with a message
-that contains the launcher command when they are missing.
+Harness has bounded test suite, run through test verb of launcher. Suite tests fixtures, comparison,
+coloring, network denial, lock check in launcher, port and server settings, sample refresh against
+synthetic transport, and evidence sheet. Suite runs only through launcher, since several tests need
+locked engine and variables set by launcher. Those tests assert variables present. When variables
+missing, tests fail with message containing launcher command.
 
-The ordinary test discovery of the project does not find the suite. The file name of the suite does
-not match the discovery pattern of the test runner. The launcher passes the file to the test runner
-explicitly. The ordinary test run of the project therefore runs without the environment tool,
-without the rendering engine and without the network.
+Ordinary test discovery of project does not find suite. Suite file name does not match discovery
+pattern of test runner. Launcher passes file to test runner explicitly. So ordinary test run of
+project runs without environment tool, without rendering engine, without network.
 
-Every test that writes files writes into a fresh directory named with a random identifier, under the
-harness directory in the project cache, the location defined by `workflow-skills:local-cache`.
+Every test that writes files writes into fresh directory named with random identifier, under harness
+directory in project cache, location defined by `workflow-skills:local-cache`.
 
 ## Categories
 
-The tests for missing keys remove the response for the main record, one shell response and the help
-text response, each independently. Each removal fails the manifest validation before any navigation,
-with the missing key in the message.
+Tests for missing keys remove response for main record, one shell response and help text response,
+each independently. Each removal fails manifest validation before any navigation, missing key in
+message.
 
-The help entry tests remove the help text entry for one required field at a time. Each removal fails
-validation with that field in the message.
+Help entry tests remove help text entry for one required field at a time. Each removal fails
+validation, that field in message.
 
-The shape drift tests check that each of these fails validation: a wrong projection version, a wrong
-envelope of a shell response, a missing consumed field of the main record, a referenced identifier
-missing from the related read request, and an extra undeclared response.
+Shape drift tests check each of these fails validation: wrong projection version, wrong envelope of
+shell response, missing consumed field of main record, referenced identifier missing from related
+read request, extra undeclared response.
 
-The tests for request matching check that a read request matches with its query parameters in any
-order. An extra query parameter, a different method and a write body with an extra field each fail
-to match.
+Tests for request matching check read request matches with query parameters in any order. Extra
+query parameter, different method and write body with extra field each fail to match.
 
-The compatibility tests check that a different scene, a different compatibility group such as a
-different lock, and an empty set of checkpoints each fail the compatibility check. A different
-source revision passes it. The compatibility tests also check that a missing checkpoint, present in
-one capture and absent from the other, fails the comparison. This adds to the incompatible inputs
-and to the different dimensions covered by the zero tolerance tests.
+Compatibility tests check different scene, different compatibility group such as different lock, and
+empty set of checkpoints each fail compatibility check. Different source revision passes it.
+Compatibility tests also check missing checkpoint, present in one capture and absent from other,
+fails comparison. This check adds to incompatible inputs and to different dimensions covered by zero
+tolerance tests.
 
-The zero tolerance tests check that comparing an image with itself gives zero changed pixels, that
-one changed pixel gives a count of one, and that images of different dimensions fail with a message
-about the dimensions.
+Zero tolerance tests check: image compared with itself gives zero changed pixels, one changed pixel
+gives count of one, images of different dimensions fail with message about dimensions.
 
-The coloring tests cover the four acceptance rules of the diff coloring: marks appearing and
-vanishing on a light and a dark field, and a moved mark; contrast gain and loss; neutral fills,
-equal-luma hue changes and a 1 by 1 image; edge clipping, enclosed pixels and alpha compositing over
-white, including the luma of half-opaque black; and the equality of the count with the count from
-the comparison component, the sum of the kinds, the legend colors of recolored pixels and the byte
-equality of every other pixel.
+Coloring tests cover four acceptance rules of diff coloring: marks appearing and vanishing on light
+and dark field, and moved mark; contrast gain and loss; neutral fills, equal-luma hue changes and 1
+by 1 image; edge clipping, enclosed pixels and alpha compositing over white, including luma of
+half-opaque black; and equality of count with count from comparison component, sum of kinds, legend
+colors of recolored pixels and byte equality of every other pixel.
 
-The launcher lock test runs the bootstrap in a scratch copy with a package manifest that requires an
-impossible dependency version. It checks that the bootstrap exits nonzero with the message about the
-frozen installation and leaves the lock and the manifest unchanged byte for byte.
+Launcher lock test runs bootstrap in scratch copy with package manifest requiring impossible
+dependency version. Checks bootstrap exits nonzero with message about frozen installation, leaves
+lock and manifest unchanged byte for byte.
 
-The port tests check that the lookup of a free port returns an unprivileged loopback port that can
-be bound. They check that a requested valid port is used as given. The tested invalid values are a
-privileged port, a port above 65535, a fraction, a word and an empty string. Each of them fails with
-a message that contains the port option.
+Port tests check lookup of free port returns unprivileged loopback port that can be bound. Port
+tests also check requested valid port used as given. Tested invalid values: privileged port, port
+above 65535, fraction, word, empty string. Each fails with message containing port option.
 
-The serving configuration test checks that the composed configuration binds the loopback address,
-uses the requested port strictly, switches the watcher off and switches hot reloading off. This
-applies even when the configuration of the application sets a polling watcher and another port.
+Serving configuration test checks composed configuration binds loopback address, uses requested port
+strictly, switches watcher off, switches hot reloading off. Applies even when configuration of
+application sets polling watcher and another port.
 
-The projection test checks that projecting a record that contains an email address, external media
-and private fields gives exactly the synthetic record with the displayed fields, with nothing
-private left in it.
+Projection test checks projecting record containing email address, external media and private fields
+gives exactly synthetic record with displayed fields, nothing private left in it.
 
-The tests for missing credentials check that a refresh without the origin and the credential fails
-without sending a request, that a missing sample fails, and that a sample with a manifest marked
-incomplete fails.
+Tests for missing credentials check: refresh without origin and credential fails without sending
+request, missing sample fails, sample with manifest marked incomplete fails.
 
-The controlled refresh test runs refreshes through a synthetic transport that checks the exact
-address, that redirects are denied and that the method is a read. The test checks that:
+Controlled refresh test runs refreshes through synthetic transport that checks exact address, that
+redirects denied and that method is a read. Test checks that:
 
-* a refresh publishes a sample;
-* a second refresh to the same label fails and leaves the published sample unchanged byte for byte;
-* the sample replays without credentials, with mixed provenance and without the credential or any
-  excluded field in it;
-* a selection with an extra operation fails before any request;
-* a transport failure is reported without the raw service error in the message;
-* a refresh stopped before it finishes leaves its output marked incomplete.
+* refresh publishes sample;
+* second refresh to same label fails, leaves published sample unchanged byte for byte;
+* sample replays without credentials, with mixed provenance, without credential or any excluded
+  field in it;
+* selection with extra operation fails before any request;
+* transport failure reported without raw service error in message;
+* refresh stopped before it finishes leaves output marked incomplete.
 
-The count of requests shows which refreshes sent requests to the transport.
+Count of requests shows which refreshes sent requests to transport.
 
-The network denial test runs in the locked engine. One probe each attempts an external image, an
-external data request, a navigation to an external address, an external frame, an external socket,
-an undeclared local data request and a service worker registration, while the application swallows
-the errors. Each probe must add a failure, and the delivery check before the next checkpoint
-must throw. A trap server that stands in for the outside world must receive
-zero requests. The local server must receive zero data requests. A declared write sent twice is
-delivered once. The second attempt records an exhausted response, and the check at the end of the
-variant that counts how often each fixture was delivered throws.
+Network denial test runs in locked engine. One probe each attempts external image, external data
+request, navigation to external address, external frame, external socket, undeclared local data
+request and service worker registration, while application swallows errors. Each probe must add a
+failure, and delivery check before next checkpoint must throw. Trap server standing in for outside
+world must receive zero requests. Local server must receive zero data requests. Declared write sent
+twice delivered once. Second attempt records exhausted response, and check at end of variant that
+counts how often each fixture was delivered throws.
 
-The region tests check that the bounding box of changed pixels covers exactly the differing
-rectangle, that an unchanged pair does not get a box, and that the region is the box grown by the
-margin and clamped to the image.
+Region tests check: bounding box of changed pixels covers exactly differing rectangle, unchanged
+pair does not get a box, region is box grown by margin and clamped to image.
 
-The sheet grouping test checks that the checkpoints of one variant split correctly into changed,
-new, identical and before-only, independent of their order, and that other variants are ignored.
+Sheet grouping test checks checkpoints of one variant split correctly into changed, new, identical
+and before-only, independent of order, and other variants ignored.
 
-The sheet rendering test checks that two synthetic captures render into one PNG of exactly the fixed
-sheet width. A second render to the same output fails because the output exists, and a missing
-capture fails with the capture name in the message.
+Sheet rendering test checks two synthetic captures render into one PNG of exactly fixed sheet width.
+Second render to same output fails because output exists. Missing capture fails with capture name in
+message.
 
-The sheet refusal tests check that captures of different scenes are refused with both capture names
-and both scene names in the message. They also check that a receipt without a source revision is
-refused with the name of the capture in the message.
+Sheet refusal tests check captures of different scenes refused with both capture names and both
+scene names in message. They also check receipt without source revision refused with name of capture
+in message.
 
 ## Web realization in the reference
 
-The reference wrote the suite with the test module and the strict assertion module built into the
-runtime, in a TypeScript file named so that the ordinary test command did not discover it. The
-launcher ran the suite with the test runner of the runtime, taken from the dependency cache. The
-network probes used two local HTTP servers from the standard library, one for the origin of the
-application and one as the trap.
+Reference wrote suite with test module and strict assertion module built into runtime, in TypeScript
+file named so ordinary test command did not discover it. Launcher ran suite with test runner of
+runtime, taken from dependency cache. Network probes used two local HTTP servers from standard
+library: one for origin of application, one as trap.
 
 ## Native and terminal realizations
 
-A native harness runs the same categories in the test framework of the native platform, as a
-separate test task or source set not included in the ordinary test task. The network probe category
-uses the interceptor or the loopback fixture server of the harness and a second loopback server as
-the trap, inside the emulator or process launched by the harness. A terminal harness probes escapes
-with a probe program that attempts a network connection, opens an undeclared file and runs an
-undeclared executable inside the sandbox set up by the harness.
+Native harness runs same categories in test framework of native platform, as separate test task or
+source set not included in ordinary test task. Network probe category uses interceptor or loopback
+fixture server of harness, and second loopback server as trap, inside emulator or process launched
+by harness. Terminal harness probes escapes with probe program that attempts network connection,
+opens undeclared file and runs undeclared executable inside sandbox set up by harness.

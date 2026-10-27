@@ -1,96 +1,89 @@
 # The records in the project
 
-A harness is used only when the records in the project show that the harness exists and that it is
-required. The project that adopts the harness therefore adds two records: an entry in the project
-instructions and a harness contract with the scene documentation. Both are tracked documents in the
-project. In both, rules are written as neutral engineering law.
+Harness used only when records in project show harness exists and is required. So project adopting
+harness adds two records: entry in project instructions, and harness contract with scene
+documentation. Both tracked documents in project. In both, rules written as neutral engineering law.
 
 ## The entry in the project instructions
 
-The project instructions, the file read first by agents and contributors of the project, gain one
-entry for the harness. The entry gives the name of the harness and the command that runs it,
-requires the harness for every change to rendered output, and links to the harness contract. It
-describes the working practice in a few sentences: pick or curate a scene, capture the unchanged
-interface, implement only the approved change, capture again, compare, and open the images. It
-gives the harness directory inside the project cache, the location defined by
-`workflow-skills:local-cache`, as the location of exploratory scenes.
+Project instructions, file read first by agents and contributors of project, gain one entry for
+harness. Entry gives name of harness and command that runs it, requires harness for every change to
+rendered output, links to harness contract. Describes working practice in a few sentences: pick or
+curate scene, capture unchanged interface, implement only approved change, capture again, compare,
+open images. Gives harness directory inside project cache, location defined by
+`workflow-skills:local-cache`, as location of exploratory scenes.
 
-A project that requires visual evidence on pull requests writes that rule next to the other rules
-for pull requests in the project. The rule requires, for every changed surface, one evidence sheet
-from a capture on the base commit and one on the candidate, listed as an attachment and shown under
-a separate heading in the description. It also contains the exception for a pull request whose
-commits do not change rendered output. Such a pull request mentions that in its description.
+Project requiring visual evidence on pull requests writes that rule next to other rules for pull
+requests in project. Rule requires, for every changed surface, one evidence sheet from capture on
+base commit and one on candidate, listed as attachment, shown under separate heading in description.
+Also contains exception for pull request whose commits do not change rendered output. Such pull
+request mentions that in description.
 
 ## The harness contract
 
-The harness contract is the document that describes the harness adopted by the project. It is
-written during adoption and updated with every change to the harness or its scenes. It contains
-these sections, each a record of facts about this project:
+Harness contract: document describing harness adopted by project. Written during adoption, updated
+with every change to harness or its scenes. Contains these sections, each a record of facts about
+this project:
 
-1. Status and purpose: what the harness is for, what it is not, and what has and has not been
-   verified, with the verification boundary of the optional real samples written out openly.
-2. Integration points: the filled table from the integration survey.
-3. Operator flow and commands: every verb with a complete example invocation from the repository
-   root, what each prints, the rules for capture names, and the exact runtime, engine and library
-   versions locked by the project.
-4. Implementation responsibilities: the components and what each is responsible for, with the
-   adaptation points named in every part of the guide and the values chosen for them.
+1. Status and purpose: what harness is for, what it is not, what has and has not been verified, with
+   verification boundary of optional real samples written out openly.
+2. Integration points: filled table from integration survey.
+3. Operator flow and commands: every verb with complete example invocation from repository root,
+   what each prints, rules for capture names, exact runtime, engine and library versions locked by
+   project.
+4. Implementation responsibilities: components and what each is responsible for, with adaptation
+   points named in every part of guide and values chosen for them.
 5. Scene documentation: one entry per scene.
-6. Samples and privacy, when the harness has a refresh.
-7. Drift, receipts and comparison, including the recorded comparison options and the parameters of
-   the diff coloring. A change to the radius or the margin of the coloring is recorded here as a
-   tooling decision.
-8. Acceptance criteria, in the general form given in the part on the acceptance criteria.
-9. Recorded verification: for each criterion or group of criteria, the captures and runs that
-   verified it and what they showed, with observed product findings listed separately.
-10. Engineering process: the working practice, where exploratory scenes are, where reports and
-    comparisons are written, and the rule that capture and comparison names are exclusive.
-11. Production impact: that the harness does not change application behavior or data and does not
-    need a migration, and how the production artifact is inspected.
+6. Samples and privacy, when harness has refresh.
+7. Drift, receipts and comparison, including recorded comparison options and parameters of diff
+   coloring. Change to radius or margin of coloring recorded here as tooling decision.
+8. Acceptance criteria, in general form given in part on acceptance criteria.
+9. Recorded verification: for each criterion or group of criteria, captures and runs that verified
+   it and what they showed, observed product findings listed separately.
+10. Engineering process: working practice, where exploratory scenes are, where reports and
+    comparisons written, rule that capture and comparison names are exclusive.
+11. Production impact: that harness does not change application behavior or data, does not need a
+    migration, and how production artifact inspected.
 
 ## Scene documentation
 
-Every scene has one entry. A scene without an entry is not curated yet. The entry contains:
+Every scene has one entry. Scene without entry is not curated yet. Entry contains:
 
-* the question for the scene, written as the concrete interface question checked by the scene;
-* what the scene opens or mounts: the real route or screen for a page scene, and the real component
-  with its container for a component scene;
-* the fixture, with the shape of the main record, the edge values in the fixture, and every declared
-  response or the statement that the fixture declares none;
-* the variants, where they differ from the shared set;
-* the interactions in order;
-* the named checkpoints with what each captures;
-* the required checks with their tolerances;
-* the diagnostic measurements with the product findings recorded by them.
+* question for scene, written as concrete interface question checked by scene;
+* what scene opens or mounts: real route or screen for page scene, real component with its container
+  for component scene;
+* fixture, with shape of main record, edge values in fixture, and every declared response or
+  statement that fixture declares none;
+* variants, where they differ from shared set;
+* interactions in order;
+* named checkpoints with what each captures;
+* required checks with their tolerances;
+* diagnostic measurements with product findings recorded by them.
 
-An entry records when the scene was curated ahead of a change and when a later change extended it,
-so a reader knows which checkpoints prove which change. For a checkpoint that proves a layout did
-not change, the entry records that fact. For example, the checkpoints of the wide layout are
-pixel-identical when only the narrow layout changes.
+Entry records when scene curated ahead of a change and when later change extended it, so reader
+knows which checkpoints prove which change. For checkpoint proving a layout did not change, entry
+records that fact. E.g. checkpoints of wide layout pixel-identical when only narrow layout changes.
 
-The scene entry does not contain an approved fix for a diagnostic finding. It records the finding as
-a product finding, neither acceptable nor repaired, until a product decision turns the requirement
-behind the finding into a required check.
+Scene entry does not contain approved fix for diagnostic finding. Records finding as product
+finding, neither acceptable nor repaired, until product decision turns requirement behind finding
+into required check.
 
-For example, an entry for an item editor scene contains the question whether the rows in the
-attribute list of the item fill their rows and whether a save sends exactly the changed attributes.
-The scene opens the real editor route with a synthetic item that has short attributes, one long
-unbroken value and one attribute in a second language with longer words, over the complete shell
-responses. It captures the loaded shell, the attribute list, the edited list, the saved list and the
-list after a reload. It requires the controls in every row to extend to both edges of the content
-box of the row within one pixel, the save body to contain only the attribute list, and the reload
-to show the saved values.
+E.g. entry for item editor scene contains question whether rows in attribute list of item fill their
+rows, and whether save sends exactly changed attributes. Scene opens real editor route with
+synthetic item: short attributes, one long unbroken value, one attribute in second language with
+longer words, over complete shell responses. Captures loaded shell, attribute list, edited list,
+saved list, list after reload. Requires controls in every row to extend to both edges of content box
+of row within one pixel, save body to contain only attribute list, reload to show saved values.
 
 ## Web realization in the reference
 
-In the reference, the contract was one Markdown document in the documentation folder of the
-application. The instructions entry was a short rule in the agent instructions file of the
-repository. The contract ended with a table of the synthetic verification recorded for each group
-of acceptance criteria, and with a separate observed product finding for the scene with a long
-value.
+In reference, contract was one Markdown document in documentation folder of application.
+Instructions entry: short rule in agent instructions file of repository. Contract ended with table
+of synthetic verification recorded for each group of acceptance criteria, and with separate observed
+product finding for scene with long value.
 
 ## Native and terminal realizations
 
-The records are the same for every platform. In the operator section, a native or terminal project
-lists the emulator or simulator images, the device profiles or the terminal emulator used by the
-project. The scene entries describe screens, views or terminal states in place of routes.
+Records same for every platform. In operator section, native or terminal project lists emulator or
+simulator images, device profiles or terminal emulator used by project. Scene entries describe
+screens, views or terminal states in place of routes.
