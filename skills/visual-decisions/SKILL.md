@@ -37,8 +37,8 @@ and in the chat message that comes with it.
   page is for and which states the pictures show.
 - Below that line, put a box titled "What this is about, in plain words": a short list that
   explains the change or the decision to someone who has never seen the code. It contains one
-  concrete example, what goes wrong or is missing today, what After does, what it costs, and what
-  the user is asked.
+  concrete example, what goes wrong or is missing today, what After does, what After does not
+  change although the reader could expect it to, what it costs, and what the user is asked.
 - Put a legend under that box, with one marker for each kind of mark the page uses:
   - After, in green, for a part the change adds or changes;
   - the earlier state, in red, for a part that After leaves out;
@@ -54,6 +54,11 @@ and in the chat message that comes with it.
   more room, split them into separate pages, and draw the next page once the user has answered the
   one before. Never draw them all at once.
 - Split the page into numbered sections, each with a title of at most eight words.
+- Title each section that shows After with the outcome its pictures show, such as "Every open
+  question survives a restart".
+- Title a section that compares variants of After, and every section on a page of product
+  decisions, with the question the pictures answer, and state no result in that title.
+- Draw each section in the form that the section on pictures gives for what it shows.
 - Name the sample in one line under the title of the first section that uses it.
 - Put the pictures of a section side by side, each with a label above it for the state it shows: the
   branch with its unpushed commits, a release, or one variant of After, such as "After, two
@@ -117,7 +122,7 @@ and in the chat message that comes with it.
 - Add to the line under the title what changed after the last answer from the user.
 - When the user picks an optional pick, make it the After picture of its section and remove the
   other optional picks there. Remove an optional pick the user declines.
-- Update the plain-words box whenever After changes.
+- Update the plain-words box and the section titles whenever After changes.
 
 ## Making the page
 
