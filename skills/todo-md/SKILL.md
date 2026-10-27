@@ -55,7 +55,8 @@ the repository. A fresh clone does not contain it.
 - **Date**: do not add a date. Commit messages and the time the file was last changed already give
   the date.
 - **Body**: prose with what the item is, where it stands and what is still to be done. Put run
-  logs and the history of the work into the project cache, never into the entry.
+  logs and the history of the work into the local storage defined by
+  `workflow-skills:local-cache`, never into the entry.
 - **Origin pointer**: `<transcript>.jsonl:<line>:<promptId or uuid>`, the session transcript and
   the line with the first message of the conversation that raised the item. Give every entry one.
   To find the line, search the directory with the session transcripts of the project for the

@@ -56,10 +56,10 @@ with this plugin.
 
 ## The run file
 
-- Write the run file at intake into the project cache defined by `workflow-skills:local-cache`, and
+- Write the run file at intake into the local storage defined by `workflow-skills:local-cache`, and
   keep it current: the grant, the description, the intent, the goal, the technologies, the
-  constraints, the jurisdiction, the milestones with the state of each, the decision log and the
-  index of the evidence.
+  constraints, the jurisdiction, the milestones with the state of each, the decision log and an
+  index that lists the evidence.
 - Record in the run file, for the running milestone, the run ID of the workflow, the paths of the
   workflow script and journal, the worktree used by the workflow, and the commit checked out in each
   repository when the milestone started, so that you can find the run and its state after a resume.
@@ -164,7 +164,8 @@ with this plugin.
 
 ## Evidence and delivery
 
-- Capture screenshots and screen recordings as `workflow-skills:visual-verification` describes, keep
-  them in the project cache, and list them in the index of the evidence in the run file.
+- Capture screenshots and screen recordings as `workflow-skills:visual-verification` describes.
+  Copy the ones the report shows from the harness directory into the local storage, and list them
+  in the index in the run file.
 - End the run with a report: what was built, how to build and install it, the evidence, the
   decisions made by the agents, the open questions, and what was recorded for later.

@@ -96,7 +96,8 @@ description: Decide what may go into everything that leaves the machine or goes 
 
 ## Rules in other skills
 
-- Follow `workflow-skills:local-cache` for the project cache and what goes into it.
+- Follow `workflow-skills:local-cache` for the project cache, the local storage and what goes
+  into each.
 - Follow `workflow-skills:todo-md` for the todo record.
 - Follow `workflow-skills:implement` for the notes of the user's words and the draft that
   describes a change.

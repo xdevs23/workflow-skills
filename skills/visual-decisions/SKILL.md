@@ -140,5 +140,6 @@ and in the chat message that comes with it.
 
 ## Images from the chat
 
-- Copy an image the user pastes into the chat into the project cache, and write its path into the
-  notes that `workflow-skills:implement` describes, so the implementer finds it.
+- Copy an image the user pastes into the chat into the local storage defined by
+  `workflow-skills:local-cache`, and write the path to the image into the notes that
+  `workflow-skills:implement` describes, so the implementer finds it.
