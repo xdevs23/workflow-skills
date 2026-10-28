@@ -7,15 +7,15 @@ import { answerUsage } from './inputs'
 import { ALL_CLOSED } from './modelText'
 import { ANSWER_COMMAND, PANE } from './names'
 import { openQuestionsOf, sortedByNumber } from './questions'
-import { scopeForUse } from './questionScope'
-import { readQuestions, refreshQuestions } from './sessionState'
+import { sessionForUse } from './questionSession'
+import { loadQuestionsFromStore, readQuestionsInState } from './sessionState'
 
 export const drawQuestionBand: MatchedHook<'ui.render', { component: 'AbovePrompt' }> = async (
   $,
   e,
   next,
 ) => {
-  const open = openQuestionsOf(await readQuestions($))
+  const open = await readOpenQuestions($)
   if (e.props.hasSurvey || open.length === 0) {
     return next(e)
   }
@@ -37,7 +37,7 @@ export const drawQuestionPane: MatchedHook<
   'ui.render',
   { component: 'Pane'; requestId: typeof PANE }
 > = async ($, e) => {
-  const open = sortedByNumber(openQuestionsOf(await readQuestions($)))
+  const open = sortedByNumber(await readOpenQuestions($))
   const elements = $.ui.resolve(e)
   const { Box, Text } = elements
   if (open.length === 0) {
@@ -88,8 +88,13 @@ export const drawQuestionPane: MatchedHook<
   )
 }
 
+/** The open questions in the state of the session that runs, which a drawing cannot load. */
+async function readOpenQuestions($: EngineInterface): Promise<Question[]> {
+  return openQuestionsOf((await readQuestionsInState($))?.questions ?? [])
+}
+
 async function showPane($: EngineInterface): Promise<void> {
-  await refreshQuestions($, await scopeForUse($))
+  await loadQuestionsFromStore($, await sessionForUse($))
   const opened = await $.ui.open({ id: PANE, title: 'Questions', focus: true })
   if (!opened.isPlaced) {
     $.ui.toast(
@@ -103,8 +108,15 @@ async function answerOnScreen($: EngineInterface, question: Question, text: stri
   if (text.trim() === '') {
     return
   }
-  const scope = await scopeForUse($)
-  const isOpen = await recordAnswerAndDeliver($, scope, question.number, text.trim())
+  const sessionId = await sessionForUse($)
+  // The answer is stored for the question with the id that the pane drew. Ids differ across
+  // sessions, so an answer given after a switch to another session cannot reach its questions.
+  const isOpen = await recordAnswerAndDeliver(
+    $,
+    sessionId,
+    open => open.id === question.id,
+    text.trim(),
+  )
   if (!isOpen) {
     $.ui.toast(`Question #${question.number} is no longer open.`)
   }

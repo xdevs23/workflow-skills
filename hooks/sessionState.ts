@@ -1,16 +1,18 @@
 import { atom, read, update } from 'claude-code'
 import type { EngineInterface } from 'claude-code'
 
-import type { Question, SessionScope } from '../types'
+import type { Question, SessionQuestions } from '../types'
 import type { AnsweredQuestion } from './questions'
-import { projectDigestOf, readProjectQuestions } from './questionStore'
+import { readSessionQuestions } from './questionStore'
 
 // The engine lists the state a module reads and writes from the source of the module, so every
 // state reference of the questions is written in this file with its plugin and key as literals,
 // and the other modules read and write that state through the functions below.
 const isTurnRunning = atom({ plugin: 'workflow-skills', key: 'isTurnRunning' } as const, false)
-const sessionScope = atom({ plugin: 'workflow-skills', key: 'session' } as const, null)
-const projectQuestions = atom({ plugin: 'workflow-skills', key: 'questions' } as const, [])
+const sessionQuestions = atom(
+  { plugin: 'workflow-skills', key: 'sessionQuestions' } as const,
+  null,
+)
 const deliveringAnswers = atom(
   { plugin: 'workflow-skills', key: 'deliveringAnswers' } as const,
   [],
@@ -29,64 +31,66 @@ export function hasPersonAtPrompt(): boolean {
   return isPersonAtPrompt
 }
 
-/** The scope of the session, and whether the call that returned it was the one that fixed it. */
-type EstablishedScope = { scope: SessionScope; isNew: boolean }
+/**
+ * Reads the questions of the session `sessionId` from the store into the state that the screens
+ * draw, and returns them.
+ */
+export async function loadQuestionsFromStore(
+  $: EngineInterface,
+  sessionId: string,
+): Promise<readonly Question[]> {
+  const questions = await readSessionQuestions($, sessionId)
+  await setQuestionsInState($, sessionId, questions)
+
+  return questions
+}
 
 /**
- * Returns the scope of the session, and fixes it at the first call in the session. A session that
- * /resume or /clear switched to raises no start, so every use of the questions calls this.
- *
- * A later move of the session, such as into a worktree, does not change the project of the scope.
- * A session that /resume or /clear switched to takes the project of the scope stored before the
- * switch. Only where the host has no scope stored, as in a new process, is the project the root
- * the session is in at that call. Whether the host drops the stored scope at /resume is not
- * confirmed. Where it does, a session that moved into a worktree before /resume takes the worktree
- * as its project.
+ * Loads the questions of the session that runs from the store into the state, unless the state
+ * contains them already.
  */
-export async function establishSessionScope($: EngineInterface): Promise<EstablishedScope> {
-  const [sessionId, stored] = await Promise.all([$.session.id(), read($, sessionScope)])
-  const current = scopeOfSession(stored, sessionId)
-  if (current !== null) {
-    return { scope: current, isNew: false }
+export async function loadQuestionsUnlessInState($: EngineInterface): Promise<void> {
+  if ((await readQuestionsInState($)) === null) {
+    await loadQuestionsFromStore($, await $.session.id())
   }
-  const project = stored?.project ?? (await projectDigestOf(await $.session.root()))
-  const scope = { sessionId, project }
-  await update($, sessionScope, () => scope)
-
-  return { scope, isNew: true }
 }
 
 /**
- * The scope of the session once a use of the questions fixed it, and null before that and in a
- * session without a person at the prompt.
+ * The questions in the state with the id of their session while that session runs, and null
+ * otherwise, such as before the session read them or after a switch to another session.
  */
-export async function readSessionScope($: EngineInterface): Promise<SessionScope | null> {
-  const [sessionId, stored] = await Promise.all([$.session.id(), read($, sessionScope)])
+export async function readQuestionsInState($: EngineInterface): Promise<SessionQuestions | null> {
+  const [sessionId, inState] = await Promise.all([$.session.id(), read($, sessionQuestions)])
 
-  return scopeOfSession(stored, sessionId)
+  return inState?.sessionId === sessionId ? inState : null
 }
 
-/** The stored scope when it belongs to the session `sessionId`, and null otherwise. */
-function scopeOfSession(stored: SessionScope | null, sessionId: string): SessionScope | null {
-  return stored?.sessionId === sessionId ? stored : null
+/**
+ * Puts the questions of the session `sessionId`, as the store has them, into the state, unless
+ * another session runs by now.
+ */
+export async function setQuestionsInState(
+  $: EngineInterface,
+  sessionId: string,
+  questions: readonly Question[],
+): Promise<void> {
+  if ((await $.session.id()) === sessionId) {
+    await update($, sessionQuestions, () => ({ sessionId, questions }))
+  }
 }
 
-/** Reads the questions of the project from the store into the state that the screens draw. */
-export async function refreshQuestions($: EngineInterface, scope: SessionScope): Promise<void> {
-  const questions = await readProjectQuestions($, scope.project)
-  await update($, projectQuestions, () => questions)
-}
-
-/** The questions of the project, as this session last read or wrote them. */
-export function readQuestions($: EngineInterface): Promise<readonly Question[]> {
-  return read($, projectQuestions)
-}
-
+/**
+ * Changes the questions in the state, once a session has read them, and keeps the session they
+ * belong to. `change` finds the questions by their ids, which differ across sessions, so a change
+ * for one session leaves the questions of another as they are.
+ */
 export async function updateQuestions(
   $: EngineInterface,
   change: (questions: readonly Question[]) => readonly Question[],
 ): Promise<void> {
-  await update($, projectQuestions, change)
+  await update($, sessionQuestions, inState =>
+    inState === null ? null : { ...inState, questions: change(inState.questions) },
+  )
 }
 
 export function readIsTurnRunning($: EngineInterface): Promise<boolean> {

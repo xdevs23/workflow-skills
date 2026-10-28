@@ -9,6 +9,7 @@ import {
   denyHookFailure,
   listQuestions,
   markTurnRunning,
+  readQuestionsOfStartedSession,
   recordSkillLoad,
   replyWithHookFailure,
   runAnswerCommand,
@@ -20,6 +21,7 @@ import { drawQuestionBand, drawQuestionPane } from './questionScreens'
 
 export const register: Register = on => {
   on('session.start', startQuestions)
+  on('classic.SessionStart', readQuestionsOfStartedSession)
   // Registered before the tools of this plugin, so their results also contain the answers.
   on('tool.call', addAnswersToToolResult)
   on('tool.call', { tool: SKILL_TOOL }, recordSkillLoad)

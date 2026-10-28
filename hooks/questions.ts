@@ -19,22 +19,14 @@ export function openQuestionsOf(questions: readonly Question[]): Question[] {
   return questions.filter(isOpen)
 }
 
-/** The answers to questions of the session that the session has not read yet. */
-export function undeliveredAnswersOf(
-  questions: readonly Question[],
-  sessionId: string,
-): AnsweredQuestion[] {
-  return questions
-    .filter(isAnswered)
-    .filter(question => question.sessionId === sessionId && !question.answer.isDelivered)
+/** The answers the session that asked the questions has not read yet. */
+export function undeliveredAnswersOf(questions: readonly Question[]): AnsweredQuestion[] {
+  return questions.filter(isAnswered).filter(question => !question.answer.isDelivered)
 }
 
-/** Whether a question of the session is open or has an answer the session has not read yet. */
-export function isAwaitingAnswers(questions: readonly Question[], sessionId: string): boolean {
-  return (
-    openQuestionsOf(questions).some(question => question.sessionId === sessionId) ||
-    undeliveredAnswersOf(questions, sessionId).length > 0
-  )
+/** Whether a question is open or has an answer the session that asked it has not read yet. */
+export function isAwaitingAnswers(questions: readonly Question[]): boolean {
+  return openQuestionsOf(questions).length > 0 || undeliveredAnswersOf(questions).length > 0
 }
 
 /** Whether the value is a whole number from 1 up, as the number of a question is. */
@@ -42,7 +34,7 @@ export function isPositiveInteger(value: unknown): value is number {
   return typeof value === 'number' && Number.isSafeInteger(value) && value > 0
 }
 
-/** The number a new question of the project gets: one past the highest number in use. */
+/** The number a new question of the session gets: one past the highest number in use. */
 export function nextNumberOf(questions: readonly Question[]): number {
   return questions.reduce((highest, question) => Math.max(highest, question.number), 0) + 1
 }
@@ -75,5 +67,4 @@ export function sortedByNumber(questions: readonly Question[]): Question[] {
 export enum Withdrawal {
   Withdrawn = 'withdrawn',
   NotOpen = 'not-open',
-  AskedElsewhere = 'asked-elsewhere',
 }

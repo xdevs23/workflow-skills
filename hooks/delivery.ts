@@ -1,15 +1,17 @@
 import type { EngineInterface } from 'claude-code'
 
-import type { Question, SessionScope } from '../types'
+import type { Question } from '../types'
 import { messageOf } from './errorMessage'
 import { describeAnswers } from './modelText'
 import { undeliveredAnswersOf } from './questions'
 import type { AnsweredQuestion } from './questions'
-import { QuestionStoreError, readProjectQuestions, saveAnswer, saveDelivery } from './questionStore'
+import { QuestionStoreError, saveAnswer, saveDelivery } from './questionStore'
 import {
   claimAnswers,
+  loadQuestionsFromStore,
   readIsTurnRunning,
   releaseAnswers,
+  setQuestionsInState,
   updateQuestions,
 } from './sessionState'
 
@@ -17,26 +19,25 @@ import {
 export type Delivery<T> = { result: T; isAccepted: boolean }
 
 /**
- * Hands the undelivered answers to questions of the session to `send`, with the questions of the
- * project, and stores them as delivered once `send` reports them accepted. `send` runs also when
- * the list of answers is empty. Answers another delivery of the session is sending are left to
- * that delivery, so parallel tool calls give each answer to the model once.
+ * Hands the answers not yet read by the session `sessionId` to `send`, together with the questions
+ * of that session, and stores them as delivered once `send` reports them accepted. `send` runs also
+ * when the list of answers is empty. Answers another delivery of the session is sending
+ * are left to that delivery, so parallel tool calls give each answer to the model once.
  */
 export async function deliverAnswers<T>(
   $: EngineInterface,
-  scope: SessionScope,
+  sessionId: string,
   send: (
     answered: readonly AnsweredQuestion[],
     questions: readonly Question[],
   ) => Promise<Delivery<T>>,
 ): Promise<T> {
-  const questions = await readProjectQuestions($, scope.project)
-  await updateQuestions($, () => questions)
-  const answered = await claimAnswers($, undeliveredAnswersOf(questions, scope.sessionId))
+  const questions = await loadQuestionsFromStore($, sessionId)
+  const answered = await claimAnswers($, undeliveredAnswersOf(questions))
   try {
     const delivery = await send(answered, questions)
     if (delivery.isAccepted && answered.length > 0) {
-      await storeDelivery($, scope, answered)
+      await storeDelivery($, sessionId, answered)
     }
 
     return delivery.result
@@ -53,11 +54,11 @@ export async function deliverAnswers<T>(
  */
 async function storeDelivery(
   $: EngineInterface,
-  scope: SessionScope,
+  sessionId: string,
   answered: readonly AnsweredQuestion[],
 ): Promise<void> {
   try {
-    const delivered = await saveDelivery($, scope.project, answered)
+    const delivered = await saveDelivery($, sessionId, answered)
     await updateQuestions($, questions =>
       questions.map(question => delivered.find(each => each.id === question.id) ?? question),
     )
@@ -75,21 +76,21 @@ export function reportStoreFailure($: EngineInterface, error: QuestionStoreError
 }
 
 /**
- * Stores the answer of the user to the open question numbered `number`, and returns whether such a
- * question was open. An answer to a question of this session given while a turn does not run is
- * sent to the model as a prompt.
+ * Stores the answer of the user to the open question of the session `sessionId` that `which`
+ * selects, and returns whether such a question was open. An answer given while a turn does not run
+ * is sent to the model as a prompt.
  */
 export async function recordAnswerAndDeliver(
   $: EngineInterface,
-  scope: SessionScope,
-  number: number,
+  sessionId: string,
+  which: (question: Question) => boolean,
   text: string,
 ): Promise<boolean> {
   const answer = { text, answeredAt: await $.clock.now() }
-  const { answered, questions } = await saveAnswer($, scope.project, number, answer)
-  await updateQuestions($, () => questions)
-  if (answered?.sessionId === scope.sessionId && !(await readIsTurnRunning($))) {
-    deliverWhenIdle($, scope)
+  const { answered, questions } = await saveAnswer($, sessionId, which, answer)
+  await setQuestionsInState($, sessionId, questions)
+  if (answered !== undefined && !(await readIsTurnRunning($))) {
+    deliverWhenIdle($, sessionId)
   }
 
   return answered !== undefined
@@ -101,9 +102,9 @@ export async function recordAnswerAndDeliver(
  * own: a prompt starts its turn once the session is idle, and the call resolves only then, so the
  * hook that asks for the delivery does not wait for it.
  */
-export function deliverWhenIdle($: EngineInterface, scope: SessionScope): void {
+export function deliverWhenIdle($: EngineInterface, sessionId: string): void {
   $.clock.after(0, () => {
-    deliverAsPrompt($, scope).catch((error: unknown) => {
+    deliverAsPrompt($, sessionId).catch((error: unknown) => {
       const text =
         `The answers to your questions could not be sent to Claude: ${messageOf(error)}. ` +
         'They are sent with your next prompt or the next tool result.'
@@ -113,9 +114,11 @@ export function deliverWhenIdle($: EngineInterface, scope: SessionScope): void {
   })
 }
 
-async function deliverAsPrompt($: EngineInterface, scope: SessionScope): Promise<void> {
-  await deliverAnswers($, scope, async answered => {
-    if (answered.length === 0) {
+async function deliverAsPrompt($: EngineInterface, sessionId: string): Promise<void> {
+  await deliverAnswers($, sessionId, async answered => {
+    // After /resume or /clear switched to another session, the prompt would go to that session,
+    // so the answers wait for the next delivery in their own session.
+    if (answered.length === 0 || (await $.session.id()) !== sessionId) {
       return { result: undefined, isAccepted: false }
     }
     const entered = await $.prompt.submit({ text: describeAnswers(answered), asUser: true })

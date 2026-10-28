@@ -16,7 +16,6 @@ import type {
   TurnCompleteResult,
 } from 'claude-code'
 
-import type { SessionScope } from '../types'
 import { isMainConversation } from './conversation'
 import { deliverAnswers, deliverWhenIdle, recordAnswerAndDeliver } from './delivery'
 import {
@@ -60,26 +59,31 @@ import {
   WITHDRAW,
   WITHDRAW_TOOL,
 } from './names'
-import { Withdrawal, isAwaitingAnswers, openQuestionsOf, sortedByNumber } from './questions'
-import { awaitingScopeOf, handleStoreFailure, scopeForUse } from './questionScope'
+import { Withdrawal, openQuestionsOf, sortedByNumber } from './questions'
+import { awaitingSessionOf, sessionForUse } from './questionSession'
 import {
   QuestionSkillLoadState,
   checkQuestionSkillLoad,
   recordQuestionSkillLoad,
 } from './questionSkill'
-import { saveNewQuestion, saveWithdrawal } from './questionStore'
+import {
+  handleStoreFailure,
+  moveProjectRecordsToSessions,
+  saveNewQuestion,
+  saveWithdrawal,
+} from './questionStore'
 import {
   hasPersonAtPrompt,
-  readQuestions,
+  loadQuestionsFromStore,
+  loadQuestionsUnlessInState,
   recordPersonAtPrompt,
-  refreshQuestions,
+  setQuestionsInState,
   setTurnRunning,
-  updateQuestions,
 } from './sessionState'
 
 // In a session without a person at the prompt, such as a -p run or the Agent SDK, the plugin
-// registers neither the tools nor the command and fixes no scope, so every hook below passes its
-// event on unchanged.
+// registers neither the tools nor the command and does not read any question, so every hook below
+// passes its event on unchanged.
 export const startQuestions: Hook<'session.start'> = async ($, e, next) => {
   recordPersonAtPrompt(e.isInteractive)
   if (!e.isInteractive) {
@@ -106,15 +110,33 @@ export const startQuestions: Hook<'session.start'> = async ($, e, next) => {
       immediate: true,
     }),
   ])
-  await handleStoreFailure(
-    $,
-    async () => {
-      await scopeForUse($)
-    },
-    message => $.ui.toast(message),
-  )
+  // The questions saved under the project before they belonged to a session are moved to their
+  // session first, so the load finds them.
+  await handleStoreFailure($, () => moveProjectRecordsToSessions($), message => $.ui.toast(message))
+  await loadQuestionsAndToastFailure($)
 
   return next(e)
+}
+
+// /resume and /clear do not raise a start, but run the classic SessionStart hook for the session
+// they switched to, and a compaction runs it too. The session loads its questions here unless they
+// are in the state already, so the band and the pane show them at once.
+export const readQuestionsOfStartedSession: Hook<'classic.SessionStart'> = async ($, e, next) => {
+  if (hasPersonAtPrompt()) {
+    await loadQuestionsAndToastFailure($)
+  }
+
+  return next(e)
+}
+
+/**
+ * Loads the questions of the session that runs into the state unless they are there already, and
+ * shows a failure of the store in a toast. The types of the engine do not say whether the start of
+ * a process runs the start hook or the classic SessionStart hook first, so both call this, and the
+ * second finds the questions in the state.
+ */
+async function loadQuestionsAndToastFailure($: EngineInterface): Promise<void> {
+  await handleStoreFailure($, () => loadQuestionsUnlessInState($), message => $.ui.toast(message))
 }
 
 export const addAnswersToToolResult: Hook<'tool.call'> = async ($, e, next) => {
@@ -123,15 +145,15 @@ export const addAnswersToToolResult: Hook<'tool.call'> = async ($, e, next) => {
     return ran
   }
   const isModelCall = isMainConversation(e) && next.origin.tier === 'core'
-  const scope = isModelCall ? await awaitingScopeOf($) : null
-  if (scope === null) {
+  const sessionId = isModelCall ? await awaitingSessionOf($) : null
+  if (sessionId === null) {
     return ran
   }
 
   return handleStoreFailure(
     $,
     () =>
-      deliverAnswers($, scope, async answered => ({
+      deliverAnswers($, sessionId, async answered => ({
         result:
           answered.length === 0
             ? ran
@@ -162,9 +184,9 @@ export const recordSkillLoad: MatchedHook<'tool.call', { tool: typeof SKILL_TOOL
 }
 
 export const askQuestion: MatchedHook<'tool.call', { tool: typeof ASK_TOOL }> = async ($, e) => {
-  const scope = await scopeForUse($)
+  const sessionId = await sessionForUse($)
   if (isMainConversation(e)) {
-    const check = await checkQuestionSkillLoad($, scope.sessionId)
+    const check = await checkQuestionSkillLoad($, sessionId)
     if (check.state !== QuestionSkillLoadState.Counted) {
       return { deny: describeQuestionSkillDenial(check) }
     }
@@ -174,8 +196,8 @@ export const askQuestion: MatchedHook<'tool.call', { tool: typeof ASK_TOOL }> = 
     return { deny: ASK_PROBLEMS[input.outcome] }
   }
   const asked = { text: input.question, choices: input.choices, askedAt: await $.clock.now() }
-  const { question, questions } = await saveNewQuestion($, scope, asked)
-  await updateQuestions($, () => questions)
+  const { question, questions } = await saveNewQuestion($, sessionId, asked)
+  await setQuestionsInState($, sessionId, questions)
   // The host shows the tool call in the chat only once the turn is idle.
   $.ui.log(describeQuestionInChat(question))
 
@@ -187,9 +209,9 @@ export const listQuestions: MatchedHook<'tool.call', { tool: typeof LIST_TOOL }>
   $,
   e,
 ) => {
-  const scope = await scopeForUse($)
+  const sessionId = await sessionForUse($)
 
-  return deliverAnswers<ToolCallResult>($, scope, async (_, questions) => ({
+  return deliverAnswers<ToolCallResult>($, sessionId, async (_, questions) => ({
     result: { result: describeQuestions(questions) },
     isAccepted: isMainConversation(e),
   }))
@@ -199,22 +221,22 @@ export const withdrawQuestion: MatchedHook<'tool.call', { tool: typeof WITHDRAW_
   $,
   e,
 ) => {
-  const scope = await scopeForUse($)
+  const sessionId = await sessionForUse($)
   const number = readWithdrawInput(e)
   if (number === undefined) {
     return { deny: WITHDRAW_PROBLEM }
   }
-  const { withdrawal, questions } = await saveWithdrawal($, scope, number)
-  await updateQuestions($, () => questions)
+  const { withdrawal, questions } = await saveWithdrawal($, sessionId, number)
+  await setQuestionsInState($, sessionId, questions)
   const text = WITHDRAWAL_TEXTS[withdrawal](number)
 
   return withdrawal === Withdrawal.Withdrawn ? { result: text } : { deny: text }
 }
 
-// A prompt the user sends receives the answers that wait, such as the ones given during a turn
-// the user interrupted, or before /resume switched back to the session. They count as read once
-// the prompt entered with them. It is a function declaration, since the hooks module passes `$`
-// into it, and the engine follows `$` past an import into function declarations only.
+// A prompt the user sends includes the answers that wait, such as the ones given during a turn
+// the user interrupted, also after /resume left the session and came back. They count as read
+// once the prompt entered with them. It is a function declaration, since the hooks module passes
+// `$` into it, and the engine follows `$` past an import into function declarations only.
 export async function submitWithAnswers(
   $: EngineInterface,
   e: Frozen<PromptSubmitInput>,
@@ -230,12 +252,13 @@ export async function submitWithAnswers(
   return handleStoreFailure(
     $,
     async () => {
-      const scope = await scopeForUse($)
-      if (!isAwaitingAnswers(await readQuestions($), scope.sessionId)) {
+      await loadQuestionsUnlessInState($)
+      const sessionId = await awaitingSessionOf($)
+      if (sessionId === null) {
         return next(e)
       }
 
-      return deliverAnswers($, scope, async answered => {
+      return deliverAnswers($, sessionId, async answered => {
         if (answered.length === 0) {
           return { result: await next(e), isAccepted: false }
         }
@@ -273,9 +296,9 @@ export async function completeQuestionTurn(
   const completed = await next(e)
   if (isMainConversation(e)) {
     await setTurnRunning($, false)
-    const scope = e.isAborted ? null : await awaitingScopeOf($)
-    if (scope !== null) {
-      deliverWhenIdle($, scope)
+    const sessionId = e.isAborted ? null : await awaitingSessionOf($)
+    if (sessionId !== null) {
+      deliverWhenIdle($, sessionId)
     }
   }
 
@@ -286,16 +309,21 @@ export const runAnswerCommand: MatchedHook<
   'command.run',
   { command: typeof ANSWER_COMMAND }
 > = async ($, e) => {
-  const scope = await scopeForUse($)
+  const sessionId = await sessionForUse($)
   const request = readAnswerArguments(e.args)
   switch (request.request) {
     case AnswerRequest.List:
-      return { text: await listOpenQuestions($, scope) }
+      return { text: await listOpenQuestions($, sessionId) }
     case AnswerRequest.Unreadable:
       return { text: ANSWER_USAGE_PROBLEM }
     case AnswerRequest.Answer: {
       const { number, text } = request
-      const isOpen = await recordAnswerAndDeliver($, scope, number, text)
+      const isOpen = await recordAnswerAndDeliver(
+        $,
+        sessionId,
+        question => question.number === number,
+        text,
+      )
 
       return {
         text: isOpen ? `Answered question #${number}.` : `Question #${number} is not open.`,
@@ -305,7 +333,7 @@ export const runAnswerCommand: MatchedHook<
 }
 
 /**
- * Denies the call of a question tool whose hook failed, such as on a scope that cannot be fixed or
+ * Denies the call of a question tool whose hook failed, such as on a store that cannot be read or
  * a write rejected by the store, with the reason, which is written to the debug log too.
  */
 export function denyHookFailure(
@@ -342,10 +370,9 @@ function logAndDescribeHookFailure($: EngineInterface, failure: HookFailure): st
   return text
 }
 
-/** Lists the open questions for the answer command, and opens the pane with them. */
-async function listOpenQuestions($: EngineInterface, scope: SessionScope): Promise<string> {
-  await refreshQuestions($, scope)
-  const open = sortedByNumber(openQuestionsOf(await readQuestions($)))
+/** Lists the open questions of the session for the answer command, and opens the pane. */
+async function listOpenQuestions($: EngineInterface, sessionId: string): Promise<string> {
+  const open = sortedByNumber(openQuestionsOf(await loadQuestionsFromStore($, sessionId)))
   if (open.length === 0) {
     return ALL_CLOSED
   }

@@ -6,14 +6,15 @@ import { Withdrawal, isAnswered, isWithdrawn, openQuestionsOf, sortedByNumber } 
 import type { AnsweredQuestion } from './questions'
 
 /** The reply of the answer command and the text of the pane while no question is open. */
-export const ALL_CLOSED = 'Every question of this project is answered or withdrawn.'
+export const ALL_CLOSED = 'Every question of this session is answered or withdrawn.'
 
 export const ASK_DESCRIPTION = [
   'Puts a question to the user without waiting for the answer, so you keep working.',
-  'The question is stored until the user answers it, in any order and at any time, also after',
-  'this session has ended. The call returns at once with the number of the question, and the',
-  'answer is sent to you later as a note with one of your tool results, or as a new message of',
-  'the user. Use it for every question whose answer the rest of the work does not wait on.',
+  'The question is stored with this session until the user answers it, in any order and at any',
+  'time, also after a restart that resumes this session. The call returns at once with the number',
+  'of the question, counted from 1 in each session, and the answer is sent to you later as a note',
+  'with one of your tool results, or as a new message of the user. Use it for every question whose',
+  'answer the rest of the work does not wait on.',
   `Ask the question first as the skill ${QUESTION_SKILL} describes, and call this tool only`,
   'when the subagent finds no answer in the project.',
   `Call ${LIST_TOOL} first, and never ask a question again that is open or answered there.`,
@@ -70,21 +71,21 @@ export function describeUnrecordedLoad(message: string): string {
 }
 
 export const LIST_DESCRIPTION = [
-  `Lists the questions put to the user in this project with ${ASK_TOOL}, by this session and`,
-  'by every other one: the open ones, the answered ones with their answers, and the withdrawn',
-  'ones. Check it before you ask, so that each question is asked once.',
+  `Lists the questions this session put to the user with ${ASK_TOOL}: the open ones, the`,
+  'answered ones with their answers, and the withdrawn ones. Questions of other sessions are not',
+  'listed. A session forked from another starts without the questions of that session, and their',
+  'answers do not reach it. Check it before you ask, so that each question is asked once.',
 ].join(' ')
 
 export const WITHDRAW_DESCRIPTION = [
   `Takes back an open question that you asked with ${ASK_TOOL}, once the work no longer needs`,
   'its answer, such as after a later decision made it moot. Give the number of the question.',
   `The user no longer sees it among the open questions, and ${LIST_TOOL} lists it as withdrawn.`,
-  'Only the session that asked a question can withdraw it.',
 ].join(' ')
 
 /**
  * What the model or the person at the prompt is told of a hook of the questions that failed with
- * `reason`, such as a scope that cannot be fixed or a write the store refuses.
+ * `reason`, such as a store that cannot be read or a write that fails.
  */
 export function describeFailedUse(reason: string | undefined): string {
   return [
@@ -120,8 +121,6 @@ export const WITHDRAWAL_TEXTS: Record<Withdrawal, (number: number) => string> = 
   [Withdrawal.NotOpen]: number =>
     `Question #${number} is not open: it is answered, withdrawn or was never asked. Call ` +
     `${LIST_TOOL} to see where it stands.`,
-  [Withdrawal.AskedElsewhere]: number =>
-    `Question #${number} was asked by another session, and only that session can withdraw it.`,
 }
 
 /** The answers as the model reads them, each beside its question. */
@@ -139,7 +138,7 @@ export function describeAnswers(answered: readonly AnsweredQuestion[]): string {
 /** The open and the answered questions as the model reads them from the list tool. */
 export function describeQuestions(questions: readonly Question[]): string {
   if (questions.length === 0) {
-    return 'You have not asked any question in this project.'
+    return 'You have not asked any question in this session.'
   }
   const sorted = sortedByNumber(questions)
   const answered = sorted

@@ -15,12 +15,17 @@ last 100,000 tokens, counted from the context size reported by the engine. `list
 the open ones, the answered ones and the withdrawn ones, and `withdraw_question` takes back a
 question that Claude no longer needs answered.
 
-The questions of a project are saved across sessions until they are answered, in the file
-`~/.claude/plugins/store/workflow-skills_<suffix>.json` that the plugin writes. On a machine that
-keeps only some of its files across restarts, add that file to the kept ones. A project is the
-folder a session started in, so a session that moves into a worktree keeps the questions of that
-folder. The same file keeps one record per session with the context size at its last load of
-`workflow-skills:question`, and a load in any session deletes the records older than 7 days.
+A session sees only the questions it asked, numbered from 1 in each session. The questions are
+saved under the session that asked them in the file
+`~/.claude/plugins/store/workflow-skills_<suffix>.json` that the plugin writes, so a session that
+`/resume` or `claude --resume` brings back shows its open questions again. The file also contains
+the questions of other sessions, and the plugin shows them nowhere else. When a session loads
+`workflow-skills:question`, the plugin deletes the questions of every other session whose newest
+question, answer, withdrawal or delivery is older than 30 days, so a session brought back after
+that starts without its questions. On a machine that keeps only some of its files across restarts,
+add that file to the kept ones. The same file contains one record per session with the context
+size at the last time the session loaded `workflow-skills:question`, and any session that loads it
+deletes the records older than 7 days.
 
 You answer them in any order: in the pane opened from the row above the prompt, which has input
 fields and choice lists, or with `/answer <number> <answer>`. An answer is sent to Claude as a note

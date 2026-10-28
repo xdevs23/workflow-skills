@@ -3,8 +3,8 @@ import type { EngineInterface, Frozen, ToolCallInput, ToolCallResult } from 'cla
 import { isMainConversation } from './conversation'
 import { QUESTION_SKILL } from './names'
 import {
+  deleteOldRecords,
   deleteQuestionSkillLoad,
-  deleteQuestionSkillLoadsSavedBefore,
   readQuestionSkillLoad,
   saveQuestionSkillLoad,
 } from './questionStore'
@@ -21,6 +21,13 @@ export const QUESTION_SKILL_MAX_TOKENS_AFTER_LOAD = 100_000
  * keep the records of sessions ended long ago. A session idle that long loads the skill again.
  */
 export const QUESTION_SKILL_LOAD_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000
+
+/**
+ * The questions of another session are deleted at a load once the newest of their records is this
+ * old, so the store does not keep the questions of sessions ended long ago. The age leaves a month
+ * for `claude --resume` to bring a session back with its questions.
+ */
+export const SESSION_QUESTIONS_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000
 
 /** Whether a load of QUESTION_SKILL counts for a question, and why it does not. */
 export enum QuestionSkillLoadState {
@@ -73,7 +80,11 @@ export async function recordQuestionSkillLoad(
     return
   }
   await saveQuestionSkillLoad($, sessionId, { contextTokens, savedAt })
-  await deleteQuestionSkillLoadsSavedBefore($, savedAt - QUESTION_SKILL_LOAD_MAX_AGE_MS)
+  await deleteOldRecords($, {
+    sessionId,
+    loadsSavedBefore: savedAt - QUESTION_SKILL_LOAD_MAX_AGE_MS,
+    questionsMadeBefore: savedAt - SESSION_QUESTIONS_MAX_AGE_MS,
+  })
 }
 
 /**

@@ -1,6 +1,5 @@
-import { describe, expect, mock, test } from 'claude-code/testing'
-import type { Engine, MockClock } from 'claude-code/testing'
-import type { ApiMessage, On, PromptSubmitInput, RenderPropsOf } from 'claude-code'
+import { describe, expect, test } from 'claude-code/testing'
+import type { ApiMessage } from 'claude-code'
 
 import {
   ANSWER_COMMAND,
@@ -17,26 +16,32 @@ import {
   QUESTION_SKILL_MAX_TOKENS_AFTER_LOAD,
   QuestionSkillLoadState,
 } from './questionSkill'
-import { projectDigestOf, questionSkillLoadKeyOf, storeKeyOf } from './questionStore'
-import { NO_TIME_LIMIT, TURN, endTurn, recordPrompts, typePrompt } from './testSupport'
+import { questionSkillLoadKeyOf, storeKeyOf } from './questionStore'
+import {
+  FIRST_SESSION,
+  NO_TIME_LIMIT,
+  SECOND_SESSION,
+  TOKENS_AT_START,
+  answerByCommand,
+  askAboutFriday,
+  askWhichDatabase,
+  callSkillTool,
+  endTurn,
+  listQuestions,
+  mountBand,
+  mountPane,
+  questionCountOf,
+  readFile,
+  skillLoad,
+  startSession,
+  startTurn,
+  toolCall,
+  typePrompt,
+} from './testSupport'
+import type { Session } from './testSupport'
 import { WAITING_HINT } from './waitingHint'
 
-const ROOT = '/work/project'
-const WORKTREE = '/work/project/.worktrees/feature'
-const FIRST_SESSION = 'session-1'
-const SECOND_SESSION = 'session-2'
 const LOCK_REFUSAL = 'Lock file is already being held'
-/** The context size of a session when it starts and loads the question skill. */
-const TOKENS_AT_START = 1000
-
-const PANE_PROPS: RenderPropsOf['Pane'] = {
-  title: 'Questions',
-  isFocused: true,
-  bodyColumns: 60,
-  placement: 'dock',
-  scroll: { offset: 0, bodyRows: 30 },
-  view: {},
-}
 
 /** The summary left by a compaction in place of the messages replaced by it. */
 const COMPACTION_SUMMARY: ApiMessage = {
@@ -55,316 +60,13 @@ const QUESTION_SKILL_NAMED: ApiMessage = {
   content: [{ type: 'text', text: `Load ${QUESTION_SKILL} before you ask.` }],
 }
 
-const BAND_PROPS: RenderPropsOf['AbovePrompt'] = {
-  hasSurvey: false,
-  isWorking: false,
-  maxRows: 10,
-  bodyColumns: 80,
-  scroll: { offset: 0, bodyRows: 9 },
-  view: {},
-}
-
-/** What the engine beneath the plugin saw, and the switches that change how it answers. */
-type Session = {
-  id: string
-  clock: MockClock
-  store: Map<string, unknown>
-  prompts: PromptSubmitInput[]
-  panes: string[]
-  toasts: string[]
-  logs: string[]
-  /** The messages in the main conversation seen by the model, in the api form. */
-  context: ApiMessage[]
-  /** The input tokens counted for the last response, as `session.usage` reports them. */
-  contextTokens: number | undefined
-  /** Whether the Skill tool reports an error for the next call. */
-  isSkillFailing: boolean
-  /** Whether a hook beneath the plugin denies the next Skill tool call. */
-  isSkillDenied: boolean
-  /** The lines written into the chat history. Lines sent only to the debug log are left out. */
-  chatLines: string[]
-  registered: string[]
-  /**
-   * Whether the host reports that the session has no scope until the plugin writes one. This is
-   * the case assumed for a session that /resume switched to, because /resume raises no start. That
-   * the host drops the scope there is not confirmed.
-   */
-  isScopeDropped: boolean
-  /** The project root the engine returns, which a move into a worktree changes. */
-  root: string
-  /** The reason the engine returns in place of the project root. */
-  rootRefusal: string | undefined
-  /** The reasons the store refuses its next writes with, one write each. */
-  refusedWrites: string[]
-  /** Runs once before the next write of the store, as another session writing at that moment. */
-  beforeNextWrite: (() => void) | undefined
-  /** The reason the engine drops the next prompt of the plugin with. */
-  droppedPrompt: string | undefined
-}
-
-/**
- * Replaces the engine beneath the plugin with hooks that answer as the engine does, then starts
- * the session in which the plugin registers its tools.
- */
-async function startSession(
-  $: Engine,
-  on: On,
-  options: { stored?: ReadonlyMap<string, unknown>; isInteractive?: boolean } = {},
-): Promise<Session> {
-  const session: Session = {
-    id: FIRST_SESSION,
-    clock: mock.clock(on, { now: 1000 }),
-    store: new Map(options.stored),
-    prompts: recordPrompts(on, prompt => {
-      const drop = prompt.origin.kind === 'plugin' ? session.droppedPrompt : undefined
-      session.droppedPrompt = undefined
-
-      return drop
-    }),
-    panes: [],
-    toasts: [],
-    logs: [],
-    context: skillLoad(QUESTION_SKILL),
-    contextTokens: TOKENS_AT_START,
-    isSkillFailing: false,
-    isSkillDenied: false,
-    chatLines: [],
-    registered: [],
-    isScopeDropped: false,
-    root: ROOT,
-    rootRefusal: undefined,
-    refusedWrites: [],
-    beforeNextWrite: undefined,
-    droppedPrompt: undefined,
-  }
-  on('state.get', { plugin: PLUGIN, key: 'session' }, ($, e, next) =>
-    session.isScopeDropped ? { value: { value: undefined, version: 0 } } : next(e),
-  )
-  on('state.set', { plugin: PLUGIN, key: 'session' }, ($, e, next) => {
-    session.isScopeDropped = false
-
-    return next(e)
-  })
-  on('session.root', () =>
-    session.rootRefusal === undefined ? { value: session.root } : { deny: session.rootRefusal },
-  )
-  on('session.id', () => ({ value: session.id }))
-  // The hook returns the main conversation for the api form and an empty list for the rows form.
-  on('session.messages', ($, e) => ({ value: e.as === 'api' ? session.context : [] }))
-  on('session.usage', () => ({
-    value: {
-      startedAt: 0,
-      context:
-        session.contextTokens === undefined
-          ? { window: 1_000_000 }
-          : { tokens: session.contextTokens, window: 1_000_000 },
-      rateLimits: [],
-    },
-  }))
-  on('store.keys', () => ({ value: [...session.store.keys()] }))
-  on('store.get', ($, e) => ({ value: session.store.get(e.key) }))
-  on('store.delete', ($, e) => {
-    session.store.delete(e.key)
-
-    return { value: undefined }
-  })
-  on('store.set', ($, e) => {
-    const refusal = session.refusedWrites.shift()
-    if (refusal !== undefined) {
-      return { deny: refusal }
-    }
-    const beforeWrite = session.beforeNextWrite
-    session.beforeNextWrite = undefined
-    beforeWrite?.()
-    session.store.set(e.key, structuredClone(e.value))
-
-    return { value: undefined }
-  })
-  on('tool.register', ($, e) => {
-    session.registered.push(e.name)
-
-    return { value: { tool: `mcp__${PLUGIN}__${e.name}` } }
-  })
-  on('command.register', ($, e) => {
-    session.registered.push(e.name)
-
-    return { value: { command: e.name } }
-  })
-  on('ui.open', ($, e) => {
-    session.panes.push(e.id)
-
-    return { value: { isPlaced: true } }
-  })
-  on('ui.toast', ($, e) => {
-    session.toasts.push(e.text)
-
-    return { value: undefined }
-  })
-  on('ui.log', ($, e) => {
-    session.logs.push(e.text)
-    if (e.to !== 'debug') {
-      session.chatLines.push(e.text)
-    }
-
-    return { value: undefined }
-  })
-  on('session.start', ($, e) => ({ cwd: e.cwd }))
-  on('turn.start', ($, e) => ({ turnId: e.turnId }))
-  on('turn.complete', () => ({ text: '' }))
-  on('tool.call', { tool: 'Read' }, () => ({ result: 'the file' }))
-  on('tool.call', { tool: 'Skill' }, () => {
-    if (session.isSkillDenied) {
-      return { deny: 'The Skill tool is not allowed' }
-    }
-
-    return session.isSkillFailing
-      ? { result: 'Unknown skill', isError: true }
-      : { result: 'Launching skill' }
-  })
-  await startAgain($, options.isInteractive ?? true)
-  await callSkillTool($, QUESTION_SKILL)
-
-  return session
-}
-
-/** A tool call and its result as the api form contains them. */
-function toolCall(call: {
-  tool: string
-  input: Record<string, string>
-  isFailed: boolean
-  resultOf?: string
-}): ApiMessage[] {
-  const id = `call-${call.tool}`
-
-  return [
-    {
-      role: 'assistant',
-      content: [{ type: 'tool_use', id, name: call.tool, input: call.input }],
-    },
-    {
-      role: 'user',
-      content: [
-        {
-          type: 'tool_result',
-          tool_use_id: call.resultOf ?? id,
-          content: 'the result',
-          is_error: call.isFailed,
-        },
-      ],
-    },
-  ]
-}
-
-/** Calls the Skill tool for `skill`, as the model in the main conversation or in `agentId` does. */
-function callSkillTool($: Engine, skill: string, agentId?: string) {
-  return $.tool.call({ tool: 'Skill', skill, ...(agentId === undefined ? {} : { agentId }) })
-}
-
-/** The number of questions in the store, leaving out the other records of the plugin. */
-async function questionCountOf(session: Session): Promise<number> {
-  const prefix = storeKeyOf(await projectDigestOf(ROOT), '')
-
-  return [...session.store.keys()].filter(key => key.startsWith(prefix)).length
-}
-
 /** Removes the load record of the session, as for a load never seen by the plugin. */
 function forgetQuestionSkillLoad(session: Session) {
   session.store.delete(questionSkillLoadKeyOf(session.id))
 }
 
-function skillLoad(skill: string): ApiMessage[] {
-  return toolCall({ tool: 'Skill', input: { skill }, isFailed: false })
-}
-
 function failedSkillLoad(skill: string): ApiMessage[] {
   return toolCall({ tool: 'Skill', input: { skill }, isFailed: true })
-}
-
-/**
- * Switches the process to another session as /resume is assumed to do: the session id changes, no
- * start is raised, and the host has no scope for the session it switched to.
- */
-function resumeAnother(session: Session, id: string) {
-  session.id = id
-  session.isScopeDropped = true
-}
-
-/** Raises the start of a session, as a new session in the same project does. */
-async function startAgain($: Engine, isInteractive = true) {
-  await $.session.start({
-    cwd: ROOT,
-    surface: isInteractive ? 'terminal' : null,
-    isInteractive,
-  })
-}
-
-function askWhichDatabase($: Engine) {
-  return $.tool.call({
-    tool: ASK_TOOL,
-    question: 'Which database?',
-    choices: ['sqlite', 'postgres'],
-  })
-}
-
-function askAboutFriday($: Engine, agentId?: string) {
-  return $.tool.call({
-    tool: ASK_TOOL,
-    question: 'Ship on Friday?',
-    ...(agentId === undefined ? {} : { agentId }),
-  })
-}
-
-async function listQuestions($: Engine): Promise<string> {
-  return String((await $.tool.call({ tool: LIST_TOOL })).result)
-}
-
-function readFile($: Engine, agentId?: string) {
-  return $.tool.call({
-    tool: 'Read',
-    file_path: 'notes.md',
-    ...(agentId === undefined ? {} : { agentId }),
-  })
-}
-
-async function answerByCommand($: Engine, args: string): Promise<string> {
-  const ran = await $.command.run({
-    command: ANSWER_COMMAND,
-    args,
-    origin: { kind: 'composer' },
-    presentation: { isFullscreen: true, columns: 120 },
-  })
-
-  return String(ran.text)
-}
-
-function startTurn($: Engine, agentId?: string) {
-  return $.turn.start({
-    text: 'go on',
-    turnId: TURN,
-    ...(agentId === undefined ? {} : { agentId }),
-  })
-}
-
-function mountPane<Surface extends 'terminal' | 'desktop' | 'mobile'>(
-  $: Engine,
-  surface: Surface,
-) {
-  return $.ui.mount({
-    plugin: PLUGIN,
-    surface,
-    component: 'Pane',
-    requestId: PANE,
-    props: PANE_PROPS,
-  })
-}
-
-function mountBand($: Engine) {
-  return $.ui.mount({
-    plugin: PLUGIN,
-    surface: 'terminal',
-    component: 'AbovePrompt',
-    props: BAND_PROPS,
-  })
 }
 
 describe('asking without waiting', () => {
@@ -541,134 +243,15 @@ describe('asking without waiting', () => {
     },
   )
 
+
   test(
-    'a second session finds the questions of the first, and only the first reads the answers',
+    'a store that cannot be read makes the tools fail with the reason, which the debug log shows ' +
+      'too',
     NO_TIME_LIMIT,
     async ($, on) => {
       const session = await startSession($, on)
-      await askWhichDatabase($)
-      session.id = SECOND_SESSION
-      await startAgain($)
-      await callSkillTool($, QUESTION_SKILL)
-
-      expect(await listQuestions($)).toContain('Which database?')
-      await startTurn($)
-      await answerByCommand($, '1 sqlite')
-      expect((await readFile($)).context).toBeUndefined()
-      await askAboutFriday($)
-      expect(await listQuestions($)).toContain('#2')
-      session.id = FIRST_SESSION
-      await startAgain($)
-      expect((await readFile($)).context?.join('\n')).toContain('sqlite')
-    },
-  )
-
-  test(
-    'a session that /resume switched to uses the tools as itself',
-    NO_TIME_LIMIT,
-    async ($, on) => {
-      const session = await startSession($, on)
-      await askWhichDatabase($)
-      resumeAnother(session, SECOND_SESSION)
-      await callSkillTool($, QUESTION_SKILL)
-
-      expect(await listQuestions($)).toContain('Which database?')
-      expect((await askAboutFriday($)).deny).toBeUndefined()
-      expect((await $.tool.call({ tool: WITHDRAW_TOOL, number: 1 })).deny).toBeDefined()
-      expect((await $.tool.call({ tool: WITHDRAW_TOOL, number: 2 })).deny).toBeUndefined()
-    },
-  )
-
-  test(
-    'a session that /clear switched to does not use the answers given in the session before',
-    NO_TIME_LIMIT,
-    async ($, on) => {
-      const session = await startSession($, on)
-      await askWhichDatabase($)
-      session.id = SECOND_SESSION
-      await callSkillTool($, QUESTION_SKILL)
-      await startTurn($)
-      await answerByCommand($, '1 sqlite')
-
-      expect((await readFile($)).context).toBeUndefined()
-      expect((await askAboutFriday($)).deny).toBeUndefined()
-      expect((await $.tool.call({ tool: WITHDRAW_TOOL, number: 2 })).deny).toBeUndefined()
-    },
-  )
-
-  test(
-    'the first prompt typed after /resume switched back carries the answers given meanwhile',
-    NO_TIME_LIMIT,
-    async ($, on) => {
-      const session = await startSession($, on)
-      await askWhichDatabase($)
-      resumeAnother(session, SECOND_SESSION)
-      await answerByCommand($, '1 sqlite')
-      resumeAnother(session, FIRST_SESSION)
-      await typePrompt($, 'go on')
-
-      expect(session.prompts).toHaveLength(1)
-      expect(session.prompts[0]?.context?.join('\n')).toContain('sqlite')
-    },
-  )
-
-  test(
-    'the band and the pane of a session that /resume switched to answer as that session',
-    NO_TIME_LIMIT,
-    async ($, on) => {
-      const session = await startSession($, on)
-      await askWhichDatabase($)
-      resumeAnother(session, SECOND_SESSION)
-      const band = await mountBand($)
-      await band.press({ key: 'answer' })
-      const pane = await mountPane($, 'terminal')
-      await pane.input({ key: 'answer-1', text: 'sqlite' })
-
-      expect(session.panes).toEqual([PANE])
-      expect(session.toasts).toEqual([])
-      expect(await listQuestions($)).toContain('Answer: sqlite')
-    },
-  )
-
-  test(
-    'a session that /clear switched to after a move into a worktree uses the project before',
-    NO_TIME_LIMIT,
-    async ($, on) => {
-      const session = await startSession($, on)
-      await askWhichDatabase($)
-      session.root = WORKTREE
-      session.id = SECOND_SESSION
-
-      expect(await listQuestions($)).toContain('#1: Which database?')
-    },
-  )
-
-  test(
-    'a session that /resume switched to after a move into a worktree with the scope dropped ' +
-      'asks in the project of the worktree',
-    NO_TIME_LIMIT,
-    async ($, on) => {
-      const session = await startSession($, on)
-      await askWhichDatabase($)
-      session.root = WORKTREE
-      resumeAnother(session, SECOND_SESSION)
-      await callSkillTool($, QUESTION_SKILL)
-      await askAboutFriday($)
-      const worktreeKeys = storeKeyOf(await projectDigestOf(WORKTREE), '')
-
-      expect(await listQuestions($)).not.toContain('Which database?')
-      expect([...session.store.keys()].filter(key => key.startsWith(worktreeKeys))).toHaveLength(1)
-    },
-  )
-
-  test(
-    'a scope that cannot be set makes the tools fail with the reason, which the debug log shows too',
-    NO_TIME_LIMIT,
-    async ($, on) => {
-      const session = await startSession($, on)
-      resumeAnother(session, SECOND_SESSION)
-      const refusal = 'the project root is unknown'
-      session.rootRefusal = refusal
+      const refusal = 'the store file is not readable'
+      session.keysRefusal = refusal
 
       expect((await askWhichDatabase($)).deny).toContain(refusal)
       expect((await $.tool.call({ tool: LIST_TOOL })).deny).toContain(refusal)
@@ -682,7 +265,7 @@ describe('asking without waiting', () => {
     'a withdrawn question is closed for the user and listed as withdrawn',
     NO_TIME_LIMIT,
     async ($, on) => {
-      const session = await startSession($, on)
+      await startSession($, on)
       await askWhichDatabase($)
       await askAboutFriday($)
 
@@ -693,10 +276,6 @@ describe('asking without waiting', () => {
       expect(await listQuestions($)).toMatch(/Withdrawn questions:\n#1: Which database\?/)
       const band = await mountBand($)
       expect(await band.find({ type: 'Text', text: /^1 open question/ })).toBeDefined()
-      session.id = SECOND_SESSION
-      await startAgain($)
-      expect((await $.tool.call({ tool: WITHDRAW_TOOL, number: 2 })).deny).toBeDefined()
-      expect(await listQuestions($)).toMatch(/Open questions:\n#2: Ship on Friday\?/)
     },
   )
 
@@ -706,7 +285,7 @@ describe('asking without waiting', () => {
     async ($, on) => {
       const session = await startSession($, on)
       await askWhichDatabase($)
-      const questionPrefix = storeKeyOf(await projectDigestOf(ROOT), '')
+      const questionPrefix = storeKeyOf(session.id, '')
       const questionKey = [...session.store.keys()].find(key => key.startsWith(questionPrefix))
       const answerKey = `answers:${questionKey?.slice('questions:'.length)}:given-elsewhere`
       session.beforeNextWrite = () =>
@@ -722,12 +301,10 @@ describe('asking without waiting', () => {
     NO_TIME_LIMIT,
     async ($, on) => {
       const session = await startSession($, on)
-      const digest = await projectDigestOf(ROOT)
       session.beforeNextWrite = () =>
-        session.store.set(storeKeyOf(digest, 'asked-elsewhere'), {
-          id: 'asked-elsewhere',
+        session.store.set(storeKeyOf(session.id, 'asked-in-parallel'), {
+          id: 'asked-in-parallel',
           number: 1,
-          sessionId: SECOND_SESSION,
           text: 'Keep the old API?',
           choices: [],
           askedAt: 900,
@@ -747,7 +324,7 @@ describe('asking without waiting', () => {
     await session.clock.advance(60_000)
 
     expect((await asking).deny).toBeUndefined()
-    expect(await questionCountOf(session)).toBe(1)
+    expect(questionCountOf(session)).toBe(1)
     expect(session.toasts).toEqual([])
   })
 
@@ -756,7 +333,7 @@ describe('asking without waiting', () => {
     session.refusedWrites.push('the store is over 4 MiB')
 
     expect((await askWhichDatabase($)).deny).toContain('the store is over 4 MiB')
-    expect(await questionCountOf(session)).toBe(0)
+    expect(questionCountOf(session)).toBe(0)
     expect(session.chatLines).toEqual([])
   })
 
@@ -781,7 +358,7 @@ describe('asking without waiting', () => {
     'a store entry of another shape fails the check and is left unchanged',
     NO_TIME_LIMIT,
     async ($, on) => {
-      const key = storeKeyOf(await projectDigestOf(ROOT), 'damaged')
+      const key = storeKeyOf(FIRST_SESSION, 'damaged')
       const session = await startSession($, on, {
         stored: new Map([[key, { questions: 'not a list' }]]),
       })
@@ -789,19 +366,25 @@ describe('asking without waiting', () => {
       expect((await askWhichDatabase($)).deny).toContain(key)
       expect((await $.tool.call({ tool: LIST_TOOL })).deny).toContain(key)
       expect(session.store.get(key)).toEqual({ questions: 'not a list' })
-      expect(await questionCountOf(session)).toBe(1)
+      expect(questionCountOf(session)).toBe(1)
     },
   )
 
   test(
-    'a session without a person at the prompt is given none of the tools',
+    'a session without a person at the prompt does not get the tools and does not read any ' +
+      'question',
     NO_TIME_LIMIT,
     async ($, on) => {
-      const session = await startSession($, on, { isInteractive: false })
+      const key = storeKeyOf(FIRST_SESSION, 'damaged')
+      const session = await startSession($, on, {
+        stored: new Map([[key, { questions: 'not a list' }]]),
+        isInteractive: false,
+      })
 
       expect(session.registered).toEqual([])
+      expect(session.toasts).toEqual([])
       expect((await askWhichDatabase($)).deny).toBeDefined()
-      expect(await questionCountOf(session)).toBe(0)
+      expect(questionCountOf(session)).toBe(1)
     },
   )
 })
@@ -818,7 +401,7 @@ describe('asking with the question skill in context', () => {
       session.context = []
 
       expect((await askWhichDatabase($)).deny).toBeDefined()
-      expect(await questionCountOf(session)).toBe(0)
+      expect(questionCountOf(session)).toBe(0)
       expect(session.chatLines).toEqual([])
     },
   )
@@ -851,7 +434,7 @@ describe('asking with the question skill in context', () => {
         session.context = context()
 
         expect((await askWhichDatabase($)).deny).toBeDefined()
-        expect(await questionCountOf(session)).toBe(0)
+        expect(questionCountOf(session)).toBe(0)
       },
     )
   }
@@ -864,7 +447,7 @@ describe('asking with the question skill in context', () => {
       session.context = skillLoad(` /${QUESTION_SKILL} `)
 
       expect((await askWhichDatabase($)).deny).toBeUndefined()
-      expect(await questionCountOf(session)).toBe(1)
+      expect(questionCountOf(session)).toBe(1)
     },
   )
 
@@ -884,7 +467,7 @@ describe('asking with the question skill in context', () => {
           tokensAfterLoad: QUESTION_SKILL_MAX_TOKENS_AFTER_LOAD + 1,
         }),
       )
-      expect(await questionCountOf(session)).toBe(1)
+      expect(questionCountOf(session)).toBe(1)
     },
   )
 
@@ -897,7 +480,7 @@ describe('asking with the question skill in context', () => {
       forgetQuestionSkillLoad(session)
 
       expect((await askWhichDatabase($)).deny).toBe(NOT_RECORDED)
-      expect(await questionCountOf(session)).toBe(0)
+      expect(questionCountOf(session)).toBe(0)
     },
   )
 
@@ -921,7 +504,7 @@ describe('asking with the question skill in context', () => {
       await callSkillTool($, `${PLUGIN}:writing-style`)
 
       expect((await askAboutFriday($)).deny).toBe(NOT_RECORDED)
-      expect(await questionCountOf(session)).toBe(0)
+      expect(questionCountOf(session)).toBe(0)
     },
   )
 
@@ -934,7 +517,7 @@ describe('asking with the question skill in context', () => {
       await callSkillTool($, ` /${QUESTION_SKILL}`)
 
       expect((await askWhichDatabase($)).deny).toBeUndefined()
-      expect(await questionCountOf(session)).toBe(1)
+      expect(questionCountOf(session)).toBe(1)
     },
   )
 
@@ -949,7 +532,7 @@ describe('asking with the question skill in context', () => {
       session.contextTokens = TOKENS_AT_START
 
       expect((await askWhichDatabase($)).deny).toBe(NOT_RECORDED)
-      expect(await questionCountOf(session)).toBe(0)
+      expect(questionCountOf(session)).toBe(0)
     },
   )
 
@@ -963,7 +546,7 @@ describe('asking with the question skill in context', () => {
       expect((await askWhichDatabase($)).deny).toBe(
         describeQuestionSkillDenial({ state: QuestionSkillLoadState.NoContextSize }),
       )
-      expect(await questionCountOf(session)).toBe(0)
+      expect(questionCountOf(session)).toBe(0)
     },
   )
 
@@ -975,7 +558,7 @@ describe('asking with the question skill in context', () => {
       session.contextTokens = TOKENS_AT_START - 1
 
       expect((await askWhichDatabase($)).deny).toBe(NOT_RECORDED)
-      expect(await questionCountOf(session)).toBe(0)
+      expect(questionCountOf(session)).toBe(0)
     },
   )
 
@@ -991,7 +574,7 @@ describe('asking with the question skill in context', () => {
         expect((await askWhichDatabase($)).deny).toContain(key)
         expect(session.store.get(key)).toEqual(damaged)
       }
-      expect(await questionCountOf(session)).toBe(0)
+      expect(questionCountOf(session)).toBe(0)
     },
   )
 
@@ -1037,7 +620,7 @@ describe('asking with the question skill in context', () => {
       session.context = [COMPACTION_SUMMARY]
 
       expect((await askAboutFriday($)).deny).toBeDefined()
-      expect(await questionCountOf(session)).toBe(1)
+      expect(questionCountOf(session)).toBe(1)
     },
   )
 
@@ -1049,7 +632,7 @@ describe('asking with the question skill in context', () => {
       session.context = []
 
       expect((await askAboutFriday($, 'agent-1')).deny).toBeUndefined()
-      expect(await questionCountOf(session)).toBe(1)
+      expect(questionCountOf(session)).toBe(1)
     },
   )
 })
@@ -1059,16 +642,16 @@ describe('the hints together with the answers to the questions', () => {
   const HINT_REFUSAL = 'The state of the plugin is not readable'
 
   test(
-    'a typed prompt contains the hint and the answers that wait, both once',
+    'a prompt typed during a turn contains the hint and the answers that wait, both once',
     NO_TIME_LIMIT,
     async ($, on) => {
       const session = await startSession($, on)
       await askWhichDatabase($)
-      resumeAnother(session, SECOND_SESSION)
-      await answerByCommand($, '1 sqlite')
-      resumeAnother(session, FIRST_SESSION)
+      await startTurn($)
       await endTurn($, { answer: WAITING })
       await session.clock.settle()
+      await startTurn($)
+      await answerByCommand($, '1 sqlite')
       await typePrompt($, 'go on')
       await typePrompt($, 'go on')
 

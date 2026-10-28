@@ -6,14 +6,15 @@ export type Answer = {
   isDelivered: boolean
 }
 
-/** A question the model put to the user, stored until the user answers it. */
+/**
+ * A question the model put to the user, stored under the session that asked it until the user
+ * answers it. Only that session shows it, stores its answer and delivers that answer.
+ */
 export type Question = {
   /** The part of the store key that names the question, unique across every session. */
   id: string
-  /** The number the user and the model name the question by, unique in its project. */
+  /** The number the user and the model name the question by, unique in its session. */
   number: number
-  /** The session that asked the question, the only one its answer is delivered to. */
-  sessionId: string
   text: string
   /** The answers the user can pick from; empty for a question answered in words alone. */
   choices: readonly string[]
@@ -23,14 +24,10 @@ export type Question = {
   withdrawnAt?: number
 }
 
-/**
- * The session and the project of its questions, fixed at the first use of the questions in the
- * session. A session that /resume or /clear switched to takes the project of the scope before.
- */
-export type SessionScope = {
+/** The questions of a session, as the session last read or wrote them. */
+export type SessionQuestions = {
   sessionId: string
-  /** The digest of the project root that the store keys of the project begin with. */
-  project: string
+  questions: readonly Question[]
 }
 
 /** The hints due for the next prompt of a session. */
@@ -49,12 +46,11 @@ declare module 'claude-code' {
        */
       isTurnRunning: boolean
       /**
-       * The scope of the session that last used the questions; null before any use and in a
-       * session without a person at the prompt.
+       * The questions of the session that last read or wrote them, with the id of that session,
+       * since the state may outlive a switch to another session by /clear or /resume; null before
+       * any session read them and in a session without a person at the prompt.
        */
-      session: SessionScope | null
-      /** The questions of the project, as this session last read or wrote them. */
-      questions: readonly Question[]
+      sessionQuestions: SessionQuestions | null
       /** The ids of the questions whose answers this session is delivering right now. */
       deliveringAnswers: readonly string[]
       /**
