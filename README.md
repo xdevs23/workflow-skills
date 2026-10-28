@@ -30,7 +30,12 @@ answer given during a turn you interrupted is sent with your next message.
 When a turn of the main conversation ends on a message in which Claude waits for your answer,
 with a phrase such as "still open" or "waiting for your answer", the next message you or a
 scheduled check send to Claude contains a reminder to check first whether rules, instructions or
-older transcripts already contain the answer to the question. You do not see the reminder.
+older transcripts already contain the answer to the question. When the message reports work as
+blocked or idle, with a phrase such as "still blocked", "nothing has changed" or "no workflows are
+running", the next message contains a reminder to pick up independent work, and when nothing can
+start, to split the blocked units and start the parts that do not depend on the blocker. When a
+message has phrases of both kinds, the next message contains both reminders, each once. You do
+not see the reminders.
 
 ## Install
 

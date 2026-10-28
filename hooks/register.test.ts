@@ -19,7 +19,7 @@ import {
 } from './questionSkill'
 import { projectDigestOf, questionSkillLoadKeyOf, storeKeyOf } from './questionStore'
 import { NO_TIME_LIMIT, TURN, endTurn, recordPrompts, typePrompt } from './testSupport'
-import { NUDGE } from './waitingNudge'
+import { WAITING_HINT } from './waitingHint'
 
 const ROOT = '/work/project'
 const WORKTREE = '/work/project/.worktrees/feature'
@@ -1054,12 +1054,12 @@ describe('asking with the question skill in context', () => {
   )
 })
 
-describe('the nudge together with the answers to the questions', () => {
+describe('the hints together with the answers to the questions', () => {
   const WAITING = 'Your question about the database is still open.'
-  const NUDGE_REFUSAL = 'The state of the plugin is not readable'
+  const HINT_REFUSAL = 'The state of the plugin is not readable'
 
   test(
-    'a typed prompt receives the nudge and the answers that wait, both once',
+    'a typed prompt contains the hint and the answers that wait, both once',
     NO_TIME_LIMIT,
     async ($, on) => {
       const session = await startSession($, on)
@@ -1074,18 +1074,18 @@ describe('the nudge together with the answers to the questions', () => {
 
       expect(session.prompts).toHaveLength(2)
       expect(session.prompts[0]?.context).toHaveLength(2)
-      expect(session.prompts[0]?.context?.[0]).toBe(NUDGE)
+      expect(session.prompts[0]?.context?.[0]).toBe(WAITING_HINT.text)
       expect(session.prompts[0]?.context?.[1]).toContain('sqlite')
       expect(session.prompts[1]?.context).toBeUndefined()
     },
   )
 
   test(
-    'a nudge that cannot be read leaves the answers and the next prompt going out without it',
+    'hints that cannot be read leave the answers and the next prompt going out without them',
     NO_TIME_LIMIT,
     async ($, on) => {
-      on('state.get', { plugin: PLUGIN, key: 'nudgeDueInSession' }, () => ({
-        deny: NUDGE_REFUSAL,
+      on('state.get', { plugin: PLUGIN, key: 'dueHints' }, () => ({
+        deny: HINT_REFUSAL,
       }))
       const session = await startSession($, on)
       await askWhichDatabase($)
@@ -1098,7 +1098,7 @@ describe('the nudge together with the answers to the questions', () => {
       expect(session.prompts).toHaveLength(2)
       expect(session.prompts[0]?.text).toContain('sqlite')
       expect(session.prompts[1]?.context).toBeUndefined()
-      expect(session.logs.filter(line => line.includes(NUDGE_REFUSAL))).toHaveLength(2)
+      expect(session.logs.filter(line => line.includes(HINT_REFUSAL))).toHaveLength(2)
     },
   )
 })

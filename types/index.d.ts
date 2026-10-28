@@ -33,6 +33,13 @@ export type SessionScope = {
   project: string
 }
 
+/** The hints due for the next prompt of a session. */
+export type DueHints = {
+  sessionId: string
+  /** The ids of the kinds due, each once. */
+  dueKindIds: readonly string[]
+}
+
 declare module 'claude-code' {
   interface PluginState {
     'workflow-skills': {
@@ -51,11 +58,11 @@ declare module 'claude-code' {
       /** The ids of the questions whose answers this session is delivering right now. */
       deliveringAnswers: readonly string[]
       /**
-       * The id of the session whose last turn of the main conversation ended on a message that
-       * waits for an answer from the user, and null otherwise. The next prompt of that session
-       * receives the reminder to look for the answer first, and sets it back to null.
+       * The hints due for the session whose last turn of the main conversation ended on a
+       * message with a phrase of at least one kind, and null otherwise. The next prompt of that
+       * session contains the hints, and this is set back to null.
        */
-      nudgeDueInSession: string | null
+      dueHints: DueHints | null
     }
   }
 }

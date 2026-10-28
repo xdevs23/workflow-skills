@@ -1,5 +1,6 @@
 import type { Register } from 'claude-code'
 
+import { setDueHintsFromAnswer, withDueHints } from './hints'
 import { ANSWER_COMMAND, ASK_TOOL, LIST_TOOL, PANE, SKILL_TOOL, WITHDRAW_TOOL } from './names'
 import {
   addAnswersToToolResult,
@@ -16,7 +17,6 @@ import {
   withdrawQuestion,
 } from './questionHooks'
 import { drawQuestionBand, drawQuestionPane } from './questionScreens'
-import { setOrClearNudgeFromAnswer, withNudge } from './waitingNudge'
 
 export const register: Register = on => {
   on('session.start', startQuestions)
@@ -26,13 +26,13 @@ export const register: Register = on => {
   on('tool.call', { tool: ASK_TOOL }, askQuestion).catch(denyHookFailure)
   on('tool.call', { tool: LIST_TOOL }, listQuestions).catch(denyHookFailure)
   on('tool.call', { tool: WITHDRAW_TOOL }, withdrawQuestion).catch(denyHookFailure)
-  on('prompt.submit', async ($, e, next) => submitWithAnswers($, await withNudge($, e), next))
+  on('prompt.submit', async ($, e, next) => submitWithAnswers($, await withDueHints($, e), next))
   on('turn.start', markTurnRunning)
-  // The question hook runs first, so a failure of the nudge cannot keep it from marking the turn
+  // The question hook runs first, so a failure of the hints cannot keep it from marking the turn
   // as ended or from sending the answers that wait.
   on('turn.complete', async ($, e, next) => {
     const completed = await completeQuestionTurn($, e, next)
-    await setOrClearNudgeFromAnswer($, e)
+    await setDueHintsFromAnswer($, e)
 
     return completed
   })
