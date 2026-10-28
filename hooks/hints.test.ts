@@ -41,6 +41,8 @@ describe('the phrases of a message that waits for an answer', () => {
     "Once you've answered, the unit starts.",
     'The rule needs your approval before tests are added.',
     'The lint question remains unanswered and is still pending.',
+    'I still have one open question from earlier, about the cache size.',
+    'The unit still has two open questions.',
   ]
   for (const message of waiting) {
     test(`${JSON.stringify(message)} waits for an answer`, () => {
@@ -55,6 +57,8 @@ describe('the phrases of a message that waits for an answer', () => {
     'I will wait for you to merge it.',
     'The upload is waiting on youtube.',
     'Thanks for your answer on the cache. The build is still running.',
+    'The band shows 2 open questions.',
+    'I still have the logs. The pane lists open questions.',
   ]
   for (const message of notWaiting) {
     test(`${JSON.stringify(message)} does not wait for an answer`, () => {
