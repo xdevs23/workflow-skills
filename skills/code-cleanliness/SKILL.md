@@ -1,13 +1,10 @@
 ---
 name: code-cleanliness
-description: Review change for readability and hygiene at surface of code.
+description: Review code cleanliness, readability, hygiene
 ---
-
-# Code cleanliness
 
 Review change for code cleanliness only: readability and hygiene.
 
-- Leave structural concerns to other reviewers. Still name rule violation behind a comment.
 - Report name that fails naming test: with docstring hidden, name and a line using it do not show
   what value contains or what code does. Report in particular:
   - type named with generic noun, e.g. `Entry` or `Item`, where module containing it has more
@@ -17,6 +14,7 @@ Review change for code cleanliness only: readability and hygiene.
     registries (`ShopServices`);
   - function named after role or noun instead of what it does, e.g. `owners` for function that
     finds carts still referencing a product (`findCartsReferencingProduct`).
+  - name on its own not describing in natural way, as appears from outside
 - Report library call whose flags decide shape of its result, e.g. serializer called with several
   flags, written at place that uses the result, where a function or method named for that result
   belongs, in module that owns the type.

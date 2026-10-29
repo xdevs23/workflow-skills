@@ -14,6 +14,7 @@ import {
 import type { AnsweredQuestion } from './questions'
 
 /** Where the engine writes the store file of the plugin, named in the texts of its errors. */
+// TODO: the folder can be overridden so it could be somewhere else
 const STORE_FOLDER = '~/.claude/plugins/store/'
 
 /**

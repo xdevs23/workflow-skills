@@ -15,6 +15,7 @@ export const BLOCKED_HINT: HintKind = {
     /\bnothing\s+new\s+came\s+in\b/i,
     /\beverything\s+left\s+is\s+blocked\b/i,
     /\beverything\s+left\s+waits\s+on\s+you(?:r)?\b/i,
+    /\bwaiting\s+(for|on)\s+you/i,
   ],
   text:
     'Check if any independent work can be picked up, like IN PROGRESS or QUEUED todos. If ' +

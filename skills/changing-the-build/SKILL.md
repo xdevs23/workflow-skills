@@ -1,9 +1,7 @@
 ---
 name: changing-the-build
-description: Add, update or choose dependency, or change how project builds, configures or releases its artifacts.
+description: Change how project builds, configures or releases artifacts.
 ---
-
-# Changing the build
 
 - Build critical paths, e.g. boot, init, deployment, on robust declarative mechanisms. Never on
   fragile shell scripts.

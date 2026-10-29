@@ -1,9 +1,7 @@
 ---
 name: abstraction-quality
-description: Review whether abstractions in change are justified.
+description: Review whether abstractions in change are justified
 ---
-
-# Abstraction quality
 
 Review change for one thing only: whether every abstraction in it is justified by how code uses
 it.

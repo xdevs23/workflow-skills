@@ -1,9 +1,7 @@
 ---
 name: autonomous-implementation
-description: Implement change autonomously, only when user has asked for it, for one task, for session until revoked or for timeframe, e.g. for experiment or novel approach whose architecture is not decided yet.
+description: Implement change autonomously, only when user has asked for it, for one task, for session until revoked or for timeframe
 ---
-
-# Autonomous implementation
 
 ## The grant
 
@@ -131,6 +129,8 @@ description: Implement change autonomously, only when user has asked for it, for
   its licence only by licence information in package set. Advisory check applies to what ships.
 
 ## Nix and builds
+
+Only apply when Nix installed.
 
 - Use Nix, such as `nix run` and `nix shell`, wherever component, tool or program is not installed.
 - Provide `flake.nix` in every project.

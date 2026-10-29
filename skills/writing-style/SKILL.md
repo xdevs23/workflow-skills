@@ -6,28 +6,28 @@ description: Writing text read by a person, such as code comments, documents, co
 ## What to say
 
 - Make main point clear on first reading. Write for person who knows project but did not make
-  change and did not follow work. Do not explain whole project for someone outside it.
+  change and did not follow work. Do not explain whole project for someone outside it
 - Open with change, problem or question in terms of behavior reader can observe. Name what
-  changes for user, caller or person reviewing work before naming modules and mechanisms.
+  changes for user, caller or person reviewing work before naming modules and mechanisms
 - Name central fact directly. State drawback, risk or decision needed as plainly as benefit. Do
-  not bury it under background, soften it into abstraction or make reader infer it from details.
+  not bury it under background, soften it into abstraction or make reader infer it from details
 - State result before cause. Give mechanism only where reader needs it to understand result,
-  review change or act. Do not replace explanation of change with tour of its internals.
+  review change or act. Do not replace explanation of change with tour of its internals
 - Say what reader can do now, what behaves differently or what needs decision. Do not justify
-  change in place of explaining it.
+  change in place of explaining it
 - Keep concrete details that affect behavior, compatibility, risk or required action. Cut
-  inventory of classes, fields and branches that only paraphrases diff.
+  inventory of classes, fields and branches that only paraphrases diff
 - Give each part of change its own bullet or short section. Open with effect of that part, then
   add detail needed. Use heading that names result or behavior, e.g. "Large exports start at
-  once", in place of "Implementation details".
-- Include detail once. Do not restate same idea as benefit, design explanation and conclusion.
+  once", in place of "Implementation details"
+- Include detail once. Do not restate same idea as benefit, design explanation and conclusion
 - Use technical term already known to reader where it is precise. Explain unfamiliar term in one
   short phrase when reader needs it, e.g. "a cursor, a saved position in query results". Return
-  to main point after definition. Do not expand definition into explanation of whole subsystem.
+  to main point after definition. Do not expand definition into explanation of whole subsystem
 - Make examples show behavior with concrete action and result. Do not use abstract description of
-  data flow when simple example would make change clear.
+  data flow when simple example would make change clear
 - Write text that needs action around that action. Name what reader must do, where and when.
-  Leave background that cannot change action out of instruction.
+  Leave background that cannot change action out of instruction
 
 Instead of
 

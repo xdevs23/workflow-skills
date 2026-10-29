@@ -1,9 +1,7 @@
 ---
 name: babysit-pr
-description: Look after submitted pull request until closed or merged.
+description: Whenever a PR is created or needs watching
 ---
-
-# Babysit a pull request
 
 ## Start and watch
 
