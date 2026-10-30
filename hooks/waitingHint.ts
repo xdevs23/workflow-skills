@@ -14,7 +14,7 @@ export const WAITING_HINT: HintKind = {
     /\b(?:once|until)\s+you\s+answer\b/i,
     /\bonce\s+you(?:['’]ve|\s+have)\s+answered\b/i,
     /\bneeds\s+your\s+(?:answer|approval|go)\b/i,
-    /\bstill\s+(?:have|has)\s+[^.!?]*\bopen\s+questions?\b/i,
+    /\bstill\s+(?:have|has)\s+(?:(?:an?|one|two|three|four|five|several|some|a\s+few|[1-9]\d*)\s+)?(?:more\s+)?open\s+questions?\b/i,
   ],
   text:
     "If you're waiting for an answer from the user, ensure you have first researched whether the " +

@@ -43,6 +43,8 @@ describe('the phrases of a message that waits for an answer', () => {
     'The lint question remains unanswered and is still pending.',
     'I still have one open question from earlier, about the cache size.',
     'The unit still has two open questions.',
+    'I still have open questions about the cache.',
+    'The unit still has 3 more open questions.',
   ]
   for (const message of waiting) {
     test(`${JSON.stringify(message)} waits for an answer`, () => {
@@ -59,6 +61,12 @@ describe('the phrases of a message that waits for an answer', () => {
     'Thanks for your answer on the cache. The build is still running.',
     'The band shows 2 open questions.',
     'I still have the logs. The pane lists open questions.',
+    'I still have no open questions.',
+    'The unit still has zero open questions.',
+    'I still have 0 open questions, so I continue.',
+    'I still have the logs, and the pane lists open questions.',
+    'I still have the logs\n- The pane lists open questions',
+    'Done. I still have to close the open questions in TODO.md myself.',
   ]
   for (const message of notWaiting) {
     test(`${JSON.stringify(message)} does not wait for an answer`, () => {
