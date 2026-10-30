@@ -91,6 +91,10 @@ describe('the phrases of a message that reports blocked or idle work', () => {
     'Nothing new came in from the mirror.',
     'Everything left is blocked by the mirror.',
     'Everything left waits on your review of the schema.',
+    "Packaging passed. What's left for you:",
+    'What’s left for you: the review of the schema.',
+    'What is left for you is the review of the schema.',
+    'The rollout is still waiting on your decision.',
   ]
   for (const message of blocked) {
     test(`${JSON.stringify(message)} reports blocked or idle work`, () => {
@@ -99,6 +103,8 @@ describe('the phrases of a message that reports blocked or idle work', () => {
   }
 
   const notBlocked = [
+    'What’s left for you: nothing.',
+    "What's left for you — none, everything is merged.",
     "I can't find the dump, so I rebuilt it from the schema.",
     'The schema needs your review.',
     'Build 71 made no changes to the cache.',
@@ -116,6 +122,8 @@ describe('the phrases of a message that reports blocked or idle work', () => {
     'The test hung because the worker blocked on the channel.',
     'Nothing is running on port 8080, so I started the server.',
     'Rebased; nothing has changed in the diff.',
+    'What is left for your team is the review.',
+    'I asked what was left for you to review.',
   ]
   for (const message of notBlocked) {
     test(`${JSON.stringify(message)} does not report blocked or idle work`, () => {
