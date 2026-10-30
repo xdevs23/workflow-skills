@@ -15,7 +15,7 @@ export const BLOCKED_HINT: HintKind = {
     /\bnothing\s+new\s+came\s+in\b/i,
     /\beverything\s+left\s+is\s+blocked\b/i,
     /\beverything\s+left\s+waits\s+on\s+you(?:r)?\b/i,
-    /\bwaiting\s+(for|on)\s+you/i,
+    /\bwaiting\s+(?:for|on)\s+you(?:r)?\b/i,
     /\bwhat(?:['’]s|\s+is)\s+left\s+for\s+you\b(?![\s:,—–-]*(?:nothing|none)\b)/i,
   ],
   text:

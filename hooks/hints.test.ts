@@ -95,6 +95,7 @@ describe('the phrases of a message that reports blocked or idle work', () => {
     'What’s left for you: the review of the schema.',
     'What is left for you is the review of the schema.',
     'The rollout is still waiting on your decision.',
+    'The release is waiting for you.',
   ]
   for (const message of blocked) {
     test(`${JSON.stringify(message)} reports blocked or idle work`, () => {
@@ -124,6 +125,7 @@ describe('the phrases of a message that reports blocked or idle work', () => {
     'Rebased; nothing has changed in the diff.',
     'What is left for your team is the review.',
     'I asked what was left for you to review.',
+    'The upload is waiting on youtube.',
   ]
   for (const message of notBlocked) {
     test(`${JSON.stringify(message)} does not report blocked or idle work`, () => {
