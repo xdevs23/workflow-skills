@@ -1,6 +1,7 @@
 import { describe, expect, test } from 'claude-code/testing'
 import type { ClassicResultOf, On } from 'claude-code'
 
+import { ANNOUNCED_WORK_HINT } from './announcedWorkHint'
 import { BLOCKED_HINT } from './blockedHint'
 import { HINT_KINDS, kindsWithPhraseIn } from './hintKinds'
 import { NO_TIME_LIMIT, endTurn, startSession, stopTurn, typePrompt } from './testSupport'
@@ -160,6 +161,67 @@ describe('the phrases of a message that reports blocked or idle work', () => {
   }
 })
 
+describe('the phrases of a message that announces work while the turn ends', () => {
+  const announcing = [
+    "Build 61 passed.\n\nNext\n- While the build runs, I'm working out why the cache is slow.",
+    '**Next**\n- Fix the flake.',
+    '## Next steps\n1. Rebase onto main.',
+    'Next up:\n- the parser.',
+    'Next: rebase the branch.',
+    '**Next:** rebase the branch.',
+    '- **Next:** rebase the branch.',
+    '*Next*\n- Rebase the branch.',
+    'Up next\n- the parser.',
+    "## What's next\n- the parser.",
+    "Next, I'll rebase the branch onto main.",
+    'Build 61 passed. Next I will read the build log.',
+    "Next up, I'll rebase.",
+    "Now I'll rebase the branch.",
+    "I'll now rebase the branch.",
+    "I'm working on the flaky test.",
+    'While the build runs, I am looking into the slow cache.',
+    "I'm now investigating why the test hangs.",
+    'I’m currently tracing the failing request.',
+    "I'm also digging into the cache.",
+    "I'm reading the build log.",
+    "I'm checking the cache size.",
+    "I'm figuring out the slow step.",
+    "I'm analysing the profile.",
+    "I'm fixing the flake.",
+    "We're investigating the hang.",
+    'Let me look into the cache.',
+  ]
+  for (const message of announcing) {
+    test(`${JSON.stringify(message)} announces work`, () => {
+      expect(kindsWithPhraseIn(message)).toContain(ANNOUNCED_WORK_HINT)
+    })
+  }
+
+  const notAnnouncing = [
+    'The next build starts at noon.',
+    'Next week the cache moves to the new disk.',
+    'Next week: the cache moves to the new disk.',
+    'The fix is in the next commit.',
+    'The app is built with Next.js.',
+    'I read the build log and fixed the flake.',
+    'I checked the cache: it is warm.',
+    "I'm done with the parser.",
+    'The reviewer is checking the change.',
+    "I'm not looking into the cache any more.",
+    "If I'm reading the log right, the cache is cold.",
+    "I'm reading your message as a request to drop the flag.",
+    "I'm working on the assumption that main is green.",
+    "I'm checking in on the cache.",
+    "Whatever comes next, I'll wait for the build.",
+    'Let me know if the cache should move.',
+  ]
+  for (const message of notAnnouncing) {
+    test(`${JSON.stringify(message)} does not announce work`, () => {
+      expect(kindsWithPhraseIn(message)).not.toContain(ANNOUNCED_WORK_HINT)
+    })
+  }
+})
+
 describe('the end of a turn on a message with a hint phrase', () => {
   /** Replaces the classic Stop hook of the engine beneath the plugin, so it returns `result`. */
   function stopBeneath(on: On, result: ClassicResultOf['classic.Stop'] = {}): void {
@@ -188,7 +250,33 @@ describe('the end of a turn on a message with a hint phrase', () => {
   )
 
   test(
-    'a message with phrases of both kinds is blocked with both hints',
+    'the first end on a message that announces work is blocked with the announced work hint',
+    NO_TIME_LIMIT,
+    async ($, on) => {
+      stopBeneath(on)
+      const message = "Next\n- While the build runs, I'm working out why the cache is slow."
+
+      expect((await stopTurn($, { message })).block).toBe(ANNOUNCED_WORK_HINT.text)
+    },
+  )
+
+  test(
+    'a message with phrases of every kind is blocked with every hint, in the order of the kinds',
+    NO_TIME_LIMIT,
+    async ($, on) => {
+      stopBeneath(on)
+      const stopped = await stopTurn($, {
+        message: 'Nothing has changed. Everything left waits on your review.\n\nNext\n- Rebase.',
+      })
+
+      expect(stopped.block).toBe(
+        `${WAITING_HINT.text}\n\n${BLOCKED_HINT.text}\n\n${ANNOUNCED_WORK_HINT.text}`,
+      )
+    },
+  )
+
+  test(
+    'a message with phrases of the waiting and the blocked kind is blocked with both hints',
     NO_TIME_LIMIT,
     async ($, on) => {
       stopBeneath(on)
