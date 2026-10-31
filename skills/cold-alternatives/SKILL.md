@@ -1,6 +1,6 @@
 ---
 name: cold-alternatives
-description: Review change for materially simpler shape.
+description: Review change for materially simpler shape
 ---
 
 # Simpler alternatives

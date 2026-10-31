@@ -1,6 +1,6 @@
 ---
 name: workflows
-description: Run workflow or start agent.
+description: Run workflow or start agent
 ---
 
 # Workflows

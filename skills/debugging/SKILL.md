@@ -1,6 +1,6 @@
 ---
 name: debugging
-description: Find and fix cause of bug, failing build, check or test, or limit hit during work.
+description: Find and fix cause of bug, failing build, check or test, or limit hit during work
 ---
 
 # Debugging

@@ -1,6 +1,6 @@
 ---
 name: report-plugin-issues
-description: Report problem with workflow-skills plugin itself, such as one of its skills, scripts, agent templates or tools failing, contradicting itself or blocking work.
+description: Report skill, script, agent template or tool of workflow-skills plugin that fails, contradicts itself or blocks work
 ---
 
 # Reporting issues and obstacles in the workflow-skills plugin

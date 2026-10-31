@@ -1,6 +1,6 @@
 ---
 name: writing-tests
-description: Write, change or delete tests, test doubles and fixtures.
+description: Write, change or delete tests, test doubles and fixtures
 ---
 
 # Writing tests

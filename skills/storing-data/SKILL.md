@@ -1,6 +1,6 @@
 ---
 name: storing-data
-description: Read or write data store, change its schema, migrate data, change where data is kept, or delete or wipe data.
+description: Read or write data store, change its schema, migrate data, change where data is kept, or delete or wipe data
 ---
 
 # Storing data

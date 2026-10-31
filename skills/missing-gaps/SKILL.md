@@ -1,6 +1,6 @@
 ---
 name: missing-gaps
-description: Review change for omissions in its code.
+description: Review change for omissions in its code
 ---
 
 # Missing gaps

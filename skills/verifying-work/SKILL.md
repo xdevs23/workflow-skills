@@ -1,6 +1,6 @@
 ---
 name: verifying-work
-description: Check that change works, run and operate what it changed, and report what is known about it.
+description: Check that change works, run and operate what it changed, and report what is known about it
 ---
 
 # Verifying work

@@ -1,6 +1,6 @@
 ---
 name: pull-request
-description: Open pull request, and write or update its description.
+description: Open PR, and write or update its description
 ---
 
 # Open a pull request

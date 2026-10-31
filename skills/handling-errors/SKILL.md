@@ -1,6 +1,6 @@
 ---
 name: handling-errors
-description: Write what system does when operation fails: error returned, retry, fallback, message shown to person or agent.
+description: Write what system does when operation fails: error returned, retries, fallbacks, messages shown to people or agents
 ---
 
 # Handling errors

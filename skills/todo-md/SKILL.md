@@ -1,6 +1,6 @@
 ---
 name: todo-md
-description: Track work of project. See what's in progress and what should be done next.
+description: Track work on project: what is in progress and what is next
 ---
 
 `TODO.md` is record of where project stands. Anyone picking up project, such as new session, new

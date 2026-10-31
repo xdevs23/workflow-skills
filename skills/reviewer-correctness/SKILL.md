@@ -1,6 +1,6 @@
 ---
 name: reviewer-correctness
-description: Review change for bugs, races, broken invariants and assertions checked at wrong granularity.
+description: Review change for bugs, races, broken invariants and assertions checked at wrong granularity
 ---
 
 # Correctness

@@ -1,6 +1,6 @@
 ---
 name: copywriting
-description: Write text shown to people on product screen or marketing page, e.g. onboarding, interface states, translations. Not for logs or code comments.
+description: Write user-facing text for product screens, marketing pages and translations. Not for logs or code comments
 ---
 
 # Copywriting: copy first, then implement

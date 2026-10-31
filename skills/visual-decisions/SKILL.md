@@ -1,6 +1,6 @@
 ---
 name: visual-decisions
-description: Draw page for user to look at and answer, e.g. draft of change, product decisions that need answer, plan or explanation of complex problem.
+description: Draw page for user to look at and answer: drafts, product decisions, plans and explanations
 ---
 
 # Visual decisions

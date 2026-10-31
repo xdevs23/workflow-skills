@@ -1,6 +1,6 @@
 ---
 name: design-drafts
-description: Draw several design drafts or designs for user to choose from.
+description: Draw several design drafts for user to choose from
 ---
 
 # Design drafts

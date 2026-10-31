@@ -1,6 +1,6 @@
 ---
 name: pr-comment-replies
-description: Write and post reply on pull request or issue. Load it before you post one.
+description: Write and post reply on PR or issue. Load before posting one
 ---
 
 # Replies on pull requests and issues

@@ -1,6 +1,6 @@
 ---
 name: designing-architecture
-description: Design or plan the shape of a change or system: modules, layers, interfaces, where data, state and decisions live, how much to build.
+description: Design or plan shape of change or system: modules, layers, interfaces, where data, state and decisions live, how much to build
 ---
 
 # Designing architecture

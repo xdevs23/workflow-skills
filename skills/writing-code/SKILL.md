@@ -1,6 +1,6 @@
 ---
 name: writing-code
-description: Write or change code in any language, including types, comments, names and strings.
+description: Write or change code in any language, including types, comments, names and strings
 ---
 
 # Writing code

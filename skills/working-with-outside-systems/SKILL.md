@@ -1,6 +1,6 @@
 ---
 name: working-with-outside-systems
-description: Work with system, service, law or text that belongs to someone else, or with limit set by it.
+description: Work with system, service, law or text that belongs to someone else, or with its limits
 ---
 
 # Working with outside systems

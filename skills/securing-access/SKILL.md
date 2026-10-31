@@ -1,6 +1,6 @@
 ---
 name: securing-access
-description: Write code that sets access given to caller, handles identity, consent or secret, or sets which data leaves system.
+description: Write code that grants access, handles identity, consent or secrets, or sets which data leaves system
 ---
 
 # Securing access

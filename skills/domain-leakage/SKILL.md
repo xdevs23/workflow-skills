@@ -1,6 +1,6 @@
 ---
 name: domain-leakage
-description: Review change for leaks between domain core and infrastructure around it.
+description: Review change for leaks between domain core and infrastructure
 ---
 
 # Domain leakage

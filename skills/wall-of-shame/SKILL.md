@@ -1,6 +1,6 @@
 ---
 name: wall-of-shame
-description: Record rule violation when user or you point it out, and when user voices frustration with your work or you overstep.
+description: Record rule violation when user or you point it out, or when user voices frustration or you overstep
 ---
 
 # The wall of shame

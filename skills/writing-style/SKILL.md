@@ -1,6 +1,6 @@
 ---
 name: writing-style
-description: Writing text read by a person, such as code comments, documents, commit messages and replies.
+description: Write text read by a person
 ---
 
 ## What to say

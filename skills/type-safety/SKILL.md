@@ -1,6 +1,6 @@
 ---
 name: type-safety
-description: Review change for strict typing.
+description: Review change for strict typing
 ---
 
 # Type safety
