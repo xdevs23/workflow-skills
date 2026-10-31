@@ -354,6 +354,31 @@ describe('asking without waiting', () => {
   })
 
   test(
+    'a statement without a question mark is refused as a question',
+    NO_TIME_LIMIT,
+    async ($, on) => {
+      const session = await startSession($, on)
+      const statement = 'The build waits until someone chooses a database.'
+
+      expect((await $.tool.call({ tool: ASK_TOOL, question: statement })).deny).toBeDefined()
+      expect(session.chatLines).toEqual([])
+    },
+  )
+
+  for (const question of [
+    'Postgres or SQLite? Both work.',
+    '? Postgres or SQLite',
+    'Postgres oder SQLite？',
+  ]) {
+    test(`"${question}" is asked`, NO_TIME_LIMIT, async ($, on) => {
+      const session = await startSession($, on)
+
+      expect((await $.tool.call({ tool: ASK_TOOL, question })).deny).toBeUndefined()
+      expect(session.chatLines).toHaveLength(1)
+    })
+  }
+
+  test(
     'a store entry of another shape fails the check and is left unchanged',
     NO_TIME_LIMIT,
     async ($, on) => {

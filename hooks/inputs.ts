@@ -3,9 +3,11 @@ import { isPositiveInteger } from './questions'
 
 /** A text with at least one character other than white space. */
 const NON_BLANK = /\S/
+/** The question mark of Latin, of Chinese and Japanese, and of Arabic script. */
+const QUESTION_MARK = /[?？؟]/
 const MIN_CHOICES = 2
 
-const QUESTION_RULE = 'a text that is not empty'
+const QUESTION_RULE = 'a text with a question mark'
 const CHOICES_RULE = `at least ${MIN_CHOICES} different texts that are not empty`
 
 export const ASK_SCHEMA = {
@@ -13,7 +15,7 @@ export const ASK_SCHEMA = {
   properties: {
     question: {
       type: 'string',
-      pattern: NON_BLANK.source,
+      pattern: QUESTION_MARK.source,
       description:
         `The question, as ${QUESTION_RULE}, complete enough to answer without this ` +
         'conversation.',
@@ -53,7 +55,7 @@ export const ASK_PROBLEMS: Record<AskProblem, string> = {
 /** Reads the input of the model to the asking tool, which arrives unchecked, into a typed model. */
 export function readAskInput(input: { readonly [argument: string]: unknown }): AskInput {
   const { question, choices } = input
-  if (typeof question !== 'string' || !NON_BLANK.test(question)) {
+  if (typeof question !== 'string' || !QUESTION_MARK.test(question)) {
     return { outcome: AskOutcome.QuestionInvalid }
   }
   if (choices === undefined) {
