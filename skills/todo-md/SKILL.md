@@ -59,8 +59,8 @@ Fresh clone does not contain it.
   directory with session transcripts of project for promptId or uuid, or read given line directly.
 - **`Builds on:`**: line with every entry that has to be built first. Write dependency between
   entries in this line and nowhere else.
-- When you report on several entries, show chains of `Builds on:` lines that concern them in
-  message.
+- When you report on several entries, give glance as `workflow-skills:glance` describes. Show
+  chains of `Builds on:` lines that concern them in message.
 
 ## One behavior to a unit
 
