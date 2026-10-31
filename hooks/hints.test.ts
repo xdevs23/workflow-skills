@@ -109,6 +109,43 @@ describe('the phrases of a message that waits for an answer', () => {
   }
 })
 
+describe('a hint phrase in quoted text', () => {
+  const quoting = [
+    'The phrase "still open" now needs a question in the same sentence.',
+    'The phrase “waiting for you” is on the list.',
+    'The table gains `My question about the cache is still open.` as a case.',
+    'The table gains this case:\n```ts\nMy question about the cache is still open.\n```',
+    'The table gains this case:\n~~~\nPackaging is blocked on the signing key.\n~~~',
+    'You wrote:\n> My question about the cache is still open.\nThe hint fired on it.',
+    'You wrote:\n  > Next: rebase onto main.\nThe hint fired on it.',
+    'The phrase "nothing has changed" counts for the blocked hint.',
+  ]
+  for (const message of quoting) {
+    test(`${JSON.stringify(message)} mentions the phrase without saying it`, () => {
+      expect(kindsWithPhraseIn(message)).toEqual([])
+    })
+  }
+
+  const saying = [
+    'My question about "cache size" is still open.',
+    'The 12" panel works. My question about the cache is still open, see "notes".',
+    "He said 'my question about the cache is still open' earlier.",
+    'The cache:\n```\nMy question about the cache is still open.',
+  ]
+  for (const message of saying) {
+    test(`${JSON.stringify(message)} says the phrase`, () => {
+      expect(kindsWithPhraseIn(message)).toContain(WAITING_HINT)
+    })
+  }
+
+  const joining = ['Nothing "new" has changed.', 'Packaging is `still` blocked on the key.']
+  for (const message of joining) {
+    test(`${JSON.stringify(message)} does not join the words around the quote`, () => {
+      expect(kindsWithPhraseIn(message)).toEqual([])
+    })
+  }
+})
+
 describe('the phrases of a message that reports blocked or idle work', () => {
   const blocked = [
     'The release of the parser is Still Blocked.',

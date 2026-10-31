@@ -5,7 +5,7 @@ import { kindsWithPhraseIn } from './hintKinds'
 
 /**
  * Sends the main conversation back to work once when its turn would end on a message with a phrase
- * of a kind of hint, with the texts of those kinds as the reason. The engine marks the next end of
+ * of a kind of hint outside quoted text, with the texts of those kinds as the reason. The engine marks the next end of
  * that turn as one that follows a block, and that end passes, so a turn that still finds nothing to
  * do can end. A block asked by a hook beneath comes first in the reason, and a stop of the session
  * asked by a hook beneath is returned unchanged.
