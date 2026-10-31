@@ -42,12 +42,12 @@ description: Draw page for user to look at: drafts, product decisions, plans and
   - Updated, in purple, for part that changed after last reply from user;
   - short bar with its value, for number needed by decision. Filled green where value fits, red
     where over limit.
-- Keep draft of a change within one regular browser window. When it does not fit or is too
-  complicated to read, split unit into sub-units as `workflow-skills:todo-md` describes. Never add
-  pages to draft.
-- Keep page of product decisions within one browser window where you can. When decisions need more
-  room, split them into separate pages. Draw next page once user replied to the one before. Never
-  draw them all at once.
+- Fit every page into viewport of 1920×960, except page at actual size of
+  `workflow-skills:design-drafts`.
+- Draft that does not fit or is too complicated to read: split unit into sub-units as
+  `workflow-skills:todo-md` describes. Never add pages to draft.
+- Product decisions that need more room: split them into separate pages. Draw next page once user
+  replied to the one before. Never draw them all at once.
 - Split page into numbered sections, each with title of at most 8 words.
 - Title each section showing After with outcome shown by its pictures, e.g. "Every open question
   survives a restart".
@@ -67,7 +67,8 @@ description: Draw page for user to look at: drafts, product decisions, plans and
 - Draw visible change as imitation of real screen, with its structure, labels and look. Where
   possible and cheap, make real screenshots or import real screen, so user sees how it actually
   looks.
-- Draw picture at real size of what it shows, with what surrounds it.
+- Draw picture at real size of what it shows, with what surrounds it. Scale it down only where page
+  would not fit viewport otherwise.
 - Draw what goes wrong at place in picture where it happens, in color of state to which it belongs.
 - Where decision depends on a number, show that number above each picture of decision as short bar
   named in legend.
@@ -109,8 +110,8 @@ description: Draw page for user to look at: drafts, product decisions, plans and
 - Give that agent, for every state drawn by it that has code, the repository and either full commit
   ID of that state or path of working tree with uncommitted changes. Tell it to read every file of
   that state at that version, since checkout in which it starts can contain a different version.
-- Render page in headless browser, look at screenshot before showing page. Page that only passed a
-  check of its markup has not been seen.
+- Render page in headless browser at 1920×960, take screenshot of full page and look at it before
+  showing page. Page that only passed a check of its markup has not been seen.
 - Open page for user. Where session is headless, or runs in harness that cannot open a file for
   user, show page the way harness allows, e.g. inline artifact, inline HTML or embedded screenshot.
 

@@ -49,7 +49,8 @@ Each entry is level-2 heading followed by four labelled paragraphs:
 - Append entry to file for day of violation in `wall-of-shame` directory inside Claude
   configuration directory. Name each file with day covered by it, ISO 8601 form.
 - Write in heading date and time of offending words, taken from transcript. User's timezone, ISO
-  8601 with its offset.
+  8601 with its offset. Convert timestamp of transcript line with
+  `TZ=<timezone of user> date -d '<timestamp>' -Iseconds`.
 - Name in heading project and exact model ID. Add note where role matters, e.g. root session,
   implementer or rule reader.
 - Copy words in **Said:** verbatim from transcript. Command or line of code counts as words.

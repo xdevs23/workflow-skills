@@ -43,9 +43,11 @@ Fresh clone does not contain it.
 <body: what it is, where it stands and what is owed>
 ```
 
+- Write every heading strictly in format `### #<number> - <title> - <STATE>`. Write nothing after
+  state marker.
 - **`### #<number> - <title>`**: number is id in tracker and never changes. Write in title what
   item *is*. Leave state to state marker. If project uses separate convention for ids, keep
-  internal numbering as it is and add project id on top, for example:
+  internal numbering as it is and add project id at start of title, for example:
   `#142 - GH #73 - Reaction emoji support - RECORDED`
   `#165 - ABC-210 - User type 'editor' - IN PROGRESS`
 - **`- <STATE>`**: state marker, in uppercase, after separator dash used by format.
@@ -137,7 +139,7 @@ Fresh clone does not contain it.
 
 # The states an entry can take
 
-State is fixed enum: either no marker or one of markers listed here, grouped by where item stands.
+State is fixed enum: one of markers listed here, grouped by where item stands.
 
 **Recorded**
 

@@ -12,6 +12,8 @@ description: Open PR, and write or update its description
 
 - Write description from this template into a file in project cache defined by
   `workflow-skills:local-cache`, e.g. `body.md`. Save pictures in same directory.
+- Fill `<model>` with every model that wrote commits of change. Model that opens pull request
+  counts only when it wrote commits.
 
 ```markdown
 > [!NOTE]

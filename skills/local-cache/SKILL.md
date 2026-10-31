@@ -14,7 +14,9 @@ description: Decide where to put file not meant for repository, what to remove o
   - `.local/`, the local storage, for the few files kept on this machine for the long term.
 - Use local storage of main checkout also while working in a worktree, by its absolute path.
   `.local/` inside a worktree is inside project cache. Deleted with it.
-- Make sure ignore rules of project cover a directory before writing anything there.
+- Make sure ignore rules of project cover a directory before writing anything there. Check with
+  `git check-ignore <directory>/` in checkout that owns directory, trailing slash included, in
+  command of its own. Write only after it prints directory.
 - Never commit anything in either directory.
 
 ## What goes into the project cache
@@ -40,8 +42,9 @@ description: Decide where to put file not meant for repository, what to remove o
 
 ## Cleaning up
 
-- Once all tasks done, remove build artifacts not meant for user, e.g. build outputs, `result`
-  links, build directories in finished worktrees, test captures.
+- After every merged unit, remove build artifacts not meant for user, e.g. build outputs, `result`
+  links, build directories in finished worktrees, test captures, scratch files written by you in
+  system temporary directory, entries of package and build caches that nothing refers to anymore.
 - Keep everything made for user to see, use or keep, e.g. renders, screenshots, recordings, HTML
   pages, and binaries and images asked for by user.
 
