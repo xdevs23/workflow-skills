@@ -1,7 +1,6 @@
 /**
- * A hint for the model about a message with one of its phrases: the reason with which the end of a
- * turn on that message is blocked, and the context of the next prompt when the turn still ends on
- * such a message.
+ * A hint for the model, given as the reason when the end of a turn on a message with one of its
+ * phrases is blocked.
  */
 export type HintKind = {
   phrases: readonly RegExp[]

@@ -30,13 +30,6 @@ export type SessionQuestions = {
   questions: readonly Question[]
 }
 
-/** The hints due for the next prompt of a session. */
-export type DueHints = {
-  sessionId: string
-  /** The ids of the kinds due, each once. */
-  dueKindIds: readonly string[]
-}
-
 declare module 'claude-code' {
   interface PluginState {
     'workflow-skills': {
@@ -53,12 +46,6 @@ declare module 'claude-code' {
       sessionQuestions: SessionQuestions | null
       /** The ids of the questions whose answers this session is delivering right now. */
       deliveringAnswers: readonly string[]
-      /**
-       * The hints due for the session whose last turn of the main conversation ended on a
-       * message with a phrase of at least one kind, and null otherwise. The next prompt of that
-       * session contains the hints, and this is set back to null.
-       */
-      dueHints: DueHints | null
     }
   }
 }

@@ -41,8 +41,7 @@ running", the reminder contains an instruction to pick up independent work, and 
 start, to split the blocked units and start the parts that do not depend on the blocker. A
 message with phrases of both kinds gets both reminders, each once. The reminder sends Claude back
 to work at once, in the same turn. When the turn ends a second time on such a message, the turn
-is over, and the next message you or a scheduled check send to Claude contains the reminder,
-hidden from you. The message that set off the reminder is still shown on screen.
+is over without a reminder. The message that set off the reminder is still shown on screen.
 
 ## Install
 

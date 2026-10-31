@@ -1,12 +1,6 @@
 import { mock } from 'claude-code/testing'
 import type { Engine, MockClock } from 'claude-code/testing'
-import type {
-  ApiMessage,
-  On,
-  PromptSubmitInput,
-  RenderPropsOf,
-  TurnCompleteReason,
-} from 'claude-code'
+import type { ApiMessage, On, PromptSubmitInput, RenderPropsOf } from 'claude-code'
 
 import { ANSWER_COMMAND, ASK_TOOL, LIST_TOOL, PANE, PLUGIN, QUESTION_SKILL } from './names'
 import { storeKeyOf } from './questionStore'
@@ -45,9 +39,9 @@ export const NO_TIME_LIMIT = { timeoutMs: Number.POSITIVE_INFINITY }
  * Replaces the engine beneath the plugin for prompts, and returns the prompts the engine receives.
  * A prompt for which `dropOf` returns a reason is dropped with that reason.
  */
-export function recordPrompts(
+function recordPrompts(
   on: On,
-  dropOf: (prompt: PromptSubmitInput) => string | undefined = () => undefined,
+  dropOf: (prompt: PromptSubmitInput) => string | undefined,
 ): PromptSubmitInput[] {
   const prompts: PromptSubmitInput[] = []
   on('prompt.submit', ($, e) => {
@@ -67,15 +61,8 @@ export function typePrompt($: Engine, text: string) {
   return $.prompt.submit({ text, origin: { kind: 'composer' }, wait: false })
 }
 
-/** Ends the turn TURN of the main conversation, or of the subagent `agentId`, with `answer`. */
-export function endTurn(
-  $: Engine,
-  turn: {
-    answer?: string
-    reason?: Exclude<TurnCompleteReason, 'refusal'>
-    agentId?: string
-  } = {},
-) {
+/** Ends the turn TURN of the main conversation with `answer`, or interrupts it. */
+export function endTurn($: Engine, turn: { answer?: string; reason?: 'answer' | 'aborted' } = {}) {
   const reason = turn.reason ?? 'answer'
 
   return $.turn.complete({
@@ -84,7 +71,6 @@ export function endTurn(
     isAborted: reason === 'aborted',
     turnId: TURN,
     reason,
-    ...(turn.agentId === undefined ? {} : { agentId: turn.agentId }),
   })
 }
 

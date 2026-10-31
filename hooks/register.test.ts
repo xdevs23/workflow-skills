@@ -39,7 +39,6 @@ import {
   typePrompt,
 } from './testSupport'
 import type { Session } from './testSupport'
-import { WAITING_HINT } from './waitingHint'
 
 const LOCK_REFUSAL = 'Lock file is already being held'
 
@@ -633,55 +632,6 @@ describe('asking with the question skill in context', () => {
 
       expect((await askAboutFriday($, 'agent-1')).deny).toBeUndefined()
       expect(questionCountOf(session)).toBe(1)
-    },
-  )
-})
-
-describe('the hints together with the answers to the questions', () => {
-  const WAITING = 'Your question about the database is still open.'
-  const HINT_REFUSAL = 'The state of the plugin is not readable'
-
-  test(
-    'a prompt typed during a turn contains the hint and the answers that wait, both once',
-    NO_TIME_LIMIT,
-    async ($, on) => {
-      const session = await startSession($, on)
-      await askWhichDatabase($)
-      await startTurn($)
-      await endTurn($, { answer: WAITING })
-      await session.clock.settle()
-      await startTurn($)
-      await answerByCommand($, '1 sqlite')
-      await typePrompt($, 'go on')
-      await typePrompt($, 'go on')
-
-      expect(session.prompts).toHaveLength(2)
-      expect(session.prompts[0]?.context).toHaveLength(2)
-      expect(session.prompts[0]?.context?.[0]).toBe(WAITING_HINT.text)
-      expect(session.prompts[0]?.context?.[1]).toContain('sqlite')
-      expect(session.prompts[1]?.context).toBeUndefined()
-    },
-  )
-
-  test(
-    'hints that cannot be read leave the answers and the next prompt going out without them',
-    NO_TIME_LIMIT,
-    async ($, on) => {
-      on('state.get', { plugin: PLUGIN, key: 'dueHints' }, () => ({
-        deny: HINT_REFUSAL,
-      }))
-      const session = await startSession($, on)
-      await askWhichDatabase($)
-      await startTurn($)
-      await answerByCommand($, '1 sqlite')
-      await endTurn($, { answer: WAITING })
-      await session.clock.settle()
-      await typePrompt($, 'go on')
-
-      expect(session.prompts).toHaveLength(2)
-      expect(session.prompts[0]?.text).toContain('sqlite')
-      expect(session.prompts[1]?.context).toBeUndefined()
-      expect(session.logs.filter(line => line.includes(HINT_REFUSAL))).toHaveLength(2)
     },
   )
 })
