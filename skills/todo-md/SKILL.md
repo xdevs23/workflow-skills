@@ -125,12 +125,17 @@ Fresh clone does not contain it.
 # Questions to the user
 
 - Ask each question first as `workflow-skills:question` describes. Act on answer found by subagent.
-- Put question to user only when subagent does not find an answer in project. Use tool
-  `mcp__workflow-skills__ask_question`. Entry concerned by it waits for answer. Meanwhile go on with
-  next entry.
+- Put question to user only when subagent does not find an answer in project. Entry concerned by it
+  waits for answer. Meanwhile go on with next entry.
+- While user talks back and forth with you, ask question in your message. Do not call
+  `mcp__workflow-skills__ask_question` then.
+- Otherwise ask with tool `mcp__workflow-skills__ask_question`.
+- Never put same question into message and into tool.
 - Name entry in each question by its number and title.
 - Take answer that arrives with tool result, or as message, as user's own reply. Act on it as on
   any other reply of user.
+- When user answers in chat a question still open in `mcp__workflow-skills__ask_question`, withdraw
+  it with `mcp__workflow-skills__withdraw_question` in same turn.
 
 # The states an entry can take
 

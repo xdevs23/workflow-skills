@@ -9,11 +9,12 @@ verification, opening and watching a pull request and recovering an interrupted 
 
 The plugin also ships a hooks module that lets Claude ask questions without waiting for the
 answers, in interactive sessions. A session run with `-p` or the Agent SDK gets none of its tools.
-The tool `ask_question` stores a question and returns at once. In the main conversation, it
-returns a denial unless the Skill tool has loaded `workflow-skills:question` there within the
-last 100,000 tokens, counted from the context size reported by the engine. `list_questions` lists
-the open ones, the answered ones and the withdrawn ones, and `withdraw_question` takes back a
-question that Claude no longer needs answered.
+The tool `ask_question` stores a question and returns at once. Claude uses it for a question it
+leaves behind while it goes on working, and asks in the chat while you talk with it. In the main
+conversation, the tool returns a denial unless the Skill tool has loaded `workflow-skills:question`
+there within the last 100,000 tokens, counted from the context size reported by the engine.
+`list_questions` lists the open ones, the answered ones and the withdrawn ones, and
+`withdraw_question` takes back a question that Claude no longer needs answered.
 
 A session sees only the questions it asked, numbered from 1 in each session. The questions are
 saved under the session that asked them in the file
@@ -35,8 +36,9 @@ answer given during a turn you interrupted is sent with your next message.
 When Claude ends a turn of the main conversation on a message in which it waits for your answer,
 with a phrase such as "still open" or "waiting for your answer", it gets a reminder to check
 first whether rules, instructions or older transcripts already contain the answer, to ask every
-question that still needs an answer with the question tool and open its draft page for you, not
-to repeat open questions, and to pick up independent work meanwhile. When the message reports
+question that still needs an answer, in the chat while you talk with it and with the question
+tool otherwise, to open its draft page for you, not to repeat open questions, and to pick up
+independent work meanwhile. When the message reports
 work as blocked or idle, with a phrase such as "still blocked", "nothing has changed" or "no
 workflows are running", the reminder contains an instruction to pick up independent work, and
 when nothing can start, to split the blocked units and start the parts that do not depend on the

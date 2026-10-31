@@ -15,6 +15,8 @@ export const ASK_DESCRIPTION = [
   'of the question, counted from 1 in each session, and the answer is sent to you later as a note',
   'with one of your tool results, or as a new message of the user. Use it for every question whose',
   'answer the rest of the work does not wait on.',
+  'While the user talks back and forth with you, ask in your message and do not call this tool.',
+  'Never put a question both into a message and into this tool.',
   `Ask the question first as the skill ${QUESTION_SKILL} describes, and call this tool only`,
   'when the subagent finds no answer in the project.',
   `Call ${LIST_TOOL} first, and never ask a question again that is open or answered there.`,
