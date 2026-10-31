@@ -12,3 +12,6 @@ description: Asking the user a question
   it in notes, `TODO.md` and run file. Do not put such question to user.
 - Choice traced to neither user words nor session decision, such as fact of project: answer from
   project as first bullet says.
+- Choice reported as unchecked: get what was out of reach, run subagent again.
+- Ask user only when subagent reports "no answer" and work that cannot go on without answer.
+  Otherwise act on answer or drop question.

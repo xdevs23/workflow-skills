@@ -19,8 +19,7 @@ anything in this file.
 - Do not write entry for task that changes nothing in project.
 - Treat state in `TODO.md` as last state written down by someone. Before you report state or act on
   it, check work against branches, history of main branch, pull requests and deployment where it
-  would show up. Correct entry first. Ask user for what you cannot check yourself before making
-  claim about which user would get upset.
+  would show up. Correct entry first.
 
 `TODO.md` is **gitignored and untracked**: working file on one machine, kept out of repository.
 Fresh clone does not contain it.
@@ -59,8 +58,8 @@ Fresh clone does not contain it.
   directory with session transcripts of project for promptId or uuid, or read given line directly.
 - **`Builds on:`**: line with every entry that has to be built first. Write dependency between
   entries in this line and nowhere else.
-- When you report on several entries, give glance as `workflow-skills:glance` describes. Show
-  chains of `Builds on:` lines that concern them in message.
+- When reporting on several entries, give glance by `workflow-skills:glance`. Show chains of
+  `Builds on:` lines that concern them in message.
 
 ## One behavior to a unit
 
@@ -99,16 +98,16 @@ Fresh clone does not contain it.
 - Deliver each sub-unit separately, such as through separate pull request against main branch of
   project. Only once every sub-unit listed in its `Builds on:` line is merged there. Pull request
   is request that can be rejected.
-- When delivery of sub-unit rejected, deliver none of sub-units that build on it. Ask user how to go
-  on as section `Questions to the user` describes.
+- When delivery of sub-unit rejected, deliver none of sub-units that build on it. Handle rejection
+  as `workflow-skills:implement` describes.
 
 ## Findings raised while building a unit
 
 - Fix finding about code added or edited by unit in unit itself. Never record it.
 - Put finding, also one about older code, to user as question when fixing it needs decision by
   user, as section `Questions to the user` describes.
-- Record work left over from unit as sub-unit of entry for that unit, never as new entry. Its
-  origin pointer: message that asked for unit.
+- Record work that comes up during unit or is left over from it as sub-unit of entry for that
+  unit, never as new entry. Its origin pointer: message that asked for unit.
 - Record work left over from unit whose entry was deleted as finished as new entry. Name finished
   unit in its body.
 - Fix defect in older code outside unit, such as flaky test harness, as separate unit in parallel
@@ -124,9 +123,8 @@ Fresh clone does not contain it.
 
 # Questions to the user
 
-- Ask each question first as `workflow-skills:question` describes. Act on answer found by subagent.
-- Put question to user only when subagent does not find an answer in project. Entry concerned by it
-  waits for answer. Meanwhile go on with next entry.
+- Ask each question as `workflow-skills:question` describes. Entry concerned by it waits for
+  answer. Meanwhile go on with next entry.
 - While user talks back and forth with you, ask question in your message. Do not call
   `mcp__workflow-skills__ask_question` then.
 - Otherwise ask with tool `mcp__workflow-skills__ask_question`.
@@ -151,6 +149,8 @@ State is fixed enum: either no marker or one of markers listed here, grouped by 
   in plain terms, question and options, or that theory is missing. That would start discussion
   thread about feature.
 - Mark unit or sub-unit that does not have enough information to start `NEEDS DECISION`.
+- Before marking entry `NEEDS DECISION`, trace open point to user words as
+  `workflow-skills:question` describes. Undo point made by session.
 - **A decision still owed blocks only the item concerned by it.** Skip and mark item. Move work on
   to next one.
 - Work on smallest change possible where answer from user does not change outcome.
@@ -166,8 +166,6 @@ State is fixed enum: either no marker or one of markers listed here, grouped by 
 Whether unit is ready to build follows from words of user alone.
 
 - Never decide it yourself.
-- When you infer authorization from prompt of user because its words are ambiguous, state that
-  plainly **in bold** and ask user to confirm.
 
 **Being built**
 
@@ -180,7 +178,7 @@ Whether unit is ready to build follows from words of user alone.
 
 **Live**
 
-- `PUSHED`: pushed, but deployment not confirmed. Ask user if you need confirmation.
+- `PUSHED`: pushed, but deployment not confirmed.
 - `SHIPPED`: deployed to production, with commit and deployment receipt, if available.
 - `VERIFIED`: observed working in production. Stronger claim than `SHIPPED`. Needs observation to
   back it: log line, count, screenshot reference. Reading code is not verification.
@@ -233,8 +231,7 @@ Whether unit is ready to build follows from words of user alone.
   - Something is owed to whoever operates production: manual step, index to drop, backfill to run.
     Easy to lose, expensive to forget.
   - Item turns out already done, or wrongly described.
-- Put idea of your own for unit of work to user as question, as section `Questions to the user`
-  describes. Write it down only once user asks for it or approves it.
+- Never write entry for idea of your own.
 - Test whether update needed by asking: **if the session ended right now, would the next reader
   know what to do?** If not, file is stale.
 

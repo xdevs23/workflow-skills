@@ -66,7 +66,6 @@ Each entry is level-2 heading followed by four labelled paragraphs:
 - Never edit old entry. Includes deleting, rewording or softening it.
 - Add correction entry below mistaken entry.
 - Never change rules quoted in an entry. Rules change only at user's word.
-- Put fix for violation to user. Record it in todo record defined by `workflow-skills:todo-md` once
-  user approves it.
-- Put new rule into rules files.
+- Propose fix only when user asks for one.
+- Put new rule given by user into rules files.
 - Write into wall only record of what happened.

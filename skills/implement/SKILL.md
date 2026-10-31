@@ -89,8 +89,8 @@ description: Implement change to code, from first talk with user until user revi
   in every directory edited by change, and global instruction file.
   - Correctness reviewer loads `workflow-skills:reviewer-correctness`,
     `workflow-skills:missing-gaps` and `workflow-skills:runtime-cost`, without rules.
-  - Simpler shape reviewer loads `workflow-skills:cold-alternatives`,
-    `workflow-skills:duplicate-checker` and `workflow-skills:abstraction-quality`, without rules.
+  - Duplication and abstraction reviewer loads `workflow-skills:duplicate-checker` and
+    `workflow-skills:abstraction-quality`, without rules.
   - Structure reviewer loads `workflow-skills:separation-of-concerns`,
     `workflow-skills:domain-leakage`, `workflow-skills:smearing`, `workflow-skills:code-smell`,
     `workflow-skills:type-safety` and rules.
@@ -109,8 +109,9 @@ description: Implement change to code, from first talk with user until user revi
 - Do not start any review round of your own on fix.
 - Put every rule reported by implementer as standing in way of its work to user, with place where
   it stood in way.
-- Put every optional pick returned by a reviewer to user as section `Questions to the user` of
-  `workflow-skills:todo-md` describes. Build it only when user picks it.
+- Take optional pick returned by reviewer into fix run when objectively better in every way and
+  obvious engineering choice, like better correctness, code quality, performance. Drop other
+  optional picks.
 
 ## Builds
 

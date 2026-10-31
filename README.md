@@ -35,10 +35,9 @@ answer given during a turn you interrupted is sent with your next message.
 
 When Claude ends a turn of the main conversation on a message in which it waits for your answer,
 with a phrase such as "still open" or "waiting for your answer", it gets a reminder to check
-first whether rules, instructions or older transcripts already contain the answer, to ask every
-question that still needs an answer, in the chat while you talk with it and with the question
-tool otherwise, to open its draft page for you, not to repeat open questions, and to pick up
-independent work meanwhile. When the message reports
+first whether rules, instructions or older transcripts already contain the answer, to open the
+draft page of every question for you, not to repeat open questions, and to pick up independent
+work meanwhile. When the message reports
 work as blocked or idle, with a phrase such as "still blocked", "nothing has changed" or "no
 workflows are running", the reminder contains an instruction to pick up independent work, and
 when nothing can start, to split the blocked units and start the parts that do not depend on the

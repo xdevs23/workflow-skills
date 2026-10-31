@@ -13,12 +13,11 @@ export const ASK_DESCRIPTION = [
   'The question is stored with this session until the user answers it, in any order and at any',
   'time, also after a restart that resumes this session. The call returns at once with the number',
   'of the question, counted from 1 in each session, and the answer is sent to you later as a note',
-  'with one of your tool results, or as a new message of the user. Use it for every question whose',
-  'answer the rest of the work does not wait on.',
+  'with one of your tool results, or as a new message of the user.',
   'While the user talks back and forth with you, ask in your message and do not call this tool.',
   'Never put a question both into a message and into this tool.',
   `Ask the question first as the skill ${QUESTION_SKILL} describes, and call this tool only`,
-  'when the subagent finds no answer in the project.',
+  'when that skill lets the question through.',
   `Call ${LIST_TOOL} first, and never ask a question again that is open or answered there.`,
   'Write the question so the user can answer it days later without this conversation: name the',
   'work it concerns and what each answer would change.',
@@ -26,7 +25,7 @@ export const ASK_DESCRIPTION = [
 
 const LOAD_QUESTION_SKILL_FIRST = [
   `Load ${QUESTION_SKILL} with the Skill tool and follow it, so its subagent looks for the answer`,
-  `in the project first. Call ${ASK_TOOL} only when it finds none.`,
+  `in the project first. Call ${ASK_TOOL} only when that skill lets the question through.`,
 ].join(' ')
 
 /** The text given to the model when its load of the question skill does not count, by the cause. */

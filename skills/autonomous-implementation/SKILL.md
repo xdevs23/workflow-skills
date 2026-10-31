@@ -79,10 +79,6 @@ description: Implement change autonomously, only when user has asked for it, for
 - Fix every defect introduced by run itself, in whichever milestone it shows up.
 - Fix defect present before run as separate unit in parallel, as `workflow-skills:todo-md`
   describes. It is the one piece of work outside grant started by you.
-- Write defect present before run into run file as question to user when fixing it needs decision
-  by user.
-- Write every other finding beyond granted work, such as idea for feature, into run file as
-  question to user. Never work on it.
 
 ## Decisions
 

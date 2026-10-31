@@ -1,5 +1,4 @@
 import type { HintKind } from './hintKind'
-import { ASK_TOOL, QUESTION_SKILL } from './names'
 
 /** The hint after a message that waits for an answer from the user. */
 export const WAITING_HINT: HintKind = {
@@ -21,9 +20,6 @@ export const WAITING_HINT: HintKind = {
     "If you're waiting for an answer from the user, ensure you have first researched whether the " +
     'question is already answered by rules, instructions or older transcripts. Read around the ' +
     'context you find and do not trust markdown files in the project that paraphrase or take out ' +
-    'of context what the user has said. The user answers only what they can see: load ' +
-    `${QUESTION_SKILL}, ask each question that still needs an answer, in your message while the ` +
-    `user talks back and forth with you and with ${ASK_TOOL} otherwise, and open the draft page ` +
-    'of every question for the user. Never put a question both into a message and into the tool, ' +
-    'do not repeat open questions, and pick up independent work in the meantime.',
+    'of context what the user has said. Open the draft page of every question that has one for ' +
+    'the user. Do not repeat open questions, and pick up independent work in the meantime.',
 }

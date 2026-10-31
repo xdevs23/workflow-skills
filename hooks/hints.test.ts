@@ -4,7 +4,6 @@ import type { ClassicResultOf, On } from 'claude-code'
 import { BLOCKED_HINT } from './blockedHint'
 import { HINT_KINDS, kindsWithPhraseIn } from './hintKinds'
 import { NO_TIME_LIMIT, endTurn, startSession, stopTurn, typePrompt } from './testSupport'
-import { ASK_TOOL, QUESTION_SKILL } from './names'
 import { WAITING_HINT } from './waitingHint'
 
 const WAITING = 'Build 61 passed. My question about the build folders is Still Open.'
@@ -15,11 +14,6 @@ test('every phrase of every kind is free of the global and sticky flags', () => 
   const phrases = HINT_KINDS.flatMap(kind => kind.phrases)
 
   expect(phrases.filter(phrase => phrase.global || phrase.sticky)).toEqual([])
-})
-
-test('the waiting hint names the question skill and the tool that asks the user', () => {
-  expect(WAITING_HINT.text).toContain(QUESTION_SKILL)
-  expect(WAITING_HINT.text).toContain(ASK_TOOL)
 })
 
 describe('the phrases of a message that waits for an answer', () => {

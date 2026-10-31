@@ -1,6 +1,6 @@
 ---
 name: question-closer
-description: Question premise checker
+description: Question checker
 tools: Read, Grep, Glob, Bash
 ---
 
@@ -16,3 +16,6 @@ tools: Read, Grep, Glob, Bash
   of reach. Do not edit any file.
 - Transcript or notes out of reach means choice is unchecked. Unchecked choice is not a session
   decision.
+- Check whether rules, instructions or engineering judgment answer question. Report answer with
+  file and line of rule or reason of judgment, or "no answer".
+- Check whether work needs answer. Report what cannot go on without it, or "answer not needed".

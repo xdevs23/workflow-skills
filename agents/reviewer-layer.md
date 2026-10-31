@@ -23,5 +23,4 @@ tools: Read, Grep, Glob, Bash, Skill
 - Return only real findings, each with file and line it's in, quoted code, what's wrong, lens it
   came from, grade or scope required by lens skill, and shape to build in place of quoted code,
   named concretely enough to build it without the rules. Return empty list when you find nothing
-- Also return whatever else a lens skill requires besides findings, e.g. optional picks asked for
-  by `workflow-skills:cold-alternatives`
+- Also return whatever else a lens skill requires besides findings
