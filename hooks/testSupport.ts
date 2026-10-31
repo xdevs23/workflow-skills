@@ -88,6 +88,21 @@ export function endTurn(
   })
 }
 
+/**
+ * Raises the classic Stop hook for an end of a turn on `message`. By default the end is the first
+ * end of a turn of the main conversation.
+ */
+export function stopTurn(
+  $: Engine,
+  stop: { message?: string; followsBlock?: boolean; agentId?: string } = {},
+) {
+  return $.classic.Stop({
+    stop_hook_active: stop.followsBlock ?? false,
+    ...(stop.message === undefined ? {} : { last_assistant_message: stop.message }),
+    ...(stop.agentId === undefined ? {} : { agent_id: stop.agentId }),
+  })
+}
+
 /** What the engine beneath the plugin saw, and the switches that change how it answers. */
 export type Session = {
   id: string

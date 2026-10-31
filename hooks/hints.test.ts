@@ -1,9 +1,9 @@
 import { describe, expect, test } from 'claude-code/testing'
-import type { On, PromptSubmitInput } from 'claude-code'
+import type { ClassicResultOf, On, PromptSubmitInput } from 'claude-code'
 
 import { BLOCKED_HINT } from './blockedHint'
 import { HINT_KINDS, kindIdsWithPhraseIn } from './hintKinds'
-import { NO_TIME_LIMIT, endTurn, recordPrompts, typePrompt } from './testSupport'
+import { NO_TIME_LIMIT, endTurn, recordPrompts, stopTurn, typePrompt } from './testSupport'
 import { WAITING_HINT } from './waitingHint'
 
 const WAITING = 'Build 61 passed. My question about the build folders is Still Open.'
@@ -254,6 +254,102 @@ describe('the hint after a message that waits for an answer', () => {
       await typePrompt($, 'go on')
 
       expect(beneath.prompts[0]?.context).toBeUndefined()
+    },
+  )
+})
+
+describe('the end of a turn on a message with a hint phrase', () => {
+  /** Replaces the classic Stop hook of the engine beneath the plugin, so it returns `result`. */
+  function stopBeneath(on: On, result: ClassicResultOf['classic.Stop'] = {}): void {
+    on('classic.Stop', () => result)
+  }
+
+  test(
+    'the first end on a waiting message is blocked with the waiting hint',
+    NO_TIME_LIMIT,
+    async ($, on) => {
+      stopBeneath(on)
+
+      expect((await stopTurn($, { message: WAITING })).block).toBe(WAITING_HINT.text)
+    },
+  )
+
+  test(
+    'the first end on a blocked message is blocked with the blocked hint',
+    NO_TIME_LIMIT,
+    async ($, on) => {
+      stopBeneath(on)
+      const message = 'Packaging is still blocked on the signing key.'
+
+      expect((await stopTurn($, { message })).block).toBe(BLOCKED_HINT.text)
+    },
+  )
+
+  test(
+    'a message with phrases of both kinds is blocked with both hints',
+    NO_TIME_LIMIT,
+    async ($, on) => {
+      stopBeneath(on)
+      const stopped = await stopTurn($, {
+        message: 'Nothing has changed. Everything left waits on your review.',
+      })
+
+      expect(stopped.block).toBe(`${WAITING_HINT.text}\n\n${BLOCKED_HINT.text}`)
+    },
+  )
+
+  test('the end that follows a block passes', NO_TIME_LIMIT, async ($, on) => {
+    stopBeneath(on)
+
+    expect((await stopTurn($, { message: WAITING, followsBlock: true })).block).toBeUndefined()
+  })
+
+  test('the end of a subagent passes', NO_TIME_LIMIT, async ($, on) => {
+    stopBeneath(on)
+
+    expect((await stopTurn($, { message: WAITING, agentId: 'agent-1' })).block).toBeUndefined()
+  })
+
+  test('a message without a hint phrase passes', NO_TIME_LIMIT, async ($, on) => {
+    stopBeneath(on)
+
+    expect((await stopTurn($, { message: 'Build 62 passed.' })).block).toBeUndefined()
+  })
+
+  test('an end without a message passes', NO_TIME_LIMIT, async ($, on) => {
+    stopBeneath(on)
+
+    expect((await stopTurn($)).block).toBeUndefined()
+  })
+
+  test('a block asked by a hook beneath comes before the hint', NO_TIME_LIMIT, async ($, on) => {
+    stopBeneath(on, { block: 'Run the linter first.' })
+
+    expect((await stopTurn($, { message: WAITING })).block).toBe(
+      `Run the linter first.\n\n${WAITING_HINT.text}`,
+    )
+  })
+
+  test(
+    'a stop of the session asked by a hook beneath is returned unchanged',
+    NO_TIME_LIMIT,
+    async ($, on) => {
+      stopBeneath(on, { preventContinuation: true })
+
+      expect(await stopTurn($, { message: WAITING })).toEqual({ preventContinuation: true })
+    },
+  )
+
+  test(
+    'the other fields returned by a hook beneath stay in the result',
+    NO_TIME_LIMIT,
+    async ($, on) => {
+      stopBeneath(on, { additionalContext: ['The build is green.'] })
+
+      expect(await stopTurn($, { message: WAITING })).toEqual({
+        additionalContext: ['The build is green.'],
+        block: WAITING_HINT.text,
+      })
     },
   )
 })

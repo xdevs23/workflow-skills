@@ -4,7 +4,7 @@ import { WAITING_HINT } from './waitingHint'
 
 /**
  * Every kind of hint by the id the state stores while the hint is due, in the order in which their
- * texts go into a prompt.
+ * texts go into a prompt or the reason of a block.
  */
 export const HINT_KINDS: Readonly<Record<string, HintKind>> = {
   waiting: WAITING_HINT,

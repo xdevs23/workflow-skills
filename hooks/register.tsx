@@ -1,6 +1,6 @@
 import type { Register } from 'claude-code'
 
-import { setDueHintsFromAnswer, withDueHints } from './hints'
+import { blockStopOnHintPhrase, setDueHintsFromAnswer, withDueHints } from './hints'
 import { ANSWER_COMMAND, ASK_TOOL, LIST_TOOL, PANE, SKILL_TOOL, WITHDRAW_TOOL } from './names'
 import {
   addAnswersToToolResult,
@@ -38,6 +38,7 @@ export const register: Register = on => {
 
     return completed
   })
+  on('classic.Stop', blockStopOnHintPhrase)
   on('command.run', { command: ANSWER_COMMAND }, runAnswerCommand).catch(replyWithHookFailure)
   on('ui.render', { component: 'AbovePrompt' }, drawQuestionBand)
   on('ui.render', { component: 'Pane', requestId: PANE }, drawQuestionPane)
