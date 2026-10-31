@@ -3,7 +3,7 @@ import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
-// Runs tools/watch-prs.py with python3 against the stand-in gh in tests/fixtures/watch-prs/bin,
+// Runs the watcher in tools/watch_prs with python3 against the stand-in gh in tests/fixtures/watch-prs/bin,
 // which answers from fixture JSON, so no call reaches GitHub.
 const TOOL = fileURLToPath(new URL('../tools/watch-prs.py', import.meta.url))
 const STAND_IN = fileURLToPath(new URL('./fixtures/watch-prs/bin', import.meta.url))
@@ -11,7 +11,13 @@ const GITHUB = fileURLToPath(new URL('./fixtures/watch-prs/github.json', import.
 const PYTHON = Bun.which('python3')
 const PR = 'acme/widgets#12'
 const PULL = 'repos/acme/widgets/pulls/12'
-const OPEN_PULLS = 'repos/acme/widgets/pulls?state=open'
+// The lists of comments, reviews and review comments of the pull request, each item with a body.
+const BODY_PATHS = ['issues/12/comments', 'pulls/12/reviews', 'pulls/12/comments']
+// The list of open pull requests of acme/widgets whose head is the branch of that account, as the
+// stand-in gh looks it up and as the watcher requests its first page.
+const openPulls = (label) => `repos/acme/widgets/pulls?${new URLSearchParams({ state: 'open', head: label })}`
+const firstPage = (label) => `${openPulls(label)}&per_page=100&page=1`
+const LOGIN_BRANCH = 'acme:feature/login'
 const DATE = 1800000000
 
 // Runs the main function of the watcher with a fake clock and a fake sleep. Each reading of the
@@ -21,10 +27,9 @@ const DATE = 1800000000
 // Every round and every refusal takes a fresh answer, so the tool sleeps no more often than the
 // fixture has answers, and a sleep beyond that fails the run: nothing is left that could end it.
 const LOADER = [
-  'import importlib.util, json, os, sys',
-  'spec = importlib.util.spec_from_file_location("watch_prs", sys.argv[1])',
-  'tool = importlib.util.module_from_spec(spec)',
-  'spec.loader.exec_module(tool)',
+  'import json, os, sys',
+  'sys.path.insert(0, os.path.dirname(sys.argv[1]))',
+  'from watch_prs.cli import main',
   'sys.argv = sys.argv[1:]',
   'with open(os.environ["GH_STANDIN_FIXTURE"]) as file:',
   '    answers = sum(len(list_) for list_ in json.load(file)["api"].values())',
@@ -40,7 +45,7 @@ const LOADER = [
   '        sys.exit("the tool sleeps more often than the fixture has answers, so nothing can end the watch")',
   '    now += seconds',
   '    print(json.dumps({"wait": seconds}), flush=True)',
-  'tool.main(clock, sleep)',
+  'main(clock, sleep)',
 ].join('\n')
 
 let directory
@@ -55,7 +60,9 @@ afterEach(async () => {
 })
 
 const fixture = async (change = (github) => github) => change(JSON.parse(await readFile(GITHUB, 'utf8')))
-const pull = (state, merged) => ({ json: [{ number: 12, state, merged, head: { ref: 'feature/login', sha: 'bbb2' } }] })
+const pull = (state, merged, { mergeable = true, head = 'bbb2' } = {}) => ({ json: [{
+  number: 12, state, merged, mergeable, head: { ref: 'feature/login', sha: head }, base: { ref: 'main' },
+}] })
 // A reading of the rate limit, with the times in seconds after DATE.
 const rateLimit = (date, used, remaining, reset) => ({
   date: DATE + date, json: [{ resources: { core: { limit: 5000, used, remaining, reset: DATE + reset } } }],
@@ -114,16 +121,15 @@ test('prints each event kind with its fields and skips a pending review, checks 
   expect(run.stderr).toBe('')
   expect(run.status).toBe(0)
   expect(run.events).toStrictEqual(EVENTS)
-  expect(run.calls[0]).toStrictEqual(['auth', 'status'])
   expect(run.polled.filter((path) => path.startsWith('repos/acme/widgets/commits/aaa1/'))).toStrictEqual([])
   expect(run.polled.filter((path) => path === PULL)).toHaveLength(2)
 })
 
 test('a restart with the same state prints only what is new', async () => {
   expect((await watch(await fixture(), [PR])).events).toStrictEqual(EVENTS)
-  const ids = ['ck401', 'ck404', 'ic101', 'rc301', 'rc302', 'rc303', 'rv201', 'st501', 'st503']
-    .map((id) => `${PR}:${id}`)
-  expect(JSON.parse(await readFile(join(directory, 'state.json'), 'utf8'))).toStrictEqual(ids)
+  // One entry for each printed comment, review, review comment, failed check run and failed status.
+  const state = JSON.parse(await readFile(join(directory, 'state.json'), 'utf8'))
+  expect(Object.keys(state)).toHaveLength(EVENTS.filter((event) => 'head' in event).length)
 
   const again = await watch(await fixture(), [PR])
   expect(again.status).toBe(0)
@@ -143,9 +149,67 @@ test('a restart with the same state prints only what is new', async () => {
   ])
 })
 
+test('an edited comment, review and review comment print again with edited set and the new body', async () => {
+  const run = await watch(await fixture((github) => {
+    github.api[PULL] = [pull('open', false), pull('open', false), pull('closed', false)]
+    for (const path of BODY_PATHS) {
+      const edited = structuredClone(github.api[`repos/acme/widgets/${path}`][0])
+      edited.json[0][0].body = `${edited.json[0][0].body} Edited.`
+      github.api[`repos/acme/widgets/${path}`].push(edited)
+    }
+    return github
+  }), [PR])
+  expect(run.status).toBe(0)
+  expect(run.events.filter((event) => event.edited)).toStrictEqual(
+    EVENTS.slice(1, 4).map((event) => ({ ...event, body: `${event.body} Edited.`, edited: true })))
+  // The review comments whose body did not change print only once.
+  expect(run.events.filter((event) => 'body' in event && !event.edited))
+    .toStrictEqual(EVENTS.filter((event) => 'body' in event))
+})
+
+test('a review prints again whenever its body differs from the body printed last', async () => {
+  const bodies = ['Two findings.', 'Two findings.', 'One finding.', 'Two findings.', null, null, 'No findings.']
+  const run = await watch(await fixture((github) => {
+    github.api[PULL] = [...bodies.map(() => pull('open', false)), pull('closed', true)]
+    const reviews = 'repos/acme/widgets/pulls/12/reviews'
+    github.api[reviews] = bodies.map((body) => {
+      const answer = structuredClone(github.api[reviews][0])
+      answer.json[0][0].body = body
+      return answer
+    })
+    return github
+  }), [PR])
+  expect(run.status).toBe(0)
+  expect(run.events.filter((event) => event.kind === 'review').map((event) => [event.body, event.edited ?? false]))
+    .toStrictEqual([
+      ['Two findings.', false], ['One finding.', true], ['Two findings.', true], [null, true], ['No findings.', true],
+    ])
+})
+
+test('a state file of the earlier version, a list of ids, counts its events as printed and prints later edits', async () => {
+  // The earlier version wrote the ids of the printed events as a list, without digests of the bodies.
+  const ids = ['ic101', 'rv201', 'rc301', 'rc302', 'rc303', 'ck401', 'ck404', 'st501', 'st503']
+  await writeFile(join(directory, 'state.json'), JSON.stringify(ids.map((id) => `${PR}:${id}`)))
+  const run = await watch(await fixture((github) => {
+    github.api[PULL] = [pull('open', false), pull('open', false), pull('closed', false)]
+    const comments = 'repos/acme/widgets/issues/12/comments'
+    const edited = structuredClone(github.api[comments][0])
+    edited.json[0][0].body = 'Please add a test for the empty name.'
+    github.api[comments].push(edited)
+    return github
+  }), [PR])
+  expect(run.status).toBe(0)
+  expect(run.events).toStrictEqual([
+    { kind: 'watching', prs: [PR] },
+    { ...EVENTS[1], body: 'Please add a test for the empty name.', edited: true },
+    { pr: PR, kind: 'closed' },
+    { kind: 'done' },
+  ])
+})
+
 test('a comment, review and review comment of a deleted account show the author ghost', async () => {
   const run = await watch(await fixture((github) => {
-    for (const path of ['issues/12/comments', 'pulls/12/reviews', 'pulls/12/comments']) {
+    for (const path of BODY_PATHS) {
       github.api[`repos/acme/widgets/${path}`][0].json[0][0].user = null
     }
     return github
@@ -192,32 +256,82 @@ test('a status in a state the watcher does not know prints nothing and the watch
   ])
 })
 
-test('a branch name watches the open pull request whose head it is', async () => {
+test('a branch name watches the open pull request whose head is that branch in the repository itself', async () => {
   const run = await watch(await fixture(), ['acme/widgets@feature/login'])
   expect(run.status).toBe(0)
   expect(run.events).toStrictEqual(EVENTS)
-  expect(run.polled[0]).toBe(`${OPEN_PULLS}&per_page=100&page=1`)
+  expect(run.polled[0]).toBe(firstPage(LOGIN_BRANCH))
+})
+
+test('a branch named with an account watches the open pull request whose head is that branch of the fork', async () => {
+  const run = await watch(await fixture((github) => {
+    github.api[openPulls('someone:feature/login')] = [{ json: [[{ number: 12 }]] }]
+    return github
+  }), ['acme/widgets@someone:feature/login'])
+  expect(run.status).toBe(0)
+  expect(run.events).toStrictEqual(EVENTS)
+  expect(run.polled[0]).toBe(firstPage('someone:feature/login'))
+})
+
+test('a branch name with a second colon is refused before anything is requested', async () => {
+  const run = await watch(await fixture(), ['acme/widgets@someone:feature:login'])
+  expect(run.status).not.toBe(0)
+  expect(run.stderr).toContain("'acme/widgets@someone:feature:login' names no pull request")
+  expect(run.calls).toStrictEqual([])
 })
 
 test('a branch with no open pull request ends in an error before anything is watched', async () => {
-  const run = await watch(await fixture(), ['acme/widgets@feature/gone'])
+  const run = await watch(await fixture((github) => {
+    github.api[openPulls('acme:feature/gone')] = [{ json: [[]] }]
+    return github
+  }), ['acme/widgets@feature/gone'])
   expect(run.status).not.toBe(0)
   expect(run.stdout).toBe('')
-  expect(run.stderr).toContain('acme/widgets has no open pull request whose head is feature/gone')
-  expect(run.polled).toStrictEqual([`${OPEN_PULLS}&per_page=100&page=1`])
+  expect(run.stderr).toContain('acme/widgets has no open pull request whose head is acme:feature/gone')
+  // The error names the form of a branch in a fork, which a branch name without an account does not match.
+  expect(run.stderr).toContain('owner/repo@account:branch')
+  expect(run.polled).toStrictEqual([firstPage('acme:feature/gone')])
 })
 
-test('a branch shared by open pull requests from different forks ends in an error before anything is watched', async () => {
+test('a branch that is the head of open pull requests into different base branches ends in an error before anything is watched', async () => {
   const run = await watch(await fixture((github) => {
-    github.api[OPEN_PULLS][0].json[0].push(
-      { number: 99, head: { ref: 'feature/login', sha: 'ddd4', repo: { full_name: 'someone/widgets' } } })
+    github.api[openPulls(LOGIN_BRANCH)][0].json[0].push({ number: 99 })
     return github
   }), ['acme/widgets@feature/login'])
   expect(run.status).not.toBe(0)
   expect(run.stdout).toBe('')
   expect(run.stderr).toContain(
-    'acme/widgets has more than one open pull request whose head is feature/login: acme/widgets#12, acme/widgets#99')
-  expect(run.polled).toStrictEqual([`${OPEN_PULLS}&per_page=100&page=1`])
+    'acme/widgets has more than one open pull request whose head is acme:feature/login: acme/widgets#12, acme/widgets#99')
+  expect(run.polled).toStrictEqual([firstPage(LOGIN_BRANCH)])
+})
+
+test('a merge conflict prints conflict once per head and nothing while GitHub computes mergeability', async () => {
+  const run = await watch(await fixture((github) => {
+    github.api[PULL] = [
+      pull('open', false, { mergeable: null }), pull('open', false, { mergeable: false }),
+      pull('open', false, { mergeable: false }), pull('open', false, { mergeable: false, head: 'ccc3' }),
+      pull('closed', false, { mergeable: false, head: 'ccc3' }),
+    ]
+    github.api['repos/acme/widgets/commits/ccc3/check-runs'] = [{ json: [{ total_count: 0, check_runs: [] }] }]
+    github.api['repos/acme/widgets/commits/ccc3/status'] = [{ json: [{ statuses: [] }] }]
+    return github
+  }), [PR])
+  expect(run.status).toBe(0)
+  expect(run.events.filter((event) => event.kind === 'conflict')).toStrictEqual([
+    { pr: PR, head: 'bbb2', kind: 'conflict', base: 'main' },
+    { pr: PR, head: 'ccc3', kind: 'conflict', base: 'main' },
+  ])
+  expect(run.polled.filter((path) => path === PULL)).toHaveLength(5)
+})
+
+test('a pull request closed with a conflict ends the watch with closed and prints no conflict', async () => {
+  const run = await watch(await fixture((github) => {
+    github.api[PULL] = [pull('closed', false, { mergeable: false })]
+    return github
+  }), [PR])
+  expect(run.status).toBe(0)
+  expect(run.events.filter((event) => event.kind === 'conflict')).toStrictEqual([])
+  expect(run.events.slice(-2)).toStrictEqual([{ pr: PR, kind: 'closed' }, { kind: 'done' }])
 })
 
 test('a closed pull request ends the watch with closed, done and status zero', async () => {
@@ -327,12 +441,46 @@ test('a rate limit that cannot be read at the start ends the tool with an error 
   expect(run.stderr).toContain('cannot read the rate limit of the gh login: HTTP 502: Bad Gateway')
 })
 
-test('a missing login ends the tool with an error before it looks at any pull request', async () => {
+test('a missing login ends the tool with login-lost after the first request', async () => {
   const run = await watch(await fixture((github) => ({ ...github, loggedIn: false })), [PR])
-  expect(run.status).not.toBe(0)
-  expect(run.stdout).toBe('')
-  expect(run.stderr).toContain('gh is not logged in')
-  expect(run.calls).toStrictEqual([['auth', 'status']])
+  expect(run.status).toBe(1)
+  expect(run.events).toStrictEqual([
+    { kind: 'login-lost', stderr: 'To get started with GitHub CLI, please run:  gh auth login' },
+  ])
+  expect(run.calls).toHaveLength(1)
+})
+
+test('a token rejected while watching ends the tool with login-lost and sends nothing more', async () => {
+  const run = await watch(await fixture((github) => {
+    github.api[PULL] = [pull('open', false), { badCredentials: true }, pull('closed', false)]
+    return github
+  }), [PR])
+  expect(run.status).toBe(1)
+  expect(run.events.slice(0, -1)).toStrictEqual(EVENTS.slice(0, -2))
+  expect(run.events.at(-1)).toStrictEqual({ kind: 'login-lost', stderr: 'gh: Bad credentials (HTTP 401)' })
+  expect(run.polled.at(-1)).toBe(PULL)
+  expect(run.polled.filter((path) => path === PULL)).toHaveLength(2)
+})
+
+test('a token rejected while the rate limit is read between rounds ends the tool with login-lost', async () => {
+  const run = await watch(await fixture((github) => {
+    github.api.rate_limit = [rateLimit(0, 1382, 3618, 3610), { badCredentials: true }]
+    github.api[PULL] = [pull('open', false)]
+    return github
+  }), [PR])
+  expect(run.status).toBe(1)
+  expect(run.events.filter((event) => event.kind === 'rate-limit-unreadable')).toStrictEqual([])
+  expect(run.events.at(-1)).toStrictEqual({ kind: 'login-lost', stderr: 'gh: Bad credentials (HTTP 401)' })
+  expect(run.waits).toStrictEqual([])
+})
+
+test('a token rejected while the branch is looked up ends the tool with login-lost before it watches', async () => {
+  const run = await watch(await fixture((github) => {
+    github.api[openPulls(LOGIN_BRANCH)] = [{ badCredentials: true }]
+    return github
+  }), ['acme/widgets@feature/login'])
+  expect(run.status).toBe(1)
+  expect(run.events).toStrictEqual([{ kind: 'login-lost', stderr: 'gh: Bad credentials (HTTP 401)' }])
 })
 
 test('a missing gh ends the tool with an error', async () => {

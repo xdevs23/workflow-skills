@@ -6,15 +6,16 @@
         "limit": 5000, "used": 1382, "remaining": 3618, "reset": 1800003610
       } } }] }
     ],
-    "repos/acme/widgets/pulls?state=open": [
+    "repos/acme/widgets/pulls?state=open&head=acme%3Afeature%2Flogin": [
       { "json": [[
-        { "number": 9, "head": { "ref": "fix/typo", "sha": "ccc3" } },
-        { "number": 12, "head": { "ref": "feature/login", "sha": "bbb2" } }
+        { "number": 12, "head": { "label": "acme:feature/login", "ref": "feature/login", "sha": "bbb2" } }
       ]] }
     ],
     "repos/acme/widgets/pulls/12": [
-      { "json": [{ "number": 12, "state": "open", "merged": false, "head": { "ref": "feature/login", "sha": "bbb2" } }] },
-      { "json": [{ "number": 12, "state": "closed", "merged": true, "head": { "ref": "feature/login", "sha": "bbb2" } }] }
+      { "json": [{ "number": 12, "state": "open", "merged": false, "mergeable": true,
+        "head": { "ref": "feature/login", "sha": "bbb2" }, "base": { "ref": "main" } }] },
+      { "json": [{ "number": 12, "state": "closed", "merged": true, "mergeable": null,
+        "head": { "ref": "feature/login", "sha": "bbb2" }, "base": { "ref": "main" } }] }
     ],
     "repos/acme/widgets/issues/12/comments": [
       { "json": [[

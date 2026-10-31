@@ -4,9 +4,11 @@
 GH_STANDIN_FIXTURE is a JSON file with `loggedIn`, a boolean, and `api`, which maps a path without
 its `per_page` and `page` parameters to a list of answers, one per call to the same page, the last
 repeated once the list runs out. An answer is `{"json": [<page>...]}`, with an optional `date`, the
-time of the response in seconds since the epoch, `{"fail": <stderr text>}`, or `{"refuse": {...}}`
+time of the response in seconds since the epoch, `{"fail": <stderr text>}`, `{"refuse": {...}}`
 for a request refused over a rate limit, with `retryAfter` in seconds, `reset` and `date` in
-seconds since the epoch, or `status` alone for a refusal that names no wait.
+seconds since the epoch, or `status` alone for a refusal that names no wait, or
+`{"badCredentials": true}` for a token rejected by GitHub. Without a login, every call fails with
+exit status 4 before it looks at the fixture answers, as gh does.
 
 `gh api --include [-H 'If-None-Match: <etag>'] <path>` prints the status line, the headers and the
 page named by the `page` parameter, with a Link header to the next page where there is one. When
@@ -21,6 +23,14 @@ import sys
 from email.utils import formatdate
 from urllib.parse import parse_qsl, urlencode, urlsplit
 
+
+def respond(status: str, headers: dict[str, str], body: str) -> None:
+    """Prints a response the way `gh api --include` does: the status line, the headers, a blank line
+    and the body."""
+    sys.stdout.write(f"HTTP/2.0 {status}\r\n" + "".join(f"{name}: {value}\r\n" for name, value in headers.items())
+                     + "\r\n" + body)
+
+
 args = sys.argv[1:]
 fixture = json.loads(open(os.environ["GH_STANDIN_FIXTURE"]).read())
 log = os.environ["GH_STANDIN_LOG"]
@@ -28,10 +38,9 @@ calls = [json.loads(line) for line in open(log)] if os.path.exists(log) else []
 with open(log, "a") as out:
     out.write(json.dumps(args) + "\n")
 
-if args == ["auth", "status"]:
-    if fixture["loggedIn"]:
-        sys.exit(0)
-    sys.exit("You are not logged into any GitHub hosts. To log in, run: gh auth login")
+if not fixture["loggedIn"]:
+    sys.stderr.write("To get started with GitHub CLI, please run:  gh auth login\n")
+    sys.exit(4)
 
 if args[:2] != ["api", "--include"] or len(args) not in (3, 5) or (len(args) == 5 and args[2] != "-H"):
     sys.exit(f"stand-in gh: unexpected call {args}")
@@ -54,11 +63,13 @@ if "refuse" in answer:
         headers["Retry-After"] = str(refusal["retryAfter"])
     elif "reset" in refusal:
         headers |= {"X-RateLimit-Remaining": "0", "X-RateLimit-Reset": str(refusal["reset"])}
-    status = refusal.get("status", 429)
-    body = json.dumps({"message": "You have exceeded a secondary rate limit."})
-    sys.stdout.write(f"HTTP/2.0 {status} Refused\r\n"
-                     + "".join(f"{name}: {value}\r\n" for name, value in headers.items()) + "\r\n" + body)
+    respond(f"{refusal.get('status', 429)} Refused", headers,
+            json.dumps({"message": "You have exceeded a secondary rate limit."}))
     sys.exit("gh: API rate limit exceeded (HTTP 429)")
+
+if "badCredentials" in answer:
+    respond("401 Unauthorized", {}, json.dumps({"message": "Bad credentials"}))
+    sys.exit("gh: Bad credentials (HTTP 401)")
 
 pages = answer["json"]
 body = json.dumps(pages[page - 1])
@@ -67,8 +78,6 @@ headers = {"Date": formatdate(answer.get("date"), usegmt=True),
 if page < len(pages):
     headers["Link"] = f'<{url.path}?{urlencode({**dict(parse_qsl(url.query)), "page": page + 1})}>; rel="next"'
 modified = len(args) == 3 or args[3] != f"If-None-Match: {headers['ETag']}"
-status = "200 OK" if modified else "304 Not Modified"
-sys.stdout.write(f"HTTP/2.0 {status}\r\n" + "".join(f"{name}: {value}\r\n" for name, value in headers.items())
-                 + "\r\n" + (body if modified else ""))
+respond("200 OK" if modified else "304 Not Modified", headers, body if modified else "")
 if not modified:
     sys.exit("gh: HTTP 304")
