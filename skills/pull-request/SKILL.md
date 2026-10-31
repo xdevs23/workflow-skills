@@ -104,8 +104,7 @@ Closes #<n>
   commit on right, labeled "After, <short head commit>".
 - Draw before and after picture new from code at both commits, with only what change changed. Never
   reuse draft page of change.
-- Leave out of before and after picture: optional picks, Updated marks, question, explaining
-  paragraphs.
+- Leave out of before and after picture: Updated marks, explaining paragraphs.
 - Attach before and after picture as PNG screenshot of page on which it is drawn.
 
 ## The line graphic

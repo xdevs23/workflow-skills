@@ -1,6 +1,6 @@
 ---
 name: visual-decisions
-description: Draw page for user to look at and answer: drafts, product decisions, plans and explanations
+description: Draw page for user to look at: drafts, product decisions, plans and explanations
 ---
 
 # Visual decisions
@@ -9,8 +9,7 @@ description: Draw page for user to look at and answer: drafts, product decisions
 
 - Draw page when `workflow-skills:implement` asks for draft of a change. Show on it overall shape,
   direction, architecture and design of change.
-- Draw page when one or more product decisions need answer from user, each changing what someone
-  sees or does, scope of product or which data is kept.
+- Draw page when change sets what someone sees or does, scope of product or which data is kept.
 - Draw page for substantial plan or design, and for explanation of complex code path, problem or
   trade-off. Open it for user instead of writing it into chat.
 
@@ -35,34 +34,28 @@ description: Draw page for user to look at and answer: drafts, product decisions
 - Below that line, put box titled "What this is about, in plain words": short list explaining
   change or decision to someone who never saw the code. Contents: one concrete example, what goes
   wrong or is missing today, what After does, what After does not change although reader could
-  expect it to, what it costs, what user is asked.
+  expect it to, what it costs.
 - Put legend under that box, one marker per kind of mark used by page:
   - After, in green, for part added or changed by the change;
   - earlier state, in red, for part left out by After;
-  - Optional pick, in blue, for one more After picture with better, alternative approach;
   - dashed box, for file not edited by the change;
-  - Updated, in purple, for part that changed after last answer from user;
+  - Updated, in purple, for part that changed after last reply from user;
   - short bar with its value, for number needed by decision. Filled green where value fits, red
     where over limit.
 - Keep draft of a change within one regular browser window. When it does not fit or is too
   complicated to read, split unit into sub-units as `workflow-skills:todo-md` describes. Never add
   pages to draft.
 - Keep page of product decisions within one browser window where you can. When decisions need more
-  room, split them into separate pages. Draw next page once user answered the one before. Never
+  room, split them into separate pages. Draw next page once user replied to the one before. Never
   draw them all at once.
 - Split page into numbered sections, each with title of at most 8 words.
 - Title each section showing After with outcome shown by its pictures, e.g. "Every open question
   survives a restart".
-- Title section comparing variants of After, and every section on page of product decisions, with
-  question answered by the pictures. Do not state a result in that title.
 - Draw each section in form given by section on pictures for what it shows.
 - Name sample in one line under title of first section using it.
 - Put pictures of a section side by side, each with label above it for state shown by it: branch
-  with its unpushed commits, a release, or one variant of After, e.g. "After, two maintainers".
-  Earlier states first, After last.
+  with its unpushed commits, a release, or After. Earlier states first, After last.
 - Put caption of at most 15 words under each picture.
-- Page with several variants of After: end it with section showing them side by side, one column
-  per variant, one row per state.
 - Mark part of picture that changes in color of its legend marker, so eye finds difference first.
 - Write words on rest of page only as labels, titles, captions and marks. Picture needing a
   paragraph to explain it is not clear yet.
@@ -88,19 +81,12 @@ description: Draw page for user to look at and answer: drafts, product decisions
 - Fold lines of file not edited by the change into one gray line with short description of them.
   Highlight every line added or edited by the change.
 
-## Choices and optional picks
+## Choices
 
-- Make every choice left open by user's words and the rules, and draw it as part of After. Leave
-  out of draft of a change what depends on decision still open for user, as
-  `workflow-skills:implement` describes. Do not ask questions in draft, do not add open points, do
-  not try to nudge user into accepting a real tradeoff.
-- Draw every better, alternative approach as one more After picture beside others of its section,
-  with label `Optional pick:` in blue in place of state label. Change includes it only when user
-  picks it explicitly. Approval without mentioning an optional pick = user accepts "After" shape.
-- Never show optional pick as text alone. Draw alternative happening out of sight as boxes and
-  arrows, like any other picture or graph. Optional picks must not pose a downgrade or introduce a
-  real tradeoff not already introduced by "After". Use optional picks to suggest objectively better
-  solutions for user to pick, even if they need more code or another round of drafts.
+- Make every choice left open by user's words yourself, product choices too, and draw it as part of
+  After. User says what should be different.
+- Draw one After for each section. Put better approach into After yourself.
+- Do not ask questions in page, and do not add open points.
 
 ## Updating the page
 
@@ -111,9 +97,7 @@ description: Draw page for user to look at and answer: drafts, product decisions
   already existed before. Instead, circle in just the thing changed by you. Can also use purple
   underline on added or changed text. May use strikethrough `~~ ~~` when it helps understand a
   subtle change.
-- Add to line under title what changed after last answer from user.
-- When user picks optional pick, make it After picture of its section, remove other optional picks
-  there. Remove optional pick declined by user.
+- Add to line under title what changed after last reply from user.
 - Update plain-words box and section titles whenever After changes.
 
 ## Making the page

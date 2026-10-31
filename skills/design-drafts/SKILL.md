@@ -50,8 +50,8 @@ description: Draw several design drafts for user to choose from
 - Draw drafts of part of screen, e.g. keyboard, panel or way to choose between two modes, as one
   page of `workflow-skills:visual-decisions`. One numbered section per direction.
 - Draw each direction inside real screen around that part, labeled with its name.
-- End page with section of `workflow-skills:visual-decisions` showing variants side by side, small
-  size, each direction with caption of its main property.
+- End page with section showing directions side by side, small size, one column per direction,
+  one row per state, each direction with caption of its main property.
 
 ## Checking
 

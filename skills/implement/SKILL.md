@@ -25,19 +25,14 @@ description: Implement change to code, from first talk with user until user revi
 - Show on draft: UI/UX where there is one, how state is represented in backend, and modules
   into which feature is split, with what each module may know of others. Such as core that is
   agnostic and one module for each implementation, where modules do not know of each other.
-- Draw draft only from decisions already made. Keep what depends on decision still open for user
-  out of draft. Write it as rough "not yet specified" note in entry of unit.
 - Once draft approved, add sub-units for its modules and for gaps under it as
   `workflow-skills:todo-md` describes, each with own draft. Move down until you have everything
   needed.
-- Find facts yourself. Leave decisions to user.
 - Save draft of feature as `<change>.html` in same folder as notes. Draft of sub-unit as
   `<change>-<sub-unit number>.html`.
 - When user says what should be different, change notes. Update draft as
   `workflow-skills:visual-decisions` describes.
 - Start building as soon as user says it can start.
-- If user cannot give clear direction or define scope, task workflow with draft writing that
-  provides multiple options on scope, UI/UX design and architecture as optional picks.
 
 ## Implementation
 
