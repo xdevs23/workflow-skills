@@ -171,6 +171,35 @@ describe('the questions of each session', () => {
   )
 
   test(
+    'a store entry of another shape at a process start is shown in one toast',
+    NO_TIME_LIMIT,
+    async ($, on) => {
+      const key = storeKeyOf(FIRST_SESSION, 'damaged')
+      const session = await startSession($, on, {
+        stored: new Map([[key, { questions: 'not a list' }]]),
+      })
+
+      expect(session.toasts).toHaveLength(1)
+      expect(session.toasts[0]).toContain(key)
+    },
+  )
+
+  test(
+    'a compaction after a start on a damaged store reads the store again',
+    NO_TIME_LIMIT,
+    async ($, on) => {
+      const damaged = storeKeyOf(FIRST_SESSION, 'damaged')
+      const session = await startSession($, on, {
+        stored: new Map([[damaged, { questions: 'not a list' }]]),
+      })
+      await $.classic.SessionStart({ source: 'compact' })
+
+      expect(session.toasts).toHaveLength(2)
+      expect(session.toasts[1]).toContain(damaged)
+    },
+  )
+
+  test(
     'a store entry of another shape in a session that /resume switched to is shown in a toast',
     NO_TIME_LIMIT,
     async ($, on) => {

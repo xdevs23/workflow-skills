@@ -31,6 +31,24 @@ export function hasPersonAtPrompt(): boolean {
   return isPersonAtPrompt
 }
 
+// The session whose questions the start of the process read, also when the read failed. The
+// classic SessionStart hook that follows the start then leaves that read out, so a failure shows
+// once. Before the start, the classic hook reads nothing, since no person is known to be at the
+// prompt yet.
+let sessionReadAtStart: string | undefined
+
+export function recordReadAtStart(sessionId: string): void {
+  sessionReadAtStart = sessionId
+}
+
+/** Whether the start of the process read the questions of `sessionId`, answered once. */
+export function takeReadAtStart(sessionId: string): boolean {
+  const wasRead = sessionReadAtStart === sessionId
+  sessionReadAtStart = undefined
+
+  return wasRead
+}
+
 /**
  * Reads the questions of the session `sessionId` from the store into the state that the screens
  * draw, and returns them.
@@ -46,12 +64,15 @@ export async function loadQuestionsFromStore(
 }
 
 /**
- * Loads the questions of the session that runs from the store into the state, unless the state
+ * Loads the questions of the session `sessionId` from the store into the state, unless the state
  * contains them already.
  */
-export async function loadQuestionsUnlessInState($: EngineInterface): Promise<void> {
-  if ((await readQuestionsInState($)) === null) {
-    await loadQuestionsFromStore($, await $.session.id())
+export async function loadQuestionsUnlessInState(
+  $: EngineInterface,
+  sessionId: string,
+): Promise<void> {
+  if ((await readQuestionsInState($))?.sessionId !== sessionId) {
+    await loadQuestionsFromStore($, sessionId)
   }
 }
 

@@ -77,8 +77,10 @@ import {
   loadQuestionsFromStore,
   loadQuestionsUnlessInState,
   recordPersonAtPrompt,
+  recordReadAtStart,
   setQuestionsInState,
   setTurnRunning,
+  takeReadAtStart,
 } from './sessionState'
 
 // In a session without a person at the prompt, such as a -p run or the Agent SDK, the plugin
@@ -113,30 +115,36 @@ export const startQuestions: Hook<'session.start'> = async ($, e, next) => {
   // The questions saved under the project before they belonged to a session are moved to their
   // session first, so the load finds them.
   await handleStoreFailure($, () => moveProjectRecordsToSessions($), message => $.ui.toast(message))
-  await loadQuestionsAndToastFailure($)
+  const sessionId = await $.session.id()
+  await loadQuestionsAndToastFailure($, sessionId)
+  recordReadAtStart(sessionId)
 
   return next(e)
 }
 
 // /resume and /clear do not raise a start, but run the classic SessionStart hook for the session
 // they switched to, and a compaction runs it too. The session loads its questions here unless they
-// are in the state already, so the band and the pane show them at once.
+// are in the state already, so the band and the pane show them at once. The start of a process
+// runs this hook as well, after the start hook read the questions.
 export const readQuestionsOfStartedSession: Hook<'classic.SessionStart'> = async ($, e, next) => {
-  if (hasPersonAtPrompt()) {
-    await loadQuestionsAndToastFailure($)
+  const sessionId = await $.session.id()
+  if (hasPersonAtPrompt() && !takeReadAtStart(sessionId)) {
+    await loadQuestionsAndToastFailure($, sessionId)
   }
 
   return next(e)
 }
 
 /**
- * Loads the questions of the session that runs into the state unless they are there already, and
- * shows a failure of the store in a toast. The types of the engine do not say whether the start of
- * a process runs the start hook or the classic SessionStart hook first, so both call this, and the
- * second finds the questions in the state.
+ * Loads the questions of the session `sessionId` into the state unless they are there already, and
+ * shows a failure of the store in a toast.
  */
-async function loadQuestionsAndToastFailure($: EngineInterface): Promise<void> {
-  await handleStoreFailure($, () => loadQuestionsUnlessInState($), message => $.ui.toast(message))
+async function loadQuestionsAndToastFailure($: EngineInterface, sessionId: string): Promise<void> {
+  await handleStoreFailure(
+    $,
+    () => loadQuestionsUnlessInState($, sessionId),
+    message => $.ui.toast(message),
+  )
 }
 
 export const addAnswersToToolResult: Hook<'tool.call'> = async ($, e, next) => {
@@ -252,7 +260,7 @@ export async function submitWithAnswers(
   return handleStoreFailure(
     $,
     async () => {
-      await loadQuestionsUnlessInState($)
+      await loadQuestionsUnlessInState($, await $.session.id())
       const sessionId = await awaitingSessionOf($)
       if (sessionId === null) {
         return next(e)
