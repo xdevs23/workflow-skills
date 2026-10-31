@@ -34,14 +34,16 @@ answer given during a turn you interrupted is sent with your next message.
 
 When Claude ends a turn of the main conversation on a message in which it waits for your answer,
 with a phrase such as "still open" or "waiting for your answer", it gets a reminder to check
-first whether rules, instructions or older transcripts already contain the answer, not to repeat
-open questions, and to pick up independent work meanwhile. When the message reports work as
-blocked or idle, with a phrase such as "still blocked", "nothing has changed" or "no workflows are
-running", the reminder contains an instruction to pick up independent work, and when nothing can
-start, to split the blocked units and start the parts that do not depend on the blocker. A
-message with phrases of both kinds gets both reminders, each once. The reminder sends Claude back
-to work at once, in the same turn. When the turn ends a second time on such a message, the turn
-is over without a reminder. The message that set off the reminder is still shown on screen.
+first whether rules, instructions or older transcripts already contain the answer, to ask every
+question that still needs an answer with the question tool and open its draft page for you, not
+to repeat open questions, and to pick up independent work meanwhile. When the message reports
+work as blocked or idle, with a phrase such as "still blocked", "nothing has changed" or "no
+workflows are running", the reminder contains an instruction to pick up independent work, and
+when nothing can start, to split the blocked units and start the parts that do not depend on the
+blocker. A message with phrases of both kinds gets both reminders, each once. The reminder sends
+Claude back to work at once, in the same turn. When the turn ends a second time on such a
+message, the turn is over without a reminder. The message that set off the reminder is still
+shown on screen.
 
 ## Install
 
