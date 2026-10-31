@@ -16,7 +16,13 @@ description: Write, change or delete tests, test doubles and fixtures
   that test in any way or makes it fail. Keep any assertion in it that runs the code. Never rewrite
   such test to match changed text.
 - Report test of that kind outside your change. Leave it in place.
-- Keep tests deterministic and reproducible. Independent of clock and of anything outside test.
+- Keep tests deterministic and reproducible. Independent of clock, of machine they run on and of
+  anything outside test. Only exception: thing under test is itself machine-dependent, e.g. ARMv8
+  instruction in emulator or Vulkan driver of one GPU vendor.
+- Put machine-dependent test only in module or package that contains only that machine-specific
+  code. Move machine-specific code into module of its own first where needed.
+- Run tests of machine-specific module only on machines of that kind, selected by build target or CI
+  configuration, never by skip inside test.
 - Never ship test code. Shipped code runs same path whether tests exist or not.
 - Put failure injection only in artifact that never ships. Let it run through real error handling.
 - Run tests and probes on synthetic fixtures in throwaway locations. Never on real user data or real
