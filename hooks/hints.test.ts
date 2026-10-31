@@ -7,6 +7,16 @@ import { HINT_KINDS, kindsWithPhraseIn } from './hintKinds'
 import { NO_TIME_LIMIT, endTurn, startSession, stopTurn, typePrompt } from './testSupport'
 import { WAITING_HINT } from './waitingHint'
 
+/** The paragraphs of the reason of a block before its closing paragraph. */
+function reasonsIn(block: string | undefined): string[] {
+  return (block ?? '').split('\n\n').slice(0, -1)
+}
+
+/** The closing paragraph of the reason of a block. */
+function closingOf(block: string | undefined): string | undefined {
+  return block?.split('\n\n').at(-1)
+}
+
 const WAITING = 'Build 61 passed. My question about the build folders is Still Open.'
 
 // A test with a global or sticky expression starts where the last one stopped, so one message would
@@ -286,7 +296,9 @@ describe('the end of a turn on a message with a hint phrase', () => {
     async ($, on) => {
       stopBeneath(on)
 
-      expect((await stopTurn($, { message: WAITING })).block).toBe(WAITING_HINT.text)
+      const stopped = await stopTurn($, { message: WAITING })
+
+      expect(reasonsIn(stopped.block)).toEqual([WAITING_HINT.text])
     },
   )
 
@@ -297,7 +309,7 @@ describe('the end of a turn on a message with a hint phrase', () => {
       stopBeneath(on)
       const message = 'Packaging is still blocked on the signing key.'
 
-      expect((await stopTurn($, { message })).block).toBe(BLOCKED_HINT.text)
+      expect(reasonsIn((await stopTurn($, { message })).block)).toEqual([BLOCKED_HINT.text])
     },
   )
 
@@ -308,7 +320,7 @@ describe('the end of a turn on a message with a hint phrase', () => {
       stopBeneath(on)
       const message = "Next\n- While the build runs, I'm working out why the cache is slow."
 
-      expect((await stopTurn($, { message })).block).toBe(ANNOUNCED_WORK_HINT.text)
+      expect(reasonsIn((await stopTurn($, { message })).block)).toEqual([ANNOUNCED_WORK_HINT.text])
     },
   )
 
@@ -321,9 +333,11 @@ describe('the end of a turn on a message with a hint phrase', () => {
         message: 'Nothing has changed. Everything left waits on your review.\n\nNext\n- Rebase.',
       })
 
-      expect(stopped.block).toBe(
-        `${WAITING_HINT.text}\n\n${BLOCKED_HINT.text}\n\n${ANNOUNCED_WORK_HINT.text}`,
-      )
+      expect(reasonsIn(stopped.block)).toEqual([
+        WAITING_HINT.text,
+        BLOCKED_HINT.text,
+        ANNOUNCED_WORK_HINT.text,
+      ])
     },
   )
 
@@ -336,7 +350,23 @@ describe('the end of a turn on a message with a hint phrase', () => {
         message: 'Nothing has changed. Everything left waits on your review.',
       })
 
-      expect(stopped.block).toBe(`${WAITING_HINT.text}\n\n${BLOCKED_HINT.text}`)
+      expect(reasonsIn(stopped.block)).toEqual([WAITING_HINT.text, BLOCKED_HINT.text])
+    },
+  )
+
+  test(
+    'every block ends with the same closing paragraph, which is no text of a hint kind',
+    NO_TIME_LIMIT,
+    async ($, on) => {
+      stopBeneath(on)
+      const closings = [
+        closingOf((await stopTurn($, { message: WAITING })).block),
+        closingOf((await stopTurn($, { message: 'Packaging is still blocked on the key.' })).block),
+      ]
+
+      expect(closings[0]).toBeDefined()
+      expect(closings[1]).toBe(closings[0])
+      expect(HINT_KINDS.map(kind => kind.text)).not.toContain(closings[0])
     },
   )
 
@@ -367,9 +397,10 @@ describe('the end of a turn on a message with a hint phrase', () => {
   test('a block asked by a hook beneath comes before the hint', NO_TIME_LIMIT, async ($, on) => {
     stopBeneath(on, { block: 'Run the linter first.' })
 
-    expect((await stopTurn($, { message: WAITING })).block).toBe(
-      `Run the linter first.\n\n${WAITING_HINT.text}`,
-    )
+    expect(reasonsIn((await stopTurn($, { message: WAITING })).block)).toEqual([
+      'Run the linter first.',
+      WAITING_HINT.text,
+    ])
   })
 
   test(
@@ -388,10 +419,10 @@ describe('the end of a turn on a message with a hint phrase', () => {
     async ($, on) => {
       stopBeneath(on, { additionalContext: ['The build is green.'] })
 
-      expect(await stopTurn($, { message: WAITING })).toEqual({
-        additionalContext: ['The build is green.'],
-        block: WAITING_HINT.text,
-      })
+      const stopped = await stopTurn($, { message: WAITING })
+
+      expect(stopped.additionalContext).toEqual(['The build is green.'])
+      expect(reasonsIn(stopped.block)).toEqual([WAITING_HINT.text])
     },
   )
 })
