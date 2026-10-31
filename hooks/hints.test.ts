@@ -33,6 +33,26 @@ describe('the phrases of a message that waits for an answer', () => {
     'The unit still has two open questions.',
     'I still have open questions about the cache.',
     'The unit still has 3 more open questions.',
+    'My question about the cache is still in my message before the last one.',
+    'I still have a question for you in my previous message, about the cache.',
+    'I still have a question about the cache for you.',
+    'My earlier message has a question about the cache.',
+    'My message before the last one has a question about the cache.',
+    'The questions about the cache are still there.',
+    'My question about hooks/waitingHint.ts is still in my message before the last one.',
+    'My question about v0.80.0 is still in my previous message.',
+    'The question about the cache is\nin my previous message.',
+    'The question about the cache is in my last reply.',
+    'I asked about the cache in my previous messages.',
+    'The question about the cache from two messages ago still stands.',
+    'The question about the cache remains open.',
+    'My question about the cache stays unanswered.',
+    'My question’s still in my last reply, about the cache.',
+    'My question about the cache has not been answered yet.',
+    'Awaiting your answer on the cache.',
+    'See my question above about the cache.',
+    'Please see my earlier question about the cache.',
+    'The question I asked earlier needs a decision.',
   ]
   for (const message of waiting) {
     test(`${JSON.stringify(message)} waits for an answer`, () => {
@@ -55,6 +75,16 @@ describe('the phrases of a message that waits for an answer', () => {
     'I still have the logs, and the pane lists open questions.',
     'I still have the logs\n- The pane lists open questions',
     'Done. I still have to close the open questions in TODO.md myself.',
+    'I asked a question about the cache. The build is still running.',
+    'I asked a question. See my previous message.',
+    'My previous message is about the cache. The pane lists no questions.',
+    'I answered your question about the cache, and the build is still running.',
+    'Your question about the flake is still reproducible on main, so I filed it.',
+    'The questions file is still in the repo.',
+    'The question hook is still registered.',
+    'In your previous message you asked a question about the cache; it is fixed now.',
+    'I still have questions about the cache design that I will research myself.',
+    'The output still has question marks in place of umlauts.',
   ]
   for (const message of notWaiting) {
     test(`${JSON.stringify(message)} does not wait for an answer`, () => {
