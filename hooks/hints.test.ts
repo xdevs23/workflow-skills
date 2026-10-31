@@ -54,6 +54,14 @@ describe('the phrases of a message that waits for an answer', () => {
     'See my question above about the cache.',
     'Please see my earlier question about the cache.',
     'The question I asked earlier needs a decision.',
+    'The decision on the cache size is still open.',
+    'Still open: the question about the cache.',
+    'Your approval is still pending.',
+    'Point 2 is still open.',
+    'Two points are still open: the cache size and the folder name.',
+    'Still open: should the cache move to the new disk?',
+    'The answer on the cache size is still pending.',
+    'The choice of cache size is still open.',
   ]
   for (const message of waiting) {
     test(`${JSON.stringify(message)} waits for an answer`, () => {
@@ -86,6 +94,13 @@ describe('the phrases of a message that waits for an answer', () => {
     'In your previous message you asked a question about the cache; it is fixed now.',
     'I still have questions about the cache design that I will research myself.',
     'The output still has question marks in place of umlauts.',
+    'The test suite is still running in the background, so that result is still open.',
+    'The deploy is still pending.',
+    'Your PR is still open, CI is green.',
+    'I answered your question; the PR is still open.',
+    'The PR you asked for is still open.',
+    'The decision record PR is still open.',
+    'I answered your question about the cache. The deploy is still pending.',
   ]
   for (const message of notWaiting) {
     test(`${JSON.stringify(message)} does not wait for an answer`, () => {

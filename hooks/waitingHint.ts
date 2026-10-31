@@ -9,16 +9,20 @@ const COUNT = String.raw`(?:an?|one|two|three|four|five|several|some|a\s+few|[1-
 const MESSAGE = String.raw`(?:messages?|repl(?:y|ies)|turns?|posts?)`
 const EARLIER_MESSAGE = String.raw`(?:\bmy\s+(?:previous|earlier|prior|last|other)\s+${MESSAGE}|\bmy\s+${MESSAGE}\s+(?:before|above)|\b${MESSAGE}\s+(?:above|before\s+the\s+last)|\b(?:two|three|[2-9])\s+${MESSAGE}\s+ago)\b`
 const ASKED = String.raw`\b(?:questions?|asked)\b`
-const OPEN_STATE = String.raw`(?:open|unanswered|pending|outstanding|unresolved|there|in\s+my|above)\b`
+const OPEN_WORD = String.raw`(?:open|unanswered|pending)`
+const OPEN_STATE = String.raw`(?:${OPEN_WORD}|outstanding|unresolved|there|in\s+my|above)\b`
+/** What is left to the user besides a question, such as a decision or point 2. */
+const OPEN_ITEM = String.raw`\b(?:decisions?|answers?|approvals?|choices?|points?|items?)(?:\s+\d+)?`
 
 const phrase = (source: string): RegExp => new RegExp(source, 'i')
 
 /** The hint after a message that waits for an answer from the user. */
 export const WAITING_HINT: HintKind = {
   phrases: [
-    /\bstill\s+open\b/i,
-    /\bstill\s+unanswered\b/i,
-    /\bstill\s+pending\b/i,
+    phrase(
+      String.raw`${OPEN_ITEM}(?:\s+(?:on|about|of|for|from)\b${CLAUSE})?\s+(?:is|are|remains?|stays?)\s+still\s+${OPEN_WORD}\b`,
+    ),
+    phrase(String.raw`\bstill\s+${OPEN_WORD}\s*:`),
     /\bstill\s+waiting\b/i,
     /\b(?:waiting|waits)\s+(?:for|on)\s+you(?:r)?\b/i,
     /\bawait(?:s|ing)?\s+your\b/i,
