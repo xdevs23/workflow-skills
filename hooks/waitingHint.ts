@@ -28,6 +28,8 @@ export const WAITING_HINT: HintKind = {
     /\bawait(?:s|ing)?\s+your\b/i,
     phrase(String.raw`\byour\s+answer\s+on\s+${SENTENCE}\s+is\s+still\b`),
     /\b(?:once|until)\s+you\s+answer\b/i,
+    /\byou\s+(?:(?:have\s+not|haven['’]t)\s+(?:yet\s+)?answered|(?:did\s+not|didn['’]t)\s+(?:yet\s+)?answer)\b/i,
+    /\byou\s+have\s+yet\s+to\s+answer\b/i,
     /\bonce\s+you(?:['’]ve|\s+have)\s+answered\b/i,
     /\bneeds\s+your\s+(?:answer|approval|go)\b/i,
     phrase(String.raw`\bstill\s+(?:have|has)\s+(?:${COUNT}\s+)?(?:more\s+)?(?:open\s+questions?\b|questions?\b${CLAUSE}\bfor\s+you\b)`),
