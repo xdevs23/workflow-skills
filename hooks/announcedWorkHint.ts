@@ -6,7 +6,7 @@ const EMPHASIS = String.raw`(?:\*\*?|__?)?`
 const NEXT_LABEL = String.raw`(?:(?:what['’]s|up)[ \t]+)?next(?:[ \t]+(?:steps?|up))?`
 /** Gerunds of work, without sayings such as "reading this as", "working on the assumption" or
  * "checking in". */
-const WORK_GERUND = String.raw`(?:working\s+out|working\s+on(?!\s+the\s+assumption\b)|looking\s+into|investigating|digging\s+into|reading(?!\s+(?:\S+\s+){0,3}?(?:as|right)\b)|checking(?!\s+in\b)|tracing|figuring\s+out|analy[sz]ing|researching|measuring|fixing|writing|implementing|building|rebasing|testing|reviewing|drafting)`
+const WORK_GERUND = String.raw`(?:working\s+out|working\s+on(?!\s+the\s+assumption\b)|looking\s+into|investigating|digging\s+into|reading(?!\s+(?:\S+\s+){0,3}?(?:as|right)\b)|checking(?!\s+in\b)|tracing|figuring\s+out|analy[sz]ing|researching|measuring|fixing|writing|implementing|building|rebasing|testing|reviewing|drafting|starting(?!\s+to\b))`
 const SELF_NOW = String.raw`\b(?:I(?:['’]m|\s+am)|we(?:['’]re|\s+are))\s+(?:(?:now|currently|still|also|meanwhile|already)\s+)?`
 const WORK_VERB = String.raw`(?:look\s+into|check|investigate|dig\s+into|fix|work\s+out|figure\s+out|find\s+out|trace|read|try)`
 
@@ -16,6 +16,8 @@ export const ANNOUNCED_WORK_HINT: HintKind = {
     new RegExp(String.raw`^[ \t]*${LIST_MARK}${HEADING_MARK}${EMPHASIS}${NEXT_LABEL}${EMPHASIS}[ \t]*(?::|${EMPHASIS}[ \t]*$)`, 'im'),
     /(?:^|[.!?:]\s+)next(?:\s+(?:up|steps?))?,?\s+I(?:['’]ll|\s+will|['’]m|\s+am)\b/im,
     /\b(?:now\s+I['’]ll|I['’]ll\s+now)\b/i,
+    /\bwhat\s+(?:I|we)(?:['’]m|\s+am|['’]re|\s+are|['’]ll|\s+will)\s+(?:doing|do)\s+next\b/i,
+    /\b(?:I(?:['’]m|\s+am)|we(?:['’]re|\s+are))\s+not\s+stopping\b(?!\s+(?:the|a|an|it|this|that|them)\b)/i,
     new RegExp(String.raw`${SELF_NOW}${WORK_GERUND}\b`, 'i'),
     new RegExp(String.raw`\blet\s+me\s+${WORK_VERB}\b`, 'i'),
   ],
