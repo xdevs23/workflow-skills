@@ -10,5 +10,8 @@ export const IDLE_HINT: HintKind = {
   text:
     'Your message reports that nothing needs action. Use the time for optimizations: speed up ' +
     'builds, reduce memory footprint, shorten iteration times and make workflows more ' +
-    'efficient. Pick one and start it now, in this turn.',
+    'efficient. Optimize the code itself: run work in parallel, drop work that is not needed, ' +
+    'do it more efficiently or cache it for the next run. Do not add services, daemons, hooks or ' +
+    'other resident processes to the operating system to keep things alive or warm. Pick one ' +
+    'and start it now, in this turn.',
 }
