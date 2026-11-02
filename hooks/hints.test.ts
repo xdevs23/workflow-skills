@@ -269,6 +269,11 @@ describe('the phrases of a message that announces work while the turn ends', () 
     "I'm not stopping here.",
     'I am starting unit #202.',
     "I'm now starting the rebase.",
+    "While the build runs, I'm going on with the parser work, without blocking on anything.",
+    "I'm carrying on with the parser.",
+    'I am continuing with the rebase.',
+    "We're proceeding with the migration.",
+    "I'm moving on to the parser.",
   ]
   for (const message of announcing) {
     test(`${JSON.stringify(message)} announces work`, () => {
@@ -296,6 +301,8 @@ describe('the phrases of a message that announces work while the turn ends', () 
     "I'm not stopping the build.",
     "I'm starting to think the cache is cold.",
     'You decide what I do next.',
+    "I'm going on leave tomorrow.",
+    "I'm moving on from the old parser.",
   ]
   for (const message of notAnnouncing) {
     test(`${JSON.stringify(message)} does not announce work`, () => {
