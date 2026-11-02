@@ -27,7 +27,7 @@ export const WAITING_HINT: HintKind = {
     /\b(?:waiting|waits)\s+(?:for|on)\s+you(?:r)?\b/i,
     /\bawait(?:s|ing)?\s+your\b/i,
     phrase(String.raw`\byour\s+answer\s+on\s+${SENTENCE}\s+is\s+still\b`),
-    /\b(?:once|until)\s+you\s+answer\b/i,
+    /(?<!\b(?:blocks?|holds?|stops?|pauses?)\b[^.!?\n]{0,40})\b(?:once|until)\s+you\s+answer\b/i,
     /\byou\s+(?:(?:have\s+not|haven['’]t)\s+(?:yet\s+)?answered|(?:did\s+not|didn['’]t)\s+(?:yet\s+)?answer)\b/i,
     /\byou\s+have\s+yet\s+to\s+answer\b/i,
     /\bonce\s+you(?:['’]ve|\s+have)\s+answered\b/i,

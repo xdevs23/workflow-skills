@@ -38,6 +38,7 @@ describe('the phrases of a message that waits for an answer', () => {
     'Still waiting on you: should I fix the flake?',
     'Item 1 waits for your word.',
     'Once you answer, I will rewrite that part.',
+    "I'll keep the branch as it is until you answer.",
     "Once you've answered, the unit starts.",
     'The rule needs your approval before tests are added.',
     'The lint question remains unanswered and is still pending.',
@@ -117,6 +118,8 @@ describe('the phrases of a message that waits for an answer', () => {
     'The decision record PR is still open.',
     'I answered your question about the cache. The deploy is still pending.',
     'The reviewer has not answered yet, so the build goes on.',
+    'The built-in tool shows a panel, but it blocks the turn until you answer it.',
+    'The dialog holds the session until you answer.',
     'You answered the cache question, so the build goes on.',
   ]
   for (const message of notWaiting) {
