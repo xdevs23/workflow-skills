@@ -43,11 +43,13 @@ to pick up independent work, and when nothing can start, to split the blocked un
 parts that do not depend on the blocker. When the message announces work as next or as underway,
 with a "Next" heading or a phrase such as "I'm working out", the reminder tells Claude to start that
 work in the same turn unless a running task does it, or to remove the claim and say what the work
-waits on. Phrases inside code, double quotation marks or quoted lines do not count. A message with
-phrases of several kinds gets one reminder for each kind. The reminders end with one sentence that
-asks Claude to act on them without mentioning them. When the turn ends a second time on such a
-message, the turn is over without a reminder. The message that set off the reminder is still shown
-on screen.
+waits on. When the message announces a question in place of asking it, with a phrase such as "I have
+one more question after that", the reminder tells Claude to put each held-back question through
+`workflow-skills:question` and to ask you only what that leaves open, one question to a message.
+Phrases inside code, double quotation marks or quoted lines do not count. A message with phrases of
+several kinds gets one reminder for each kind. The reminders end with one sentence that asks Claude
+to act on them without mentioning them. When the turn ends a second time on such a message, the turn
+is over without a reminder. The message that set off the reminder is still shown on screen.
 
 ## Install
 

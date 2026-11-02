@@ -1,11 +1,11 @@
 import type { HintKind } from './hintKind'
+import { COUNT } from './quantityWords'
 
 /** Text up to the end of the sentence: a stop counts only before a space, and a line break only
  * before a blank line, an indented line or a list item. */
 const SENTENCE = String.raw`(?:[^.!?\n]|[.!?](?=\S)|\n(?![\s\-*•]|\d+[.)]))*`
 /** Text up to the end of the clause, which also ends at a comma, a semicolon, a colon or a dash. */
 const CLAUSE = String.raw`(?:[^.!?\n,;:—–]|[.!?](?=\S))*`
-const COUNT = String.raw`(?:an?|one|two|three|four|five|several|some|a\s+few|[1-9]\d*)`
 const MESSAGE = String.raw`(?:messages?|repl(?:y|ies)|turns?|posts?)`
 const EARLIER_MESSAGE = String.raw`(?:\bmy\s+(?:previous|earlier|prior|last|other)\s+${MESSAGE}|\bmy\s+${MESSAGE}\s+(?:before|above)|\b${MESSAGE}\s+(?:above|before\s+the\s+last)|\b(?:two|three|[2-9])\s+${MESSAGE}\s+ago)\b`
 const ASKED = String.raw`\b(?:questions?|asked)\b`

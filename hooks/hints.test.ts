@@ -3,6 +3,7 @@ import type { ClassicResultOf, On } from 'claude-code'
 
 import { ANNOUNCED_WORK_HINT } from './announcedWorkHint'
 import { BLOCKED_HINT } from './blockedHint'
+import { HELD_QUESTION_HINT } from './heldQuestionHint'
 import { HINT_KINDS, kindsWithPhraseIn } from './hintKinds'
 import { NO_TIME_LIMIT, endTurn, startSession, stopTurn, typePrompt } from './testSupport'
 import { WAITING_HINT } from './waitingHint'
@@ -296,6 +297,43 @@ describe('the phrases of a message that announces work while the turn ends', () 
   for (const message of notAnnouncing) {
     test(`${JSON.stringify(message)} does not announce work`, () => {
       expect(kindsWithPhraseIn(message)).not.toContain(ANNOUNCED_WORK_HINT)
+    })
+  }
+})
+
+describe('the phrases of a message that announces a question in place of asking it', () => {
+  const holding = [
+    'Should I deploy main to the board? I have one more question after that.',
+    'I have one question: should the cache move?',
+    'I have a question for you about the cache.',
+    'I still have two more questions.',
+    "I've got another question.",
+    'We have a follow-up question on the cache.',
+    'More questions after this one.',
+    'There are other questions to follow.',
+    "I'll ask the next one once you answer.",
+    'I will ask the remaining questions later.',
+    "I'll ask another question after the build.",
+  ]
+  for (const message of holding) {
+    test(`${JSON.stringify(message)} announces a question`, () => {
+      expect(kindsWithPhraseIn(message)).toContain(HELD_QUESTION_HINT)
+    })
+  }
+
+  const notHolding = [
+    'Should the cache move to the new disk?',
+    'I have no questions.',
+    'I still have 0 open questions, so I continue.',
+    'I still have questions about the cache design that I will research myself.',
+    'I answered your question about the cache.',
+    'I will ask the reviewer to check the cache.',
+    "I'll ask the other agent for its findings.",
+    'The question hook is still registered.',
+  ]
+  for (const message of notHolding) {
+    test(`${JSON.stringify(message)} does not announce a question`, () => {
+      expect(kindsWithPhraseIn(message)).not.toContain(HELD_QUESTION_HINT)
     })
   }
 })
