@@ -123,6 +123,9 @@ contributor or agent without history, reads that file first.
 - While user talks back and forth with you, ask question in your message. Do not call
   `mcp__workflow-skills__ask_question` then.
 - Otherwise ask with tool `mcp__workflow-skills__ask_question`.
+- In session without that tool, e.g. Agent SDK session, ask with tool `AskUserQuestion`.
+- Where `AskUserQuestion` is absent too or returns no answer, e.g. in `-p` run, ask in message. Stop
+  work that depends on answer.
 - Name entry in each question by its number and title.
 - Take answer that arrives with tool result, or as message, as user's own reply. Act on it as on
   any other reply of user.
