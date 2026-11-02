@@ -2,6 +2,7 @@ import { ANNOUNCED_WORK_HINT } from './announcedWorkHint'
 import { BLOCKED_HINT } from './blockedHint'
 import { HELD_QUESTION_HINT } from './heldQuestionHint'
 import type { HintKind } from './hintKind'
+import { IDLE_HINT } from './idleHint'
 import { withoutQuotedText } from './quotedText'
 import { WAITING_HINT } from './waitingHint'
 
@@ -10,6 +11,7 @@ export const HINT_KINDS: readonly HintKind[] = [
   WAITING_HINT,
   HELD_QUESTION_HINT,
   BLOCKED_HINT,
+  IDLE_HINT,
   ANNOUNCED_WORK_HINT,
 ]
 

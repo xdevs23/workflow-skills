@@ -5,6 +5,7 @@ import { ANNOUNCED_WORK_HINT } from './announcedWorkHint'
 import { BLOCKED_HINT } from './blockedHint'
 import { HELD_QUESTION_HINT } from './heldQuestionHint'
 import { HINT_KINDS, kindsWithPhraseIn } from './hintKinds'
+import { IDLE_HINT } from './idleHint'
 import { NO_TIME_LIMIT, endTurn, startSession, stopTurn, typePrompt } from './testSupport'
 import { WAITING_HINT } from './waitingHint'
 
@@ -233,6 +234,35 @@ describe('the phrases of a message that reports blocked or idle work', () => {
   }
 })
 
+describe('the phrases of a message that reports that nothing needs action', () => {
+  const idle = [
+    'Nothing needs action.',
+    'Both builds still run. Nothing needs attention.',
+    'Nothing requires doing until the build ends.',
+    'No action is needed.',
+    'No action required.',
+    'Nothing to act on.',
+    'Nothing actionable came in.',
+  ]
+  for (const message of idle) {
+    test(`${JSON.stringify(message)} reports that nothing needs action`, () => {
+      expect(kindsWithPhraseIn(message)).toContain(IDLE_HINT)
+    })
+  }
+
+  const notIdle = [
+    'The failing test needs action.',
+    'The cache needs attention.',
+    'No action items were filed.',
+    'The deploy took no action on the cache.',
+  ]
+  for (const message of notIdle) {
+    test(`${JSON.stringify(message)} does not report that nothing needs action`, () => {
+      expect(kindsWithPhraseIn(message)).not.toContain(IDLE_HINT)
+    })
+  }
+})
+
 describe('the phrases of a message that announces work while the turn ends', () => {
   const announcing = [
     "Build 61 passed.\n\nNext\n- While the build runs, I'm working out why the cache is slow.",
@@ -378,6 +408,17 @@ describe('the end of a turn on a message with a hint phrase', () => {
   )
 
   test(
+    'the first end on a message that reports that nothing needs action is blocked with the idle hint',
+    NO_TIME_LIMIT,
+    async ($, on) => {
+      stopBeneath(on)
+      const message = 'Nothing needs action.'
+
+      expect(reasonsIn((await stopTurn($, { message })).block)).toEqual([IDLE_HINT.text])
+    },
+  )
+
+  test(
     'the first end on a message that announces work is blocked with the announced work hint',
     NO_TIME_LIMIT,
     async ($, on) => {
@@ -394,12 +435,15 @@ describe('the end of a turn on a message with a hint phrase', () => {
     async ($, on) => {
       stopBeneath(on)
       const stopped = await stopTurn($, {
-        message: 'Nothing has changed. Everything left waits on your review.\n\nNext\n- Rebase.',
+        message:
+          'Nothing has changed. Everything left waits on your review. Nothing needs action.' +
+          '\n\nNext\n- Rebase.',
       })
 
       expect(reasonsIn(stopped.block)).toEqual([
         WAITING_HINT.text,
         BLOCKED_HINT.text,
+        IDLE_HINT.text,
         ANNOUNCED_WORK_HINT.text,
       ])
     },

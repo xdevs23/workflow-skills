@@ -40,7 +40,9 @@ the draft page of every question for you, not to repeat open questions, and to p
 work meanwhile. When the message reports work as blocked or idle, with a phrase such as "still
 blocked", "nothing has changed" or "no workflows are running", the reminder contains an instruction
 to pick up independent work, and when nothing can start, to split the blocked units and start the
-parts that do not depend on the blocker. When the message announces work as next or as underway,
+parts that do not depend on the blocker. When the message reports that nothing needs action, the
+reminder tells Claude to start an optimization: faster builds, a smaller memory footprint, shorter
+iteration times or more efficient workflows. When the message announces work as next or as underway,
 with a "Next" heading or a phrase such as "I'm working out", the reminder tells Claude to start that
 work in the same turn unless a running task does it, or to remove the claim and say what the work
 waits on. When the message announces a question in place of asking it, with a phrase such as "I have
