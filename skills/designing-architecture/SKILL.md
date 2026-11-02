@@ -3,8 +3,6 @@ name: designing-architecture
 description: Design or plan shape of change or system: modules, layers, interfaces, where data, state and decisions live, how much to build
 ---
 
-# Designing architecture
-
 ## The hollow lattice
 
 - Design architecture as hollow lattice. New module slots in without change to core. Core containing
@@ -25,20 +23,18 @@ description: Design or plan shape of change or system: modules, layers, interfac
   into form used by other layer when it goes back.
 - Map every field of form used by other layer, or drop field on purpose.
 - Hand collaborators in, never fetch them from global registry.
-- Give each source of a value and each way of building a dependency one unit. Hand that unit to
-  code using it. Change of source then edits only that unit and composition root, the place where
-  app creates dependencies and hands them in.
+- Give each source of a value and each way of building a dependency one unit. Change of source then
+  edits only that unit and composition root, the place where app creates dependencies and hands
+  them in.
 - Put into base interface only members present in every implementation.
 - Connect two subsystems that must communicate through one named bridge, so neither contains details
   of the other.
 - Keep contracts tiny: one or two required members, rest optional or derived.
 - Discover interface from inside out, from what implementing code does and needs, one piece at a
-  time. Never as full interface written up front from assumptions.
-- Shape architecture so requirements fit naturally.
+  time.
 - Refactor wrong foundation. Delete machinery compensating for it.
 - Preserve useful abstractions.
 - Choose structures that show intent.
-- Reject specification that requires breaking the architecture.
 - Build code in distinct modules, layers and interfaces: one adapter handles input, another
   output, core contains details of neither, UI separate from renderer drawing it.
 
@@ -50,9 +46,9 @@ description: Design or plan shape of change or system: modules, layers, interfac
   bundling several layers is not a layer of its own, also when each layer is separate file inside
   it.
 - Give each component one job. Put check into component responsible for what it checks.
-- Keep business logic out of boundary, e.g. endpoint or command handler. Boundary only passes what
-  caller asked for on to code containing the logic.
-- Let shell or adapter only package the application, without any logic of the application.
+- Boundary, e.g. endpoint or command handler, only passes what caller asked for on to code
+  containing the business logic.
+- Let shell or adapter only package the application.
 - Let each entity own its state and lifecycle. Never build god object, bag of loose state or
   global mutable state behind lock.
 - Prefer asking another entity through its contract over reading its stored state directly.
@@ -62,13 +58,12 @@ description: Design or plan shape of change or system: modules, layers, interfac
 
 ## Truth, state and decisions
 
-- Make each decision in one place, record it once, let all other code read the record.
-- A check that derives same decision a second time shows decision is not recorded. Record decision,
-  delete second derivation.
-- Define once a value on which two programs or languages must agree. Never as copy in each.
-- Keep truth in durable state, e.g. database. Event only signals that stored data changed.
-  Receiver reads current data from store. Recovery from crash reads stored data.
-- Let signal contain ids and flags, never content. Receiver fetches what it needs by id.
+- Make each decision in one place, record it once, let all other code read the record. Delete check
+  that derives same decision a second time.
+- Define once a value on which two programs or languages must agree.
+- Keep truth in durable state, e.g. database. Event only signals that stored data changed and
+  contains ids and flags, never content. Receiver fetches current data from store by id. Recovery
+  from crash reads stored data.
 - Act in handler on source identified in event, never on ambient "current" instance.
 - Derive state. Never store it beside data from which it follows. This rule comes before preference
   for asking through contract: read stored state of another entity directly before storing data
@@ -80,14 +75,12 @@ description: Design or plan shape of change or system: modules, layers, interfac
 - Make optimizations, caches and buffers smoothing jitter pluggable, so each can be removed and
   system tested without it.
 - Compute expensive derived value, e.g. layout or measurements made on text, once per change of
-  inputs from which it is computed. Never on every read during a frame. Computed form is never the
-  truth.
-  Events, observers, subscriptions or another push mechanism may report the change.
+  inputs from which it is computed. Events, observers, subscriptions or another push mechanism may
+  report the change.
 - Keep state deterministic and reloadable. Correctness never depends on short-lived state in
   client.
 - Let mutation return only success or failure.
-- Read data again when notification reports it changed. Let side effects react to that
-  notification, never run inside the mutation.
+- Let side effects react to notification reporting that data changed, never run inside the mutation.
 - Use subscription, e.g. websockets, long polling or event stream, wherever one can be used.
 - Prefer reactive, event-driven and data-driven designs over chains of calls where each step
   starts the next.
@@ -97,23 +90,21 @@ description: Design or plan shape of change or system: modules, layers, interfac
 - Make work idempotent at stated granularity, checked against durable state.
 - Derive ids sent to another system from durable positions, e.g. id of stored row or offset in log
   from which the work came.
-- Record first, then act. Before performing action, durably write what it acts on, so action
-  refers to that stored record and recovery after crash replays from it.
+- Before performing action, durably write what it acts on, so action refers to that stored record
+  and recovery after crash replays from it.
 - Never compute first and insert later. Never predict future id.
 
 ## No hacks
 
 - Fix hazard through architecture, never by bolting on hack, band-aid, workaround or protective
   check.
-- When change needs bolt-on, change architecture so the work slots in.
 - Redesign shape to which such checks get added again and again.
 
 ## Limits
 
 - Never set limit yourself. Resources of machine and refusal from external system = only limits.
-- Never set limit yourself on how work runs either. Never order, queue or hold back approved work
-  behind other work on which it does not depend, a lock, a time of day or a core count set by
-  yourself.
+- Never order, queue or hold back approved work behind other work on which it does not depend, a
+  lock, a time of day or a core count set by yourself.
 - Never add fixed or configurable cap, or shape capping count or rate below what hardware can
   handle, e.g. single point through which every request passes one at a time, scan growing with
   count or table that cannot grow.
@@ -123,7 +114,7 @@ description: Design or plan shape of change or system: modules, layers, interfac
 - Never roll back settled migration, bring back retired pattern or reopen settled, approved work.
 - Never force in requirement that does not fit architecture. Say why. Refactor structure until
   requirement slots in.
-- Never relax invariant for one change. Change that seems to need it = design problem.
+- Never relax invariant for one change.
 
 ## Scope and size
 

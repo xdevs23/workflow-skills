@@ -21,19 +21,18 @@ request mentions that in description.
 
 ## The harness contract
 
-Harness contract: document describing harness adopted by project. Written during adoption, updated
-with every change to harness or its scenes. Contains these sections, each a record of facts about
-this project:
+Harness contract written during adoption, updated with every change to harness or its scenes.
+Contains these sections, each a record of facts about this project:
 
 1. Status and purpose: what harness is for, what it is not, what has and has not been verified, with
-   verification boundary of optional real samples written out openly.
+   verification boundary of optional real samples written out.
 2. Integration points: filled table from integration survey.
 3. Operator flow and commands: every verb with complete example invocation from repository root,
    what each prints, rules for capture names, exact runtime, engine and library versions locked by
    project.
 4. Implementation responsibilities: components and what each is responsible for, with adaptation
    points named in every part of guide and values chosen for them.
-5. Scene documentation: one entry per scene.
+5. Scene documentation.
 6. Samples and privacy, when harness has refresh.
 7. Drift, receipts and comparison, including recorded comparison options and parameters of diff
    coloring. Change to radius or margin of coloring recorded here as tooling decision.

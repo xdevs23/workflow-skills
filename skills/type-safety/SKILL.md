@@ -3,14 +3,12 @@ name: type-safety
 description: Review change for strict typing
 ---
 
-# Type safety
-
 Review change for type safety only.
 
 - Follow every rule by letter and by spirit. Getting result forbidden by a rule through another
   route, e.g. cast hidden in helper, type widened until value fits, or term redefined until work
   passes, breaks the rule just as forbidden form does. When rule stands in way of your work, name it
-  where you report your work. Never go around it.
+  where you report your work.
 - Leave unrelated concerns to other reviewers.
 - Report escapes from type system, e.g. `any`, `unknown`, `as`, unchecked casts, `@ts-ignore`,
   `# type: ignore` and unsafe downcasts, with everything that can break because of each one.

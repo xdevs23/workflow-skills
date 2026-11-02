@@ -6,12 +6,10 @@ description: Review whether abstractions in change are justified
 Review change for one thing only: whether every abstraction in it is justified by how code uses
 it.
 
-- Report leaky abstraction: interface that requires caller to know how it works inside. Calling
-  function, using object, importing module or instantiating class never requires knowing how that
-  part of code works.
+- Report leaky abstraction: interface that requires caller to know how it works inside.
 - Report premature or speculative abstraction: indirection, generics, plugin points or
   configuration knobs with single caller while second use not in sight. Accept abstraction with at
-  most one caller only where notes describing change require it, never on assumption.
+  most one caller only where notes describing change require it.
 - Report wrapper, e.g. class or function whose only content is one fixed expression that builds or
   calls other parts, when its name is less clear than code inside it, e.g. `TrackedQueue()` for
   `Counter(Listeners())`. Fix: remove wrapper, let callers write code inside it.

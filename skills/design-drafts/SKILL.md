@@ -3,8 +3,6 @@ name: design-drafts
 description: Draw several design drafts for user to choose from
 ---
 
-# Design drafts
-
 - Load `workflow-skills:visual-decisions` first.
 
 ## Before you draw
@@ -26,7 +24,7 @@ description: Draw several design drafts for user to choose from
   one direction.
 - Name each direction in 1 to 3 words for its idea.
 - Give each draft one-line description: view shown by it, still or animated, resolution.
-- Draw each draft with sample data and every element shown by the screen.
+- Draw every element shown by the screen in each draft.
 - Animate draft where screen imitated by it animates.
 - Draw states that change layout as separate drafts, e.g. smaller screen, values not reported by
   source, text too long for its space.

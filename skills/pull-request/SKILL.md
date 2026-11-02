@@ -3,8 +3,6 @@ name: pull-request
 description: Open PR, and write or update its description
 ---
 
-# Open a pull request
-
 - Load `workflow-skills:hygiene` first. Its rules apply to title, description and every picture
   attached to pull request.
 
@@ -57,14 +55,12 @@ Closes #<n>
 
 - Write title in commit subject style of project, as plain outcome.
 - Let description grow only as far as change needs. Description of one-line fix still contains
-  value sentence, one sentence under each required heading, one evidence line and picture. Never pad
-  a heading to fill it.
+  value sentence, one sentence under each required heading, one evidence line and picture.
 
 ## The parts
 
-- Write under "What value this provides" one or two plain sentences: what is better for reader or
-  user once change is merged.
-- Name benefit for reader or user under "What value this provides". Leave out every file name.
+- Write under "What value this provides" one or two plain sentences: benefit for reader or user once
+  change is merged. Leave out every file name.
 - Write under "The previous problem" what was wrong or missing and where it showed, with cause when
   known.
 - Write under "The change" one bullet per behavior. Leave out any list of files.
@@ -130,8 +126,6 @@ Closes #<n>
   --fonts <directory>`. Directory: `~/Library/Fonts` after cask, or `static/otf` or `static/ttf`
   folder of zip.
 - Pass `--resvg <executable>` when resvg is not on `PATH`.
-- Replace placeholder `<the section printed by pr-lines, heading included>` in description file with
-  section printed by `pr-lines`, heading included.
 - When a kind is wrong for project, e.g. Markdown files that are the product, add lines with
   `pr-lines` attribute to `.gitattributes` of repository, e.g. `skills/** pr-lines=code`. `pr-lines`
   reads them at head commit. They override shared rules for every path matched by them.
@@ -154,5 +148,4 @@ Closes #<n>
 - After each push, run `pr-lines` again for new head and replace section in description file. Draw
   evidence picture again when what it shows changed. Update every other part made wrong by push.
 - Update pull request with `gh pr edit <number> --body-file body.md --attach lines.png --attach
-  evidence.png`. Attach every picture again. Description file refers to local files until upload
-  replaces each reference.
+  evidence.png`. Attach every picture again.

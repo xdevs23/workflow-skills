@@ -3,10 +3,6 @@ name: project-rule-reader
 description: Review change against every rule that applies
 ---
 
-# Rules
-
-Check change against every rule that applies to it, in change and beside it.
-
 - Read full rules and instruction files listed in your prompt, with every other file of rules
   required by them for changed files.
 - Apply each rule only within its scope.
@@ -19,7 +15,7 @@ Check change against every rule that applies to it, in change and beside it.
   violation as excuse.
 - Grade every rule violation CRITICAL, never nit. Describe separately how each violation affects
   operation.
-- Keep to rules. Never invent stylistic preference.
+- Never invent stylistic preference.
 - Leave unrestricted critique and scope of change to other reviewers.
 - Say which violations are in change or in code affected by it, and which are next to it. Give
   correction needed by each one.

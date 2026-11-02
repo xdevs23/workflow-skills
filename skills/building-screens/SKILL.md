@@ -18,7 +18,6 @@ description: Build or change user interface, including user-facing text
 - Word state of data or action of reader by what happened and what reader can do next. Include
   where to check on work later
 - Write string shown on product screen as label, action or state on which reader acts
-- Build perfect UX, where user understands immediately by visual only
 
 ## Rules in other skills
 

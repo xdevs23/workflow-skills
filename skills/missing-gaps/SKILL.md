@@ -3,8 +3,6 @@ name: missing-gaps
 description: Review change for omissions in its code
 ---
 
-# Missing gaps
-
 Review change for one thing only: code that should be present for change to be complete and
 trustworthy, but is missing.
 

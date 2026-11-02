@@ -15,7 +15,7 @@ description: Whenever a PR is created or needs watching
 - Put state file in project cache defined by `workflow-skills:local-cache`.
 - Run watcher through Monitor tool where harness has it, since every line printed by watcher is one
   event. Otherwise run it in shell where `gh` is logged in. Read output line by line.
-- Read output. Handle every event not handled yet. Watcher prints each event as one JSON line.
+- Handle every event not handled yet. Watcher prints each event as one JSON line.
   First poll prints every comment, review and reply in review thread already on pull request. Also
   every failed check run and failed commit status on head commit of pull request, and merge conflict
   between head commit and base branch.

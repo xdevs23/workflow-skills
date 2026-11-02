@@ -1,14 +1,13 @@
 # The self-test suite
 
-Harness has bounded test suite, run through test verb of launcher. Suite tests fixtures, comparison,
-coloring, network denial, lock check in launcher, port and server settings, sample refresh against
-synthetic transport, and evidence sheet. Suite runs only through launcher, since several tests need
-locked engine and variables set by launcher. Those tests assert variables present. When variables
-missing, tests fail with message containing launcher command.
+Harness has bounded test suite. Suite tests fixtures, comparison, coloring, network denial, lock
+check in launcher, port and server settings, sample refresh against synthetic transport, and
+evidence sheet. Suite runs only through launcher, since several tests need locked engine and
+variables set by launcher. Those tests assert variables present, with launcher command in failure
+message.
 
 Ordinary test discovery of project does not find suite. Suite file name does not match discovery
-pattern of test runner. Launcher passes file to test runner explicitly. So ordinary test run of
-project runs without environment tool, without rendering engine, without network.
+pattern of test runner. Launcher passes file to test runner explicitly.
 
 Every test that writes files writes into fresh directory named with random identifier, under harness
 directory in project cache, location defined by `workflow-skills:local-cache`.
@@ -32,8 +31,7 @@ query parameter, different method and write body with extra field each fail to m
 Compatibility tests check different scene, different compatibility group such as different lock, and
 empty set of checkpoints each fail compatibility check. Different source revision passes it.
 Compatibility tests also check missing checkpoint, present in one capture and absent from other,
-fails comparison. This check adds to incompatible inputs and to different dimensions covered by zero
-tolerance tests.
+fails comparison.
 
 Zero tolerance tests check: image compared with itself gives zero changed pixels, one changed pixel
 gives count of one, images of different dimensions fail with message about dimensions.
@@ -57,7 +55,7 @@ strictly, switches watcher off, switches hot reloading off. Applies even when co
 application sets polling watcher and another port.
 
 Projection test checks projecting record containing email address, external media and private fields
-gives exactly synthetic record with displayed fields, nothing private left in it.
+gives exactly synthetic record with displayed fields.
 
 Tests for missing credentials check: refresh without origin and credential fails without sending
 request, missing sample fails, sample with manifest marked incomplete fails.
@@ -90,8 +88,7 @@ Sheet grouping test checks checkpoints of one variant split correctly into chang
 and before-only, independent of order, and other variants ignored.
 
 Sheet rendering test checks two synthetic captures render into one PNG of exactly fixed sheet width.
-Second render to same output fails because output exists. Missing capture fails with capture name in
-message.
+Second render to same output fails. Missing capture fails with capture name in message.
 
 Sheet refusal tests check captures of different scenes refused with both capture names and both
 scene names in message. They also check receipt without source revision refused with name of capture

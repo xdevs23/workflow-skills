@@ -10,13 +10,12 @@ shows and what they do. Harness does not catalogue application or redesign it.
 Harness produces real screenshots of rendering surface, measured assertions and strict comparisons
 between two captures. During rendering, harness does not use a backend, credentials or network. Adds
 to behavior tests in project, replaces none of them. Simulated document or widget tree does not lay
-out boxes or draw fonts, so test on one can only check that style name is present. Harness checks
-what a person sees.
+out boxes or draw fonts, so test on one can only check that style name is present.
 
 Harness used in three ways. First: verification during development. Capture unchanged interface,
-make change, capture again, compare. Second: keep scene that once caught a defect, let it catch
-that defect again if it comes back. Third: attach evidence sheet, built from capture on base commit
-and one on candidate commit, to pull request where project requires it.
+make change, capture again, compare. Second: keep scene that once caught a defect, let it catch that
+defect again if it comes back. Third: attach evidence sheet, built from capture on base commit and
+one on candidate commit, to pull request where project requires it.
 
 ## Principles
 
@@ -25,18 +24,18 @@ point, real navigation and route protection, real state stores, real styles. Har
 double a store, replace a data module, or add route or style only for tests. Data boundary is the
 only point where harness substitutes anything.
 
-Fixtures enter at data boundary. Every request for data made by application gets its response from
-declared fixture, matched by operation, path, exact query and, for a write, exact body. Unknown
+Every request for data made by application gets its response from declared fixture, matched by
+operation, path, exact query and, for a write, exact body. Unknown
 request, unexpected write or exhausted response fails scene. Harness never forwards request to live
 service. Blocks every attempt to connect to external system, records it as failure.
 
-Everything that affects pixels locked. Runtime, rendering engine, fonts and dependencies come from
-lock files. Run never picks up unlocked engine from machine, never downloads engine automatically,
-never installs anything globally, never inherits environment of caller.
+Runtime, rendering engine, fonts and dependencies come from lock files. Run never picks up unlocked
+engine from machine, never downloads engine automatically, never installs anything globally, never
+inherits environment of caller.
 
-Determinism before tolerance. Window size, pixel density, locale, timezone, clock, motion setting
-and build values fixed. Two clean runs of same scene give zero changed pixels. Tolerances never
-raised to make run pass. Nothing masked.
+Window size, pixel density, locale, timezone, clock, motion setting and build values fixed. Two
+clean runs of same scene give zero changed pixels. Tolerances never raised to make run pass.
+Nothing masked.
 
 Comparison: strict automatic verdict, also for change that alters compatibility input on purpose,
 e.g. translation, fixture, scene module or dependency lock. User names such change in words given
@@ -44,30 +43,27 @@ for unit of work. When comparison rejects pair as incompatible, output of that c
 together with evidence sheet built from same two captures. Reviewers judge outcome by reading
 sheet, both receipts and measured checks of after capture.
 
-Harness observes readiness, never sleeps for it. Capture waits for named observations: screen
-settled with expected content, every required response delivered, fonts loaded and checked, images
-decoded, geometry of target stable across consecutive frames. Readiness never depends on fixed
-delay or global idle signal. Interface that polls for data never goes idle.
+Capture waits for named observations: screen settled with expected content, every required response
+delivered, fonts loaded and checked, images decoded, geometry of target stable across consecutive
+frames. Readiness never depends on fixed delay or global idle signal. Interface that polls for data
+never goes idle.
 
-Pixels and measured semantics both required. Each scene asserts measured facts, e.g. widths,
-counts, texts and roles, next to its screenshots. Pixels need interpretation. Style name proves
-nothing about layout.
+Each scene asserts measured facts, e.g. widths, counts, texts and roles, next to its screenshots.
+Pixels need interpretation. Style name proves nothing about layout.
 
 Scenes: typed modules written in same language as application, checked against real data types and
 component parameters of application. Harness does not build scene language, component catalogue
 tool or plugin platform.
 
 Selectors match exactly intended target. Scenes use existing test hooks of application where
-present, scoped accessible roles elsewhere. Missing or ambiguous target fails scene, which never
-silently picks first match. Selector never asserts styling class in place of geometry measurement.
-Fixtures do not use unchecked type casts.
+present, scoped accessible roles elsewhere. Missing or ambiguous target fails scene. Selector never
+asserts styling class in place of geometry measurement. Fixtures do not use unchecked type casts.
 
-Every artifact local and private. Captures, reports, comparisons, samples, source exports,
-dependency caches and scratch files written to harness directory inside project cache, location
-defined by `workflow-skills:local-cache`. Only scene modules, synthetic fixtures and harness code
-tracked. Guide calls that location harness directory throughout. One exception: scratch directory
-used by runtime and rendering engine. Sits in system temporary directory, one private directory per
-run. Launcher removes it when run ends.
+Captures, reports, comparisons, samples, source exports, dependency caches and scratch files written
+to harness directory inside project cache, location defined by `workflow-skills:local-cache`. Only
+scene modules, synthetic fixtures and harness code tracked. Guide calls that location harness
+directory throughout. One exception: scratch directory used by runtime and rendering engine. Sits in
+system temporary directory, one private directory per run. Launcher removes it when run ends.
 
 ## Components are examples
 
@@ -76,9 +72,9 @@ describes what a component has to do. Components and libraries used by reference
 examples, beside capability provided by each one. Guide leaves out version numbers. You choose
 components that fit project.
 
-Choice depends on three capabilities. Automation component intercepts every data source before
-first render, blocks every connection to external system, controls a clock, and captures rendering
-surface with animations and text carets disabled. Comparison component decodes images and produces
+Choice depends on three capabilities. Automation component intercepts every data source before first
+render, blocks every connection to external system, controls a clock, and captures rendering surface
+with animations and text carets disabled. Comparison component decodes images and produces
 changed-pixel count and per-pixel change mask with fixed, recorded options. Environment locks
 runtime, rendering engine and fonts. Same inputs give same pixels on every machine that runs
 harness.
@@ -90,10 +86,9 @@ reason.
 ## Adaptation points
 
 Reference relied on facts about application for which it was built: framework, development server,
-authentication storage, data paths, fonts, shell consumers, routes, locales. Guide gives rule
-behind each such fact and marks fact as adaptation point. Integration survey fills in every
-adaptation point for adopting project before any harness code exists. Adaptation point marked in
-text with words "adaptation point".
+authentication storage, data paths, fonts, shell consumers, routes, locales. Guide gives rule behind
+each such fact and marks fact with words "adaptation point". Integration survey fills in every
+adaptation point for adopting project before any harness code exists.
 
 ## Reading order
 

@@ -3,8 +3,6 @@ name: visual-decisions
 description: Draw page for user to look at: drafts, product decisions, plans and explanations
 ---
 
-# Visual decisions
-
 ## When it applies
 
 - Draw page when `workflow-skills:implement` asks for draft of a change. Show on it overall shape,
@@ -47,7 +45,7 @@ description: Draw page for user to look at: drafts, product decisions, plans and
 - Draft that does not fit or is too complicated to read: split unit into sub-units as
   `workflow-skills:todo-md` describes. Never add pages to draft.
 - Product decisions that need more room: split them into separate pages. Draw next page once user
-  replied to the one before. Never draw them all at once.
+  replied to the one before.
 - Split page into numbered sections, each with title of at most 8 words.
 - Title each section showing After with outcome shown by its pictures, e.g. "Every open question
   survives a restart".
@@ -57,16 +55,14 @@ description: Draw page for user to look at: drafts, product decisions, plans and
   with its unpushed commits, a release, or After. Earlier states first, After last.
 - Put caption of at most 15 words under each picture.
 - Mark part of picture that changes in color of its legend marker, so eye finds difference first.
-- Write words on rest of page only as labels, titles, captions and marks. Picture needing a
-  paragraph to explain it is not clear yet.
+- Write words on rest of page only as labels, titles, captions and marks.
 - Draw page in very visual way, so user looking at it sees at first glance what end result is and
-  how change feels. Do not write huge wall of text on HTML page.
+  how change feels.
 
 ## Pictures
 
 - Draw visible change as imitation of real screen, with its structure, labels and look. Where
-  possible and cheap, make real screenshots or import real screen, so user sees how it actually
-  looks.
+  possible and cheap, make real screenshots or import real screen, so user sees how it looks.
 - Draw picture at real size of what it shows, with what surrounds it. Scale it down only where page
   would not fit viewport otherwise.
 - Draw what goes wrong at place in picture where it happens, in color of state to which it belongs.
@@ -76,9 +72,8 @@ description: Draw page for user to look at: drafts, product decisions, plans and
 - Draw change happening out of sight, e.g. where in code a decision is made, as boxes and arrows:
   which part calls which, what passes between them, in each state.
 - Show code as excerpt of real file, under header with component and path. Keep snippets short and
-  to the point. Keep code well readable. Showing internal details of code misses the point: go one
-  layer up and abstract away, so functions, variables and other declarations read like what it
-  actually does in real world.
+  to the point. Keep code well readable. Go one layer up and abstract away internal details of
+  code, so functions, variables and other declarations read like what it does in real world.
 - Fold lines of file not edited by the change into one gray line with short description of them.
   Highlight every line added or edited by the change.
 
@@ -86,18 +81,17 @@ description: Draw page for user to look at: drafts, product decisions, plans and
 
 - Make every choice left open by user's words yourself, product choices too, and draw it as part of
   After. User says what should be different.
-- Draw one After for each section. Put better approach into After yourself.
+- Draw one After for each section, using better approach.
 - Do not ask questions in page, and do not add open points.
 
 ## Updating the page
 
 - When user says what should be different, edit page in place by hand. Page drawn again from
   scratch hides the difference.
-- Mark every part that changed as Updated, with purple outline and `UPDATED` badge, as granular as
-  possible. Remove Updated marks of earlier rounds. Do not mark entire section as updated when it
-  already existed before. Instead, circle in just the thing changed by you. Can also use purple
-  underline on added or changed text. May use strikethrough `~~ ~~` when it helps understand a
-  subtle change.
+- Mark every part that changed as Updated, with purple outline and `UPDATED` badge. Remove Updated
+  marks of earlier rounds. Circle just thing changed by you instead of marking entire section that
+  already existed before. Can also use purple underline on added or changed text. May use
+  strikethrough `~~ ~~` when it helps understand a subtle change.
 - Add to line under title what changed after last reply from user.
 - Update plain-words box and section titles whenever After changes.
 
@@ -111,7 +105,7 @@ description: Draw page for user to look at: drafts, product decisions, plans and
   ID of that state or path of working tree with uncommitted changes. Tell it to read every file of
   that state at that version, since checkout in which it starts can contain a different version.
 - Render page in headless browser at 1920×960, take screenshot of full page and look at it before
-  showing page. Page that only passed a check of its markup has not been seen.
+  showing page.
 - Open page for user. Where session is headless, or runs in harness that cannot open a file for
   user, show page the way harness allows, e.g. inline artifact, inline HTML or embedded screenshot.
 

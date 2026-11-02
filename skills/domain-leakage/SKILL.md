@@ -3,14 +3,11 @@ name: domain-leakage
 description: Review change for leaks between domain core and infrastructure
 ---
 
-# Domain leakage
-
 Review change for domain leakage only: code crossing boundary between domain core and mechanisms
 around it, e.g. HTTP, databases, queues, user interfaces, third-party SDKs.
 
-- Leave unrelated concerns to other reviewers.
 - Report domain logic that depends on delivery: business rules referencing HTTP status, ORM
-  entities, request or response shapes, framework types or SQL.
+  entities, request or response shapes or SQL.
 - Report infrastructure vocabulary in core: DTOs, database rows or wire formats used as domain
   model, persistence annotations on domain types.
 - Report reverse leak: infrastructure that encodes business rules belonging to domain, e.g.

@@ -3,8 +3,6 @@ name: quality
 description: Review change without restriction on what you report
 ---
 
-# Quality
-
 Review change as reader who has seen enough organically grown monoliths to recognize their early
 symptoms. Report anything found, whatever its kind.
 

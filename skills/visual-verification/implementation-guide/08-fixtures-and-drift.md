@@ -7,8 +7,8 @@ screen consumes something not declared by fixtures.
 
 ## The shared shell responses
 
-One helper builds responses for shell of application. Every page scene builds on it. Read requests
-sent by shell = those listed by survey: navigation badges and counters, version line, account or
+One helper builds responses for shell of application. Read requests sent by shell = those listed
+by survey: navigation badges and counters, version line, account or
 organization switchers, health signals, held subscriptions. Scene that needs different shell state,
 e.g. switcher drawn because account belongs to several organizations, declares that state
 explicitly through helper. Adaptation point: read requests sent by shell.
@@ -44,17 +44,15 @@ values, accented characters, one long unbroken value as stress case, second lang
 words. State in fixture chosen for tightest layout as well: longest labels drawn by controls, e.g.
 longest name of mode or setting, and extra control that fills row the most, e.g. optional button
 drawn only in some states. Record without optional translation shows fallback of application. Empty
-state comes from empty model or empty declared response. Missing fixture data never produces empty
-state.
+state comes only from empty model or empty declared response.
 
 ## Runtime assertions on parsed data
 
 Before data boundary sends first response from fixture set, that set gets validated with runtime
 assertions on parsed data: required envelopes, field types, enumeration values, consistency of
 referenced identifiers. Harness uses runtime validators of application where they exist, otherwise
-narrow ordinary assertions written for bounded fixture set. These assertions check parsed data. They
-do not decode wire format a second time. Missing optional data allowed only when scene declares that
-state.
+narrow ordinary assertions written for bounded fixture set. They do not decode wire format a second
+time. Missing optional data allowed only when scene declares that state.
 
 Validation runs before rendering engine starts, so broken fixture fails manifest before any
 navigation. Every assertion message shows key or field, with instruction to curate fixture again.
@@ -76,9 +74,8 @@ Validation compares fixture set with set expected by scene, fails on each of the
 * extra response key not expected by scene;
 * referenced identifier that appears in none of related responses.
 
-Type change, missing property used by scene, unexpected request or missing required response: each
-fails visibly. Projection version of fixtures and samples raised on every incompatible change.
-Caches of older version invalidated. Absent fields never filled with plausible defaults.
+Projection version of fixtures and samples raised on every incompatible change. Caches of older
+version invalidated. Absent fields never filled with plausible defaults.
 
 ## What drift checks cannot prove
 

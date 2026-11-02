@@ -7,8 +7,8 @@
   ones drawing a single element.
 - Make every constraint that can be a type a type.
 - Keep runtime checks at system boundaries.
-- Put general extension function, one reusable anywhere, in file under package path of the type
-  extended by it, e.g. `extensions/androidx/compose/ui/graphics/Color.kt`.
+- Put general extension function in file under package path of the type extended by it, e.g.
+  `extensions/androidx/compose/ui/graphics/Color.kt`.
 - Make call site read like the domain with operators, infix functions, extension properties and DSL
   builders.
 - Make adding one more entry of a kind, e.g. new variant or new handler, take same number of lines
@@ -21,13 +21,12 @@
 - Read text into closed set where text arrives, with one lookup by serialized form.
 - Make records immutable data classes, built with named arguments, changed with `copy()`.
 - Validate in `init` with `require`, so invalid instance cannot exist.
-- Model finite set of states as sealed class, exposed as `StateFlow` when observed. Never as set of
-  booleans.
+- Model finite set of states as sealed class, exposed as `StateFlow` when observed.
 - Type errors as enums with structured records.
 - Convert errors into error type shared across layers of application with extension function, never
   with scattered catch blocks.
 - Split capabilities into small interfaces. Let component implement only interfaces supported by it.
-  Let consumer request the capability, never the concrete type.
+  Let consumer request the capability.
 - Let implementation declare what it's for, with annotation or property. Let registry match data to
   it, never `when` dispatch.
 - Pass capabilities to code as context parameters, so call lacking needed capability fails to
@@ -60,7 +59,7 @@
 - Log through reified extension function behind inline debug check, so release builds leave out
   debug logging. Function tags each line with class name of its receiver, i.e. class in which the
   call is written.
-- Pass data to another screen as one typed, serialized object, never as loose extras.
+- Pass data to another screen as one typed, serialized object.
 - Run work needing open resource inside block that opens resource before work and closes it after,
   e.g. `database.transaction { }`.
 - Give one-row table generic single-entry DAO with default value and `get` and `save`.

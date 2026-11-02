@@ -1,9 +1,8 @@
 # Geometry measurements
 
-Measurements read geometry from layout engine that drew screen. Never read it from style
-declarations. Style name shows what developer intended. Measured box shows what engine drew. Every
-measurement writes actual values into receipt, so failure understandable without running scene
-again.
+Measurements read geometry from layout engine that drew screen, never from style declarations.
+Every measurement writes actual values into receipt, so failure understandable without running
+scene again.
 
 ## Content boxes
 
@@ -14,16 +13,15 @@ lies inside container compares it with content box of container.
 
 ## Empty and collapsed measurements
 
-Geometry check fails when measured set is empty, or when measured box or gap has zero size.
+Geometry check fails when measured set is empty, when compared box has zero width or zero height,
+or when checked gap is not positive.
 Collapsed or missing element would otherwise pass containment or non-overlap check trivially: empty
-set does not contain member outside container, box of zero width overlaps nothing. Every check
-therefore also needs at least one measured element, and positive width and positive height for each
-compared box. Check of gap needs that gap to be positive.
+set does not contain member outside container, box of zero width overlaps nothing.
 
 ## Text line boxes
 
-Text geometry read for each drawn line. Harness selects text of element, asks engine for rectangles
-of each drawn line. Check that text lies inside its box compares every line rectangle with box.
+Harness selects text of element, asks engine for rectangles of each drawn line. Check that text lies
+inside its box compares every line rectangle with box.
 Check that text wraps or does not wrap counts lines.
 
 Text is one line when all its line rectangles start at same height. Parts of one line in different
@@ -36,10 +34,9 @@ shows in receipt and report without failing capture.
 
 ## Hit tests
 
-Hit test proves that nothing covers control. Harness asks engine which element is drawn at a point,
-e.g. centre of icon in control or point just inside an edge, checks that element is part of
-control. Box inside container can still be covered by sibling. Only hit test shows which element a
-pointer would hit.
+Harness asks engine which element is drawn at a point, e.g. centre of icon in control or point just
+inside an edge, checks that element is part of control. Box inside container can still be covered by
+sibling. Only hit test shows which element a pointer would hit.
 
 ## Sticky headers
 
@@ -86,8 +83,7 @@ Single-line text that scrolls natively inside input: not a failure by itself. Mu
 fills content width of row containing it, within one pixel.
 
 Row and containment checks must pass both with everything closed and with each popover or menu open.
-Opening floating content can move, resize or cover controls in row from which it opens, so checks of
-that row run again for each open state.
+Opening floating content can move, resize or cover controls in row from which it opens.
 
 ## The stability check
 
@@ -134,11 +130,11 @@ it exposes them. Otherwise content box taken from bounds of child elements. Text
 text layout provided by toolkit, e.g. line metrics of laid-out paragraph. Hit tests use hit testing
 built into toolkit. Where test framework has clock, stability check advances it one frame at a time.
 
-Terminal harness measures in cells. Unit = one cell. Box = rectangle of rows and columns.
-Text lines = screen rows. Containment compares cell rectangles. Stability check compares complete
-screen buffers, including attributes and colors, needs three identical consecutive buffers while
-controlled clock advances. Overdrawn text shows up as expected text missing from its cell positions.
-This check replaces hit test.
+Terminal harness measures in cells. Box = rectangle of rows and columns. Text lines = screen rows.
+Containment compares cell rectangles. Stability check compares complete screen buffers, including
+attributes and colors, needs three identical consecutive buffers while controlled clock advances.
+Overdrawn text shows up as expected text missing from its cell positions. This check replaces hit
+test.
 
 Measurement helpers = tracked harness code. Values recorded by them written only to receipts in
 harness directory inside project cache, at location defined by `workflow-skills:local-cache`.

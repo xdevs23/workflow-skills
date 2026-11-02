@@ -24,22 +24,19 @@ response set of scene. When fixture declares path but method, query or body diff
 message shows key of that fixture and part that did not match.
 
 Request matched by exhausted fixture fails scene, with key of that fixture in failure message. Once
-fixture exhausted after one delivery. Fixture with count exhausted when count reached. Duplicate
-write request therefore rejected and recorded, even when application ignores rejection.
+fixture exhausted after one delivery. Fixture with count exhausted when count reached.
 
-Boundary does not send response to request not declared by any fixture. Does not return empty
-successful response for unknown requests, does not proxy, does not forward request to real
-destination, does not fall back to live service. Missing fixture never counts as success with empty
-state.
+Boundary does not send response to request not declared by any fixture. Does not proxy, does not
+forward request to real destination, does not fall back to live service.
 
 ## Blocked escapes
 
 Every escape to external system blocked: frames, images, fonts, scripts, data requests, sockets,
 downloads, navigation to another origin, and on web also service worker registration. Navigation to
 external address blocked before request for it goes out to network. Blocked attempt recorded as
-failure of scene even when application catches error and continues. Download cancelled and
-recorded. Download directory set for rendering engine points into harness directory inside project
-cache, at location defined by `workflow-skills:local-cache`.
+failure of scene even when application catches error and continues. Download directory set for
+rendering engine points into harness directory inside project cache, at location defined by
+`workflow-skills:local-cache`.
 
 Local traffic passes only when it delivers application itself. On web: modules, styles and assets
 sent by local development server pass through together with entry document, limited to read
@@ -47,17 +44,15 @@ requests under known source, dependency and internal path prefixes used by that 
 local request blocked, recorded as unexpected. Rendering engine may open network connections only
 to exact local origin of development server, which includes socket opened by development client.
 
-Harness leaves endpoint setting of realtime transport in application empty. Application therefore
-never opens socket to a service. Closed widget or background feature must not create session or
-open realtime connection during scene. Any such attempt fails scene.
+Harness leaves endpoint setting of realtime transport in application empty. Closed widget or
+background feature must not create session or open realtime connection during scene.
 
 ## Error output fails the run
 
 Error output from application fails scene: error messages written to console or log, unhandled
 application errors, request failures not caused by harness. Scene about error state declares
 expected error through response fixture with failing status. That status excuses only error output
-for path of that fixture. Scene fails when declared failure never arrives. Harness excuses only
-declared errors, never suppresses error output in bulk.
+for path of that fixture.
 
 Request left open because matching fixture is held: not a request failure. Request cancelled while
 scene is closing: not one either. Once scene has finished, boundary aborts every further request
@@ -76,10 +71,9 @@ every fixture with count delivered exactly that many times. Mismatch fails with 
 key, expected count, observed count, with instruction to run interactions or reloads defined in
 scene.
 
-Held responses listed as held in readiness checks and in receipt. Ordinary missing response can
-never use that exemption. Boundary never sends instant successful idle responses in loop to
-long-held subscription. Boundary also never returns failing status only to make subscription
-disappear.
+Held responses listed as held in readiness checks. Ordinary missing response can never use that
+exemption. Boundary never sends instant successful idle responses in loop to long-held subscription.
+Boundary also never returns failing status only to make subscription disappear.
 
 Read requests repeated by polling in shell receive identical declared responses under repeat
 policy. Global signal that network is idle never used as readiness condition.
@@ -125,10 +119,10 @@ test build points client, registered URL loading protocol in iOS test build, moc
 into widget test. Escapes blocked by starting emulator, simulator or process with network route to
 loopback interface only, or by interceptor that fails and records every request to host other than
 fixture server. Error output read from platform log, e.g. device log filtered to process of
-application. Uncaught exception fails scene.
+application.
 
 Terminal harness runs application in process without network access, e.g. separate network
 namespace or container with networking disabled. Files and subprocesses used by application as data
 sources come from home directory that contains fixture files, and from fake executables on search
-path. Each of them declared like response fixture and recorded when used. Any output written by
-application to its error stream fails scene unless scene declares it.
+path. Each of them declared like response fixture and recorded when used. Error output includes
+anything written to error stream of application.

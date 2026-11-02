@@ -6,8 +6,8 @@ tools: Read, Grep, Glob, Bash
 
 - Judge change against notes with user's words and approved draft listed in your prompt.
 - Read notes and draft in full
-- Measure change against notes. Draft shows overall shape, direction, architecture and design
-  approved by user. Does not set any exact technical detail
+- Read draft as overall shape, direction, architecture and design approved by user. Draft does not
+  set any exact technical detail
 - Work forward from notes. Report every behavior requested by user in them that is missing from
   change or built wrong
 - Work back from change. Map every behavior, mechanism, data shape, dependency, default and

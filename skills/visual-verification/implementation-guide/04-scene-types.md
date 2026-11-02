@@ -1,9 +1,9 @@
 # Scene types
 
 Scene = typed module in same language as application, checked by same compiler or type checker.
-Harness defines small set of types used by every scene. Those types = whole scene language. Scenes
-call functions and interface of automation component directly. Harness does not build
-domain-specific scene language, configuration format or plugin platform on top.
+Harness defines small set of types used by every scene. Scenes call functions and interface of
+automation component directly. Harness does not build domain-specific scene language, configuration
+format or plugin platform on top.
 
 ## The variant
 
@@ -15,10 +15,9 @@ question against several states of fixture. Each variant name unique within scen
 Harness defines one shared set of variants. Scenes use it unless their question needs subset or
 extension. Set used by reference had three variants: desktop size, primary language, light theme.
 Same desktop size, second language, dark theme. Compact width, primary language, light theme.
-Component scenes in reference added two narrow container widths at desktop size. These variants
-probe only a few sizes, languages and themes. Contract describes them that way, never presents them
-as complete coverage of responsive layouts or languages. Adaptation point: sizes, locales and themes
-supported by project.
+Component scenes in reference added two narrow container widths at desktop size. Contract describes
+variants as probing only a few sizes, languages and themes, never as complete coverage of responsive
+layouts or languages. Adaptation point: sizes, locales and themes supported by project.
 
 ## The response fixture
 
@@ -37,7 +36,7 @@ Request made by screen once per load, in scene that reloads once: count of two.
 Status defaults to success. Failing status marks request as meant to fail. Error output caused by
 that failure no longer counts as capture failure, for that path alone. Scene fails when declared
 failure does not happen. Every other error output, application error and request failure is still a
-failure. Failing status on undeclared path never excused.
+failure.
 
 ## The fixture set
 
@@ -65,17 +64,16 @@ measurement.
 Run context = object received by run function of scene. Contains automation handle for rendering
 surface, current variant, fixture set, check function, capture function.
 
-Check function records measurement with predicate, result, actual values, diagnostic flag.
-Measurements attach to next checkpoint captured by scene. Run that records checks after its last
-checkpoint fails, since those checks would not belong to any image.
+Check function records measurement. Measurements attach to next checkpoint captured by scene. Run
+that records checks after its last checkpoint fails, since those checks would not belong to any
+image.
 
 Capture function expects checkpoint name, optionally target element. Runs capture sequence, writes
 one PNG. Stored checkpoint name = variant name joined with checkpoint name. Duplicate checkpoint
 name in one variant fails run.
 
 Scene can also stop variant with hard assertion, for facts without which rest of scene proves
-nothing, e.g. model value after edit. Failed assertion fails variant. Its message contains name of
-next checkpoint in scene.
+nothing, e.g. model value after edit. Its message contains name of next checkpoint in scene.
 
 ## The scene
 
@@ -87,10 +85,10 @@ Page scene contains function that maps fixture set to real route or screen to op
 application through its real entry, with complete set of responses for every consumer on that screen
 and in shell.
 
-Component scene contains harness entry that mounts component. Entry mounts actual component with its
-real parameters and model updates inside contextual container that surrounds it in application,
-with same start-up, styles, translations, theme and shipped fonts as application. Component scene
-may declare empty set of responses. Any request then fails scene.
+Component scene contains harness entry that mounts actual component with its real parameters and
+model updates inside contextual container that surrounds it in application, with same start-up,
+styles, translations, theme and shipped fonts as application. Component scene may declare empty set
+of responses. Any request then fails scene.
 
 ## Component hosts
 
@@ -101,8 +99,7 @@ component in each state shown by it for requests needed by it, e.g. ready, loadi
 Adaptation point: hosts of each component, with sizes and backgrounds.
 
 Container-responsive component, which changes layout with its width: mounted in one host per layout,
-at literal widths of real hosts where it appears. Every host rendered in every named variant. Each
-layout appears in every language and theme of variant set.
+at literal widths of real hosts where it appears. Every host rendered in every named variant.
 
 Container widths of component scene describe component alone, do not replace evidence from page
 layout. Geometry checks of component applied again in page scene that draws component inside real
@@ -112,10 +109,10 @@ space component gets.
 ## Target selection
 
 Targets found through existing test hooks of application where present, through scoped accessible
-roles and names elsewhere. Selectors written in scene built for the question. Missing target fails.
-Ambiguous target fails too. Scene never silently switches to different element. Selector never
-asserts styling class as substitute for geometry measurement. Selection and toggle states read from
-accessibility state of controls, e.g. checked attribute, the way assistive technology reads them.
+roles and names elsewhere. Selectors written in scene built for the question. Missing or ambiguous
+target fails. Selector never asserts styling class as substitute for geometry measurement. Selection
+and toggle states read from accessibility state of controls, e.g. checked attribute, the way
+assistive technology reads them.
 
 Where test hook missing, scene finds target by its content or by its accessible name in language of
 variant. Card found as innermost container that contains its known controls. Control without
@@ -146,9 +143,8 @@ saved state disabled, unsaved indication gone. Each of these states read from sc
 through state store of application.
 
 Component whose state would need visible control to change: switched through channel that draws
-nothing, e.g. fragment of address or parameter of harness entry. Channel leaves every control of
-harness out of picture. Component that picks random value, e.g. rotating placeholder, receives
-fixed real value from entry.
+nothing, e.g. fragment of address or parameter of harness entry. Component that picks random value,
+e.g. rotating placeholder, receives fixed real value from entry.
 
 Expected strings read from translation files of application for language of variant, where scene has
 access to them. String written by hand in scene: written once per interface language. Expected

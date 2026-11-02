@@ -13,4 +13,4 @@
   `type`, `TypeAlias` or plain assignment.
 - Never write `value or {}`, `value or []` or similar fallback for value to be supplied by
   caller.
-- Do not import inside functions. Only at top of file.
+- Import only at top of file.

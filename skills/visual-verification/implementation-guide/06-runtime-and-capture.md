@@ -1,9 +1,8 @@
 # The runtime and the capture
 
-Runtime runs one capture from start to end. Prepares application source, starts serving or build
-process that comes with application, starts rendering engine, runs every variant of scene, captures
-every checkpoint, checks inputs again, writes receipt and report. One component runs this whole
-sequence.
+One component runs each capture from start to end. Prepares application source, starts serving or
+build process that comes with application, starts rendering engine, runs every variant of scene,
+captures every checkpoint, checks inputs again, writes receipt and report.
 
 ## Preflight
 
@@ -12,18 +11,17 @@ contains launcher command. Before anything else, runtime fingerprints applicatio
 code.
 
 Capture directory created with private permissions inside harness directory in project cache, at
-location defined by `workflow-skills:local-cache`. Creating it fails when directory already exists,
-so every capture name is usable only once.
+location defined by `workflow-skills:local-cache`. Creating it fails when directory already exists.
 
-Failure before rendering starts still leaves report. Runtime writes receipt with everything gathered
-up to that point, adds failure to it. Failure contains scene name, word preflight, message, and
-instruction to repair input shown in message and use new capture name. Runtime then writes report,
-prints failed verdict with path of report.
+On failure before rendering starts, runtime writes receipt with everything gathered up to that
+point, adds failure to it. Failure contains scene name, word preflight, message, and instruction to
+repair input shown in message and use new capture name. Runtime then writes report, prints failed
+verdict with path of report.
 
 ## The source snapshot
 
-Serving process reads application from snapshot. Never reads live working tree. Without source
-revision, runtime copies relevant tracked and untracked files of application from working tree into
+Serving process reads application from snapshot. Without source revision, runtime copies relevant
+tracked and untracked files of application from working tree into
 fresh export directory, so edit made during run cannot change files delivered by serving process.
 With source revision, runtime resolves revision to commit locally. Exports files tracked in that
 commit into fresh export directory with archive command built into version control system and
@@ -59,7 +57,7 @@ point: names of origin, storage and realtime settings and of build-time values i
 
 Requested port used as given, must be integer from 1024 to 65535. Run fails at once when another
 process already uses that port. Without requested port, runtime asks operating system for free
-loopback port. Chosen port printed either way.
+loopback port.
 
 Serving process and rendering engine closed on every exit path, failures included.
 
@@ -88,9 +86,9 @@ by themselves, e.g. randomized blink, relative time label, polling after first r
 check and steps of scene advance clock frame by frame, and only to named observable transitions.
 
 Before any application code runs, harness seeds synthetic session, together with locale and theme
-of variant, into storage from which application reads them. Harness seeds nothing else. Cached data,
-feature settings and state from earlier run left out, so every other value comes from start-up of
-application and from data boundary. Session contains fixed identity, claims that match stored role,
+of variant, into storage from which application reads them. Cached data, feature settings and state
+from earlier run left out, so every other value comes from start-up of application and from data
+boundary. Session contains fixed identity, claims that match stored role,
 and token still valid at fixed time of scene. Session does not contain refresh credential. Token
 static, unsigned, not secret. Real decoder in application reads claims in it. Harness is not
 authentication server. Harness never reads a person's browser profile or persisted login.
@@ -115,7 +113,7 @@ Every checkpoint runs same sequence, with same settings for every capture of eve
    Adaptation point: list of shipped font faces.
 3. Every visible image decoded, has nonzero natural dimensions.
 4. Focus removed from focused element, pointer parked at fixed corner.
-5. Geometry of target stable according to stability check. Readiness record from that check saved.
+5. Geometry of target stable according to stability check.
 6. Every required response except declared held ones delivered, according to delivery check of
    data boundary.
 7. Screenshot taken with animations disabled and text caret hidden, in layout pixels.
@@ -127,8 +125,8 @@ surrounding card, e.g. popover or menu, captured on enclosing host. For every ch
 records name, image, what was captured, readiness record, checks recorded by scene since previous
 checkpoint.
 
-Harness never hides real shell. Viewport captures preserve it, targeted captures add detail.
-Runtime scrolls actual scrolling container to target, records that position. Full-page screenshot
+Harness never hides real shell. Targeted captures add detail. Runtime scrolls actual scrolling
+container to target, records that position. Full-page screenshot
 never claimed to cover panel that scrolls internally unless it actually did. Closed widget closed
 through its ordinary initial state. Harness never removes it from document.
 
@@ -156,7 +154,7 @@ Successful capture prints verdict and report path, relative to repository root, 
 capture prints failed verdict and report path, then every failure on error stream, exits nonzero.
 Each failure message contains scene, variant and checkpoint, failed predicate or response key,
 corrective action. Capture started without name prints unique name generated for it. Every capture
-prints chosen port. Reports still available after failure.
+prints chosen port.
 
 ## Numbers and their reasons
 

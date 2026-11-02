@@ -26,8 +26,7 @@ output file option, accepts repeatable variant option that limits sheet to named
 label and selection file option.
 
 Command line rejects every other option of a verb and wrong number of positional arguments. Then
-prints one usage line listing every verb with its options, exits nonzero. Option of another verb
-rejected like unknown one.
+prints one usage line listing every verb with its options, exits nonzero.
 
 Command line uses standard argument parser of language in its strict mode, positional arguments
 allowed. Every structured format used by harness read and written with standard libraries: JSON,
@@ -38,8 +37,7 @@ Reference allowed letter or digit followed by up to a hundred letters, digits, h
 underscores. Rejected everything else with error message requesting short name made of those
 characters.
 
-Each capture name used once. Run under existing capture name fails. Command never overwrites
-capture implicitly. Every repeated attempt uses new name.
+Each capture name used once. Run under existing capture name fails.
 
 Error prints its message alone, without stack trace, sets nonzero exit status. Successful capture or
 comparison exits zero, failed one exits nonzero.
@@ -52,8 +50,7 @@ pointing to `list` and to curating local scene.
 
 Module file of tracked scene named after scene, with scene file suffix used in project, e.g.
 `<scene name>.scene.ts` in reference. Command line finds that file from scene name to compute scene
-fingerprint. Module whose file name differs from its scene name gets fingerprinted from wrong file
-or from none.
+fingerprint.
 
 Command line validates scene before running it: kind is page or component scene, declares at least
 one variant, declares version of projection currently expected by harness. Scene failing any of
@@ -77,10 +74,10 @@ project and in curation steps of skill.
 
 Every capture records fingerprint of scene captured by it, computed over local import graph of
 scene. Computation starts at scene module, hashes its bytes, follows every relative import to
-imported module or data file, recursively, visiting each file once. Imports of packages not
-followed. Hash of dependency lock covers them. Each entry keyed by its path relative to repository
-root. File outside root gets fixed placeholder key. Entries sorted by key. Fingerprint: digest of
-sorted list.
+imported module or data file, recursively, visiting each file once and hashing its bytes whether
+staged or not. Imports of packages not followed. Hash of dependency lock covers them. Each entry
+keyed by its path relative to repository root. File outside root gets fixed placeholder key. Entries
+sorted by key. Fingerprint: digest of that list.
 
 Imports read with import resolution of language tooling, never with pattern match over source text.
 Reference used import preprocessor of TypeScript compiler to list imports of a file, and module
@@ -88,9 +85,7 @@ resolution of compiler, in bundler mode with TypeScript extensions and JSON modu
 resolve each one. Relative import that does not resolve fails run with message requesting explicit
 local imports.
 
-Fingerprint includes bytes of local scene and of every local fixture imported by it. Edited fixture
-changes fingerprint even when nothing staged. Runtime computes fingerprint again after run.
-Difference invalidates capture.
+Runtime computes fingerprint again after run. Difference invalidates capture.
 
 ## Native and terminal realizations
 

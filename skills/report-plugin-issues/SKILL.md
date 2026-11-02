@@ -3,14 +3,12 @@ name: report-plugin-issues
 description: Report skill, script, agent template or tool of workflow-skills plugin that fails, contradicts itself or blocks work
 ---
 
-# Reporting issues and obstacles in the workflow-skills plugin
-
 - File every problem found in plugin itself as issue on GitHub repository
   `xdevs23/workflow-skills`, which contains plugin. Such problems include shipped script that fails
   or wrongly judges input given to it, a check that stops run for reason not given in rules of
   plugin, two rules that contradict each other, skill or template that describes something not
   done by code, and tool or command named by plugin but missing.
-- Never patch plugin's scripts silently to get past problem. File issue instead.
+- Never patch plugin's scripts silently to get past problem.
 - When you work as stage that writes nothing, such as reviewer, report problem in your result.
   Session that runs you files issue.
 

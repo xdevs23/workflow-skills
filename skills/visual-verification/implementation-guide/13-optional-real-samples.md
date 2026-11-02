@@ -1,8 +1,7 @@
 # Optional real samples
 
 Synthetic scenes mandatory, run without credentials. Samples of real data: optional source of
-evidence. Harness proven without them. Harness may ship without refresh verb. When it has one, every
-rule in this part applies.
+evidence. Harness may ship without refresh verb. When it has one, every rule in this part applies.
 
 ## Selecting a sample
 
@@ -12,10 +11,10 @@ record identifiers, related identifiers needed by screen, and exact read operati
 does not crawl through pages, change data, log in, refresh token automatically or discover
 endpoints.
 
-Page sample: manifest of every response needed by screen. Saved main record alone is not a page
-sample. Page sample may reference static synthetic shell responses explicitly. Provenance of those
-responses still recorded as synthetic. Capture using them labeled mixed, never wholly live page.
-Required real response never silently falls back to synthetic data.
+Page sample: manifest of every response needed by screen. Page sample may reference static synthetic
+shell responses explicitly. Provenance of those responses still recorded as synthetic. Capture using
+them labeled mixed, never wholly live page. Required real response never silently falls back to
+synthetic data.
 
 Selection file contains format version, name of set of projected responses, selected record
 identifier, exact list of operations with key, method and path, and list marking every remaining
@@ -23,8 +22,7 @@ response key as synthetic. Before sending a request, refresh fails on any other 
 synthetic key missing from that list. Selection file contains identifiers only, never credentials.
 
 Selected record identifier percent-encoded when inserted into path of allowed operation. List of
-operations in selection must match that exact encoded operation. So identifier with reserved
-characters can never lead to a path other than the one listed in selection.
+operations in selection must match that exact encoded operation.
 
 ## Read-only operations
 
@@ -40,8 +38,8 @@ refresh verb. Service origin supplied explicitly, must be bare encrypted origin:
 without user information, path beyond root, query or fragment. Allowlist of endpoints exact.
 
 Refresh denies redirects. Fails on any response with status other than success and on any redirected
-response. Only successful response that was not redirected gets projected. Refresh sends credential
-only to that origin. Does not inherit general deployment environment. Never prints headers, bodies,
+response. Refresh sends credential only to that origin. Does not inherit general deployment
+environment. Never prints headers, bodies,
 tokens, query identifiers or raw service errors. When request fails, refresh reports that it is
 incomplete, that raw service errors are not logged on purpose and that complete samples already
 present are unchanged.
@@ -73,13 +71,12 @@ only after scene curated. Refresh and sample reader fail on scene without projec
 Every response and every required manifest entry validated before sample published, same validation
 as fixture set. Before first request, refresh creates fresh directory, writes into it manifest
 marking sample incomplete. Only after validation, refresh writes responses and complete manifest,
-then moves directory to label. Step moving directory fails when sample with that label exists, so
-complete sample never overwritten in place.
+then moves directory to label. Step moving directory fails when sample with that label exists.
 
 Publishing another profile under label already used by complete sample needs deliberate step first:
-retain existing sample, or manage local cache explicitly, e.g. remove that sample by hand. Refresh
-performs neither step automatically. Output of failed, stopped or partial refresh left in directory
-marked incomplete, since mark written before first request. Visibly unusable, can never be selected.
+retain existing sample, or manage local cache explicitly, e.g. remove that sample by hand.
+Output of failed, stopped or partial refresh left in directory marked incomplete, since mark written
+before first request.
 
 Manifest contains projection version, completeness, overall provenance, capture time, provenance and
 content hash for each response key, and hash of whole response set. Neither manifest nor any receipt
@@ -88,8 +85,7 @@ ever contains credentials.
 ## Using a sample
 
 Capture selects sample by label. Refresh command runs as separate process with explicit permission
-to use network. Scene verb, compare verb and cache miss never start it, so missing sample never
-triggers refresh. Sample reader checks:
+to use network. Scene verb, compare verb and cache miss never start it. Sample reader checks:
 
 * label;
 * version in manifest;
@@ -110,20 +106,18 @@ permissions. Screenshots and reports private too. Traces and verbose logs off by
 enabled explicitly for diagnosis, credentials redacted in them, artifacts never published.
 
 Only synthetic fixtures and scene definitions committed. Regression found with real data promoted by
-curating synthetic equivalent that reproduces observed failure. Private records never copied into
-version control.
+curating synthetic equivalent that reproduces observed failure.
 
 ## The verification boundary
 
 Whether credentialed samples fresh, whether live payloads compatible, how live data looks on screen:
-unverified until authorized refresh actually runs. Harness contract in project records them as
+unverified until authorized refresh runs. Harness contract in project records them as
 unverified. Local fixtures prove results reproducible. Prove nothing about state of production.
 Successful refresh prints: sample published locally with provenance, refresh does not verify live
 visual compatibility.
 
 Without credentials or selection, refresh fails before any request, with actionable instructions
-listing missing inputs. Capture never starts refresh. Self-test suite checks refresh against
-synthetic transport. Cannot verify credentialed refresh.
+listing missing inputs. Self-test suite checks refresh against synthetic transport.
 
 ## Web realization in the reference
 
@@ -138,5 +132,4 @@ fail. Accepted only response with success status that had not been redirected.
 ## Native and terminal realizations
 
 Sample refresh: separate program in any stack, independent of rendering platform. Native or terminal
-harness hands published sample to application through same data boundary as synthetic fixtures, so
-application cannot tell the two apart.
+harness hands published sample to application through same data boundary as synthetic fixtures.

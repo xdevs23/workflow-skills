@@ -3,12 +3,9 @@ name: rule-bypass
 description: Review change for ways around rule or check
 ---
 
-# Rule bypass
-
 Review change for one thing only: places where it meets wording of rule or check and still gets
 result forbidden by rule.
 
-- Leave unrelated concerns to other reviewers.
 - Judge each rule handed to you, and each rule in instruction files of project, by what it's for.
   Report every place where change defeats that purpose.
 - Report forbidden form moved to where check does not look, e.g. cast hidden in helper, JSON round

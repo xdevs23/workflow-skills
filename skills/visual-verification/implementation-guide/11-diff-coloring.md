@@ -37,19 +37,16 @@ Colors: green as red 0, green 150, blue 0; red as red 220, green 0, blue 0; blue
 90, blue 255. Same pass that paints pixels counts pixels of each kind and records bounding box of
 all changed pixels, empty when nothing changed. Evidence sheet uses that box.
 
-Coloring reads mask from image written by comparison component. In reference, comparison component
-painted every pixel counted as changed in one fixed diff color, opaque red. Coloring found changed
-pixels by that exact color and alpha, which is why comparison left that color at default set in
-component. With different component, coloring reads mask through whatever interface that component
-offers.
+In reference, comparison component painted every pixel counted as changed in one fixed diff color,
+opaque red. Coloring found changed pixels by that exact color and alpha, which is why comparison
+left that color at default set in component. With different component, coloring reads mask through
+whatever interface that component offers.
 
 ## Why it reads correctly
 
 Contrast measured against surrounding pixels in same image. Dark marks on light theme and light
-marks on dark theme therefore read same way. Moved mark shows red where it used to sit, green where
-it sits now. Coloring = heuristic for reading the picture. Not evidence that elements were inserted
-into or removed from interface. Chosen for bounded interface screenshots; not claimed to hold for
-images in general.
+marks on dark theme therefore read same way. Chosen for bounded interface screenshots; not claimed
+to hold for images in general.
 
 ## Known limits
 
@@ -59,8 +56,7 @@ reference, such pixels made up six to eight percent of changed pixels. Recolored
 changes in luma painted as gain or loss. Shift smaller than window still painted red and green, but
 only while window means computed with mark at old and at new position differ by more than margin.
 
-Change of radius or margin = tooling decision, recorded in harness contract in project. Changes
-neither tolerance nor changed count.
+Change of radius or margin = tooling decision, recorded in harness contract in project.
 
 ## The legend
 

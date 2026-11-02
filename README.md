@@ -45,9 +45,9 @@ with a "Next" heading or a phrase such as "I'm working out", the reminder tells 
 work in the same turn unless a running task does it, or to remove the claim and say what the work
 waits on. Phrases inside code, double quotation marks or quoted lines do not count. A message with
 phrases of several kinds gets one reminder for each kind. The reminders end with one sentence that
-asks Claude to act on them without mentioning them. The reminder sends Claude back to work at once,
-in the same turn. When the turn ends a second time on such a message, the turn is over without a
-reminder. The message that set off the reminder is still shown on screen.
+asks Claude to act on them without mentioning them. When the turn ends a second time on such a
+message, the turn is over without a reminder. The message that set off the reminder is still shown
+on screen.
 
 ## Install
 

@@ -15,8 +15,8 @@
 - Use generics and interfaces in place of switch over type names.
 - Model closed set of domain values as struct type with one unexported field, its values as
   package variables, e.g. `type Outcome struct{ name string }` and
-  `var OutcomeRun = Outcome{"run"}`. Code outside package then can neither make value nor pass
+  `var OutcomeRun = Outcome{"run"}`. Code outside package can neither make value nor pass
   bare string.
 - Read text into closed set with one parse function returning error for text matching none of the
   values.
-- Write value of closed set out as text through its `MarshalText` method, never as number.
+- Write value of closed set out as text through its `MarshalText` method.

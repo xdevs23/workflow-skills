@@ -3,10 +3,8 @@ name: workflows
 description: Run workflow or start agent
 ---
 
-# Workflows
-
-- Set explicit model and explicit effort on every agent and every stage of a workflow. Never rely
-  on inherited or default model. Custom agent type or resume can resolve to another model.
+- Set model and effort explicitly on every agent and every stage of a workflow. Custom agent type or
+  resume can resolve to another model.
 - Never wait for workflow with `TaskOutput`. Notification arrives by itself when workflow done.
   Session still open for new messages meanwhile.
 - Keep session continuity notification armed while entries in `TODO.md`, as

@@ -6,25 +6,24 @@ measurements. Criterion not run reported as not run. "Not run" never counts as "
 
 ## The criteria
 
-1. Harness runs from one command, paints real content. From source tree with committed locks,
-   documented command starts application locally with locked engine. Produces nonempty PNGs of real
-   application content and local HTML report. Run needs neither backend nor credentials. Second
-   clean rendering context gives zero changed pixels for same synthetic scene and settings.
+1. From source tree with committed locks, documented command starts application locally with locked
+   engine. Produces nonempty PNGs of real application content and local HTML report. Run needs
+   neither backend nor credentials. Second clean rendering context gives zero changed pixels for
+   same synthetic scene and settings.
 
-2. Component and page scenes render with full fidelity. First component scene renders each of its
-   modes with real styling, locale and shipped font faces. First page scene uses real entry, route
-   protection, state store, screen, section components and shell. Evidence includes loaded font
-   checks, route, visible fixture text, contextual screenshots. Scenes do not replace module or
-   store with a double, do not copy presentation.
+2. First component scene renders each of its modes with real styling, locale and shipped font faces.
+   First page scene uses real entry, route protection, state store, screen, section components and
+   shell. Evidence includes loaded font checks, route, visible fixture text, contextual screenshots.
+   Scenes do not replace module or store with a double, do not copy presentation.
 
-3. Harness detects a known regression. Regression proof described below succeeds.
+3. Regression proof described below succeeds.
 
-4. Initial scope present. Every initial scene runs, and every named checkpoint in it. Diagnostic
+4. Every initial scene runs, and every named checkpoint in it. Diagnostic
    scene uses real display model and screen context of application. Its clipping and overlap
    measurements reported as observed, without fix to product and without calling observed defect
    acceptable.
 
-5. Interactions proven. Component interactions such as adding, editing and removing rows produce
+5. Component interactions such as adding, editing and removing rows produce
    exactly expected model values, leave existing content unchanged. Page actions exercise real
    unsaved, save and discard behavior, send exactly intercepted narrow patch, reload from scripted
    saved response. Discard checked to bring screen back to state before edit. Scenes with fixture
@@ -32,7 +31,7 @@ measurements. Criterion not run reported as not run. "Not run" never counts as "
    value, nothing selected, default does not appear. Selecting one choice leaves exactly that choice
    selected. Scene does not send save request to a service.
 
-6. Readiness explicit. Captures wait until responses consumed, interface in correct state, fonts
+6. Captures wait until responses consumed, interface in correct state, fonts
    loaded, images decoded where applicable, geometry stable. Long-held subscription held on purpose
    and listed as held. Capture never passes because of arbitrary sleep or swallowed readiness
    timeout.
@@ -45,39 +44,39 @@ measurements. Criterion not run reported as not run. "Not run" never counts as "
    read request. Omitted sample files fail before navigation. Incomplete refresh output cannot be
    selected.
 
-8. Nothing escapes to external system. Negative probes attempt external image, data request,
+8. Negative probes attempt external image, data request,
    navigation, frame and socket, unexpected local data request, and service worker registration or
    equivalent background worker of platform. External traffic and background workers cannot run.
    Every attempt at unexpected network use fails visibly. Verification checks that harness did not
    forward any request and did not connect to any service. Synthetic rendering succeeds with
    environment that does not contain any credentials.
 
-9. Fixture and schema drift fails. Wrong envelopes or types, missing consumed field, inconsistent
+9. Wrong envelopes or types, missing consumed field, inconsistent
    identifiers, outdated projection version and extra request each fail. Static fixture checks use
    real types of application. Validation reports list offline compatibility separately from
    unverified live compatibility.
 
-10. Dependencies frozen. Receipts identify both locks, runtime, engine and loaded fonts. Lock
+10. Receipts identify both locks, runtime, engine and loaded fonts. Lock
     mismatch stops run before it executes, without rewriting any file or downloading different
     engine. Runs of regression proof use same engine, dependencies and fonts. Incompatible receipts
     fail comparison explicitly.
 
-11. Comparison useful and strict. Named matching checkpoints produce side-by-side PNGs, difference
+11. Named matching checkpoints produce side-by-side PNGs, difference
     PNGs, changed-pixel counts, independent geometry and behavior verdicts. Missing checkpoints,
     different dimensions, different scene, data or settings, and changed pixels: all visible nonzero
     results. Harness never approves or overwrites automatically, never raises tolerance silently,
     does not load any external resource into report.
 
-12. Artifacts and sources kept clean. Every generated artifact, temporary source export and engine
+12. Every generated artifact, temporary source export and engine
     profile in harness directory inside project cache, location defined by
     `workflow-skills:local-cache`. Only synthetic fixtures tracked. Receipts include fingerprints of
     dirty and untracked relevant inputs, without machine paths or secrets. Source change during run
     invalidates capture. Negative run that changes imported local fixture during execution fails
-    with message that source or a fixture changed during capture. Screenshots of that run are still
-    evidence, but run does not pass. Capture and comparison leave version control references, index
+    with message that source or a fixture changed during capture. Screenshots of that run remain
+    evidence. Capture and comparison leave version control references, index
     and application files unchanged, including translation files and existing tests.
 
-13. Production behavior preserved. Harness entries, fixtures, engine and image libraries absent from
+13. Harness entries, fixtures, engine and image libraries absent from
     production import graph and production output. Production routes, start-up, styles and data
     behavior unchanged. Verification runs full check of project bare, inspects production artifact
     for included harness code.
@@ -105,7 +104,7 @@ Same current scene and fixture run against both commits, each exported separatel
 with identical harness, engine and settings. PNGs and measurements of both runs kept, also when
 assertion on defective commit fails. Defective commit fails measured check that expresses defect.
 Fixed commit passes it. Named checkpoint showing defect has nonzero pixel difference between the two
-commits, attributable to fix. Comparison of pair expected to report difference and exit nonzero.
+commits, attributable to fix. Comparison of pair exits nonzero.
 
 Proof obtained honestly. Thresholds never weakened to get it. Styles never patched in engine,
 defective component never rewritten, branches never changed. Revisions resolve locally. Working

@@ -14,7 +14,7 @@ tools: Read, Grep, Glob, Bash, Skill
   Judge each on its own by rule on ownership in skill. Report each one not standing for real
   ownership
 - Check each sentence on its own against every other rule of skill and of those conventions, one
-  rule at a time. Sentence passes only when every rule accepts it
+  rule at a time
 - Check every rewritten sentence against every rule as well before returning it
 - Leave out code, identifiers and text quoted from elsewhere, e.g. output of a command
 - Leave out whether sentence is true and whether it belongs in change

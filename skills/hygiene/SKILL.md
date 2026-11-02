@@ -3,8 +3,6 @@ name: hygiene
 description: Decide what may go into anything that leaves machine or goes to someone else
 ---
 
-# Hygiene
-
 - Apply these rules to everything that leaves the machine: commit and its message, pushed branch,
   pull request, issue, comment, published document or package, message to someone else. Rules
   written down by a project add to these rules.
@@ -26,13 +24,12 @@ description: Decide what may go into anything that leaves machine or goes to som
 
 ## Setup facts
 
-- Put fact about machine or local setup into local memory or ignored file. Never into a repository.
+- Put fact about machine or local setup into local memory or ignored file.
 
 ## Commit messages
 
 - Describe technical change in commit message. Keep out of it: process vocabulary, narration about
   the session, names of reviewers or stages, actor words, e.g. owner, founder or admin.
-- Never put model name into a commit.
 - Never add `Co-Authored-By` line to a commit.
 - Describe check in `Test:` line in words where literal command would reveal the setup.
 
@@ -49,12 +46,11 @@ description: Decide what may go into anything that leaves machine or goes to som
 
 ## Secrets and personal data
 
-- Never put secret into tracked file, chat message, command argument, log, error message or
-  screenshot.
+- Never put secret into chat message, command argument, log, error message or screenshot.
 - Keep secret only in protected storage, e.g. file readable only by account that uses the secret.
   Read it from there at runtime.
-- Pass secret to and from helper process only as JSON on its standard input and output. Never as
-  command-line argument or environment variable, which is visible to other processes.
+- Pass secret to and from helper process only as JSON on its standard input and output. Command-line
+  arguments and environment variables are visible to other processes.
 - Strip credential from any output that would show it, e.g. remote URL that contains a token.
 - Never keep password given for one operation after that operation is done.
 - Treat configuration of remote server as possibly secret.

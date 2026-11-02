@@ -1,10 +1,10 @@
 # Receipts and fingerprints
 
-Every capture writes receipt next to its images. Receipt contains everything that affects pixels.
-Later comparison can then prove two captures differ only where meant to differ. Reader also sees
-what was captured without running anything. Receipt written as indented JSON, private file
-permissions, into capture directory, inside harness directory in project cache, at location defined
-by `workflow-skills:local-cache`.
+Every capture writes receipt as indented JSON, with private file permissions, into capture directory
+next to its images, inside harness directory in project cache, at location defined by
+`workflow-skills:local-cache`. Receipt contains everything that affects pixels. Later comparison
+can then prove two captures differ only where meant to differ. Reader also sees what was captured
+without running anything.
 
 ## The fields
 
@@ -55,13 +55,10 @@ through its content.
 Application fingerprint covers relevant inputs in working tree: tracked files and untracked files
 not ignored, filtered to application inputs as defined by survey. Each file hashed. Tracked file no
 longer existing recorded as deleted. Fingerprint = digest of sorted list. Staged changes
-fingerprinted separately, as hash of binary diff of index for same inputs, so both staged and
-unstaged changes covered. Resolved revision of commit checked out in working tree recorded next to
-them.
+fingerprinted separately, as hash of binary diff of index for same inputs.
 
-Ignored output artifacts and dependency caches excluded from application fingerprint. Scene or
-sample in ignored directory, explicitly selected for this capture, included through its hash, in
-scene fingerprint or fixture digest.
+Scene or sample in ignored directory, explicitly selected for this capture, included through its
+hash, in scene fingerprint or fixture digest.
 
 ## Fingerprints before and after
 

@@ -6,13 +6,12 @@ description: Write text read by a person
 ## What to say
 
 - Make main point clear on first reading. Write for person who knows project but did not make
-  change and did not follow work. Do not explain whole project for someone outside it
+  change and did not follow work.
 - Open with change, problem or question in terms of behavior reader can observe. Name what
   changes for user, caller or person reviewing work before naming modules and mechanisms
-- Name central fact directly. State drawback, risk or decision needed as plainly as benefit. Do
-  not bury it under background, soften it into abstraction or make reader infer it from details
+- Name central fact directly. State drawback, risk or decision needed as plainly as benefit.
 - State result before cause. Give mechanism only where reader needs it to understand result,
-  review change or act. Do not replace explanation of change with tour of its internals
+  review change or act.
 - Say what reader can do now, what behaves differently or what needs decision. Do not justify
   change in place of explaining it
 - Keep concrete details that affect behavior, compatibility, risk or required action. Cut
@@ -20,10 +19,10 @@ description: Write text read by a person
 - Give each part of change its own bullet or short section. Open with effect of that part, then
   add detail needed. Use heading that names result or behavior, e.g. "Large exports start at
   once", in place of "Implementation details"
-- Include detail once. Do not restate same idea as benefit, design explanation and conclusion
+- Include detail once, whether as benefit, design explanation or conclusion.
 - Use technical term already known to reader where it is precise. Explain unfamiliar term in one
   short phrase when reader needs it, e.g. "a cursor, a saved position in query results". Return
-  to main point after definition. Do not expand definition into explanation of whole subsystem
+  to main point after definition.
 - Make examples show behavior with concrete action and result. Do not use abstract description of
   data flow when simple example would make change clear
 - Write text that needs action around that action. Name what reader must do, where and when.
@@ -91,7 +90,6 @@ write
 - Name thing with noun for thing, never with verb turned into noun. Write "nine requests" in
   place of "nine reads", and "list of orders" in place of "one listing".
 - Never define term by repeating it, as in "`count`, the count of the range" or "a ranking ranks".
-  Say what term means in other words.
 - Where noun is object of clause after it, put verb after noun as participle: "the file read by
   importer", never "the file that the importer reads" or "the file the importer reads". Keep
   `that` where noun itself does what verb says, as in "the request that fails".
@@ -120,7 +118,7 @@ write
   > The report pages can load the orders only once if we change how the queries are written.
 
 - Avoid cycling one idea through synonyms across consecutive sentences.
-- Avoid roundabout constructions, e.g. serves as, acts as, plays a role in. Say what thing does.
+- Avoid roundabout constructions, e.g. serves as, acts as, plays a role in.
 - Replace superficial gerund clause, e.g. ending that stresses how important something is, with
   real sentence.
 - Avoid pleasantries, hedging filler and generic conclusion that restates what was already said.
@@ -136,7 +134,7 @@ ruling, gate, landed, cold, belt-and-suspenders, load-bearing, guessing, ground,
 pin, owner, masthead, flagging.
 
 - Use plain replacement by default.
-- Keep listed word only where situation really justifies it.
+- Keep listed word only where situation justifies it.
 - Leave identifier that already contains listed word as it is.
 
 | Instead of | Write |
@@ -174,7 +172,6 @@ pin, owner, masthead, flagging.
 ## Messages
 
 - Write paths, commands and identifiers in monospace.
-- Leave out jargon, filler and hedging.
 - Leave out preamble and any passage on why thing matters.
 - Break longer message into short sections or bullets that each answer one question. Do not write
   wall of text.

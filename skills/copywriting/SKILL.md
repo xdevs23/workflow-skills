@@ -3,30 +3,20 @@ name: copywriting
 description: Write user-facing text for product screens, marketing pages and translations. Not for logs or code comments
 ---
 
-# Copywriting: copy first, then implement
-
-- Run copy phase as a `Workflow()`: one intent phase, fan-out of writers with one writer per area
-  and locale, mechanical check, verification reviewers running in parallel, and a user who decides
-  what ships.
-
 ## When to use it
 
 - Use it for **every increment that adds text read by people to a product.**
-- **Run the copy phase BEFORE implementation**, so implementation uses *finished* strings.
-  Placeholder copy in tree ends up on rendered production screens, as placeholders always do.
-- Decide, verify and key every string added by increment before implementer starts.
 - Hand copy artifact, with notes, to `workflow-skills:implementer` agent started by
   `workflow-skills:implement`.
 - Do NOT use it for internal text, e.g. logs, code comments, errors shown to developers. That text
   is part of *codebase* and never appears in product.
-- Treat every text visible to a user as in scope, however small the change. Size of change sets
-  only how many writers run.
+- Size of change sets only how many writers run.
 - Give even a single string an intent, writing system and named source line. It gets one writer
   and the critic in place of full phase.
 
 ## The two-layer contract
 
-- Write copy contract as two separate documents, intent catalog and writing system. Never mix them.
+- Write copy contract as two separate documents, intent catalog and writing system.
 
 ### Intent catalog: per increment, the WHAT
 
@@ -35,8 +25,7 @@ description: Write user-facing text for product screens, marketing pages and tra
   - **what the string must communicate**: the claim, phrasing left open;
   - **where the reader is**: point reached by reader on meeting the string, and what reader needs
     next;
-  - **the constraints**: interpolation parameters, casing rules and a **length limit for the whole
-    slot**;
+  - **the constraints**: interpolation parameters, casing rules and a **length limit**;
   - **the shape of the data**: how lines break, where values are interpolated, which plural forms
     exist;
   - **whether the key is a copy key or invariant data.** Proper nouns, product names, numerals and
@@ -45,15 +34,14 @@ description: Write user-facing text for product screens, marketing pages and tra
   - **the surface**: either product screen, where reader uses product, onboarding and error states
     included, or marketing page, where reader decides whether to use product.
 - For slot on product screen, write as intent what reader reads or does in that slot.
-- **Never put example prose or imagery from the designer into an intent.** Rule is crucial. Intent
-  prescribing imagery turns writer into translator of a draft by someone else, where writer should
-  write from the goal. State goal of the communication, leave sentence to writer.
+- **Never put example prose or imagery from the designer into an intent.** Intent prescribing
+  imagery turns writer into translator of a draft by someone else, where writer should write from
+  the goal.
 
 ### Writing system: global, the HOW
 
 - Write writing system as one document. Phrase every rule **positively, with a check that passes
   or fails**.
-- Never phrase rule as prohibition, e.g. "don't be salesy". Such rules fail.
 - Give writing system a **shared layer** for every surface:
   - Prefer nouns, verbs and numbers over adjectives.
   - Write in second person, active voice, present tense.
@@ -64,7 +52,6 @@ description: Write user-facing text for product screens, marketing pages and tra
   on:
   - Copy into layer, word for word, bullets in `workflow-skills:building-screens` with definition of
     text that explains a product and rule for wording a state.
-  - Sentence explaining product fails check in this layer.
 - Give it a **marketing-page layer**:
   - Give each page one action.
   - Make headline name the **outcome for the reader**.
@@ -74,7 +61,7 @@ description: Write user-facing text for product screens, marketing pages and tra
   - Build text from words used by customers, quoted exactly.
   - Name objections openly instead of hoping nobody raises them.
 - Give it a **generation layer**:
-  - Load SOURCE block before asking for a single word. Every claim traces back to a source line.
+  - Load SOURCE block before asking for a single word.
   - Specify construction of each sentence: every sentence has subject and finite verb, 8–22 words,
     lengths alternate across slot.
   - Name punctuation to use: periods, commas, colons, question marks. Write change of direction in
@@ -82,24 +69,19 @@ description: Write user-facing text for product screens, marketing pages and tra
   - Require **at least one concrete detail** in each section of marketing page: number, name or
     observable detail taken from SOURCE.
   - Describe how each slot is built, with number of words allowed in it.
-  - Supply 2–3 admired samples, so writer can match spread of sentence lengths in them.
-  - Require variants for important strings: headline, hero, primary call to action.
-  - Run separate critic with fresh context.
   - Do mechanical pass over punctuation **last**, by hand. Convert habitual em dashes, en dashes,
     semicolons and the "not just X, it's Y" frame.
 
 ## Specify the SENTENCE instead of the vibe
 
-Describe the sentence in prompt. Writer can act on how a sentence is built, cannot act on a mood.
+Writer can act on how a sentence is built, cannot act on a mood.
 
 **Adjectives for texture in a prompt, e.g. "punchy", "snappy", "bold", "crisp", directly produce the
 three-fragment pattern, although they were meant to avoid it** ("Verified. Ready. Go."). Word for
 texture refers to nothing on which model can base a sentence, so model falls back on most marked
 surface pattern known to it.
 
-- Replace vibe with a **specification of the construction**: every sentence has subject and finite
-  verb, 8–22 words, lengths alternate across slot. Specification makes pattern *structurally
-  impossible*, where a ban would only discourage it.
+- Specification makes pattern *structurally impossible*, where a ban would only discourage it.
 - Same rule for length: **set the length limit for the whole SLOT, never per line.** Writer reads
   character limit per line as "one fragment per line" and produces staccato pattern directly.
 - Break line where sentence *wraps*, never where it *ends*.
@@ -119,8 +101,7 @@ surface pattern known to it.
 ## Required variants and the choice made by a person
 
 - Have model produce **structurally distinct variants** for important strings: headline, hero,
-  primary call to action. Each variant comes with source line used for it. Model never returns just
-  *one* answer.
+  primary call to action. Each variant comes with source line used for it.
 - Standard set of five headline variants: outcome, question asked by reader, quote from a customer,
   mechanism, number.
 - Count variant as structurally distinct only when its construction differs. Same sentence in other
@@ -131,9 +112,7 @@ surface pattern known to it.
 
 ## Multilingual (only if the product ships more than one locale)
 
-- Skip all multilingual rules for product with single locale.
-- **Run one agent per locale, with all locales in ONE parallel phase, and let each agent write
-  NATIVELY from the intent.**
+- **Run all locales in ONE parallel phase, and let each agent write NATIVELY from the intent.**
 - Never translate from pivot language, and never from one locale into another. Approved string in
   source language is only the version of intent written in *that language*. Translating from pivot
   gives translated register to every other locale at once.
@@ -163,7 +142,7 @@ surface pattern known to it.
 3. **Critic with a fresh context** (`agentType:'workflow-skills:copy-critic'`): reviewer that never
    saw the writing happen. Names source line for each sentence, lists every sentence without
    subject and finite verb, counts markers of machine-written text. Audits, never rewrites.
-4. **The user reads the important strings before they ship.** Step is mandatory.
+4. **The user reads the important strings before they ship.**
 
 - Run **completeness pass** alongside stages 2 and 3, inside Verify and always **before** user. In
   it, ask one question about whole list of work, once and explicitly: "which item is missing
@@ -175,17 +154,15 @@ surface pattern known to it.
 - When copy replaces placeholder prose from design draft, list **distinctive phrases** of draft as
   explicit ban list for grep, all locales and calques included.
 - Exempt generic words of interface, e.g. "Sign in", "Learn more".
-- Run manifest in mechanical check. "Don't copy the draft" can only be enforced by executable
-  check. Manifest is that check.
+- Run manifest in mechanical check. "Do not copy the draft" can only be enforced by executable
+  check.
 
 ## The shape
 
-Workflow runs five phases: **Intent → Write → Check → Verify → User.**
+Run copy phase as a `Workflow()` in five phases: **Intent → Write → Check → Verify → User.**
 
-- **Intent**: write or decide intent catalog before any writer starts. Do not start any writer
-  without it.
-  Without intents stated as goals, each writer invents separate standard, critic has nothing to
-  check against.
+- **Intent**: write or decide intent catalog before any writer starts. Without intents stated as
+  goals, each writer invents separate standard, critic has nothing to check against.
 - **Write**: fan out `agentType:'workflow-skills:copywriter'` with **one writer per area and
   locale**. Area = page, screen or flow, or whole strings file when file is small. Writer edits
   i18n strings file directly, fills every slot in its area in one sitting, returns what it changed.
@@ -200,20 +177,11 @@ Workflow runs five phases: **Intent → Write → Check → Verify → User.**
 
 1. **Write the copy first, and let implementation use only finished strings.** Never commit
    placeholder prose to tree.
-2. **Create every key empty.** Create i18n key with empty value, let copy pass fill it. Never put
-   placeholder text inside a key: it looks like finished copy to everyone who comes across it
-   later. Writer skips key, critic finds sentence to audit, product ships with placeholder.
-3. **Give each area one writer, never one per string.** Slots in an area are one piece of writing,
-   so one writer fills them all and edits strings file itself. Never let one writer grind through a
-   batch of unrelated areas or of several locales. Always run completeness pass over list of work
-   at end of run.
-4. **Trace every claim to a named SOURCE line.** Leave out every claim without source line.
-5. **Recompute every check from the artifacts.** Self-report is never evidence.
-6. **Run every agent as `workflow-skills:workflows` describes.** Never run source-verify reviewer
-   on smallest model.
-7. **Let the user pick which important strings ship.** Model supplies structurally distinct
-   variants.
-8. **Show the user every slot reported by the copywriter for redesign**, with part of screen the
+2. **Create every key empty.** Let copy pass fill it. Placeholder text inside a key looks like
+   finished copy to everyone who comes across it later. Writer skips key, critic finds sentence to
+   audit, product ships with placeholder.
+3. **Run every agent as `workflow-skills:workflows` describes.**
+4. **Show the user every slot reported by the copywriter for redesign**, with part of screen the
    copywriter named. Completeness pass lists such slot as held, separately from slot never written.
    Do not implement screen containing that slot until redesigned slot has copy.
 
@@ -238,30 +206,23 @@ Workflow runs five phases: **Intent → Write → Check → Verify → User.**
 
 Each approach below was tried and produced worse copy.
 
-- **Pivot translation**, writing one language and translating it outward. Gives translated register
-  to every other locale at once, because source string is only version of intent written in one
-  language. Replaced by writing each locale natively from intent.
-- **Character limits per line on headlines.** Writer reads "≤16 characters per line" as "one
-  fragment per line", ships staccato pattern. Set limit for whole slot instead. Line breaks where
-  sentence wraps, never where it ends.
-- **Adjectives for texture in prompts** ("punchy", "snappy", "bold"). Directly produce rhythm of
-  fragments, although they were meant to prevent it, because they refer to nothing on which model
-  can base a sentence.
-  Specify construction of sentence instead.
+- **Pivot translation**, writing one language and translating it outward. Gave translated register
+  to every other locale at once. Replaced by writing each locale natively from intent.
+- **Character limits per line on headlines.** Shipped staccato pattern. Replaced by limit for whole
+  slot.
+- **Adjectives for texture in prompts** ("punchy", "snappy", "bold"). Produced rhythm of fragments,
+  although they were meant to prevent it.
 - **One agent grinding through a whole batch in one go**, writing N locales or N unrelated areas of
-  product. Quality drops towards end. Missing items go unnoticed. Split work per area and per
-  locale, add completeness pass, because check of single slots cannot see missing slot by its
-  structure.
+  product. Quality dropped towards end. Missing items went unnoticed. Replaced by one agent per area
+  and locale, with completeness pass.
 - **One agent per string, returning a value copied into the file by a script.** Whole context of a
   writer goes into five-word label, dozens of times over. Worse than cost: slots of one screen stop
   fitting together, because one writer never wrote them together, e.g. two slots repeat same noun,
-  or both deal with same question. Make area the unit of work, let writer edit strings file itself.
-- **Intents containing imagery from the draft.** Writer then translates draft instead of writing
-  from goal. Write only goal of communication into intent.
+  or both deal with same question.
+- **Intents containing imagery from the draft.** Writer then translated draft instead of writing
+  from goal.
 - **Storing uppercase strings.** Casing belongs to presentation. Store regular case, apply uppercase
   in CSS. Otherwise stored case is lost in every locale with different casing rules.
-- **Placeholder copy in the tree.** Ends up on rendered production screens. Run copy phase first,
-  let implementation use only finished strings.
-- **Style rules phrased as prohibitions** ("don't be salesy"). Model needs replacement named,
-  because name for bad habit teaches it nothing. Phrase every rule as "do" with check that passes
-  or fails.
+- **Placeholder copy in the tree.** Ends up on rendered production screens.
+- **Style rules phrased as prohibitions** ("do not be salesy"). Model needs replacement named,
+  because name for bad habit teaches it nothing.

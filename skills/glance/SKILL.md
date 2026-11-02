@@ -3,10 +3,6 @@ name: glance
 description: Overview of where work stands while several things run
 ---
 
-# The glance
-
-Glance: where work stands, one aligned line per item. User takes it in within seconds.
-
 ```text
 #12    login page redesign        ✅ live
 #14    password reset by email    🟡 built, fixing (5 of 40 done)
@@ -22,8 +18,8 @@ Glance: where work stands, one aligned line per item. User takes it in within se
 
 ## The shape
 
-- Write glance into chat.
-- Never put glance into HTML page or other file.
+- Write glance into chat only.
+- Keep glance short enough for user to take in within seconds.
 - Put lines in code block, columns aligned.
 - One line per item: number, short name, status symbol, short state where symbol does not say it.
 - Mark status with ✅ for done or live, 🟡 for underway, ⬜ for not started.

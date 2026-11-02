@@ -10,15 +10,14 @@
 - Type tag of discriminated union over closed set as member of the set, e.g. `kind: Outcome.Run`.
 - Keep behavior of values of closed set in `Record<Outcome, …>` beside the set, so value without
   its behavior fails to compile.
-- Read text into closed set with check against `Object.values(Outcome)`, never with `as Outcome`.
+- Read text into closed set with check against `Object.values(Outcome)`.
 - Never write `any`, type assertion in either form other than `as const`, or non-null assertion
   with `!`. Narrow value with type guard, e.g. `instanceof`, or with validation schema used by
   project.
 - Keep `unknown` to place where outside data arrives. Convert it there into typed model with type
   guard or validation schema. Never let `unknown` into any other parameter, field or return type,
   e.g. `Promise<unknown>`.
-- Recognize error thrown by library with `instanceof` against error class of the library, never by
-  reading into the error through cast.
+- Recognize error thrown by library with `instanceof` against error class of the library.
 - Catch only errors known to you by name. Turn each into typed error returned by the function.
   Rethrow every other error. Never return `undefined` or other default value for failure. Never
   count logging failure, e.g. with `console.error`, as handling it.

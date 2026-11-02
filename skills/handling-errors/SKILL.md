@@ -3,11 +3,8 @@ name: handling-errors
 description: Write what system does when operation fails: error returned, retries, fallbacks, messages shown to people or agents
 ---
 
-# Handling errors
-
 - Never let transient failure discard good value.
-- Fail loud. Something that must be handled raises error when nothing handles it. Silent check
-  never hides broken state.
+- Fail loud. Something that must be handled raises error when nothing handles it.
 - Return error as typed value identifying what failed and containing the error that caused it, so
   caller can match on it.
 - Turn error into text only where it is shown or logged.
@@ -19,25 +16,22 @@ description: Write what system does when operation fails: error returned, retrie
   the cause, e.g. the one who sees it, a person reachable by them, or the developers. Until then,
   let system recover: it retries temporary failure, or continues without failed part.
 - Give every error shown to person or agent a next step, drawn from one central source, never a
-  hint written for one case. Error that only reports what happened = incomplete, e.g. "Image
-  processing failed.". Same for error whose next step is what system could have done itself, e.g.
-  "Image processing failed. Try again later."
+  hint written for one case. "Image processing failed." is incomplete. Error whose next step is
+  what system could have done itself is also incomplete, e.g. "Image processing failed. Try again
+  later."
   - For cause they can fix, show how to fix it: "Image couldn't be processed, because its metadata
     is invalid. Upload an image with valid metadata, or convert it to another format first."
   - For cause in system, show what they can try meanwhile: "Image failed to process due to a server
     error. We have recorded the failure and will work on a fix. In the meantime, try a smaller
     resolution or another format."
-  - When nothing left to try, report in error that failure was recorded, and show where to check
-    on it later.
+  - When nothing left to try, show where to check on recorded failure later.
 - Log every failure whose cause lies in system, each failed try of a retry included. Say in plain
   words in error shown for it that it was recorded.
-- Always answer waiting caller. Send failure back to whoever waits, never only log it on other
-  side.
+- Always send failure back to waiting caller, never only log it on other side.
 - Make system retry by itself failure known to be temporary, e.g. refusal reporting that other
   side is busy, or network failure, as long as operation is safe to repeat. Operation is safe to
   repeat when it changes nothing, or when it contains id derived from durable state by which other
   side recognizes a repeat.
-- Retry write whose connection dropped only under that condition.
 - Never retry automatically failure not known to be temporary, e.g. refused validation or failure
   that cannot be classified. Show it as error with next step.
 - Show running retry as progress with number of tries so far, e.g. "Image processing failed,

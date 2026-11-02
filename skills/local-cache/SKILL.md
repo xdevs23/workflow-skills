@@ -3,8 +3,6 @@ name: local-cache
 description: Decide where to put file not meant for repository, what to remove once tasks are done, and what goes into project memories
 ---
 
-# The project cache and the local storage
-
 - Follow user's global preferences about these directories wherever they differ from this file.
 
 ## The directories
@@ -34,11 +32,10 @@ description: Decide where to put file not meant for repository, what to remove o
 ## What goes into the local storage
 
 - Put file into local storage only when it is needed later and exists nowhere else, e.g. evidence,
-  image pasted by user, log or report.
-- Keep everything else out of local storage: file that can be written again, build output, cache,
-  copy of a file already contained in repository or another long-term place.
-- Delete file from local storage as soon as nothing needs it anymore.
-- Look through local storage at end of every unit. Delete every file no longer needed.
+  image pasted by user, log or report. File that can be written again, build output, cache and copy
+  of file already contained in repository or another long-term place do not qualify.
+- Delete file from local storage as soon as nothing needs it anymore. Look through local storage at
+  end of every unit.
 
 ## Cleaning up
 
@@ -54,7 +51,7 @@ description: Decide where to put file not meant for repository, what to remove o
   user on this project, which apply to this machine alone.
 - Leave out of them: what project already contains, what belongs in its tracked documentation, what
   a global rule or a skill already contains, violations or feedback not needed by next session.
-- Never copy global rule into memory. Never link one from memory.
+- Never link global rule from memory.
 - Put knowledge about project into the project, in fitting place.
 - Clean up project memories whenever you change them, so nothing in them is out of date.
 - Delete memory that refers to something not understood by you. It was not written properly.
@@ -68,7 +65,7 @@ description: Decide where to put file not meant for repository, what to remove o
 
 ## Reading stages
 
-- Write nothing in reading stage: not in project cache, not in local storage, nowhere else. Neither
-  copies of files nor notes.
+- Write nothing in reading stage, including copies of files and notes, in project cache, local
+  storage or anywhere else.
 - Only exception: reading stage may write output of command that cannot be read directly to system
   temporary directory.

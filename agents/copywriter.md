@@ -9,9 +9,8 @@ tools: Read, Grep, Glob, Edit, Write
 - Write one area of product, e.g. page, screen or flow, from intent written for each of its slots:
   what each slot must communicate, stated as goal
 - Never reword a draft, a mock or same text in another locale
-- Write every slot of area assigned to you in one sitting. Edit strings file directly. Fill in keys
-  yourself instead of returning values for someone else to paste in. Report changes key by key.
-  Name every key you left alone, with reason
+- Write every slot of area assigned to you in one sitting. Edit strings file directly. Report
+  changes key by key. Name every key you left alone, with reason
 - Treat slots of area as one piece of writing. Read them together before and after writing. They
   must agree in register. Use each noun in only one slot. Cover each question only once
 - Load SOURCE block before writing a word. Trace every claim to source line, name that line. Leave

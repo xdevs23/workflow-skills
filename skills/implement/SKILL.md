@@ -3,19 +3,14 @@ name: implement
 description: Implement change to code, from first talk with user until user reviews code
 ---
 
-# Implement a change
-
 ## Notes
 
-- Write down what user says about change in Markdown file while you talk, by hand.
-- Write every word said by user about change into notes. Same words and style, typos and grammar
-  fixed.
-- Keep each sentence as user said it. Never turn it into your own words or terms.
-- Update notes while talk goes on. Correct and change them whenever user corrects or changes what
-  they said, so notes always contain what they said.
+- Write every word said by user about change into Markdown file while you talk, by hand.
+- Keep each sentence as user said it, with typos and grammar fixed. Never turn it into your own
+  words or terms.
+- Update notes whenever user corrects or changes what they said. Remove what user no longer wants.
 - Save notes as `<change>.md` in folder for private specs inside project cache, set by
   `workflow-skills:local-cache`, because notes contain user's verbatim words.
-- Change lines already in notes to correct fact, or remove what user no longer wants.
 
 ## Draft
 
@@ -59,11 +54,10 @@ description: Implement change to code, from first talk with user until user revi
   into one branch before reviewers start, in separate merge step if needed.
 - Run parts of work that depend on each other one implementer after other. Start implementer for
   dependent part in worktree and on branch used by implementer before it.
-- Pass what researcher finds to implementer as input only. Never turn it into requirement.
-- Never give implementer number or any other limit on how large change may be. Only rules on how
-  large change may be: those in `workflow-skills:implementer`.
-- Prior art is not a reason to reject review finding. If something is bad, it is bad. Excuses
-  cannot justify it, however many.
+- Pass what researcher finds to implementer as input only.
+- Never give implementer number or any other limit on change size. Only limits: rules in
+  `workflow-skills:implementer`.
+- Prior art is not a reason to reject review finding.
 
 ## Reviewers
 
@@ -153,7 +147,6 @@ description: Implement change to code, from first talk with user until user revi
   comes from. Such as by preparing shared artifact once, by handing context over in prompt or by
   cutting repeated run.
 - Aim for at most 20 minutes per agent. Agent under 20 minutes does not need to be inspected.
-- Count as time sink only time spent waiting on machines and on rework. Time spent by agent
-  generating output is fine at any length.
+- Count as time sink only time spent waiting on machines and on rework.
 - Run checks of agent once, when agent finished writing.
 - Remove redundant work from current task right away.

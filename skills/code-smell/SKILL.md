@@ -3,12 +3,9 @@ name: code-smell
 description: Review change for code smells
 ---
 
-# Code smell
-
 Review change for code smells only: structural warning signs that code will be costly to change
 later.
 
-- Leave unrelated concerns to other reviewers.
 - Report long functions, large classes or modules.
 - Report long parameter lists and data clumps: same group of parameters passed together again and
   again.
@@ -19,7 +16,7 @@ later.
 - In finding on shotgun surgery, name the one place that would have kept change local.
 - Ask for that place as separate change before change under review. That separate change moves
   every unit using concept to the place in one edit.
-- Report deep nesting, arrow-shaped control flow.
+- Report deep nesting.
 - Report boolean or flag parameters that switch behavior.
 - Report direct access by string key, e.g. `doc["key"]` and `item.get("key")`, where change adds
   it. Name typed model of structure as fix. Constant that contains key still counts as access by

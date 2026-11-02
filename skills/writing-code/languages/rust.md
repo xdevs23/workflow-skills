@@ -4,7 +4,7 @@
   implementations.
 - Define capabilities as traits in platform-neutral crate containing the definitions.
 - Store implementation providing a capability once at start in runtime store keyed by type.
-  Retrieve it by trait, never by concrete type.
+  Retrieve it by trait.
 - Make late initialization a container settable once, whose readers wait until producer sets it.
   Split into consumer handle and producer handle (`Deferred` and `DeferredHandle`).
 - Hand data between two subsystems over rendezvous channel, never through shared mutable state.
@@ -32,7 +32,6 @@
 - Make reactivity fine-grained. Signal records which code reads it, reruns only that code when its
   value changes.
 - Bring change from outside reactive system in through signal set from outside.
-- Rerun loop whenever signal read by loop changes.
 - At a foreign-function boundary:
   - Catch panics before they cross it.
   - Return errors as data.

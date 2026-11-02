@@ -8,10 +8,20 @@ the prose rules below bind every document in the tree: `skills/`, `agents/` and 
 
 **Delete any sentence whose only content is that more text follows.** *"These are the mechanics"*,
 *"Here is how it works"*, *"The rules are below"* — each announces a structure already on the
-screen, occupies a line, and leaves nothing behind when cut. A section opens on its first real
-sentence. Sentences like these survive every edit precisely because nothing in them can be wrong.
+screen. Sentences like these survive every edit because nothing in them can be wrong.
 
-Delete a sentence and ask what fact was lost; if the answer is none, it was never carrying one.
+**Delete a sentence that repeats a rule already stated.** A rule said again as its negation
+(*"Update does not change field left out by caller"* after *"In update, write only what caller
+supplied"*), the consequence of breaking it (*"Test that restates them proves nothing"*), or a
+second closing of a loophole that an absolute word already closes (*"Never let default, flag or
+heuristic skip it"* after *"explicit yes"*) adds a line and no fact. A reason stays when it tells
+the reader something the rule does not, such as *"Data can change after check and before write"*.
+
+**Cut words that add nothing.** An intensifier such as "truly" or "really" goes, and a short phrase
+replaces a long one that says the same: "existing components" for "components already there". A
+skill opens on its first rule, without a heading that repeats its name.
+
+Delete a sentence when cutting it loses no fact.
 
 ## Skills speak to their reader
 
@@ -38,13 +48,8 @@ notes.** Articles, forms of "to be" and auxiliary verbs are dropped, a subject c
 context is left out, stops are short, and a fragment may stand as a sentence. Every instruction,
 condition, negation, quantity and order is kept, and headings, qualified names, tool names, paths,
 commands and code are copied verbatim. The frontmatter description of a skill or an agent template
-is written in the same register, with its meaning kept.
-
-**`workflow-skills:writing-style` binds inside the register.** The register lifts four of its
-demands only: articles, forms of "to be" and auxiliaries, a subject clear from the context, and
-complete sentences. Every other rule of that skill applies, among them the verbs for code, the
-participle after a noun that is the object of the clause, absence written with a verb, the ban on
-made-up noun compounds, on "serves as" and on the "X, not Y" shape, and the list of words to avoid.
+is written in the same register, with its meaning kept. `workflow-skills:writing-style` does not
+apply to these files. They follow this register alone.
 
 **Negations are written in full**, as "do not", "is not" and "cannot", never as a contraction.
 

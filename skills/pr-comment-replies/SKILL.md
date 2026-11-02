@@ -3,8 +3,6 @@ name: pr-comment-replies
 description: Write and post reply on PR or issue. Load before posting one
 ---
 
-# Replies on pull requests and issues
-
 - Follow user's rules for comments posted on user's behalf wherever they differ from this skill.
   Also on resolving threads.
 
@@ -15,7 +13,7 @@ description: Write and post reply on PR or issue. Load before posting one
 - When reply contains opinion or assumption not checked by you, add line to note alert that says
   so, such as "This reply is based on an assumption and does not reflect the views of @<handle> on
   the matter."
-- End reply on its last point. Do not sign off.
+- End reply on its last point.
 - Post reply to review comment in same thread as that comment.
 - Post reply to top-level comment or to review summary as new top-level comment.
 

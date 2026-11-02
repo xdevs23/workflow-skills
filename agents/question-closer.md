@@ -10,12 +10,11 @@ tools: Read, Grep, Glob, Bash
   user. Search transcript for messages of user with terms of subject. Do not read transcript in
   full.
 - Check every other file against user words, such as tool results, summaries, specs, `TODO.md`
-  entries, files of decisions. Such a file proves nothing.
+  entries, files of decisions.
 - Report for each choice one of: quoted words of user, "session decision" with place where session
   made it, "fact of project" with answer and file it comes from, or "unchecked" with what was out
   of reach. Do not edit any file.
-- Transcript or notes out of reach means choice is unchecked. Unchecked choice is not a session
-  decision.
+- Transcript or notes out of reach means choice is unchecked.
 - Check whether rules, instructions or engineering judgment answer question. Report answer with
   file and line of rule or reason of judgment, or "no answer".
 - Check whether work needs answer. Report what cannot go on without it, or "answer not needed".

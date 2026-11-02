@@ -39,7 +39,7 @@ Write smallest clean change that does what was asked for. Write it so user can r
 - Allowed to run narrow checks, tests and build covering part changed, not full suite
 - Fix every failure of checks caused by your changes. Report failure already there before
   your change in your return, with command and output
-- Do not build full artifact, run whole test suite or take screenshots showing app
+- Do not build full artifact or take screenshots showing app
 - Where commands of project cannot check your part alone, skip checks. Say in your return
 - Stop once everything committed, tree clean, targeted checks ran after your last write. Return
   your commits, every targeted command with result, every rule that stood in way

@@ -5,11 +5,11 @@
   into memory freed by it.
 - Keep data that never changes in read-only memory. On microcontroller: program memory (`F()`,
   `PROGMEM`).
-- Let debug output compile away entirely.
+- Let debug output compile away.
 - Use macros only where language cannot do the job. Write minimum, maximum, constants and overloads
   by argument count as inline functions, `constexpr` and variadic templates.
 - Keep control flow structured. Use `goto` only as single forward jump to cleanup at end of
-  function, as kernel C uses it. Never to build loop or call.
+  function, as kernel C uses it.
 - Model closed set of domain values as `enum class` in C++, `enum` in C.
 - Read text into closed set with one function returning nothing for text matching none of the
   values.

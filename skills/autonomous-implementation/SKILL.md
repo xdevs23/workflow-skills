@@ -7,7 +7,6 @@ description: Implement change autonomously, only when user has asked for it, for
 
 - Work this way only when user asked for it. User grants it for one task, for whole session until
   they revoke it, or for timeframe named by user.
-- Never read grant into request that does not give one.
 - Record grant in run file: its scope, when it was given, end of its timeframe, and revocation once
   user revokes it.
 - Check grant before every decision.
@@ -15,9 +14,8 @@ description: Implement change autonomously, only when user has asked for it, for
   workflow, report, and ask user as global rules require.
 - Keep everything outward-facing out of grant, such as pushing, publishing and posting. It still
   needs user's consent.
-- Within grant, use this skill in place of `workflow-skills:implement` for granted work. User chose
-  this skill for that work. Global rule to implement through `workflow-skills:implement` applies to
-  all other work.
+- Within grant, use this skill in place of `workflow-skills:implement` for granted work. Global rule
+  to implement through `workflow-skills:implement` applies to all other work.
 
 ## What is turned around
 
@@ -37,11 +35,11 @@ description: Implement change autonomously, only when user has asked for it, for
 
 ## Intake
 
-- Take user's description of idea, intent, technologies and constraints.
+- Take user's description of idea.
 - Research everything needed by work before first milestone starts, with research agents such as
   `workflow-skills:researcher-breadth` and `workflow-skills:researcher-contextfree`.
 - Merge results returned by those agents with `workflow-skills:consolidator`.
-- Collect intent, goal, technologies, target platforms and constraints. Write them into run file.
+- Collect intent, goal, technologies, target platforms and constraints.
 - Ask user once, with question that does not block work, for their jurisdiction, to which hard rules
   on law refer, and for target platforms not named in description.
 - Do not take action whose legality depends on jurisdiction until jurisdiction known.
@@ -49,8 +47,8 @@ description: Implement change autonomously, only when user has asked for it, for
 ## The run file
 
 - Write run file at intake into local storage defined by `workflow-skills:local-cache`. Keep it
-  current: grant, description, intent, goal, technologies, constraints, jurisdiction, milestones
-  with state of each, decision log, and index that lists evidence.
+  current: description, intent, goal, technologies, constraints, jurisdiction, milestones with
+  state of each, and index that lists evidence.
 - Record in run file, for running milestone: run ID of workflow, paths of workflow script and
   journal, worktree used by workflow, and commit checked out in each repository when milestone
   started. So you can find run and its state after resume.
@@ -64,7 +62,7 @@ description: Implement change autonomously, only when user has asked for it, for
   screenshots and screen recording show it fully working, and APK installable by user on their
   phone delivered.
 - Shape workflows however work needs: which agents run, in which order, how many workflows a
-  milestone takes. Scripts do not enforce shape. Reviewers still hold work to rules.
+  milestone takes. Scripts do not enforce shape.
 - Run every workflow in worktree.
 - Run every workflow and agent as `workflow-skills:workflows` describes.
 - Commit work of each milestone in commit style.
@@ -87,7 +85,6 @@ description: Implement change autonomously, only when user has asked for it, for
 
 ## Questions to the user
 
-- Never wait for answer.
 - Ask each question as section `Questions to the user` of `workflow-skills:todo-md` describes. Go
   on with decision made by subagents until answer arrives.
 - Write each question into run file as well.

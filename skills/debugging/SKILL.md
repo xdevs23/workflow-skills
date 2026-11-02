@@ -3,8 +3,6 @@ name: debugging
 description: Find and fix cause of bug, failing build, check or test, or limit hit during work
 ---
 
-# Debugging
-
 - Fix defect in shared component inside that component. Never by giving each consumer a copy.
 - At roadblock, stop. Ask before adding any workaround or compatibility shim.
 - Record work that replaces approved workaround as unit of work in `TODO.md`. Name in that entry
@@ -22,8 +20,7 @@ description: Find and fix cause of bug, failing build, check or test, or limit h
 - Never offer as option leaving unfixed a known defect in code added or edited by your change. Race
   left possible by change counts as such defect. So does way around a rule.
 - Find root cause of bug. Design that makes bug possible is root cause too.
-- Never accept "Too hard" as outcome. Test that still fails does not prove dead end. Keep working
-  through concrete causes of failure.
+- Test that still fails does not prove dead end. Keep working through concrete causes of failure.
 - Debug from mechanism: name what controls behavior. State hypotheses. Change one variable at a
   time. Symptom is never evidence of its cause.
 - Read error before retrying. Change something before next try.

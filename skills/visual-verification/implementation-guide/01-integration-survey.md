@@ -2,19 +2,18 @@
 
 Before any harness code exists, adopting project fills in table of its integration points. Each row
 contains one responsibility, evidence found in source code of project for how that responsibility
-works at time of survey, and design consequence for harness. Survey records source observations
-made at that time, with explicit note that it does not show that a screenshot has been taken.
+works at time of survey, and design consequence for harness. Survey notes explicitly that it does
+not show that a screenshot has been taken.
 
 Survey fills in every adaptation point of this guide. Harness built without it reconstructs
-application from assumptions. Such harness produces screenshots of something other than
-application.
+application from assumptions.
 
 ## The rows every survey has
 
 Row for application start-up records real entry point of application: which state stores,
 navigation, translations, theme and styles it installs, and how it registers fonts used by it.
-Design consequence: page scenes start through this entry, never through reconstructed screen.
-Adaptation point: entry module, framework, font registration.
+Design consequence: page scenes start through this entry. Adaptation point: entry module, framework,
+font registration.
 
 Row for authentication and route protection records where application reads session from, which
 storage key or keychain entry contains it, how route protection waits for session, and where route
@@ -93,14 +92,13 @@ terminal emulator used by harness.
 ## What the survey produces
 
 Survey ends with filled table, stored in harness contract of project, and list of every adaptation
-point with its value for this project. Adaptation points of every later part of guide come from
-that list. Where work on later part finds consumer or fact missed by survey, survey corrected
-first, and part continues from corrected table. Consumer never hidden to keep table short.
+point with its value for this project. Where work on later part finds consumer or fact missed by
+survey, survey corrected first, and part continues from corrected table. Consumer never hidden to
+keep table short.
 
 Survey derives list of responses from reading code, for shell and for each surface. Contract
-records that list as manifest to verify during implementation. List never presented as trace of
-requests observed in rendering engine. Survey written before any scene runs. Start-up can still
-reveal consumer missed by first pass over code, as described in part on data boundary.
+records that list as manifest to verify during implementation. Start-up can still reveal consumer
+missed by first pass over code, as described in part on data boundary.
 
 Table: only tracked output of survey. Notes and exploratory reads made while filling it in stored
 in harness directory inside project cache, location defined by `workflow-skills:local-cache`.

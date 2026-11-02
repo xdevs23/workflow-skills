@@ -4,16 +4,13 @@ description: Track work on project: what is in progress and what is next
 ---
 
 `TODO.md` is record of where project stands. Anyone picking up project, such as new session, new
-contributor or agent without history, reads that file first. Then knows where things stand. File
-is not authority about state outside itself. Read code and git state first before trusting
-anything in this file.
+contributor or agent without history, reads that file first.
 
 # Purpose
 
-- Keep local status of project in `TODO.md`.
 - Record in `TODO.md` every fact about how far project has progressed that is recorded nowhere
-  else. Do not use it as diary, for internal facts or for decisions that do not need to be recorded.
-  You can use notes from `workflow-skills:implement` to write down decisions of user for a unit.
+  else. Do not use it for internal facts or for decisions that do not need to be recorded. You can
+  use notes from `workflow-skills:implement` to write down decisions of user for a unit.
 - Use `TODO.md` as tracker of units of work, like an issue tracker would be used for.
 - Write entry only for work asked for by user, work planned with user, and work being done.
 - Do not write entry for task that changes nothing in project.
@@ -22,19 +19,17 @@ anything in this file.
   would show up. Correct entry first.
 
 `TODO.md` is **gitignored and untracked**: working file on one machine, kept out of repository.
-Fresh clone does not contain it.
 
-- When item finished, code represents **design** and **diff** is in git. Then delete entry for
-  item from `TODO.md`. Item finished once `VERIFIED`, or `PUSHED` in project that is not deployed.
+- Delete entry for item from `TODO.md` once `VERIFIED`, or `PUSHED` in project that is not deployed.
+  Code represents **design** and **diff** is in git.
 - Delete entry also when user says so, or when it is fix of older defect and fix is merged. Never
   delete entry for any other reason.
 - Remove deleted entry from every `Builds on:` line that lists it.
-- Do not explain again in `TODO.md` what is already tracked somewhere else, even if uncommitted.
 
 # Layout of the file
 
 - Write entries in order of their numbers, so newest entry is last one in file.
-- Write nothing else into file. File is neither diary nor your personal scratchpad.
+- Write nothing else into file.
 
 # Anatomy of an entry
 
@@ -70,7 +65,7 @@ Fresh clone does not contain it.
 - Split feature, or anything bigger than small patch, into sub-units, each covering one aspect.
   Such as one behavior or one module.
 - Add sub-units of unit once its draft approved, as `workflow-skills:implement` describes, before
-  building of unit starts. Never write sub-units in advance.
+  building of unit starts.
 - Word unit that removes violations of rule by what rule is for, such as "a value sent by the
   server and unknown to this build becomes an explicit unknown value where it arrives". Never word
   it as check to make pass, such as "make the lint pass".
@@ -114,23 +109,20 @@ Fresh clone does not contain it.
   unit in its body.
 - Fix defect in older code outside unit, such as flaky test harness, as separate unit in parallel
   with unit.
-- Start fix of older defect without asking user. It is the one unit started by you without user's
-  word.
+- Start fix of older defect without asking user, as only unit started by you without user's word.
 - Build fix of older defect by `workflow-skills:implement`, with defect and its evidence in place of
   notes and without draft, in worktree and on branch of its own.
 - Deliver fix of older defect on its own, through pull request or review of its own.
 - Record fix of older defect as `IN PROGRESS` entry while it runs. Its origin pointer: message that
-  asked for unit that found defect. Delete entry once fix merged.
+  asked for unit that found defect.
 - Add fix of older defect to `Builds on:` line of unit when unit cannot work without it.
 
 # Questions to the user
 
-- Ask each question as `workflow-skills:question` describes. Entry concerned by it waits for
-  answer. Meanwhile go on with next entry.
+- Ask each question as `workflow-skills:question` describes.
 - While user talks back and forth with you, ask question in your message. Do not call
   `mcp__workflow-skills__ask_question` then.
 - Otherwise ask with tool `mcp__workflow-skills__ask_question`.
-- Never put same question into message and into tool.
 - Name entry in each question by its number and title.
 - Take answer that arrives with tool result, or as message, as user's own reply. Act on it as on
   any other reply of user.
@@ -148,16 +140,13 @@ State is fixed enum: one of markers listed here, grouped by where item stands.
 **Waiting on a decision**
 
 - `NEEDS DECISION`: work cannot go on until question answered or theory defined. Write into entry,
-  in plain terms, question and options, or that theory is missing. That would start discussion
-  thread about feature.
-- Mark unit or sub-unit that does not have enough information to start `NEEDS DECISION`.
+  in plain terms, question and options, or that theory is missing.
 - Before marking entry `NEEDS DECISION`, trace open point to user words as
   `workflow-skills:question` describes. Undo point made by session.
 - **A decision still owed blocks only the item concerned by it.** Skip and mark item. Move work on
   to next one.
 - Work on smallest change possible where answer from user does not change outcome.
-- Ask question once, as section `Questions to the user` describes. Do not repeat it while user is
-  away.
+- Ask question once, as section `Questions to the user` describes.
 
 **Ready to build**
 
@@ -166,8 +155,6 @@ State is fixed enum: one of markers listed here, grouped by where item stands.
 - `QUEUED`: unit can be built at any time, even if session is wiped and started fresh.
 
 Whether unit is ready to build follows from words of user alone.
-
-- Never decide it yourself.
 
 **Being built**
 
@@ -182,8 +169,8 @@ Whether unit is ready to build follows from words of user alone.
 
 - `PUSHED`: pushed, but deployment not confirmed.
 - `SHIPPED`: deployed to production, with commit and deployment receipt, if available.
-- `VERIFIED`: observed working in production. Stronger claim than `SHIPPED`. Needs observation to
-  back it: log line, count, screenshot reference. Reading code is not verification.
+- `VERIFIED`: observed working in production, backed by observation: log line, count, screenshot
+  reference. Reading code is not verification.
 
 **Stopped**
 
@@ -192,8 +179,8 @@ Whether unit is ready to build follows from words of user alone.
 
 ## Writing style
 
-- **Write for a reader who knows nothing of the context.** Every entry is read fresh. Reader who
-  was not there must be able to act on it without asking anything.
+- **Write for a reader who knows nothing of the context.** Reader who was not there must be able to
+  act on it without asking anything.
 - **Write dates as absolute dates.** Never "today", "last week", "recently". Write `2026-08-08`.
   Give timestamps `Z` with UTC when hour matters.
 - **Use uppercase sparingly.** Uppercase marks state, hard constraint, or something that costs
@@ -213,10 +200,10 @@ Whether unit is ready to build follows from words of user alone.
 
 - **Never write absolute local paths, machine names or personal details.** Use paths relative to
   repository only.
-- **Never write credentials, endpoints with secrets, or internal identifiers not needed to act.**
+- **Never write credentials of any kind, endpoints with secrets, or internal identifiers not needed
+  to act**, even though file is local. They leak by being copied.
 - **Never narrate the session**, such as "I then asked..." or "after the model replied...". Record
   decision and its date. Leave out conversation that produced it.
-- **Never write credentials of any kind**, even though file is local. They leak by being copied.
 
 ## When to write
 
@@ -225,7 +212,6 @@ Whether unit is ready to build follows from words of user alone.
   - When `TODO.md` does not exist: record whatever work is currently in flight, or create empty
     file.
   - User asks for unit of work or approves one. Write it with its status marker and origin pointer.
-  - You start fix of older defect.
   - State changes: something starts, finishes, gets committed, merged, pushed or deployed, gets
     pull request opened or merged.
   - Decision is made, or new one becomes owed.
@@ -233,7 +219,6 @@ Whether unit is ready to build follows from words of user alone.
   - Something is owed to whoever operates production: manual step, index to drop, backfill to run.
     Easy to lose, expensive to forget.
   - Item turns out already done, or wrongly described.
-- Never write entry for idea of your own.
 - Test whether update needed by asking: **if the session ended right now, would the next reader
   know what to do?** If not, file is stale.
 
@@ -248,9 +233,8 @@ background tasks). Then check TODO.md for entries that are `IN PROGRESS` or `QUE
   launched work (code edits, workflows, commands).
 - `IN PROGRESS`: Check current progress on item. Resume work if not running. Keep working until
   entry is `BUILT`.
-- `NEEDS DECISION`: Put decision to user as section `Questions to the user` describes. Move on to
-  next item. Draw draft by `workflow-skills:visual-decisions` first when you can already draw one.
-  Name its page in question.
+- `NEEDS DECISION`: Put decision to user as section `Questions to the user` describes. Draw draft
+  by `workflow-skills:visual-decisions` first when you can already draw one. Name its page in
+  question.
 - `BUILT`: Verify result, check its current state, update status if it has progressed.
 - `SHIPPED`: Check current status. Update status if it has progressed.
-- `VERIFIED`: Unit done and should be removed.
