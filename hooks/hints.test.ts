@@ -82,6 +82,8 @@ describe('the phrases of a message that waits for an answer', () => {
     'Open from earlier: I removed the icon line. If you would rather keep it, I can restore it.',
     'Still open from before: the cache size.',
     'Pending from my previous message: the folder name.',
+    'Open from earlier\n- the cache size',
+    'Open from before — the cache size.',
   ]
   for (const message of waiting) {
     test(`${JSON.stringify(message)} waits for an answer`, () => {
@@ -127,6 +129,9 @@ describe('the phrases of a message that waits for an answer', () => {
     'You answered the cache question, so the build goes on.',
     'The file handle was open from before the restart.',
     'The port is still open from the earlier run.',
+    'The port is still open from earlier runs.',
+    'Two pull requests are still open from earlier today.',
+    'The task is still pending from the last turn.',
   ]
   for (const message of notWaiting) {
     test(`${JSON.stringify(message)} does not wait for an answer`, () => {
@@ -248,6 +253,12 @@ describe('the phrases of a message that reports that nothing needs action', () =
     'No action required.',
     'Nothing to act on.',
     'Nothing actionable came in.',
+    'Nothing calls for action.',
+    'Nothing needs to be done.',
+    'No further action needed.',
+    'No action is necessary.',
+    'Done and pushed. No action required on your side.',
+    'Nothing needs doing until the build ends.',
   ]
   for (const message of idle) {
     test(`${JSON.stringify(message)} reports that nothing needs action`, () => {
@@ -260,6 +271,9 @@ describe('the phrases of a message that reports that nothing needs action', () =
     'The cache needs attention.',
     'No action items were filed.',
     'The deploy took no action on the cache.',
+    'Nothing needs attention in the parser, but the build fails.',
+    'Nothing needs doing for the docs. The parser needs a fix.',
+    'No action is needed on the cache. The parser fails.',
   ]
   for (const message of notIdle) {
     test(`${JSON.stringify(message)} does not report that nothing needs action`, () => {
@@ -309,6 +323,8 @@ describe('the phrases of a message that announces work while the turn ends', () 
     'I am continuing with the rebase.',
     "We're proceeding with the migration.",
     "I'm moving on to the parser.",
+    "I'm moving on with the parser.",
+    "I'm going ahead with the parser.",
   ]
   for (const message of announcing) {
     test(`${JSON.stringify(message)} announces work`, () => {

@@ -6,7 +6,7 @@ const EMPHASIS = String.raw`(?:\*\*?|__?)?`
 const NEXT_LABEL = String.raw`(?:(?:what['’]s|up)[ \t]+)?next(?:[ \t]+(?:steps?|up))?`
 /** Gerunds of work, without sayings such as "reading this as", "working on the assumption" or
  * "checking in". */
-const WORK_GERUND = String.raw`(?:working\s+out|working\s+on(?!\s+the\s+assumption\b)|looking\s+into|investigating|digging\s+into|reading(?!\s+(?:\S+\s+){0,3}?(?:as|right)\b)|checking(?!\s+in\b)|tracing|figuring\s+out|analy[sz]ing|researching|measuring|fixing|writing|implementing|building|rebasing|testing|reviewing|drafting|starting(?!\s+to\b)|(?:going|carrying)\s+on\s+with|continuing\s+with|proceeding\s+with|moving\s+on\s+to)`
+const WORK_GERUND = String.raw`(?:working\s+out|working\s+on(?!\s+the\s+assumption\b)|looking\s+into|investigating|digging\s+into|reading(?!\s+(?:\S+\s+){0,3}?(?:as|right)\b)|checking(?!\s+in\b)|tracing|figuring\s+out|analy[sz]ing|researching|measuring|fixing|writing|implementing|building|rebasing|testing|reviewing|drafting|starting(?!\s+to\b)|(?:going|carrying|moving)\s+on\s+with|(?:going|pressing)\s+ahead\s+with|continuing\s+with|proceeding\s+with|moving\s+on\s+to)`
 const SELF_NOW = String.raw`\b(?:I(?:['’]m|\s+am)|we(?:['’]re|\s+are))\s+(?:(?:now|currently|still|also|meanwhile|already)\s+)?`
 const WORK_VERB = String.raw`(?:look\s+into|check|investigate|dig\s+into|fix|work\s+out|figure\s+out|find\s+out|trace|read|try)`
 

@@ -6,6 +6,7 @@ import { COUNT } from './quantityWords'
 const SENTENCE = String.raw`(?:[^.!?\n]|[.!?](?=\S)|\n(?![\s\-*•]|\d+[.)]))*`
 /** Text up to the end of the clause, which also ends at a comma, a semicolon, a colon or a dash. */
 const CLAUSE = String.raw`(?:[^.!?\n,;:—–]|[.!?](?=\S))*`
+const AT_CLAUSE_END = String.raw`(?=[ \t]*(?:[.!?,;:—–]|\n|$))`
 const MESSAGE = String.raw`(?:messages?|repl(?:y|ies)|turns?|posts?)`
 const EARLIER_MESSAGE = String.raw`(?:\bmy\s+(?:previous|earlier|prior|last|other)\s+${MESSAGE}|\bmy\s+${MESSAGE}\s+(?:before|above)|\b${MESSAGE}\s+(?:above|before\s+the\s+last)|\b(?:two|three|[2-9])\s+${MESSAGE}\s+ago)\b`
 const ASKED = String.raw`\b(?:questions?|asked)\b`
@@ -23,8 +24,7 @@ export const WAITING_HINT: HintKind = {
       String.raw`${OPEN_ITEM}(?:\s+(?:on|about|of|for|from)\b${CLAUSE})?\s+(?:is|are|remains?|stays?)\s+still\s+${OPEN_WORD}\b`,
     ),
     phrase(String.raw`\bstill\s+${OPEN_WORD}\s*:`),
-    phrase(String.raw`\b${OPEN_WORD}\s+from\s+(?:earlier\b|before(?=\s*(?:[:.,;]|$))|${EARLIER_MESSAGE})`),
-    phrase(String.raw`\b${OPEN_WORD}\s+from\s+(?:earlier|before(?=\s*(?:[:.,;]|$))|${EARLIER_MESSAGE.replaceAll('\\bmy', '\\b(?:my|the)')})`),
+    phrase(String.raw`\b${OPEN_WORD}\s+from\s+(?:(?:earlier|before)${AT_CLAUSE_END}|${EARLIER_MESSAGE})`),
     /\bstill\s+waiting\b/i,
     /\b(?:waiting|waits)\s+(?:for|on)\s+you(?:r)?\b/i,
     /\bawait(?:s|ing)?\s+your\b/i,
