@@ -91,8 +91,10 @@ write
   place of "nine reads", and "list of orders" in place of "one listing".
 - Never define term by repeating it, as in "`count`, the count of the range" or "a ranking ranks".
 - Where noun is object of clause after it, put verb after noun as participle: "the file read by
-  importer", never "the file that the importer reads" or "the file the importer reads". Keep
-  `that` where noun itself does what verb says, as in "the request that fails".
+  importer", never "the file that the importer reads", "the file the importer reads" or "the file,
+  which the importer reads". Keep `that` where noun itself does what verb says, as in "the request
+  that fails".
+- Of two wordings that follow these rules and carry same facts, write shorter one.
 
 | Instead of | Write |
 |---|---|
@@ -100,6 +102,7 @@ write
 | the store's orders | the orders in the store |
 | the upload's token | the token needed by the upload |
 | the importer's file | the file read by the importer |
+| the tables, which only a debugger reads | the tables read only by debuggers |
 | the fetch plan | the list of pages to fetch |
 | the check has no rules of its own | the check applies the rules handed to it |
 | no request goes out | the page sends the request once the form is complete |
