@@ -79,6 +79,9 @@ describe('the phrases of a message that waits for an answer', () => {
     'You have not yet answered the question about the cache.',
     'You didn’t answer the cache question.',
     'You have yet to answer the question about the cache.',
+    'Open from earlier: I removed the icon line. If you would rather keep it, I can restore it.',
+    'Still open from before: the cache size.',
+    'Pending from my previous message: the folder name.',
   ]
   for (const message of waiting) {
     test(`${JSON.stringify(message)} waits for an answer`, () => {
@@ -122,6 +125,8 @@ describe('the phrases of a message that waits for an answer', () => {
     'The built-in tool shows a panel, but it blocks the turn until you answer it.',
     'The dialog holds the session until you answer.',
     'You answered the cache question, so the build goes on.',
+    'The file handle was open from before the restart.',
+    'The port is still open from the earlier run.',
   ]
   for (const message of notWaiting) {
     test(`${JSON.stringify(message)} does not wait for an answer`, () => {

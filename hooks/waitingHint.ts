@@ -23,6 +23,8 @@ export const WAITING_HINT: HintKind = {
       String.raw`${OPEN_ITEM}(?:\s+(?:on|about|of|for|from)\b${CLAUSE})?\s+(?:is|are|remains?|stays?)\s+still\s+${OPEN_WORD}\b`,
     ),
     phrase(String.raw`\bstill\s+${OPEN_WORD}\s*:`),
+    phrase(String.raw`\b${OPEN_WORD}\s+from\s+(?:earlier\b|before(?=\s*(?:[:.,;]|$))|${EARLIER_MESSAGE})`),
+    phrase(String.raw`\b${OPEN_WORD}\s+from\s+(?:earlier|before(?=\s*(?:[:.,;]|$))|${EARLIER_MESSAGE.replaceAll('\\bmy', '\\b(?:my|the)')})`),
     /\bstill\s+waiting\b/i,
     /\b(?:waiting|waits)\s+(?:for|on)\s+you(?:r)?\b/i,
     /\bawait(?:s|ing)?\s+your\b/i,
