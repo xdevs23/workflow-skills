@@ -88,6 +88,21 @@ description: Write or change code in any language, including types, comments, na
   request body sent empty because none built. Make value required, so call leaving it out fails.
 - Avoid imperative or procedural checks. Make condition fall out of design where possible.
 
+## Changes that merge in any order
+
+- Shape every change so that units built at same time merge in any order without conflict.
+- Add new code as files of your own. Edit as few shared files as possible.
+- Give each concern file of its own, each subsystem or variation module of its own, under concept
+  into which it plugs, as `workflow-skills:designing-architecture` describes.
+- Let module register itself from file of its own, e.g. by annotation, manifest or directory
+  convention, so registry finds it without edit. Only where framework has no discovery, add one
+  registering line to shared file.
+- Before writing, list shared files to be edited by change. For each, check whether another module
+  of same kind would edit same lines. Move such edit into file of module.
+- Improve shared code outside lines of change in unit of its own, as `workflow-skills:todo-md`
+  describes for fix of older defect. This rule comes before rule on improving code below high
+  standard.
+
 ## Typed data and requests
 
 - Type data everywhere. Never look up keys in raw JSON, dispatch on strings or send anonymous

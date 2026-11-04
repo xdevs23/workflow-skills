@@ -88,6 +88,11 @@ contributor or agent without history, reads that file first.
   Origin: <pointer>
   ```
 
+- Record shared code needed by several sub-units, e.g. new extension point of core, as sub-unit of
+  its own, built together with its first consumer. List it in `Builds on:` line of every other
+  sub-unit using it.
+- Chain by `Builds on:` sub-units that edit same lines of shared file that cannot be split, e.g.
+  lockfile or sequence of migrations.
 - Give every entry that has sub-units state of least advanced sub-unit under it.
 - Build each sub-unit without sub-units of its own as separate unit, in separate worktree and on
   separate branch, with one or more workflow runs. You may start building on whatever base suits
