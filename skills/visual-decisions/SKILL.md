@@ -42,8 +42,9 @@ description: Draw page for user to look at: drafts, product decisions, plans and
     where over limit.
 - Fit every page into viewport of 1920×960, except page at actual size of
   `workflow-skills:design-drafts`.
-- Draft that does not fit or is too complicated to read: split unit into sub-units as
-  `workflow-skills:todo-md` describes. Never add pages to draft.
+- Draft that needs cramming to fit, is too complicated to read, or draws changes of more than one
+  pull request: split unit into sub-units as `workflow-skills:todo-md` describes, one draft per
+  sub-unit. Never add pages to draft.
 - Product decisions that need more room: split them into separate pages. Draw next page once user
   replied to the one before.
 - Split page into numbered sections, each with title of at most 8 words.
