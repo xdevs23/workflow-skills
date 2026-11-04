@@ -76,11 +76,10 @@ description: Draw page for user to look at: drafts, product decisions, plans and
 - Draw technical details, e.g. migrations, data models, schemas, as pictures or graphs.
 - Draw change happening out of sight, e.g. where in code a decision is made, as boxes and arrows:
   which part calls which, what passes between them, in each state.
-- Show code as excerpt of real file, under header with component and path. Keep snippets short and
-  to the point. Keep code well readable. Go one layer up and abstract away internal details of
-  code, so functions, variables and other declarations read like what it does in real world.
-- Fold lines of file not edited by the change into one gray line with short description of them.
-  Highlight every line added or edited by the change.
+- Never paste code, diff or test list into draft. Approval of draft would approve that code.
+- Show code only as short snippet of few lines that shows idea, under header with component and
+  path. Go one layer up and abstract away internal details of code, so functions, variables and
+  other declarations read like what it does in real world.
 
 ## Choices
 
