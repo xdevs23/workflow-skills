@@ -113,6 +113,8 @@ contributor or agent without history, reads that file first.
 - Build fix of older defect by `workflow-skills:implement`, with defect and its evidence in place of
   notes and without draft, in worktree and on branch of its own.
 - Deliver fix of older defect on its own, through pull request or review of its own.
+- Split fix of older defect that reaches several modules into sub-units, one per module, each
+  delivered through pull request of its own.
 - Record fix of older defect as `IN PROGRESS` entry while it runs. Its origin pointer: message that
   asked for unit that found defect.
 - Add fix of older defect to `Builds on:` line of unit when unit cannot work without it.
