@@ -33,7 +33,11 @@ description: Draw page for user to look at: drafts, product decisions, plans and
   change or decision to someone who never saw the code. Contents: one concrete example, what goes
   wrong or is missing today, what After does, what After does not change although reader could
   expect it to, what it costs.
-- Put legend under that box, one marker per kind of mark used by page:
+- Under that box, put two short lists side by side: "What this draft builds" and "What this draft
+  doesn't build". In first, name unit or sub-unit drawn, by number of its entry in `TODO.md`, and
+  what it builds. In second, name every part shown on page or expected by reader that comes later
+  or belongs to other unit, with number of its entry.
+- Put legend under those lists, one marker per kind of mark used by page:
   - After, in green, for part added or changed by the change;
   - earlier state, in red, for part left out by After;
   - dashed box, for file not edited by the change;
