@@ -60,7 +60,8 @@ description: Draw page for user to look at: drafts, product decisions, plans and
   with its unpushed commits, a release, or After. Earlier states first, After last.
 - Put caption of at most 15 words under each picture.
 - Mark part of picture that changes in color of its legend marker, so eye finds difference first.
-- Write words on rest of page only as labels, titles, captions and marks.
+- Write words on rest of page only as labels, titles, captions and marks. Never fill picture with
+  sentences, table of text or list of cases.
 - Draw page in very visual way, so user looking at it sees at first glance what end result is and
   how change feels.
 
@@ -110,9 +111,12 @@ description: Draw page for user to look at: drafts, product decisions, plans and
   ID of that state or path of working tree with uncommitted changes. Tell it to read every file of
   that state at that version, since checkout in which it starts can contain a different version.
 - Render page in headless browser at 1920×960, take screenshot of full page and look at it before
-  showing page.
-- Open page for user. Where session is headless, or runs in harness that cannot open a file for
-  user, show page the way harness allows, e.g. inline artifact, inline HTML or embedded screenshot.
+  showing page. Check that each section shows at first glance what it decides, without reading a
+  sentence. Redraw section that needs reading.
+- Open page for user. Open one draft at a time. Draw and open next one once user approved the one
+  before, since it can change what follows. Where session is headless, or runs in harness that
+  cannot open a file for user, show page the way harness allows, e.g. inline artifact, inline HTML
+  or embedded screenshot.
 
 ## Implementation
 
