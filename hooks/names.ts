@@ -20,6 +20,9 @@ export const SKILL_TOOL = 'Skill'
 /** The qualified name for the skill to load before a question is put to the user. */
 export const QUESTION_SKILL = `${PLUGIN}:question`
 
+/** The qualified name for the skill that draws drafts and opens them for the user. */
+export const VISUAL_DECISIONS_SKILL = `${PLUGIN}:visual-decisions`
+
 export const ANSWER_COMMAND = 'answer'
 
 /** The id of the pane that lists the open questions. */

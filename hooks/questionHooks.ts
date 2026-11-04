@@ -17,6 +17,7 @@ import type {
 } from 'claude-code'
 
 import { isMainConversation } from './conversation'
+import { draftRemindersFor } from './draftQuestion'
 import { deliverAnswers, deliverWhenIdle, recordAnswerAndDeliver } from './delivery'
 import {
   ANSWER_ARGUMENTS,
@@ -208,8 +209,12 @@ export const askQuestion: MatchedHook<'tool.call', { tool: typeof ASK_TOOL }> = 
   await setQuestionsInState($, sessionId, questions)
   // The host shows the tool call in the chat only once the turn is idle.
   $.ui.log(describeQuestionInChat(question))
+  const reminders = draftRemindersFor(question)
 
-  return { result: describeAsked(question) }
+  return {
+    result: describeAsked(question),
+    ...(reminders.length === 0 ? {} : { context: reminders }),
+  }
 }
 
 // A subagent reads the list too, but only the main conversation takes the answers as read.

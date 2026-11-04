@@ -7,12 +7,14 @@ workflow skills cover implementing and reviewing a change from notes of the user
 approved by the user, autonomous implementation, copywriting, visual decisions and visual
 verification, opening and watching a pull request and recovering an interrupted workflow run.
 
-The plugin also ships a hooks module that lets Claude ask questions without waiting for the
-answers, in interactive sessions. A session run with `-p` or the Agent SDK gets none of its tools.
-The tool `ask_question` stores a question and returns at once. Claude uses it for a question it
-leaves behind while it goes on working, and asks in the chat while you talk with it. In the main
-conversation, the tool returns a denial unless the Skill tool has loaded `workflow-skills:question`
-there within the last 100,000 tokens, counted from the context size reported by the engine.
+The plugin also ships a hooks module that lets Claude ask questions without waiting for the answers,
+in interactive sessions. A session run with `-p` or the Agent SDK gets none of its tools. The tool
+`ask_question` stores a question and returns at once. Claude uses it for a question it leaves behind
+while it goes on working, and asks in the chat while you talk with it. In the main conversation, the
+tool returns a denial unless the Skill tool has loaded `workflow-skills:question` there within the
+last 100,000 tokens, counted from the context size reported by the engine. A question that names a
+draft, by the word "draft" or a path ending in `.html`, is stored, and the tool adds a reminder that
+a draft is opened for the user and never asked about, and that such a question is to be withdrawn.
 `list_questions` lists the open ones, the answered ones and the withdrawn ones, and
 `withdraw_question` takes back a question that Claude no longer needs answered.
 

@@ -378,6 +378,52 @@ describe('asking without waiting', () => {
     })
   }
 
+  const draftQuestions: { question: string; choices?: string[] }[] = [
+    {
+      question: 'The draft is at .cache/specs/vendor-builder-1.2.html. Is that the shape you want?',
+    },
+    { question: 'Should the export follow .cache/specs/vendor.htm?' },
+    { question: 'Do the two drafts show the order you want?' },
+    {
+      question: 'Is that the shape you want?',
+      choices: ['Approve the draft', 'Change the export'],
+    },
+  ]
+  for (const asked of draftQuestions) {
+    test(
+      `"${asked.question}" is asked with the reminder about drafts`,
+      NO_TIME_LIMIT,
+      async ($, on) => {
+        await startSession($, on)
+        const called = await $.tool.call({ tool: ASK_TOOL, ...asked })
+
+        expect(String(called.result)).toStartWith('Your question is #1.')
+        expect(called.context?.join('\n')).toContain('Question #1 may ask about a draft.')
+        expect(called.context?.join('\n')).toContain(WITHDRAW_TOOL)
+      },
+    )
+  }
+
+  for (const question of [
+    'Postgres or SQLite?',
+    'Should the build copy src/index.html into dist?',
+    'Should the release go out as a draft pull request?',
+    'Open the change as a draft PR?',
+    'Is the redrafted plan in TODO.md right?',
+  ]) {
+    test(
+      `"${question}" is asked without the reminder about drafts`,
+      NO_TIME_LIMIT,
+      async ($, on) => {
+        await startSession($, on)
+        const called = await $.tool.call({ tool: ASK_TOOL, question })
+
+        expect(called.deny).toBeUndefined()
+        expect(called.context).toBeUndefined()
+      },
+    )
+  }
+
   test(
     'a store entry of another shape fails the check and is left unchanged',
     NO_TIME_LIMIT,

@@ -83,6 +83,7 @@ description: Draw page for user to look at: drafts, product decisions, plans and
   After. User says what should be different.
 - Draw one After for each section, using better approach.
 - Do not ask questions in page, and do not add open points.
+- Never ask user about draft of change, e.g. whether shape shown in it fits. Open it.
 
 ## Updating the page
 

@@ -9,6 +9,8 @@ description: Asking the user a question
 - Decision made under explicit grant of `workflow-skills:autonomous-implementation` and logged in run file
   counts as user word.
 - Choice drawn in draft and approved by user counts as user word.
+- Question about draft of change: do not ask. Open draft page as `workflow-skills:visual-decisions`
+  describes.
 - One choice reported as session decision: undo that decision, what was built on it and records of
   it in notes, `TODO.md` and run file. Do not put such question to user.
 - Choice traced to neither user words nor session decision, such as fact of project: answer from
