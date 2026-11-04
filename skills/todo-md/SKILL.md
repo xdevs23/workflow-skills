@@ -237,7 +237,6 @@ background tasks). Then check TODO.md for entries that are `IN PROGRESS` or `QUE
 - `IN PROGRESS`: Check current progress on item. Resume work if not running. Keep working until
   entry is `BUILT`.
 - `NEEDS DECISION`: Put decision to user as section `Questions to the user` describes. Draw draft
-  by `workflow-skills:visual-decisions` first when you can already draw one. Name its page in
-  question.
+  by `workflow-skills:visual-decisions` first when you can already draw one.
 - `BUILT`: Verify result, check its current state, update status if it has progressed.
 - `SHIPPED`: Check current status. Update status if it has progressed.
