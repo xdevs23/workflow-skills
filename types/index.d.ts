@@ -30,6 +30,32 @@ export type SessionQuestions = {
   questions: readonly Question[]
 }
 
+/** A TODO entry attached to a goal, known by its number in TODO.md. */
+export type AttachedTodo = {
+  /** The number of the entry in TODO.md, such as "41", or "41.1" for a sub-unit. */
+  number: string
+  title: string
+  attachedAt: number
+}
+
+/** A goal set by the user for the work, open until the user clears it. */
+export type Goal = {
+  /** The part of the store keys of the goal that names it, unique across every board. */
+  id: string
+  /** The number named by the user and the model, never given again on its board. */
+  number: number
+  text: string
+  addedAt: number
+  clearedAt?: number
+  /** The TODO entries to build for the goal, one for each TODO number. */
+  todos: readonly AttachedTodo[]
+}
+
+/** The goals of one board in the order they were added, cleared goals included. */
+export type Board = {
+  goals: readonly Goal[]
+}
+
 declare module 'claude-code' {
   interface PluginState {
     'workflow-skills': {
