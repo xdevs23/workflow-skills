@@ -4,6 +4,7 @@ import type { EngineInterface } from 'claude-code'
 import type { Question, SessionQuestions } from '../types'
 import type { AnsweredQuestion } from './questions'
 import { readSessionQuestions } from './questionStore'
+import { isSessionRunning, ofRunningSession } from './sessionBoundState'
 
 // The engine lists the state a module reads and writes from the source of the module, so every
 // state reference of the questions is written in this file with its plugin and key as literals,
@@ -81,9 +82,7 @@ export async function loadQuestionsUnlessInState(
  * otherwise, such as before the session read them or after a switch to another session.
  */
 export async function readQuestionsInState($: EngineInterface): Promise<SessionQuestions | null> {
-  const [sessionId, inState] = await Promise.all([$.session.id(), read($, sessionQuestions)])
-
-  return inState?.sessionId === sessionId ? inState : null
+  return ofRunningSession($, await read($, sessionQuestions))
 }
 
 /**
@@ -95,7 +94,7 @@ export async function setQuestionsInState(
   sessionId: string,
   questions: readonly Question[],
 ): Promise<void> {
-  if ((await $.session.id()) === sessionId) {
+  if (await isSessionRunning($, sessionId)) {
     await update($, sessionQuestions, () => ({ sessionId, questions }))
   }
 }
