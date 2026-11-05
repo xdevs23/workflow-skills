@@ -1,5 +1,6 @@
 import type { Register } from 'claude-code'
 
+import { registerGoals } from './goals'
 import { blockStopOnHintPhrase } from './hints'
 import { ANSWER_COMMAND, ASK_TOOL, LIST_TOOL, PANE, SKILL_TOOL, WITHDRAW_TOOL } from './names'
 import {
@@ -35,4 +36,5 @@ export const register: Register = on => {
   on('command.run', { command: ANSWER_COMMAND }, runAnswerCommand).catch(replyWithHookFailure)
   on('ui.render', { component: 'AbovePrompt' }, drawQuestionBand)
   on('ui.render', { component: 'Pane', requestId: PANE }, drawQuestionPane)
+  registerGoals(on)
 }

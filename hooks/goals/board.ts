@@ -54,6 +54,11 @@ export function openGoalsOf(board: Board): Goal[] {
   return board.goals.filter(isOpen)
 }
 
+/** Whether the goal with the id `goalId` is on the board and open. */
+export function isGoalOpen(board: Board, goalId: string): boolean {
+  return openGoalsOf(board).some(goal => goal.id === goalId)
+}
+
 /** The number of a new goal: one above the highest number on the board. */
 export function nextGoalNumberOf(board: Board): number {
   return board.goals.reduce((highest, goal) => Math.max(highest, goal.number), 0) + 1

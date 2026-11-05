@@ -1,3 +1,5 @@
+import type { Outcome, Read } from '../hooks/goals/board'
+
 /** What the user wrote in reply to a question. */
 export type Answer = {
   text: string
@@ -56,6 +58,15 @@ export type Board = {
   goals: readonly Goal[]
 }
 
+/** A board the store could not read, with the reason and the next step written by the store. */
+export type UnreadBoard = { outcome: Outcome.Failed; failure: string }
+
+/** The board of a session as the session last read it, or why the store could not read it. */
+export type SessionBoard = { sessionId: string } & (Read | UnreadBoard)
+
+/** The goal of a session whose Clear was pressed in the Goals pane and that needs a yes. */
+export type GoalToClear = { sessionId: string; goalId: string }
+
 declare module 'claude-code' {
   interface PluginState {
     'workflow-skills': {
@@ -72,6 +83,14 @@ declare module 'claude-code' {
       sessionQuestions: SessionQuestions | null
       /** The ids of the questions whose answers this session is delivering right now. */
       deliveringAnswers: readonly string[]
+      /**
+       * The board of the session that last read it, with the id of that session, since the state
+       * may outlive a switch to another session; null before any session read it.
+       */
+      sessionBoard: SessionBoard | null
+      goalToClear: GoalToClear | null
+      /** True while the Goals pane saves an added or a cleared goal. */
+      isSavingGoal: boolean
     }
   }
 }

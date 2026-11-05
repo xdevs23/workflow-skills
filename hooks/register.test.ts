@@ -3,11 +3,14 @@ import type { ApiMessage } from 'claude-code'
 
 import {
   ANSWER_COMMAND,
+  ASK,
   ASK_TOOL,
+  LIST,
   LIST_TOOL,
   PANE,
   PLUGIN,
   QUESTION_SKILL,
+  WITHDRAW,
   WITHDRAW_TOOL,
 } from './names'
 import { describeQuestionSkillDenial } from './modelText'
@@ -452,7 +455,9 @@ describe('asking without waiting', () => {
         isInteractive: false,
       })
 
-      expect(session.registered).toEqual([])
+      for (const name of [ASK, LIST, WITHDRAW, ANSWER_COMMAND]) {
+        expect(session.registered).not.toContain(name)
+      }
       expect(session.toasts).toEqual([])
       expect((await askWhichDatabase($)).deny).toBeDefined()
       expect(questionCountOf(session)).toBe(1)

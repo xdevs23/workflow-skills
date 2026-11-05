@@ -103,7 +103,8 @@ export function readWithdrawInput(input: {
   return isPositiveInteger(number) ? number : undefined
 }
 
-const NUMBER_ARGUMENT = '<number>'
+/** The number argument of a command, as its usage shows it. */
+export const NUMBER_ARGUMENT = '<number>'
 const ANSWER_ARGUMENT = '<answer>'
 
 export const ANSWER_ARGUMENTS = `[${NUMBER_ARGUMENT} ${ANSWER_ARGUMENT}]`
