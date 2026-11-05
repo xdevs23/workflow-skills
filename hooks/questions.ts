@@ -29,11 +29,6 @@ export function isAwaitingAnswers(questions: readonly Question[]): boolean {
   return openQuestionsOf(questions).length > 0 || undeliveredAnswersOf(questions).length > 0
 }
 
-/** Whether the value is a whole number from 1 up, as the number of a question is. */
-export function isPositiveInteger(value: unknown): value is number {
-  return typeof value === 'number' && Number.isSafeInteger(value) && value > 0
-}
-
 /** The number a new question of the session gets: one past the highest number in use. */
 export function nextNumberOf(questions: readonly Question[]): number {
   return questions.reduce((highest, question) => Math.max(highest, question.number), 0) + 1

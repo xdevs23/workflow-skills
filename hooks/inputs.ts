@@ -1,5 +1,5 @@
 import { ANSWER_COMMAND } from './names'
-import { isPositiveInteger } from './questions'
+import { isPositiveInteger } from './positiveInteger'
 
 /** A text with at least one character other than white space. */
 const NON_BLANK = /\S/

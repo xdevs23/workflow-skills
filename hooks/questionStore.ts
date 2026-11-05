@@ -2,12 +2,12 @@ import type { EngineInterface } from 'claude-code'
 
 import type { Question } from '../types'
 import { messageOf } from './errorMessage'
+import { isPositiveInteger } from './positiveInteger'
 import {
   Withdrawal,
   findOpenQuestion,
   isAnswered,
   isNumberTaken,
-  isPositiveInteger,
   nextNumberOf,
   openQuestionsOf,
 } from './questions'
