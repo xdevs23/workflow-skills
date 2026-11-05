@@ -1,9 +1,10 @@
 import type { Question } from '../types'
 import type { HookSubject } from './hookFailure'
 import { ASK_TOOL, LIST_TOOL, QUESTION_SKILL } from './names'
+import { sortedByNumber } from './numbered'
 import { QUESTION_SKILL_MAX_TOKENS_AFTER_LOAD, QuestionSkillLoadState } from './questionSkill'
 import type { QuestionSkillDenial } from './questionSkill'
-import { Withdrawal, isAnswered, isWithdrawn, openQuestionsOf, sortedByNumber } from './questions'
+import { Withdrawal, isAnswered, isWithdrawn, openQuestionsOf } from './questions'
 import type { AnsweredQuestion } from './questions'
 
 /** The reply of the answer command and the text of the pane while no question is open. */

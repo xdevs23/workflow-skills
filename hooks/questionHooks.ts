@@ -59,8 +59,9 @@ import {
   WITHDRAW,
   WITHDRAW_TOOL,
 } from './names'
+import { sortedByNumber } from './numbered'
 import { isTypedByUser } from './promptOrigin'
-import { Withdrawal, openQuestionsOf, sortedByNumber } from './questions'
+import { Withdrawal, openQuestionsOf } from './questions'
 import { awaitingSessionOf, sessionForUse } from './questionSession'
 import {
   QuestionSkillLoadState,

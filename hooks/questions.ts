@@ -53,11 +53,6 @@ export function findOpenQuestion(
   return openQuestionsOf(questions).find(question => question.number === number)
 }
 
-/** The questions in the order of their numbers, the order the user and the model read them in. */
-export function sortedByNumber(questions: readonly Question[]): Question[] {
-  return [...questions].sort((first, second) => first.number - second.number)
-}
-
 /** What became of a question the model asked to withdraw. */
 export enum Withdrawal {
   Withdrawn = 'withdrawn',
