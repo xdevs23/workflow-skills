@@ -245,6 +245,24 @@ describe('asking without waiting', () => {
   )
 
   test(
+    'the pane on a surface without input fields shows the answer command and the choices in ' +
+      'place of the fields',
+    NO_TIME_LIMIT,
+    async ($, on) => {
+      await startSession($, on)
+      await askWhichDatabase($)
+      const pane = await mountPane($, 'mobile')
+
+      expect(
+        await pane.find({ type: 'Text', text: `Answer with /${ANSWER_COMMAND} 1 <answer>` }),
+      ).toBeDefined()
+      expect(await pane.find({ type: 'Text', text: /sqlite \/ postgres/ })).toBeDefined()
+      expect(await pane.find({ key: 'pick-1' })).toBeUndefined()
+      expect(await pane.find({ key: 'answer-1' })).toBeUndefined()
+    },
+  )
+
+  test(
     'a store that cannot be read makes the tools fail with the reason, which the debug log shows ' +
       'too',
     NO_TIME_LIMIT,

@@ -1,15 +1,17 @@
-import type { EngineInterface, MatchedHook } from 'claude-code'
+import type { ElementTable, EngineInterface, MatchedHook, ResolveInput } from 'claude-code'
 
 import type { Question } from '../types'
 import { recordAnswerAndDeliver } from './delivery'
 import { answerUsage } from './inputs'
-import { ALL_CLOSED } from './modelText'
+import { ALL_CLOSED, describeChoices } from './modelText'
 import { ANSWER_COMMAND, PANE } from './names'
 import { sortedByNumber } from './numbered'
 import { openQuestionsOf } from './questions'
 import { sessionForUse } from './questionSession'
 import { runOnScreen } from './screenWork'
 import { loadQuestionsFromStore, readQuestionsInState } from './sessionState'
+import { drawsInputFields } from './surfaces'
+import type { SurfaceWithInputFields } from './surfaces'
 
 export const drawQuestionBand: MatchedHook<'ui.render', { component: 'AbovePrompt' }> = async (
   $,
@@ -39,52 +41,64 @@ export const drawQuestionPane: MatchedHook<
   { component: 'Pane'; requestId: typeof PANE }
 > = async ($, e) => {
   const open = sortedByNumber(await readOpenQuestions($))
-  const elements = $.ui.resolve(e)
-  const { Box, Text } = elements
+  const { Box, Text } = $.ui.resolve(e)
   if (open.length === 0) {
     return <Text dimColor>{ALL_CLOSED}</Text>
   }
-  const answer = (question: Question, text: string) =>
-    runOnScreen($, () => answerOnScreen($, question, text))
-  // The mobile surface does not draw input fields or choice lists, so the pane shows the
-  // command instead.
-  const drawAnswerFields =
-    'Input' in elements && 'Select' in elements
-      ? (question: Question) => {
-          const { Input, Select } = elements
-
-          return (
-            <Box flexDirection="column">
-              {question.choices.length > 0 && (
-                <Select
-                  key={`pick-${question.number}`}
-                  options={question.choices.map(choice => ({ value: choice }))}
-                  onSelect={choice => answer(question, choice)}
-                />
-              )}
-              <Input
-                key={`answer-${question.number}`}
-                placeholder={
-                  question.choices.length > 0 ? 'Or type another answer' : 'Type your answer'
-                }
-                submitLabel="answer"
-                onSubmit={text => answer(question, text)}
-              />
-            </Box>
-          )
-        }
-      : (question: Question) => (
-          <Text dimColor>{`Answer with ${answerUsage(question.number)}`}</Text>
-        )
 
   return (
     <Box flexDirection="column">
       {open.map(question => (
         <Box flexDirection="column" marginBottom={1}>
           <Text bold>{`#${question.number} ${question.text}`}</Text>
-          {drawAnswerFields(question)}
+          {drawsInputFields(e)
+            ? drawAnswerFields($, e, question)
+            : drawAnswerCommand({ Box, Text }, question)}
         </Box>
       ))}
+    </Box>
+  )
+}
+
+/** The list of the choices and the field for a typed answer, which answer the question. */
+function drawAnswerFields(
+  $: EngineInterface,
+  e: ResolveInput<'Pane', SurfaceWithInputFields>,
+  question: Question,
+) {
+  const { Box, Input, Select } = $.ui.resolve(e)
+  const answer = (text: string) => runOnScreen($, () => answerOnScreen($, question, text))
+
+  return (
+    <Box flexDirection="column">
+      {question.choices.length > 0 && (
+        <Select
+          key={`pick-${question.number}`}
+          options={question.choices.map(choice => ({ value: choice }))}
+          onSelect={answer}
+        />
+      )}
+      <Input
+        key={`answer-${question.number}`}
+        placeholder={question.choices.length > 0 ? 'Or type another answer' : 'Type your answer'}
+        submitLabel="answer"
+        onSubmit={answer}
+      />
+    </Box>
+  )
+}
+
+/** The /answer command for the question, with its choices, where no field can answer it. */
+function drawAnswerCommand(
+  { Box, Text }: Pick<ElementTable, 'Box' | 'Text'>,
+  question: Question,
+) {
+  const choices = describeChoices(question)
+
+  return (
+    <Box flexDirection="column">
+      <Text dimColor>{`Answer with ${answerUsage(question.number)}`}</Text>
+      {choices !== undefined && <Text dimColor>{choices}</Text>}
     </Box>
   )
 }

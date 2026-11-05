@@ -146,9 +146,11 @@ function describeSection(heading: string, lines: readonly string[]): string[] {
 }
 
 export function describeOpenQuestion(question: Question): string {
-  const choices = question.choices.length > 0 ? ` (choices: ${question.choices.join(' / ')})` : ''
+  const choices = describeChoices(question)
 
-  return `#${question.number}: ${question.text}${choices}`
+  return choices === undefined
+    ? `#${question.number}: ${question.text}`
+    : `#${question.number}: ${question.text} ${choices}`
 }
 
 /**
@@ -156,7 +158,14 @@ export function describeOpenQuestion(question: Question): string {
  * before the text, so a terminal that cuts a long line keeps them.
  */
 export function describeQuestionInChat(question: Question): string {
-  return question.choices.length > 0
-    ? `Question #${question.number} (choices: ${question.choices.join(' / ')}): ${question.text}`
-    : `Question #${question.number}: ${question.text}`
+  const choices = describeChoices(question)
+
+  return choices === undefined
+    ? `Question #${question.number}: ${question.text}`
+    : `Question #${question.number} ${choices}: ${question.text}`
+}
+
+/** The choices of a question as "(choices: a / b)", or undefined when it has no choices. */
+export function describeChoices(question: Question): string | undefined {
+  return question.choices.length > 0 ? `(choices: ${question.choices.join(' / ')})` : undefined
 }
