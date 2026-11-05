@@ -75,6 +75,7 @@ import {
   saveWithdrawal,
   toastStoreFailure,
 } from './questionStore'
+import { callToolWithNote, submitWithNote } from './sendToModel'
 import {
   hasPersonAtPrompt,
   loadQuestionsFromStore,
@@ -139,34 +140,27 @@ export const readQuestionsOfStartedSession: Hook<'classic.SessionStart'> = async
   return next(e)
 }
 
-export const addAnswersToToolResult: Hook<'tool.call'> = async ($, e, next) => {
-  const ran = await next(e)
-  if (ran.deny !== undefined) {
-    return ran
-  }
-  const isModelCall = isMainConversation(e) && next.origin.tier === 'core'
-  const sessionId = isModelCall ? await awaitingSessionOf($) : null
-  if (sessionId === null) {
-    return ran
-  }
+export const addAnswersToToolResult: Hook<'tool.call'> = ($, e, next) =>
+  callToolWithNote(e, next, async () => {
+    const sessionId = await awaitingSessionOf($)
+    if (sessionId === null) {
+      return undefined
+    }
 
-  return handleStoreFailure(
-    $,
-    () =>
-      deliverAnswers($, sessionId, async answered => ({
-        result:
-          answered.length === 0
-            ? ran
-            : { ...ran, context: [...(ran.context ?? []), describeAnswers(answered)] },
-        isAccepted: true,
-      })),
-    message => {
-      $.ui.toast(message)
+    return handleStoreFailure(
+      $,
+      () =>
+        deliverAnswers($, sessionId, async answered => ({
+          result: answered.length === 0 ? undefined : describeAnswers(answered),
+          isAccepted: true,
+        })),
+      message => {
+        $.ui.toast(message)
 
-      return ran
-    },
-  )
-}
+        return undefined
+      },
+    )
+  })
 
 export const recordSkillLoad: MatchedHook<'tool.call', { tool: typeof SKILL_TOOL }> = async (
   $,
@@ -260,15 +254,11 @@ export async function submitWithAnswers(
         return next(e)
       }
 
-      return deliverAnswers($, sessionId, async answered => {
-        if (answered.length === 0) {
-          return { result: await next(e), isAccepted: false }
-        }
-        const note = describeAnswers(answered)
-        const entered = await next({ ...e, context: [...(e.context ?? []), note] })
-
-        return { result: entered, isAccepted: entered.context?.includes(note) === true }
-      })
+      return deliverAnswers($, sessionId, async answered =>
+        answered.length === 0
+          ? { result: await next(e), isAccepted: false }
+          : submitWithNote(e, next, describeAnswers(answered)),
+      )
     },
     message => {
       $.ui.toast(message)

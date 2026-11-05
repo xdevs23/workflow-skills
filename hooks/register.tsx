@@ -20,18 +20,27 @@ import {
 } from './questionHooks'
 import { drawQuestionBand, drawQuestionPane } from './questionScreens'
 
+/**
+ * The matcher of a hook that runs on every event of its kind. The engine refuses a second hook
+ * without a matcher on one event of a plugin, and a matcher that names no field matches every
+ * event, so each feature registers such a hook with this matcher.
+ */
+export const EVERY_EVENT: Readonly<Record<never, never>> = {}
+
+export type EveryEvent = typeof EVERY_EVENT
+
 export const register: Register = on => {
   on('session.start', { isInteractive: true }, startQuestions)
   on('classic.SessionStart', readQuestionsOfStartedSession)
   // Registered before the tools of this plugin, so their results also contain the answers.
-  on('tool.call', addAnswersToToolResult)
+  on('tool.call', EVERY_EVENT, addAnswersToToolResult)
   on('tool.call', { tool: SKILL_TOOL }, recordSkillLoad)
   on('tool.call', { tool: ASK_TOOL }, askQuestion).catch(denyHookFailure)
   on('tool.call', { tool: LIST_TOOL }, listQuestions).catch(denyHookFailure)
   on('tool.call', { tool: WITHDRAW_TOOL }, withdrawQuestion).catch(denyHookFailure)
-  on('prompt.submit', submitWithAnswers)
-  on('turn.start', markTurnRunning)
-  on('turn.complete', completeQuestionTurn)
+  on('prompt.submit', EVERY_EVENT, submitWithAnswers)
+  on('turn.start', EVERY_EVENT, markTurnRunning)
+  on('turn.complete', EVERY_EVENT, completeQuestionTurn)
   on('classic.Stop', blockStopOnHintPhrase)
   on('command.run', { command: ANSWER_COMMAND }, runAnswerCommand).catch(replyWithHookFailure)
   on('ui.render', { component: 'AbovePrompt' }, drawQuestionBand)

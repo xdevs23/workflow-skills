@@ -1,12 +1,13 @@
 import type { EngineInterface } from 'claude-code'
 
 import type { Question } from '../types'
-import { messageOf } from './errorMessage'
-import { showFailure } from './failureToast'
 import { describeAnswers } from './modelText'
 import { undeliveredAnswersOf } from './questions'
 import type { AnsweredQuestion } from './questions'
 import { saveAnswer, saveDelivery, toastStoreFailure } from './questionStore'
+import { PromptOutcome, submitToSession } from './sendToModel'
+import { runAfter } from './timedWork'
+import type { Delivery } from './sendToModel'
 import {
   claimAnswers,
   loadQuestionsFromStore,
@@ -15,9 +16,6 @@ import {
   setQuestionsInState,
   updateQuestions,
 } from './sessionState'
-
-/** The result of a delivery, and whether the model received the answers handed to it. */
-export type Delivery<T> = { result: T; isAccepted: boolean }
 
 /**
  * Hands the answers not yet read by the session `sessionId` to `send`, together with the questions
@@ -94,32 +92,30 @@ export async function recordAnswerAndDeliver(
  * hook that asks for the delivery does not wait for it.
  */
 export function deliverWhenIdle($: EngineInterface, sessionId: string): void {
-  $.clock.after(0, () => {
-    deliverAsPrompt($, sessionId).catch((error: unknown) =>
-      showFailure(
-        $,
-        `The answers to your questions could not be sent to Claude: ${messageOf(error)}. ` +
-          'They are sent with your next prompt or the next tool result.',
-      ),
-    )
-  })
+  runAfter(
+    $,
+    0,
+    () => deliverAsPrompt($, sessionId),
+    message =>
+      `The answers to your questions could not be sent to Claude: ${message}. ` +
+      'They are sent with your next prompt or the next tool result.',
+  )
 }
 
 async function deliverAsPrompt($: EngineInterface, sessionId: string): Promise<void> {
   await deliverAnswers($, sessionId, async answered => {
-    // After /resume or /clear switched to another session, the prompt would go to that session,
-    // so the answers wait for the next delivery in their own session.
-    if (answered.length === 0 || (await $.session.id()) !== sessionId) {
+    if (answered.length === 0) {
       return { result: undefined, isAccepted: false }
     }
-    const entered = await $.prompt.submit({ text: describeAnswers(answered), asUser: true })
-    if (entered.drop !== undefined) {
+    const text = describeAnswers(answered)
+    const submitted = await submitToSession($, sessionId, { text, asUser: true })
+    if (submitted.outcome === PromptOutcome.Dropped) {
       $.ui.toast(
-        `The answers to your questions were not sent to Claude: ${entered.drop}. ` +
+        `The answers to your questions were not sent to Claude: ${submitted.reason}. ` +
           'They are sent with your next prompt or the next tool result.',
       )
     }
 
-    return { result: undefined, isAccepted: entered.drop === undefined }
+    return { result: undefined, isAccepted: submitted.outcome === PromptOutcome.Entered }
   })
 }
