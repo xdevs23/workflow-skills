@@ -35,8 +35,8 @@ import {
   describeNotAdded,
   describeNotCleared,
   describeNotRead,
-  describeTodo,
 } from './goalTexts'
+import { describeEntry } from './todoEntry'
 
 /** The elements every surface draws, which the rows of the goals use. */
 type GoalElements = Pick<ElementTable, 'Box' | 'Button' | 'Text'>
@@ -112,7 +112,7 @@ function drawGoal(
           </Box>
         )}
         {goal.todos.map(todo => (
-          <Text dimColor>{describeTodo(todo)}</Text>
+          <Text dimColor>{describeEntry(todo)}</Text>
         ))}
       </Box>
       {!isWaitingForYes && (

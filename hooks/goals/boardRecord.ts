@@ -1,7 +1,7 @@
 import type { AttachedTodo, Board, Goal } from '../../types'
 import { describeUnreadableRecord, isRecord } from '../pluginStore'
 import { isPositiveInteger } from '../positiveInteger'
-import { isTodoNumber } from './todoNumber'
+import { isTodoNumber } from './todoEntry'
 import { boardPrefixOf } from './boardScope'
 import type { BoardScope } from './boardScope'
 

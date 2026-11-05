@@ -1,9 +1,10 @@
-import type { AttachedTodo, Goal } from '../../types'
+import type { Goal } from '../../types'
 import type { HookSubject } from '../hookFailure'
 import { NUMBER_ARGUMENT } from '../inputs'
 import { describeStoreFailure } from './boardStore'
 import type { Failed } from './boardStore'
 import { ADD_WORD, CLEAR_WORD, GOALS_COMMAND } from './goalNames'
+import { describeEntry } from './todoEntry'
 
 // The texts of the goals read by the person at the prompt, with the commands they contain.
 
@@ -60,15 +61,11 @@ export function describeNotRegistered(reason: string): string {
   )
 }
 
-export function describeTodo(todo: AttachedTodo): string {
-  return `#${todo.number} - ${todo.title}`
-}
-
 /** The open goals, each with its TODO entries below it, one to a line. */
 export function describeOpenGoals(open: readonly Goal[]): string[] {
   return open.flatMap(goal => [
     `#${goal.number} ${goal.text}`,
-    ...goal.todos.map(todo => `  ${describeTodo(todo)}`),
+    ...goal.todos.map(todo => `  ${describeEntry(todo)}`),
   ])
 }
 

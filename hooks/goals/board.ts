@@ -1,5 +1,5 @@
 import type { AttachedTodo, Board, Goal } from '../../types'
-import { isTodoNumber } from './todoNumber'
+import { isTodoNumber } from './todoEntry'
 
 // The rules of a board: every goal has a number of its own, and no goal gets the number of another
 // goal again, also after that goal was cleared, since cleared goals are never removed from the
