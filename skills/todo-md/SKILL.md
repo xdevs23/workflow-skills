@@ -25,6 +25,16 @@ contributor or agent without history, reads that file first.
 - Delete entry also when user says so, or when it is fix of older defect and fix is merged. Never
   delete entry for any other reason.
 - Remove deleted entry from every `Builds on:` line that lists it.
+- Read goals and entries attached to them with `mcp__workflow-skills__list_goals` when not in
+  context. Goal is not satisfied yet until user clears it.
+- Attach each entry that serves goal not satisfied yet to that goal with
+  `mcp__workflow-skills__attach_todo`, as `#<number> - <title>`, in same turn as writing entry or
+  changing its title.
+- When user adds goal, attach every entry of `TODO.md` that serves new goal.
+- Detach entry from every goal not satisfied yet that lists it, with
+  `mcp__workflow-skills__detach_todo`, as `#<number>`, in same turn as deleting entry or as entry
+  stops serving goal.
+- Do not write goal number into entry.
 
 # Layout of the file
 
