@@ -84,14 +84,15 @@ import {
   takeReadAtStart,
 } from './sessionState'
 
-// In a session without a person at the prompt, such as a -p run or the Agent SDK, the plugin
-// registers neither the tools nor the command and does not read any question, so every hook below
-// passes its event on unchanged.
-export const startQuestions: Hook<'session.start'> = async ($, e, next) => {
+// Registered for a session with a person at the prompt alone. In a -p run or the Agent SDK, the
+// plugin registers neither the tools nor the command and does not read any question, so every hook
+// below passes its event on unchanged.
+export const startQuestions: MatchedHook<'session.start', { isInteractive: true }> = async (
+  $,
+  e,
+  next,
+) => {
   recordPersonAtPrompt(e.isInteractive)
-  if (!e.isInteractive) {
-    return next(e)
-  }
   await Promise.all([
     $.tool.register({
       name: ASK,

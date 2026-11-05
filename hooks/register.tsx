@@ -20,7 +20,7 @@ import {
 import { drawQuestionBand, drawQuestionPane } from './questionScreens'
 
 export const register: Register = on => {
-  on('session.start', startQuestions)
+  on('session.start', { isInteractive: true }, startQuestions)
   on('classic.SessionStart', readQuestionsOfStartedSession)
   // Registered before the tools of this plugin, so their results also contain the answers.
   on('tool.call', addAnswersToToolResult)
