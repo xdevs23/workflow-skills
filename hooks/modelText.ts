@@ -1,4 +1,5 @@
 import type { Question } from '../types'
+import type { HookSubject } from './hookFailure'
 import { ASK_TOOL, LIST_TOOL, QUESTION_SKILL } from './names'
 import { QUESTION_SKILL_MAX_TOKENS_AFTER_LOAD, QuestionSkillLoadState } from './questionSkill'
 import type { QuestionSkillDenial } from './questionSkill'
@@ -84,27 +85,10 @@ export const WITHDRAW_DESCRIPTION = [
   `The user no longer sees it among the open questions, and ${LIST_TOOL} lists it as withdrawn.`,
 ].join(' ')
 
-/**
- * What the model or the person at the prompt is told of a hook of the questions that failed with
- * `reason`, such as a store that cannot be read or a write that fails.
- */
-export function describeFailedUse(reason: string | undefined): string {
-  return [
-    `The questions could not be used: ${reason ?? 'the hook failed without a reason'}`,
-    'The debug log has this too. Until the cause is fixed, go on without the questions.',
-  ].join('\n')
-}
-
-/**
- * What the model or the person at the prompt is told of a hook of the questions that ran past its
- * time, possibly after it saved a change, with the last failure before that, if any.
- */
-export function describeUnfinishedUse(lastFailure: string | undefined): string {
-  return [
-    'The questions did not finish in time, so whether the change was saved is unknown.',
-    ...(lastFailure === undefined ? [] : [`The last failure before that: ${lastFailure}`]),
-    'List the questions before you try again. The debug log has this too.',
-  ].join('\n')
+/** The questions, as written in the texts about a failed hook of the questions. */
+export const QUESTIONS_SUBJECT: HookSubject = {
+  name: 'questions',
+  checkBeforeRetry: 'List the questions before you try again.',
 }
 
 export function describeAsked(question: Question): string {

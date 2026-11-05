@@ -5,7 +5,6 @@ import type {
   EngineInterface,
   Frozen,
   Hook,
-  HookFailure,
   MatchedHook,
   Next,
   PromptSubmitInput,
@@ -19,6 +18,7 @@ import type {
 import { isMainConversation } from './conversation'
 import { draftRemindersFor } from './draftQuestion'
 import { deliverAnswers, deliverWhenIdle, recordAnswerAndDeliver } from './delivery'
+import { denyFailedHook, replyToFailedHook } from './hookFailure'
 import {
   ANSWER_ARGUMENTS,
   ANSWER_USAGE_PROBLEM,
@@ -37,16 +37,15 @@ import {
   ALL_CLOSED,
   ASK_DESCRIPTION,
   LIST_DESCRIPTION,
+  QUESTIONS_SUBJECT,
   WITHDRAWAL_TEXTS,
   WITHDRAW_DESCRIPTION,
   describeAnswers,
   describeAsked,
-  describeFailedUse,
   describeOpenQuestion,
   describeQuestionInChat,
   describeQuestionSkillDenial,
   describeQuestions,
-  describeUnfinishedUse,
   describeUnrecordedLoad,
 } from './modelText'
 import {
@@ -347,40 +346,23 @@ export const runAnswerCommand: MatchedHook<
 
 /**
  * Denies the call of a question tool whose hook failed, such as on a store that cannot be read or
- * a write rejected by the store, with the reason, which is written to the debug log too.
+ * a write rejected by the store, with the reason.
  */
 export function denyHookFailure(
   $: EngineInterface,
   _e: Frozen<ToolCallInput>,
   next: Caught,
 ): ToolCallResult {
-  return { deny: logAndDescribeHookFailure($, next.error) }
+  return denyFailedHook($, QUESTIONS_SUBJECT, next.error)
 }
 
-/**
- * Returns the reply to the answer command when its hook failed, with the reason. The reason also
- * goes to the debug log.
- */
+/** Returns the reply to the answer command when its hook failed, with the reason. */
 export function replyWithHookFailure(
   $: EngineInterface,
   _e: Frozen<CommandRunInput>,
   next: Caught,
 ): CommandRunResult {
-  return { text: logAndDescribeHookFailure($, next.error) }
-}
-
-/** What a failed hook of the questions tells the model or the person at the prompt, by its kind. */
-const HOOK_FAILURE_TEXTS: Record<HookFailure['kind'], (message: string | undefined) => string> = {
-  throw: describeFailedUse,
-  timeout: describeUnfinishedUse,
-}
-
-/** Writes why a hook of the questions failed to the debug log, and returns the text of the reply. */
-function logAndDescribeHookFailure($: EngineInterface, failure: HookFailure): string {
-  const text = HOOK_FAILURE_TEXTS[failure.kind](failure.message)
-  $.ui.log(text, { to: 'debug' })
-
-  return text
+  return replyToFailedHook($, QUESTIONS_SUBJECT, next.error)
 }
 
 /** Lists the open questions of the session for the answer command, and opens the pane. */
