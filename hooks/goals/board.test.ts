@@ -84,6 +84,12 @@ describe('goal numbers', () => {
     expect(boardOf(added).goals.at(-1)?.number).toBe(4)
   })
 
+  test('a goal is added with its text without the white space around it', () => {
+    const added = addGoal(EMPTY_BOARD, { id: 'a', text: '  Write the migration guide\n' }, 100)
+
+    expect(boardOf(added).goals[0]?.text).toBe('Write the migration guide')
+  })
+
   test('a goal without text is not added', () => {
     expect(addGoal(THREE_GOALS, { id: 'blank', text: ' \n' }, 500)).toEqual({
       outcome: Outcome.Refused,

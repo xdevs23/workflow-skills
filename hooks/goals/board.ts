@@ -85,11 +85,12 @@ export function addGoal(
   goal: Pick<Goal, 'id' | 'text'>,
   addedAt: number,
 ): Changed | Refused {
-  if (goal.text.trim() === '') {
+  const text = goal.text.trim()
+  if (text === '') {
     return { outcome: Outcome.Refused, refusal: Refusal.BlankText }
   }
   const number = nextGoalNumberOf(board)
-  const added = { id: goal.id, number, text: goal.text, addedAt, todos: [] }
+  const added = { id: goal.id, number, text, addedAt, todos: [] }
 
   return { outcome: Outcome.Changed, board: { goals: [...board.goals, added] }, goal: added }
 }
