@@ -325,6 +325,16 @@ describe('the phrases of a message that announces work while the turn ends', () 
     "I'm moving on to the parser.",
     "I'm moving on with the parser.",
     "I'm going ahead with the parser.",
+    'Next is the Style tab redesign (#301, design 1).',
+    'The phone build worked. Next up is the parser.',
+    "To start it, I'm stopping build 153, the userdebug build.",
+    "I'm launching the implementation run.",
+    "I'm kicking off the build.",
+    "I'm restarting the build.",
+    "I'm picking 01d4aa33 onto the branch.",
+    "I'm running the full suite.",
+    'Then I pick 01d4aa33, start the implementation run, and start the build again right after.',
+    "Then I'll rebase the branch.",
   ]
   for (const message of announcing) {
     test(`${JSON.stringify(message)} announces work`, () => {
@@ -354,6 +364,13 @@ describe('the phrases of a message that announces work while the turn ends', () 
     'You decide what I do next.',
     "I'm going on leave tomorrow.",
     "I'm moving on from the old parser.",
+    "I'm stopping here.",
+    "I'm running out of context.",
+    "I'm picking up on your point about the cache.",
+    'Then I picked 01d4aa33 and the build passed.',
+    'Then I started the run, and it finished at noon.',
+    'Whatever is next is up to you.',
+    'The next build is at noon.',
   ]
   for (const message of notAnnouncing) {
     test(`${JSON.stringify(message)} does not announce work`, () => {
