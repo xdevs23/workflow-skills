@@ -39,11 +39,17 @@ export function describeUnreadableRecord(key: string): string {
   )
 }
 
+/** The next step after a read refused by the store. */
+const CHECK_READABLE =
+  `Check that the store file used by this plugin in ${STORE_FOLDER} can be read, ` +
+  'then try again.'
+
 export function describeRefusedRead(key: string, cause: Error): string {
-  return (
-    `The store could not read the key ${key}: ${cause.message}. Check that the store file used ` +
-    `by this plugin in ${STORE_FOLDER} can be read, then try again.`
-  )
+  return `The store could not read the key ${key}: ${cause.message}. ${CHECK_READABLE}`
+}
+
+export function describeRefusedListing(cause: Error): string {
+  return `The store could not list its keys: ${cause.message}. ${CHECK_READABLE}`
 }
 
 export function describeRefusedWrite(key: string, cause: Error): string {

@@ -3,6 +3,8 @@ import type { EngineInterface } from 'claude-code'
 import type { Question } from '../types'
 import {
   RecordKind,
+  describeRefusedListing,
+  describeRefusedRead,
   describeRefusedWrite,
   describeUnreadableRecord,
   isRecord,
@@ -79,12 +81,26 @@ export async function handleStoreFailure<T>(
   }
 }
 
+/**
+ * Runs `work`, and shows a failure of the store in a toast, after writing it to the debug log. Every
+ * other error is passed on.
+ */
+export function toastStoreFailure($: EngineInterface, work: () => Promise<void>): Promise<void> {
+  return handleStoreFailure($, work, message => $.ui.toast(message))
+}
+
 export class UnreadableQuestionError extends QuestionStoreError {
   readonly key: string
 
   constructor(key: string) {
     super(describeUnreadableRecord(key))
     this.key = key
+  }
+}
+
+export class QuestionNotReadError extends QuestionStoreError {
+  constructor(description: string, cause: Error) {
+    super(description, { cause })
   }
 }
 
@@ -126,7 +142,7 @@ async function readRecords<T>(
   const stored = await Promise.all(
     keys
       .filter(key => key.startsWith(prefix))
-      .map(async key => ({ key, id: idOf(key.slice(prefix.length)), value: await $.store.get(key) })),
+      .map(async key => ({ key, id: idOf(key.slice(prefix.length)), value: await readStoreValue($, key) })),
   )
   const records = new Map<string, T>()
   for (const { key, id, value } of stored) {
@@ -167,7 +183,7 @@ export async function readSessionQuestions(
   $: EngineInterface,
   sessionId: string,
 ): Promise<Question[]> {
-  const keys = await $.store.keys()
+  const keys = await readStoreKeys($)
   const [questions, answers, withdrawals, deliveries] = await Promise.all([
     readRecords($, keys, RecordKind.Question, sessionId, parseQuestion),
     readRecords($, keys, RecordKind.Answer, sessionId, parseAnswer),
@@ -194,12 +210,12 @@ export async function readSessionQuestions(
  * still decides the numbers and the answer that counts.
  */
 export async function moveProjectRecordsToSessions($: EngineInterface): Promise<void> {
-  const records = (await $.store.keys()).flatMap(key => {
+  const records = (await readStoreKeys($)).flatMap(key => {
     const record = readQuestionRecordKey(key)
 
     return record !== undefined && PROJECT_DIGEST.test(record.owner) ? [record] : []
   })
-  const values = await Promise.all(records.map(record => $.store.get(record.key)))
+  const values = await Promise.all(records.map(record => readStoreValue($, record.key)))
   const moved = records.map((record, index) => ({ ...record, value: values[index] }))
   const sessionOfQuestion = new Map<string, string>()
   const questions = new Map<string, StoredQuestion>()
@@ -336,7 +352,7 @@ export async function deleteOldRecords(
   $: EngineInterface,
   old: { sessionId: string; loadsSavedBefore: number; questionsMadeBefore: number },
 ): Promise<void> {
-  const keys = await $.store.keys()
+  const keys = await readStoreKeys($)
   await Promise.all([
     deleteQuestionSkillLoadsSavedBefore($, keys, old.loadsSavedBefore),
     deleteQuestionsOfSessionsIdleSince($, keys, old.sessionId, old.questionsMadeBefore),
@@ -382,7 +398,7 @@ async function deleteQuestionsOfSessionsIdleSince(
     records.map(async ({ key, kind, owner }) => ({
       key,
       owner,
-      madeAt: RECORD_TIMES[kind](await $.store.get(key)) ?? Number.POSITIVE_INFINITY,
+      madeAt: RECORD_TIMES[kind](await readStoreValue($, key)) ?? Number.POSITIVE_INFINITY,
     })),
   )
   const newest = new Map<string, number>()
@@ -397,9 +413,32 @@ async function readQuestionSkillLoadUnder(
   $: EngineInterface,
   key: string,
 ): Promise<QuestionSkillLoad | undefined> {
-  const value: unknown = await $.store.get(key)
+  const value = await readStoreValue($, key)
 
   return value === undefined ? undefined : parseQuestionSkillLoad(key, value)
+}
+
+function readStoreKeys($: EngineInterface): Promise<string[]> {
+  return readFromStore(() => $.store.keys(), describeRefusedListing)
+}
+
+function readStoreValue($: EngineInterface, key: string): Promise<unknown> {
+  return readFromStore(() => $.store.get(key), cause => describeRefusedRead(key, cause))
+}
+
+/** Runs the read `read` of the store, and fails with its refusal as `describe` describes it. */
+async function readFromStore<T>(
+  read: () => Promise<T>,
+  describe: (cause: Error) => string,
+): Promise<T> {
+  try {
+    return await read()
+  } catch (error) {
+    if (!(error instanceof Error)) {
+      throw error
+    }
+    throw new QuestionNotReadError(describe(error), error)
+  }
 }
 
 function saveRecord($: EngineInterface, key: string, value: unknown): Promise<void> {

@@ -8,7 +8,7 @@ import { ANSWER_COMMAND, PANE } from './names'
 import { sortedByNumber } from './numbered'
 import { openQuestionsOf } from './questions'
 import { sessionForUse } from './questionSession'
-import { runOnScreen } from './screenWork'
+import { toastStoreFailure } from './questionStore'
 import { loadQuestionsFromStore, readQuestionsInState } from './sessionState'
 import { drawsInputFields } from './surfaces'
 import type { SurfaceWithInputFields } from './surfaces'
@@ -30,7 +30,7 @@ export const drawQuestionBand: MatchedHook<'ui.render', { component: 'AbovePromp
       <Button
         key="answer"
         label="Answer"
-        onPress={() => runOnScreen($, () => showPane($))}
+        onPress={() => toastStoreFailure($, () => showPane($))}
       />
     </Box>
   )
@@ -67,7 +67,7 @@ function drawAnswerFields(
   question: Question,
 ) {
   const { Box, Input, Select } = $.ui.resolve(e)
-  const answer = (text: string) => runOnScreen($, () => answerOnScreen($, question, text))
+  const answer = (text: string) => toastStoreFailure($, () => answerOnScreen($, question, text))
 
   return (
     <Box flexDirection="column">

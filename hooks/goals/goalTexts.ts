@@ -95,6 +95,11 @@ export function describeNotCleared(failed: Failed): string {
   return `The goal was not cleared. ${describeStoreFailure(failed)}`
 }
 
+/** The line in the debug log for a move of the focus to the field of the Goals pane denied. */
+export function describeFocusNotMoved(reason: string): string {
+  return `The focus did not move to the field that adds a goal: ${reason}`
+}
+
 /** The text for a board that could not be read, with the reason and the next step of the store. */
 export function describeNotRead(storeFailure: string): string {
   return `The goals of this session could not be read. ${storeFailure}`

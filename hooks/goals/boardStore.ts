@@ -66,19 +66,21 @@ export function loadBoard($: StoreEngine, scope: BoardScope): Promise<Read | Fai
 }
 
 /**
- * Stores a new goal under a number that is free on the board. The store does not offer
- * compare-and-set, so the number is checked after the write: of two goals added at once with one
- * number, the goal whose key was set later is written again under the next free number.
+ * Stores a new goal under a number that is free on the board, refused as addGoal refuses it. The
+ * store does not offer compare-and-set, so the number is checked after the write: of two goals
+ * added at once with one number, the goal whose key was set later is written again under the next
+ * free number.
  */
 export function saveNewGoal(
   $: StoreEngine,
   scope: BoardScope,
   text: string,
   addedAt: number,
+  expectedNumber?: number,
 ): Promise<Changed | AddRefused | Failed> {
   return returningFailure(async () => {
     const board = await readSettledBoard($, scope)
-    const added = addGoal(board, { id: crypto.randomUUID(), text }, addedAt)
+    const added = addGoal(board, { id: crypto.randomUUID(), text }, addedAt, expectedNumber)
 
     return added.outcome === Outcome.Changed ? saveUnderFreeNumber($, scope, added.goal) : added
   })

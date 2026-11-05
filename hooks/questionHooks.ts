@@ -73,6 +73,7 @@ import {
   moveProjectRecordsToSessions,
   saveNewQuestion,
   saveWithdrawal,
+  toastStoreFailure,
 } from './questionStore'
 import {
   hasPersonAtPrompt,
@@ -117,9 +118,9 @@ export const startQuestions: MatchedHook<'session.start', { isInteractive: true 
   ])
   // The questions saved under the project before they belonged to a session are moved to their
   // session first, so the load finds them.
-  await handleStoreFailure($, () => moveProjectRecordsToSessions($), message => $.ui.toast(message))
+  await toastStoreFailure($, () => moveProjectRecordsToSessions($))
   const sessionId = await $.session.id()
-  await loadQuestionsAndToastFailure($, sessionId)
+  await toastStoreFailure($, () => loadQuestionsUnlessInState($, sessionId))
   recordReadAtStart(sessionId)
 
   return next(e)
@@ -132,22 +133,10 @@ export const startQuestions: MatchedHook<'session.start', { isInteractive: true 
 export const readQuestionsOfStartedSession: Hook<'classic.SessionStart'> = async ($, e, next) => {
   const sessionId = await $.session.id()
   if (hasPersonAtPrompt() && !takeReadAtStart(sessionId)) {
-    await loadQuestionsAndToastFailure($, sessionId)
+    await toastStoreFailure($, () => loadQuestionsUnlessInState($, sessionId))
   }
 
   return next(e)
-}
-
-/**
- * Loads the questions of the session `sessionId` into the state unless they are there already, and
- * shows a failure of the store in a toast.
- */
-async function loadQuestionsAndToastFailure($: EngineInterface, sessionId: string): Promise<void> {
-  await handleStoreFailure(
-    $,
-    () => loadQuestionsUnlessInState($, sessionId),
-    message => $.ui.toast(message),
-  )
 }
 
 export const addAnswersToToolResult: Hook<'tool.call'> = async ($, e, next) => {

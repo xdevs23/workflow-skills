@@ -20,11 +20,15 @@ export enum Refusal {
   BlankTitle = 'blank-title',
   GoalNotOpen = 'goal-not-open',
   NotTodoNumber = 'not-todo-number',
+  NumberTaken = 'number-taken',
   TodoNotAttached = 'todo-not-attached',
 }
 
-/** The refusal of adding a goal. */
-export type AddRefused = { outcome: Outcome.Refused; refusal: Refusal.BlankText }
+/** The refusal of adding a goal, with the number expected for it. */
+export type AddRefused = { outcome: Outcome.Refused } & (
+  | { refusal: Refusal.BlankText }
+  | { refusal: Refusal.NumberTaken; goal: number }
+)
 
 /** A refused change of a goal on the board, with the numbers named by it. */
 export type ChangeRefused = { outcome: Outcome.Refused } & (
@@ -89,16 +93,24 @@ export function settledBoardOf(board: Board): Board {
   return { goals: board.goals.filter(goal => !isNumberTaken(goal, board)) }
 }
 
+/**
+ * Adds the goal under the next number of the board. With `expectedNumber`, the add is refused
+ * unless the goal gets that number.
+ */
 export function addGoal(
   board: Board,
   goal: Pick<Goal, 'id' | 'text'>,
   addedAt: number,
+  expectedNumber?: number,
 ): Changed | AddRefused {
   const text = goal.text.trim()
   if (text === '') {
     return { outcome: Outcome.Refused, refusal: Refusal.BlankText }
   }
   const number = nextGoalNumberOf(board)
+  if (expectedNumber !== undefined && expectedNumber !== number) {
+    return { outcome: Outcome.Refused, refusal: Refusal.NumberTaken, goal: expectedNumber }
+  }
   const added = { id: goal.id, number, text, addedAt, todos: [] }
 
   return { outcome: Outcome.Changed, board: { goals: [...board.goals, added] }, goal: added }

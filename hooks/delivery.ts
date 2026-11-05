@@ -2,11 +2,11 @@ import type { EngineInterface } from 'claude-code'
 
 import type { Question } from '../types'
 import { messageOf } from './errorMessage'
+import { showFailure } from './failureToast'
 import { describeAnswers } from './modelText'
 import { undeliveredAnswersOf } from './questions'
 import type { AnsweredQuestion } from './questions'
-import { QuestionStoreError, saveAnswer, saveDelivery } from './questionStore'
-import { showFailure } from './screenWork'
+import { saveAnswer, saveDelivery, toastStoreFailure } from './questionStore'
 import {
   claimAnswers,
   loadQuestionsFromStore,
@@ -58,17 +58,12 @@ async function storeDelivery(
   sessionId: string,
   answered: readonly AnsweredQuestion[],
 ): Promise<void> {
-  try {
+  await toastStoreFailure($, async () => {
     const delivered = await saveDelivery($, sessionId, answered)
     await updateQuestions($, questions =>
       questions.map(question => delivered.find(each => each.id === question.id) ?? question),
     )
-  } catch (error) {
-    if (!(error instanceof QuestionStoreError)) {
-      throw error
-    }
-    showFailure($, error.message)
-  }
+  })
 }
 
 /**

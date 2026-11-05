@@ -90,6 +90,20 @@ describe('goal numbers', () => {
     expect(boardOf(added).goals[0]?.text).toBe('Write the migration guide')
   })
 
+  test('a goal expected under a number another goal has by now is not added', () => {
+    expect(addGoal(THREE_GOALS, { id: 'listing', text: 'Store listing' }, 500, 3)).toEqual({
+      outcome: Outcome.Refused,
+      refusal: Refusal.NumberTaken,
+      goal: 3,
+    })
+  })
+
+  test('a goal expected under the next number gets it', () => {
+    const added = addGoal(THREE_GOALS, { id: 'listing', text: 'Store listing' }, 500, 4)
+
+    expect(boardOf(added).goals.at(-1)?.number).toBe(4)
+  })
+
   test('a goal without text is not added', () => {
     expect(addGoal(THREE_GOALS, { id: 'blank', text: ' \n' }, 500)).toEqual({
       outcome: Outcome.Refused,

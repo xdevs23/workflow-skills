@@ -1,7 +1,7 @@
 import type { EngineInterface, MatchedHook } from 'claude-code'
 
 import { messageOf } from '../errorMessage'
-import { showFailure } from '../screenWork'
+import { showFailure } from '../failureToast'
 import { loadBoardShowingFailure } from './goalActions'
 import { GOALS_COMMAND } from './goalNames'
 import { readBoardInState } from './goalState'

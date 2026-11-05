@@ -1,7 +1,7 @@
 import type { EngineInterface } from 'claude-code'
 
 import type { UnreadBoard } from '../../types'
-import { showFailure } from '../screenWork'
+import { showFailure } from '../failureToast'
 import { Outcome } from './board'
 import type { AddRefused, BoardChange, ChangeRefused, Changed, Read } from './board'
 import { sessionScope } from './boardScope'
@@ -49,12 +49,18 @@ export async function loadBoardShowingFailure(
   return loaded
 }
 
+/**
+ * Adds the goal with the text `text` to the board of the session `sessionId`. With
+ * `expectedNumber`, the add is refused unless the board in the store gives the goal that number.
+ */
 export async function addGoalToSession(
   $: EngineInterface,
   sessionId: string,
   text: string,
+  expectedNumber?: number,
 ): Promise<Changed | AddRefused | Failed> {
-  const added = await saveNewGoal($, sessionScope(sessionId), text, await $.clock.now())
+  const scope = sessionScope(sessionId)
+  const added = await saveNewGoal($, scope, text, await $.clock.now(), expectedNumber)
   if (added.outcome === Outcome.Changed) {
     await loadBoardShowingFailure($, sessionId)
   }

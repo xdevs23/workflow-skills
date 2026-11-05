@@ -7,7 +7,7 @@ import type {
 } from 'claude-code'
 
 import type { Board, Goal } from '../../types'
-import { runOnScreen, showFailure } from '../screenWork'
+import { showFailure } from '../failureToast'
 import { drawsInputFields } from '../surfaces'
 import type { SurfaceWithInputFields } from '../surfaces'
 import { Outcome, isGoalOpen, nextGoalNumberOf, openGoalsOf } from './board'
@@ -31,6 +31,7 @@ import {
   PANE_TITLE,
   YES_CLEAR_LABEL,
   describeClearQuestion,
+  describeFocusNotMoved,
   describeNoLongerOpen,
   describeNotAdded,
   describeNotCleared,
@@ -100,14 +101,12 @@ function drawGoal(
               key={`confirm-clear-${goal.number}`}
               label={YES_CLEAR_LABEL}
               variant="primary"
-              onPress={() =>
-                runOnScreen($, () => saveOnce($, () => clearOnScreen($, sessionId, goal)))
-              }
+              onPress={() => saveOnce($, () => clearOnScreen($, sessionId, goal))}
             />
             <Button
               key={`keep-${goal.number}`}
               label={KEEP_LABEL}
-              onPress={() => runOnScreen($, () => dropGoalToClear($, goal.id))}
+              onPress={() => dropGoalToClear($, goal.id)}
             />
           </Box>
         )}
@@ -120,7 +119,7 @@ function drawGoal(
           key={`clear-${goal.number}`}
           label={CLEAR_LABEL}
           dimColor
-          onPress={() => runOnScreen($, () => askToClear($, sessionId, goal))}
+          onPress={() => askToClear($, sessionId, goal)}
         />
       )}
     </Box>
@@ -134,24 +133,26 @@ function drawNewGoalField(
   board: Board,
 ) {
   const { Input } = $.ui.resolve(e)
+  const fieldNumber = nextGoalNumberOf(board)
 
   return (
     <Input
-      key={newGoalFieldKeyOf(board)}
+      key={newGoalFieldKeyOf(fieldNumber)}
       placeholder={NEW_GOAL_PLACEHOLDER}
       submitLabel={ADD_LABEL}
       autoFocus
-      onSubmit={text => runOnScreen($, () => saveOnce($, () => addOnScreen($, sessionId, text)))}
+      onSubmit={text => saveOnce($, () => addOnScreen($, sessionId, fieldNumber, text))}
     />
   )
 }
 
 /**
- * The key of the field that adds the next goal. A goal added from anywhere changes the key, so the
- * pane draws an empty field, while a failed add leaves the typed text in the field.
+ * The key of the field that adds the goal numbered `number`, the next number of the board. A goal
+ * added from anywhere changes the key, so the pane draws an empty field, while a failed add leaves
+ * the typed text in the field.
  */
-function newGoalFieldKeyOf(board: Board): string {
-  return `new-goal-${nextGoalNumberOf(board)}`
+function newGoalFieldKeyOf(number: number): string {
+  return `new-goal-${number}`
 }
 
 /**
@@ -205,8 +206,18 @@ async function clearOnScreen($: EngineInterface, sessionId: string, goal: Goal):
   await dropGoalToClear($, goal.id)
 }
 
-async function addOnScreen($: EngineInterface, sessionId: string, text: string): Promise<void> {
-  const added = await addGoalToSession($, sessionId, text)
+/**
+ * Adds the goal entered in the field drawn for the goal numbered `fieldNumber`. The engine runs the
+ * entries of one field one after another. An entry made while the goal from the entry before it
+ * was being saved arrives after that goal has taken the number, so the entry adds nothing.
+ */
+async function addOnScreen(
+  $: EngineInterface,
+  sessionId: string,
+  fieldNumber: number,
+  text: string,
+): Promise<void> {
+  const added = await addGoalToSession($, sessionId, text, fieldNumber)
   switch (added.outcome) {
     case Outcome.Changed:
       await focusNewGoalField($)
@@ -219,11 +230,20 @@ async function addOnScreen($: EngineInterface, sessionId: string, text: string):
   }
 }
 
-// $.ui.focus fails for a pane that does not have the keys by now, and the focus is then still where
-// the person put it.
+/**
+ * Moves the focus to the field for the next goal. The engine denies the move for a pane that does
+ * not hold the keys by now, and the focus then stays where the person put it.
+ */
 async function focusNewGoalField($: EngineInterface): Promise<void> {
   const inState = await readBoardInState($)
-  if (inState?.outcome === Outcome.Read) {
-    await $.ui.focus({ requestId: GOALS_PANE, key: newGoalFieldKeyOf(inState.board) })
+  if (inState?.outcome !== Outcome.Read) {
+    return
+  }
+  const focused = await $.ui.focus({
+    requestId: GOALS_PANE,
+    key: newGoalFieldKeyOf(nextGoalNumberOf(inState.board)),
+  })
+  if (focused.deny !== undefined) {
+    $.ui.log(describeFocusNotMoved(focused.deny), { to: 'debug' })
   }
 }

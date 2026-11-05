@@ -217,6 +217,57 @@ describe('asking without waiting', () => {
     },
   )
 
+  test(
+    'an answer not saved by the store shows the refusal in a toast, and the question stays open',
+    NO_TIME_LIMIT,
+    async ($, on) => {
+      const session = await startSession($, on)
+      await askWhichDatabase($)
+      const pane = await mountPane($, 'terminal')
+      session.refusedWrites.push('the store is over 4 MiB')
+      await pane.input({ key: 'answer-1', text: 'sqlite, until the second release' })
+      await session.clock.settle()
+
+      expect(session.toasts).toHaveLength(1)
+      expect(session.toasts[0]).toContain('the store is over 4 MiB')
+      expect(session.logs).toContain(session.toasts[0])
+      expect(session.prompts).toEqual([])
+      expect(await pane.find({ key: 'answer-1' })).toBeDefined()
+    },
+  )
+
+  test(
+    'a store that cannot be read shows the refusal in a toast at the press of Answer',
+    NO_TIME_LIMIT,
+    async ($, on) => {
+      const session = await startSession($, on)
+      await askWhichDatabase($)
+      const band = await mountBand($)
+      const refusal = 'the store file is not readable'
+      session.keysRefusal = refusal
+      await band.press({ key: 'answer' })
+
+      expect(session.toasts).toHaveLength(1)
+      expect(session.toasts[0]).toContain(refusal)
+      expect(session.logs).toContain(session.toasts[0])
+    },
+  )
+
+  test(
+    'an error other than a failure of the store fails the press of Answer, and does not show a ' +
+      'toast',
+    NO_TIME_LIMIT,
+    async ($, on) => {
+      on('ui.open', { id: PANE }, () => ({ deny: 'every pane slot is taken' }))
+      const session = await startSession($, on)
+      await askWhichDatabase($)
+      const band = await mountBand($)
+
+      await expect(band.press({ key: 'answer' })).rejects.toThrow('every pane slot is taken')
+      expect(session.toasts).toEqual([])
+    },
+  )
+
   test('the answer command lists, answers and explains its form', NO_TIME_LIMIT, async ($, on) => {
     const session = await startSession($, on)
     await askWhichDatabase($)

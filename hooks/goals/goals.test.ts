@@ -56,6 +56,14 @@ const STORE_LISTING: Goal = {
 
 const GOAL_RECORD_PREFIX = recordPrefixOf(RecordKind.Goal)
 
+/**
+ * The error of the test kit for each `$.ui.focus` call made by a plugin. The kit fails that call
+ * also with a `ui.focus` hook of the test or of an inline plugin in place, where the engine answers
+ * a move it does not make with a deny. The pane moves the focus to the new field after every goal
+ * added by the pane, so such an entry rejects with this error in a test.
+ */
+const NO_FOCUS_IN_KIT = 'no implementation for ui.focus'
+
 const FULL_STORE = 'the store is over 4 MiB'
 const UNREADABLE_STORE = 'the store file is not readable'
 const NOT_READ = 'The goals of this session could not be read. '
@@ -164,7 +172,9 @@ describe('the Goals pane', () => {
     async ($, on) => {
       await startSession($, on, { stored: storedBoard() })
       const pane = await mountGoalsPane($, 'terminal')
-      await pane.input({ key: 'new-goal-4', text: 'Ship the tablet layout' })
+      await expect(
+        pane.input({ key: 'new-goal-4', text: 'Ship the tablet layout' }),
+      ).rejects.toThrow(NO_FOCUS_IN_KIT)
 
       expect(await pane.find({ type: 'Text', text: 'Ship the tablet layout' })).toBeDefined()
       expect(await pane.find({ key: 'clear-4' })).toBeDefined()
@@ -188,11 +198,11 @@ describe('the Goals pane', () => {
     async ($, on) => {
       const session = await startSession($, on, { stored: storedBoard() })
       const pane = await mountGoalsPane($, 'terminal')
-      await Promise.all([
-        pane.input({ key: 'new-goal-4', text: 'Ship the tablet layout' }),
-        pane.input({ key: 'new-goal-4', text: 'Ship the tablet layout' }),
-      ])
+      const added = pane.input({ key: 'new-goal-4', text: 'Ship the tablet layout' })
+      const repeated = pane.input({ key: 'new-goal-4', text: 'Ship the tablet layout' })
 
+      await expect(added).rejects.toThrow(NO_FOCUS_IN_KIT)
+      await repeated
       expect(goalRecordsOf(session).size).toBe(storedBoard().size + 1)
       expect(await pane.find({ key: 'clear-5' })).toBeUndefined()
     },
@@ -375,6 +385,25 @@ describe('the Goals pane', () => {
       expect(await pane.find({ type: 'Text', text: 'Clear goal #2?' })).toBeDefined()
       await pane.press({ key: 'confirm-clear-2' })
       expect(await pane.find({ type: 'Text', text: ROTATION_CRASH.text })).toBeUndefined()
+    },
+  )
+
+  test(
+    'an error other than a failure of the store fails the press of Clear, and does not show a ' +
+      'toast',
+    NO_TIME_LIMIT,
+    async ($, on) => {
+      on('state.set', { plugin: PLUGIN, key: 'goalToClear' }, () => ({
+        deny: 'the state of the plugin is held by another write',
+      }))
+      const session = await startSession($, on, { stored: storedBoard() })
+      const pane = await mountGoalsPane($, 'terminal')
+
+      await expect(pane.press({ key: 'clear-2' })).rejects.toThrow(
+        'the state of the plugin is held by another write',
+      )
+      expect(session.toasts).toEqual([])
+      expect(await pane.find({ type: 'Text', text: 'Clear goal #2?' })).toBeUndefined()
     },
   )
 
