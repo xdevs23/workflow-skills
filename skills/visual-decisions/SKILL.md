@@ -45,8 +45,7 @@ description: Draw page for user to look at: drafts, product decisions, plans and
   - Updated, in purple, for part that changed after last reply from user;
   - short bar with its value, for number needed by decision. Filled green where value fits, red
     where over limit.
-- Fit every page into viewport of 1920×960, except page at actual size of
-  `workflow-skills:design-drafts`.
+- Fit every page into viewport of 1920×960.
 - Draft that needs cramming to fit, is too complicated to read, or draws changes of more than one
   pull request: split unit into sub-units as `workflow-skills:todo-md` describes, one draft per
   sub-unit. Never add pages to draft.
@@ -73,7 +72,6 @@ description: Draw page for user to look at: drafts, product decisions, plans and
   rendered page. Text shown by imitated screen or message does not count. Cut it to what decision
   needs.
 - On drafts of sub-units of one feature, draw same thing with same picture and same sample values.
-  Directions of `workflow-skills:design-drafts` differ by design.
 - Draw page in visual way, so user looking at it sees at first glance what end result is and
   how change feels.
 

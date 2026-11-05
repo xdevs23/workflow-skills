@@ -3,8 +3,6 @@ name: design-drafts
 description: Draw several design drafts for user to choose from
 ---
 
-- Load `workflow-skills:visual-decisions` first.
-
 ## Before you draw
 
 - Draw as many drafts as user asks for. Three when user does not name a number.
@@ -13,9 +11,12 @@ description: Draw several design drafts for user to choose from
 - Where screen does not have code yet, take resolution, fonts and shell from what user named. Ask
   for resolution in question at end of message when user did not name one, and draw shell as plain
   frame labeled as stand-in.
-- Copy font and image files used by product into folder of drafts in project cache. Draw with them.
+- Keep drafts in folder of drafts in project cache defined by `workflow-skills:local-cache`.
+- Write each page as standalone HTML file, all CSS inside it.
+- Copy font and image files used by product into folder of drafts. Draw with them.
 - Load nothing from network.
-- Use same sample, picked as `workflow-skills:visual-decisions` describes, in every draft.
+- Use one realistic sample in every draft: real-looking names, texts and values. At least one long
+  value where length matters.
 
 ## Directions
 
@@ -39,22 +40,22 @@ description: Draw several design drafts for user to choose from
   overview, name and one-line description of draft, and link to page at actual size.
 - Write overview page, one entry per draft: name, one-line description, links to scaled page and to
   page at actual size.
-- On overview, follow page rules of `workflow-skills:visual-decisions` for dark mode, title and line
-  under it. Draft pages and scaled pages contain nothing beyond what this section lists.
+- Write overview in dark mode, with name of change as title and one line under it saying what
+  drafts show. Draft pages and scaled pages contain nothing beyond what this section lists.
 - Draw all drafts and overview at once.
 
 ## A part of a screen
 
-- Draw drafts of part of screen, e.g. keyboard, panel or way to choose between two modes, as one
-  page of `workflow-skills:visual-decisions`. One numbered section per direction.
+- Draw drafts of part of screen, e.g. keyboard, panel or way to choose between two modes, on one
+  page in dark mode, with name of change as title. One numbered section per direction.
 - Draw each direction inside real screen around that part, labeled with its name.
 - End page with section showing directions side by side, small size, one column per direction,
   one row per state, each direction with caption of its main property.
 
 ## Checking
 
-- Render every page at real size, animations running, before taking the screenshot asked for by
-  `workflow-skills:visual-decisions`.
+- Render every page in headless browser at real size, animations running. Take screenshot and look
+  at it before showing page.
 - Check: text does not overflow its box, nothing cut at edge of screen, long value of sample fits or
   is shortened the way product shortens it.
 
