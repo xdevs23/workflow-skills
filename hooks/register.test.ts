@@ -244,7 +244,6 @@ describe('asking without waiting', () => {
     },
   )
 
-
   test(
     'a store that cannot be read makes the tools fail with the reason, which the debug log shows ' +
       'too',
