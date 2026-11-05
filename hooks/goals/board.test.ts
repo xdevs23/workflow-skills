@@ -11,7 +11,7 @@ import {
   detachTodo,
   openGoalsOf,
 } from './board'
-import type { BoardChange } from './board'
+import type { AddRefused, BoardChange } from './board'
 
 const FULL_APP: Goal = {
   id: 'full-app',
@@ -41,7 +41,7 @@ const TEST_HARNESS: Goal = {
 const THREE_GOALS: Board = { goals: [FULL_APP, LOGIN_FIX, TEST_HARNESS] }
 
 /** The board after a change, failing the test when the change was refused. */
-function boardOf(change: BoardChange): Board {
+function boardOf(change: BoardChange | AddRefused): Board {
   if (change.outcome === Outcome.Refused) {
     throw new Error(`The change was refused: ${change.refusal}`)
   }

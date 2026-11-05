@@ -16,7 +16,7 @@ import {
   nextGoalNumberOf,
   settledBoardOf,
 } from './board'
-import type { BoardChange, Changed, Read, Refused } from './board'
+import type { AddRefused, BoardChange, ChangeRefused, Changed, Read } from './board'
 import {
   UnreadableRecordError,
   clearanceRecordOf,
@@ -75,7 +75,7 @@ export function saveNewGoal(
   scope: BoardScope,
   text: string,
   addedAt: number,
-): Promise<Changed | Refused | Failed> {
+): Promise<Changed | AddRefused | Failed> {
   return returningFailure(async () => {
     const board = await readSettledBoard($, scope)
     const added = addGoal(board, { id: crypto.randomUUID(), text }, addedAt)
@@ -89,7 +89,7 @@ export function saveClearedGoal(
   scope: BoardScope,
   number: number,
   clearedAt: number,
-): Promise<Changed | Refused | Failed> {
+): Promise<Changed | ChangeRefused | Failed> {
   return changeBoard(
     $,
     scope,

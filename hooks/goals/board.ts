@@ -23,9 +23,11 @@ export enum Refusal {
   TodoNotAttached = 'todo-not-attached',
 }
 
-/** A refused change, with the numbers named by it. */
-export type Refused = { outcome: Outcome.Refused } & (
-  | { refusal: Refusal.BlankText }
+/** The refusal of adding a goal. */
+export type AddRefused = { outcome: Outcome.Refused; refusal: Refusal.BlankText }
+
+/** A refused change of a goal on the board, with the numbers named by it. */
+export type ChangeRefused = { outcome: Outcome.Refused } & (
   | { refusal: Refusal.BlankTitle }
   | { refusal: Refusal.GoalNotOpen; goal: number }
   | { refusal: Refusal.NotTodoNumber; todo: string }
@@ -39,7 +41,7 @@ export type Changed = { outcome: Outcome.Changed; board: Board; goal: Goal }
 
 export type Unchanged = { outcome: Outcome.Unchanged; board: Board }
 
-export type BoardChange = Changed | Unchanged | Refused
+export type BoardChange = Changed | Unchanged | ChangeRefused
 
 /** A goal as changed by a change of the board. */
 type ChangedGoal = { outcome: Outcome.Changed; goal: Goal }
@@ -87,7 +89,7 @@ export function addGoal(
   board: Board,
   goal: Pick<Goal, 'id' | 'text'>,
   addedAt: number,
-): Changed | Refused {
+): Changed | AddRefused {
   const text = goal.text.trim()
   if (text === '') {
     return { outcome: Outcome.Refused, refusal: Refusal.BlankText }
@@ -98,8 +100,12 @@ export function addGoal(
   return { outcome: Outcome.Changed, board: { goals: [...board.goals, added] }, goal: added }
 }
 
-export function clearGoal(board: Board, number: number, clearedAt: number): Changed | Refused {
-  return changeOpenGoal<Refused>(board, number, goal => ({
+export function clearGoal(
+  board: Board,
+  number: number,
+  clearedAt: number,
+): Changed | ChangeRefused {
+  return changeOpenGoal<ChangeRefused>(board, number, goal => ({
     outcome: Outcome.Changed,
     goal: { ...goal, clearedAt },
   }))
@@ -138,7 +144,7 @@ export function attachTodo(
 }
 
 export function detachTodo(board: Board, goalNumber: number, todoNumber: string): BoardChange {
-  return changeOpenGoal(board, goalNumber, goal =>
+  return changeOpenGoal<ChangeRefused>(board, goalNumber, goal =>
     goal.todos.some(each => each.number === todoNumber)
       ? {
           outcome: Outcome.Changed,
@@ -158,11 +164,11 @@ export function detachTodo(board: Board, goalNumber: number, todoNumber: string)
  * place. Returns a refusal when no open goal has that number. Every other outcome of `change` is
  * returned as it is, so the outcomes of a change of the board are the ones `change` can return.
  */
-function changeOpenGoal<Other extends Unchanged | Refused>(
+function changeOpenGoal<Other extends Unchanged | ChangeRefused>(
   board: Board,
   number: number,
   change: (goal: Goal) => ChangedGoal | Other,
-): Changed | Refused | Other {
+): Changed | ChangeRefused | Other {
   const goal = openGoalsOf(board).find(each => each.number === number)
   if (goal === undefined) {
     return { outcome: Outcome.Refused, refusal: Refusal.GoalNotOpen, goal: number }

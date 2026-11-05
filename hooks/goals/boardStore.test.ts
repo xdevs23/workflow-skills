@@ -12,7 +12,7 @@ import {
   storeFakeWith,
 } from '../testSupport'
 import { EMPTY_BOARD, Outcome, Refusal } from './board'
-import type { BoardChange, Read } from './board'
+import type { AddRefused, BoardChange, Read } from './board'
 import { clearanceRecordOf, goalRecordOf, todoKeyOf, todoRecordOf } from './boardRecord'
 import { boardPrefixOf, sessionScope } from './boardScope'
 import {
@@ -41,7 +41,7 @@ function startStore(on: On) {
 }
 
 /** The board after a change or a load, failing the test for a refusal or a failure. */
-function boardOf(result: BoardChange | Read | Failed): Board {
+function boardOf(result: BoardChange | AddRefused | Read | Failed): Board {
   if (result.outcome === Outcome.Refused || result.outcome === Outcome.Failed) {
     throw new Error(`The change ended as ${result.outcome}`)
   }
@@ -50,7 +50,7 @@ function boardOf(result: BoardChange | Read | Failed): Board {
 }
 
 /** The goal changed by a change, failing the test for any other outcome. */
-function goalOf(result: BoardChange | Read | Failed): Goal {
+function goalOf(result: BoardChange | AddRefused | Read | Failed): Goal {
   if (result.outcome !== Outcome.Changed) {
     throw new Error(`The change ended as ${result.outcome}`)
   }

@@ -3,7 +3,7 @@ import type { EngineInterface } from 'claude-code'
 import type { UnreadBoard } from '../../types'
 import { showFailure } from '../screenWork'
 import { Outcome } from './board'
-import type { Changed, Read, Refused } from './board'
+import type { AddRefused, ChangeRefused, Changed, Read } from './board'
 import { sessionScope } from './boardScope'
 import { describeStoreFailure, loadBoard, saveClearedGoal, saveNewGoal } from './boardStore'
 import type { Failed } from './boardStore'
@@ -45,7 +45,7 @@ export async function addGoalToSession(
   $: EngineInterface,
   sessionId: string,
   text: string,
-): Promise<Changed | Refused | Failed> {
+): Promise<Changed | AddRefused | Failed> {
   const added = await saveNewGoal($, sessionScope(sessionId), text, await $.clock.now())
   if (added.outcome === Outcome.Changed) {
     await loadBoardShowingFailure($, sessionId)
@@ -63,7 +63,7 @@ export async function clearGoalOfSession(
   $: EngineInterface,
   sessionId: string,
   number: number,
-): Promise<Changed | Refused | Failed> {
+): Promise<Changed | ChangeRefused | Failed> {
   const cleared = await saveClearedGoal($, sessionScope(sessionId), number, await $.clock.now())
   if (cleared.outcome !== Outcome.Failed) {
     await loadBoardShowingFailure($, sessionId)
