@@ -7,7 +7,9 @@ import {
   Refusal,
   addGoal,
   attachTodo,
+  boardWithChangesTakenBack,
   clearGoal,
+  combinedBoardOf,
   detachTodo,
   openGoalsOf,
 } from './board'
@@ -228,5 +230,36 @@ describe('detaching a TODO entry', () => {
       refusal: Refusal.GoalNotOpen,
       goal: 2,
     })
+  })
+})
+
+describe('combining two copies of a board', () => {
+  test('keeps every goal added and every goal cleared in either copy', () => {
+    const older = { goals: [FULL_APP, LOGIN_FIX] }
+    const newer = boardOf(clearGoal(THREE_GOALS, 2, 400))
+
+    for (const [first, second] of [[older, newer], [newer, older]] as const) {
+      const combined = combinedBoardOf(first, second)
+
+      expect(openGoalsOf(combined).map(goal => goal.id)).toEqual(
+        expect.arrayContaining([FULL_APP.id, TEST_HARNESS.id]),
+      )
+      expect(openGoalsOf(combined)).toHaveLength(2)
+      expect(goalOf(combined, 2)?.clearedAt).toBe(400)
+    }
+  })
+})
+
+describe('taking back the changes of a note', () => {
+  test('sets back the goals added or cleared between two copies, and keeps later changes', () => {
+    const before = { goals: [FULL_APP, LOGIN_FIX] }
+    const after = boardOf(clearGoal(THREE_GOALS, 2, 400))
+    const later = boardOf(clearGoal(after, 1, 500))
+
+    const takenBack = boardWithChangesTakenBack(later, before, after)
+
+    expect(takenBack.goals.map(goal => goal.id)).toEqual([FULL_APP.id, LOGIN_FIX.id])
+    expect(goalOf(takenBack, 1)?.clearedAt).toBe(500)
+    expect(goalOf(takenBack, 2)?.clearedAt).toBeUndefined()
   })
 })

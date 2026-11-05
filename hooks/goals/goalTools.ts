@@ -12,10 +12,9 @@ import { isMainConversation } from '../conversation'
 import { denyFailedHook, denyFailedUse } from '../hookFailure'
 import { Outcome } from './board'
 import type { BoardChange } from './board'
-import { sessionScope } from './boardScope'
-import { describeStoreFailure, loadBoard } from './boardStore'
+import { describeStoreFailure } from './boardStore'
 import type { Failed } from './boardStore'
-import { attachTodoInSession, detachTodoInSession } from './goalActions'
+import { attachTodoInSession, detachTodoInSession, readBoardOfSession } from './goalActions'
 import {
   ATTACH_TODO,
   ATTACH_TODO_TOOL,
@@ -89,11 +88,11 @@ export async function registerGoalTools($: EngineInterface): Promise<void> {
 
 // A subagent reads the goals too, so it can check its work against them.
 export const listGoals: MatchedHook<'tool.call', { tool: typeof LIST_GOALS_TOOL }> = async $ => {
-  const read = await loadBoard($, sessionScope(await $.session.id()))
+  const read = await readBoardOfSession($, await $.session.id())
 
   return read.outcome === Outcome.Read
     ? { result: describeGoals(read.board) }
-    : denyFailedUse($, GOAL_TOOLS_SUBJECT, describeStoreFailure(read))
+    : denyFailedUse($, GOAL_TOOLS_SUBJECT, read.failure)
 }
 
 export const attachTodo: MatchedHook<'tool.call', { tool: typeof ATTACH_TODO_TOOL }> = ($, e) =>

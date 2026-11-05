@@ -69,6 +69,52 @@ export function isGoalOpen(board: Board, goalId: string): boolean {
   return openGoalsOf(board).some(goal => goal.id === goalId)
 }
 
+/**
+ * The board with every goal added or cleared in either of two copies of the board, which may have
+ * been read in any order. A goal open in `first` takes its TODO entries from `second`. Goals are
+ * never removed and clears never undone, so no copy undoes a change.
+ */
+export function combinedBoardOf(first: Board, second: Board): Board {
+  const inSecond = new Map(second.goals.map(goal => [goal.id, goal]))
+  const inFirst = new Set(first.goals.map(goal => goal.id))
+
+  return {
+    goals: [
+      ...first.goals.map(goal => (isOpen(goal) ? inSecond.get(goal.id) ?? goal : goal)),
+      ...second.goals.filter(goal => !inFirst.has(goal.id)),
+    ],
+  }
+}
+
+/**
+ * `board` with each goal added or cleared between the copies `before` and `after` set back to the
+ * goal in `before`, or left out when `before` does not have it. Goals added or cleared after
+ * `after` stay as `board` has them.
+ */
+export function boardWithChangesTakenBack(board: Board, before: Board, after: Board): Board {
+  const inBefore = new Map(before.goals.map(goal => [goal.id, goal]))
+  const changed = new Set(
+    after.goals
+      .filter(goal => {
+        const earlier = inBefore.get(goal.id)
+
+        return earlier === undefined || (isOpen(earlier) && !isOpen(goal))
+      })
+      .map(goal => goal.id),
+  )
+
+  return {
+    goals: board.goals.flatMap(goal => {
+      if (!changed.has(goal.id)) {
+        return [goal]
+      }
+      const earlier = inBefore.get(goal.id)
+
+      return earlier === undefined ? [] : [earlier]
+    }),
+  }
+}
+
 /** The number of a new goal: one above the highest number on the board. */
 export function nextGoalNumberOf(board: Board): number {
   return board.goals.reduce((highest, goal) => Math.max(highest, goal.number), 0) + 1

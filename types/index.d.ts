@@ -1,4 +1,5 @@
 import type { Outcome, Read } from '../hooks/goals/board'
+import type { IdlePhase } from '../hooks/goals/goalIdleReminder'
 
 /** What the user wrote in reply to a question. */
 export type Answer = {
@@ -67,6 +68,27 @@ export type SessionBoard = { sessionId: string } & (Read | UnreadBoard)
 /** The goal of a session whose Clear was pressed in the Goals pane and that needs a yes. */
 export type GoalToClear = { sessionId: string; goalId: string }
 
+/** The board of a session as its model last saw it, which the notes on the changes compare with. */
+export type SeenBoard = {
+  sessionId: string
+  /**
+   * Null while the model has seen no board, such as after a failed attempt to read the board at
+   * the start.
+   */
+  board: Board | null
+}
+
+/**
+ * The time between two turns of the main conversation of a session, and how far the reminder of
+ * the open goals in it got.
+ */
+export type IdleStretch = {
+  sessionId: string
+  /** New for each stretch, so a timer of the idle minutes acts only while its stretch lasts. */
+  stretchId: string
+  phase: IdlePhase
+}
+
 declare module 'claude-code' {
   interface PluginState {
     'workflow-skills': {
@@ -91,6 +113,13 @@ declare module 'claude-code' {
       goalToClear: GoalToClear | null
       /** True while the Goals pane saves an added or a cleared goal. */
       isSavingGoal: boolean
+      /** The board seen by the model of the session; null before the board is first read. */
+      seenBoard: SeenBoard | null
+      /**
+       * The idle stretch of the main conversation of the session; null while neither a turn nor
+       * the idle minutes run, before the first turn and after the turn started by the reminder.
+       */
+      idleStretch: IdleStretch | null
     }
   }
 }

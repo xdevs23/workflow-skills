@@ -1,9 +1,9 @@
 import { atom, read, update } from 'claude-code'
 import type { EngineInterface } from 'claude-code'
 
-import type { SessionBoard, UnreadBoard } from '../../types'
+import type { Board, IdleStretch, SessionBoard, UnreadBoard } from '../../types'
 import { isSessionRunning, ofRunningSession, ofSession } from '../sessionBoundState'
-import { Outcome } from './board'
+import { Outcome, boardWithChangesTakenBack, combinedBoardOf } from './board'
 import type { Read } from './board'
 
 // The engine lists the state a module reads and writes from the source of the module, so every
@@ -11,6 +11,8 @@ import type { Read } from './board'
 const sessionBoard = atom({ plugin: 'workflow-skills', key: 'sessionBoard' } as const, null)
 const goalToClear = atom({ plugin: 'workflow-skills', key: 'goalToClear' } as const, null)
 const isSavingGoal = atom({ plugin: 'workflow-skills', key: 'isSavingGoal' } as const, false)
+const seenBoard = atom({ plugin: 'workflow-skills', key: 'seenBoard' } as const, null)
+const idleStretch = atom({ plugin: 'workflow-skills', key: 'idleStretch' } as const, null)
 
 /**
  * The board in the state while its session runs, and null otherwise, such as before the session
@@ -76,4 +78,103 @@ export async function startSaving($: EngineInterface): Promise<boolean> {
 
 export async function endSaving($: EngineInterface): Promise<void> {
   await update($, isSavingGoal, () => false)
+}
+
+/**
+ * Records the board read when the session `sessionId` began in this process as seen by its model:
+ * the board of a new session is empty, and the model of a resumed session saw its board before.
+ */
+export async function recordBoardSeenAtStart(
+  $: EngineInterface,
+  sessionId: string,
+  loaded: Read | UnreadBoard,
+): Promise<void> {
+  await updateSeenBoard($, sessionId, () =>
+    loaded.outcome === Outcome.Read ? loaded.board : null,
+  )
+}
+
+/** The board last seen by the model of the session `sessionId`, or null when it saw none. */
+export async function readSeenBoard($: EngineInterface, sessionId: string): Promise<Board | null> {
+  return ofSession(await read($, seenBoard), sessionId)?.board ?? null
+}
+
+/**
+ * Records `board` as seen by the model of the session `sessionId`, and returns the board it saw
+ * before, or null when it saw none. One update does both, so of parallel tool results that read
+ * the same board, only one is given the changes.
+ */
+export async function exchangeSeenBoard(
+  $: EngineInterface,
+  sessionId: string,
+  board: Board,
+): Promise<Board | null> {
+  let seenBefore: Board | null = null
+  await updateSeenBoard($, sessionId, seen => {
+    seenBefore = seen
+
+    // Two copies of the board that were read in any order give one open and cleared state.
+    return seen === null ? board : combinedBoardOf(seen, board)
+  })
+
+  return seenBefore
+}
+
+/**
+ * Takes back the goals added or cleared between `before` and `after` from the board seen by the
+ * model of the session `sessionId`, after the note on them was not sent to the model. Changes
+ * recorded since stay recorded.
+ */
+export async function restoreSeenBoard(
+  $: EngineInterface,
+  sessionId: string,
+  before: Board | null,
+  after: Board,
+): Promise<void> {
+  await updateSeenBoard($, sessionId, seen =>
+    before === null || seen === null ? before : boardWithChangesTakenBack(seen, before, after),
+  )
+}
+
+/**
+ * Replaces the board seen by the model of the session `sessionId` with what `change` makes of it,
+ * unless another session runs by now. `change` is called with null when the model saw no board.
+ */
+async function updateSeenBoard(
+  $: EngineInterface,
+  sessionId: string,
+  change: (seen: Board | null) => Board | null,
+): Promise<void> {
+  if (await isSessionRunning($, sessionId)) {
+    await update($, seenBoard, inState => ({
+      sessionId,
+      board: change(ofSession(inState, sessionId)?.board ?? null),
+    }))
+  }
+}
+
+/** The idle stretch of the main conversation of the session `sessionId`, if it has one. */
+export async function readIdleStretch(
+  $: EngineInterface,
+  sessionId: string,
+): Promise<IdleStretch | null> {
+  return ofSession(await read($, idleStretch), sessionId)
+}
+
+/**
+ * Replaces the idle stretch of the session `sessionId` with what `change` makes of it, unless
+ * another session runs by now, and returns the stretch of that session in the state after it.
+ * `change` is called with null when the session has no stretch.
+ */
+export async function updateIdleStretch(
+  $: EngineInterface,
+  sessionId: string,
+  change: (stretch: IdleStretch | null) => IdleStretch | null,
+): Promise<IdleStretch | null> {
+  if (!(await isSessionRunning($, sessionId))) {
+    return null
+  }
+  const inState = await update($, idleStretch, stretch => change(ofSession(stretch, sessionId)))
+
+  return ofSession(inState, sessionId)
 }

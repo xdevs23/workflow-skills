@@ -14,23 +14,31 @@ import {
   saveNewGoal,
 } from './boardStore'
 import type { Failed } from './boardStore'
-import { setLoadedBoard } from './goalState'
+import { recordBoardSeenAtStart, setLoadedBoard } from './goalState'
 import { describeNotRead } from './goalTexts'
 import type { TodoEntry } from './todoEntry'
 
 // After every change of a board, the state gets the board read again from the store, through the
 // same path as at the start of a session, so the pane shows what the store has.
 
+/** Reads the board of the session `sessionId` from the store, or the reason the store could not. */
+export async function readBoardOfSession(
+  $: EngineInterface,
+  sessionId: string,
+): Promise<Read | UnreadBoard> {
+  const read = await loadBoard($, sessionScope(sessionId))
+
+  return read.outcome === Outcome.Read
+    ? read
+    : { outcome: Outcome.Failed, failure: describeStoreFailure(read) }
+}
+
 /** Reads the board of the session `sessionId` from the store into the state, and returns it. */
 export async function loadBoardIntoState(
   $: EngineInterface,
   sessionId: string,
 ): Promise<Read | UnreadBoard> {
-  const read = await loadBoard($, sessionScope(sessionId))
-  const loaded: Read | UnreadBoard =
-    read.outcome === Outcome.Read
-      ? read
-      : { outcome: Outcome.Failed, failure: describeStoreFailure(read) }
+  const loaded = await readBoardOfSession($, sessionId)
   await setLoadedBoard($, sessionId, loaded)
 
   return loaded
@@ -47,6 +55,14 @@ export async function loadBoardShowingFailure(
   }
 
   return loaded
+}
+
+/**
+ * Reads the board as loadBoardShowingFailure does, when the session `sessionId` begins in this
+ * process, and records it as the board seen by its model.
+ */
+export async function loadBoardAtStart($: EngineInterface, sessionId: string): Promise<void> {
+  await recordBoardSeenAtStart($, sessionId, await loadBoardShowingFailure($, sessionId))
 }
 
 /**

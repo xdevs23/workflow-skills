@@ -2,6 +2,19 @@ import type { Board, Goal } from '../../types'
 import { sortedByNumber } from '../numbered'
 import { isOpen, openGoalsOf } from './board'
 
+/** The toast for a board that could not be read for a reminder, with the failure from the store. */
+export function describeReminderNotRead(storeFailure: string): string {
+  return `The goals could not be read, so Claude was not reminded of them. ${storeFailure}`
+}
+
+/** The toast for an idle reminder that failed, with the message of the failure. */
+export function describeIdleReminderFailed(message: string): string {
+  return (
+    `The open goals could not be sent to Claude after the idle minutes: ${message}. ` +
+    'Claude reads them after the next compaction, or when you ask it to list the goals.'
+  )
+}
+
 /** The block added to the context after a compaction: the open goals with their TODO entries. */
 export function describeOpenGoalsAfterCompaction(board: Board): string | undefined {
   const goals = sortedByNumber(openGoalsOf(board))
