@@ -259,6 +259,16 @@ describe('the phrases of a message that reports that nothing needs action', () =
     'No action is necessary.',
     'Done and pushed. No action required on your side.',
     'Nothing needs doing until the build ends.',
+    'Both builds are green and the queue is empty, so nothing needed action.',
+    'Nothing needed attention.',
+    'Nothing needed your attention.',
+    'Nothing else needed action.',
+    'Nothing had needed any action.',
+    'No action has been needed.',
+    'No actions were needed.',
+    'No action was called for.',
+    'Nothing called for action.',
+    'No action was needed.',
   ]
   for (const message of idle) {
     test(`${JSON.stringify(message)} reports that nothing needs action`, () => {
@@ -274,6 +284,13 @@ describe('the phrases of a message that reports that nothing needs action', () =
     'Nothing needs attention in the parser, but the build fails.',
     'Nothing needs doing for the docs. The parser needs a fix.',
     'No action is needed on the cache. The parser fails.',
+    'Nothing needed attention in the parser, but the build failed.',
+    'No action was needed for the docs. The parser needed a fix.',
+    'Nothing needed action until the build failed.',
+    'Nothing needed action except the failed build.',
+    'Nothing needed attention before the rebase. After it, the parser needed a fix.',
+    'No action was needed until then.',
+    'Nothing required doing while the build ran.',
   ]
   for (const message of notIdle) {
     test(`${JSON.stringify(message)} does not report that nothing needs action`, () => {

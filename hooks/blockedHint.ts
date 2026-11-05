@@ -1,4 +1,5 @@
 import type { HintKind } from './hintKind'
+import { CHECK_FOR_OPEN_WORK } from './openWork'
 
 /** The hint after a message that reports work as blocked or idle. */
 export const BLOCKED_HINT: HintKind = {
@@ -19,7 +20,6 @@ export const BLOCKED_HINT: HintKind = {
     /\bwhat(?:['’]s|\s+is)\s+left\s+for\s+you\b(?![\s:,—–-]*(?:nothing|none)\b)/i,
   ],
   text:
-    'Check if any independent work can be picked up, like IN PROGRESS or QUEUED todos. If ' +
-    'nothing is startable, try splitting up the blocked units into smaller sub-units and start ' +
-    "the ones that don't depend on the blocker.",
+    `${CHECK_FOR_OPEN_WORK} If nothing is startable, try splitting up the blocked units into ` +
+    "smaller sub-units and start the ones that don't depend on the blocker.",
 }
