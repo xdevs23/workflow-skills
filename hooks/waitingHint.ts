@@ -1,3 +1,4 @@
+import { AT_CLAUSE_END } from './clauses'
 import type { HintKind } from './hintKind'
 import { COUNT } from './quantityWords'
 
@@ -6,7 +7,6 @@ import { COUNT } from './quantityWords'
 const SENTENCE = String.raw`(?:[^.!?\n]|[.!?](?=\S)|\n(?![\s\-*•]|\d+[.)]))*`
 /** Text up to the end of the clause, which also ends at a comma, a semicolon, a colon or a dash. */
 const CLAUSE = String.raw`(?:[^.!?\n,;:—–]|[.!?](?=\S))*`
-const AT_CLAUSE_END = String.raw`(?=[ \t]*(?:[.!?,;:—–]|\n|$))`
 const MESSAGE = String.raw`(?:messages?|repl(?:y|ies)|turns?|posts?)`
 const EARLIER_MESSAGE = String.raw`(?:\bmy\s+(?:previous|earlier|prior|last|other)\s+${MESSAGE}|\bmy\s+${MESSAGE}\s+(?:before|above)|\b${MESSAGE}\s+(?:above|before\s+the\s+last)|\b(?:two|three|[2-9])\s+${MESSAGE}\s+ago)\b`
 const ASKED = String.raw`\b(?:questions?|asked)\b`
