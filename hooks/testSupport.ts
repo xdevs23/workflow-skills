@@ -3,6 +3,7 @@ import type { Engine, MockClock } from 'claude-code/testing'
 import type { ApiMessage, On, PromptSubmitInput, RenderPropsOf } from 'claude-code'
 
 import { ANSWER_COMMAND, ASK_TOOL, LIST_TOOL, PANE, PLUGIN, QUESTION_SKILL } from './names'
+import type { StoreEngine } from './pluginStore'
 import { storeKeyOf } from './questionStore'
 
 export const TURN = 'turn-1'
@@ -89,11 +90,21 @@ export function stopTurn(
   })
 }
 
+/** The store beneath the plugin, with the switches that change what it returns. */
+export type StoreFake = {
+  store: Map<string, unknown>
+  /** The error returned by the store when its keys are listed. */
+  keysRefusal: string | undefined
+  /** The errors returned by the store for its next writes, one write each. */
+  refusedWrites: string[]
+  /** Runs once before the next write of the store, as another session writing at that moment. */
+  beforeNextWrite: (() => void) | undefined
+}
+
 /** What the engine beneath the plugin saw, and the switches that change how it answers. */
-export type Session = {
+export type Session = StoreFake & {
   id: string
   clock: MockClock
-  store: Map<string, unknown>
   prompts: PromptSubmitInput[]
   panes: string[]
   toasts: string[]
@@ -116,12 +127,6 @@ export type Session = {
   stateHolder: number
   /** The number of the session that wrote each key of the state of the plugin last. */
   stateWriters: Map<string, number>
-  /** The error that the store returns when its keys are listed. */
-  keysRefusal: string | undefined
-  /** The reasons the store refuses its next writes with, one write each. */
-  refusedWrites: string[]
-  /** Runs once before the next write of the store, as another session writing at that moment. */
-  beforeNextWrite: (() => void) | undefined
   /** The reason the engine drops the next prompt of the plugin with. */
   droppedPrompt: string | undefined
 }
@@ -141,9 +146,9 @@ export async function startSession(
   } = {},
 ): Promise<Session> {
   const session: Session = {
+    ...storeFakeWith(options.stored),
     id: FIRST_SESSION,
     clock: mock.clock(on, { now: 1000 }),
-    store: new Map(options.stored),
     prompts: recordPrompts(on, prompt => {
       const drop = prompt.origin.kind === 'plugin' ? session.droppedPrompt : undefined
       session.droppedPrompt = undefined
@@ -161,9 +166,6 @@ export async function startSession(
     registered: [],
     stateHolder: 0,
     stateWriters: new Map(),
-    keysRefusal: undefined,
-    refusedWrites: [],
-    beforeNextWrite: undefined,
     droppedPrompt: undefined,
   }
   // The host stores the state of the plugin for each session. A session that a switch or a new
@@ -195,29 +197,7 @@ export async function startSession(
       rateLimits: [],
     },
   }))
-  on('store.keys', () =>
-    session.keysRefusal === undefined
-      ? { value: [...session.store.keys()] }
-      : { deny: session.keysRefusal },
-  )
-  on('store.get', ($, e) => ({ value: session.store.get(e.key) }))
-  on('store.delete', ($, e) => {
-    session.store.delete(e.key)
-
-    return { value: undefined }
-  })
-  on('store.set', ($, e) => {
-    const refusal = session.refusedWrites.shift()
-    if (refusal !== undefined) {
-      return { deny: refusal }
-    }
-    const beforeWrite = session.beforeNextWrite
-    session.beforeNextWrite = undefined
-    beforeWrite?.()
-    session.store.set(e.key, structuredClone(e.value))
-
-    return { value: undefined }
-  })
+  fakeStore(on, session)
   on('tool.register', ($, e) => {
     session.registered.push(e.name)
 
@@ -271,6 +251,82 @@ export async function startSession(
   await callSkillTool($, QUESTION_SKILL)
 
   return session
+}
+
+/** A store fake that contains `stored`, with every switch off. */
+export function storeFakeWith(stored: ReadonlyMap<string, unknown> = new Map()): StoreFake {
+  return {
+    store: new Map(stored),
+    keysRefusal: undefined,
+    refusedWrites: [],
+    beforeNextWrite: undefined,
+  }
+}
+
+/** Replaces the store beneath the plugin with `fake`, read at every call. */
+export function fakeStore(on: On, fake: StoreFake): void {
+  on('store.keys', () => {
+    const refusal = fake.keysRefusal
+
+    return refusal === undefined ? { value: [...fake.store.keys()] } : { deny: refusal }
+  })
+  on('store.get', ($, e) => ({ value: fake.store.get(e.key) }))
+  on('store.delete', ($, e) => {
+    fake.store.delete(e.key)
+
+    return { value: undefined }
+  })
+  on('store.set', ($, e) => {
+    const refusal = writeToStoreFake(fake, e.key, e.value)
+
+    return refusal === undefined ? { value: undefined } : { deny: refusal }
+  })
+}
+
+/**
+ * The calls on the engine made by the store code of the plugin, run on `fake` as the engine runs
+ * them, with the wait of `clock` and a debug log whose lines go to `logs`. A test calls store code
+ * directly with it, since the engine of the test kit does not offer the store and the clock.
+ */
+export function storeEngineOf(fake: StoreFake, clock: MockClock, logs: string[]): StoreEngine {
+  return {
+    store: {
+      get: key => Promise.resolve(fake.store.get(key)),
+      set: (key, value) => {
+        const refusal = writeToStoreFake(fake, key, value)
+
+        return refusal === undefined ? Promise.resolve() : Promise.reject(new Error(refusal))
+      },
+      delete: key => {
+        fake.store.delete(key)
+
+        return Promise.resolve()
+      },
+      keys: () => {
+        const refusal = fake.keysRefusal
+
+        return refusal === undefined
+          ? Promise.resolve([...fake.store.keys()])
+          : Promise.reject(new Error(refusal))
+      },
+    },
+    clock: { sleep: ms => clock.sleep(ms) },
+    ui: { log: text => void logs.push(text) },
+  }
+}
+
+/** Writes `value` under `key` in `fake`, and returns the error of a refused write. */
+function writeToStoreFake(fake: StoreFake, key: string, value: unknown): string | undefined {
+  const refusal = fake.refusedWrites.shift()
+  if (refusal !== undefined) {
+    return refusal
+  }
+  const beforeWrite = fake.beforeNextWrite
+  fake.beforeNextWrite = undefined
+  beforeWrite?.()
+  fake.store.set(key, structuredClone(value))
+
+  return undefined
 }
 
 /** A tool call and its result as the api form contains them. */

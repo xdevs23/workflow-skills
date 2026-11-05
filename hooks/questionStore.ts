@@ -1,7 +1,15 @@
 import type { EngineInterface } from 'claude-code'
 
 import type { Question } from '../types'
-import { messageOf } from './errorMessage'
+import {
+  RecordKind,
+  describeRefusedWrite,
+  describeUnreadableRecord,
+  isRecord,
+  recordKeyOf,
+  recordPrefixOf,
+  writeRetryingWhileLocked,
+} from './pluginStore'
 import { isPositiveInteger } from './positiveInteger'
 import {
   Withdrawal,
@@ -13,38 +21,20 @@ import {
 } from './questions'
 import type { AnsweredQuestion } from './questions'
 
-/** Where the engine writes the store file of the plugin, named in the texts of its errors. */
-// TODO: the folder can be overridden so it could be somewhere else
-const STORE_FOLDER = '~/.claude/plugins/store/'
-
 /**
- * The text in the error of a write the store rejects while another process writes its file. Such a
- * rejection is transient, so the write is made again after a short wait.
+ * The kinds of record stored for a question. Every record of a question is written by the session
+ * that asked it, and the record of the last load of the question skill in a session by that
+ * session, each under a key that includes the id of the session. The one exception is an old load
+ * record, which any session deletes.
  */
-const LOCK_REFUSAL = 'Lock file is already being held'
-const LOCK_RETRY_DELAY_MS = 50
+const QUESTION_RECORD_KINDS = [
+  RecordKind.Question,
+  RecordKind.Answer,
+  RecordKind.Withdrawal,
+  RecordKind.Delivery,
+] as const
 
-/**
- * The kinds of record stored for a question, and the record of the last load of the question skill
- * in a session, each under a key that includes the id of the session. Every record of a question is
- * written by the session that asked it, and a load by the session that loaded the skill. Every key
- * therefore has one writer, and two sessions never overwrite each other, although the store does
- * not offer compare-and-set. The one exception is an old load record, which any session deletes.
- */
-enum RecordKind {
-  Question = 'questions',
-  Answer = 'answers',
-  Withdrawal = 'withdrawals',
-  Delivery = 'deliveries',
-  QuestionSkillLoad = 'questionSkillLoads',
-}
-
-/** The kinds of record stored for a question, each under a key `<kind>:<owner>:<rest>`. */
-type QuestionRecordKind = Exclude<RecordKind, RecordKind.QuestionSkillLoad>
-
-const QUESTION_RECORD_KINDS = Object.values(RecordKind).filter(
-  (kind): kind is QuestionRecordKind => kind !== RecordKind.QuestionSkillLoad,
-)
+type QuestionRecordKind = (typeof QUESTION_RECORD_KINDS)[number]
 
 /**
  * A key of a record of a question, read into its parts. The owner is the id of a session, or the
@@ -93,11 +83,7 @@ export class UnreadableQuestionError extends QuestionStoreError {
   readonly key: string
 
   constructor(key: string) {
-    super(
-      `The stored record under the key ${key} is not in the shape this plugin writes. ` +
-        `Restore or delete that entry in the store file of the plugin in ${STORE_FOLDER}, ` +
-        'then try again.',
-    )
+    super(describeUnreadableRecord(key))
     this.key = key
   }
 }
@@ -105,29 +91,19 @@ export class UnreadableQuestionError extends QuestionStoreError {
 export class QuestionNotSavedError extends QuestionStoreError {
   readonly key: string
 
-  constructor(key: string, cause: unknown) {
-    super(
-      `The store did not save the change to the key ${key}: ${messageOf(cause)}. ` +
-        'The store of the plugin is limited to 4 MiB of JSON for the questions of all sessions ' +
-        'together. When it is full, delete answered questions from the store file of the plugin ' +
-        `in ${STORE_FOLDER}, then try again.`,
-      { cause },
-    )
+  constructor(key: string, cause: Error) {
+    super(describeRefusedWrite(key, cause), { cause })
     this.key = key
   }
 }
 
-function prefixOf(record: RecordKind, sessionId: string): string {
-  return `${record}:${sessionId}:`
-}
-
 export function storeKeyOf(sessionId: string, id: string): string {
-  return `${prefixOf(RecordKind.Question, sessionId)}${id}`
+  return recordKeyOf(RecordKind.Question, sessionId, id)
 }
 
 /** The key of the load record of the session `sessionId`, and with an empty id their prefix. */
 export function questionSkillLoadKeyOf(sessionId: string): string {
-  return `${RecordKind.QuestionSkillLoad}:${sessionId}`
+  return recordKeyOf(RecordKind.QuestionSkillLoad, sessionId)
 }
 
 /**
@@ -135,7 +111,7 @@ export function questionSkillLoadKeyOf(sessionId: string): string {
  * answers given at the same moment the one whose key was set first is the answer.
  */
 function answerKeyOf(sessionId: string, id: string): string {
-  return `${prefixOf(RecordKind.Answer, sessionId)}${id}:${crypto.randomUUID()}`
+  return recordKeyOf(RecordKind.Answer, sessionId, id, crypto.randomUUID())
 }
 
 /** The records of one kind in the session, by the id of their question, in the order set. */
@@ -146,7 +122,7 @@ async function readRecords<T>(
   sessionId: string,
   parse: (key: string, id: string, value: unknown) => T,
 ): Promise<Map<string, T>> {
-  const prefix = prefixOf(record, sessionId)
+  const prefix = recordPrefixOf(record, sessionId)
   const stored = await Promise.all(
     keys
       .filter(key => key.startsWith(prefix))
@@ -163,11 +139,11 @@ async function readRecords<T>(
 }
 
 function readQuestionRecordKey(key: string): QuestionRecordKey | undefined {
-  const kind = QUESTION_RECORD_KINDS.find(each => key.startsWith(`${each}:`))
+  const kind = QUESTION_RECORD_KINDS.find(each => key.startsWith(recordPrefixOf(each)))
   if (kind === undefined) {
     return undefined
   }
-  const ownerAndRest = key.slice(kind.length + 1)
+  const ownerAndRest = key.slice(recordPrefixOf(kind).length)
   const separator = ownerAndRest.indexOf(':')
 
   return separator === -1
@@ -237,7 +213,7 @@ export async function moveProjectRecordsToSessions($: EngineInterface): Promise<
   for (const { key, kind, owner, rest, value } of moved) {
     const sessionId = sessionOfQuestion.get(`${owner}:${idOf(rest)}`)
     if (sessionId !== undefined && value !== undefined) {
-      await saveRecord($, `${prefixOf(kind, sessionId)}${rest}`, questions.get(key) ?? value)
+      await saveRecord($, recordKeyOf(kind, sessionId, rest), questions.get(key) ?? value)
     }
   }
   await Promise.all(records.map(record => deleteRecord($, record.key)))
@@ -305,7 +281,7 @@ export async function saveWithdrawal(
     return { withdrawal: Withdrawal.NotOpen, questions }
   }
   const withdrawnAt = await $.clock.now()
-  const withdrawalKey = `${prefixOf(RecordKind.Withdrawal, sessionId)}${question.id}`
+  const withdrawalKey = recordKeyOf(RecordKind.Withdrawal, sessionId, question.id)
   await saveRecord($, withdrawalKey, { withdrawnAt })
   const after = await readSessionQuestions($, sessionId)
   const isWithdrawn = after.some(each => each.id === question.id && !isAnswered(each))
@@ -322,7 +298,7 @@ export async function saveDelivery(
   const deliveredAt = await $.clock.now()
   await Promise.all(
     answered.map(question =>
-      saveRecord($, `${prefixOf(RecordKind.Delivery, sessionId)}${question.id}`, { deliveredAt }),
+      saveRecord($, recordKeyOf(RecordKind.Delivery, sessionId, question.id), { deliveredAt }),
     ),
   )
 
@@ -434,22 +410,15 @@ function deleteRecord($: EngineInterface, key: string): Promise<void> {
   return writeRecord($, key, () => $.store.delete(key))
 }
 
-/**
- * Runs the change `write` to the key `key`, and again after a short wait while another process
- * writes the store file.
- */
+/** Runs the change `write` to the key `key`, and fails with the refusal of the store. */
 async function writeRecord($: EngineInterface, key: string, write: () => Promise<void>) {
-  for (;;) {
-    try {
-      await write()
-
-      return
-    } catch (error) {
-      if (!(error instanceof Error && error.message.includes(LOCK_REFUSAL))) {
-        throw new QuestionNotSavedError(key, error)
-      }
+  try {
+    await writeRetryingWhileLocked($, key, write)
+  } catch (error) {
+    if (!(error instanceof Error)) {
+      throw error
     }
-    await $.clock.sleep(LOCK_RETRY_DELAY_MS)
+    throw new QuestionNotSavedError(key, error)
   }
 }
 
@@ -541,8 +510,4 @@ function isQuestion(value: unknown): value is StoredQuestion {
 
 function isAnswer(value: unknown): value is StoredAnswer {
   return isRecord(value) && typeof value.text === 'string' && typeof value.answeredAt === 'number'
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value)
 }

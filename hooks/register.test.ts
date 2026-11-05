@@ -11,6 +11,7 @@ import {
   WITHDRAW_TOOL,
 } from './names'
 import { describeQuestionSkillDenial } from './modelText'
+import { LOCK_REFUSAL } from './pluginStore'
 import {
   QUESTION_SKILL_LOAD_MAX_AGE_MS,
   QUESTION_SKILL_MAX_TOKENS_AFTER_LOAD,
@@ -39,8 +40,6 @@ import {
   typePrompt,
 } from './testSupport'
 import type { Session } from './testSupport'
-
-const LOCK_REFUSAL = 'Lock file is already being held'
 
 /** The summary left by a compaction in place of the messages replaced by it. */
 const COMPACTION_SUMMARY: ApiMessage = {
@@ -325,6 +324,8 @@ describe('asking without waiting', () => {
     expect((await asking).deny).toBeUndefined()
     expect(questionCountOf(session)).toBe(1)
     expect(session.toasts).toEqual([])
+    expect(session.logs.filter(line => line.includes(LOCK_REFUSAL))).toHaveLength(1)
+    expect(session.chatLines.filter(line => line.includes(LOCK_REFUSAL))).toEqual([])
   })
 
   test('a write the store refuses is denied with its reason', NO_TIME_LIMIT, async ($, on) => {
