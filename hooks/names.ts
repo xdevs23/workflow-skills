@@ -6,7 +6,7 @@ export const LIST = 'list_questions'
 export const WITHDRAW = 'withdraw_question'
 
 /** The name the engine lists a tool of this plugin under. */
-function toolName<Name extends string>(name: Name): `mcp__${typeof PLUGIN}__${Name}` {
+export function toolName<Name extends string>(name: Name): `mcp__${typeof PLUGIN}__${Name}` {
   return `mcp__${PLUGIN}__${name}`
 }
 

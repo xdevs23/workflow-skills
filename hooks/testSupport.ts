@@ -452,15 +452,17 @@ export function startTurn($: Engine, agentId?: string) {
   })
 }
 
+/** Mounts the pane with the id `requestId` of the plugin, the questions pane by default. */
 export function mountPane<Surface extends 'terminal' | 'desktop' | 'mobile'>(
   $: Engine,
   surface: Surface,
+  requestId: string = PANE,
 ) {
   return $.ui.mount({
     plugin: PLUGIN,
     surface,
     component: 'Pane',
-    requestId: PANE,
+    requestId,
     props: PANE_PROPS,
   })
 }

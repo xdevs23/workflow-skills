@@ -2,7 +2,7 @@ import type { CommandRunResult, EngineInterface, HookFailure, ToolCallResult } f
 
 /** What the hooks of one feature work on, as written in the texts about a failed hook of it. */
 export type HookSubject = {
-  /** The plural noun for what the hooks work on, such as "questions". */
+  /** The noun for what the hooks work on, such as "questions" or "goals board". */
   name: string
   /** The sentence that tells how to see whether a change was saved, before trying again. */
   checkBeforeRetry: string
@@ -15,6 +15,18 @@ export function denyFailedHook(
   failure: HookFailure,
 ): ToolCallResult {
   return { deny: logAndDescribe($, subject, failure) }
+}
+
+/**
+ * Denies the tool call that could not use what the hooks work on for `reason`, such as a store that
+ * cannot be read, with the reason, which goes to the debug log too.
+ */
+export function denyFailedUse(
+  $: EngineInterface,
+  subject: HookSubject,
+  reason: string,
+): ToolCallResult {
+  return { deny: writeToDebugLog($, describeFailedUse(subject, reason)) }
 }
 
 /** Replies to the command whose hook failed with the reason, which goes to the debug log too. */
@@ -35,8 +47,17 @@ const HOOK_FAILURE_TEXTS: Record<
   timeout: describeUnfinishedUse,
 }
 
+/** What the model or the person at the prompt is told of the failed hook. */
+export function describeHookFailure(subject: HookSubject, failure: HookFailure): string {
+  return HOOK_FAILURE_TEXTS[failure.kind](subject, failure.message)
+}
+
 function logAndDescribe($: EngineInterface, subject: HookSubject, failure: HookFailure): string {
-  const text = HOOK_FAILURE_TEXTS[failure.kind](subject, failure.message)
+  return writeToDebugLog($, describeHookFailure(subject, failure))
+}
+
+/** Writes `text` to the debug log, and returns it. */
+function writeToDebugLog($: EngineInterface, text: string): string {
   $.ui.log(text, { to: 'debug' })
 
   return text

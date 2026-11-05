@@ -2,10 +2,13 @@ import { ANSWER_COMMAND } from './names'
 import { isPositiveInteger } from './positiveInteger'
 
 /** A text with at least one character other than white space. */
-const NON_BLANK = /\S/
+export const NON_BLANK = /\S/
 /** The question mark of Latin, of Chinese and Japanese, and of Arabic script. */
 const QUESTION_MARK = /[?？؟]/
 const MIN_CHOICES = 2
+
+/** The arguments given to a tool by the model, which arrive unchecked. */
+export type ToolArguments = { readonly [argument: string]: unknown }
 
 const QUESTION_RULE = 'a text with a question mark'
 const CHOICES_RULE = `at least ${MIN_CHOICES} different texts that are not empty`
@@ -53,7 +56,7 @@ export const ASK_PROBLEMS: Record<AskProblem, string> = {
 }
 
 /** Reads the input of the model to the asking tool, which arrives unchecked, into a typed model. */
-export function readAskInput(input: { readonly [argument: string]: unknown }): AskInput {
+export function readAskInput(input: ToolArguments): AskInput {
   const { question, choices } = input
   if (typeof question !== 'string' || !QUESTION_MARK.test(question)) {
     return { outcome: AskOutcome.QuestionInvalid }
@@ -77,7 +80,7 @@ function isChoiceList(value: unknown): value is string[] {
   )
 }
 
-const NUMBER_RULE = 'a whole number from 1 up'
+export const NUMBER_RULE = 'a whole number from 1 up'
 
 export const WITHDRAW_SCHEMA = {
   type: 'object',
@@ -95,9 +98,7 @@ export const WITHDRAW_SCHEMA = {
 export const WITHDRAW_PROBLEM = `Give the number of the question as ${NUMBER_RULE}.`
 
 /** Reads the number in the input of the model to the withdrawing tool, undefined without one. */
-export function readWithdrawInput(input: {
-  readonly [argument: string]: unknown
-}): number | undefined {
+export function readWithdrawInput(input: ToolArguments): number | undefined {
   const { number } = input
 
   return isPositiveInteger(number) ? number : undefined

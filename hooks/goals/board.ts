@@ -56,6 +56,10 @@ export function openGoalsOf(board: Board): Goal[] {
   return board.goals.filter(isOpen)
 }
 
+export function clearedGoalsOf(board: Board): Goal[] {
+  return board.goals.filter(goal => !isOpen(goal))
+}
+
 /** Whether the goal with the id `goalId` is on the board and open. */
 export function isGoalOpen(board: Board, goalId: string): boolean {
   return openGoalsOf(board).some(goal => goal.id === goalId)
