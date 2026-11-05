@@ -2,12 +2,12 @@ import type { EngineInterface, MatchedHook } from 'claude-code'
 
 import type { Question } from '../types'
 import { recordAnswerAndDeliver } from './delivery'
-import { messageOf } from './errorMessage'
 import { answerUsage } from './inputs'
 import { ALL_CLOSED } from './modelText'
 import { ANSWER_COMMAND, PANE } from './names'
 import { openQuestionsOf, sortedByNumber } from './questions'
 import { sessionForUse } from './questionSession'
+import { runOnScreen } from './screenWork'
 import { loadQuestionsFromStore, readQuestionsInState } from './sessionState'
 
 export const drawQuestionBand: MatchedHook<'ui.render', { component: 'AbovePrompt' }> = async (
@@ -120,13 +120,4 @@ async function answerOnScreen($: EngineInterface, question: Question, text: stri
   if (!isOpen) {
     $.ui.toast(`Question #${question.number} is no longer open.`)
   }
-}
-
-/** Runs the work of a press or an entry on the screen, and shows its failure as a toast. */
-function runOnScreen($: EngineInterface, work: () => Promise<void>): void {
-  work().catch((error: unknown) => {
-    const text = messageOf(error)
-    $.ui.log(text, { to: 'debug' })
-    $.ui.toast(text)
-  })
 }

@@ -6,6 +6,7 @@ import { describeAnswers } from './modelText'
 import { undeliveredAnswersOf } from './questions'
 import type { AnsweredQuestion } from './questions'
 import { QuestionStoreError, saveAnswer, saveDelivery } from './questionStore'
+import { showFailure } from './screenWork'
 import {
   claimAnswers,
   loadQuestionsFromStore,
@@ -66,13 +67,8 @@ async function storeDelivery(
     if (!(error instanceof QuestionStoreError)) {
       throw error
     }
-    reportStoreFailure($, error)
+    showFailure($, error.message)
   }
-}
-
-export function reportStoreFailure($: EngineInterface, error: QuestionStoreError): void {
-  $.ui.log(error.message, { to: 'debug' })
-  $.ui.toast(error.message)
 }
 
 /**
@@ -104,13 +100,13 @@ export async function recordAnswerAndDeliver(
  */
 export function deliverWhenIdle($: EngineInterface, sessionId: string): void {
   $.clock.after(0, () => {
-    deliverAsPrompt($, sessionId).catch((error: unknown) => {
-      const text =
+    deliverAsPrompt($, sessionId).catch((error: unknown) =>
+      showFailure(
+        $,
         `The answers to your questions could not be sent to Claude: ${messageOf(error)}. ` +
-        'They are sent with your next prompt or the next tool result.'
-      $.ui.log(text, { to: 'debug' })
-      $.ui.toast(text)
-    })
+          'They are sent with your next prompt or the next tool result.',
+      ),
+    )
   })
 }
 
