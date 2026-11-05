@@ -89,7 +89,7 @@ export function saveClearedGoal(
   scope: BoardScope,
   number: number,
   clearedAt: number,
-): Promise<BoardChange | Failed> {
+): Promise<Changed | Refused | Failed> {
   return changeBoard(
     $,
     scope,
@@ -146,12 +146,12 @@ export function describeStoreFailure(failed: Failed): string {
  * Reads the board of the scope, applies `change` to it, and when the board changed, writes the
  * goal changed by it with `save`.
  */
-function changeBoard(
+function changeBoard<Change extends BoardChange>(
   $: StoreEngine,
   scope: BoardScope,
-  change: (board: Board) => BoardChange,
+  change: (board: Board) => Change,
   save: (goal: Goal) => Promise<void>,
-): Promise<BoardChange | Failed> {
+): Promise<Change | Failed> {
   return returningFailure(async () => {
     const changed = change(await readSettledBoard($, scope))
     if (changed.outcome === Outcome.Changed) {

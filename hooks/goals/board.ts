@@ -41,10 +41,8 @@ export type Unchanged = { outcome: Outcome.Unchanged; board: Board }
 
 export type BoardChange = Changed | Unchanged | Refused
 
-type GoalChange =
-  | { outcome: Outcome.Changed; goal: Goal }
-  | { outcome: Outcome.Unchanged }
-  | Refused
+/** A goal as changed by a change of the board. */
+type ChangedGoal = { outcome: Outcome.Changed; goal: Goal }
 
 export const EMPTY_BOARD: Board = { goals: [] }
 
@@ -95,8 +93,8 @@ export function addGoal(
   return { outcome: Outcome.Changed, board: { goals: [...board.goals, added] }, goal: added }
 }
 
-export function clearGoal(board: Board, number: number, clearedAt: number): BoardChange {
-  return changeOpenGoal(board, number, goal => ({
+export function clearGoal(board: Board, number: number, clearedAt: number): Changed | Refused {
+  return changeOpenGoal<Refused>(board, number, goal => ({
     outcome: Outcome.Changed,
     goal: { ...goal, clearedAt },
   }))
@@ -122,7 +120,7 @@ export function attachTodo(
   return changeOpenGoal(board, goalNumber, goal => {
     const attached = goal.todos.find(each => each.number === todo.number)
     if (attached?.title === todo.title) {
-      return { outcome: Outcome.Unchanged }
+      return { outcome: Outcome.Unchanged, board }
     }
     const entry = { number: todo.number, title: todo.title, attachedAt }
     const todos =
@@ -152,27 +150,23 @@ export function detachTodo(board: Board, goalNumber: number, todoNumber: string)
 
 /**
  * Passes the open goal numbered `number` to `change`, and puts the goal returned by `change` in its
- * place. Returns a refusal when no open goal has that number.
+ * place. Returns a refusal when no open goal has that number. Every other outcome of `change` is
+ * returned as it is, so the outcomes of a change of the board are the ones `change` can return.
  */
-function changeOpenGoal(
+function changeOpenGoal<Other extends Unchanged | Refused>(
   board: Board,
   number: number,
-  change: (goal: Goal) => GoalChange,
-): BoardChange {
+  change: (goal: Goal) => ChangedGoal | Other,
+): Changed | Refused | Other {
   const goal = openGoalsOf(board).find(each => each.number === number)
   if (goal === undefined) {
     return { outcome: Outcome.Refused, refusal: Refusal.GoalNotOpen, goal: number }
   }
   const changed = change(goal)
-  switch (changed.outcome) {
-    case Outcome.Changed: {
-      const goals = board.goals.map(each => (each.id === goal.id ? changed.goal : each))
-
-      return { outcome: Outcome.Changed, board: { goals }, goal: changed.goal }
-    }
-    case Outcome.Unchanged:
-      return { outcome: Outcome.Unchanged, board }
-    case Outcome.Refused:
-      return changed
+  if (changed.outcome !== Outcome.Changed) {
+    return changed
   }
+  const goals = board.goals.map(each => (each.id === goal.id ? changed.goal : each))
+
+  return { outcome: Outcome.Changed, board: { goals }, goal: changed.goal }
 }
