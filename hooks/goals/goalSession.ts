@@ -1,6 +1,6 @@
 import type { EngineInterface, MatchedHook } from 'claude-code'
 
-import { messageOf } from '../errorMessage'
+import { isErrorWithText } from '../errorMessage'
 import { showFailure } from '../failureToast'
 import { loadBoardAtStart } from './goalActions'
 import { GOALS_COMMAND } from './goalNames'
@@ -8,10 +8,23 @@ import { readBoardInState } from './goalState'
 import { GOALS_ARGUMENTS, GOALS_DESCRIPTION, describeNotRegistered } from './goalTexts'
 
 /**
- * Registers /goals for the session. Registering fails for the name of a built-in command. The
- * failure is shown in a toast, and the start of the session and the read of the board go on.
+ * The name of the call, contained in every error with which the engine rejects it: a refusal by the
+ * engine or by a hook, and an argument the engine does not accept.
  */
-export async function registerGoalsCommand($: EngineInterface): Promise<void> {
+const COMMAND_REGISTER_CALL = '$.command.register'
+
+/** The parts of the engine used to register /goals and to show why the engine rejected it. */
+export type CommandRegistrar = {
+  command: Pick<EngineInterface['command'], 'register'>
+  ui: Pick<EngineInterface['ui'], 'log' | 'toast'>
+}
+
+/**
+ * Registers /goals for the session. A rejection by the engine, such as the refusal of a name used
+ * by a built-in command, is shown in a toast, and the session start and the read of the board go
+ * on. Rejects with every other error.
+ */
+export async function registerGoalsCommand($: CommandRegistrar): Promise<void> {
   await $.command
     .register({
       name: GOALS_COMMAND,
@@ -19,7 +32,12 @@ export async function registerGoalsCommand($: EngineInterface): Promise<void> {
       argumentHint: GOALS_ARGUMENTS,
       immediate: true,
     })
-    .catch((error: unknown) => showFailure($, describeNotRegistered(messageOf(error))))
+    .catch((error: unknown) => {
+      if (!isErrorWithText(error, COMMAND_REGISTER_CALL)) {
+        throw error
+      }
+      showFailure($, describeNotRegistered(error.message))
+    })
 }
 
 /**

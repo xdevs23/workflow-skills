@@ -1,5 +1,7 @@
 import type { EngineInterface } from 'claude-code'
 
+import { isErrorWithText } from './errorMessage'
+
 /**
  * The kinds of record in the store used by the plugin. Every record is stored under the key
  * `<kind>:<owner>:<rest>`. The owner is the one writer of the record, such as a session, and the
@@ -62,8 +64,7 @@ export function describeRefusedWrite(key: string, cause: Error): string {
 
 /**
  * The text in the error of a write the store rejects while another process writes its file. The
- * engine types offer no error class for this rejection, so the text is matched. The rejection is
- * transient, so the write is made again.
+ * rejection is transient, so the write is made again.
  */
 export const LOCK_REFUSAL = 'Lock file is already being held'
 
@@ -97,7 +98,7 @@ export async function writeRetryingWhileLocked(
 
       return
     } catch (error) {
-      if (!(error instanceof Error && error.message.includes(LOCK_REFUSAL))) {
+      if (!isErrorWithText(error, LOCK_REFUSAL)) {
         throw error
       }
       const message = `The write to the key ${key} failed at try ${tries}: ${error.message}.`
