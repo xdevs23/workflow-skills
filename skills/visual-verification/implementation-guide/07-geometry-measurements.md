@@ -48,7 +48,7 @@ paused clock by one frame, then expects:
 * that header to span full inner width of list;
 * background of that header to be fully opaque;
 * elements drawn at left, middle and right of top edge of list to be part of that header, so none
-  of rows shows above it.
+  of rows shows above it
 
 Opacity read from painted color itself. Reference painted computed background color into one-pixel
 canvas, read alpha value of that pixel, required opacity property of element to be one. List
@@ -59,25 +59,25 @@ scrolled back to top afterwards.
 Checks needed by scene built from same few measurements. Scenes in reference used every one of
 following checks, each provided by harness as small shared function:
 
-* Controls in row extend to both horizontal edges of content box of row, within one pixel.
-* Fixed-width control has its expected width within one pixel.
-* Control and parts of group lie inside content box of surrounding container, within one pixel.
+* Controls in row extend to both horizontal edges of content box of row, within one pixel
+* Fixed-width control has its expected width within one pixel
+* Control and parts of group lie inside content box of surrounding container, within one pixel
 * Controls in reading order do not overlap control before them. Where one group ends and next
   begins, controls are at least the gap set for row apart. Both checks use tolerance of half a
-  layout unit.
+  layout unit
 * Row of controls is one line: height of row equals height of tallest control in it plus padding of
-  row, within one pixel, with every control inside padded box.
+  row, within one pixel, with every control inside padded box
 * Truncating label has minimum width: at least as wide as stated floor, or as wide as its whole
-  text where that text is shorter, within half a layout unit.
+  text where that text is shorter, within half a layout unit
 * Floating content, e.g. popover or menu, lies inside viewport, entirely on side of trigger where
-  design places it, e.g. above or below, and inside horizontal edges of surrounding host or card.
+  design places it, e.g. above or below, and inside horizontal edges of surrounding host or card
 * Text in tile or card lies inside box of tile within one pixel. Every element inside tile shows
   its content without clipping. Clipping shows as scroll width that exceeds client width by more
-  than one pixel, on element whose horizontal overflow is not visible.
+  than one pixel, on element whose horizontal overflow is not visible
 * Resting state draws nothing: document contains none of elements of component, content after it
-  starts at top edge of container.
+  starts at top edge of container
 * Options of choice group have positive rectangles, do not overlap each other. Every label and hint
-  line of option lies inside content box of that option. Text in them may wrap.
+  line of option lies inside content box of that option. Text in them may wrap
 
 Single-line text that scrolls natively inside input: not a failure by itself. Multiline text field
 fills content width of row containing it, within one pixel.

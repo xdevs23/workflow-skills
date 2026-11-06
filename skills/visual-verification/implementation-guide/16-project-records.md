@@ -25,24 +25,24 @@ Harness contract written during adoption, updated with every change to harness o
 Contains these sections, each a record of facts about this project:
 
 1. Status and purpose: what harness is for, what it is not, what has and has not been verified, with
-   verification boundary of optional real samples written out.
-2. Integration points: filled table from integration survey.
+   verification boundary of optional real samples written out
+2. Integration points: filled table from integration survey
 3. Operator flow and commands: every verb with complete example invocation from repository root,
    what each prints, rules for capture names, exact runtime, engine and library versions locked by
-   project.
+   project
 4. Implementation responsibilities: components and what each is responsible for, with adaptation
-   points named in every part of guide and values chosen for them.
-5. Scene documentation.
-6. Samples and privacy, when harness has refresh.
+   points named in every part of guide and values chosen for them
+5. Scene documentation
+6. Samples and privacy, when harness has refresh
 7. Drift, receipts and comparison, including recorded comparison options and parameters of diff
-   coloring. Change to radius or margin of coloring recorded here as tooling decision.
-8. Acceptance criteria, in general form given in part on acceptance criteria.
+   coloring. Change to radius or margin of coloring recorded here as tooling decision
+8. Acceptance criteria, in general form given in part on acceptance criteria
 9. Recorded verification: for each criterion or group of criteria, captures and runs that verified
-   it and what they showed, observed product findings listed separately.
+   it and what they showed, observed product findings listed separately
 10. Engineering process: working practice, where exploratory scenes are, where reports and
-    comparisons written, rule that capture and comparison names are exclusive.
+    comparisons written, rule that capture and comparison names are exclusive
 11. Production impact: that harness does not change application behavior or data, does not need a
-    migration, and how production artifact inspected.
+    migration, and how production artifact inspected
 
 ## Scene documentation
 
@@ -57,7 +57,7 @@ Every scene has one entry. Scene without entry is not curated yet. Entry contain
 * interactions in order;
 * named checkpoints with what each captures;
 * required checks with their tolerances;
-* diagnostic measurements with product findings recorded by them.
+* diagnostic measurements with product findings recorded by them
 
 Entry records when scene curated ahead of a change and when later change extended it, so reader
 knows which checkpoints prove which change. For checkpoint proving a layout did not change, entry

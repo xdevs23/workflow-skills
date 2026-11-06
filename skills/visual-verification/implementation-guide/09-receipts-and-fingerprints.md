@@ -24,7 +24,7 @@ to be meaningful:
 * hash of font configuration, hashes of shipped font assets;
 * fixed settings: pixel density, timezone, instants at which clock is installed and paused, frame
   interval of clock, motion preference, animation and caret settings of screenshot, screenshot
-  scale, comparison options.
+  scale, comparison options
 
 Source group contains fully resolved revision of application source. For capture of working tree,
 also fingerprint of relevant content of working tree and fingerprint of staged changes. For capture

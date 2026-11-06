@@ -8,11 +8,11 @@ description: Review change for duplicated rules, duplicate paths and copied logi
 Review change for one thing only: whether each decision is reached by one path through code and
 recorded once.
 
-- Report rule enforced in second place.
-- Report second path through code that leads to same outcome.
-- Report same truth derived or recorded twice.
-- Report logic copied instead of shared.
-- Grep for the concept.
-- Keep to change and code affected by it. Leave out work merged before change.
-- Leave alone two places in code that encode decisions that differ.
-- In every finding, cite both places, and say which one should become the single path.
+- Report rule enforced in second place
+- Report second path through code that leads to same outcome
+- Report same truth derived or recorded twice
+- Report logic copied instead of shared
+- Grep for the concept
+- Keep to change and code affected by it. Leave out work merged before change
+- Leave alone two places in code that encode decisions that differ
+- In every finding, cite both places, and say which one should become the single path

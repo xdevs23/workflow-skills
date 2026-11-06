@@ -5,16 +5,16 @@ tools: Read, Grep, Glob, Bash
 ---
 
 - Split question into each choice question states as settled. Trace each choice back to user
-  words.
+  words
 - User words are messages typed by user in transcript, and passages that notes mark as copied from
   user. Search transcript for messages of user with terms of subject. Do not read transcript in
-  full.
+  full
 - Check every other file against user words, such as tool results, summaries, specs, `TODO.md`
-  entries, files of decisions.
+  entries, files of decisions
 - Report for each choice one of: quoted words of user, "session decision" with place where session
   made it, "fact of project" with answer and file it comes from, or "unchecked" with what was out
-  of reach. Do not edit any file.
-- Transcript or notes out of reach means choice is unchecked.
+  of reach. Do not edit any file
+- Transcript or notes out of reach means choice is unchecked
 - Check whether rules, instructions or engineering judgment answer question. Report answer with
-  file and line of rule or reason of judgment, or "no answer".
-- Check whether work needs answer. Report what cannot go on without it, or "answer not needed".
+  file and line of rule or reason of judgment, or "no answer"
+- Check whether work needs answer. Report what cannot go on without it, or "answer not needed"

@@ -28,10 +28,10 @@ Color of changed pixel depends on how local contrast measured for that pixel cha
 image to after image. Gain = after contrast minus before contrast. Margin = 10 luma units.
 
 * Green, meaning added, painted when gain larger than margin. Mark now stands out where nothing did,
-  or stands out more.
-* Red, meaning removed, painted when gain below negative margin. Mark that stood out no longer does.
+  or stands out more
+* Red, meaning removed, painted when gain below negative margin. Mark that stood out no longer does
 * Blue, meaning neutral, painted for everything else: uniform fills, hue-only recolors, contrast
-  changes inside margin, pixels enclosed by ink on every side.
+  changes inside margin, pixels enclosed by ink on every side
 
 Colors: green as red 0, green 150, blue 0; red as red 220, green 0, blue 0; blue as red 40, green
 90, blue 255. Same pass that paints pixels counts pixels of each kind and records bounding box of
@@ -63,13 +63,13 @@ Change of radius or margin = tooling decision, recorded in harness contract in p
 Every comparison report and every evidence sheet contains legend with these statements:
 
 * Changed pixels are recolored by a local-contrast heuristic, and the colors do not come from the
-  element tree of the interface.
-* Green marks gained contrast against the pixels around them, meaning they appeared.
-* Red marks lost it, meaning they disappeared.
-* Blue marks other changes without a clear direction.
-* A moved mark shows red where it used to sit and green where it sits now.
-* The window radius in pixels and the margin in luma units.
-* Unchanged pixels show the blended grayscale of the before image.
+  element tree of the interface
+* Green marks gained contrast against the pixels around them, meaning they appeared
+* Red marks lost it, meaning they disappeared
+* Blue marks other changes without a clear direction
+* A moved mark shows red where it used to sit and green where it sits now
+* The window radius in pixels and the margin in luma units
+* Unchanged pixels show the blended grayscale of the before image
 
 Each color appears as small swatch next to words about it.
 
@@ -80,18 +80,18 @@ Self-test suite and historical comparison of regression proof check coloring aga
 1. Difference function returns same changed count as comparison component run with recorded options.
    Counts of three kinds add up to that count. Every pixel outside mask byte-identical to raw image
    written by comparison component. Every recolored pixel has one of three legend colors. Comparing
-   image with itself gives zero pixels of each kind.
+   image with itself gives zero pixels of each kind
 2. On synthetic fixtures with white field and with near-black field, inserted 3 by 3 mark painted
-   green, removed one red. Moved mark gives nine red and nine green pixels, changed count eighteen.
+   green, removed one red. Moved mark gives nine red and nine green pixels, changed count eighteen
 3. Mark turning from faint to bold painted green; mark turning from bold to faint red. Uniform fill,
    hue change of equal luma, 1 by 1 image, and pixel with clipped window made only of ink painted
    neutral. Mark in corner of image painted by clipped window: 2 by 2 mark there gives four green
    pixels; 3 by 3 mark there gives eight green pixels and one neutral pixel enclosed by ink. Mark on
    fully transparent field painted green. Clearing white to transparent painted neutral. Half-opaque
    black has luma 127 over white. On transparent field, half-opaque mark that appears, vanishes,
-   becomes opaque or fades from opaque painted green, red, green and red respectively.
+   becomes opaque or fades from opaque painted green, red, green and red respectively
 4. Historical regression comparison run in project gives changed counts recorded for each variant.
-   In light and dark variant, newly visible element painted green, old one red.
+   In light and dark variant, newly visible element painted green, old one red
 
 ## Web realization in the reference
 

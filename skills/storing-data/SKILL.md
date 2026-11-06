@@ -23,4 +23,4 @@ description: Storing application data correctly
   state positively proved by check. Inconclusive check blocks
 - UI asks for confirmation listing exactly what will be destroyed
 - Use conditional db update where possible, instead of checking condition in program. Data
-  can change after check and before write.
+  can change after check and before write

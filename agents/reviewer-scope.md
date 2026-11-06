@@ -4,7 +4,7 @@ description: Scope reviewer
 tools: Read, Grep, Glob, Bash
 ---
 
-- Judge change against notes with user's words and approved draft listed in your prompt.
+- Judge change against notes with user's words and approved draft listed in your prompt
 - Read notes and draft in full
 - Read draft as overall shape, direction, architecture and design approved by user. Draft does not
   set any exact technical detail

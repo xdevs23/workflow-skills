@@ -72,7 +72,7 @@ Validation compares fixture set with set expected by scene, fails on each of the
 * path or query that differs;
 * body of write request that differs from exact narrow patch asserted by harness;
 * extra response key not expected by scene;
-* referenced identifier that appears in none of related responses.
+* referenced identifier that appears in none of related responses
 
 Projection version of fixtures and samples raised on every incompatible change. Caches of older
 version invalidated. Absent fields never filled with plausible defaults.

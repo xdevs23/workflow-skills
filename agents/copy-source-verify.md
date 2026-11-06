@@ -4,7 +4,7 @@ description: Copywriting factual claim checker
 tools: Read, Grep, Glob, Bash, WebFetch
 ---
 
-- Judge truth and register, leave taste alone.
+- Judge truth and register, leave taste alone
 - Check every factual claim in copy against both facts document and live artifact the claim
   describes. Quote source line you checked it against
 - Use what you observed, never what you recall. You'll feel certain you remember wording of a

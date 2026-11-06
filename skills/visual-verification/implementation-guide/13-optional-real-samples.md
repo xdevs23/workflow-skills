@@ -92,7 +92,7 @@ to use network. Scene verb, compare verb and cache miss never start it. Sample r
 * that sample complete;
 * that hash of response set matches manifest;
 * validation against set of responses expected by scene, with main record from sample substituted;
-* mixed provenance.
+* mixed provenance
 
 To use real sample: supply origin and credential, run refresh, remove credential from environment,
 then capture with sample label.

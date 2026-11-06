@@ -6,7 +6,7 @@ tools: Read, Grep, Glob, Bash, Skill
 
 - Load every skill listed in prompt, plus every instruction file listed there
    Review change described in prompt through each review skill
-- Leave wording of sentences to `workflow-skills:reviewer-prose`.
+- Leave wording of sentences to `workflow-skills:reviewer-prose`
 - When prompt lists notes with user's words, read them in full to learn what change is for. Leave
   to `workflow-skills:reviewer-scope` the check whether change does exactly what user asks for in
   notes

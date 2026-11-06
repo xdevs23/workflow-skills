@@ -8,8 +8,8 @@ description: Build or change user interface, including user-facing text
 - Let frontend send new data. Never read back from response. Frontend reloads data, fully or
   partly where supported, through same code path as full reload or restart. Preferred live
   data, like websocket or long-polling/SSE
-- In user interface, show error only on part that fails. Loading state gets loading indicator.
-- During save: show progress. Disable every control that could send save again.
+- In user interface, show error only on part that fails. Loading state gets loading indicator
+- During save: show progress. Disable every control that could send save again
 - Leave view as it was when optional feature cannot apply
 - Make product screen self-evident through labels, controls, layout. Never put text explaining
   the product
@@ -22,4 +22,4 @@ description: Build or change user interface, including user-facing text
 ## Rules in other skills
 
 - Follow `workflow-skills:copywriting` for marketing page, where reader decides whether to use
-  product.
+  product

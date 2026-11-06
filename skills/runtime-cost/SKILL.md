@@ -8,14 +8,14 @@ that run it.
 
 - Follow every loop, scan, query, remote call or repeated computation added or moved by change up
   through code calling it to entry points that run it, e.g. request handler, request loading page
-  or list, each tick of worker, or startup.
+  or list, each tick of worker, or startup
 - At each entry point, state how cost grows: once per call, once per item or once per row, and with
-  which collection.
-- Report walk over whole collection inside call made once per item or once per row on such path.
-- Report query or remote call inside loop, where one call for whole set would do same work.
+  which collection
+- Report walk over whole collection inside call made once per item or once per row on such path
+- Report query or remote call inside loop, where one call for whole set would do same work
 - Report work repeated on every call where one pass, or one result stored for duration of call,
-  would do it once.
-- Report cost growing with unbounded data on path that runs often.
-- In every finding, name entry point and chain of calls from it.
+  would do it once
+- Report cost growing with unbounded data on path that runs often
+- In every finding, name entry point and chain of calls from it
 - In every finding, state growth, e.g. number of attachments times length of history for each
-  rendered page, and change that would do the work once instead.
+  rendered page, and change that would do the work once instead

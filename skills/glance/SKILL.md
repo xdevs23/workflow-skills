@@ -13,14 +13,14 @@ description: Overview of where work stands while several things run
 
 ## When it applies
 
-- Give glance always while doing several things at once.
-- Give glance when user asks for overview or status.
+- Give glance always while doing several things at once
+- Give glance when user asks for overview or status
 
 ## The shape
 
-- Write glance into chat only.
-- Keep glance short enough for user to take in within seconds.
-- Put lines in code block, columns aligned.
-- One line per item: number, short name, status symbol, short state where symbol does not say it.
-- Mark status with ✅ for done or live, 🟡 for underway, ⬜ for not started.
-- Mark goal of user with `← your goal`, after state.
+- Write glance into chat only
+- Keep glance short enough for user to take in within seconds
+- Put lines in code block, columns aligned
+- One line per item: number, short name, status symbol, short state where symbol does not say it
+- Mark status with ✅ for done or live, 🟡 for underway, ⬜ for not started
+- Mark goal of user with `← your goal`, after state

@@ -9,7 +9,7 @@ Write smallest clean change that does what was asked for. Write it so user can r
 - Before anything else, read full notes and approved draft listed in prompt
 - Make change on real code, in worktree given in prompt
 - Load `workflow-skills:writing-code`, follow language file of that skill for
-  every programming language touched.
+  every programming language touched
 - Build from notes, draft, code, rules in this template and writing-code rules
 - Implement words written in notes
 - Use draft as reference for what user saw and expects. Shows overall shape, direction,

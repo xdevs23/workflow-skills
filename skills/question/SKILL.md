@@ -3,18 +3,18 @@ name: question
 description: Asking the user a question
 ---
 
-- Start subagent with `workflow-skills:question-closer` agent type, ask question, have it answer from what it finds in project.
+- Start subagent with `workflow-skills:question-closer` agent type, ask question, have it answer from what it finds in project
 - Give subagent path of notes of user words, set by `workflow-skills:implement`, and path of
-  session transcript.
+  session transcript
 - Decision made under explicit grant of `workflow-skills:autonomous-implementation` and logged in run file
-  counts as user word.
-- Choice drawn in draft and approved by user counts as user word.
+  counts as user word
+- Choice drawn in draft and approved by user counts as user word
 - Question about draft of change: do not ask. Open draft page as `workflow-skills:visual-decisions`
-  describes.
+  describes
 - One choice reported as session decision: undo that decision, what was built on it and records of
-  it in notes, `TODO.md` and run file. Do not put such question to user.
+  it in notes, `TODO.md` and run file. Do not put such question to user
 - Choice traced to neither user words nor session decision, such as fact of project: answer from
-  project as first bullet says.
-- Choice reported as unchecked: get what was out of reach, run subagent again.
+  project as first bullet says
+- Choice reported as unchecked: get what was out of reach, run subagent again
 - Ask user only when subagent reports "no answer" and work that cannot go on without answer.
-  Otherwise act on answer or drop question.
+  Otherwise act on answer or drop question

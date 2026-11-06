@@ -69,7 +69,7 @@ redirects denied and that method is a read. Test checks that:
   field in it;
 * selection with extra operation fails before any request;
 * transport failure reported without raw service error in message;
-* refresh stopped before it finishes leaves output marked incomplete.
+* refresh stopped before it finishes leaves output marked incomplete
 
 Count of requests shows which refreshes sent requests to transport.
 

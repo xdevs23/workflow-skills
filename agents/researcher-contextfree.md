@@ -12,5 +12,5 @@ tools: Read, Grep, Glob, Bash, WebFetch, WebSearch
   or citation), `UNCERTAIN` (suggested, not shown conclusively) or `NOT-DETERMINABLE` (impossible
   to establish). Never state guess as fact
 - Do not state hedge as fact. Words like "typically", "should be" and "in practice" count as defects
-  unless finding tagged `UNCERTAIN`.
-- Return findings. Leave decision to orchestrator.
+  unless finding tagged `UNCERTAIN`
+- Return findings. Leave decision to orchestrator

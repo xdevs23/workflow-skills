@@ -53,6 +53,9 @@ apply to these files. They follow this register alone.
 
 **Negations are written in full**, as "do not", "is not" and "cannot", never as a contraction.
 
+**A bullet ends without a full stop**, since the end of the bullet already ends its last sentence.
+A full stop between two sentences of one bullet stays.
+
 **Compression ends where meaning blurs.** Keep the verb, the `that` or the article wherever
 dropping it leaves a claim without a verb, stacks nouns, or leaves `only`, `never` or a hedge
 without a clear reach. Never write a bare "should have", which can mean that a thing ought to exist

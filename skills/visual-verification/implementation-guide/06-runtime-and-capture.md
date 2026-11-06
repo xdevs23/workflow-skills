@@ -49,7 +49,7 @@ settings. Production configuration not modified. With harness settings, serving 
 * uses empty directory as environment directory, so it loads none of environment files in
   repository;
 * uses separate cache directory for every run;
-* sends only files from export and dependency cache.
+* sends only files from export and dependency cache
 
 Combined configuration replaces data origins with local values handled by data boundary, sets
 realtime endpoint to empty, fixes build-time values e.g. version string and build date. Adaptation
@@ -107,16 +107,16 @@ is running but does not send a response leaves wait open until user who runs har
 Every checkpoint runs same sequence, with same settings for every capture of every revision.
 
 1. Screen or route has settled, target mounted with expected fixture values. Screen does not show
-   spinner, load error or login screen. Waits in scene check this before scene calls capture.
+   spinner, load error or login screen. Waits in scene check this before scene calls capture
 2. Every required shipped font face loaded explicitly and checked. Rendering engine has finished
    loading fonts. Missing face fails capture. Capture drawn with fallback font never accepted.
-   Adaptation point: list of shipped font faces.
-3. Every visible image decoded, has nonzero natural dimensions.
-4. Focus removed from focused element, pointer parked at fixed corner.
-5. Geometry of target stable according to stability check.
+   Adaptation point: list of shipped font faces
+3. Every visible image decoded, has nonzero natural dimensions
+4. Focus removed from focused element, pointer parked at fixed corner
+5. Geometry of target stable according to stability check
 6. Every required response except declared held ones delivered, according to delivery check of
-   data boundary.
-7. Screenshot taken with animations disabled and text caret hidden, in layout pixels.
+   data boundary
+7. Screenshot taken with animations disabled and text caret hidden, in layout pixels
 
 Checkpoint of shell captures whole viewport. Every other checkpoint captures its target element.
 Capture of targeted checkpoint includes everything meant to appear in it. Capture of group of

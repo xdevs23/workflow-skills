@@ -9,19 +9,19 @@ measurements. Criterion not run reported as not run. "Not run" never counts as "
 1. From source tree with committed locks, documented command starts application locally with locked
    engine. Produces nonempty PNGs of real application content and local HTML report. Run needs
    neither backend nor credentials. Second clean rendering context gives zero changed pixels for
-   same synthetic scene and settings.
+   same synthetic scene and settings
 
 2. First component scene renders each of its modes with real styling, locale and shipped font faces.
    First page scene uses real entry, route protection, state store, screen, section components and
    shell. Evidence includes loaded font checks, route, visible fixture text, contextual screenshots.
-   Scenes do not replace module or store with a double, do not copy presentation.
+   Scenes do not replace module or store with a double, do not copy presentation
 
-3. Regression proof described below succeeds.
+3. Regression proof described below succeeds
 
 4. Every initial scene runs, and every named checkpoint in it. Diagnostic
    scene uses real display model and screen context of application. Its clipping and overlap
    measurements reported as observed, without fix to product and without calling observed defect
-   acceptable.
+   acceptable
 
 5. Component interactions such as adding, editing and removing rows produce
    exactly expected model values, leave existing content unchanged. Page actions exercise real
@@ -29,12 +29,12 @@ measurements. Criterion not run reported as not run. "Not run" never counts as "
    saved response. Discard checked to bring screen back to state before edit. Scenes with fixture
    variants, such as absent and stored value, show exactly expected selected choices. With absent
    value, nothing selected, default does not appear. Selecting one choice leaves exactly that choice
-   selected. Scene does not send save request to a service.
+   selected. Scene does not send save request to a service
 
 6. Captures wait until responses consumed, interface in correct state, fonts
    loaded, images decoded where applicable, geometry stable. Long-held subscription held on purpose
    and listed as held. Capture never passes because of arbitrary sleep or swallowed readiness
-   timeout.
+   timeout
 
 7. Missing response fails run. Removing response for main record fails run, and so does removing
    shell response or required help text entry, each independently. Each fails with precise missing
@@ -42,30 +42,30 @@ measurements. Criterion not run reported as not run. "Not run" never counts as "
    run never labeled successful. Local scene leaving out one of shell responses needed by page fails
    at its first checkpoint, with that request in message, although application swallows error of
    read request. Omitted sample files fail before navigation. Incomplete refresh output cannot be
-   selected.
+   selected
 
 8. Negative probes attempt external image, data request,
    navigation, frame and socket, unexpected local data request, and service worker registration or
    equivalent background worker of platform. External traffic and background workers cannot run.
    Every attempt at unexpected network use fails visibly. Verification checks that harness did not
    forward any request and did not connect to any service. Synthetic rendering succeeds with
-   environment that does not contain any credentials.
+   environment that does not contain any credentials
 
 9. Wrong envelopes or types, missing consumed field, inconsistent
    identifiers, outdated projection version and extra request each fail. Static fixture checks use
    real types of application. Validation reports list offline compatibility separately from
-   unverified live compatibility.
+   unverified live compatibility
 
 10. Receipts identify both locks, runtime, engine and loaded fonts. Lock
     mismatch stops run before it executes, without rewriting any file or downloading different
     engine. Runs of regression proof use same engine, dependencies and fonts. Incompatible receipts
-    fail comparison explicitly.
+    fail comparison explicitly
 
 11. Named matching checkpoints produce side-by-side PNGs, difference
     PNGs, changed-pixel counts, independent geometry and behavior verdicts. Missing checkpoints,
     different dimensions, different scene, data or settings, and changed pixels: all visible nonzero
     results. Harness never approves or overwrites automatically, never raises tolerance silently,
-    does not load any external resource into report.
+    does not load any external resource into report
 
 12. Every generated artifact, temporary source export and engine
     profile in harness directory inside project cache, location defined by
@@ -74,12 +74,12 @@ measurements. Criterion not run reported as not run. "Not run" never counts as "
     invalidates capture. Negative run that changes imported local fixture during execution fails
     with message that source or a fixture changed during capture. Screenshots of that run remain
     evidence. Capture and comparison leave version control references, index
-    and application files unchanged, including translation files and existing tests.
+    and application files unchanged, including translation files and existing tests
 
 13. Harness entries, fixtures, engine and image libraries absent from
     production import graph and production output. Production routes, start-up, styles and data
     behavior unchanged. Verification runs full check of project bare, inspects production artifact
-    for included harness code.
+    for included harness code
 
 14. Optional real samples labeled truthfully, handled safely. Without credentials or selection,
     refresh fails with actionable instructions. Captures never start refresh. With run-time
@@ -88,10 +88,10 @@ measurements. Criterion not run reported as not run. "Not run" never counts as "
     * projection;
     * that redirects were not followed and credentials were not logged;
     * that complete samples were published;
-    * that later replay works without credentials.
+    * that later replay works without credentials
 
     Until that verification runs, credentialed part marked not run. Synthetic checks cannot satisfy
-    it.
+    it
 
 ## The regression proof
 
