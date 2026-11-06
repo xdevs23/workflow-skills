@@ -4,8 +4,9 @@ import type { ClassicResultOf, On } from 'claude-code'
 import { ANNOUNCED_WORK_HINT } from './announcedWorkHint'
 import { BLOCKED_HINT } from './blockedHint'
 import { HELD_QUESTION_HINT } from './heldQuestionHint'
-import { HINT_KINDS, kindsWithPhraseIn } from './hintKinds'
-import { IDLE_HINT } from './idleHint'
+import { PHRASE_KINDS, WHOLE_MESSAGE_KINDS, kindsWithPhraseIn } from './hintKinds'
+import { NOTHING_NEEDS_ACTION_HINT } from './nothingNeedsActionHint'
+import { IDLE_REPLY_HINT } from './idleReplyHint'
 import { NO_TIME_LIMIT, endTurn, startSession, stopTurn, typePrompt } from './testSupport'
 import { WAITING_HINT } from './waitingHint'
 
@@ -21,10 +22,12 @@ function closingOf(block: string | undefined): string | undefined {
 
 const WAITING = 'Build 61 passed. My question about the build folders is Still Open.'
 
+const EVERY_KIND = [...WHOLE_MESSAGE_KINDS, ...PHRASE_KINDS]
+
 // A test with a global or sticky expression starts where the last one stopped, so one message would
 // match on one turn and miss on the next.
 test('every phrase of every kind is free of the global and sticky flags', () => {
-  const phrases = HINT_KINDS.flatMap(kind => kind.phrases)
+  const phrases = EVERY_KIND.flatMap(kind => kind.phrases)
 
   expect(phrases.filter(phrase => phrase.global || phrase.sticky)).toEqual([])
 })
@@ -272,7 +275,7 @@ describe('the phrases of a message that reports that nothing needs action', () =
   ]
   for (const message of idle) {
     test(`${JSON.stringify(message)} reports that nothing needs action`, () => {
-      expect(kindsWithPhraseIn(message)).toContain(IDLE_HINT)
+      expect(kindsWithPhraseIn(message)).toContain(NOTHING_NEEDS_ACTION_HINT)
     })
   }
 
@@ -294,7 +297,63 @@ describe('the phrases of a message that reports that nothing needs action', () =
   ]
   for (const message of notIdle) {
     test(`${JSON.stringify(message)} does not report that nothing needs action`, () => {
-      expect(kindsWithPhraseIn(message)).not.toContain(IDLE_HINT)
+      expect(kindsWithPhraseIn(message)).not.toContain(NOTHING_NEEDS_ACTION_HINT)
+    })
+  }
+})
+
+describe('a message made only of idle replies', () => {
+  const idle = [
+    'Everything clear.',
+    'Everything is clear.',
+    'Fine.',
+    'Nothing to do.',
+    'Nothing new.',
+    'All clear.',
+    'All good!',
+    "Everything's fine.",
+    'Everything is healthy.',
+    'No change.',
+    'No changes.',
+    'Still nothing new.',
+    'Standing by.',
+    'Idle.',
+    'Nothing to report.',
+    'No change. Nothing to do.',
+    '  all clear  ',
+    'Everything’s fine.',
+    'Nothing has changed.',
+    'Nothing left to do.',
+    'All is well.',
+    'All set.',
+    'All clear, nothing to do.',
+    'Nothing new; standing by.',
+    'All clear — nothing to do.',
+    'Fine - nothing new.',
+    'All good and nothing new.',
+    'All clear, and nothing to do.',
+    'All clear... nothing to do.',
+    'All clear…',
+  ]
+  for (const message of idle) {
+    test(`${JSON.stringify(message)} is an idle reply`, () => {
+      expect(kindsWithPhraseIn(message)).toContain(IDLE_REPLY_HINT)
+    })
+  }
+
+  const notIdle = [
+    'Fine. The build passed and the deploy is live.',
+    'Nothing new on the mirror, so I started the cache fix.',
+    'All clear on the parser. The lexer still fails one test.',
+    'The tests are fine.',
+    'No change to the public API.',
+    'Everything is clear now: the cache was stale, and the fix is on main.',
+    'Nothing to do for the docs.',
+    `${'Fine '.repeat(40)}but the build fails.`,
+  ]
+  for (const message of notIdle) {
+    test(`${JSON.stringify(message)} is not an idle reply`, () => {
+      expect(kindsWithPhraseIn(message)).not.toContain(IDLE_REPLY_HINT)
     })
   }
 })
@@ -601,15 +660,41 @@ describe('the end of a turn on a message with a hint phrase', () => {
   )
 
   test(
-    'the first end on a message that reports that nothing needs action is blocked with the idle hint',
+    'the first end on a message that reports that nothing needs action is blocked with the nothing needs action hint',
     NO_TIME_LIMIT,
     async ($, on) => {
       stopBeneath(on)
       const message = 'Nothing needs action.'
 
-      expect(reasonsIn((await stopTurn($, { message })).block)).toEqual([IDLE_HINT.text])
+      expect(reasonsIn((await stopTurn($, { message })).block)).toEqual([
+        NOTHING_NEEDS_ACTION_HINT.text,
+      ])
     },
   )
+
+  test(
+    'the first end on an idle reply is blocked with the idle reply hint',
+    NO_TIME_LIMIT,
+    async ($, on) => {
+      stopBeneath(on)
+      const message = 'All clear.'
+
+      expect(reasonsIn((await stopTurn($, { message })).block)).toEqual([IDLE_REPLY_HINT.text])
+    },
+  )
+
+  for (const message of ['Nothing to do.', 'No change.']) {
+    test(
+      `the first end on ${JSON.stringify(message)}, which a phrase of the blocked hint matches too, ` +
+        'is blocked with the idle reply hint alone',
+      NO_TIME_LIMIT,
+      async ($, on) => {
+        stopBeneath(on)
+
+        expect(reasonsIn((await stopTurn($, { message })).block)).toEqual([IDLE_REPLY_HINT.text])
+      },
+    )
+  }
 
   test(
     'the first end on a message that announces work is blocked with the announced work hint',
@@ -623,7 +708,7 @@ describe('the end of a turn on a message with a hint phrase', () => {
   )
 
   test(
-    'a message with phrases of every kind is blocked with every hint, in the order of the kinds',
+    'a message with phrases of several kinds is blocked with the hint of each, in the order of the kinds',
     NO_TIME_LIMIT,
     async ($, on) => {
       stopBeneath(on)
@@ -636,7 +721,7 @@ describe('the end of a turn on a message with a hint phrase', () => {
       expect(reasonsIn(stopped.block)).toEqual([
         WAITING_HINT.text,
         BLOCKED_HINT.text,
-        IDLE_HINT.text,
+        NOTHING_NEEDS_ACTION_HINT.text,
         ANNOUNCED_WORK_HINT.text,
       ])
     },
@@ -667,7 +752,7 @@ describe('the end of a turn on a message with a hint phrase', () => {
 
       expect(closings[0]).toBeDefined()
       expect(closings[1]).toBe(closings[0])
-      expect(HINT_KINDS.map(kind => kind.text)).not.toContain(closings[0])
+      expect(EVERY_KIND.map(kind => kind.text)).not.toContain(closings[0])
     },
   )
 
