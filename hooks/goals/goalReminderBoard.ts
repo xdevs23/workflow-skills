@@ -4,11 +4,16 @@ import type { Board } from '../../types'
 import { showFailure } from '../failureToast'
 import { Outcome } from './board'
 import { readBoardOfSession } from './goalActions'
-import { describeGoalChanges, describeReminderNotRead } from './goalReminders'
+import { describeOpenGoalsSent, describeReminderNotRead } from './goalReminders'
+import type { GoalsSent } from './goalReminders'
 import { exchangeSeenBoard } from './goalState'
+import { withGoalsNotExhaustive } from './goalToolTexts'
 
-/** The texts that list the open goals to the model, and the board the model saw before them. */
-export type GoalList = { texts: string[]; seenBefore: Board | null }
+/**
+ * The text that lists the open goals to the model with its transcript line, unless there was
+ * nothing to send, and the board the model saw before it.
+ */
+export type GoalList = { sent: GoalsSent | undefined; seenBefore: Board | null }
 
 /**
  * Reads the board of the session `sessionId` from the store for a reminder. A board that cannot be
@@ -28,9 +33,9 @@ export async function readBoardToRemind(
 }
 
 /**
- * Records `board` as seen by the model of the session `sessionId`, and returns the open goals on it
- * as `describeList` writes them, followed by the note on the goals added or cleared since the model
- * saw the board before. The list names no cleared goal, so the note goes with it.
+ * Records `board` as seen by the model running the session `sessionId`, and returns the open goals
+ * on it as `describeOpenGoalsSent` writes them with `describeList`, ended by
+ * `withGoalsNotExhaustive`.
  */
 export async function listOpenGoals(
   $: EngineInterface,
@@ -39,8 +44,10 @@ export async function listOpenGoals(
   describeList: (board: Board) => string | undefined,
 ): Promise<GoalList> {
   const seenBefore = await exchangeSeenBoard($, sessionId, board)
-  const changes = seenBefore === null ? undefined : describeGoalChanges(seenBefore, board)
-  const texts = [describeList(board), changes].filter(text => text !== undefined)
+  const sent = describeOpenGoalsSent(board, seenBefore, describeList)
+  if (sent === undefined) {
+    return { sent, seenBefore }
+  }
 
-  return { texts, seenBefore }
+  return { sent: { ...sent, text: withGoalsNotExhaustive(board, sent.text) }, seenBefore }
 }

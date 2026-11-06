@@ -15,3 +15,10 @@ export const DETACH_TODO = 'detach_todo'
 export const LIST_GOALS_TOOL = toolName(LIST_GOALS)
 export const ATTACH_TODO_TOOL = toolName(ATTACH_TODO)
 export const DETACH_TODO_TOOL = toolName(DETACH_TODO)
+
+/** The tools of the goals board, as the engine lists them. */
+export const GOAL_TOOLS: ReadonlySet<string> = new Set([
+  LIST_GOALS_TOOL,
+  ATTACH_TODO_TOOL,
+  DETACH_TODO_TOOL,
+])

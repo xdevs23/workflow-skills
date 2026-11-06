@@ -3,9 +3,10 @@ import { describe, expect, test } from 'claude-code/testing'
 import type { Board, Goal } from '../../types'
 import { EMPTY_BOARD } from './board'
 import {
-  describeGoalChanges,
+  describeGoalChangesSent,
   describeOpenGoalsAfterCompaction,
   describeOpenGoalsAfterIdle,
+  describeOpenGoalsSent,
 } from './goalReminders'
 
 const INVOICE_EXPORT: Goal = {
@@ -106,47 +107,101 @@ describe('the changes to the board since the model saw it', () => {
   test('shows a goal added since', () => {
     const seen = { goals: [INVOICE_EXPORT, HELP_PAGES] }
 
-    expect(describeGoalChanges(seen, THREE_GOALS)).toBe(
-      'The user added goal #3: Speed up the nightly build.',
-    )
+    expect(describeGoalChangesSent(seen, THREE_GOALS)).toEqual({
+      text: 'The user added goal #3: Speed up the nightly build.',
+      line: 'Goals: goal 3 added, sent to Claude',
+    })
   })
 
   test('shows a goal cleared since', () => {
     const now = { goals: [NIGHTLY_BUILD, INVOICE_EXPORT, cleared(HELP_PAGES)] }
 
-    expect(describeGoalChanges(THREE_GOALS, now)).toBe('The user cleared goal #2.')
+    expect(describeGoalChangesSent(THREE_GOALS, now)).toEqual({
+      text: 'The user cleared goal #2.',
+      line: 'Goals: goal 2 cleared, sent to Claude',
+    })
   })
 
   test('shows that no goal is open once the last open goal is cleared', () => {
     const seen = { goals: [cleared(NIGHTLY_BUILD), cleared(INVOICE_EXPORT), HELP_PAGES] }
 
-    expect(describeGoalChanges(seen, ALL_CLEARED)).toBe(
-      'The user cleared goal #2. No goal is open now.',
-    )
+    expect(describeGoalChangesSent(seen, ALL_CLEARED)).toEqual({
+      text: 'The user cleared goal #2. No goal is open now.',
+      line: 'Goals: goal 2 cleared, sent to Claude',
+    })
   })
 
   test('shows several changes in number order', () => {
     const seen = { goals: [INVOICE_EXPORT] }
     const now = { goals: [cleared(INVOICE_EXPORT), NIGHTLY_BUILD, HELP_PAGES] }
 
-    expect(describeGoalChanges(seen, now)).toBe(
-      'The user cleared goal #1. The user added goal #2: Translate the help pages. ' +
+    expect(describeGoalChangesSent(seen, now)).toEqual({
+      text:
+        'The user cleared goal #1. The user added goal #2: Translate the help pages. ' +
         'The user added goal #3: Speed up the nightly build.',
-    )
+      line: 'Goals: goal 1 cleared, goal 2 added, and goal 3 added, sent to Claude',
+    })
   })
 
   test('shows a goal added and cleared since as both', () => {
-    expect(describeGoalChanges(EMPTY_BOARD, { goals: [cleared(INVOICE_EXPORT)] })).toBe(
-      'The user added goal #1: Ship the invoice export. The user cleared goal #1. ' +
+    expect(describeGoalChangesSent(EMPTY_BOARD, { goals: [cleared(INVOICE_EXPORT)] })).toEqual({
+      text:
+        'The user added goal #1: Ship the invoice export. The user cleared goal #1. ' +
         'No goal is open now.',
-    )
+      line: 'Goals: goal 1 added and goal 1 cleared, sent to Claude',
+    })
+  })
+
+  test('lists the open goals to a model that saw no board yet', () => {
+    expect(describeGoalChangesSent(null, { goals: [INVOICE_EXPORT] })).toEqual({
+      text: [
+        '# Open goals',
+        '1. Ship the invoice export',
+        '   #57 - Export names the currency',
+        '   #12 - Export writes one file per month',
+      ].join('\n'),
+      line: 'Goals: the open goal was sent to Claude',
+    })
   })
 
   test('is left out when goals were neither added nor cleared', () => {
     const detached = { goals: [NIGHTLY_BUILD, INVOICE_EXPORT, { ...HELP_PAGES, todos: [] }] }
 
-    expect(describeGoalChanges(THREE_GOALS, THREE_GOALS)).toBeUndefined()
-    expect(describeGoalChanges(THREE_GOALS, detached)).toBeUndefined()
-    expect(describeGoalChanges(ALL_CLEARED, ALL_CLEARED)).toBeUndefined()
+    expect(describeGoalChangesSent(THREE_GOALS, THREE_GOALS)).toBeUndefined()
+    expect(describeGoalChangesSent(THREE_GOALS, detached)).toBeUndefined()
+    expect(describeGoalChangesSent(ALL_CLEARED, ALL_CLEARED)).toBeUndefined()
+    expect(describeGoalChangesSent(null, ALL_CLEARED)).toBeUndefined()
+  })
+})
+
+describe('the open goals sent with the changes since the model saw the board', () => {
+  test('names the open goals and the changes sent with them in one line', () => {
+    const seen = { goals: [INVOICE_EXPORT, HELP_PAGES] }
+    const now = { goals: [INVOICE_EXPORT, cleared(HELP_PAGES), NIGHTLY_BUILD] }
+
+    expect(describeOpenGoalsSent(now, seen, describeOpenGoalsAfterIdle)).toEqual({
+      text: [
+        'Goal #1 is not satisfied yet: Ship the invoice export. Attached: #57 (Export names the ' +
+          'currency), #12 (Export writes one file per month).',
+        'Goal #3 is not satisfied yet: Speed up the nightly build.',
+        'The user cleared goal #2. The user added goal #3: Speed up the nightly build.',
+      ].join('\n\n'),
+      line: 'Goals: the 2 open goals were sent to Claude, with goal 2 cleared and goal 3 added',
+    })
+  })
+
+  test('names the changes alone once no goal is open', () => {
+    const seen = { goals: [INVOICE_EXPORT] }
+
+    expect(
+      describeOpenGoalsSent({ goals: [cleared(INVOICE_EXPORT)] }, seen, describeOpenGoalsAfterIdle),
+    ).toEqual({
+      text: 'The user cleared goal #1. No goal is open now.',
+      line: 'Goals: goal 1 cleared, sent to Claude',
+    })
+  })
+
+  test('is left out for a board without open goals or changes', () => {
+    expect(describeOpenGoalsSent(ALL_CLEARED, null, describeOpenGoalsAfterIdle)).toBeUndefined()
   })
 })

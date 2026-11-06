@@ -81,15 +81,17 @@ async function remindAfterIdle($: EngineInterface, waiting: IdleStretch): Promis
   if (!(await replaceStretch($, waiting, reminded))) {
     return
   }
-  const listed = await listOpenGoals($, sessionId, board, describeOpenGoalsAfterIdle)
-  const submitted = await submitToSession($, sessionId, { text: listed.texts.join('\n\n') }).catch(
-    async (error: unknown) => {
-      await waitAgain($, reminded, listed.seenBefore, board)
-      throw error
-    },
-  )
-  if (submitted.outcome !== PromptOutcome.Entered) {
-    await waitAgain($, reminded, listed.seenBefore, board)
+  // The prompt shows in the transcript itself, so the transcript line of `sent` is not shown.
+  const { sent, seenBefore } = await listOpenGoals($, sessionId, board, describeOpenGoalsAfterIdle)
+  const submitted =
+    sent === undefined
+      ? undefined
+      : await submitToSession($, sessionId, { text: sent.text }).catch(async (error: unknown) => {
+          await waitAgain($, reminded, seenBefore, board)
+          throw error
+        })
+  if (submitted?.outcome !== PromptOutcome.Entered) {
+    await waitAgain($, reminded, seenBefore, board)
   }
 }
 

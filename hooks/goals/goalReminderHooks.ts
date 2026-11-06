@@ -5,13 +5,19 @@ import { isMainConversation } from '../conversation'
 import type { EveryEvent } from '../register'
 import { callToolWithNote, submitWithNote } from '../sendToModel'
 import { Outcome } from './board'
+import { GOAL_TOOLS } from './goalNames'
 import { listOpenGoals, readBoardToRemind } from './goalReminderBoard'
-import { describeGoalChanges, describeOpenGoalsAfterCompaction } from './goalReminders'
+import { describeGoalChangesSent, describeOpenGoalsAfterCompaction } from './goalReminders'
+import type { GoalsSent } from './goalReminders'
 import { COMPACTION_SOURCE } from './goalSession'
 import { exchangeSeenBoard, readBoardInState, readSeenBoard, restoreSeenBoard } from './goalState'
+import { withGoalsNotExhaustive } from './goalToolTexts'
 
-/** The note on the changes from the board `before` the model saw to the board `after`. */
-type GoalChanges = { note: string; before: Board | null; after: Board }
+/**
+ * The changes from the board `before` the model saw to the board `after`. `note` is `text` ended by
+ * `withGoalsNotExhaustive`.
+ */
+type GoalChanges = GoalsSent & { note: string; before: Board | null; after: Board }
 
 export const addOpenGoalsAfterCompaction: MatchedHook<
   'classic.SessionStart',
@@ -26,16 +32,28 @@ export const addOpenGoalsAfterCompaction: MatchedHook<
   if (board === undefined) {
     return ran
   }
-  const { texts } = await listOpenGoals($, sessionId, board, describeOpenGoalsAfterCompaction)
+  const { sent } = await listOpenGoals($, sessionId, board, describeOpenGoalsAfterCompaction)
+  if (sent === undefined) {
+    return ran
+  }
+  $.ui.log(sent.line)
 
-  return texts.length === 0
-    ? ran
-    : { ...ran, additionalContext: [...(ran.additionalContext ?? []), ...texts] }
+  return { ...ran, additionalContext: [...(ran.additionalContext ?? []), sent.text] }
 }
 
-// The note is taken once the tool ran, so no hook beneath can drop it, and nothing is restored.
+// The note is taken once the tool ran, so no hook beneath can drop it, and nothing is restored. The
+// result of a goal tool ends with the sentence that the goals are not exhaustive, so the note to it
+// goes without the sentence.
 export const addGoalChangesToToolResult: MatchedHook<'tool.call', EveryEvent> = ($, e, next) =>
-  callToolWithNote(e, next, async () => (await takeGoalChanges($, await $.session.id()))?.note)
+  callToolWithNote(e, next, async () => {
+    const changes = await takeGoalChanges($, await $.session.id())
+    if (changes === undefined) {
+      return undefined
+    }
+    $.ui.log(changes.line)
+
+    return GOAL_TOOLS.has(e.tool) ? changes.text : changes.note
+  })
 
 // A command may run without the model, so the note waits for the next prompt that is sent to the
 // model. The plugin's own prompts take the note too, since the model reads them as well.
@@ -53,7 +71,9 @@ export const submitWithGoalChanges: MatchedHook<'prompt.submit', EveryEvent> = a
     await restoreSeenBoard($, sessionId, changes.before, changes.after)
     throw error
   })
-  if (!delivery.isAccepted) {
+  if (delivery.isAccepted) {
+    $.ui.log(changes.line)
+  } else {
     await restoreSeenBoard($, sessionId, changes.before, changes.after)
   }
 
@@ -61,9 +81,9 @@ export const submitWithGoalChanges: MatchedHook<'prompt.submit', EveryEvent> = a
 }
 
 /**
- * Records the board in the state as seen by the model of the session `sessionId`, and returns the
- * note on the goals added or cleared since the model saw the board before. A model that saw no
- * board yet is given the open goals.
+ * Records the board in the state as seen by the model running the session `sessionId`, and returns
+ * the goals added or cleared since the model saw the board before. A model that saw no board yet is
+ * given the open goals.
  */
 async function takeGoalChanges(
   $: EngineInterface,
@@ -74,16 +94,14 @@ async function takeGoalChanges(
     return undefined
   }
   const { board } = inState
-  if (describeChanges(await readSeenBoard($, sessionId), board) === undefined) {
+  // With nothing to send, the check writes no text and leaves the board seen as it is.
+  if (describeGoalChangesSent(await readSeenBoard($, sessionId), board) === undefined) {
     return undefined
   }
   const before = await exchangeSeenBoard($, sessionId, board)
-  const note = describeChanges(before, board)
+  const sent = describeGoalChangesSent(before, board)
 
-  return note === undefined ? undefined : { note, before, after: board }
-}
-
-/** The note on the changes from the board `seen` to `board`, or the open goals without `seen`. */
-function describeChanges(seen: Board | null, board: Board): string | undefined {
-  return seen === null ? describeOpenGoalsAfterCompaction(board) : describeGoalChanges(seen, board)
+  return sent === undefined
+    ? undefined
+    : { ...sent, note: withGoalsNotExhaustive(board, sent.text), before, after: board }
 }

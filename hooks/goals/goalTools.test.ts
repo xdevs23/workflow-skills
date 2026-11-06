@@ -7,6 +7,7 @@ import type { Goal } from '../../types'
 import { describeHookFailure } from '../hookFailure'
 import {
   FIRST_SESSION,
+  GOALS_NOT_EXHAUSTIVE,
   NO_TIME_LIMIT,
   mountPane,
   startSession,
@@ -134,6 +135,8 @@ describe('listing the goals', () => {
           'Cleared by the user:',
           `#2: ${ROTATION_CRASH}`,
           '#4: Ship the tablet layout',
+          '',
+          GOALS_NOT_EXHAUSTIVE,
         ].join('\n'),
       )
     },
@@ -156,15 +159,22 @@ describe('listing the goals', () => {
     },
   )
 
-  test('a subagent lists the goals as the main conversation does', NO_TIME_LIMIT, async ($, on) => {
-    const session = await startSession($, on)
-    await addGoals(session, [MIGRATION_GUIDE, ROTATION_CRASH])
-    await attachTodo($, { goal: 2, todo: ROTATION_ENTRY })
+  test(
+    'a subagent lists the goals as the main conversation does, without the sentence that the ' +
+      'goals are not exhaustive',
+    NO_TIME_LIMIT,
+    async ($, on) => {
+      const session = await startSession($, on)
+      await addGoals(session, [MIGRATION_GUIDE, ROTATION_CRASH])
+      await attachTodo($, { goal: 2, todo: ROTATION_ENTRY })
 
-    const listed = await listGoals($, SUBAGENT)
-    expect(listed).toContain(`#2: ${ROTATION_CRASH}\nAttached: ${ROTATION_ENTRY}`)
-    expect(listed).toBe(await listGoals($))
-  })
+      const listed = await listGoals($, SUBAGENT)
+      expect(listed).toBe(
+        `#1: ${MIGRATION_GUIDE}\n#2: ${ROTATION_CRASH}\nAttached: ${ROTATION_ENTRY}`,
+      )
+      expect(await listGoals($)).toBe(`${listed}\n\n${GOALS_NOT_EXHAUSTIVE}`)
+    },
+  )
 })
 
 describe('attaching and detaching a TODO entry', () => {
@@ -176,11 +186,13 @@ describe('attaching and detaching a TODO entry', () => {
       await addGoals(session, [MIGRATION_GUIDE, ROTATION_CRASH])
 
       const attached = await attachTodo($, { goal: 2, todo: ROTATION_ENTRY })
-      expect(attached.result).toBe(`Attached ${ROTATION_ENTRY} to goal #2.`)
+      expect(attached.result).toBe(
+        `Attached ${ROTATION_ENTRY} to goal #2.\n\n${GOALS_NOT_EXHAUSTIVE}`,
+      )
       expect(await listGoals($)).toContain(`#2: ${ROTATION_CRASH}\nAttached: ${ROTATION_ENTRY}`)
 
       const detached = await detachTodo($, { goal: 2, todo: '#41' })
-      expect(detached.result).toBe('Detached #41 from goal #2.')
+      expect(detached.result).toBe(`Detached #41 from goal #2.\n\n${GOALS_NOT_EXHAUSTIVE}`)
       expect(await listGoals($)).not.toContain('#41')
     },
   )
@@ -219,7 +231,7 @@ describe('attaching and detaching a TODO entry', () => {
       const stored = [...session.store]
 
       expect((await attachTodo($, { goal: 1, todo: ROTATION_ENTRY })).result).toBe(
-        `Attached ${ROTATION_ENTRY} to goal #1.`,
+        `Attached ${ROTATION_ENTRY} to goal #1.\n\n${GOALS_NOT_EXHAUSTIVE}`,
       )
       expect([...session.store]).toEqual(stored)
       expect(await listGoals($)).toContain(`Attached: ${ROTATION_ENTRY}`)

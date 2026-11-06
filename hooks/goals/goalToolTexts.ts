@@ -48,6 +48,22 @@ const NO_OPEN_GOAL =
 const SEE_OPEN_GOALS =
   `Call ${LIST_GOALS_TOOL} to see the open goals and the entries attached to them.`
 
+/**
+ * Added wherever the goals are sent to the model of the main conversation, so the model keeps the
+ * work that is not on the board in view.
+ */
+const GOALS_NOT_EXHAUSTIVE =
+  'The goals are not exhaustive. Requests from the conversation, entries in TODO.md and rules ' +
+  'still apply. Continue working on tasks where you left off and keep working towards the goals.'
+
+/**
+ * `text` followed by `GOALS_NOT_EXHAUSTIVE` while `board` has an open goal. Without one, the
+ * sentence would tell the model to keep working towards goals that the user cleared.
+ */
+export function withGoalsNotExhaustive(board: Board, text: string): string {
+  return openGoalsOf(board).length === 0 ? text : `${text}\n\n${GOALS_NOT_EXHAUSTIVE}`
+}
+
 export function describeAttached(goal: number, todo: TodoEntry): string {
   return `Attached ${describeEntry(todo)} to goal #${goal}.`
 }
@@ -76,7 +92,9 @@ export function describeRefusal(refused: ChangeRefused): string {
   }
 }
 
-/** The open goals with their entries, then the cleared goals, each in the order of the numbers. */
+/**
+ * The open goals with the entries attached to them, then the cleared goals, each sorted by number.
+ */
 export function describeGoals(board: Board): string {
   const open = sortedByNumber(openGoalsOf(board))
   const cleared = sortedByNumber(clearedGoalsOf(board))

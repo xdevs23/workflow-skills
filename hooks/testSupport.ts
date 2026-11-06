@@ -14,6 +14,11 @@ export const SECOND_SESSION = 'session-2'
 /** The context size of a session when it starts and loads the question skill. */
 export const TOKENS_AT_START = 1000
 
+/** The sentence that ends what the main conversation is sent on its goals while one is open. */
+export const GOALS_NOT_EXHAUSTIVE =
+  'The goals are not exhaustive. Requests from the conversation, entries in TODO.md and rules ' +
+  'still apply. Continue working on tasks where you left off and keep working towards the goals.'
+
 const PANE_PROPS: RenderPropsOf['Pane'] = {
   title: 'Questions',
   isFocused: true,

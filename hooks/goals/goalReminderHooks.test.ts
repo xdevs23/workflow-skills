@@ -5,6 +5,7 @@ import type { Goal } from '../../types'
 import { PLUGIN } from '../names'
 import {
   FIRST_SESSION,
+  GOALS_NOT_EXHAUSTIVE,
   NO_TIME_LIMIT,
   SECOND_SESSION,
   endTurn,
@@ -43,6 +44,11 @@ const SUBAGENT = 'agent-1'
 const NOT_REMINDED = 'The goals could not be read, so Claude was not reminded of them. '
 
 const UNREADABLE_STORE = 'the store file is not readable'
+
+/** A text on goals as the model reads it while a goal is open, followed by the sentence on them. */
+function withSentence(note: string): string {
+  return `${note}\n\n${GOALS_NOT_EXHAUSTIVE}`
+}
 
 /** The records of a board of FIRST_SESSION with the goals #1 and #2 open. */
 function storedBoard(): Map<string, unknown> {
@@ -87,6 +93,11 @@ function promptsOfPlugin(session: Session): string[] {
   return session.prompts.filter(prompt => prompt.origin.kind === 'plugin').map(({ text }) => text)
 }
 
+/** The transcript lines about the goals, which the model does not read. */
+function goalLinesOf(session: Session): string[] {
+  return session.chatLines.filter(line => line.startsWith('Goals: '))
+}
+
 function notRemindedToastsOf(session: Session): string[] {
   return session.toasts.filter(toast => toast.startsWith(NOT_REMINDED))
 }
@@ -97,20 +108,26 @@ describe('the open goals after a compaction', () => {
       'changes are not sent again',
     NO_TIME_LIMIT,
     async ($, on) => {
-      await startSession($, on, { stored: storedBoard() })
+      const session = await startSession($, on, { stored: storedBoard() })
       await goalsCommand($, 'clear 2')
       await goalsCommand($, 'add Write the release notes')
 
       expect((await compact($)).additionalContext).toEqual([
-        [
-          '# Open goals',
-          '1. Ship the offline mode',
-          '   #61 - Drafts sync once the connection returns',
-          '3. Write the release notes',
-        ].join('\n'),
-        'The user cleared goal #2. The user added goal #3: Write the release notes.',
+        withSentence(
+          [
+            '# Open goals',
+            '1. Ship the offline mode',
+            '   #61 - Drafts sync once the connection returns',
+            '3. Write the release notes',
+            '',
+            'The user cleared goal #2. The user added goal #3: Write the release notes.',
+          ].join('\n'),
+        ),
       ])
       expect(await notesOfToolResult($)).toEqual([])
+      expect(goalLinesOf(session)).toEqual([
+        'Goals: the 2 open goals were sent to Claude, with goal 2 cleared and goal 3 added',
+      ])
     },
   )
 
@@ -118,7 +135,7 @@ describe('the open goals after a compaction', () => {
     'a compaction after the last open goal was cleared adds the note on the clear alone',
     NO_TIME_LIMIT,
     async ($, on) => {
-      await startSession($, on, { stored: storedBoard() })
+      const session = await startSession($, on, { stored: storedBoard() })
       await goalsCommand($, 'clear 1')
       await goalsCommand($, 'clear 2')
 
@@ -126,19 +143,39 @@ describe('the open goals after a compaction', () => {
         'The user cleared goal #1. The user cleared goal #2. No goal is open now.',
       ])
       expect(await notesOfToolResult($)).toEqual([])
+      expect(goalLinesOf(session)).toEqual([
+        'Goals: goal 1 cleared and goal 2 cleared, sent to Claude',
+      ])
     },
   )
 
   test('a compaction on a board without open goals adds nothing', NO_TIME_LIMIT, async ($, on) => {
-    await startSession($, on)
+    const session = await startSession($, on)
 
     expect((await compact($)).additionalContext).toBeUndefined()
+    expect(goalLinesOf(session)).toEqual([])
   })
 
   test('a compaction in a subagent adds nothing', NO_TIME_LIMIT, async ($, on) => {
-    await startSession($, on, { stored: storedBoard() })
+    const session = await startSession($, on, { stored: storedBoard() })
 
     expect((await compact($, SUBAGENT)).additionalContext).toBeUndefined()
+    expect(goalLinesOf(session)).toEqual([])
+  })
+
+  test('a compaction with one open goal names it in the transcript', NO_TIME_LIMIT, async (
+    $,
+    on,
+  ) => {
+    const session = await startSession($, on, { stored: storedBoard() })
+    await goalsCommand($, 'clear 2')
+    await notesOfToolResult($)
+    await compact($)
+
+    expect(goalLinesOf(session)).toEqual([
+      'Goals: goal 2 cleared, sent to Claude',
+      'Goals: the open goal was sent to Claude',
+    ])
   })
 
   test(
@@ -161,24 +198,27 @@ describe('the goals added or cleared since the model saw the board', () => {
     $,
     on,
   ) => {
-    await startSession($, on, { stored: storedBoard() })
+    const session = await startSession($, on, { stored: storedBoard() })
     await goalsCommand($, 'add Write the release notes')
 
     expect(await notesOfToolResult($)).toEqual([
-      'The user added goal #3: Write the release notes.',
+      withSentence('The user added goal #3: Write the release notes.'),
     ])
+    expect(goalLinesOf(session)).toEqual(['Goals: goal 3 added, sent to Claude'])
     expect(await notesOfToolResult($)).toEqual([])
     expect(await notesOfPrompt($)).toEqual([])
+    expect(goalLinesOf(session)).toHaveLength(1)
   })
 
   test('a goal cleared while idle is sent with the next prompt once', NO_TIME_LIMIT, async (
     $,
     on,
   ) => {
-    await startSession($, on, { stored: storedBoard() })
+    const session = await startSession($, on, { stored: storedBoard() })
     await goalsCommand($, 'clear 2')
 
-    expect(await notesOfPrompt($)).toEqual(['The user cleared goal #2.'])
+    expect(await notesOfPrompt($)).toEqual([withSentence('The user cleared goal #2.')])
+    expect(goalLinesOf(session)).toEqual(['Goals: goal 2 cleared, sent to Claude'])
     expect(await notesOfPrompt($)).toEqual([])
     expect(await notesOfToolResult($)).toEqual([])
   })
@@ -192,7 +232,7 @@ describe('the goals added or cleared since the model saw the board', () => {
       const results = await Promise.all([readFile($), readFile($), readFile($)])
 
       expect(results.flatMap(result => result.context ?? [])).toEqual([
-        'The user added goal #3: Write the release notes.',
+        withSentence('The user added goal #3: Write the release notes.'),
       ])
     },
   )
@@ -202,11 +242,13 @@ describe('the goals added or cleared since the model saw the board', () => {
     NO_TIME_LIMIT,
     async ($, on) => {
       on('prompt.submit', { text: 'refused prompt' }, () => ({ drop: 'refused by a test hook' }))
-      await startSession($, on, { stored: storedBoard() })
+      const session = await startSession($, on, { stored: storedBoard() })
       await goalsCommand($, 'clear 1')
 
       expect((await typePrompt($, 'refused prompt')).drop).toBe('refused by a test hook')
-      expect(await notesOfPrompt($)).toEqual(['The user cleared goal #1.'])
+      expect(goalLinesOf(session)).toEqual([])
+      expect(await notesOfPrompt($)).toEqual([withSentence('The user cleared goal #1.')])
+      expect(goalLinesOf(session)).toEqual(['Goals: goal 1 cleared, sent to Claude'])
     },
   )
 
@@ -215,11 +257,12 @@ describe('the goals added or cleared since the model saw the board', () => {
       'conversation does',
     NO_TIME_LIMIT,
     async ($, on) => {
-      await startSession($, on, { stored: storedBoard() })
+      const session = await startSession($, on, { stored: storedBoard() })
       await goalsCommand($, 'clear 1')
 
       expect(await notesOfToolResult($, SUBAGENT)).toEqual([])
-      expect(await notesOfToolResult($)).toEqual(['The user cleared goal #1.'])
+      expect(goalLinesOf(session)).toEqual([])
+      expect(await notesOfToolResult($)).toEqual([withSentence('The user cleared goal #1.')])
     },
   )
 
@@ -261,18 +304,24 @@ describe('the goals added or cleared since the model saw the board', () => {
       await goalsCommand($, 'clear 1')
 
       expect((await $.tool.call({ tool: 'Bash', command: 'ls' })).context).toBeUndefined()
-      expect(await notesOfToolResult($)).toEqual(['The user cleared goal #1.'])
+      expect(await notesOfToolResult($)).toEqual([withSentence('The user cleared goal #1.')])
     },
   )
 
-  test('the result of a goal tool contains the note', NO_TIME_LIMIT, async ($, on) => {
-    await startSession($, on, { stored: storedBoard() })
-    await goalsCommand($, 'clear 1')
+  test(
+    'the result of a goal tool contains the note, and the sentence on the goals once',
+    NO_TIME_LIMIT,
+    async ($, on) => {
+      await startSession($, on, { stored: storedBoard() })
+      await goalsCommand($, 'clear 1')
+      const listed = await $.tool.call({ tool: LIST_GOALS_TOOL })
 
-    expect((await $.tool.call({ tool: LIST_GOALS_TOOL })).context).toEqual([
-      'The user cleared goal #1.',
-    ])
-  })
+      expect(listed.result).toBe(
+        withSentence('#2: Add the dark theme\n\nCleared by the user:\n#1: Ship the offline mode'),
+      )
+      expect(listed.context).toEqual(['The user cleared goal #1.'])
+    },
+  )
 
   test(
     'a slash command has no note, and the next prompt sent to the model does',
@@ -288,7 +337,7 @@ describe('the goals added or cleared since the model saw the board', () => {
       })
 
       expect(command.context).toBeUndefined()
-      expect(await notesOfPrompt($)).toEqual(['The user cleared goal #1.'])
+      expect(await notesOfPrompt($)).toEqual([withSentence('The user cleared goal #1.')])
     },
   )
 
@@ -303,7 +352,7 @@ describe('the goals added or cleared since the model saw the board', () => {
       await goalsCommand($, 'clear 1')
 
       await expect(typePrompt($, 'failing prompt')).rejects.toThrow()
-      expect(await notesOfPrompt($)).toEqual(['The user cleared goal #1.'])
+      expect(await notesOfPrompt($)).toEqual([withSentence('The user cleared goal #1.')])
     },
   )
 
@@ -333,7 +382,9 @@ describe('the goals added or cleared since the model saw the board', () => {
     await switchSession($, session, { id: SECOND_SESSION, reason: 'clear' })
     await goalsCommand($, 'add Write the release notes')
 
-    expect(await notesOfPrompt($)).toEqual(['The user added goal #1: Write the release notes.'])
+    expect(await notesOfPrompt($)).toEqual([
+      withSentence('The user added goal #1: Write the release notes.'),
+    ])
   })
 })
 
@@ -351,14 +402,17 @@ describe('a board that could not be read at the start', () => {
       session.store.delete(damagedKey)
       await goalsCommand($, 'add Write the release notes')
       expect(await notesOfToolResult($)).toEqual([
-        [
-          '# Open goals',
-          '1. Ship the offline mode',
-          '   #61 - Drafts sync once the connection returns',
-          '2. Add the dark theme',
-          '3. Write the release notes',
-        ].join('\n'),
+        withSentence(
+          [
+            '# Open goals',
+            '1. Ship the offline mode',
+            '   #61 - Drafts sync once the connection returns',
+            '2. Add the dark theme',
+            '3. Write the release notes',
+          ].join('\n'),
+        ),
       ])
+      expect(goalLinesOf(session)).toEqual(['Goals: the 3 open goals were sent to Claude'])
       expect(await notesOfToolResult($)).toEqual([])
     },
   )
@@ -371,6 +425,7 @@ describe('the open goals after the idle minutes', () => {
   const REMINDER = [
     REMINDER_OF_FIRST_GOAL,
     'Goal #2 is not satisfied yet: Add the dark theme.',
+    GOALS_NOT_EXHAUSTIVE,
   ].join('\n\n')
 
   test(
@@ -476,7 +531,7 @@ describe('the open goals after the idle minutes', () => {
       await session.clock.advance(IDLE_TIME)
 
       expect(promptsOfPlugin(session)).toEqual([
-        [REMINDER_OF_FIRST_GOAL, 'The user cleared goal #2.'].join('\n\n'),
+        [REMINDER_OF_FIRST_GOAL, 'The user cleared goal #2.', GOALS_NOT_EXHAUSTIVE].join('\n\n'),
       ])
       expect(await notesOfToolResult($)).toEqual([])
     },
