@@ -1,3 +1,4 @@
+import { expect } from 'claude-code/testing'
 import type { Engine } from 'claude-code/testing'
 import type { PromptOrigin, RenderPropsOf } from 'claude-code'
 
@@ -10,7 +11,7 @@ import { clearanceRecordOf, doneMarkRecordOf, goalRecordOf, todoRecordOf } from 
 import { sessionScope } from './boardScope'
 import { GOALS_COMMAND, GOALS_PANE } from './goalNames'
 
-// The board, the pane and the command shared by the tests of the Goals pane and of /goals.
+// The board, the pane, the presses in it and the command shared by the tests of the goals.
 
 const PANE_PROPS: RenderPropsOf['Pane'] = {
   title: 'Goals',
@@ -115,6 +116,34 @@ export function mountGoalsPane<Surface extends 'terminal' | 'mobile'>(
     requestId: GOALS_PANE,
     props: PANE_PROPS,
   })
+}
+
+type GoalsPane = Awaited<ReturnType<typeof mountGoalsPane<'terminal'>>>
+
+/**
+ * Adds a goal with `text` in the field of `pane` that adds goal `number`. The press rejects with
+ * `NO_FOCUS_IN_KIT` after the goal is saved.
+ */
+export async function addInPane(pane: GoalsPane, number: number, text: string): Promise<void> {
+  await expect(pane.input({ key: `new-goal-${number}`, text })).rejects.toThrow(NO_FOCUS_IN_KIT)
+}
+
+/** Gives goal `number` the text `text` with Edit in `pane`. */
+export async function editInPane(pane: GoalsPane, number: number, text: string): Promise<void> {
+  await expect(pane.press({ key: `edit-${number}` })).rejects.toThrow(NO_FOCUS_IN_KIT)
+  await pane.input({ key: `edit-goal-${number}`, text })
+}
+
+/** Removes the done mark of goal `number` with Unmark in `pane`, without a reason. */
+export async function unmarkInPane(pane: GoalsPane, number: number): Promise<void> {
+  await expect(pane.press({ key: `unmark-${number}` })).rejects.toThrow(NO_FOCUS_IN_KIT)
+  await pane.input({ key: `unmark-reason-${number}`, text: '' })
+}
+
+/** Clears goal `number` with Clear and Yes, clear in `pane`. */
+export async function clearInPane(pane: GoalsPane, number: number): Promise<void> {
+  await pane.press({ key: `clear-${number}` })
+  await pane.press({ key: `confirm-clear-${number}` })
 }
 
 export async function goalsCommand(

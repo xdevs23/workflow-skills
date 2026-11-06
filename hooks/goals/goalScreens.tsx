@@ -34,8 +34,8 @@ import {
   BOARD_LOADING,
   CANCEL_LABEL,
   CLEAR_LABEL,
-  COMMANDS_IN_PLACE_OF_FIELD,
   EDIT_LABEL,
+  FIELDS_IN_TERMINAL_ONLY,
   KEEP_LABEL,
   NEW_GOAL_PLACEHOLDER,
   PANE_TITLE,
@@ -108,7 +108,7 @@ export const drawGoalsPane: MatchedHook<
       {drawsInputFields(e) ? (
         drawNewGoalField($, e, sessionId, board)
       ) : (
-        <Text color="suggestion">{COMMANDS_IN_PLACE_OF_FIELD}</Text>
+        <Text dimColor>{FIELDS_IN_TERMINAL_ONLY}</Text>
       )}
     </Box>
   )

@@ -5,7 +5,7 @@ import { showFailure } from '../failureToast'
 import { loadBoardAtStart } from './goalActions'
 import { GOALS_COMMAND } from './goalNames'
 import { readBoardInState } from './goalState'
-import { GOALS_ARGUMENTS, GOALS_DESCRIPTION, describeNotRegistered } from './goalTexts'
+import { GOALS_DESCRIPTION, describeNotRegistered } from './goalTexts'
 
 /**
  * The name of the call, contained in every error with which the engine rejects it: a refusal by the
@@ -29,7 +29,6 @@ export async function registerGoalsCommand($: CommandRegistrar): Promise<void> {
     .register({
       name: GOALS_COMMAND,
       description: GOALS_DESCRIPTION,
-      argumentHint: GOALS_ARGUMENTS,
       immediate: true,
     })
     .catch((error: unknown) => {

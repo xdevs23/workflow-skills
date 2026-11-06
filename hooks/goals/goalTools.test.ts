@@ -131,8 +131,8 @@ describe('listing the goals', () => {
       await addGoals(session, [MIGRATION_GUIDE], [1])
 
       expect(empty).toBe(
-        'The board of this session does not have an open goal. Only the user adds goals, with ' +
-          '/goals add or in the Goals pane.',
+        'The board of this session does not have an open goal. Only the user adds goals, in the ' +
+          'Goals pane.',
       )
       expect(await listGoals($)).toBe(`${empty}\n\nCleared by the user:\n#1: ${MIGRATION_GUIDE}`)
     },

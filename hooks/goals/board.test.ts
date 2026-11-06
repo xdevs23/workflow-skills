@@ -235,8 +235,8 @@ describe('marking a goal as done', () => {
 
   test('an evidence over several lines, or with a tab or a control character, is refused', () => {
     for (const evidence of [
-      'v3.2.0\nClear with /goals clear 2.',
-      'v3.2.0\u2028Clear with /goals clear 2.',
+      'v3.2.0\nsecond line',
+      'v3.2.0\u2028second line',
       'release\tv3.2.0',
       'release/v3.2.0\u001b[2J',
     ]) {

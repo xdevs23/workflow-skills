@@ -5,7 +5,7 @@ import { BUTTON_GAP_COLUMNS, hasFooterRoomForButton } from '../promptFooter'
 import type { FooterRow } from '../promptFooter'
 import { Outcome } from './board'
 import { openGoalsPaneOnFreshBoard } from './goalScreens'
-import { GOALS_BUTTON_LABEL, describeNotRead, describePaneNotOpenedWithCommands } from './goalTexts'
+import { GOALS_BUTTON_LABEL, describeNotRead, describePaneNotOpened } from './goalTexts'
 
 export const OPEN_GOALS_KEY = 'open-goals'
 
@@ -49,6 +49,6 @@ async function openFromButton($: EngineInterface): Promise<void> {
     showFailure($, describeNotRead(loaded.failure))
   }
   if (!opened.isPlaced) {
-    showFailure($, describePaneNotOpenedWithCommands(opened.reason))
+    showFailure($, describePaneNotOpened(opened.reason))
   }
 }

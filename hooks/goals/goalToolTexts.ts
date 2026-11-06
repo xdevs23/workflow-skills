@@ -3,7 +3,7 @@ import type { HookSubject } from '../hookFailure'
 import { sortedByNumber } from '../numbered'
 import { MAX_EVIDENCE_LENGTH, Refusal, clearedGoalsOf, doneMarkOf, openGoalsOf } from './board'
 import type { ChangeRefused, MarkRefused, UnmarkRefused } from './board'
-import { ADD_WORD, GOALS_COMMAND, LIST_GOALS_TOOL, MARK_GOAL_DONE_TOOL } from './goalNames'
+import { LIST_GOALS_TOOL, MARK_GOAL_DONE_TOOL } from './goalNames'
 import { PANE_TITLE } from './goalTexts'
 import { describeEntry } from './todoEntry'
 import type { TodoEntry } from './todoEntry'
@@ -69,8 +69,8 @@ export const MARK_SUBAGENT_DENIAL =
 export const EVIDENCE_BLANK = `The evidence is blank. ${EVIDENCE_EXAMPLES}`
 
 const NO_OPEN_GOAL =
-  'The board of this session does not have an open goal. Only the user adds goals, with ' +
-  `/${GOALS_COMMAND} ${ADD_WORD} or in the ${PANE_TITLE} pane.`
+  'The board of this session does not have an open goal. Only the user adds goals, in the ' +
+  `${PANE_TITLE} pane.`
 
 const SEE_OPEN_GOALS =
   `Call ${LIST_GOALS_TOOL} to see the open goals and the entries attached to them.`

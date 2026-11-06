@@ -4,8 +4,11 @@ import type { CommandRunResult, EngineInterface, HookFailure, ToolCallResult } f
 export type HookSubject = {
   /** The noun for what the hooks work on, such as "questions" or "goals board". */
   name: string
-  /** The sentence that tells how to see whether a change was saved, before trying again. */
-  checkBeforeRetry: string
+  /**
+   * The sentence that tells how to see whether a change was saved, before trying again. Absent for
+   * hooks that save nothing.
+   */
+  checkBeforeRetry?: string
 }
 
 /** Denies the tool call whose hook failed, with the reason, which goes to the debug log too. */
@@ -72,13 +75,22 @@ function describeFailedUse(subject: HookSubject, reason: string | undefined): st
 }
 
 /**
- * The text for a hook that ran past its time, possibly after it saved a change, with the last
- * failure before that, if any.
+ * The text for a hook that ran past its time, with the last failure before that, if any. For hooks
+ * that save changes, it tells that the change may be saved and how to check that.
  */
 function describeUnfinishedUse(subject: HookSubject, lastFailure: string | undefined): string {
-  return [
-    `The ${subject.name} did not finish in time, so whether the change was saved is unknown.`,
-    ...(lastFailure === undefined ? [] : [`The last failure before that: ${lastFailure}`]),
-    `${subject.checkBeforeRetry} The debug log has this too.`,
-  ].join('\n')
+  const unfinished = `The ${subject.name} did not finish in time`
+  const failureLines =
+    lastFailure === undefined ? [] : [`The last failure before that: ${lastFailure}`]
+  const debugLog = 'The debug log has this too.'
+
+  return (
+    subject.checkBeforeRetry === undefined
+      ? [`${unfinished}.`, ...failureLines, debugLog]
+      : [
+          `${unfinished}, so whether the change was saved is unknown.`,
+          ...failureLines,
+          `${subject.checkBeforeRetry} ${debugLog}`,
+        ]
+  ).join('\n')
 }

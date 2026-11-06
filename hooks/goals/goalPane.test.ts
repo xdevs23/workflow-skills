@@ -2,6 +2,7 @@ import { describe, expect, test } from 'claude-code/testing'
 
 import { PLUGIN } from '../names'
 import { FIRST_SESSION, NO_TIME_LIMIT, startSession } from '../testSupport'
+import { clearanceRecordOf } from './boardRecord'
 import { boardPrefixOf, sessionScope } from './boardScope'
 import { GOALS_PANE } from './goalNames'
 import {
@@ -105,9 +106,8 @@ describe('the Goals pane', () => {
       expect(await pane.find({ type: 'Text', text: MIGRATION_GUIDE.text })).toBeUndefined()
       expect(await pane.find({ type: 'Text', text: 'Clear goal #1?' })).toBeUndefined()
       expect(await pane.find({ type: 'Text', text: ROTATION_CRASH.text })).toBeDefined()
-      expect(await goalsCommand($, 'clear 1')).toBe(
-        'Goal #1 is not open: it is cleared or was never added.',
-      )
+      const clearance = clearanceRecordOf(sessionScope(FIRST_SESSION), MIGRATION_GUIDE, 1000)
+      expect(goalRecordsOf(session)).toEqual(storedBoard().set(clearance.key, clearance.value))
     },
   )
 
@@ -281,20 +281,19 @@ describe('the Goals pane', () => {
   )
 
   test(
-    'on a surface without input fields the pane shows the commands, draws Unmark, and Clear ' +
-      'still works',
+    'on a surface without input fields the pane draws a dim line that points to a terminal in ' +
+      'place of the field and Edit, draws Unmark, and Clear still works',
     NO_TIME_LIMIT,
     async ($, on) => {
       await startSession($, on, { stored: storedBoardWithMark() })
       const pane = await mountGoalsPane($, 'mobile')
 
-      expect(
-        await pane.find({
-          type: 'Text',
-          text:
-            'Add with /goals add <text>. Edit with /goals edit <number> <text>. List with /goals.',
-        }),
-      ).toBeDefined()
+      expect(await pane.find({ key: 'new-goal-4' })).toBeUndefined()
+      const line = await pane.find({
+        type: 'Text',
+        text: 'Add and edit goals in the Goals pane in a terminal.',
+      })
+      expect(line?.props).toEqual({ dimColor: true })
       expect(await pane.find({ key: 'edit-1' })).toBeUndefined()
       expect(await pane.find({ key: 'unmark-2' })).toBeDefined()
       await pane.press({ key: 'clear-1' })

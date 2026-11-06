@@ -22,7 +22,15 @@ import {
 import type { Session } from '../testSupport'
 import { goalRecordOf, todoRecordOf } from './boardRecord'
 import { boardPrefixOf, sessionScope } from './boardScope'
-import { GOALS_COMMAND, LIST_GOALS_TOOL, MARK_GOAL_DONE_TOOL } from './goalNames'
+import { LIST_GOALS_TOOL, MARK_GOAL_DONE_TOOL } from './goalNames'
+import {
+  addInPane,
+  clearInPane,
+  editInPane,
+  goalsCommand,
+  mountGoalsPane,
+  unmarkInPane,
+} from './goalPaneTestSupport'
 
 const OFFLINE_MODE: Goal = {
   id: 'goal-offline-mode',
@@ -63,16 +71,6 @@ function storedBoard(): Map<string, unknown> {
   return new Map(records.map(record => [record.key, record.value]))
 }
 
-/** Runs /goals with `args`, typed by the user at the prompt. */
-async function goalsCommand($: Engine, args: string): Promise<void> {
-  await $.command.run({
-    command: GOALS_COMMAND,
-    args,
-    origin: { kind: 'composer' },
-    presentation: { isFullscreen: true, columns: 120 },
-  })
-}
-
 /** The notes the model reads after the prompt typed by the user. */
 async function notesOfPrompt($: Engine, text = 'go on'): Promise<readonly string[]> {
   return (await typePrompt($, text)).context ?? []
@@ -101,8 +99,9 @@ describe('the open goals after a compaction', () => {
     NO_TIME_LIMIT,
     async ($, on) => {
       const session = await startSession($, on, { stored: storedBoard() })
-      await goalsCommand($, 'clear 2')
-      await goalsCommand($, 'add Write the release notes')
+      const pane = await mountGoalsPane($, 'terminal')
+      await clearInPane(pane, 2)
+      await addInPane(pane, 3, 'Write the release notes')
 
       expect((await compact($)).additionalContext).toEqual([
         withSentence(
@@ -128,8 +127,9 @@ describe('the open goals after a compaction', () => {
     NO_TIME_LIMIT,
     async ($, on) => {
       const session = await startSession($, on, { stored: storedBoard() })
-      await goalsCommand($, 'clear 1')
-      await goalsCommand($, 'clear 2')
+      const pane = await mountGoalsPane($, 'terminal')
+      await clearInPane(pane, 1)
+      await clearInPane(pane, 2)
 
       expect((await compact($)).additionalContext).toEqual([
         'The user cleared goal #1. The user cleared goal #2. No goal is open now.',
@@ -160,7 +160,8 @@ describe('the open goals after a compaction', () => {
     on,
   ) => {
     const session = await startSession($, on, { stored: storedBoard() })
-    await goalsCommand($, 'clear 2')
+    const pane = await mountGoalsPane($, 'terminal')
+    await clearInPane(pane, 2)
     await notesOfToolResult($)
     await compact($)
 
@@ -191,7 +192,8 @@ describe('the goals added or cleared since the model saw the board', () => {
     on,
   ) => {
     const session = await startSession($, on, { stored: storedBoard() })
-    await goalsCommand($, 'add Write the release notes')
+    const pane = await mountGoalsPane($, 'terminal')
+    await addInPane(pane, 3, 'Write the release notes')
 
     expect(await notesOfToolResult($)).toEqual([
       withSentence('The user added goal #3: Write the release notes.'),
@@ -207,7 +209,8 @@ describe('the goals added or cleared since the model saw the board', () => {
     on,
   ) => {
     const session = await startSession($, on, { stored: storedBoard() })
-    await goalsCommand($, 'clear 2')
+    const pane = await mountGoalsPane($, 'terminal')
+    await clearInPane(pane, 2)
 
     expect(await notesOfPrompt($)).toEqual([withSentence('The user cleared goal #2.')])
     expect(goalLinesOf(session)).toEqual(['Goals: goal 2 cleared, sent to Claude'])
@@ -220,7 +223,8 @@ describe('the goals added or cleared since the model saw the board', () => {
     on,
   ) => {
     const session = await startSession($, on, { stored: storedBoard() })
-    await goalsCommand($, 'edit 2 Add the dark theme by Friday')
+    const pane = await mountGoalsPane($, 'terminal')
+    await editInPane(pane, 2, 'Add the dark theme by Friday')
 
     expect(await notesOfToolResult($)).toEqual([
       withSentence('The user edited goal #2: Add the dark theme by Friday.'),
@@ -235,8 +239,9 @@ describe('the goals added or cleared since the model saw the board', () => {
     on,
   ) => {
     const session = await startSession($, on, { stored: storedBoard() })
+    const pane = await mountGoalsPane($, 'terminal')
     await $.tool.call({ tool: MARK_GOAL_DONE_TOOL, goal: 2, evidence: 'release/v4.1.0' })
-    await goalsCommand($, 'unmark 2')
+    await unmarkInPane(pane, 2)
 
     expect(await notesOfToolResult($)).toEqual([
       withSentence('The user removed your done mark from goal #2.'),
@@ -251,7 +256,8 @@ describe('the goals added or cleared since the model saw the board', () => {
     NO_TIME_LIMIT,
     async ($, on) => {
       await startSession($, on, { stored: storedBoard() })
-      await goalsCommand($, 'add Write the release notes')
+      const pane = await mountGoalsPane($, 'terminal')
+      await addInPane(pane, 3, 'Write the release notes')
       const results = await Promise.all([readFile($), readFile($), readFile($)])
 
       expect(results.flatMap(result => result.context ?? [])).toEqual([
@@ -266,7 +272,8 @@ describe('the goals added or cleared since the model saw the board', () => {
     async ($, on) => {
       on('prompt.submit', { text: 'refused prompt' }, () => ({ drop: 'refused by a test hook' }))
       const session = await startSession($, on, { stored: storedBoard() })
-      await goalsCommand($, 'clear 1')
+      const pane = await mountGoalsPane($, 'terminal')
+      await clearInPane(pane, 1)
 
       expect((await typePrompt($, 'refused prompt')).drop).toBe('refused by a test hook')
       expect(goalLinesOf(session)).toEqual([])
@@ -281,7 +288,8 @@ describe('the goals added or cleared since the model saw the board', () => {
     NO_TIME_LIMIT,
     async ($, on) => {
       const session = await startSession($, on, { stored: storedBoard() })
-      await goalsCommand($, 'clear 1')
+      const pane = await mountGoalsPane($, 'terminal')
+      await clearInPane(pane, 1)
 
       expect(await notesOfToolResult($, SUBAGENT)).toEqual([])
       expect(goalLinesOf(session)).toEqual([])
@@ -294,8 +302,9 @@ describe('the goals added or cleared since the model saw the board', () => {
     NO_TIME_LIMIT,
     async ($, on) => {
       await startSession($, on, { stored: storedBoard() })
-      await goalsCommand($, 'clear 1')
-      await goalsCommand($, 'clear 2')
+      const pane = await mountGoalsPane($, 'terminal')
+      await clearInPane(pane, 1)
+      await clearInPane(pane, 2)
 
       expect(await notesOfToolResult($)).toEqual([
         'The user cleared goal #1. The user cleared goal #2. No goal is open now.',
@@ -324,7 +333,8 @@ describe('the goals added or cleared since the model saw the board', () => {
     async ($, on) => {
       on('tool.call', { tool: 'Bash' }, () => ({ deny: 'refused by a test hook' }))
       await startSession($, on, { stored: storedBoard() })
-      await goalsCommand($, 'clear 1')
+      const pane = await mountGoalsPane($, 'terminal')
+      await clearInPane(pane, 1)
 
       expect((await $.tool.call({ tool: 'Bash', command: 'ls' })).context).toBeUndefined()
       expect(await notesOfToolResult($)).toEqual([withSentence('The user cleared goal #1.')])
@@ -336,7 +346,8 @@ describe('the goals added or cleared since the model saw the board', () => {
     NO_TIME_LIMIT,
     async ($, on) => {
       await startSession($, on, { stored: storedBoard() })
-      await goalsCommand($, 'clear 1')
+      const pane = await mountGoalsPane($, 'terminal')
+      await clearInPane(pane, 1)
       const listed = await $.tool.call({ tool: LIST_GOALS_TOOL })
 
       expect(listed.result).toBe(
@@ -351,7 +362,8 @@ describe('the goals added or cleared since the model saw the board', () => {
     NO_TIME_LIMIT,
     async ($, on) => {
       await startSession($, on, { stored: storedBoard() })
-      await goalsCommand($, 'clear 1')
+      const pane = await mountGoalsPane($, 'terminal')
+      await clearInPane(pane, 1)
       const command = await $.prompt.submit({
         text: '/review',
         command: { name: 'review', args: '' },
@@ -372,7 +384,8 @@ describe('the goals added or cleared since the model saw the board', () => {
         throw new Error('failed in a test hook')
       })
       await startSession($, on, { stored: storedBoard() })
-      await goalsCommand($, 'clear 1')
+      const pane = await mountGoalsPane($, 'terminal')
+      await clearInPane(pane, 1)
 
       await expect(typePrompt($, 'failing prompt')).rejects.toThrow()
       expect(await notesOfPrompt($)).toEqual([withSentence('The user cleared goal #1.')])
@@ -385,14 +398,15 @@ describe('the goals added or cleared since the model saw the board', () => {
     async ($, on) => {
       let readDuringPrompt: Promise<readonly string[]> | undefined
       on('prompt.submit', { text: 'refused prompt' }, async () => {
-        await goalsCommand($, 'clear 2')
+        await clearInPane(pane, 2)
         readDuringPrompt = notesOfToolResult($)
         await readDuringPrompt
 
         return { drop: 'refused by a test hook' }
       })
       await startSession($, on, { stored: storedBoard() })
-      await goalsCommand($, 'clear 1')
+      const pane = await mountGoalsPane($, 'terminal')
+      await clearInPane(pane, 1)
       await typePrompt($, 'refused prompt')
 
       expect(await readDuringPrompt).toEqual(['The user cleared goal #2. No goal is open now.'])
@@ -402,8 +416,9 @@ describe('the goals added or cleared since the model saw the board', () => {
 
   test('a goal added after /clear is sent to the model', NO_TIME_LIMIT, async ($, on) => {
     const session = await startSession($, on, { stored: storedBoard() })
+    const pane = await mountGoalsPane($, 'terminal')
     await switchSession($, session, { id: SECOND_SESSION, reason: 'clear' })
-    await goalsCommand($, 'add Write the release notes')
+    await addInPane(pane, 1, 'Write the release notes')
 
     expect(await notesOfPrompt($)).toEqual([
       withSentence('The user added goal #1: Write the release notes.'),
@@ -419,11 +434,13 @@ describe('a board that could not be read at the start', () => {
       const damagedKey = `${boardPrefixOf(sessionScope(FIRST_SESSION))}damaged`
       const stored = storedBoard().set(damagedKey, { text: 'no version' })
       const session = await startSession($, on, { stored })
+      const pane = await mountGoalsPane($, 'terminal')
 
       expect(await notesOfToolResult($)).toEqual([])
       expect(notRemindedToastsOf(session)).toEqual([])
       session.store.delete(damagedKey)
-      await goalsCommand($, 'add Write the release notes')
+      expect(await goalsCommand($, '')).toBeUndefined()
+      await addInPane(pane, 3, 'Write the release notes')
       expect(await notesOfToolResult($)).toEqual([
         withSentence(
           [
@@ -549,9 +566,10 @@ describe('the open goals after the idle minutes', () => {
     NO_TIME_LIMIT,
     async ($, on) => {
       const session = await startSession($, on, { stored: storedBoard() })
+      const pane = await mountGoalsPane($, 'terminal')
       await startTurn($)
       await endTurn($)
-      await goalsCommand($, 'clear 2')
+      await clearInPane(pane, 2)
       await session.clock.advance(IDLE_TIME)
 
       expect(promptsOfPlugin(session)).toEqual([

@@ -11,7 +11,6 @@ import {
   ROTATION_CRASH,
   clearElsewhere,
   goalRecordsOf,
-  goalsCommand,
   mountGoalsPane,
   storedBoard,
   storedBoardWithMark,
@@ -60,7 +59,6 @@ describe('editing a goal in the Goals pane', () => {
 
     expect(await pane.find({ type: 'Text', text: MARK_TEXT })).toBeUndefined()
     expect(await pane.find({ key: 'unmark-2' })).toBeUndefined()
-    expect(await goalsCommand($, 'unmark 2')).toBe('Goal #2 is not marked as done.')
     expect(session.toasts).toEqual([])
   })
 

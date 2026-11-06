@@ -251,7 +251,7 @@ describe('the Goals button in the prompt footer', () => {
   )
 
   test(
-    'a pane that cannot open is shown in a toast with the commands in its place',
+    'a pane that cannot open is shown in a toast with the reason',
     NO_TIME_LIMIT,
     async ($, on) => {
       on('ui.open', { id: GOALS_PANE }, () => ({
@@ -263,9 +263,7 @@ describe('the Goals button in the prompt footer', () => {
       const footer = await mountFooterModes($)
       await footer.press({ key: OPEN_GOALS_KEY })
 
-      expect(session.toasts).toHaveLength(1)
-      expect(session.toasts[0]).toContain('every pane slot is taken')
-      expect(session.toasts[0]).toContain('/goals add <text>')
+      expect(session.toasts).toEqual(['The Goals pane could not open: every pane slot is taken.'])
       expect(session.logs).toContain(session.toasts[0])
     },
   )

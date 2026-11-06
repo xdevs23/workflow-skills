@@ -1,14 +1,6 @@
 import { toolName } from '../names'
 
 export const GOALS_COMMAND = 'goals'
-/** The word after /goals that adds a goal. */
-export const ADD_WORD = 'add'
-/** The word after /goals that gives a goal a new text. */
-export const EDIT_WORD = 'edit'
-/** The word after /goals that removes the done mark of a goal. */
-export const UNMARK_WORD = 'unmark'
-/** The word after /goals that clears a goal. */
-export const CLEAR_WORD = 'clear'
 
 export const GOALS_PANE = 'goals'
 
