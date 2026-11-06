@@ -35,6 +35,8 @@ contributor or agent without history, reads that file first.
   `mcp__workflow-skills__detach_todo`, as `#<number>`, in same turn as deleting entry or as entry
   stops serving goal
 - Do not write goal number into entry
+- Name goal as `G<number>` or `Goal <number>`, e.g. `G10` or `Goal 10`, never as `#<number>`. `#`
+  stands for entry of `TODO.md` only
 
 # Layout of the file
 
