@@ -124,6 +124,16 @@ export type IdleStretch = {
   phase: IdlePhase
 }
 
+/** When the main conversation of a session is next told to check the work delivered by it. */
+export type SelfCheckSchedule = {
+  sessionId: string
+  /**
+   * The next due time after the last message typed by the user, in milliseconds since the epoch.
+   * The due times follow that message at equal intervals.
+   */
+  dueAt: number
+}
+
 declare module 'claude-code' {
   interface PluginState {
     'workflow-skills': {
@@ -156,6 +166,8 @@ declare module 'claude-code' {
        * the idle minutes run, before the first turn and after the turn started by the reminder.
        */
       idleStretch: IdleStretch | null
+      /** When the session is next sent the self-check; null before the user typed in it. */
+      selfCheckSchedule: SelfCheckSchedule | null
     }
   }
 }

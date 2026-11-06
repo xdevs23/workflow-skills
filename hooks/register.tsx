@@ -19,6 +19,7 @@ import {
   withdrawQuestion,
 } from './questionHooks'
 import { drawQuestionBand, drawQuestionPane } from './questionScreens'
+import { registerSelfCheck } from './selfCheck'
 
 /**
  * The matcher of a hook that runs on every event of its kind. The engine refuses a second hook
@@ -46,4 +47,5 @@ export const register: Register = on => {
   on('ui.render', { component: 'AbovePrompt' }, drawQuestionBand)
   on('ui.render', { component: 'Pane', requestId: PANE }, drawQuestionPane)
   registerGoals(on)
+  registerSelfCheck(on)
 }

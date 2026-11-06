@@ -56,6 +56,19 @@ export async function submitWithNote(
 }
 
 /**
+ * Submits the prompt `e` with `note` beside it, and runs `restore` when the prompt entered without
+ * the note or the submit failed.
+ */
+export function submitWithNoteOrRestore(
+  e: Frozen<PromptSubmitInput>,
+  next: Next<'prompt.submit'>,
+  note: string,
+  restore: () => Promise<void>,
+): Promise<Delivery<PromptSubmitResult>> {
+  return sendOrRestore(() => submitWithNote(e, next, note), ({ isAccepted }) => isAccepted, restore)
+}
+
+/**
  * Submits `prompt` as a prompt of the plugin to the session `sessionId`. After /resume or /clear
  * switched to another session, the prompt would go to that session, so it is not submitted then.
  */
@@ -72,4 +85,38 @@ export async function submitToSession(
   return entered.drop === undefined
     ? { outcome: PromptOutcome.Entered }
     : { outcome: PromptOutcome.Dropped, reason: entered.drop }
+}
+
+/**
+ * Submits `prompt` as a prompt of the plugin to the session `sessionId`, and runs `restore` when
+ * the prompt did not enter or the submit failed.
+ */
+export async function submitToSessionOrRestore(
+  $: EngineInterface,
+  sessionId: string,
+  prompt: PromptSubmitArgs,
+  restore: () => Promise<void>,
+): Promise<void> {
+  await sendOrRestore(
+    () => submitToSession($, sessionId, prompt),
+    ({ outcome }) => outcome === PromptOutcome.Entered,
+    restore,
+  )
+}
+
+/** Runs `send`, and runs `restore` when `send` failed or `isSent` is false for its result. */
+async function sendOrRestore<T>(
+  send: () => Promise<T>,
+  isSent: (sent: T) => boolean,
+  restore: () => Promise<void>,
+): Promise<T> {
+  const sent = await send().catch(async (error: unknown) => {
+    await restore()
+    throw error
+  })
+  if (!isSent(sent)) {
+    await restore()
+  }
+
+  return sent
 }

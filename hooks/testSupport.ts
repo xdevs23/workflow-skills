@@ -410,6 +410,11 @@ export async function startProcess(
   await $.classic.SessionStart({ source: started.source, session_id: started.id })
 }
 
+/** Raises the start of the session again, as a reload of the plugin does: the state is kept. */
+export function reloadPlugin($: Engine) {
+  return $.session.start({ cwd: ROOT, surface: 'terminal', isInteractive: true })
+}
+
 export function askWhichDatabase($: Engine) {
   return $.tool.call({
     tool: ASK_TOOL,
@@ -436,6 +441,16 @@ export function readFile($: Engine, agentId?: string) {
     file_path: 'notes.md',
     ...(agentId === undefined ? {} : { agentId }),
   })
+}
+
+/** The notes read by the model in the result returned by the Read tool. */
+export async function notesOfToolResult($: Engine, agentId?: string): Promise<readonly string[]> {
+  return (await readFile($, agentId)).context ?? []
+}
+
+/** The prompts sent by the plugin itself. */
+export function promptsOfPlugin(session: Session): string[] {
+  return session.prompts.filter(prompt => prompt.origin.kind === 'plugin').map(({ text }) => text)
 }
 
 export async function answerByCommand($: Engine, args: string): Promise<string> {

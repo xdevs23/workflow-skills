@@ -25,3 +25,28 @@ export async function ofRunningSession<T extends OfSession>(
 export async function isSessionRunning($: EngineInterface, sessionId: string): Promise<boolean> {
   return (await $.session.id()) === sessionId
 }
+
+/**
+ * Replaces the value of the session `sessionId` with what `change` makes of it, by handing `apply`
+ * the change of the whole value in the state, unless another session runs by now. Returns the value
+ * of that session in the state after it. `change` is called with null when the session has no
+ * value, and a value of another session is left in the state while `change` returns null.
+ */
+export async function updateOfSession<T extends OfSession>(
+  $: EngineInterface,
+  sessionId: string,
+  change: (own: T | null) => T | null,
+  apply: (changeInState: (inState: T | null) => T | null) => Promise<T | null>,
+): Promise<T | null> {
+  if (!(await isSessionRunning($, sessionId))) {
+    return null
+  }
+  const inState = await apply(inState => {
+    const own = ofSession(inState, sessionId)
+    const changed = change(own)
+
+    return own === null && changed === null ? inState : changed
+  })
+
+  return ofSession(inState, sessionId)
+}
