@@ -56,6 +56,9 @@ description: Draw several design drafts for user to choose from
 
 - Render every page in headless browser at real size, animations running. Take screenshot and look
   at it before showing page.
+- Take screenshot of finished state, after every motion on load ended. Headless browser with virtual
+  time can hold CSS animations at first frame while timers advance. Screenshot showing empty chart or
+  bars at zero shows start frame.
 - Check: text does not overflow its box, nothing cut at edge of screen, long value of sample fits or
   is shortened the way product shortens it.
 
