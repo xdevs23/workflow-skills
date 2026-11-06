@@ -20,7 +20,7 @@ import {
 } from './goalReminderHooks'
 import { handleMarkGoalDoneCall, handleUnmarkGoalDoneCall } from './goalMarkTools'
 import { drawGoalsPane } from './goalScreens'
-import { drawGoalsButton } from './goalsButton'
+import { drawGoalsButton, measurePromptHint } from './goalsButton'
 import {
   COMPACTION_SOURCE,
   SWITCHING_SOURCES,
@@ -68,5 +68,6 @@ export function registerGoals(on: On): void {
     denyGoalToolFailure,
   )
   on('ui.render', { component: 'Pane', requestId: GOALS_PANE }, drawGoalsPane)
+  on('ui.render', { component: 'PromptHint' }, measurePromptHint)
   on('ui.render', { component: 'SessionMode' }, drawGoalsButton)
 }
