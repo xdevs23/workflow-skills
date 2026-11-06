@@ -18,9 +18,14 @@ export function isTodoNumber(value: unknown): value is string {
   return typeof value === 'string' && TODO_NUMBER.test(value)
 }
 
+/** The number of a TODO entry as TODO.md writes it: `#41`. */
+export function describeTodoNumber(number: string): string {
+  return `#${number}`
+}
+
 /** The heading of the TODO entry in TODO.md, without the state: `#41 - Title`. */
 export function describeEntry(todo: TodoEntry): string {
-  return `#${todo.number} - ${todo.title}`
+  return `${describeTodoNumber(todo.number)} - ${todo.title}`
 }
 
 /**

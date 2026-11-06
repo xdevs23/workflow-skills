@@ -27,8 +27,8 @@ import { GOALS_SUBJECT } from './goalTexts'
 
 describe('the /goals command', () => {
   test(
-    'where the pane cannot open, /goals lists the open goals with their done marks and their ' +
-      'TODO entries',
+    'where the pane cannot open, /goals lists the open goals with their done marks and the TODO ' +
+      'entries attached to them',
     NO_TIME_LIMIT,
     async ($, on) => {
       // Registered before the session starts, so it runs before the hook that places every pane.
@@ -40,10 +40,10 @@ describe('the /goals command', () => {
       expect(await goalsCommand($, '')).toBe(
         [
           'The Goals pane could not open: no-surface.',
-          `#1 ${MIGRATION_GUIDE.text}`,
+          `Goal 1: ${MIGRATION_GUIDE.text}`,
           '  #38 - Guide covers the schema changes',
           '  #234 - Guide lists the removed flags',
-          `#2 ${ROTATION_CRASH.text}`,
+          `Goal 2: ${ROTATION_CRASH.text}`,
           '  Marked done by Claude: release/v1.45.3',
           '  #41 - Rotation keeps the open form',
         ].join('\n'),

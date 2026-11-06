@@ -66,7 +66,7 @@ export const UNREADABLE_STORE = 'the store file is not readable'
 
 export const NOT_READ = 'The goals of this session could not be read. '
 
-/** The records of a board of FIRST_SESSION with #1 and #2 open and #3 cleared. */
+/** The records of a board of FIRST_SESSION with goals 1 and 2 open and goal 3 cleared. */
 export function storedBoard(): Map<string, unknown> {
   const scope = sessionScope(FIRST_SESSION)
   const records = [
@@ -89,7 +89,7 @@ export const DONE_MARK = { evidence: 'release/v1.45.3', markedAt: 300 }
 
 export const MARK_TEXT = 'Marked done by Claude: release/v1.45.3'
 
-/** The records of `storedBoard` with goal #2 marked as done by the model. */
+/** The records of `storedBoard` with goal 2 marked as done by the model. */
 export function storedBoardWithMark(): Map<string, unknown> {
   const mark = doneMarkRecordOf(sessionScope(FIRST_SESSION), {
     ...ROTATION_CRASH,

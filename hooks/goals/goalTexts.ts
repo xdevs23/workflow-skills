@@ -33,8 +33,16 @@ export const GOALS_DESCRIPTION = `Open the goals of this session in the ${PANE_T
 /** The goals as written in the texts about a failed hook of /goals, which saves nothing. */
 export const GOALS_SUBJECT: HookSubject = { name: 'goals' }
 
+/**
+ * The name of goal `number` in every text, such as "Goal 2". A hash sign before a number names an
+ * entry of TODO.md.
+ */
+export function nameGoal(number: number): string {
+  return `Goal ${number}`
+}
+
 export function describeClearQuestion(goal: Goal): string {
-  return `Clear goal #${goal.number}?`
+  return `Clear ${nameGoal(goal.number)}?`
 }
 
 export function describePaneNotOpened(reason: string): string {
@@ -48,13 +56,18 @@ export function describeNotRegistered(reason: string): string {
   )
 }
 
+/** The goal as one line: its number, then its text. */
+export function describeGoal(goal: Goal): string {
+  return `${nameGoal(goal.number)}: ${goal.text}`
+}
+
 /** The open goals, each with its done mark and its TODO entries below it, one to a line. */
 export function describeOpenGoals(open: readonly Goal[]): string[] {
   return open.flatMap(goal => {
     const mark = doneMarkOf(goal)
 
     return [
-      `#${goal.number} ${goal.text}`,
+      describeGoal(goal),
       ...(mark === undefined ? [] : [`  ${describeDoneMarkForPerson(mark)}`]),
       ...goal.todos.map(todo => `  ${describeEntry(todo)}`),
     ]
@@ -68,12 +81,12 @@ export function describeDoneMarkForPerson(mark: DoneMark): string {
 
 /** What a press in the Goals pane shows for a goal cleared since the pane drew it. */
 export function describeNoLongerOpen(goal: Goal): string {
-  return `Goal #${goal.number} is no longer open.`
+  return `${nameGoal(goal.number)} is no longer open.`
 }
 
 /** What a press of Unmark shows for a done mark removed or replaced since the pane drew it. */
 export function describeMarkNoLongerShown(goal: Goal, shown: DoneMark): string {
-  return `Goal #${goal.number} is no longer marked done with ${shown.evidence}.`
+  return `${nameGoal(goal.number)} is no longer marked done with ${shown.evidence}.`
 }
 
 export function describeNotAdded(failed: Failed): string {
@@ -115,9 +128,9 @@ function describeField(target: FocusTarget): string {
     case PaneField.NewGoal:
       return 'the field that adds a goal'
     case PaneField.GoalText:
-      return `the field that edits goal #${target.goal.number}`
+      return `the field that edits ${nameGoal(target.goal.number)}`
     case PaneField.UnmarkReason:
-      return `the field for the reason to unmark goal #${target.goal.number}`
+      return `the field for the reason to unmark ${nameGoal(target.goal.number)}`
   }
 }
 

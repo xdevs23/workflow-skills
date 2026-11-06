@@ -1,8 +1,9 @@
 import type { Board, DoneMark, Goal } from '../../types'
 import { sortedByNumber } from '../numbered'
 import { ChangeKind, MarkRemover, changesBetween, doneMarkOf, openGoalsOf } from './board'
-import { PANE_TITLE } from './goalTexts'
+import { PANE_TITLE, nameGoal } from './goalTexts'
 import { GoalsReader, describeDoneMarkForModel } from './goalToolTexts'
+import { describeEntry, describeTodoNumber } from './todoEntry'
 
 /**
  * A text that gives the goals to the model, and the line in the transcript that shows it was sent.
@@ -92,16 +93,18 @@ function describeGoalWithTodos(goal: Goal): string[] {
   return [
     `${label}${goal.text}`,
     ...(mark === undefined ? [] : [`${indent}${describeMarkToMainConversation(mark)}`]),
-    ...goal.todos.map(todo => `${indent}#${todo.number} - ${todo.title}`),
+    ...goal.todos.map(todo => `${indent}${describeEntry(todo)}`),
   ]
 }
 
 function describeUnsatisfiedGoal(goal: Goal): string {
   const mark = doneMarkOf(goal)
-  const attached = goal.todos.map(todo => `#${todo.number} (${todo.title})`).join(', ')
+  const attached = goal.todos
+    .map(todo => `${describeTodoNumber(todo.number)} (${todo.title})`)
+    .join(', ')
 
   return [
-    `Goal #${goal.number} is not satisfied yet: ${asSentence(goal.text)}`,
+    `${nameGoal(goal.number)} is not satisfied yet: ${asSentence(goal.text)}`,
     ...(mark === undefined ? [] : [asSentence(describeMarkToMainConversation(mark))]),
     ...(goal.todos.length === 0 ? [] : [`Attached: ${attached}.`]),
   ].join(' ')
@@ -116,26 +119,26 @@ const CHANGE_TEXTS: Record<
   { describeNote: (goal: Goal) => string; describeInLine: (goal: Goal) => string }
 > = {
   [ChangeKind.Added]: {
-    describeNote: goal => `The user added goal #${goal.number}: ${asSentence(goal.text)}`,
-    describeInLine: goal => `goal ${goal.number} added`,
+    describeNote: goal => `The user added ${nameGoal(goal.number)}: ${asSentence(goal.text)}`,
+    describeInLine: goal => `${nameGoal(goal.number)} added`,
   },
   [ChangeKind.Edited]: {
-    describeNote: goal => `The user edited goal #${goal.number}: ${asSentence(goal.text)}`,
-    describeInLine: goal => `goal ${goal.number} edited`,
+    describeNote: goal => `The user edited ${nameGoal(goal.number)}: ${asSentence(goal.text)}`,
+    describeInLine: goal => `${nameGoal(goal.number)} edited`,
   },
   [ChangeKind.MarkRemoved]: {
     describeNote: describeMarkRemovedNote,
-    describeInLine: goal => `goal ${goal.number} unmarked`,
+    describeInLine: goal => `${nameGoal(goal.number)} unmarked`,
   },
   [ChangeKind.Cleared]: {
-    describeNote: goal => `The user cleared goal #${goal.number}.`,
-    describeInLine: goal => `goal ${goal.number} cleared`,
+    describeNote: goal => `The user cleared ${nameGoal(goal.number)}.`,
+    describeInLine: goal => `${nameGoal(goal.number)} cleared`,
   },
 }
 
 /** The note on a done mark removed by the user, with the reason the user gave, if any. */
 function describeMarkRemovedNote(goal: Goal): string {
-  const removed = `The user removed your done mark from goal #${goal.number}`
+  const removed = `The user removed your done mark from ${nameGoal(goal.number)}`
   const removal = goal.markRemoval
   const reason = removal?.removedBy === MarkRemover.User ? removal.reason : undefined
 
@@ -144,7 +147,7 @@ function describeMarkRemovedNote(goal: Goal): string {
     : `${removed}, with the reason: ${asSentence(reason)}`
 }
 
-/** Joins the changes in a transcript line, as in "goal 2 cleared and goal 3 added". */
+/** Joins the changes in a transcript line, as in "Goal 2 cleared and Goal 3 added". */
 const CHANGES_IN_LINE = new Intl.ListFormat('en', { type: 'conjunction' })
 
 /** A change sent to the model. */

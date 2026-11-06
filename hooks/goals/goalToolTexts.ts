@@ -4,8 +4,8 @@ import { sortedByNumber } from '../numbered'
 import { MAX_EVIDENCE_LENGTH, Refusal, clearedGoalsOf, doneMarkOf, openGoalsOf } from './board'
 import type { ChangeRefused, MarkRefused, UnmarkRefused } from './board'
 import { LIST_GOALS_TOOL, MARK_GOAL_DONE_TOOL } from './goalNames'
-import { PANE_TITLE } from './goalTexts'
-import { describeEntry } from './todoEntry'
+import { PANE_TITLE, describeGoal, nameGoal } from './goalTexts'
+import { describeEntry, describeTodoNumber } from './todoEntry'
 import type { TodoEntry } from './todoEntry'
 
 // The texts of the goals read by the model, with the tools they name.
@@ -108,19 +108,19 @@ export function describeDoneMarkForModel(mark: DoneMark, reader: GoalsReader): s
 }
 
 export function describeAttached(goal: number, todo: TodoEntry): string {
-  return `Attached ${describeEntry(todo)} to goal #${goal}.`
+  return `Attached ${describeEntry(todo)} to ${nameGoal(goal)}.`
 }
 
 export function describeDetached(goal: number, todoNumber: string): string {
-  return `Detached #${todoNumber} from goal #${goal}.`
+  return `Detached ${describeTodoNumber(todoNumber)} from ${nameGoal(goal)}.`
 }
 
 export function describeMarkedDone(goal: number): string {
-  return `Marked goal #${goal} as done. It stays open until the user clears it.`
+  return `Marked ${nameGoal(goal)} as done. It is open until the user clears it.`
 }
 
 export function describeMarkRemovedForModel(goal: number): string {
-  return `Removed your done mark from goal #${goal}.`
+  return `Removed your done mark from ${nameGoal(goal)}.`
 }
 
 /** What the model is told of a refused change of a goal by a tool, by the cause. */
@@ -129,11 +129,14 @@ export function describeRefusal(refused: ChangeRefused | MarkRefused | UnmarkRef
     case Refusal.GoalNotOpen:
       return describeGoalNotOpen(refused.goal)
     case Refusal.TodoNotAttached:
-      return `#${refused.todo} is not attached to goal #${refused.goal}. ${SEE_OPEN_GOALS}`
+      return (
+        `${describeTodoNumber(refused.todo)} is not attached to ${nameGoal(refused.goal)}. ` +
+        SEE_OPEN_GOALS
+      )
     case Refusal.NotTodoNumber:
       return (
-        `#${refused.todo} is not the number of an entry in TODO.md, which has numbers such as ` +
-        '#12 or #12.3. Give the entry as its heading in TODO.md shows it.'
+        `${describeTodoNumber(refused.todo)} is not the number of an entry in TODO.md, which ` +
+        'has numbers such as #12 or #12.3. Give the entry as its heading in TODO.md shows it.'
       )
     case Refusal.BlankTitle:
       return (
@@ -150,12 +153,12 @@ export function describeRefusal(refused: ChangeRefused | MarkRefused | UnmarkRef
     case Refusal.EvidenceTooLong:
       return `Give the evidence in at most ${MAX_EVIDENCE_LENGTH} characters. ${EVIDENCE_EXAMPLES}`
     case Refusal.NotMarkedDone:
-      return `Goal #${refused.goal} is not marked as done. ${SEE_OPEN_GOALS}`
+      return `${nameGoal(refused.goal)} is not marked as done. ${SEE_OPEN_GOALS}`
   }
 }
 
 function describeGoalNotOpen(goal: number): string {
-  return `Goal #${goal} is not open on the board of this session. ${SEE_OPEN_GOALS}`
+  return `${nameGoal(goal)} is not open on the board of this session. ${SEE_OPEN_GOALS}`
 }
 
 /**
@@ -183,8 +186,4 @@ function describeOpenGoal(goal: Goal, reader: GoalsReader): string {
     ...(mark === undefined ? [] : [describeDoneMarkForModel(mark, reader)]),
     ...(goal.todos.length === 0 ? [] : [`Attached: ${attached}`]),
   ].join('\n')
-}
-
-function describeGoal(goal: Goal): string {
-  return `#${goal.number}: ${goal.text}`
 }

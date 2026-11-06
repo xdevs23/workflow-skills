@@ -63,7 +63,7 @@ function goalOf(board: Board, number: number): Goal | undefined {
 }
 
 describe('goal numbers', () => {
-  test('the first goal of a board is #1', () => {
+  test('the first goal of a board is goal 1', () => {
     const added = addGoal(EMPTY_BOARD, { id: 'a', text: 'Write the migration guide' }, 100)
 
     expect(boardOf(added).goals).toEqual([
@@ -71,7 +71,7 @@ describe('goal numbers', () => {
     ])
   })
 
-  test('a goal added after #2 and #3 were cleared gets #4', () => {
+  test('a goal added after goals 2 and 3 were cleared gets goal 4', () => {
     const cleared = boardOf(clearGoal(boardOf(clearGoal(THREE_GOALS, 2, 400)), 3, 410))
     const added = boardOf(addGoal(cleared, { id: 'listing', text: 'Store listing' }, 500))
 

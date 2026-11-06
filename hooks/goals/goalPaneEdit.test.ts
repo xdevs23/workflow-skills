@@ -73,7 +73,7 @@ describe('editing a goal in the Goals pane', () => {
 
       expect(await pane.find({ key: 'edit-goal-1' })).toBeUndefined()
       expect(await pane.find({ type: 'Text', text: MIGRATION_GUIDE.text })).toBeDefined()
-      expect(await pane.find({ type: 'Text', text: 'Clear goal #2?' })).toBeDefined()
+      expect(await pane.find({ type: 'Text', text: 'Clear Goal 2?' })).toBeDefined()
     },
   )
 
@@ -142,7 +142,7 @@ describe('editing a goal in the Goals pane', () => {
       clearElsewhere(session, ROTATION_CRASH)
       await pane.press({ key: 'edit-2' })
 
-      expect(session.toasts).toEqual(['Goal #1 is no longer open.', 'Goal #2 is no longer open.'])
+      expect(session.toasts).toEqual(['Goal 1 is no longer open.', 'Goal 2 is no longer open.'])
       expect(await pane.find({ key: 'edit-goal-1' })).toBeUndefined()
       expect(await pane.find({ type: 'Text', text: ROTATION_CRASH.text })).toBeUndefined()
       expect(await pane.find({ type: 'Text', text: MIGRATION_GUIDE.text })).toBeUndefined()

@@ -84,7 +84,7 @@ describe('the open goals after a compaction', () => {
     )
   })
 
-  test('indents the TODO entries of goal #12 to its text', () => {
+  test('indents the TODO entries attached to goal 12 below its text', () => {
     const board = { goals: [{ ...HELP_PAGES, number: 12 }] }
 
     expect(describeOpenGoalsAfterCompaction(board)).toBe(
@@ -107,11 +107,11 @@ describe('the open goals after idle minutes', () => {
     expect(describeOpenGoalsAfterIdle(THREE_GOALS)).toBe(
       [
         IDLE_WITH_UNFINISHED_GOALS,
-        'Goal #1 is not satisfied yet: Ship the invoice export. Attached: #57 (Export names the ' +
+        'Goal 1 is not satisfied yet: Ship the invoice export. Attached: #57 (Export names the ' +
           'currency), #12 (Export writes one file per month).',
-        'Goal #2 is not satisfied yet: Translate the help pages. Attached: #20.1 (Help pages ' +
+        'Goal 2 is not satisfied yet: Translate the help pages. Attached: #20.1 (Help pages ' +
           'load the chosen language).',
-        'Goal #3 is not satisfied yet: Speed up the nightly build.',
+        'Goal 3 is not satisfied yet: Speed up the nightly build.',
       ].join('\n\n'),
     )
   })
@@ -127,10 +127,10 @@ describe('the open goals after idle minutes', () => {
 
     expect(describeOpenGoalsAfterIdle(board)).toBe(
       [
-        'Goal #1 is not satisfied yet: Ship the invoice export. Marked as done by you: ' +
+        'Goal 1 is not satisfied yet: Ship the invoice export. Marked as done by you: ' +
           'release/v2.4.0. Attached: #57 (Export names the currency), #12 (Export writes one ' +
           'file per month).',
-        'Goal #3 is not satisfied yet: Speed up the nightly build. Marked as done by you: ' +
+        'Goal 3 is not satisfied yet: Speed up the nightly build. Marked as done by you: ' +
           'release/v2.4.0.',
       ].join('\n\n'),
     )
@@ -142,7 +142,7 @@ describe('the open goals after idle minutes', () => {
     expect(describeOpenGoalsAfterIdle(board)).toBe(
       [
         IDLE_WITH_UNFINISHED_GOALS,
-        'Goal #3 is not satisfied yet: Is the nightly build fast enough?',
+        'Goal 3 is not satisfied yet: Is the nightly build fast enough?',
       ].join('\n\n'),
     )
   })
@@ -158,8 +158,8 @@ describe('the changes to the board since the model saw it', () => {
     const seen = { goals: [INVOICE_EXPORT, HELP_PAGES] }
 
     expect(describeGoalChangesSent(seen, THREE_GOALS)).toEqual({
-      text: 'The user added goal #3: Speed up the nightly build.',
-      line: 'Goals: goal 3 added, sent to Claude',
+      text: 'The user added Goal 3: Speed up the nightly build.',
+      line: 'Goals: Goal 3 added, sent to Claude',
     })
   })
 
@@ -167,8 +167,8 @@ describe('the changes to the board since the model saw it', () => {
     const now = { goals: [NIGHTLY_BUILD, INVOICE_EXPORT, cleared(HELP_PAGES)] }
 
     expect(describeGoalChangesSent(THREE_GOALS, now)).toEqual({
-      text: 'The user cleared goal #2.',
-      line: 'Goals: goal 2 cleared, sent to Claude',
+      text: 'The user cleared Goal 2.',
+      line: 'Goals: Goal 2 cleared, sent to Claude',
     })
   })
 
@@ -177,8 +177,8 @@ describe('the changes to the board since the model saw it', () => {
     const now = { goals: [NIGHTLY_BUILD, INVOICE_EXPORT, edited] }
 
     expect(describeGoalChangesSent(THREE_GOALS, now)).toEqual({
-      text: 'The user edited goal #2: Translate the help.',
-      line: 'Goals: goal 2 edited, sent to Claude',
+      text: 'The user edited Goal 2: Translate the help.',
+      line: 'Goals: Goal 2 edited, sent to Claude',
     })
   })
 
@@ -189,9 +189,9 @@ describe('the changes to the board since the model saw it', () => {
 
     expect(describeGoalChangesSent(seen, now)).toEqual({
       text:
-        'The user edited goal #2: Translate the help. The user removed your done mark from ' +
-        'goal #2.',
-      line: 'Goals: goal 2 edited and goal 2 unmarked, sent to Claude',
+        'The user edited Goal 2: Translate the help. The user removed your done mark from ' +
+        'Goal 2.',
+      line: 'Goals: Goal 2 edited and Goal 2 unmarked, sent to Claude',
     })
   })
 
@@ -206,8 +206,8 @@ describe('the changes to the board since the model saw it', () => {
     }
 
     expect(describeGoalChangesSent(seen, now)).toEqual({
-      text: 'The user removed your done mark from goal #1.',
-      line: 'Goals: goal 1 unmarked, sent to Claude',
+      text: 'The user removed your done mark from Goal 1.',
+      line: 'Goals: Goal 1 unmarked, sent to Claude',
     })
     expect(describeGoalChangesSent(now, now)).toBeUndefined()
   })
@@ -221,9 +221,9 @@ describe('the changes to the board since the model saw it', () => {
 
     expect(describeGoalChangesSent(seen, { goals: [withReason] })).toEqual({
       text:
-        'The user removed your done mark from goal #1, with the reason: The export misses the ' +
+        'The user removed your done mark from Goal 1, with the reason: The export misses the ' +
         'March invoices.',
-      line: 'Goals: goal 1 unmarked, sent to Claude',
+      line: 'Goals: Goal 1 unmarked, sent to Claude',
     })
   })
 
@@ -236,8 +236,8 @@ describe('the changes to the board since the model saw it', () => {
     const seen = { goals: [markedDone(INVOICE_EXPORT)] }
 
     expect(describeGoalChangesSent(seen, { goals: [markedAgain] })).toEqual({
-      text: 'The user removed your done mark from goal #1.',
-      line: 'Goals: goal 1 unmarked, sent to Claude',
+      text: 'The user removed your done mark from Goal 1.',
+      line: 'Goals: Goal 1 unmarked, sent to Claude',
     })
   })
 
@@ -245,8 +245,8 @@ describe('the changes to the board since the model saw it', () => {
     const seen = { goals: [cleared(NIGHTLY_BUILD), cleared(INVOICE_EXPORT), HELP_PAGES] }
 
     expect(describeGoalChangesSent(seen, ALL_CLEARED)).toEqual({
-      text: 'The user cleared goal #2. No goal is open now.',
-      line: 'Goals: goal 2 cleared, sent to Claude',
+      text: 'The user cleared Goal 2. No goal is open now.',
+      line: 'Goals: Goal 2 cleared, sent to Claude',
     })
   })
 
@@ -256,18 +256,18 @@ describe('the changes to the board since the model saw it', () => {
 
     expect(describeGoalChangesSent(seen, now)).toEqual({
       text:
-        'The user cleared goal #1. The user added goal #2: Translate the help pages. ' +
-        'The user added goal #3: Speed up the nightly build.',
-      line: 'Goals: goal 1 cleared, goal 2 added, and goal 3 added, sent to Claude',
+        'The user cleared Goal 1. The user added Goal 2: Translate the help pages. ' +
+        'The user added Goal 3: Speed up the nightly build.',
+      line: 'Goals: Goal 1 cleared, Goal 2 added, and Goal 3 added, sent to Claude',
     })
   })
 
   test('shows a goal added and cleared since as both', () => {
     expect(describeGoalChangesSent(EMPTY_BOARD, { goals: [cleared(INVOICE_EXPORT)] })).toEqual({
       text:
-        'The user added goal #1: Ship the invoice export. The user cleared goal #1. ' +
+        'The user added Goal 1: Ship the invoice export. The user cleared Goal 1. ' +
         'No goal is open now.',
-      line: 'Goals: goal 1 added and goal 1 cleared, sent to Claude',
+      line: 'Goals: Goal 1 added and Goal 1 cleared, sent to Claude',
     })
   })
 
@@ -301,12 +301,12 @@ describe('the open goals sent with the changes since the model saw the board', (
     expect(describeOpenGoalsSent(now, seen, describeOpenGoalsAfterIdle)).toEqual({
       text: [
         IDLE_WITH_UNFINISHED_GOALS,
-        'Goal #1 is not satisfied yet: Ship the invoice export. Attached: #57 (Export names the ' +
+        'Goal 1 is not satisfied yet: Ship the invoice export. Attached: #57 (Export names the ' +
           'currency), #12 (Export writes one file per month).',
-        'Goal #3 is not satisfied yet: Speed up the nightly build.',
-        'The user cleared goal #2. The user added goal #3: Speed up the nightly build.',
+        'Goal 3 is not satisfied yet: Speed up the nightly build.',
+        'The user cleared Goal 2. The user added Goal 3: Speed up the nightly build.',
       ].join('\n\n'),
-      line: 'Goals: the 2 open goals were sent to Claude, with goal 2 cleared and goal 3 added',
+      line: 'Goals: the 2 open goals were sent to Claude, with Goal 2 cleared and Goal 3 added',
     })
   })
 
@@ -316,8 +316,8 @@ describe('the open goals sent with the changes since the model saw the board', (
     expect(
       describeOpenGoalsSent({ goals: [cleared(INVOICE_EXPORT)] }, seen, describeOpenGoalsAfterIdle),
     ).toEqual({
-      text: 'The user cleared goal #1. No goal is open now.',
-      line: 'Goals: goal 1 cleared, sent to Claude',
+      text: 'The user cleared Goal 1. No goal is open now.',
+      line: 'Goals: Goal 1 cleared, sent to Claude',
     })
   })
 

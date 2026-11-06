@@ -106,14 +106,14 @@ describe('listing the goals', () => {
 
       expect(await listGoals($)).toBe(
         [
-          `#1: ${MIGRATION_GUIDE}`,
+          `Goal 1: ${MIGRATION_GUIDE}`,
           'Attached: #38 - Guide covers the schema, #234 - Guide lists the flags',
-          `#3: ${STORE_LISTING}`,
+          `Goal 3: ${STORE_LISTING}`,
           'Attached: #45 - Listing has screenshots',
           '',
           'Cleared by the user:',
-          `#2: ${ROTATION_CRASH}`,
-          '#4: Ship the tablet layout',
+          `Goal 2: ${ROTATION_CRASH}`,
+          'Goal 4: Ship the tablet layout',
           '',
           GOALS_NOT_EXHAUSTIVE,
         ].join('\n'),
@@ -134,7 +134,9 @@ describe('listing the goals', () => {
         'The board of this session does not have an open goal. Only the user adds goals, in the ' +
           'Goals pane.',
       )
-      expect(await listGoals($)).toBe(`${empty}\n\nCleared by the user:\n#1: ${MIGRATION_GUIDE}`)
+      expect(await listGoals($)).toBe(
+        `${empty}\n\nCleared by the user:\nGoal 1: ${MIGRATION_GUIDE}`,
+      )
     },
   )
 
@@ -165,10 +167,10 @@ describe('listing the goals', () => {
 
       expect(await listGoals($)).toBe(
         [
-          `#1: ${MIGRATION_GUIDE}`,
+          `Goal 1: ${MIGRATION_GUIDE}`,
           'Marked as done by you: release/v2.4.0',
           'Attached: #38 - Guide covers the schema',
-          `#2: ${ROTATION_CRASH}`,
+          `Goal 2: ${ROTATION_CRASH}`,
           '',
           GOALS_NOT_EXHAUSTIVE,
         ].join('\n'),
@@ -187,7 +189,7 @@ describe('listing the goals', () => {
 
       const listed = await listGoals($, SUBAGENT)
       expect(listed).toBe(
-        `#1: ${MIGRATION_GUIDE}\n#2: ${ROTATION_CRASH}\nAttached: ${ROTATION_ENTRY}`,
+        `Goal 1: ${MIGRATION_GUIDE}\nGoal 2: ${ROTATION_CRASH}\nAttached: ${ROTATION_ENTRY}`,
       )
       expect(await listGoals($)).toBe(`${listed}\n\n${GOALS_NOT_EXHAUSTIVE}`)
     },
@@ -204,12 +206,12 @@ describe('attaching and detaching a TODO entry', () => {
 
       const attached = await attachTodo($, { goal: 2, todo: ROTATION_ENTRY })
       expect(attached.result).toBe(
-        `Attached ${ROTATION_ENTRY} to goal #2.\n\n${GOALS_NOT_EXHAUSTIVE}`,
+        `Attached ${ROTATION_ENTRY} to Goal 2.\n\n${GOALS_NOT_EXHAUSTIVE}`,
       )
-      expect(await listGoals($)).toContain(`#2: ${ROTATION_CRASH}\nAttached: ${ROTATION_ENTRY}`)
+      expect(await listGoals($)).toContain(`Goal 2: ${ROTATION_CRASH}\nAttached: ${ROTATION_ENTRY}`)
 
       const detached = await detachTodo($, { goal: 2, todo: '#41' })
-      expect(detached.result).toBe(`Detached #41 from goal #2.\n\n${GOALS_NOT_EXHAUSTIVE}`)
+      expect(detached.result).toBe(`Detached #41 from Goal 2.\n\n${GOALS_NOT_EXHAUSTIVE}`)
       expect(await listGoals($)).not.toContain('#41')
     },
   )
@@ -248,7 +250,7 @@ describe('attaching and detaching a TODO entry', () => {
       const stored = [...session.store]
 
       expect((await attachTodo($, { goal: 1, todo: ROTATION_ENTRY })).result).toBe(
-        `Attached ${ROTATION_ENTRY} to goal #1.\n\n${GOALS_NOT_EXHAUSTIVE}`,
+        `Attached ${ROTATION_ENTRY} to Goal 1.\n\n${GOALS_NOT_EXHAUSTIVE}`,
       )
       expect([...session.store]).toEqual(stored)
       expect(await listGoals($)).toContain(`Attached: ${ROTATION_ENTRY}`)
@@ -265,7 +267,7 @@ describe('attaching and detaching a TODO entry', () => {
       await attachTodo($, { goal: 2, todo: ROTATION_ENTRY })
 
       expect((await detachTodo($, { goal: 1, todo: '#41' })).deny).toBe(
-        `#41 is not attached to goal #1. ${SEE_OPEN_GOALS}`,
+        `#41 is not attached to Goal 1. ${SEE_OPEN_GOALS}`,
       )
       expect(await listGoals($)).toContain(`Attached: ${ROTATION_ENTRY}`)
     },
@@ -390,7 +392,7 @@ describe('a goal that is not open', () => {
       await addGoals(session, [MIGRATION_GUIDE, ROTATION_CRASH], [2])
 
       for (const goal of [2, 7]) {
-        const denial = `Goal #${goal} is not open on the board of this session. ${SEE_OPEN_GOALS}`
+        const denial = `Goal ${goal} is not open on the board of this session. ${SEE_OPEN_GOALS}`
         expect((await attachTodo($, { goal, todo: ROTATION_ENTRY })).deny).toBe(denial)
         expect((await detachTodo($, { goal, todo: '#41' })).deny).toBe(denial)
       }

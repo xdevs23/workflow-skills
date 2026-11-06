@@ -90,21 +90,21 @@ describe('the Goals pane', () => {
       const pane = await mountGoalsPane($, 'terminal')
       await pane.press({ key: 'clear-2' })
 
-      expect(await pane.find({ type: 'Text', text: 'Clear goal #2?' })).toBeDefined()
+      expect(await pane.find({ type: 'Text', text: 'Clear Goal 2?' })).toBeDefined()
       expect(await pane.find({ key: 'clear-2' })).toBeUndefined()
       await pane.press({ key: 'keep-2' })
-      expect(await pane.find({ type: 'Text', text: 'Clear goal #2?' })).toBeUndefined()
+      expect(await pane.find({ type: 'Text', text: 'Clear Goal 2?' })).toBeUndefined()
       expect(await pane.find({ key: 'clear-2' })).toBeDefined()
 
       await pane.press({ key: 'clear-2' })
       await pane.press({ key: 'clear-1' })
-      expect(await pane.find({ type: 'Text', text: 'Clear goal #2?' })).toBeUndefined()
-      expect(await pane.find({ type: 'Text', text: 'Clear goal #1?' })).toBeDefined()
+      expect(await pane.find({ type: 'Text', text: 'Clear Goal 2?' })).toBeUndefined()
+      expect(await pane.find({ type: 'Text', text: 'Clear Goal 1?' })).toBeDefined()
       expect(goalRecordsOf(session)).toEqual(storedBoard())
 
       await pane.press({ key: 'confirm-clear-1' })
       expect(await pane.find({ type: 'Text', text: MIGRATION_GUIDE.text })).toBeUndefined()
-      expect(await pane.find({ type: 'Text', text: 'Clear goal #1?' })).toBeUndefined()
+      expect(await pane.find({ type: 'Text', text: 'Clear Goal 1?' })).toBeUndefined()
       expect(await pane.find({ type: 'Text', text: ROTATION_CRASH.text })).toBeDefined()
       const clearance = clearanceRecordOf(sessionScope(FIRST_SESSION), MIGRATION_GUIDE, 1000)
       expect(goalRecordsOf(session)).toEqual(storedBoard().set(clearance.key, clearance.value))
@@ -138,7 +138,7 @@ describe('the Goals pane', () => {
       await Promise.all([pane.press({ key: 'confirm-clear-2' }), pane.press({ key: 'clear-1' })])
 
       expect(await pane.find({ type: 'Text', text: ROTATION_CRASH.text })).toBeUndefined()
-      expect(await pane.find({ type: 'Text', text: 'Clear goal #1?' })).toBeDefined()
+      expect(await pane.find({ type: 'Text', text: 'Clear Goal 1?' })).toBeDefined()
     },
   )
 
@@ -151,9 +151,9 @@ describe('the Goals pane', () => {
       clearElsewhere(session, ROTATION_CRASH)
       await pane.press({ key: 'clear-2' })
 
-      expect(session.toasts).toEqual(['Goal #2 is no longer open.'])
+      expect(session.toasts).toEqual(['Goal 2 is no longer open.'])
       expect(await pane.find({ type: 'Text', text: ROTATION_CRASH.text })).toBeUndefined()
-      expect(await pane.find({ type: 'Text', text: 'Clear goal #2?' })).toBeUndefined()
+      expect(await pane.find({ type: 'Text', text: 'Clear Goal 2?' })).toBeUndefined()
     },
   )
 
@@ -167,7 +167,7 @@ describe('the Goals pane', () => {
       clearElsewhere(session, ROTATION_CRASH)
       await pane.press({ key: 'confirm-clear-2' })
 
-      expect(session.toasts).toEqual(['Goal #2 is no longer open.'])
+      expect(session.toasts).toEqual(['Goal 2 is no longer open.'])
       expect(await pane.find({ type: 'Text', text: ROTATION_CRASH.text })).toBeUndefined()
     },
   )
@@ -184,7 +184,7 @@ describe('the Goals pane', () => {
       expect(notReadToastsOf(session)).toHaveLength(1)
       expect(notReadToastsOf(session)[0]).toContain(UNREADABLE_STORE)
       expect(session.logs).toContain(session.toasts[0])
-      expect(await pane.find({ type: 'Text', text: 'Clear goal #2?' })).toBeUndefined()
+      expect(await pane.find({ type: 'Text', text: 'Clear Goal 2?' })).toBeUndefined()
       expect(await pane.find({ type: 'Text', text: MIGRATION_GUIDE.text })).toBeDefined()
       expect(await pane.find({ type: 'Text', text: ROTATION_CRASH.text })).toBeDefined()
     },
@@ -214,7 +214,7 @@ describe('the Goals pane', () => {
       isDamageHidden = true
       await pane.press({ key: 'confirm-clear-2' })
 
-      expect(session.toasts).toContain('Goal #2 is no longer open.')
+      expect(session.toasts).toContain('Goal 2 is no longer open.')
       expect(notReadToastsOf(session)).toHaveLength(1)
       expect(await pane.find({ type: 'Text', text: MIGRATION_GUIDE.text })).toBeDefined()
       expect(await pane.find({ type: 'Text', text: ROTATION_CRASH.text })).toBeDefined()
@@ -255,7 +255,7 @@ describe('the Goals pane', () => {
       expect(session.toasts[0]).toStartWith('The goal was not cleared. ')
       expect(session.toasts[0]).toContain(FULL_STORE)
       expect(await pane.find({ type: 'Text', text: ROTATION_CRASH.text })).toBeDefined()
-      expect(await pane.find({ type: 'Text', text: 'Clear goal #2?' })).toBeDefined()
+      expect(await pane.find({ type: 'Text', text: 'Clear Goal 2?' })).toBeDefined()
       await pane.press({ key: 'confirm-clear-2' })
       expect(await pane.find({ type: 'Text', text: ROTATION_CRASH.text })).toBeUndefined()
     },
@@ -276,7 +276,7 @@ describe('the Goals pane', () => {
         'the state of the plugin is held by another write',
       )
       expect(session.toasts).toEqual([])
-      expect(await pane.find({ type: 'Text', text: 'Clear goal #2?' })).toBeUndefined()
+      expect(await pane.find({ type: 'Text', text: 'Clear Goal 2?' })).toBeUndefined()
     },
   )
 

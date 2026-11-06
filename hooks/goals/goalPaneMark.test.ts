@@ -19,7 +19,7 @@ import {
 const REASON = 'The release notes still name v1.45.2'
 
 /**
- * The records of `storedBoardWithMark` with the mark of goal #2 removed by the user at 1000, with
+ * The records of `storedBoardWithMark` with the mark of goal 2 removed by the user at 1000, with
  * the reason in `given`, if any.
  */
 function storedBoardUnmarked(given: { reason?: string } = {}): Map<string, unknown> {
@@ -147,7 +147,7 @@ describe('done marks in the Goals pane', () => {
       session.store.set(newMark.key, newMark.value)
       await pane.input({ key: 'unmark-reason-2', text: REASON })
 
-      expect(session.toasts).toEqual(['Goal #2 is no longer marked done with release/v1.45.3.'])
+      expect(session.toasts).toEqual(['Goal 2 is no longer marked done with release/v1.45.3.'])
       expect(await pane.find({ key: 'unmark-reason-2' })).toBeUndefined()
       expect(
         await pane.find({ type: 'Text', text: 'Marked done by Claude: release/v1.45.4' }),
@@ -165,7 +165,7 @@ describe('done marks in the Goals pane', () => {
       clearElsewhere(session, ROTATION_CRASH)
       await pane.press({ key: 'unmark-2' })
 
-      expect(session.toasts).toEqual(['Goal #2 is no longer open.'])
+      expect(session.toasts).toEqual(['Goal 2 is no longer open.'])
       expect(await pane.find({ type: 'Text', text: ROTATION_CRASH.text })).toBeUndefined()
     },
   )

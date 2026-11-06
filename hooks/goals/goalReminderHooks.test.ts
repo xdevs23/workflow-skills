@@ -60,7 +60,7 @@ function withSentence(note: string): string {
   return `${note}\n\n${GOALS_NOT_EXHAUSTIVE}`
 }
 
-/** The records of a board of FIRST_SESSION with the goals #1 and #2 open. */
+/** The records of a board of FIRST_SESSION with the goals 1 and 2 open. */
 function storedBoard(): Map<string, unknown> {
   const scope = sessionScope(FIRST_SESSION)
   const records = [OFFLINE_MODE, DARK_THEME].flatMap(goal => [
@@ -111,13 +111,13 @@ describe('the open goals after a compaction', () => {
             '   #61 - Drafts sync once the connection returns',
             '3. Write the release notes',
             '',
-            'The user cleared goal #2. The user added goal #3: Write the release notes.',
+            'The user cleared Goal 2. The user added Goal 3: Write the release notes.',
           ].join('\n'),
         ),
       ])
       expect(await notesOfToolResult($)).toEqual([])
       expect(goalLinesOf(session)).toEqual([
-        'Goals: the 2 open goals were sent to Claude, with goal 2 cleared and goal 3 added',
+        'Goals: the 2 open goals were sent to Claude, with Goal 2 cleared and Goal 3 added',
       ])
     },
   )
@@ -132,11 +132,11 @@ describe('the open goals after a compaction', () => {
       await clearInPane(pane, 2)
 
       expect((await compact($)).additionalContext).toEqual([
-        'The user cleared goal #1. The user cleared goal #2. No goal is open now.',
+        'The user cleared Goal 1. The user cleared Goal 2. No goal is open now.',
       ])
       expect(await notesOfToolResult($)).toEqual([])
       expect(goalLinesOf(session)).toEqual([
-        'Goals: goal 1 cleared and goal 2 cleared, sent to Claude',
+        'Goals: Goal 1 cleared and Goal 2 cleared, sent to Claude',
       ])
     },
   )
@@ -166,7 +166,7 @@ describe('the open goals after a compaction', () => {
     await compact($)
 
     expect(goalLinesOf(session)).toEqual([
-      'Goals: goal 2 cleared, sent to Claude',
+      'Goals: Goal 2 cleared, sent to Claude',
       'Goals: the open goal was sent to Claude',
     ])
   })
@@ -196,9 +196,9 @@ describe('the goals added or cleared since the model saw the board', () => {
     await addInPane(pane, 3, 'Write the release notes')
 
     expect(await notesOfToolResult($)).toEqual([
-      withSentence('The user added goal #3: Write the release notes.'),
+      withSentence('The user added Goal 3: Write the release notes.'),
     ])
-    expect(goalLinesOf(session)).toEqual(['Goals: goal 3 added, sent to Claude'])
+    expect(goalLinesOf(session)).toEqual(['Goals: Goal 3 added, sent to Claude'])
     expect(await notesOfToolResult($)).toEqual([])
     expect(await notesOfPrompt($)).toEqual([])
     expect(goalLinesOf(session)).toHaveLength(1)
@@ -212,8 +212,8 @@ describe('the goals added or cleared since the model saw the board', () => {
     const pane = await mountGoalsPane($, 'terminal')
     await clearInPane(pane, 2)
 
-    expect(await notesOfPrompt($)).toEqual([withSentence('The user cleared goal #2.')])
-    expect(goalLinesOf(session)).toEqual(['Goals: goal 2 cleared, sent to Claude'])
+    expect(await notesOfPrompt($)).toEqual([withSentence('The user cleared Goal 2.')])
+    expect(goalLinesOf(session)).toEqual(['Goals: Goal 2 cleared, sent to Claude'])
     expect(await notesOfPrompt($)).toEqual([])
     expect(await notesOfToolResult($)).toEqual([])
   })
@@ -227,9 +227,9 @@ describe('the goals added or cleared since the model saw the board', () => {
     await editInPane(pane, 2, 'Add the dark theme by Friday')
 
     expect(await notesOfToolResult($)).toEqual([
-      withSentence('The user edited goal #2: Add the dark theme by Friday.'),
+      withSentence('The user edited Goal 2: Add the dark theme by Friday.'),
     ])
-    expect(goalLinesOf(session)).toEqual(['Goals: goal 2 edited, sent to Claude'])
+    expect(goalLinesOf(session)).toEqual(['Goals: Goal 2 edited, sent to Claude'])
     expect(await notesOfToolResult($)).toEqual([])
     expect(await notesOfPrompt($)).toEqual([])
   })
@@ -244,9 +244,9 @@ describe('the goals added or cleared since the model saw the board', () => {
     await unmarkInPane(pane, 2)
 
     expect(await notesOfToolResult($)).toEqual([
-      withSentence('The user removed your done mark from goal #2.'),
+      withSentence('The user removed your done mark from Goal 2.'),
     ])
-    expect(goalLinesOf(session)).toEqual(['Goals: goal 2 unmarked, sent to Claude'])
+    expect(goalLinesOf(session)).toEqual(['Goals: Goal 2 unmarked, sent to Claude'])
     expect(await notesOfToolResult($)).toEqual([])
     expect(await notesOfPrompt($)).toEqual([])
   })
@@ -261,7 +261,7 @@ describe('the goals added or cleared since the model saw the board', () => {
       const results = await Promise.all([readFile($), readFile($), readFile($)])
 
       expect(results.flatMap(result => result.context ?? [])).toEqual([
-        withSentence('The user added goal #3: Write the release notes.'),
+        withSentence('The user added Goal 3: Write the release notes.'),
       ])
     },
   )
@@ -277,8 +277,8 @@ describe('the goals added or cleared since the model saw the board', () => {
 
       expect((await typePrompt($, 'refused prompt')).drop).toBe('refused by a test hook')
       expect(goalLinesOf(session)).toEqual([])
-      expect(await notesOfPrompt($)).toEqual([withSentence('The user cleared goal #1.')])
-      expect(goalLinesOf(session)).toEqual(['Goals: goal 1 cleared, sent to Claude'])
+      expect(await notesOfPrompt($)).toEqual([withSentence('The user cleared Goal 1.')])
+      expect(goalLinesOf(session)).toEqual(['Goals: Goal 1 cleared, sent to Claude'])
     },
   )
 
@@ -293,7 +293,7 @@ describe('the goals added or cleared since the model saw the board', () => {
 
       expect(await notesOfToolResult($, SUBAGENT)).toEqual([])
       expect(goalLinesOf(session)).toEqual([])
-      expect(await notesOfToolResult($)).toEqual([withSentence('The user cleared goal #1.')])
+      expect(await notesOfToolResult($)).toEqual([withSentence('The user cleared Goal 1.')])
     },
   )
 
@@ -307,7 +307,7 @@ describe('the goals added or cleared since the model saw the board', () => {
       await clearInPane(pane, 2)
 
       expect(await notesOfToolResult($)).toEqual([
-        'The user cleared goal #1. The user cleared goal #2. No goal is open now.',
+        'The user cleared Goal 1. The user cleared Goal 2. No goal is open now.',
       ])
       expect((await compact($)).additionalContext).toBeUndefined()
       expect(await notesOfToolResult($)).toEqual([])
@@ -337,7 +337,7 @@ describe('the goals added or cleared since the model saw the board', () => {
       await clearInPane(pane, 1)
 
       expect((await $.tool.call({ tool: 'Bash', command: 'ls' })).context).toBeUndefined()
-      expect(await notesOfToolResult($)).toEqual([withSentence('The user cleared goal #1.')])
+      expect(await notesOfToolResult($)).toEqual([withSentence('The user cleared Goal 1.')])
     },
   )
 
@@ -351,9 +351,11 @@ describe('the goals added or cleared since the model saw the board', () => {
       const listed = await $.tool.call({ tool: LIST_GOALS_TOOL })
 
       expect(listed.result).toBe(
-        withSentence('#2: Add the dark theme\n\nCleared by the user:\n#1: Ship the offline mode'),
+        withSentence(
+          'Goal 2: Add the dark theme\n\nCleared by the user:\nGoal 1: Ship the offline mode',
+        ),
       )
-      expect(listed.context).toEqual(['The user cleared goal #1.'])
+      expect(listed.context).toEqual(['The user cleared Goal 1.'])
     },
   )
 
@@ -372,7 +374,7 @@ describe('the goals added or cleared since the model saw the board', () => {
       })
 
       expect(command.context).toBeUndefined()
-      expect(await notesOfPrompt($)).toEqual([withSentence('The user cleared goal #1.')])
+      expect(await notesOfPrompt($)).toEqual([withSentence('The user cleared Goal 1.')])
     },
   )
 
@@ -388,7 +390,7 @@ describe('the goals added or cleared since the model saw the board', () => {
       await clearInPane(pane, 1)
 
       await expect(typePrompt($, 'failing prompt')).rejects.toThrow()
-      expect(await notesOfPrompt($)).toEqual([withSentence('The user cleared goal #1.')])
+      expect(await notesOfPrompt($)).toEqual([withSentence('The user cleared Goal 1.')])
     },
   )
 
@@ -409,8 +411,8 @@ describe('the goals added or cleared since the model saw the board', () => {
       await clearInPane(pane, 1)
       await typePrompt($, 'refused prompt')
 
-      expect(await readDuringPrompt).toEqual(['The user cleared goal #2. No goal is open now.'])
-      expect(await notesOfPrompt($)).toEqual(['The user cleared goal #1. No goal is open now.'])
+      expect(await readDuringPrompt).toEqual(['The user cleared Goal 2. No goal is open now.'])
+      expect(await notesOfPrompt($)).toEqual(['The user cleared Goal 1. No goal is open now.'])
     },
   )
 
@@ -421,7 +423,7 @@ describe('the goals added or cleared since the model saw the board', () => {
     await addInPane(pane, 1, 'Write the release notes')
 
     expect(await notesOfPrompt($)).toEqual([
-      withSentence('The user added goal #1: Write the release notes.'),
+      withSentence('The user added Goal 1: Write the release notes.'),
     ])
   })
 })
@@ -460,12 +462,12 @@ describe('a board that could not be read at the start', () => {
 
 describe('the open goals after the idle minutes', () => {
   const REMINDER_OF_FIRST_GOAL =
-    'Goal #1 is not satisfied yet: Ship the offline mode. Attached: #61 (Drafts sync once the ' +
+    'Goal 1 is not satisfied yet: Ship the offline mode. Attached: #61 (Drafts sync once the ' +
     'connection returns).'
   const REMINDER = [
     IDLE_WITH_UNFINISHED_GOALS,
     REMINDER_OF_FIRST_GOAL,
-    'Goal #2 is not satisfied yet: Add the dark theme.',
+    'Goal 2 is not satisfied yet: Add the dark theme.',
     GOALS_NOT_EXHAUSTIVE,
   ].join('\n\n')
 
@@ -576,7 +578,7 @@ describe('the open goals after the idle minutes', () => {
         [
           IDLE_WITH_UNFINISHED_GOALS,
           REMINDER_OF_FIRST_GOAL,
-          'The user cleared goal #2.',
+          'The user cleared Goal 2.',
           GOALS_NOT_EXHAUSTIVE,
         ].join('\n\n'),
       ])

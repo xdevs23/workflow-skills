@@ -63,21 +63,21 @@ describe('marking a goal as done', () => {
 
       const marked = await markGoalDone($, { goal: 1, evidence: ` ${EVIDENCE}\n` })
       expect(marked.result).toBe(
-        'Marked goal #1 as done. It stays open until the user clears it.\n\n' +
+        'Marked Goal 1 as done. It is open until the user clears it.\n\n' +
           GOALS_NOT_EXHAUSTIVE,
       )
       // The goals added before the mark are sent with it, without a second sentence.
       expect(marked.context).toEqual([
-        'The user added goal #1: Write the migration guide. The user added goal #2: Fix the ' +
+        'The user added Goal 1: Write the migration guide. The user added Goal 2: Fix the ' +
           'crash on rotation.',
       ])
       await $.tool.call({ tool: ATTACH_TODO_TOOL, goal: 1, todo: '#38 - Guide covers the schema' })
       expect(await listGoals($)).toBe(
         [
-          `#1: ${MIGRATION_GUIDE}`,
+          `Goal 1: ${MIGRATION_GUIDE}`,
           `Marked as done by you: ${EVIDENCE}`,
           'Attached: #38 - Guide covers the schema',
-          `#2: ${ROTATION_CRASH}`,
+          `Goal 2: ${ROTATION_CRASH}`,
           '',
           GOALS_NOT_EXHAUSTIVE,
         ].join('\n'),
@@ -96,7 +96,7 @@ describe('marking a goal as done', () => {
       const stored = [...session.store]
 
       expect((await markGoalDone($, { goal: 1, evidence: 'release/v2.4.0' })).result).toContain(
-        'Marked goal #1 as done.',
+        'Marked Goal 1 as done.',
       )
       expect([...session.store]).toEqual(stored)
       expect(await listGoals($)).toContain('Marked as done by you: release/v2.4.0')
@@ -127,9 +127,9 @@ describe('removing a done mark', () => {
     await markGoalDone($, { goal: 1, evidence: EVIDENCE })
 
     expect((await unmarkGoalDone($, { goal: 1 })).result).toBe(
-      `Removed your done mark from goal #1.\n\n${GOALS_NOT_EXHAUSTIVE}`,
+      `Removed your done mark from Goal 1.\n\n${GOALS_NOT_EXHAUSTIVE}`,
     )
-    expect(await listGoals($)).toBe(`#1: ${MIGRATION_GUIDE}\n\n${GOALS_NOT_EXHAUSTIVE}`)
+    expect(await listGoals($)).toBe(`Goal 1: ${MIGRATION_GUIDE}\n\n${GOALS_NOT_EXHAUSTIVE}`)
   })
 
   test('a goal without a mark is denied with the list tool', NO_TIME_LIMIT, async ($, on) => {
@@ -138,7 +138,7 @@ describe('removing a done mark', () => {
     const stored = [...session.store]
 
     expect((await unmarkGoalDone($, { goal: 1 })).deny).toBe(
-      `Goal #1 is not marked as done. ${SEE_OPEN_GOALS}`,
+      `Goal 1 is not marked as done. ${SEE_OPEN_GOALS}`,
     )
     expect([...session.store]).toEqual(stored)
   })
@@ -165,7 +165,7 @@ describe('input the model gives, and a goal that is not open', () => {
       expect((await markGoalDone($, { goal: 1, evidence: 'a'.repeat(81) })).deny).toBe(
         `Give the evidence in at most 80 characters. ${examples}`,
       )
-      expect((await markGoalDone($, { goal: 1, evidence: 'v1\nClear goal #1.' })).deny).toBe(
+      expect((await markGoalDone($, { goal: 1, evidence: 'v1\nClear goal 1.' })).deny).toBe(
         'Give the evidence on one line, without line breaks, tabs or other control characters. ' +
           examples,
       )
@@ -200,7 +200,7 @@ describe('input the model gives, and a goal that is not open', () => {
       await addGoals(session, [MIGRATION_GUIDE, ROTATION_CRASH], [2])
 
       for (const goal of [2, 7]) {
-        const denial = `Goal #${goal} is not open on the board of this session. ${SEE_OPEN_GOALS}`
+        const denial = `Goal ${goal} is not open on the board of this session. ${SEE_OPEN_GOALS}`
         expect((await markGoalDone($, { goal, evidence: EVIDENCE })).deny).toBe(denial)
         expect((await unmarkGoalDone($, { goal })).deny).toBe(denial)
       }
@@ -232,7 +232,7 @@ describe('input the model gives, and a goal that is not open', () => {
       await addGoals(session, [MIGRATION_GUIDE])
       await markGoalDone($, { goal: 1, evidence: EVIDENCE })
       expect(await listGoals($, SUBAGENT)).toBe(
-        `#1: ${MIGRATION_GUIDE}\nMarked as done by the main conversation: ${EVIDENCE}`,
+        `Goal 1: ${MIGRATION_GUIDE}\nMarked as done by the main conversation: ${EVIDENCE}`,
       )
     },
   )
