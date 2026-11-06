@@ -1,8 +1,8 @@
 import type { AttachedTodo, Board, DoneMark, Goal, MarkRemoval } from '../../types'
 import { describeUnreadableRecord, isRecord } from '../pluginStore'
 import { isPositiveInteger } from '../positiveInteger'
-import { MarkRemover } from './board'
-import type { MarkedGoal, UnmarkedGoal } from './board'
+import { MarkRemover, markRemovalAskedOf } from './board'
+import type { MarkRemovalAsked, MarkedGoal, UnmarkedGoal } from './board'
 import { isTodoNumber } from './todoEntry'
 import { boardPrefixOf } from './boardScope'
 import type { BoardScope } from './boardScope'
@@ -27,13 +27,12 @@ type StoredRecord = { version: typeof RECORD_VERSION } & (
   | { part: RecordPart.Clearance; goalId: string; clearedAt: number }
   | { part: RecordPart.Todo; goalId: string; number: string; title: string; attachedAt: number }
   | { part: RecordPart.DoneMark; goalId: string; evidence: string; markedAt: number }
-  | {
+  | ({
       part: RecordPart.MarkRemoval
       goalId: string
       markedAt: number
       removedAt: number
-      removedBy: MarkRemover
-    }
+    } & MarkRemovalAsked)
 )
 
 type DoneMarkRecord = Extract<StoredRecord, { part: RecordPart.DoneMark }>
@@ -121,7 +120,7 @@ export function doneMarkRecordOf(scope: BoardScope, goal: MarkedGoal): BoardReco
  * while the removal of an older mark is written is still set afterwards.
  */
 export function markRemovalRecordOf(scope: BoardScope, goal: UnmarkedGoal): BoardRecord {
-  const { markedAt, removedAt, removedBy } = goal.markRemoval
+  const { markedAt, removedAt } = goal.markRemoval
 
   return recordOf(scope, {
     version: RECORD_VERSION,
@@ -129,7 +128,7 @@ export function markRemovalRecordOf(scope: BoardScope, goal: UnmarkedGoal): Boar
     goalId: goal.id,
     markedAt,
     removedAt,
-    removedBy,
+    ...markRemovalAskedOf(goal.markRemoval),
   })
 }
 
@@ -144,9 +143,9 @@ function markOfRecord(record: DoneMarkRecord): DoneMark {
 }
 
 function removalOfRecord(record: MarkRemovalRecord): MarkRemoval {
-  const { markedAt, removedAt, removedBy } = record
+  const { markedAt, removedAt } = record
 
-  return { markedAt, removedAt, removedBy }
+  return { markedAt, removedAt, ...markRemovalAskedOf(record) }
 }
 
 /**
@@ -281,7 +280,7 @@ const PARSERS: Record<RecordPart, (value: Record<string, unknown>) => StoredReco
     typeof goalId === 'string' && typeof evidence === 'string' && typeof markedAt === 'number'
       ? { version: RECORD_VERSION, part: RecordPart.DoneMark, goalId, evidence, markedAt }
       : undefined,
-  [RecordPart.MarkRemoval]: ({ goalId, markedAt, removedAt, removedBy }) => {
+  [RecordPart.MarkRemoval]: ({ goalId, markedAt, removedAt, removedBy, reason }) => {
     const remover = Object.values(MarkRemover).find(each => each === removedBy)
 
     return typeof goalId === 'string' &&
@@ -294,7 +293,7 @@ const PARSERS: Record<RecordPart, (value: Record<string, unknown>) => StoredReco
           goalId,
           markedAt,
           removedAt,
-          removedBy: remover,
+          ...markRemovalAskedOf({ removedBy: remover, reason }),
         }
       : undefined
   },

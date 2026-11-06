@@ -274,6 +274,22 @@ describe('marking a goal as done', () => {
     })
   })
 
+  test('a reason is stored trimmed, and a blank or absent reason is not stored', () => {
+    const marked = boardOf(markGoalDone(THREE_GOALS, 2, 'v3.2.0', 500))
+
+    for (const [asked, stored] of [
+      [{ ...BY_USER, reason: '  ' }, BY_USER],
+      [{ ...BY_USER, reason: ' x ' }, { ...BY_USER, reason: 'x' }],
+      [{ ...BY_USER, reason: '' }, BY_USER],
+      [BY_USER, BY_USER],
+    ] as const) {
+      expect(goalOf(boardOf(removeDoneMark(marked, 2, asked)), 2)?.markRemoval).toEqual({
+        ...stored,
+        markedAt: 500,
+      })
+    }
+  })
+
   test('a mark set after a removal is a mark again', () => {
     const marked = boardOf(markGoalDone(THREE_GOALS, 2, 'v3.2.0', 500))
     const removed = boardOf(removeDoneMark(marked, 2, BY_USER))

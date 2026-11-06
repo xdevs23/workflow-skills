@@ -228,7 +228,9 @@ async function editFromCommand(
 /** Removes the done mark of the goal, whatever its evidence is by now. */
 async function unmarkFromCommand($: EngineInterface, number: number): Promise<CommandRunResult> {
   const sessionId = await $.session.id()
-  const removed = await removeDoneMarkInSession($, sessionId, number, MarkRemover.User)
+  const removed = await removeDoneMarkInSession($, sessionId, number, {
+    removedBy: MarkRemover.User,
+  })
   switch (removed.outcome) {
     case Outcome.Changed:
       return { text: describeMarkRemovedForPerson(number) }

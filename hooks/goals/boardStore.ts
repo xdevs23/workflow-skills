@@ -1,4 +1,4 @@
-import type { AttachedTodo, Board, Goal, MarkRemoval } from '../../types'
+import type { AttachedTodo, Board, Goal } from '../../types'
 import {
   describeRefusedRead,
   describeRefusedWrite,
@@ -26,6 +26,7 @@ import type {
   Changed,
   EditRefused,
   MarkRefused,
+  MarkRemovalAsked,
   MarkedGoal,
   NotChanged,
   Read,
@@ -164,7 +165,7 @@ export function saveRemovedDoneMark(
   $: StoreEngine,
   scope: BoardScope,
   number: number,
-  removal: Omit<MarkRemoval, 'markedAt'>,
+  removal: MarkRemovalAsked & { removedAt: number },
   markedAt?: number,
 ): Promise<Changed<UnmarkedGoal> | UnmarkRefused | Failed> {
   return changeBoard(

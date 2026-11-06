@@ -38,5 +38,5 @@ export const handleUnmarkGoalDoneCall: MatchedHook<
   { tool: typeof UNMARK_GOAL_DONE_TOOL }
 > = ($, e) =>
   changeGoalByTool($, e, UNMARKING, (sessionId, { goal }) =>
-    removeDoneMarkInSession($, sessionId, goal, MarkRemover.Model),
+    removeDoneMarkInSession($, sessionId, goal, { removedBy: MarkRemover.Model }),
   )

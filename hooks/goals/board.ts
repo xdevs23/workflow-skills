@@ -49,6 +49,31 @@ export enum MarkRemover {
   Model = 'model',
 }
 
+/** What a caller supplies to remove a done mark: the remover, and a reason only from the user. */
+export type MarkRemovalAsked =
+  | { removedBy: MarkRemover.Model }
+  | { removedBy: MarkRemover.User; reason?: string }
+
+/**
+ * The removal asked for by `removedBy`, with `reason` trimmed, and only on a removal by the user. A
+ * reason that is not a text or is blank reads as absent.
+ */
+export function markRemovalAskedOf({
+  removedBy,
+  reason,
+}: {
+  removedBy: MarkRemover
+  reason?: unknown
+}): MarkRemovalAsked {
+  const trimmed = typeof reason === 'string' ? reason.trim() : ''
+  switch (removedBy) {
+    case MarkRemover.Model:
+      return { removedBy }
+    case MarkRemover.User:
+      return trimmed === '' ? { removedBy } : { removedBy, reason: trimmed }
+  }
+}
+
 /** The refusal of adding a goal, with the number expected for it. */
 export type AddRefused = { outcome: Outcome.Refused } & (
   | { refusal: Refusal.BlankText }
@@ -395,14 +420,16 @@ export function markGoalDone(
 /**
  * Removes the done mark of the open goal numbered `number`. With `markedAt`, only the mark set at
  * that time is removed, so a press on a mark drawn before the model set a new one leaves the new
- * one.
+ * one. The reason is trimmed, and a blank reason is skipped.
  */
 export function removeDoneMark(
   board: Board,
   number: number,
-  removal: Omit<MarkRemoval, 'markedAt'>,
+  removal: MarkRemovalAsked & { removedAt: number },
   markedAt?: number,
 ): Changed<UnmarkedGoal> | UnmarkRefused {
+  const asked = markRemovalAskedOf(removal)
+
   return changeOpenGoal<UnmarkRefused, UnmarkedGoal>(board, number, goal => {
     const mark = doneMarkOf(goal)
 
@@ -410,7 +437,10 @@ export function removeDoneMark(
       ? { outcome: Outcome.Refused, refusal: Refusal.NotMarkedDone, goal: number }
       : {
           outcome: Outcome.Changed,
-          goal: { ...goal, markRemoval: { ...removal, markedAt: mark.markedAt } },
+          goal: {
+            ...goal,
+            markRemoval: { ...asked, removedAt: removal.removedAt, markedAt: mark.markedAt },
+          },
         }
   })
 }

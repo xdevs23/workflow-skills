@@ -10,7 +10,7 @@ import type {
   Changed,
   EditRefused,
   MarkRefused,
-  MarkRemover,
+  MarkRemovalAsked,
   MarkedGoal,
   NotChanged,
   Read,
@@ -140,16 +140,16 @@ export async function markGoalDoneInSession(
 
 /**
  * Removes the done mark of the goal numbered `number` on the board of the session `sessionId`, as
- * removeDoneMark does.
+ * removeDoneMark does, with the remover and reason in `asked`.
  */
 export async function removeDoneMarkInSession(
   $: EngineInterface,
   sessionId: string,
   number: number,
-  removedBy: MarkRemover,
+  asked: MarkRemovalAsked,
   markedAt?: number,
 ): Promise<Changed<UnmarkedGoal> | UnmarkRefused | Failed> {
-  const removal = { removedAt: await $.clock.now(), removedBy }
+  const removal = { ...asked, removedAt: await $.clock.now() }
   const removed = await saveRemovedDoneMark($, sessionScope(sessionId), number, removal, markedAt)
 
   return loadBoardAfterChange($, sessionId, removed)

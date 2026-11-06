@@ -22,6 +22,7 @@ import {
   startSaving,
 } from './goalState'
 import {
+  PaneField,
   describeFocusNotMoved,
   describeMarkNoLongerShown,
   describeNoLongerOpen,
@@ -30,12 +31,17 @@ import {
   describeNotEdited,
   describeNotUnmarked,
 } from './goalTexts'
+import type { FocusTarget } from './goalTexts'
 
 // What a press or an entry in the Goals pane does. The pane draws what the state and the board
 // have after it.
 
 export function editFieldKeyOf(goal: Goal): string {
   return `edit-goal-${goal.number}`
+}
+
+export function reasonFieldKeyOf(goal: Goal): string {
+  return `unmark-reason-${goal.number}`
 }
 
 /**
@@ -104,7 +110,7 @@ export async function startEditing(
       mode: RowMode.Editing,
       isBlankTextRefused: false,
     })
-    await focusField($, editFieldKeyOf(goal), goal)
+    await focusField($, editFieldKeyOf(goal), { field: PaneField.GoalText, goal })
   })
 }
 
@@ -149,32 +155,54 @@ async function showEditRefusal(
 }
 
 /**
- * Removes the done mark `shown` from the goal, as removed by the user. A mark removed or replaced
- * since the pane drew it is left as it is, and a toast shows the mark that was shown.
+ * Draws a field for the reason to remove the done mark `shown` of the goal, while the goal is open,
+ * and moves the focus to it.
+ */
+export async function startUnmarking(
+  $: EngineInterface,
+  sessionId: string,
+  goal: Goal,
+  shown: DoneMark,
+): Promise<void> {
+  await actOnOpenGoal($, sessionId, goal, async () => {
+    await setGoalInPane($, sessionId, goal.id, { mode: RowMode.Unmarking, shown })
+    await focusField($, reasonFieldKeyOf(goal), { field: PaneField.UnmarkReason, goal })
+  })
+}
+
+/**
+ * Removes the done mark `shown` from the goal, as removed by the user with the reason in `given`, if
+ * any, and draws the goal without the field for the reason once the mark is removed or no longer
+ * shown. A mark removed or replaced since the pane drew it is not touched, and a toast shows the
+ * mark that was shown. A blank reason removes the mark without one, and a failed save shows the
+ * field again with the entered reason.
  */
 export async function unmarkOnScreen(
   $: EngineInterface,
   sessionId: string,
   goal: Goal,
   shown: DoneMark,
+  given: { reason?: string } = {},
 ): Promise<void> {
   const removed = await removeDoneMarkInSession(
     $,
     sessionId,
     goal.number,
-    MarkRemover.User,
+    { removedBy: MarkRemover.User, ...given },
     shown.markedAt,
   )
   switch (removed.outcome) {
     case Outcome.Failed:
       showFailure($, describeNotUnmarked(removed))
-      break
+
+      return
     case Outcome.Refused:
       $.ui.toast(describeUnmarkRefusal(goal, shown, removed))
       break
     case Outcome.Changed:
       break
   }
+  await dropGoalInPane($, goal.id, RowMode.Unmarking)
 }
 
 function describeUnmarkRefusal(goal: Goal, shown: DoneMark, refused: UnmarkRefused): string {
@@ -244,20 +272,16 @@ async function focusNewGoalField($: EngineInterface): Promise<void> {
     return
   }
   const key = newGoalFieldKeyOf(nextGoalNumberOf(inState.board))
-  await focusField($, key, undefined)
+  await focusField($, key, { field: PaneField.NewGoal })
 }
 
 /**
- * Moves the focus to the field with the key `key` in the Goals pane, which edits the goal `edited`
- * or, without one, adds a goal. A move denied by the engine is written to the debug log.
+ * Moves the focus to the field `target` with the key `key` in the Goals pane. A move denied by the
+ * engine is written to the debug log.
  */
-async function focusField(
-  $: EngineInterface,
-  key: string,
-  edited: Goal | undefined,
-): Promise<void> {
+async function focusField($: EngineInterface, key: string, target: FocusTarget): Promise<void> {
   const focused = await $.ui.focus({ requestId: GOALS_PANE, key })
   if (focused.deny !== undefined) {
-    $.ui.log(describeFocusNotMoved(focused.deny, edited), { to: 'debug' })
+    $.ui.log(describeFocusNotMoved(focused.deny, target), { to: 'debug' })
   }
 }

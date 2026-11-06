@@ -21,8 +21,10 @@ import {
   editFieldKeyOf,
   editOnScreen,
   newGoalFieldKeyOf,
+  reasonFieldKeyOf,
   saveOnce,
   startEditing,
+  startUnmarking,
   unmarkOnScreen,
 } from './goalPresses'
 import { RowMode, dropGoalInPane, readBoardInState, readGoalInPane } from './goalState'
@@ -37,8 +39,10 @@ import {
   KEEP_LABEL,
   NEW_GOAL_PLACEHOLDER,
   PANE_TITLE,
+  REASON_PLACEHOLDER,
   SAVE_LABEL,
   UNMARK_LABEL,
+  UNMARK_SUBMIT_LABEL,
   YES_CLEAR_LABEL,
   describeClearQuestion,
   describeDoneMarkForPerson,
@@ -50,10 +54,14 @@ import { describeEntry } from './todoEntry'
 type GoalElements = Pick<ElementTable, 'Box' | 'Button' | 'Text'>
 
 /**
- * Draws the field that edits the text of `goal`. Only a surface with input fields has one, so the
- * goals offer Edit only there.
+ * Draws the fields of a goal: the field that edits its text, and the field for the reason to remove
+ * its done mark `shown`. Only a surface with input fields has them, so the Goals pane draws Edit
+ * only there, and Unmark removes the mark at once elsewhere.
  */
-type DrawEditField = (goal: Goal, isBlankTextRefused: boolean) => RenderElement
+type GoalFields = {
+  drawTextField: (goal: Goal, isBlankTextRefused: boolean) => RenderElement
+  drawReasonField: (goal: Goal, shown: DoneMark) => RenderElement
+}
 
 /** The board of the session read again from the store, and the Goals pane opened on it. */
 type PaneOnFreshBoard = { loaded: Read | UnreadBoard; opened: UiOpenResult }
@@ -82,8 +90,12 @@ export const drawGoalsPane: MatchedHook<
     return <Text color="warning">{describeNotRead(inState.failure)}</Text>
   }
   const { sessionId, board } = inState
-  const drawEditField: DrawEditField | undefined = drawsInputFields(e)
-    ? (goal, isBlankTextRefused) => drawGoalTextField($, e, sessionId, goal, isBlankTextRefused)
+  const fields: GoalFields | undefined = drawsInputFields(e)
+    ? {
+        drawTextField: (goal, isBlankTextRefused) =>
+          drawGoalTextField($, e, sessionId, goal, isBlankTextRefused),
+        drawReasonField: (goal, shown) => drawReasonField($, e, sessionId, goal, shown),
+      }
     : undefined
 
   return (
@@ -91,7 +103,7 @@ export const drawGoalsPane: MatchedHook<
       {openGoalsOf(board).map(goal => {
         const row = goal.id === goalInPane?.goalId ? goalInPane : undefined
 
-        return drawGoal($, elements, sessionId, goal, drawnRowOf(goal, row, drawEditField))
+        return drawGoal($, elements, sessionId, goal, drawnRowOf(goal, row, fields))
       })}
       {drawsInputFields(e) ? (
         drawNewGoalField($, e, sessionId, board)
@@ -103,36 +115,42 @@ export const drawGoalsPane: MatchedHook<
 }
 
 /**
- * How the row of a goal is drawn: with its buttons, waiting for a yes to clear it, or with its
- * text in a field.
+ * How the row of a goal is drawn: with its buttons, with the question to clear it, with its text in
+ * a field, or with a field for the reason to remove its done mark.
  */
 type DrawnRow =
-  | { mode: undefined; drawEditField: DrawEditField | undefined }
+  | { mode: undefined; fields: GoalFields | undefined }
   | { mode: RowMode.WaitingForYes }
   | { mode: RowMode.Editing; field: RenderElement; isBlankTextRefused: boolean }
+  | { mode: RowMode.Unmarking; field: RenderElement }
 
 /**
  * How the row of `goal` is drawn, for `row`, the goal pressed in the pane when it is this goal. A
- * surface without input fields draws a goal edited on another surface with its buttons.
+ * surface without input fields draws a goal edited or unmarked on another surface with its buttons.
+ * A goal whose done mark was removed or replaced since Unmark was pressed is drawn with its buttons.
  */
 function drawnRowOf(
   goal: Goal,
   row: RowInPane | undefined,
-  drawEditField: DrawEditField | undefined,
+  fields: GoalFields | undefined,
 ): DrawnRow {
-  switch (row?.mode) {
-    case RowMode.WaitingForYes:
-      return { mode: RowMode.WaitingForYes }
+  if (row?.mode === RowMode.WaitingForYes) {
+    return { mode: RowMode.WaitingForYes }
+  }
+  if (fields === undefined || row === undefined) {
+    return { mode: undefined, fields }
+  }
+  switch (row.mode) {
     case RowMode.Editing:
-      return drawEditField === undefined
-        ? { mode: undefined, drawEditField }
-        : {
-            mode: RowMode.Editing,
-            field: drawEditField(goal, row.isBlankTextRefused),
-            isBlankTextRefused: row.isBlankTextRefused,
-          }
-    case undefined:
-      return { mode: undefined, drawEditField }
+      return {
+        mode: RowMode.Editing,
+        field: fields.drawTextField(goal, row.isBlankTextRefused),
+        isBlankTextRefused: row.isBlankTextRefused,
+      }
+    case RowMode.Unmarking:
+      return doneMarkOf(goal)?.markedAt === row.shown.markedAt
+        ? { mode: RowMode.Unmarking, field: fields.drawReasonField(goal, row.shown) }
+        : { mode: undefined, fields }
   }
 }
 
@@ -165,6 +183,7 @@ function drawGoal(
           <Text color="warning">{BLANK_TEXT_WARNING}</Text>
         )}
         {mark !== undefined && drawDoneMark($, elements, sessionId, goal, mark, row)}
+        {row.mode === RowMode.Unmarking && row.field}
         {row.mode === RowMode.WaitingForYes && drawClearQuestion($, elements, sessionId, goal)}
         {goal.todos.map(todo => (
           <Text dimColor>{describeEntry(todo)}</Text>
@@ -182,12 +201,18 @@ function borderColorOf(row: DrawnRow, mark: DoneMark | undefined) {
       return 'warning'
     case RowMode.Editing:
       return row.isBlankTextRefused ? 'warning' : 'suggestion'
+    case RowMode.Unmarking:
+      return 'suggestion'
     case undefined:
       return mark === undefined ? 'subtle' : 'success'
   }
 }
 
-/** The done mark of `goal` in the color of success, with Unmark on a row not pressed. */
+/**
+ * The done mark of `goal` in the color of success, with Unmark on a row not pressed. Unmark draws
+ * the field for a reason where the surface has input fields, and removes the mark at once
+ * elsewhere.
+ */
 function drawDoneMark(
   $: EngineInterface,
   { Box, Button, Text }: GoalElements,
@@ -204,7 +229,11 @@ function drawDoneMark(
           key={`unmark-${goal.number}`}
           label={UNMARK_LABEL}
           dimColor
-          onPress={() => saveOnce($, () => unmarkOnScreen($, sessionId, goal, mark))}
+          onPress={() =>
+            row.fields === undefined
+              ? saveOnce($, () => unmarkOnScreen($, sessionId, goal, mark))
+              : startUnmarking($, sessionId, goal, mark)
+          }
         />
       )}
     </Box>
@@ -237,9 +266,9 @@ function drawClearQuestion(
 }
 
 /**
- * The buttons beside a row: Cancel while the goal is edited, none while it waits for a yes, and
- * otherwise Clear, with Edit before it where the surface draws input fields. In a narrow row, Clear
- * shows on the next line as a whole.
+ * The buttons beside a row: Cancel while the goal is edited or unmarked, none while it waits for a
+ * yes, and otherwise Clear, with Edit before it where the surface draws input fields. In a narrow
+ * row, Clear shows on the next line as a whole.
  */
 function drawRowButtons(
   $: EngineInterface,
@@ -253,18 +282,13 @@ function drawRowButtons(
     case RowMode.WaitingForYes:
       return null
     case RowMode.Editing:
-      return drawWhole(
-        elements,
-        <Button
-          key={`cancel-edit-${goal.number}`}
-          label={CANCEL_LABEL}
-          onPress={() => dropGoalInPane($, goal.id, RowMode.Editing)}
-        />,
-      )
+      return drawCancel($, elements, goal, row.mode, 'cancel-edit')
+    case RowMode.Unmarking:
+      return drawCancel($, elements, goal, row.mode, 'cancel-unmark')
     case undefined:
       return (
         <Box columnGap={1} flexWrap="wrap" justifyContent="flex-end">
-          {row.drawEditField !== undefined &&
+          {row.fields !== undefined &&
             drawWhole(
               elements,
               <Button
@@ -286,6 +310,29 @@ function drawRowButtons(
         </Box>
       )
   }
+}
+
+/**
+ * Cancel beside the row of `goal` in the mode `mode`, which ends that mode. Its key is `keyPrefix`
+ * followed by the number of the goal.
+ */
+function drawCancel(
+  $: EngineInterface,
+  elements: GoalElements,
+  goal: Goal,
+  mode: RowMode.Editing | RowMode.Unmarking,
+  keyPrefix: string,
+) {
+  const { Button } = elements
+
+  return drawWhole(
+    elements,
+    <Button
+      key={`${keyPrefix}-${goal.number}`}
+      label={CANCEL_LABEL}
+      onPress={() => dropGoalInPane($, goal.id, mode)}
+    />,
+  )
 }
 
 /** `button` in a box that never shrinks, so a narrow row does not break its label. */
@@ -312,6 +359,31 @@ function drawGoalTextField(
       value={isBlankTextRefused ? '' : goal.text}
       submitLabel={SAVE_LABEL}
       onSubmit={text => saveOnce($, () => editOnScreen($, sessionId, goal, text))}
+    />
+  )
+}
+
+/**
+ * The field for the reason to remove the done mark `shown` of `goal`, which removes the mark with
+ * the reason entered in it.
+ */
+function drawReasonField(
+  $: EngineInterface,
+  e: ResolveInput<'Pane', SurfaceWithInputFields>,
+  sessionId: string,
+  goal: Goal,
+  shown: DoneMark,
+) {
+  const { Input } = $.ui.resolve(e)
+
+  return (
+    <Input
+      key={reasonFieldKeyOf(goal)}
+      placeholder={REASON_PLACEHOLDER}
+      submitLabel={UNMARK_SUBMIT_LABEL}
+      onSubmit={reason =>
+        saveOnce($, () => unmarkOnScreen($, sessionId, goal, shown, { reason }))
+      }
     />
   )
 }

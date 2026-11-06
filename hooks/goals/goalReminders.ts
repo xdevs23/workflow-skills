@@ -124,13 +124,24 @@ const CHANGE_TEXTS: Record<
     describeInLine: goal => `goal ${goal.number} edited`,
   },
   [ChangeKind.MarkRemoved]: {
-    describeNote: goal => `The user removed your done mark from goal #${goal.number}.`,
+    describeNote: describeMarkRemovedNote,
     describeInLine: goal => `goal ${goal.number} unmarked`,
   },
   [ChangeKind.Cleared]: {
     describeNote: goal => `The user cleared goal #${goal.number}.`,
     describeInLine: goal => `goal ${goal.number} cleared`,
   },
+}
+
+/** The note on a done mark removed by the user, with the reason the user gave, if any. */
+function describeMarkRemovedNote(goal: Goal): string {
+  const removed = `The user removed your done mark from goal #${goal.number}`
+  const removal = goal.markRemoval
+  const reason = removal?.removedBy === MarkRemover.User ? removal.reason : undefined
+
+  return reason === undefined
+    ? `${removed}.`
+    : `${removed}, with the reason: ${asSentence(reason)}`
 }
 
 /** Joins the changes in a transcript line, as in "goal 2 cleared and goal 3 added". */

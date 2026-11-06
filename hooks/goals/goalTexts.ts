@@ -127,6 +127,9 @@ export const SAVE_LABEL = 'save'
 export const CANCEL_LABEL = 'Cancel'
 export const BLANK_TEXT_WARNING = `A goal needs a text. Type one, or press ${CANCEL_LABEL}.`
 export const UNMARK_LABEL = 'Unmark'
+/** The word beside the field for the reason, for what Enter does there. */
+export const UNMARK_SUBMIT_LABEL = 'unmark'
+export const REASON_PLACEHOLDER = 'Reason (optional)'
 export const CLEAR_LABEL = 'Clear'
 export const YES_CLEAR_LABEL = 'Yes, clear'
 export const KEEP_LABEL = 'Keep'
@@ -251,17 +254,33 @@ export function describeNotCleared(failed: Failed): string {
   return `The goal was not cleared. ${describeStoreFailure(failed)}`
 }
 
-/**
- * The line in the debug log when the engine denies moving the focus to the field that edits the
- * goal `edited` or, without one, to the field that adds a goal.
- */
-export function describeFocusNotMoved(reason: string, edited: Goal | undefined): string {
-  const field =
-    edited === undefined
-      ? 'the field that adds a goal'
-      : `the field that edits goal #${edited.number}`
+/** The fields of the Goals pane that a press moves the focus to. */
+export enum PaneField {
+  NewGoal = 'new-goal',
+  GoalText = 'goal-text',
+  UnmarkReason = 'unmark-reason',
+}
 
-  return `The focus did not move to ${field}: ${reason}`
+/** A field of the Goals pane, with the goal it belongs to. */
+export type FocusTarget =
+  | { field: PaneField.NewGoal }
+  | { field: PaneField.GoalText; goal: Goal }
+  | { field: PaneField.UnmarkReason; goal: Goal }
+
+/** The line in the debug log when the engine denies moving the focus to the field `target`. */
+export function describeFocusNotMoved(denial: string, target: FocusTarget): string {
+  return `The focus did not move to ${describeField(target)}: ${denial}`
+}
+
+function describeField(target: FocusTarget): string {
+  switch (target.field) {
+    case PaneField.NewGoal:
+      return 'the field that adds a goal'
+    case PaneField.GoalText:
+      return `the field that edits goal #${target.goal.number}`
+    case PaneField.UnmarkReason:
+      return `the field for the reason to unmark goal #${target.goal.number}`
+  }
 }
 
 /** The text for a board that could not be read, with the reason and the next step of the store. */

@@ -55,16 +55,19 @@ export async function setLoadedBoard(
 export enum RowMode {
   WaitingForYes = 'waiting-for-yes',
   Editing = 'editing',
+  Unmarking = 'unmarking',
 }
 
-/** The goal of the running session that waits for a yes or is edited in the Goals pane, if any. */
+/**
+ * The goal of the running session in the yes, edit or unmark row mode in the Goals pane, if any.
+ */
 export async function readGoalInPane($: EngineInterface): Promise<GoalInPane | null> {
   return ofRunningSession($, await read($, goalInPane))
 }
 
 /**
  * Puts the goal with the id `goalId` of the session `sessionId` into the row `row` of the Goals
- * pane, in place of any goal there before, so one goal waits for a yes or is edited at a time.
+ * pane, in place of any goal there before, so only one goal at a time has a row mode in the pane.
  */
 export async function setGoalInPane(
   $: EngineInterface,

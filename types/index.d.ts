@@ -1,4 +1,4 @@
-import type { MarkRemover, Outcome, Read } from '../hooks/goals/board'
+import type { MarkRemovalAsked, Outcome, Read } from '../hooks/goals/board'
 import type { IdlePhase } from '../hooks/goals/goalIdleReminder'
 import type { RowMode } from '../hooks/goals/goalState'
 
@@ -42,8 +42,11 @@ export type AttachedTodo = {
   attachedAt: number
 }
 
-/** The removal of the done mark set at `markedAt`: when, and by whom. */
-export type MarkRemoval = { markedAt: number; removedAt: number; removedBy: MarkRemover }
+/**
+ * The removal of the done mark set at `markedAt`: when, by whom, and, for a removal by the user,
+ * why, if given. The reason is never blank.
+ */
+export type MarkRemoval = { markedAt: number; removedAt: number } & MarkRemovalAsked
 
 /**
  * A goal reported as done by the model, with the evidence for the user to look at. The goal stays
@@ -89,8 +92,9 @@ export type UnreadBoard = { outcome: Outcome.Failed; failure: string }
 export type SessionBoard = { sessionId: string } & (Read | UnreadBoard)
 
 /**
- * What the Goals pane does with a goal pressed in it: wait for a yes to clear it after a press of
- * Clear, or draw its text as a field after a press of Edit.
+ * What the Goals pane draws for a goal pressed in it: the question to clear it after a press of
+ * Clear, its text as a field after a press of Edit, or a field for the reason to remove its done
+ * mark after a press of Unmark.
  */
 export type RowInPane =
   | { mode: RowMode.WaitingForYes }
@@ -98,6 +102,11 @@ export type RowInPane =
       mode: RowMode.Editing
       /** Whether the last text entered in the field was refused as blank. */
       isBlankTextRefused: boolean
+    }
+  | {
+      mode: RowMode.Unmarking
+      /** The done mark shown when Unmark was pressed. Only this mark is removed with the reason. */
+      shown: DoneMark
     }
 
 /** The goal of a session pressed in the Goals pane, with what the pane does with it. */
@@ -155,7 +164,7 @@ declare module 'claude-code' {
        * may outlive a switch to another session; null before any session read it.
        */
       sessionBoard: SessionBoard | null
-      /** The one goal of the Goals pane that waits for a yes or is edited, if any. */
+      /** The one goal of the Goals pane in the yes, edit or unmark row mode, if any. */
       goalInPane: GoalInPane | null
       /** True while the Goals pane saves an added, an edited or a cleared goal. */
       isSavingGoal: boolean

@@ -112,3 +112,46 @@ test('a done mark removed by someone this code does not know is unreadable', () 
 
   expect(() => readBoard(SCOPE, stored)).toThrow(UnreadableRecordError)
 })
+
+const MARKED = {
+  id: 'login-fix',
+  number: 2,
+  text: 'Fix the export timeout',
+  addedAt: 200,
+  todos: [],
+  doneMark: { evidence: 'release/v3.2.0', markedAt: 300 },
+}
+const UNMARKED = {
+  ...MARKED,
+  markRemoval: { markedAt: 300, removedAt: 400, removedBy: MarkRemover.User },
+}
+const MARK_RECORDS = [goalRecordOf(SCOPE, MARKED), doneMarkRecordOf(SCOPE, MARKED)]
+const REMOVAL_RECORD = markRemovalRecordOf(SCOPE, UNMARKED)
+
+test('a done mark removed with a reason is read back with that reason', () => {
+  const withReason = {
+    ...MARKED,
+    markRemoval: { ...UNMARKED.markRemoval, reason: 'The export still times out at 10000 rows' },
+  }
+
+  expect(readBoard(SCOPE, [...MARK_RECORDS, markRemovalRecordOf(SCOPE, withReason)])).toEqual({
+    goals: [withReason],
+  })
+})
+
+test('a removal stored without a reason field is read without a reason', () => {
+  const stored = {
+    key: REMOVAL_RECORD.key,
+    value: { version: 1, part: 'done-mark-removal', goalId: MARKED.id, ...UNMARKED.markRemoval },
+  }
+
+  expect(readBoard(SCOPE, [...MARK_RECORDS, stored])).toEqual({ goals: [UNMARKED] })
+})
+
+test('a removal with a reason that is not a text or is blank is read without a reason', () => {
+  for (const reason of [7, '  ']) {
+    const stored = { key: REMOVAL_RECORD.key, value: { ...REMOVAL_RECORD.value, reason } }
+
+    expect(readBoard(SCOPE, [...MARK_RECORDS, stored])).toEqual({ goals: [UNMARKED] })
+  }
+})
