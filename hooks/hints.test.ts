@@ -421,6 +421,13 @@ describe('the phrases of a message that announces work while the turn ends', () 
     'Build 61 passed — next is the parser.',
     'Build 61 passed - next is the parser.',
     'Build 61 passed and next is the parser.',
+    'Next in line: the parser.',
+    'Next in line is the parser.',
+    '**Next in line:** the parser.',
+    'The phone build worked. Next in line is the parser.',
+    "Next in line, I'll rebase the branch.",
+    'Next in line:\n- the parser.',
+    'Next-in-line: the parser.',
   ]
   for (const message of [...announcing, ...workVerbs.flat(), ...leads]) {
     test(`${JSON.stringify(message)} announces work`, () => {
@@ -456,6 +463,10 @@ describe('the phrases of a message that announces work while the turn ends', () 
     "I'm going to wait for your answer.",
     "If you want, I'll rebase the branch.",
     'Once the build passes, then I merge the branch.',
+    'Next in line is up to you.',
+    'She was next in line for the review.',
+    'Whatever is next in line is up to you.',
+    'Who is next in line for the review?',
   ]
   /** One message for each saying that follows a work verb or "next is" and names no work. */
   const sayings = [

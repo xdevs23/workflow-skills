@@ -7,7 +7,7 @@ const EMPHASIS = String.raw`(?:\*\*?|__?)?`
 /** The start of a sentence or clause: the start of a line past any list mark or heading mark, or
  * the place after a stop, colon, semicolon, comma, dash or "and", in both cases past any emphasis. */
 const SENTENCE_START = String.raw`(?:^[ \t]*${LIST_MARK}${HEADING_MARK}|[.!?:;,]\s+|\s*[—–]\s*|\s-\s+|\band\s+)${EMPHASIS}`
-const NEXT = String.raw`next(?:[ \t]+(?:steps?|up))?`
+const NEXT = String.raw`next(?:[ \t]+(?:steps?|up)|[ \t-]+in[ \t-]+line)?`
 const NEXT_LABEL = String.raw`(?:(?:what['’]s|up)[ \t]+)?${NEXT}`
 const NEXT_LEAD = String.raw`(?:(?:up|the|my|our)[ \t]+)?${NEXT}`
 /** What follows "next is" when the next thing is no work, such as "up to you" or "your call". */
