@@ -7,10 +7,12 @@ import type {
   UiOpenResult,
 } from 'claude-code'
 
-import type { Board, DoneMark, Goal, RowInPane } from '../../types'
+import type { Board, DoneMark, Goal, RowInPane, UnreadBoard } from '../../types'
 import { drawsInputFields } from '../surfaces'
 import type { SurfaceWithInputFields } from '../surfaces'
 import { Outcome, doneMarkOf, nextGoalNumberOf, openGoalsOf } from './board'
+import type { Read } from './board'
+import { loadBoardIntoState } from './goalActions'
 import { GOALS_PANE } from './goalNames'
 import {
   addOnScreen,
@@ -53,8 +55,17 @@ type GoalElements = Pick<ElementTable, 'Box' | 'Button' | 'Text'>
  */
 type DrawEditField = (goal: Goal, isBlankTextRefused: boolean) => RenderElement
 
-export function openGoalsPane($: EngineInterface): Promise<UiOpenResult> {
-  return $.ui.open({ id: GOALS_PANE, title: PANE_TITLE, focus: true })
+/** The board of the session read again from the store, and the Goals pane opened on it. */
+type PaneOnFreshBoard = { loaded: Read | UnreadBoard; opened: UiOpenResult }
+
+/**
+ * Reads the board of the session again into the state, and opens the Goals pane, which shows it.
+ */
+export async function openGoalsPaneOnFreshBoard($: EngineInterface): Promise<PaneOnFreshBoard> {
+  const loaded = await loadBoardIntoState($, await $.session.id())
+  const opened = await $.ui.open({ id: GOALS_PANE, title: PANE_TITLE, focus: true })
+
+  return { loaded, opened }
 }
 
 export const drawGoalsPane: MatchedHook<

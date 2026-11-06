@@ -15,11 +15,10 @@ import {
   addGoalToSession,
   clearGoalOfSession,
   editGoalOfSession,
-  loadBoardIntoState,
   removeDoneMarkInSession,
 } from './goalActions'
 import { GOALS_COMMAND } from './goalNames'
-import { openGoalsPane } from './goalScreens'
+import { openGoalsPaneOnFreshBoard } from './goalScreens'
 import {
   ADD_USAGE_PROBLEM,
   CHANGE_NOT_TYPED,
@@ -177,8 +176,7 @@ export function replyWithGoalsHookFailure(
  * where the board could not be read or the pane could not open, and then lists the open goals.
  */
 async function openFromCommand($: EngineInterface): Promise<CommandRunResult> {
-  const loaded = await loadBoardIntoState($, await $.session.id())
-  const opened = await openGoalsPane($)
+  const { loaded, opened } = await openGoalsPaneOnFreshBoard($)
   const notOpened = opened.isPlaced ? [] : [describePaneNotOpened(opened.reason)]
   if (loaded.outcome === Outcome.Failed) {
     return replyWithFailure($, [...notOpened, describeNotRead(loaded.failure)].join('\n'))

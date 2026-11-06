@@ -148,6 +148,11 @@ export function describePaneNotOpened(reason: string): string {
   return `The Goals pane could not open: ${reason}.`
 }
 
+/** The Goals pane not opened for `reason`, with the commands that replace it. */
+export function describePaneNotOpenedWithCommands(reason: string): string {
+  return `${describePaneNotOpened(reason)} ${COMMANDS_IN_PLACE_OF_PANE}`
+}
+
 export function describeNotRegistered(reason: string): string {
   return (
     `/${GOALS_COMMAND} could not be registered, so the goals of this session cannot be opened ` +

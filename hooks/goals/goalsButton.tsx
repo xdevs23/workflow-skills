@@ -2,10 +2,10 @@ import type { EngineInterface, MatchedHook, RenderInput } from 'claude-code'
 
 import { showFailure } from '../failureToast'
 import { hasFooterRoomForButton, hintColumnsOn, mostColumnsOf, recordHintColumns } from './footerRoom'
-import { loadBoardShowingFailure } from './goalActions'
-import { openGoalsPane } from './goalScreens'
+import { Outcome } from './board'
+import { openGoalsPaneOnFreshBoard } from './goalScreens'
 import { readBoardInState } from './goalState'
-import { COMMANDS_IN_PLACE_OF_PANE, GOALS_BUTTON_LABEL, describePaneNotOpened } from './goalTexts'
+import { GOALS_BUTTON_LABEL, describeNotRead, describePaneNotOpenedWithCommands } from './goalTexts'
 
 export const OPEN_GOALS_KEY = 'open-goals'
 
@@ -70,13 +70,15 @@ function hasRoomForGoalsButton(e: RenderInput<'SessionMode'>): boolean {
 }
 
 /**
- * Reads the board of the session again and opens the Goals pane on it. The engine keeps one pane
- * per id, so a press while the pane is open opens no second one.
+ * Reads the board of the session again and opens the Goals pane on it. The engine opens at most one
+ * pane per id, so a press while the pane is open shows that same pane.
  */
 async function openFromButton($: EngineInterface): Promise<void> {
-  await loadBoardShowingFailure($, await $.session.id())
-  const opened = await openGoalsPane($)
+  const { loaded, opened } = await openGoalsPaneOnFreshBoard($)
+  if (loaded.outcome === Outcome.Failed) {
+    showFailure($, describeNotRead(loaded.failure))
+  }
   if (!opened.isPlaced) {
-    showFailure($, `${describePaneNotOpened(opened.reason)} ${COMMANDS_IN_PLACE_OF_PANE}`)
+    showFailure($, describePaneNotOpenedWithCommands(opened.reason))
   }
 }
