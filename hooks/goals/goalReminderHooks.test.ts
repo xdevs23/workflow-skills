@@ -8,7 +8,10 @@ import {
   GOALS_NOT_EXHAUSTIVE,
   NO_TIME_LIMIT,
   SECOND_SESSION,
+  SUBAGENT,
   endTurn,
+  notesOfToolResult,
+  promptsOfPlugin,
   readFile,
   startSession,
   startTurn,
@@ -38,8 +41,6 @@ const DARK_THEME: Goal = {
 
 /** The idle minutes after which the open goals are sent again, in milliseconds. */
 const IDLE_TIME = 30 * 60_000
-
-const SUBAGENT = 'agent-1'
 
 const NOT_REMINDED = 'The goals could not be read, so Claude was not reminded of them. '
 
@@ -71,11 +72,6 @@ async function goalsCommand($: Engine, args: string): Promise<void> {
   })
 }
 
-/** The notes the model reads in the result returned by the Read tool. */
-async function notesOfToolResult($: Engine, agentId?: string): Promise<readonly string[]> {
-  return (await readFile($, agentId)).context ?? []
-}
-
 /** The notes the model reads after the prompt typed by the user. */
 async function notesOfPrompt($: Engine, text = 'go on'): Promise<readonly string[]> {
   return (await typePrompt($, text)).context ?? []
@@ -86,11 +82,6 @@ function compact($: Engine, agentId?: string) {
     source: 'compact',
     ...(agentId === undefined ? {} : { agent_id: agentId }),
   })
-}
-
-/** The prompts the plugin sent on its own, such as the open goals after the idle minutes. */
-function promptsOfPlugin(session: Session): string[] {
-  return session.prompts.filter(prompt => prompt.origin.kind === 'plugin').map(({ text }) => text)
 }
 
 /** The transcript lines about the goals, which the model does not read. */

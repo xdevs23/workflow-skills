@@ -2,8 +2,8 @@ import type { EngineInterface, MatchedHook } from 'claude-code'
 
 import type { Board } from '../../types'
 import { isMainConversation } from '../conversation'
-import type { EveryEvent } from '../register'
-import { callToolWithNote, submitWithNote } from '../sendToModel'
+import type { EveryEvent } from '../everyEvent'
+import { callToolWithNote, submitWithNoteOrRestore } from '../sendToModel'
 import { Outcome } from './board'
 import { listOpenGoals, readBoardToRemind } from './goalReminderBoard'
 import { describeGoalChangesSent, describeOpenGoalsAfterCompaction } from './goalReminders'
@@ -67,14 +67,11 @@ export const submitWithGoalChanges: MatchedHook<'prompt.submit', EveryEvent> = a
   if (changes === undefined) {
     return next(e)
   }
-  const delivery = await submitWithNote(e, next, changes.note).catch(async (error: unknown) => {
-    await restoreSeenBoard($, sessionId, changes.before, changes.after)
-    throw error
-  })
+  const delivery = await submitWithNoteOrRestore(e, next, changes.note, () =>
+    restoreSeenBoard($, sessionId, changes.before, changes.after),
+  )
   if (delivery.isAccepted) {
     $.ui.log(changes.line)
-  } else {
-    await restoreSeenBoard($, sessionId, changes.before, changes.after)
   }
 
   return delivery.result

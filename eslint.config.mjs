@@ -27,5 +27,18 @@ export default defineConfig({
     '@typescript-eslint/no-floating-promises': ['error', { ignoreVoid: false }],
     '@typescript-eslint/no-unused-vars': 'error',
     'no-multiple-empty-lines': ['error', { max: 1, maxBOF: 0, maxEOF: 0 }],
+    'no-restricted-imports': [
+      'error',
+      {
+        patterns: [
+          {
+            regex: '(^|/)register$',
+            message:
+              'register.tsx is the composition root and imports every feature. Import what it ' +
+              'shares from a module of its own, such as everyEvent.',
+          },
+        ],
+      },
+    ],
   },
 })

@@ -2,8 +2,8 @@ import { describe, expect, test } from 'claude-code/testing'
 import type { Engine } from 'claude-code/testing'
 import type { On } from 'claude-code'
 
+import { EVERY_EVENT } from '../everyEvent'
 import { PLUGIN } from '../names'
-import { EVERY_EVENT } from '../register'
 import {
   FIRST_SESSION,
   NO_TIME_LIMIT,

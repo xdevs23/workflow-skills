@@ -6,10 +6,11 @@ import type {
   GoalInPane,
   IdleStretch,
   RowInPane,
+  SeenBoard,
   SessionBoard,
   UnreadBoard,
 } from '../../types'
-import { isSessionRunning, ofRunningSession, ofSession } from '../sessionBoundState'
+import { ofRunningSession, ofSession, updateOfSession } from '../sessionBoundState'
 import { Outcome, boardWithChangesTakenBack, combinedBoardOf } from './board'
 import type { Read } from './board'
 
@@ -39,15 +40,15 @@ export async function setLoadedBoard(
   sessionId: string,
   loaded: Read | UnreadBoard,
 ): Promise<void> {
-  if (await isSessionRunning($, sessionId)) {
-    await update($, sessionBoard, inState => {
-      const shown = ofSession(inState, sessionId)
-
-      return loaded.outcome === Outcome.Failed && shown?.outcome === Outcome.Read
+  await updateOfSession<SessionBoard>(
+    $,
+    sessionId,
+    shown =>
+      loaded.outcome === Outcome.Failed && shown?.outcome === Outcome.Read
         ? shown
-        : { sessionId, ...loaded }
-    })
-  }
+        : { sessionId, ...loaded },
+    changeInState => update($, sessionBoard, changeInState),
+  )
 }
 
 /** What the Goals pane does with a pressed goal. */
@@ -71,9 +72,12 @@ export async function setGoalInPane(
   goalId: string,
   row: RowInPane,
 ): Promise<void> {
-  if (await isSessionRunning($, sessionId)) {
-    await update($, goalInPane, () => ({ sessionId, goalId, ...row }))
-  }
+  await updateOfSession(
+    $,
+    sessionId,
+    () => ({ sessionId, goalId, ...row }),
+    changeInState => update($, goalInPane, changeInState),
+  )
 }
 
 /** Records that a blank text was refused for the goal with the id `goalId`, while it is edited. */
@@ -181,12 +185,12 @@ async function updateSeenBoard(
   sessionId: string,
   change: (seen: Board | null) => Board | null,
 ): Promise<void> {
-  if (await isSessionRunning($, sessionId)) {
-    await update($, seenBoard, inState => ({
-      sessionId,
-      board: change(ofSession(inState, sessionId)?.board ?? null),
-    }))
-  }
+  await updateOfSession<SeenBoard>(
+    $,
+    sessionId,
+    seen => ({ sessionId, board: change(seen?.board ?? null) }),
+    changeInState => update($, seenBoard, changeInState),
+  )
 }
 
 /** The idle stretch of the main conversation of the session `sessionId`, if it has one. */
@@ -202,15 +206,12 @@ export async function readIdleStretch(
  * another session runs by now, and returns the stretch of that session in the state after it.
  * `change` is called with null when the session has no stretch.
  */
-export async function updateIdleStretch(
+export function updateIdleStretch(
   $: EngineInterface,
   sessionId: string,
   change: (stretch: IdleStretch | null) => IdleStretch | null,
 ): Promise<IdleStretch | null> {
-  if (!(await isSessionRunning($, sessionId))) {
-    return null
-  }
-  const inState = await update($, idleStretch, stretch => change(ofSession(stretch, sessionId)))
-
-  return ofSession(inState, sessionId)
+  return updateOfSession($, sessionId, change, changeInState =>
+    update($, idleStretch, changeInState),
+  )
 }

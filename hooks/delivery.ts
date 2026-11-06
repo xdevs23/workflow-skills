@@ -92,7 +92,8 @@ export async function recordAnswerAndDeliver(
  * hook that asks for the delivery does not wait for it.
  */
 export function deliverWhenIdle($: EngineInterface, sessionId: string): void {
-  runAfter(
+  // The timer is not kept: it fires at once, and the delivery takes only answers not delivered yet.
+  void runAfter(
     $,
     0,
     () => deliverAsPrompt($, sessionId),

@@ -3,7 +3,13 @@
 import { describe, expect, test } from 'claude-code/testing'
 import type { Engine } from 'claude-code/testing'
 
-import { GOALS_NOT_EXHAUSTIVE, NO_TIME_LIMIT, readFile, startSession } from '../testSupport'
+import {
+  GOALS_NOT_EXHAUSTIVE,
+  NO_TIME_LIMIT,
+  SUBAGENT,
+  readFile,
+  startSession,
+} from '../testSupport'
 import {
   ATTACH_TODO_TOOL,
   MARK_GOAL_DONE,
@@ -15,7 +21,6 @@ import {
   MIGRATION_GUIDE,
   ROTATION_CRASH,
   SEE_OPEN_GOALS,
-  SUBAGENT,
   addGoals,
   listGoals,
 } from './goalToolTestSupport'

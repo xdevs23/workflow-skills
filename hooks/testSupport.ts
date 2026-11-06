@@ -11,6 +11,7 @@ export const TURN = 'turn-1'
 const ROOT = '/work/project'
 export const FIRST_SESSION = 'session-1'
 export const SECOND_SESSION = 'session-2'
+export const SUBAGENT = 'agent-1'
 /** The context size of a session when it starts and loads the question skill. */
 export const TOKENS_AT_START = 1000
 

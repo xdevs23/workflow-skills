@@ -1,5 +1,6 @@
 import type { Register } from 'claude-code'
 
+import { EVERY_EVENT } from './everyEvent'
 import { registerGoals } from './goals'
 import { blockStopOnHintPhrase } from './hints'
 import { ANSWER_COMMAND, ASK_TOOL, LIST_TOOL, PANE, SKILL_TOOL, WITHDRAW_TOOL } from './names'
@@ -20,15 +21,6 @@ import {
 } from './questionHooks'
 import { drawQuestionBand, drawQuestionPane } from './questionScreens'
 import { registerSelfCheck } from './selfCheck'
-
-/**
- * The matcher of a hook that runs on every event of its kind. The engine refuses a second hook
- * without a matcher on one event of a plugin, and a matcher that names no field matches every
- * event, so each feature registers such a hook with this matcher.
- */
-export const EVERY_EVENT: Readonly<Record<never, never>> = {}
-
-export type EveryEvent = typeof EVERY_EVENT
 
 export const register: Register = on => {
   on('session.start', { isInteractive: true }, startQuestions)

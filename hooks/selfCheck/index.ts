@@ -1,6 +1,6 @@
 import type { On } from 'claude-code'
 
-import { EVERY_EVENT } from '../register'
+import { EVERY_EVENT } from '../everyEvent'
 import {
   startScheduleOnUserMessage,
   submitWithSelfCheck,

@@ -1,6 +1,6 @@
 import type { Hook, On } from 'claude-code'
 
-import { EVERY_EVENT } from '../register'
+import { EVERY_EVENT } from '../everyEvent'
 import { loadBoardAtStart } from './goalActions'
 import { replyWithGoalsHookFailure, runGoalsCommand } from './goalCommands'
 import {

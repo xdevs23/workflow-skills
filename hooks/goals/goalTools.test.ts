@@ -9,6 +9,7 @@ import {
   FIRST_SESSION,
   GOALS_NOT_EXHAUSTIVE,
   NO_TIME_LIMIT,
+  SUBAGENT,
   mountPane,
   startSession,
 } from '../testSupport'
@@ -34,7 +35,6 @@ import {
   MIGRATION_GUIDE,
   ROTATION_CRASH,
   SEE_OPEN_GOALS,
-  SUBAGENT,
   addGoals,
   listGoals,
 } from './goalToolTestSupport'

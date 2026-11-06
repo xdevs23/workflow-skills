@@ -2,8 +2,8 @@ import type { EngineInterface, MatchedHook } from 'claude-code'
 
 import type { Board, IdleStretch } from '../../types'
 import { isMainConversation } from '../conversation'
-import type { EveryEvent } from '../register'
-import { PromptOutcome, submitToSession } from '../sendToModel'
+import type { EveryEvent } from '../everyEvent'
+import { submitToSessionOrRestore } from '../sendToModel'
 import { runAfter } from '../timedWork'
 import { openGoalsOf } from './board'
 import { listOpenGoals, readBoardToRemind } from './goalReminderBoard'
@@ -58,7 +58,9 @@ export const waitAfterTurn: MatchedHook<'turn.complete', EveryEvent> = async ($,
 
 /** Sends the open goals once the idle minutes of the stretch `waiting` passed. */
 function waitForIdleMinutes($: EngineInterface, waiting: IdleStretch): void {
-  runAfter(
+  // The timer is not kept: once the stretch `waiting` ended, the reminder finds another stretch in
+  // the state and sends nothing.
+  void runAfter(
     $,
     IDLE_MINUTES * MILLISECONDS_PER_MINUTE,
     () => remindAfterIdle($, waiting),
@@ -83,16 +85,10 @@ async function remindAfterIdle($: EngineInterface, waiting: IdleStretch): Promis
   }
   // The prompt shows in the transcript itself, so the transcript line of `sent` is not shown.
   const { sent, seenBefore } = await listOpenGoals($, sessionId, board, describeOpenGoalsAfterIdle)
-  const submitted =
-    sent === undefined
-      ? undefined
-      : await submitToSession($, sessionId, { text: sent.text }).catch(async (error: unknown) => {
-          await waitAgain($, reminded, seenBefore, board)
-          throw error
-        })
-  if (submitted?.outcome !== PromptOutcome.Entered) {
-    await waitAgain($, reminded, seenBefore, board)
-  }
+  const restore = () => waitAgain($, reminded, seenBefore, board)
+  await (sent === undefined
+    ? restore()
+    : submitToSessionOrRestore($, sessionId, { text: sent.text }, restore))
 }
 
 /**

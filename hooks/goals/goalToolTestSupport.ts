@@ -11,8 +11,6 @@ import { LIST_GOALS_TOOL } from './goalNames'
 export const MIGRATION_GUIDE = 'Write the migration guide'
 export const ROTATION_CRASH = 'Fix the crash on rotation'
 
-export const SUBAGENT = 'agent-1'
-
 export const SEE_OPEN_GOALS =
   `Call ${LIST_GOALS_TOOL} to see the open goals and the entries attached to them.`
 
