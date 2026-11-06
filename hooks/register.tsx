@@ -4,6 +4,7 @@ import { EVERY_EVENT } from './everyEvent'
 import { registerGoals } from './goals'
 import { blockStopOnHintPhrase } from './hints'
 import { ANSWER_COMMAND, ASK_TOOL, LIST_TOOL, PANE, SKILL_TOOL, WITHDRAW_TOOL } from './names'
+import { FooterRow, registerPromptFooter } from './promptFooter'
 import {
   addAnswersToToolResult,
   askQuestion,
@@ -23,6 +24,7 @@ import { drawQuestionBand, drawQuestionPane } from './questionScreens'
 import { registerSelfCheck } from './selfCheck'
 
 export const register: Register = on => {
+  const footerRow = new FooterRow()
   on('session.start', { isInteractive: true }, startQuestions)
   on('classic.SessionStart', readQuestionsOfStartedSession)
   // Registered before the tools of this plugin, so their results also contain the answers.
@@ -38,6 +40,7 @@ export const register: Register = on => {
   on('command.run', { command: ANSWER_COMMAND }, runAnswerCommand).catch(replyWithHookFailure)
   on('ui.render', { component: 'AbovePrompt' }, drawQuestionBand)
   on('ui.render', { component: 'Pane', requestId: PANE }, drawQuestionPane)
-  registerGoals(on)
+  registerPromptFooter(on, footerRow)
+  registerGoals(on, footerRow)
   registerSelfCheck(on)
 }

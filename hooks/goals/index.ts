@@ -1,6 +1,7 @@
 import type { Hook, On } from 'claude-code'
 
 import { EVERY_EVENT } from '../everyEvent'
+import type { FooterRow } from '../promptFooter'
 import { loadBoardAtStart } from './goalActions'
 import { replyWithGoalsHookFailure, runGoalsCommand } from './goalCommands'
 import {
@@ -20,7 +21,7 @@ import {
 } from './goalReminderHooks'
 import { handleMarkGoalDoneCall, handleUnmarkGoalDoneCall } from './goalMarkTools'
 import { drawGoalsPane } from './goalScreens'
-import { drawGoalsButton, measurePromptHint } from './goalsButton'
+import { drawGoalsButton } from './goalsButton'
 import {
   COMPACTION_SOURCE,
   SWITCHING_SOURCES,
@@ -47,8 +48,8 @@ const startGoals: Hook<'session.start'> = async ($, e, next) => {
   return next(e)
 }
 
-/** Registers the hooks of the goals board. */
-export function registerGoals(on: On): void {
+/** Registers the hooks of the goals board, with its button on the prompt footer `footerRow`. */
+export function registerGoals(on: On, footerRow: FooterRow): void {
   on('session.start', startGoals)
   on('classic.SessionStart', { source: SWITCHING_SOURCES }, readGoalsOfSwitchedSession)
   on('classic.SessionStart', { source: COMPACTION_SOURCE }, addOpenGoalsAfterCompaction)
@@ -68,6 +69,7 @@ export function registerGoals(on: On): void {
     denyGoalToolFailure,
   )
   on('ui.render', { component: 'Pane', requestId: GOALS_PANE }, drawGoalsPane)
-  on('ui.render', { component: 'PromptHint' }, measurePromptHint)
-  on('ui.render', { component: 'SessionMode' }, drawGoalsButton)
+  on('ui.render', { component: 'SessionMode' }, ($, e, next) =>
+    drawGoalsButton(footerRow, $, e, next),
+  )
 }

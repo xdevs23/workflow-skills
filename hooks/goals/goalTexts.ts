@@ -118,7 +118,7 @@ export const COMMANDS_IN_PLACE_OF_FIELD =
   `Add with ${ADD_USAGE}. Edit with ${EDIT_USAGE}. List with /${GOALS_COMMAND}.`
 
 export const PANE_TITLE = 'Goals'
-/** The button in the prompt footer that opens the Goals pane, named as the pane. */
+/** The label of the button in the prompt footer that opens the Goals pane, named as the pane. */
 export const GOALS_BUTTON_LABEL = PANE_TITLE
 export const NEW_GOAL_PLACEHOLDER = 'Add a goal'
 export const ADD_LABEL = 'add'
