@@ -227,46 +227,59 @@ function drawClearQuestion(
 
 /**
  * The buttons beside a row: Cancel while the goal is edited, none while it waits for a yes, and
- * otherwise Clear, with Edit before it where the surface draws input fields.
+ * otherwise Clear, with Edit before it where the surface draws input fields. In a narrow row, Clear
+ * shows on the next line as a whole.
  */
 function drawRowButtons(
   $: EngineInterface,
-  { Box, Button }: GoalElements,
+  elements: GoalElements,
   sessionId: string,
   goal: Goal,
   row: DrawnRow,
 ) {
+  const { Box, Button } = elements
   switch (row.mode) {
     case RowMode.WaitingForYes:
       return null
     case RowMode.Editing:
-      return (
+      return drawWhole(
+        elements,
         <Button
           key={`cancel-edit-${goal.number}`}
           label={CANCEL_LABEL}
           onPress={() => dropGoalInPane($, goal.id, RowMode.Editing)}
-        />
+        />,
       )
     case undefined:
       return (
-        <Box columnGap={1}>
-          {row.drawEditField !== undefined && (
+        <Box columnGap={1} flexWrap="wrap" justifyContent="flex-end">
+          {row.drawEditField !== undefined &&
+            drawWhole(
+              elements,
+              <Button
+                key={`edit-${goal.number}`}
+                label={EDIT_LABEL}
+                dimColor
+                onPress={() => startEditing($, sessionId, goal)}
+              />,
+            )}
+          {drawWhole(
+            elements,
             <Button
-              key={`edit-${goal.number}`}
-              label={EDIT_LABEL}
+              key={`clear-${goal.number}`}
+              label={CLEAR_LABEL}
               dimColor
-              onPress={() => startEditing($, sessionId, goal)}
-            />
+              onPress={() => askToClear($, sessionId, goal)}
+            />,
           )}
-          <Button
-            key={`clear-${goal.number}`}
-            label={CLEAR_LABEL}
-            dimColor
-            onPress={() => askToClear($, sessionId, goal)}
-          />
         </Box>
       )
   }
+}
+
+/** `button` in a box that never shrinks, so a narrow row does not break its label. */
+function drawWhole({ Box }: GoalElements, button: RenderElement) {
+  return <Box flexShrink={0}>{button}</Box>
 }
 
 /**
