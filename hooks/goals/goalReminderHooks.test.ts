@@ -6,6 +6,7 @@ import { PLUGIN } from '../names'
 import {
   FIRST_SESSION,
   GOALS_NOT_EXHAUSTIVE,
+  IDLE_WITH_UNFINISHED_GOALS,
   NO_TIME_LIMIT,
   SECOND_SESSION,
   SUBAGENT,
@@ -445,6 +446,7 @@ describe('the open goals after the idle minutes', () => {
     'Goal #1 is not satisfied yet: Ship the offline mode. Attached: #61 (Drafts sync once the ' +
     'connection returns).'
   const REMINDER = [
+    IDLE_WITH_UNFINISHED_GOALS,
     REMINDER_OF_FIRST_GOAL,
     'Goal #2 is not satisfied yet: Add the dark theme.',
     GOALS_NOT_EXHAUSTIVE,
@@ -553,7 +555,12 @@ describe('the open goals after the idle minutes', () => {
       await session.clock.advance(IDLE_TIME)
 
       expect(promptsOfPlugin(session)).toEqual([
-        [REMINDER_OF_FIRST_GOAL, 'The user cleared goal #2.', GOALS_NOT_EXHAUSTIVE].join('\n\n'),
+        [
+          IDLE_WITH_UNFINISHED_GOALS,
+          REMINDER_OF_FIRST_GOAL,
+          'The user cleared goal #2.',
+          GOALS_NOT_EXHAUSTIVE,
+        ].join('\n\n'),
       ])
       expect(await notesOfToolResult($)).toEqual([])
     },

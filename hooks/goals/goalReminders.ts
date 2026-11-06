@@ -35,11 +35,29 @@ export function describeOpenGoalsAfterCompaction(board: Board): string | undefin
     : ['# Open goals', ...goals.flatMap(describeGoalWithTodos)].join('\n')
 }
 
-/** The reminder sent once the model has been idle for a while: one paragraph per open goal. */
+/**
+ * The first paragraph of the reminder sent after the idle minutes, while a goal is open without a
+ * done mark. It tells the model to work on the goals.
+ */
+const IDLE_WITH_UNFINISHED_GOALS =
+  'You are idle while goals are open. Pick up the work on them in this turn. Do not end the turn ' +
+  'on a status report.'
+
+/**
+ * The reminder sent once the model has been idle for a while: one paragraph per open goal, after
+ * `IDLE_WITH_UNFINISHED_GOALS` while a goal is open without a done mark. Goals marked done wait for
+ * the user, so a board of only those does not ask for more work.
+ */
 export function describeOpenGoalsAfterIdle(board: Board): string | undefined {
   const goals = sortedByNumber(openGoalsOf(board))
+  if (goals.length === 0) {
+    return undefined
+  }
+  const opening = goals.some(goal => doneMarkOf(goal) === undefined)
+    ? [IDLE_WITH_UNFINISHED_GOALS]
+    : []
 
-  return goals.length === 0 ? undefined : goals.map(describeUnsatisfiedGoal).join('\n\n')
+  return [...opening, ...goals.map(describeUnsatisfiedGoal)].join('\n\n')
 }
 
 /**

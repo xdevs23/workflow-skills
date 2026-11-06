@@ -8,6 +8,7 @@ import {
   describeOpenGoalsAfterIdle,
   describeOpenGoalsSent,
 } from './goalReminders'
+import { IDLE_WITH_UNFINISHED_GOALS } from '../testSupport'
 
 const INVOICE_EXPORT: Goal = {
   id: 'invoice-export',
@@ -104,6 +105,7 @@ describe('the open goals after idle minutes', () => {
   test('writes one paragraph per open goal in number order, with its TODO entries attached', () => {
     expect(describeOpenGoalsAfterIdle(THREE_GOALS)).toBe(
       [
+        IDLE_WITH_UNFINISHED_GOALS,
         'Goal #1 is not satisfied yet: Ship the invoice export. Attached: #57 (Export names the ' +
           'currency), #12 (Export writes one file per month).',
         'Goal #2 is not satisfied yet: Translate the help pages. Attached: #20.1 (Help pages ' +
@@ -113,7 +115,13 @@ describe('the open goals after idle minutes', () => {
     )
   })
 
-  test('reminds of a goal marked as done, with its done mark before its TODO entries', () => {
+  test('asks for the work while one open goal is not marked as done', () => {
+    const board = { goals: [markedDone(INVOICE_EXPORT), NIGHTLY_BUILD] }
+
+    expect(describeOpenGoalsAfterIdle(board)?.split('\n\n')[0]).toBe(IDLE_WITH_UNFINISHED_GOALS)
+  })
+
+  test('reminds of goals that are all marked as done without asking for more work', () => {
     const board = { goals: [markedDone(INVOICE_EXPORT), markedDone(NIGHTLY_BUILD)] }
 
     expect(describeOpenGoalsAfterIdle(board)).toBe(
@@ -131,7 +139,10 @@ describe('the open goals after idle minutes', () => {
     const board = { goals: [{ ...NIGHTLY_BUILD, text: 'Is the nightly build fast enough?' }] }
 
     expect(describeOpenGoalsAfterIdle(board)).toBe(
-      'Goal #3 is not satisfied yet: Is the nightly build fast enough?',
+      [
+        IDLE_WITH_UNFINISHED_GOALS,
+        'Goal #3 is not satisfied yet: Is the nightly build fast enough?',
+      ].join('\n\n'),
     )
   })
 
@@ -273,6 +284,7 @@ describe('the open goals sent with the changes since the model saw the board', (
 
     expect(describeOpenGoalsSent(now, seen, describeOpenGoalsAfterIdle)).toEqual({
       text: [
+        IDLE_WITH_UNFINISHED_GOALS,
         'Goal #1 is not satisfied yet: Ship the invoice export. Attached: #57 (Export names the ' +
           'currency), #12 (Export writes one file per month).',
         'Goal #3 is not satisfied yet: Speed up the nightly build.',
