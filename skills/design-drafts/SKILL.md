@@ -34,14 +34,13 @@ description: Draw several design drafts for user to choose from
 
 ## A whole screen
 
-- Draw each draft of whole screen, e.g. dashboard or main view of app, as separate page showing
-  only the screen, at resolution of target screen.
-- Give each draft second page that scales it to browser window. Its header contains link to
-  overview, name and one-line description of draft, and link to page at actual size.
-- Write overview page, one entry per draft: name, one-line description, links to scaled page and to
-  page at actual size.
+- Draw each whole-screen draft, e.g. web page, dashboard or main view of app, as one complete
+  page, as it would ship. Never scale it to fit window.
+- Lay out page at width of target screen. Page scrolls only where product scrolls: there at full
+  length, never cut to one viewport. Fixed-size screen stays at its size.
+- Write overview page, one entry per draft: name, one-line description, link to draft.
 - Write overview in dark mode, with name of change as title and one line under it saying what
-  drafts show. Draft pages and scaled pages contain nothing beyond what this section lists.
+  drafts show. Draft pages contain only the screen.
 - Draw all drafts and overview at once.
 
 ## A part of a screen
@@ -54,8 +53,12 @@ description: Draw several design drafts for user to choose from
 
 ## Checking
 
-- Render every page in headless browser at real size, animations running. Take screenshot and look
-  at it before showing page.
+- Render every page in headless browser at width and height of target screen, animations running.
+- Scroll page top to bottom in steps of viewport height before screenshot, so motion started by
+  scrolling has run. Take screenshot of whole page, top to bottom, and look at it before showing
+  page.
+- Check each section sized to viewport height at real viewport height, by one screenshot per
+  scroll position. Screenshot of whole page stretches such section.
 - Take screenshot of finished state, after every motion on load ended. Headless browser with virtual
   time can hold CSS animations at first frame while timers advance. Screenshot showing empty chart or
   bars at zero shows start frame.
