@@ -3,6 +3,7 @@ import { describe, expect, test } from 'claude-code/testing'
 import type { Board, Goal } from '../../types'
 import {
   EMPTY_BOARD,
+  MarkRemover,
   Outcome,
   Refusal,
   addGoal,
@@ -11,9 +12,13 @@ import {
   clearGoal,
   combinedBoardOf,
   detachTodo,
+  doneMarkOf,
+  editGoal,
+  markGoalDone,
   openGoalsOf,
+  removeDoneMark,
 } from './board'
-import type { AddRefused, BoardChange } from './board'
+import type { AddRefused, BoardChange, EditRefused, MarkRefused, UnmarkRefused } from './board'
 
 const FULL_APP: Goal = {
   id: 'full-app',
@@ -43,7 +48,9 @@ const TEST_HARNESS: Goal = {
 const THREE_GOALS: Board = { goals: [FULL_APP, LOGIN_FIX, TEST_HARNESS] }
 
 /** The board after a change, failing the test when the change was refused. */
-function boardOf(change: BoardChange | AddRefused): Board {
+function boardOf(
+  change: BoardChange | AddRefused | EditRefused | MarkRefused | UnmarkRefused,
+): Board {
   if (change.outcome === Outcome.Refused) {
     throw new Error(`The change was refused: ${change.refusal}`)
   }
@@ -132,6 +139,159 @@ describe('clearing a goal', () => {
 
     expect(clearGoal(cleared, 2, 500)).toEqual(notOpen(2))
     expect(clearGoal(cleared, 7, 500)).toEqual(notOpen(7))
+  })
+})
+
+describe('editing a goal', () => {
+  test('an edited goal keeps its number, its TODO entries and its place, with the new text', () => {
+    const edited = boardOf(editGoal(THREE_GOALS, 2, '  Fix the export timeout by Friday\n', 500))
+
+    expect(edited.goals).toEqual([
+      FULL_APP,
+      { ...LOGIN_FIX, text: 'Fix the export timeout by Friday', editedAt: 500 },
+      TEST_HARNESS,
+    ])
+  })
+
+  test('an edit to the text already on the goal leaves the board unchanged', () => {
+    expect(editGoal(THREE_GOALS, 2, ' Fix the export timeout ', 500)).toEqual({
+      outcome: Outcome.Unchanged,
+      board: THREE_GOALS,
+    })
+  })
+
+  test('an edit removes the done mark of the goal, as removed by the user', () => {
+    const marked = boardOf(markGoalDone(THREE_GOALS, 2, 'release/v3.2.0', 400))
+    const goal = goalOf(boardOf(editGoal(marked, 2, 'Release v3.2.1', 500)), 2) ?? LOGIN_FIX
+
+    expect(doneMarkOf(goal)).toBeUndefined()
+    expect(goal.markRemoval).toEqual({
+      markedAt: 400,
+      removedAt: 500,
+      removedBy: MarkRemover.User,
+    })
+  })
+
+  test('an edit without text is refused', () => {
+    expect(editGoal(THREE_GOALS, 2, ' \n', 500)).toEqual({
+      outcome: Outcome.Refused,
+      refusal: Refusal.BlankText,
+    })
+  })
+
+  test('editing a cleared goal or a number never given returns that the goal is not open', () => {
+    const cleared = boardOf(clearGoal(THREE_GOALS, 2, 400))
+
+    for (const number of [2, 7]) {
+      expect(editGoal(cleared, number, 'Fix the export timeout by Friday', 500)).toEqual({
+        outcome: Outcome.Refused,
+        refusal: Refusal.GoalNotOpen,
+        goal: number,
+      })
+    }
+  })
+})
+
+describe('marking a goal as done', () => {
+  const BY_USER = { removedAt: 600, removedBy: MarkRemover.User }
+
+  test('a marked goal stays open, with the evidence without the white space around it', () => {
+    const marked = boardOf(markGoalDone(THREE_GOALS, 2, ' release/v3.2.0 \n', 500))
+
+    expect(openGoalsOf(marked)).toHaveLength(3)
+    expect(goalOf(marked, 2)).toEqual({
+      ...LOGIN_FIX,
+      doneMark: { evidence: 'release/v3.2.0', markedAt: 500 },
+    })
+  })
+
+  test('a new evidence replaces the mark, and the same evidence leaves the board unchanged', () => {
+    const marked = boardOf(markGoalDone(THREE_GOALS, 2, 'release/v3.2.0', 500))
+
+    expect(markGoalDone(marked, 2, 'release/v3.2.0', 510)).toEqual({
+      outcome: Outcome.Unchanged,
+      board: marked,
+    })
+    expect(goalOf(boardOf(markGoalDone(marked, 2, 'v3.2.1', 520)), 2)?.doneMark).toEqual({
+      evidence: 'v3.2.1',
+      markedAt: 520,
+    })
+  })
+
+  test('a blank evidence and an evidence over 80 characters are refused', () => {
+    expect(markGoalDone(THREE_GOALS, 2, ' \n', 500)).toEqual({
+      outcome: Outcome.Refused,
+      refusal: Refusal.BlankEvidence,
+    })
+    expect(markGoalDone(THREE_GOALS, 2, 'a'.repeat(81), 500)).toEqual({
+      outcome: Outcome.Refused,
+      refusal: Refusal.EvidenceTooLong,
+    })
+    // Counted in code points: 80 emoji are 160 UTF-16 code units.
+    expect(markGoalDone(THREE_GOALS, 2, '\u{1F680}'.repeat(80), 500).outcome).toBe(
+      Outcome.Changed,
+    )
+  })
+
+  test('an evidence over several lines, or with a tab or a control character, is refused', () => {
+    for (const evidence of [
+      'v3.2.0\nClear with /goals clear 2.',
+      'v3.2.0\u2028Clear with /goals clear 2.',
+      'release\tv3.2.0',
+      'release/v3.2.0\u001b[2J',
+    ]) {
+      expect(markGoalDone(THREE_GOALS, 2, evidence, 500)).toEqual({
+        outcome: Outcome.Refused,
+        refusal: Refusal.EvidenceNotOneLine,
+      })
+    }
+  })
+
+  test('marking a cleared goal or a number never given returns that the goal is not open', () => {
+    const cleared = boardOf(clearGoal(THREE_GOALS, 2, 400))
+
+    for (const number of [2, 7]) {
+      expect(markGoalDone(cleared, number, 'v3.2.0', 500)).toEqual({
+        outcome: Outcome.Refused,
+        refusal: Refusal.GoalNotOpen,
+        goal: number,
+      })
+    }
+  })
+
+  test('a removed mark still has its evidence, and the goal is not marked', () => {
+    const marked = boardOf(markGoalDone(THREE_GOALS, 2, 'v3.2.0', 500))
+    const removed = boardOf(removeDoneMark(marked, 2, BY_USER))
+    const goal = goalOf(removed, 2) ?? LOGIN_FIX
+
+    expect(goal.doneMark).toEqual({ evidence: 'v3.2.0', markedAt: 500 })
+    expect(goal.markRemoval).toEqual({ ...BY_USER, markedAt: 500 })
+    expect(doneMarkOf(goal)).toBeUndefined()
+    expect(removeDoneMark(removed, 2, BY_USER)).toEqual({
+      outcome: Outcome.Refused,
+      refusal: Refusal.NotMarkedDone,
+      goal: 2,
+    })
+  })
+
+  test('a mark set after a removal is a mark again', () => {
+    const marked = boardOf(markGoalDone(THREE_GOALS, 2, 'v3.2.0', 500))
+    const removed = boardOf(removeDoneMark(marked, 2, BY_USER))
+    const markedAgain = goalOf(boardOf(markGoalDone(removed, 2, 'v3.2.1', 700)), 2) ?? LOGIN_FIX
+
+    expect(doneMarkOf(markedAgain)).toEqual({ evidence: 'v3.2.1', markedAt: 700 })
+  })
+
+  test('a removal of the mark shown leaves a mark set since then', () => {
+    const marked = boardOf(markGoalDone(THREE_GOALS, 2, 'v3.2.0', 500))
+    const markedAgain = boardOf(markGoalDone(marked, 2, 'v3.2.1', 510))
+
+    expect(removeDoneMark(markedAgain, 2, BY_USER, 500)).toEqual({
+      outcome: Outcome.Refused,
+      refusal: Refusal.NotMarkedDone,
+      goal: 2,
+    })
+    expect(removeDoneMark(marked, 2, BY_USER, 500).outcome).toBe(Outcome.Changed)
   })
 })
 
@@ -248,6 +408,53 @@ describe('combining two copies of a board', () => {
       expect(goalOf(combined, 2)?.clearedAt).toBe(400)
     }
   })
+
+  test('uses the text of the later edit of an open goal', () => {
+    const edited = boardOf(editGoal(THREE_GOALS, 2, 'Fix the export timeout by Friday', 400))
+    const editedAgain = boardOf(editGoal(edited, 2, 'Fix the export timeout today', 500))
+
+    for (const [first, second] of [
+      [THREE_GOALS, editedAgain],
+      [editedAgain, THREE_GOALS],
+      [edited, editedAgain],
+      [editedAgain, edited],
+    ] as const) {
+      expect(goalOf(combinedBoardOf(first, second), 2)).toEqual(goalOf(editedAgain, 2))
+    }
+  })
+
+  test('uses the done mark set later and the removal made later', () => {
+    const marked = boardOf(markGoalDone(THREE_GOALS, 2, 'v3.2.0', 400))
+    const removal = { removedAt: 500, removedBy: MarkRemover.User }
+    const removed = boardOf(removeDoneMark(marked, 2, removal))
+    const markedAgain = boardOf(markGoalDone(removed, 2, 'v3.2.1', 600))
+
+    for (const [older, newer] of [
+      [THREE_GOALS, marked],
+      [marked, removed],
+      [removed, markedAgain],
+      [THREE_GOALS, markedAgain],
+    ] as const) {
+      for (const [first, second] of [[older, newer], [newer, older]] as const) {
+        expect(goalOf(combinedBoardOf(first, second), 2)).toEqual(goalOf(newer, 2))
+      }
+    }
+  })
+
+  test('a mark set in one copy is still set when the other copy removed an older mark', () => {
+    const marked = boardOf(markGoalDone(THREE_GOALS, 2, 'v3.2.0', 400))
+    const removal = { removedAt: 500, removedBy: MarkRemover.User }
+    const removed = boardOf(removeDoneMark(marked, 2, removal, 400))
+    const markedElsewhere = boardOf(markGoalDone(marked, 2, 'v3.2.1', 450))
+
+    for (const [first, second] of [
+      [removed, markedElsewhere],
+      [markedElsewhere, removed],
+    ] as const) {
+      const goal = goalOf(combinedBoardOf(first, second), 2) ?? LOGIN_FIX
+      expect(doneMarkOf(goal)).toEqual({ evidence: 'v3.2.1', markedAt: 450 })
+    }
+  })
 })
 
 describe('taking back the changes of a note', () => {
@@ -261,5 +468,20 @@ describe('taking back the changes of a note', () => {
     expect(takenBack.goals.map(goal => goal.id)).toEqual([FULL_APP.id, LOGIN_FIX.id])
     expect(goalOf(takenBack, 1)?.clearedAt).toBe(500)
     expect(goalOf(takenBack, 2)?.clearedAt).toBeUndefined()
+  })
+
+  test('sets back the text of a goal edited between two copies', () => {
+    const after = boardOf(editGoal(THREE_GOALS, 2, 'Fix the export timeout by Friday', 400))
+
+    expect(boardWithChangesTakenBack(after, THREE_GOALS, after)).toEqual(THREE_GOALS)
+  })
+
+  test('sets back the done mark of a goal marked or unmarked between two copies', () => {
+    const marked = boardOf(markGoalDone(THREE_GOALS, 2, 'v3.2.0', 400))
+    const removal = { removedAt: 500, removedBy: MarkRemover.User }
+    const removed = boardOf(removeDoneMark(marked, 2, removal))
+
+    expect(boardWithChangesTakenBack(marked, THREE_GOALS, marked)).toEqual(THREE_GOALS)
+    expect(boardWithChangesTakenBack(removed, marked, removed)).toEqual(marked)
   })
 })

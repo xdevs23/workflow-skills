@@ -1,7 +1,8 @@
-import type { Board, Goal } from '../../types'
+import type { Board, DoneMark, Goal } from '../../types'
 import { sortedByNumber } from '../numbered'
-import { isOpen, openGoalsOf } from './board'
+import { ChangeKind, MarkRemover, changesBetween, doneMarkOf, openGoalsOf } from './board'
 import { PANE_TITLE } from './goalTexts'
+import { GoalsReader, describeDoneMarkForModel } from './goalToolTexts'
 
 /**
  * A text that gives the goals to the model, and the line in the transcript that shows it was sent.
@@ -22,7 +23,10 @@ export function describeIdleReminderFailed(message: string): string {
   )
 }
 
-/** The block added to the context after a compaction: the open goals with their TODO entries. */
+/**
+ * The block added to the context after a compaction: the open goals with their done marks and
+ * their TODO entries.
+ */
 export function describeOpenGoalsAfterCompaction(board: Board): string | undefined {
   const goals = sortedByNumber(openGoalsOf(board))
 
@@ -39,9 +43,9 @@ export function describeOpenGoalsAfterIdle(board: Board): string | undefined {
 }
 
 /**
- * The open goals on `now` as `describeList` writes them, followed by the note on the goals added
- * and cleared since the model saw the board as `seen`. The list has no cleared goal in it, so the
- * note goes with it.
+ * The open goals on `now` as `describeList` writes them, followed by the note on the goals added,
+ * edited, unmarked by the user and cleared since the model saw the board as `seen`. The list has no
+ * cleared goal in it, so the note goes with it.
  */
 export function describeOpenGoalsSent(
   now: Board,
@@ -52,8 +56,8 @@ export function describeOpenGoalsSent(
 }
 
 /**
- * The note on the goals added and cleared since the model saw the board as `seen`, or the open
- * goals on `now` for a model that saw no board yet.
+ * The note on the goals added, edited, unmarked by the user and cleared since the model saw the
+ * board as `seen`, or the open goals on `now` for a model that saw no board yet.
  */
 export function describeGoalChangesSent(seen: Board | null, now: Board): GoalsSent | undefined {
   return seen === null
@@ -65,35 +69,45 @@ function describeGoalWithTodos(goal: Goal): string[] {
   const label = `${goal.number}. `
   const indent = ' '.repeat(label.length)
 
+  const mark = doneMarkOf(goal)
+
   return [
     `${label}${goal.text}`,
+    ...(mark === undefined ? [] : [`${indent}${describeMarkToMainConversation(mark)}`]),
     ...goal.todos.map(todo => `${indent}#${todo.number} - ${todo.title}`),
   ]
 }
 
 function describeUnsatisfiedGoal(goal: Goal): string {
-  const unsatisfied = `Goal #${goal.number} is not satisfied yet: ${asSentence(goal.text)}`
-  if (goal.todos.length === 0) {
-    return unsatisfied
-  }
+  const mark = doneMarkOf(goal)
   const attached = goal.todos.map(todo => `#${todo.number} (${todo.title})`).join(', ')
 
-  return `${unsatisfied} Attached: ${attached}.`
+  return [
+    `Goal #${goal.number} is not satisfied yet: ${asSentence(goal.text)}`,
+    ...(mark === undefined ? [] : [asSentence(describeMarkToMainConversation(mark))]),
+    ...(goal.todos.length === 0 ? [] : [`Attached: ${attached}.`]),
+  ].join(' ')
 }
 
-enum ChangeKind {
-  Added = 'added',
-  Cleared = 'cleared',
-}
+/** The kinds of change sent to the model: the changes made by the user. */
+type NotedKind = ChangeKind.Added | ChangeKind.Edited | ChangeKind.MarkRemoved | ChangeKind.Cleared
 
 /** How a change of each kind is written in the note to the model and in the transcript line. */
 const CHANGE_TEXTS: Record<
-  ChangeKind,
+  NotedKind,
   { describeNote: (goal: Goal) => string; describeInLine: (goal: Goal) => string }
 > = {
   [ChangeKind.Added]: {
     describeNote: goal => `The user added goal #${goal.number}: ${asSentence(goal.text)}`,
     describeInLine: goal => `goal ${goal.number} added`,
+  },
+  [ChangeKind.Edited]: {
+    describeNote: goal => `The user edited goal #${goal.number}: ${asSentence(goal.text)}`,
+    describeInLine: goal => `goal ${goal.number} edited`,
+  },
+  [ChangeKind.MarkRemoved]: {
+    describeNote: goal => `The user removed your done mark from goal #${goal.number}.`,
+    describeInLine: goal => `goal ${goal.number} unmarked`,
   },
   [ChangeKind.Cleared]: {
     describeNote: goal => `The user cleared goal #${goal.number}.`,
@@ -104,32 +118,33 @@ const CHANGE_TEXTS: Record<
 /** Joins the changes in a transcript line, as in "goal 2 cleared and goal 3 added". */
 const CHANGES_IN_LINE = new Intl.ListFormat('en', { type: 'conjunction' })
 
-type GoalChange = { goal: Goal; kind: ChangeKind }
+/** A change sent to the model. */
+type NotedChange = { goal: Goal; kind: NotedKind }
 
 /**
- * The goals added and cleared since the model last saw the board as `seen`, sorted by number. A
- * goal is never removed from a board, so only the goals in `now` are compared.
+ * The changes made by the user since the model last saw the board as `seen`. The model sets and
+ * removes its own marks, so the note leaves those out.
  */
-function changesSince(seen: Board, now: Board): GoalChange[] {
-  const seenGoals = new Map(seen.goals.map(goal => [goal.id, goal]))
-
-  return sortedByNumber(now.goals).flatMap(goal => changesOf(goal, seenGoals.get(goal.id)))
-}
-
-/** `seen` is the goal on the board the model last saw, if the goal was there. */
-function changesOf(goal: Goal, seen: Goal | undefined): GoalChange[] {
-  const added = seen === undefined ? [{ goal, kind: ChangeKind.Added }] : []
-  const isNewlyCleared = !isOpen(goal) && (seen === undefined || isOpen(seen))
-  const cleared = isNewlyCleared ? [{ goal, kind: ChangeKind.Cleared }] : []
-
-  return [...added, ...cleared]
+function changesSince(seen: Board, now: Board): NotedChange[] {
+  return changesBetween(seen, now).flatMap(({ goal, ...change }): NotedChange[] => {
+    switch (change.kind) {
+      case ChangeKind.MarkSet:
+        return []
+      case ChangeKind.MarkRemoved:
+        return change.removedBy === MarkRemover.User ? [{ goal, kind: change.kind }] : []
+      case ChangeKind.Added:
+      case ChangeKind.Edited:
+      case ChangeKind.Cleared:
+        return [{ goal, kind: change.kind }]
+    }
+  })
 }
 
 /** The open goals on `now` listed as `list`, if given, and the changes `changes` sent with them. */
 function describeSent(
   now: Board,
   list: string | undefined,
-  changes: readonly GoalChange[],
+  changes: readonly NotedChange[],
 ): GoalsSent | undefined {
   const texts = [list, describeChangeNote(now, changes)].filter(text => text !== undefined)
   if (texts.length === 0) {
@@ -140,7 +155,7 @@ function describeSent(
   return { text: texts.join('\n\n'), line: describeSentLine(listedCount, changes) }
 }
 
-function describeChangeNote(now: Board, changes: readonly GoalChange[]): string | undefined {
+function describeChangeNote(now: Board, changes: readonly NotedChange[]): string | undefined {
   if (changes.length === 0) {
     return undefined
   }
@@ -151,7 +166,7 @@ function describeChangeNote(now: Board, changes: readonly GoalChange[]): string 
 }
 
 /** The transcript line for `listedCount` open goals and the changes `changes` sent to the model. */
-function describeSentLine(listedCount: number, changes: readonly GoalChange[]): string {
+function describeSentLine(listedCount: number, changes: readonly NotedChange[]): string {
   const changed = CHANGES_IN_LINE.format(
     changes.map(({ goal, kind }) => CHANGE_TEXTS[kind].describeInLine(goal)))
   if (listedCount === 0) {
@@ -164,6 +179,11 @@ function describeSentLine(listedCount: number, changes: readonly GoalChange[]): 
   return changes.length === 0
     ? `${PANE_TITLE}: ${listed}`
     : `${PANE_TITLE}: ${listed}, with ${changed}`
+}
+
+/** The done mark as the main conversation reads it, the only reader of the reminders. */
+function describeMarkToMainConversation(mark: DoneMark): string {
+  return describeDoneMarkForModel(mark, GoalsReader.MainConversation)
 }
 
 function asSentence(text: string): string {

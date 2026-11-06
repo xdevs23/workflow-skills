@@ -9,6 +9,8 @@ import {
   GOALS_COMMAND,
   GOALS_PANE,
   LIST_GOALS_TOOL,
+  MARK_GOAL_DONE_TOOL,
+  UNMARK_GOAL_DONE_TOOL,
 } from './goalNames'
 import { endIdleStretch, waitAfterTurn } from './goalIdleReminder'
 import {
@@ -16,6 +18,7 @@ import {
   addOpenGoalsAfterCompaction,
   submitWithGoalChanges,
 } from './goalReminderHooks'
+import { handleMarkGoalDoneCall, handleUnmarkGoalDoneCall } from './goalMarkTools'
 import { drawGoalsPane } from './goalScreens'
 import {
   COMPACTION_SOURCE,
@@ -57,5 +60,11 @@ export function registerGoals(on: On): void {
   on('tool.call', { tool: LIST_GOALS_TOOL }, listGoals).catch(denyGoalToolFailure)
   on('tool.call', { tool: ATTACH_TODO_TOOL }, attachTodo).catch(denyGoalToolFailure)
   on('tool.call', { tool: DETACH_TODO_TOOL }, detachTodo).catch(denyGoalToolFailure)
+  on('tool.call', { tool: MARK_GOAL_DONE_TOOL }, handleMarkGoalDoneCall).catch(
+    denyGoalToolFailure,
+  )
+  on('tool.call', { tool: UNMARK_GOAL_DONE_TOOL }, handleUnmarkGoalDoneCall).catch(
+    denyGoalToolFailure,
+  )
   on('ui.render', { component: 'Pane', requestId: GOALS_PANE }, drawGoalsPane)
 }

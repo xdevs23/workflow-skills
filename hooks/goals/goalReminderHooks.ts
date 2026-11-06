@@ -5,12 +5,12 @@ import { isMainConversation } from '../conversation'
 import type { EveryEvent } from '../register'
 import { callToolWithNote, submitWithNote } from '../sendToModel'
 import { Outcome } from './board'
-import { GOAL_TOOLS } from './goalNames'
 import { listOpenGoals, readBoardToRemind } from './goalReminderBoard'
 import { describeGoalChangesSent, describeOpenGoalsAfterCompaction } from './goalReminders'
 import type { GoalsSent } from './goalReminders'
 import { COMPACTION_SOURCE } from './goalSession'
 import { exchangeSeenBoard, readBoardInState, readSeenBoard, restoreSeenBoard } from './goalState'
+import { GOAL_TOOLS } from './goalTools'
 import { withGoalsNotExhaustive } from './goalToolTexts'
 
 /**
@@ -82,8 +82,8 @@ export const submitWithGoalChanges: MatchedHook<'prompt.submit', EveryEvent> = a
 
 /**
  * Records the board in the state as seen by the model running the session `sessionId`, and returns
- * the goals added or cleared since the model saw the board before. A model that saw no board yet is
- * given the open goals.
+ * the goals added, edited, unmarked by the user or cleared since the model saw the board before. A
+ * model that saw no board yet is given the open goals.
  */
 async function takeGoalChanges(
   $: EngineInterface,

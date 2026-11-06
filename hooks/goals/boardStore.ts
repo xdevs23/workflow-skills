@@ -1,4 +1,4 @@
-import type { AttachedTodo, Board, Goal } from '../../types'
+import type { AttachedTodo, Board, Goal, MarkRemoval } from '../../types'
 import {
   describeRefusedRead,
   describeRefusedWrite,
@@ -12,16 +12,35 @@ import {
   attachTodo,
   clearGoal,
   detachTodo,
+  editGoal,
   isNumberTaken,
+  markGoalDone,
   nextGoalNumberOf,
+  removeDoneMark,
   settledBoardOf,
 } from './board'
-import type { AddRefused, BoardChange, ChangeRefused, Changed, Read } from './board'
+import type {
+  AddRefused,
+  BoardChange,
+  ChangeRefused,
+  Changed,
+  EditRefused,
+  MarkRefused,
+  MarkedGoal,
+  NotChanged,
+  Read,
+  Unchanged,
+  UnmarkRefused,
+  UnmarkedGoal,
+} from './board'
 import {
   UnreadableRecordError,
   clearanceRecordOf,
+  doneMarkRecordOf,
   goalRecordOf,
+  markRemovalRecordOf,
   readBoard,
+  textRecordOf,
   todoKeyOf,
   todoRecordOf,
 } from './boardRecord'
@@ -31,9 +50,11 @@ import type { BoardScope } from './boardScope'
 
 // The store does not offer compare-and-set. Changes made at once by several processes do not
 // overwrite each other, since every change writes only the record of its own part of the board: a
-// new goal, the clearance of a goal, or one TODO entry of a goal. Two changes write one key only
-// when both change the same part, such as one TODO number of one goal, and the later write is then
-// the newer state of that part.
+// new goal, the text of a goal, the clearance of a goal, the done mark of a goal, the removal of a
+// done mark, or one TODO entry of a goal. Two changes write one key only when both change the same
+// part, such as one TODO number of one goal, and the later write is then the newer state of that
+// part. A removal contains the time of the mark it removes, so a mark set while the removal is
+// written is still set afterwards.
 
 /** Why the store could not read or change a board. The stored records are left as they were. */
 export enum StoreFailure {
@@ -100,6 +121,60 @@ export function saveClearedGoal(
   )
 }
 
+export function saveEditedGoal(
+  $: StoreEngine,
+  scope: BoardScope,
+  number: number,
+  text: string,
+  editedAt: number,
+): Promise<Changed | Unchanged | EditRefused | Failed> {
+  return changeBoard(
+    $,
+    scope,
+    board => editGoal(board, number, text, editedAt),
+    async (goal, before) => {
+      // The removal goes first, so a text that is not written leaves the goal without its mark,
+      // never with a mark set for a text it no longer has.
+      const { markRemoval } = goal
+      if (markRemoval !== undefined && markRemoval.removedAt !== before?.markRemoval?.removedAt) {
+        await writeRecord($, markRemovalRecordOf(scope, { ...goal, markRemoval }))
+      }
+      await writeRecord($, textRecordOf(scope, goal, editedAt))
+    },
+  )
+}
+
+export function saveDoneMark(
+  $: StoreEngine,
+  scope: BoardScope,
+  number: number,
+  evidence: string,
+  markedAt: number,
+): Promise<Changed<MarkedGoal> | Unchanged | MarkRefused | Failed> {
+  return changeBoard(
+    $,
+    scope,
+    board => markGoalDone(board, number, evidence, markedAt),
+    goal => writeRecord($, doneMarkRecordOf(scope, goal)),
+  )
+}
+
+/** Removes the done mark as removeDoneMark does, and writes the removal. */
+export function saveRemovedDoneMark(
+  $: StoreEngine,
+  scope: BoardScope,
+  number: number,
+  removal: Omit<MarkRemoval, 'markedAt'>,
+  markedAt?: number,
+): Promise<Changed<UnmarkedGoal> | UnmarkRefused | Failed> {
+  return changeBoard(
+    $,
+    scope,
+    board => removeDoneMark(board, number, removal, markedAt),
+    goal => writeRecord($, markRemovalRecordOf(scope, goal)),
+  )
+}
+
 export function saveAttachedTodo(
   $: StoreEngine,
   scope: BoardScope,
@@ -146,18 +221,20 @@ export function describeStoreFailure(failed: Failed): string {
 
 /**
  * Reads the board of the scope, applies `change` to it, and when the board changed, writes the
- * goal changed by it with `save`.
+ * goal changed by it with `save`, which gets the goal as it was read too.
  */
-function changeBoard<Change extends BoardChange>(
+function changeBoard<Other extends NotChanged, Changing extends Goal = Goal>(
   $: StoreEngine,
   scope: BoardScope,
-  change: (board: Board) => Change,
-  save: (goal: Goal) => Promise<void>,
-): Promise<Change | Failed> {
+  change: (board: Board) => Changed<Changing> | Other,
+  save: (goal: Changing, before: Goal | undefined) => Promise<void>,
+): Promise<Changed<Changing> | Other | Failed> {
   return returningFailure(async () => {
-    const changed = change(await readSettledBoard($, scope))
+    const board = await readSettledBoard($, scope)
+    const changed = change(board)
     if (changed.outcome === Outcome.Changed) {
-      await save(changed.goal)
+      const { goal } = changed
+      await save(goal, board.goals.find(each => each.id === goal.id))
     }
 
     return changed

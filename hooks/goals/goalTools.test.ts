@@ -11,12 +11,16 @@ import {
   NO_TIME_LIMIT,
   mountPane,
   startSession,
-  storeEngineOf,
 } from '../testSupport'
-import type { Session } from '../testSupport'
-import { clearanceRecordOf, goalRecordOf, todoRecordOf } from './boardRecord'
+import { MarkRemover } from './board'
+import {
+  clearanceRecordOf,
+  doneMarkRecordOf,
+  goalRecordOf,
+  markRemovalRecordOf,
+  todoRecordOf,
+} from './boardRecord'
 import { sessionScope } from './boardScope'
-import { saveClearedGoal, saveNewGoal } from './boardStore'
 import {
   ATTACH_TODO,
   ATTACH_TODO_TOOL,
@@ -24,37 +28,21 @@ import {
   DETACH_TODO_TOOL,
   GOALS_PANE,
   LIST_GOALS,
-  LIST_GOALS_TOOL,
 } from './goalNames'
 import { GOAL_TOOLS_SUBJECT } from './goalToolTexts'
+import {
+  MIGRATION_GUIDE,
+  ROTATION_CRASH,
+  SEE_OPEN_GOALS,
+  SUBAGENT,
+  addGoals,
+  listGoals,
+} from './goalToolTestSupport'
 import type { TodoEntry } from './todoEntry'
 
-const MIGRATION_GUIDE = 'Write the migration guide'
-const ROTATION_CRASH = 'Fix the crash on rotation'
 const STORE_LISTING = 'Write the store listing'
 
 const ROTATION_ENTRY = '#41 - Rotation keeps the open form'
-
-const SUBAGENT = 'agent-1'
-
-const SEE_OPEN_GOALS =
-  `Call ${LIST_GOALS_TOOL} to see the open goals and the entries attached to them.`
-
-/** Adds goals to the board of the session, as the user does, and clears the goals `cleared`. */
-async function addGoals(
-  session: Session,
-  goals: readonly string[],
-  cleared: readonly number[] = [],
-): Promise<void> {
-  const store = storeEngineOf(session, session.clock, session.logs)
-  const scope = sessionScope(session.id)
-  for (const text of goals) {
-    await saveNewGoal(store, scope, text, 100)
-  }
-  for (const number of cleared) {
-    await saveClearedGoal(store, scope, number, 200)
-  }
-}
 
 /** A goal of the board of FIRST_SESSION, with the TODO entries `todos` attached to it. */
 function goalNumbered(number: number, text: string, todos: readonly TodoEntry[] = []): Goal {
@@ -65,15 +53,6 @@ function goalNumbered(number: number, text: string, todos: readonly TodoEntry[] 
     addedAt: 100,
     todos: todos.map(todo => ({ ...todo, attachedAt: 200 })),
   }
-}
-
-async function listGoals($: Engine, agentId?: string): Promise<string> {
-  const listed = await $.tool.call({
-    tool: LIST_GOALS_TOOL,
-    ...(agentId === undefined ? {} : { agentId }),
-  })
-
-  return String(listed.deny ?? listed.result)
 }
 
 function attachTodo($: Engine, input: { goal?: unknown; todo?: unknown; agentId?: string }) {
@@ -156,6 +135,44 @@ describe('listing the goals', () => {
           '/goals add or in the Goals pane.',
       )
       expect(await listGoals($)).toBe(`${empty}\n\nCleared by the user:\n#1: ${MIGRATION_GUIDE}`)
+    },
+  )
+
+  test(
+    'a goal marked as done is listed with its evidence, and a removed mark is left out',
+    NO_TIME_LIMIT,
+    async ($, on) => {
+      const scope = sessionScope(FIRST_SESSION)
+      const doneMark = { evidence: 'release/v2.4.0', markedAt: 300 }
+      const marked = {
+        ...goalNumbered(1, MIGRATION_GUIDE, [{ number: '38', title: 'Guide covers the schema' }]),
+        doneMark,
+      }
+      const unmarked = {
+        ...goalNumbered(2, ROTATION_CRASH),
+        doneMark,
+        markRemoval: { markedAt: 300, removedAt: 400, removedBy: MarkRemover.User },
+      }
+      const records = [
+        ...[marked, unmarked].flatMap(goal => [
+          goalRecordOf(scope, goal),
+          ...goal.todos.map(todo => todoRecordOf(scope, goal, todo)),
+          doneMarkRecordOf(scope, goal),
+        ]),
+        markRemovalRecordOf(scope, unmarked),
+      ]
+      await startSession($, on, { stored: new Map(records.map(each => [each.key, each.value])) })
+
+      expect(await listGoals($)).toBe(
+        [
+          `#1: ${MIGRATION_GUIDE}`,
+          'Marked as done by you: release/v2.4.0',
+          'Attached: #38 - Guide covers the schema',
+          `#2: ${ROTATION_CRASH}`,
+          '',
+          GOALS_NOT_EXHAUSTIVE,
+        ].join('\n'),
+      )
     },
   )
 

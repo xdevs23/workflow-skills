@@ -18,7 +18,7 @@ import {
 import type { Session } from '../testSupport'
 import { goalRecordOf, todoRecordOf } from './boardRecord'
 import { boardPrefixOf, sessionScope } from './boardScope'
-import { GOALS_COMMAND, LIST_GOALS_TOOL } from './goalNames'
+import { GOALS_COMMAND, LIST_GOALS_TOOL, MARK_GOAL_DONE_TOOL } from './goalNames'
 
 const OFFLINE_MODE: Goal = {
   id: 'goal-offline-mode',
@@ -221,6 +221,37 @@ describe('the goals added or cleared since the model saw the board', () => {
     expect(goalLinesOf(session)).toEqual(['Goals: goal 2 cleared, sent to Claude'])
     expect(await notesOfPrompt($)).toEqual([])
     expect(await notesOfToolResult($)).toEqual([])
+  })
+
+  test('a goal edited during a turn is sent with its new text once', NO_TIME_LIMIT, async (
+    $,
+    on,
+  ) => {
+    const session = await startSession($, on, { stored: storedBoard() })
+    await goalsCommand($, 'edit 2 Add the dark theme by Friday')
+
+    expect(await notesOfToolResult($)).toEqual([
+      withSentence('The user edited goal #2: Add the dark theme by Friday.'),
+    ])
+    expect(goalLinesOf(session)).toEqual(['Goals: goal 2 edited, sent to Claude'])
+    expect(await notesOfToolResult($)).toEqual([])
+    expect(await notesOfPrompt($)).toEqual([])
+  })
+
+  test('a done mark removed by the user reaches the next tool result once', NO_TIME_LIMIT, async (
+    $,
+    on,
+  ) => {
+    const session = await startSession($, on, { stored: storedBoard() })
+    await $.tool.call({ tool: MARK_GOAL_DONE_TOOL, goal: 2, evidence: 'release/v4.1.0' })
+    await goalsCommand($, 'unmark 2')
+
+    expect(await notesOfToolResult($)).toEqual([
+      withSentence('The user removed your done mark from goal #2.'),
+    ])
+    expect(goalLinesOf(session)).toEqual(['Goals: goal 2 unmarked, sent to Claude'])
+    expect(await notesOfToolResult($)).toEqual([])
+    expect(await notesOfPrompt($)).toEqual([])
   })
 
   test(

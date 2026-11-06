@@ -11,9 +11,24 @@ import {
   storeEngineOf,
   storeFakeWith,
 } from '../testSupport'
-import { EMPTY_BOARD, Outcome, Refusal } from './board'
-import type { AddRefused, BoardChange, Read } from './board'
-import { clearanceRecordOf, goalRecordOf, todoKeyOf, todoRecordOf } from './boardRecord'
+import { EMPTY_BOARD, MarkRemover, Outcome, Refusal, doneMarkOf } from './board'
+import type {
+  AddRefused,
+  BoardChange,
+  EditRefused,
+  MarkRefused,
+  Read,
+  UnmarkRefused,
+} from './board'
+import {
+  clearanceRecordOf,
+  doneMarkRecordOf,
+  goalRecordOf,
+  markRemovalRecordOf,
+  textRecordOf,
+  todoKeyOf,
+  todoRecordOf,
+} from './boardRecord'
 import { boardPrefixOf, sessionScope } from './boardScope'
 import {
   StoreFailure,
@@ -22,7 +37,10 @@ import {
   saveAttachedTodo,
   saveClearedGoal,
   saveDetachedTodo,
+  saveDoneMark,
+  saveEditedGoal,
   saveNewGoal,
+  saveRemovedDoneMark,
 } from './boardStore'
 import type { Failed } from './boardStore'
 
@@ -40,8 +58,17 @@ function startStore(on: On) {
   return { fake, clock, logs, $: storeEngineOf(fake, clock, logs) }
 }
 
+type StoreResult =
+  | BoardChange
+  | AddRefused
+  | EditRefused
+  | MarkRefused
+  | UnmarkRefused
+  | Read
+  | Failed
+
 /** The board after a change or a load, failing the test for a refusal or a failure. */
-function boardOf(result: BoardChange | AddRefused | Read | Failed): Board {
+function boardOf(result: StoreResult): Board {
   if (result.outcome === Outcome.Refused || result.outcome === Outcome.Failed) {
     throw new Error(`The change ended as ${result.outcome}`)
   }
@@ -50,7 +77,7 @@ function boardOf(result: BoardChange | AddRefused | Read | Failed): Board {
 }
 
 /** The goal changed by a change, failing the test for any other outcome. */
-function goalOf(result: BoardChange | AddRefused | Read | Failed): Goal {
+function goalOf(result: StoreResult): Goal {
   if (result.outcome !== Outcome.Changed) {
     throw new Error(`The change ended as ${result.outcome}`)
   }
@@ -185,6 +212,25 @@ describe('changes made at the same moment', () => {
       expect(boardOf(await loadBoard(store.$, SCOPE)).goals[0]?.clearedAt).toBe(150)
     },
   )
+
+  test(
+    'a done mark set by another process during the removal of an older mark is still set',
+    NO_TIME_LIMIT,
+    async ($, on) => {
+      const store = startStore(on)
+      const fullApp = await addFullApp(store.$)
+      await saveDoneMark(store.$, SCOPE, 1, 'release/v1.45.3', 300)
+      const newMark = { evidence: 'release/v1.45.4', markedAt: 350 }
+      const other = doneMarkRecordOf(SCOPE, { ...fullApp, doneMark: newMark })
+      store.fake.beforeNextWrite = () => store.fake.store.set(other.key, other.value)
+      const removal = { removedAt: 400, removedBy: MarkRemover.User }
+      await saveRemovedDoneMark(store.$, SCOPE, 1, removal, 300)
+      const goal = boardOf(await loadBoard(store.$, SCOPE)).goals[0] ?? fullApp
+
+      expect(doneMarkOf(goal)).toEqual(newMark)
+      expect(goal.markRemoval).toEqual({ ...removal, markedAt: 300 })
+    },
+  )
 })
 
 describe('writing only what changed', () => {
@@ -212,6 +258,115 @@ describe('writing only what changed', () => {
       store.fake.refusedWrites.push('the store is over 4 MiB')
 
       expect((await saveAttachedTodo(store.$, SCOPE, 1, todo, 300)).outcome).toBe(Outcome.Unchanged)
+      expect(store.fake.refusedWrites).toHaveLength(1)
+    },
+  )
+
+  test(
+    'an edit writes one record, and the goal is read back with its new text',
+    NO_TIME_LIMIT,
+    async ($, on) => {
+      const store = startStore(on)
+      const fullApp = await addFullApp(store.$)
+      await saveAttachedTodo(store.$, SCOPE, 1, { number: '45', title: 'One emulator boot' }, 200)
+      const keys = [...store.fake.store.keys()]
+      const edited = await saveEditedGoal(store.$, SCOPE, 1, 'Write the upgrade guide', 300)
+
+      expect([...store.fake.store.keys()]).toEqual([
+        ...keys,
+        textRecordOf(SCOPE, fullApp, 300).key,
+      ])
+      expect(await loadBoard(store.$, SCOPE)).toEqual({
+        outcome: Outcome.Read,
+        board: boardOf(edited),
+      })
+      expect(boardOf(edited).goals).toEqual([
+        {
+          ...fullApp,
+          text: 'Write the upgrade guide',
+          editedAt: 300,
+          todos: [{ number: '45', title: 'One emulator boot', attachedAt: 200 }],
+        },
+      ])
+    },
+  )
+
+  test(
+    'an edit of a marked goal writes the removal of the mark and the text',
+    NO_TIME_LIMIT,
+    async ($, on) => {
+      const store = startStore(on)
+      const fullApp = await addFullApp(store.$)
+      await saveDoneMark(store.$, SCOPE, 1, 'release/v3.2.0', 300)
+      const keys = [...store.fake.store.keys()]
+      const edited = await saveEditedGoal(store.$, SCOPE, 1, 'Write the upgrade guide', 400)
+      const removal = { markedAt: 300, removedAt: 400, removedBy: MarkRemover.User }
+
+      expect([...store.fake.store.keys()]).toEqual([
+        ...keys,
+        markRemovalRecordOf(SCOPE, { ...fullApp, markRemoval: removal }).key,
+        textRecordOf(SCOPE, fullApp, 400).key,
+      ])
+      expect(goalOf(edited).markRemoval).toEqual(removal)
+      expect(await loadBoard(store.$, SCOPE)).toEqual({
+        outcome: Outcome.Read,
+        board: boardOf(edited),
+      })
+    },
+  )
+
+  test('an edit to the text already on the goal writes nothing', NO_TIME_LIMIT, async ($, on) => {
+    const store = startStore(on)
+    await addFullApp(store.$)
+    store.fake.refusedWrites.push('the store is over 4 MiB')
+
+    const edited = await saveEditedGoal(store.$, SCOPE, 1, 'Write the migration guide', 300)
+
+    expect(edited.outcome).toBe(Outcome.Unchanged)
+    expect(store.fake.refusedWrites).toHaveLength(1)
+  })
+
+  test(
+    'a done mark and its removal write one record each, which are read back with the goal',
+    NO_TIME_LIMIT,
+    async ($, on) => {
+      const store = startStore(on)
+      await addFullApp(store.$)
+      const keys = [...store.fake.store.keys()]
+      const marked = await saveDoneMark(store.$, SCOPE, 1, 'release/v3.2.0', 300)
+      const removal = { removedAt: 400, removedBy: MarkRemover.Model }
+      const removed = await saveRemovedDoneMark(store.$, SCOPE, 1, removal)
+      const removedGoal = {
+        ...goalOf(marked),
+        doneMark: { evidence: 'release/v3.2.0', markedAt: 300 },
+        markRemoval: { ...removal, markedAt: 300 },
+      }
+
+      expect([...store.fake.store.keys()]).toEqual([
+        ...keys,
+        doneMarkRecordOf(SCOPE, removedGoal).key,
+        markRemovalRecordOf(SCOPE, removedGoal).key,
+      ])
+      expect(goalOf(removed)).toEqual(removedGoal)
+      expect(await loadBoard(store.$, SCOPE)).toEqual({
+        outcome: Outcome.Read,
+        board: boardOf(removed),
+      })
+    },
+  )
+
+  test(
+    'a done mark with the evidence already on the goal writes nothing',
+    NO_TIME_LIMIT,
+    async ($, on) => {
+      const store = startStore(on)
+      await addFullApp(store.$)
+      await saveDoneMark(store.$, SCOPE, 1, 'release/v3.2.0', 300)
+      store.fake.refusedWrites.push('the store is over 4 MiB')
+
+      expect((await saveDoneMark(store.$, SCOPE, 1, 'release/v3.2.0', 310)).outcome).toBe(
+        Outcome.Unchanged,
+      )
       expect(store.fake.refusedWrites).toHaveLength(1)
     },
   )

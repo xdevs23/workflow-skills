@@ -1,9 +1,9 @@
-import type { Board, Goal } from '../../types'
+import type { Board, DoneMark, Goal } from '../../types'
 import type { HookSubject } from '../hookFailure'
 import { sortedByNumber } from '../numbered'
-import { Refusal, clearedGoalsOf, openGoalsOf } from './board'
-import type { ChangeRefused } from './board'
-import { ADD_WORD, GOALS_COMMAND, LIST_GOALS_TOOL } from './goalNames'
+import { MAX_EVIDENCE_LENGTH, Refusal, clearedGoalsOf, doneMarkOf, openGoalsOf } from './board'
+import type { ChangeRefused, MarkRefused, UnmarkRefused } from './board'
+import { ADD_WORD, GOALS_COMMAND, LIST_GOALS_TOOL, MARK_GOAL_DONE_TOOL } from './goalNames'
 import { PANE_TITLE } from './goalTexts'
 import { describeEntry } from './todoEntry'
 import type { TodoEntry } from './todoEntry'
@@ -12,9 +12,10 @@ import type { TodoEntry } from './todoEntry'
 
 export const LIST_GOALS_DESCRIPTION = [
   'Lists the goals set by the user on the goals board of this session: each open goal with its',
-  'number and the TODO entries attached to it, then the goals cleared by the user. Only the user',
-  'adds and clears goals. Goals of other sessions are not listed. The open goals are work waited',
-  'for by the user. Check them before you report work as finished.',
+  'number, your done mark if it has one, and the TODO entries attached to it, then the goals',
+  'cleared by the user. Only the user adds, edits and clears goals. Goals of other sessions are',
+  'not listed. The open goals are work waited for by the user. Check them before you report work',
+  `as finished, and mark a goal you consider done with ${MARK_GOAL_DONE_TOOL}.`,
 ].join(' ')
 
 export const ATTACH_TODO_DESCRIPTION = [
@@ -31,6 +32,24 @@ export const DETACH_TODO_DESCRIPTION = [
   'entry by its number, such as #12 or #12.3. Every entry in TODO.md has a number.',
 ].join(' ')
 
+/** The sentence on what evidence is, in every text on the evidence read by the model. */
+export const EVIDENCE_EXAMPLES =
+  'Evidence is what the user looks at to check the goal, such as an HTML file, a worktree, a ' +
+  'branch or a version.'
+
+export const MARK_GOAL_DONE_DESCRIPTION = [
+  'Marks an open goal of the goals board of this session as done, so the user knows what to look',
+  'at. Give the number of the goal, and the evidence in at most',
+  `${MAX_EVIDENCE_LENGTH} characters. ${EVIDENCE_EXAMPLES} Marked again, the goal gets the new`,
+  'evidence. The goal stays open and is still reminded until the user clears it: only the user',
+  'does.',
+].join(' ')
+
+export const UNMARK_GOAL_DONE_DESCRIPTION = [
+  'Removes your done mark from an open goal of the goals board of this session, once you find',
+  'that the goal needs more work. Give the number of the goal.',
+].join(' ')
+
 /** The goals board, as written in the texts about a failed hook of a goal tool. */
 export const GOAL_TOOLS_SUBJECT: HookSubject = {
   name: 'goals board',
@@ -40,6 +59,14 @@ export const GOAL_TOOLS_SUBJECT: HookSubject = {
 export const SUBAGENT_DENIAL =
   'Only the main conversation attaches and detaches TODO entries, since it keeps TODO.md. Name ' +
   'the entry and the goal in your result instead.'
+
+export const MARK_SUBAGENT_DENIAL =
+  'Only the main conversation marks goals as done and removes the marks: subagents are not sent ' +
+  'the goals, so they cannot judge whether one is met. Name the goal and the evidence in your ' +
+  'result instead.'
+
+/** What the model is told for an evidence that is blank or missing. */
+export const EVIDENCE_BLANK = `The evidence is blank. ${EVIDENCE_EXAMPLES}`
 
 const NO_OPEN_GOAL =
   'The board of this session does not have an open goal. Only the user adds goals, with ' +
@@ -64,6 +91,22 @@ export function withGoalsNotExhaustive(board: Board, text: string): string {
   return openGoalsOf(board).length === 0 ? text : `${text}\n\n${GOALS_NOT_EXHAUSTIVE}`
 }
 
+/** Who reads the goals: the main conversation, whose model sets the done marks, or a subagent. */
+export enum GoalsReader {
+  MainConversation = 'main-conversation',
+  Subagent = 'subagent',
+}
+
+/** The line that shows a done mark on a goal to the model, by who reads it. */
+export function describeDoneMarkForModel(mark: DoneMark, reader: GoalsReader): string {
+  switch (reader) {
+    case GoalsReader.MainConversation:
+      return `Marked as done by you: ${mark.evidence}`
+    case GoalsReader.Subagent:
+      return `Marked as done by the main conversation: ${mark.evidence}`
+  }
+}
+
 export function describeAttached(goal: number, todo: TodoEntry): string {
   return `Attached ${describeEntry(todo)} to goal #${goal}.`
 }
@@ -72,11 +115,19 @@ export function describeDetached(goal: number, todoNumber: string): string {
   return `Detached #${todoNumber} from goal #${goal}.`
 }
 
-/** What the model is told of a refused change of the TODO entries of a goal, by the cause. */
-export function describeRefusal(refused: ChangeRefused): string {
+export function describeMarkedDone(goal: number): string {
+  return `Marked goal #${goal} as done. It stays open until the user clears it.`
+}
+
+export function describeMarkRemovedForModel(goal: number): string {
+  return `Removed your done mark from goal #${goal}.`
+}
+
+/** What the model is told of a refused change of a goal by a tool, by the cause. */
+export function describeRefusal(refused: ChangeRefused | MarkRefused | UnmarkRefused): string {
   switch (refused.refusal) {
     case Refusal.GoalNotOpen:
-      return `Goal #${refused.goal} is not open on the board of this session. ${SEE_OPEN_GOALS}`
+      return describeGoalNotOpen(refused.goal)
     case Refusal.TodoNotAttached:
       return `#${refused.todo} is not attached to goal #${refused.goal}. ${SEE_OPEN_GOALS}`
     case Refusal.NotTodoNumber:
@@ -89,28 +140,49 @@ export function describeRefusal(refused: ChangeRefused): string {
         'Give the TODO entry with its title after its number, as its heading in TODO.md shows ' +
         'it.'
       )
+    case Refusal.BlankEvidence:
+      return EVIDENCE_BLANK
+    case Refusal.EvidenceNotOneLine:
+      return (
+        'Give the evidence on one line, without line breaks, tabs or other control characters. ' +
+        EVIDENCE_EXAMPLES
+      )
+    case Refusal.EvidenceTooLong:
+      return `Give the evidence in at most ${MAX_EVIDENCE_LENGTH} characters. ${EVIDENCE_EXAMPLES}`
+    case Refusal.NotMarkedDone:
+      return `Goal #${refused.goal} is not marked as done. ${SEE_OPEN_GOALS}`
   }
 }
 
+function describeGoalNotOpen(goal: number): string {
+  return `Goal #${goal} is not open on the board of this session. ${SEE_OPEN_GOALS}`
+}
+
 /**
- * The open goals with the entries attached to them, then the cleared goals, each sorted by number.
+ * The open goals with their done marks and the entries attached to them, then the cleared goals,
+ * each sorted by number, as written for `reader`.
  */
-export function describeGoals(board: Board): string {
+export function describeGoals(board: Board, reader: GoalsReader): string {
   const open = sortedByNumber(openGoalsOf(board))
   const cleared = sortedByNumber(clearedGoalsOf(board))
 
   return [
-    open.length === 0 ? NO_OPEN_GOAL : open.map(describeOpenGoal).join('\n'),
+    open.length === 0 ? NO_OPEN_GOAL : open.map(goal => describeOpenGoal(goal, reader)).join('\n'),
     ...(cleared.length === 0
       ? []
       : [['Cleared by the user:', ...cleared.map(describeGoal)].join('\n')]),
   ].join('\n\n')
 }
 
-function describeOpenGoal(goal: Goal): string {
-  return goal.todos.length === 0
-    ? describeGoal(goal)
-    : `${describeGoal(goal)}\nAttached: ${goal.todos.map(describeEntry).join(', ')}`
+function describeOpenGoal(goal: Goal, reader: GoalsReader): string {
+  const mark = doneMarkOf(goal)
+  const attached = goal.todos.map(describeEntry).join(', ')
+
+  return [
+    describeGoal(goal),
+    ...(mark === undefined ? [] : [describeDoneMarkForModel(mark, reader)]),
+    ...(goal.todos.length === 0 ? [] : [`Attached: ${attached}`]),
+  ].join('\n')
 }
 
 function describeGoal(goal: Goal): string {

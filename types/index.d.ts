@@ -1,5 +1,6 @@
-import type { Outcome, Read } from '../hooks/goals/board'
+import type { MarkRemover, Outcome, Read } from '../hooks/goals/board'
 import type { IdlePhase } from '../hooks/goals/goalIdleReminder'
+import type { RowMode } from '../hooks/goals/goalState'
 
 /** What the user wrote in reply to a question. */
 export type Answer = {
@@ -41,6 +42,19 @@ export type AttachedTodo = {
   attachedAt: number
 }
 
+/** The removal of the done mark set at `markedAt`: when, and by whom. */
+export type MarkRemoval = { markedAt: number; removedAt: number; removedBy: MarkRemover }
+
+/**
+ * A goal reported as done by the model, with the evidence for the user to look at. The goal stays
+ * open until the user clears it.
+ */
+export type DoneMark = {
+  /** What the user looks at to check the goal, such as a file, a branch or a version. */
+  evidence: string
+  markedAt: number
+}
+
 /** A goal set by the user for the work, open until the user clears it. */
 export type Goal = {
   /** The part of the store keys of the goal that names it, unique across every board. */
@@ -49,9 +63,18 @@ export type Goal = {
   number: number
   text: string
   addedAt: number
+  /** When the user last gave the goal a new text, if ever. */
+  editedAt?: number
   clearedAt?: number
   /** The TODO entries to build for the goal, one for each TODO number. */
   todos: readonly AttachedTodo[]
+  /** The last done mark set on the goal, removed or not, if it ever had one. */
+  doneMark?: DoneMark
+  /**
+   * The last removal of a done mark of the goal, if a mark was ever removed. Only the mark set at
+   * the `markedAt` of the removal is removed by it.
+   */
+  markRemoval?: MarkRemoval
 }
 
 /** The goals of one board in the order they were added, cleared goals included. */
@@ -65,8 +88,20 @@ export type UnreadBoard = { outcome: Outcome.Failed; failure: string }
 /** The board of a session as the session last read it, or why the store could not read it. */
 export type SessionBoard = { sessionId: string } & (Read | UnreadBoard)
 
-/** The goal of a session whose Clear was pressed in the Goals pane and that needs a yes. */
-export type GoalToClear = { sessionId: string; goalId: string }
+/**
+ * What the Goals pane does with a goal pressed in it: wait for a yes to clear it after a press of
+ * Clear, or draw its text as a field after a press of Edit.
+ */
+export type RowInPane =
+  | { mode: RowMode.WaitingForYes }
+  | {
+      mode: RowMode.Editing
+      /** Whether the last text entered in the field was refused as blank. */
+      isBlankTextRefused: boolean
+    }
+
+/** The goal of a session pressed in the Goals pane, with what the pane does with it. */
+export type GoalInPane = { sessionId: string; goalId: string } & RowInPane
 
 /** The board of a session as its model last saw it, which the notes on the changes compare with. */
 export type SeenBoard = {
@@ -110,8 +145,9 @@ declare module 'claude-code' {
        * may outlive a switch to another session; null before any session read it.
        */
       sessionBoard: SessionBoard | null
-      goalToClear: GoalToClear | null
-      /** True while the Goals pane saves an added or a cleared goal. */
+      /** The one goal of the Goals pane that waits for a yes or is edited, if any. */
+      goalInPane: GoalInPane | null
+      /** True while the Goals pane saves an added, an edited or a cleared goal. */
       isSavingGoal: boolean
       /** The board seen by the model of the session; null before the board is first read. */
       seenBoard: SeenBoard | null

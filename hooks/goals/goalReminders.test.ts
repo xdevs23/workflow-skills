@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'claude-code/testing'
 
 import type { Board, Goal } from '../../types'
-import { EMPTY_BOARD } from './board'
+import { EMPTY_BOARD, MarkRemover } from './board'
 import {
   describeGoalChangesSent,
   describeOpenGoalsAfterCompaction,
@@ -38,6 +38,14 @@ function cleared(goal: Goal): Goal {
   return { ...goal, clearedAt: 900 }
 }
 
+function markedDone(goal: Goal): Goal {
+  return { ...goal, doneMark: { evidence: 'release/v2.4.0', markedAt: 800 } }
+}
+
+function unmarkedBy(removedBy: MarkRemover, goal: Goal): Goal {
+  return { ...markedDone(goal), markRemoval: { markedAt: 800, removedAt: 850, removedBy } }
+}
+
 /** The goals are listed out of number order, so a test catches output that keeps the input order. */
 const THREE_GOALS: Board = { goals: [NIGHTLY_BUILD, INVOICE_EXPORT, HELP_PAGES] }
 
@@ -51,6 +59,22 @@ describe('the open goals after a compaction', () => {
       [
         '# Open goals',
         '1. Ship the invoice export',
+        '   #57 - Export names the currency',
+        '   #12 - Export writes one file per month',
+        '3. Speed up the nightly build',
+      ].join('\n'),
+    )
+  })
+
+  test('shows the done mark of a goal above its TODO entries, and leaves out a removed one', () => {
+    const unmarked = unmarkedBy(MarkRemover.User, NIGHTLY_BUILD)
+    const board = { goals: [markedDone(INVOICE_EXPORT), unmarked] }
+
+    expect(describeOpenGoalsAfterCompaction(board)).toBe(
+      [
+        '# Open goals',
+        '1. Ship the invoice export',
+        '   Marked as done by you: release/v2.4.0',
         '   #57 - Export names the currency',
         '   #12 - Export writes one file per month',
         '3. Speed up the nightly build',
@@ -89,6 +113,20 @@ describe('the open goals after idle minutes', () => {
     )
   })
 
+  test('reminds of a goal marked as done, with its done mark before its TODO entries', () => {
+    const board = { goals: [markedDone(INVOICE_EXPORT), markedDone(NIGHTLY_BUILD)] }
+
+    expect(describeOpenGoalsAfterIdle(board)).toBe(
+      [
+        'Goal #1 is not satisfied yet: Ship the invoice export. Marked as done by you: ' +
+          'release/v2.4.0. Attached: #57 (Export names the currency), #12 (Export writes one ' +
+          'file per month).',
+        'Goal #3 is not satisfied yet: Speed up the nightly build. Marked as done by you: ' +
+          'release/v2.4.0.',
+      ].join('\n\n'),
+    )
+  })
+
   test('does not add a second stop to a goal whose text ends a sentence', () => {
     const board = { goals: [{ ...NIGHTLY_BUILD, text: 'Is the nightly build fast enough?' }] }
 
@@ -119,6 +157,60 @@ describe('the changes to the board since the model saw it', () => {
     expect(describeGoalChangesSent(THREE_GOALS, now)).toEqual({
       text: 'The user cleared goal #2.',
       line: 'Goals: goal 2 cleared, sent to Claude',
+    })
+  })
+
+  test('shows a goal edited since with its new text', () => {
+    const edited = { ...HELP_PAGES, text: 'Translate the help' }
+    const now = { goals: [NIGHTLY_BUILD, INVOICE_EXPORT, edited] }
+
+    expect(describeGoalChangesSent(THREE_GOALS, now)).toEqual({
+      text: 'The user edited goal #2: Translate the help.',
+      line: 'Goals: goal 2 edited, sent to Claude',
+    })
+  })
+
+  test('shows a goal edited since with its new text and the done mark removed by the edit', () => {
+    const edited = { ...unmarkedBy(MarkRemover.User, HELP_PAGES), text: 'Translate the help' }
+    const seen = { goals: [NIGHTLY_BUILD, INVOICE_EXPORT, markedDone(HELP_PAGES)] }
+    const now = { goals: [NIGHTLY_BUILD, INVOICE_EXPORT, edited] }
+
+    expect(describeGoalChangesSent(seen, now)).toEqual({
+      text:
+        'The user edited goal #2: Translate the help. The user removed your done mark from ' +
+        'goal #2.',
+      line: 'Goals: goal 2 edited and goal 2 unmarked, sent to Claude',
+    })
+  })
+
+  test('shows a done mark removed by the user since, and leaves out changes of the model', () => {
+    const seen = { goals: [markedDone(INVOICE_EXPORT), HELP_PAGES, markedDone(NIGHTLY_BUILD)] }
+    const now = {
+      goals: [
+        unmarkedBy(MarkRemover.User, INVOICE_EXPORT),
+        markedDone(HELP_PAGES),
+        unmarkedBy(MarkRemover.Model, NIGHTLY_BUILD),
+      ],
+    }
+
+    expect(describeGoalChangesSent(seen, now)).toEqual({
+      text: 'The user removed your done mark from goal #1.',
+      line: 'Goals: goal 1 unmarked, sent to Claude',
+    })
+    expect(describeGoalChangesSent(now, now)).toBeUndefined()
+  })
+
+  test('shows a done mark removed by the user also after the model marked the goal again', () => {
+    const markedAgain = {
+      ...unmarkedBy(MarkRemover.User, INVOICE_EXPORT),
+      doneMark: { evidence: 'release/v2.4.1', markedAt: 870 },
+    }
+
+    const seen = { goals: [markedDone(INVOICE_EXPORT)] }
+
+    expect(describeGoalChangesSent(seen, { goals: [markedAgain] })).toEqual({
+      text: 'The user removed your done mark from goal #1.',
+      line: 'Goals: goal 1 unmarked, sent to Claude',
     })
   })
 

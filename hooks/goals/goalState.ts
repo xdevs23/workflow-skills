@@ -1,7 +1,14 @@
 import { atom, read, update } from 'claude-code'
 import type { EngineInterface } from 'claude-code'
 
-import type { Board, IdleStretch, SessionBoard, UnreadBoard } from '../../types'
+import type {
+  Board,
+  GoalInPane,
+  IdleStretch,
+  RowInPane,
+  SessionBoard,
+  UnreadBoard,
+} from '../../types'
 import { isSessionRunning, ofRunningSession, ofSession } from '../sessionBoundState'
 import { Outcome, boardWithChangesTakenBack, combinedBoardOf } from './board'
 import type { Read } from './board'
@@ -9,7 +16,7 @@ import type { Read } from './board'
 // The engine lists the state a module reads and writes from the source of the module, so every
 // state reference of the goals is written in this file with its plugin and key as literals.
 const sessionBoard = atom({ plugin: 'workflow-skills', key: 'sessionBoard' } as const, null)
-const goalToClear = atom({ plugin: 'workflow-skills', key: 'goalToClear' } as const, null)
+const goalInPane = atom({ plugin: 'workflow-skills', key: 'goalInPane' } as const, null)
 const isSavingGoal = atom({ plugin: 'workflow-skills', key: 'isSavingGoal' } as const, false)
 const seenBoard = atom({ plugin: 'workflow-skills', key: 'seenBoard' } as const, null)
 const idleStretch = atom({ plugin: 'workflow-skills', key: 'idleStretch' } as const, null)
@@ -43,25 +50,53 @@ export async function setLoadedBoard(
   }
 }
 
-/** The id of the goal of the running session that needs a yes to its clear, if any. */
-export async function readGoalToClear($: EngineInterface): Promise<string | null> {
-  return (await ofRunningSession($, await read($, goalToClear)))?.goalId ?? null
+/** What the Goals pane does with a pressed goal. */
+export enum RowMode {
+  WaitingForYes = 'waiting-for-yes',
+  Editing = 'editing',
 }
 
-/** Marks the goal with the id `goalId` of the session `sessionId` as needing a yes to its clear. */
-export async function setGoalToClear(
+/** The goal of the running session that waits for a yes or is edited in the Goals pane, if any. */
+export async function readGoalInPane($: EngineInterface): Promise<GoalInPane | null> {
+  return ofRunningSession($, await read($, goalInPane))
+}
+
+/**
+ * Puts the goal with the id `goalId` of the session `sessionId` into the row `row` of the Goals
+ * pane, in place of any goal there before, so one goal waits for a yes or is edited at a time.
+ */
+export async function setGoalInPane(
   $: EngineInterface,
   sessionId: string,
   goalId: string,
+  row: RowInPane,
 ): Promise<void> {
   if (await isSessionRunning($, sessionId)) {
-    await update($, goalToClear, () => ({ sessionId, goalId }))
+    await update($, goalInPane, () => ({ sessionId, goalId, ...row }))
   }
 }
 
-/** Takes back the question to clear the goal with the id `goalId`, while it is still asked. */
-export async function dropGoalToClear($: EngineInterface, goalId: string): Promise<void> {
-  await update($, goalToClear, inState => (inState?.goalId === goalId ? null : inState))
+/** Records that a blank text was refused for the goal with the id `goalId`, while it is edited. */
+export async function refuseBlankText($: EngineInterface, goalId: string): Promise<void> {
+  await update($, goalInPane, inState =>
+    inState?.goalId === goalId && inState.mode === RowMode.Editing
+      ? { ...inState, isBlankTextRefused: true }
+      : inState,
+  )
+}
+
+/**
+ * Ends the mode `mode` of the goal with the id `goalId` in the Goals pane, while the goal is still
+ * in that mode.
+ */
+export async function dropGoalInPane(
+  $: EngineInterface,
+  goalId: string,
+  mode: RowMode,
+): Promise<void> {
+  await update($, goalInPane, inState =>
+    inState?.goalId === goalId && inState.mode === mode ? null : inState,
+  )
 }
 
 /** Marks a save of the Goals pane as running, and returns false when one was running already. */
@@ -113,7 +148,8 @@ export async function exchangeSeenBoard(
   await updateSeenBoard($, sessionId, seen => {
     seenBefore = seen
 
-    // Two copies of the board that were read in any order give one open and cleared state.
+    // Two copies of the board that were read in any order give one open, edited, marked and
+    // cleared state.
     return seen === null ? board : combinedBoardOf(seen, board)
   })
 
@@ -121,9 +157,9 @@ export async function exchangeSeenBoard(
 }
 
 /**
- * Takes back the goals added or cleared between `before` and `after` from the board seen by the
- * model of the session `sessionId`, after the note on them was not sent to the model. Changes
- * recorded since stay recorded.
+ * Takes back the goals added, edited, marked or cleared between `before` and `after` from the board
+ * seen by the model of the session `sessionId`, after the note on them was not sent to the model.
+ * Changes recorded since stay recorded.
  */
 export async function restoreSeenBoard(
   $: EngineInterface,

@@ -3,7 +3,21 @@ import type { EngineInterface } from 'claude-code'
 import type { UnreadBoard } from '../../types'
 import { showFailure } from '../failureToast'
 import { Outcome } from './board'
-import type { AddRefused, BoardChange, ChangeRefused, Changed, Read } from './board'
+import type {
+  AddRefused,
+  BoardChange,
+  ChangeRefused,
+  Changed,
+  EditRefused,
+  MarkRefused,
+  MarkRemover,
+  MarkedGoal,
+  NotChanged,
+  Read,
+  Unchanged,
+  UnmarkRefused,
+  UnmarkedGoal,
+} from './board'
 import { sessionScope } from './boardScope'
 import {
   describeStoreFailure,
@@ -11,7 +25,10 @@ import {
   saveAttachedTodo,
   saveClearedGoal,
   saveDetachedTodo,
+  saveDoneMark,
+  saveEditedGoal,
   saveNewGoal,
+  saveRemovedDoneMark,
 } from './boardStore'
 import type { Failed } from './boardStore'
 import { recordBoardSeenAtStart, setLoadedBoard } from './goalState'
@@ -95,6 +112,49 @@ export async function clearGoalOfSession(
   return loadBoardAfterChange($, sessionId, cleared)
 }
 
+/** Gives the goal numbered `number` on the board of the session `sessionId` the text `text`. */
+export async function editGoalOfSession(
+  $: EngineInterface,
+  sessionId: string,
+  number: number,
+  text: string,
+): Promise<Changed | Unchanged | EditRefused | Failed> {
+  const scope = sessionScope(sessionId)
+  const edited = await saveEditedGoal($, scope, number, text, await $.clock.now())
+
+  return loadBoardAfterChange($, sessionId, edited)
+}
+
+/** Marks the goal numbered `number` on the board of the session `sessionId` as done. */
+export async function markGoalDoneInSession(
+  $: EngineInterface,
+  sessionId: string,
+  number: number,
+  evidence: string,
+): Promise<Changed<MarkedGoal> | Unchanged | MarkRefused | Failed> {
+  const scope = sessionScope(sessionId)
+  const marked = await saveDoneMark($, scope, number, evidence, await $.clock.now())
+
+  return loadBoardAfterChange($, sessionId, marked)
+}
+
+/**
+ * Removes the done mark of the goal numbered `number` on the board of the session `sessionId`, as
+ * removeDoneMark does.
+ */
+export async function removeDoneMarkInSession(
+  $: EngineInterface,
+  sessionId: string,
+  number: number,
+  removedBy: MarkRemover,
+  markedAt?: number,
+): Promise<Changed<UnmarkedGoal> | UnmarkRefused | Failed> {
+  const removal = { removedAt: await $.clock.now(), removedBy }
+  const removed = await saveRemovedDoneMark($, sessionScope(sessionId), number, removal, markedAt)
+
+  return loadBoardAfterChange($, sessionId, removed)
+}
+
 /** Attaches the TODO entry to the goal numbered `goalNumber` of the session `sessionId`. */
 export async function attachTodoInSession(
   $: EngineInterface,
@@ -125,7 +185,7 @@ export async function detachTodoInSession(
  * the store failed. A goal that is not open was cleared by another process or never added, so the
  * board is read again after a refusal too.
  */
-async function loadBoardAfterChange<Change extends BoardChange | Failed>(
+async function loadBoardAfterChange<Change extends Changed | NotChanged | Failed>(
   $: EngineInterface,
   sessionId: string,
   change: Change,
