@@ -3,6 +3,7 @@ import type { EngineInterface } from 'claude-code'
 import type { Reminder } from '../../types'
 import { AND_LIST } from '../listFormat'
 import { sortedByNumber } from '../numbered'
+import type { TextWithLine } from '../sendToModel'
 import { CadenceProblem, readSettings } from './cadenceKind'
 import type { CadenceKind } from './cadenceKind'
 import { Outcome, isRemoved } from './reminders'
@@ -20,12 +21,6 @@ import { PANE_TITLE } from './reminderTexts'
 export type ReminderOfKind<Settings> = Pick<Reminder, 'id' | 'number' | 'text' | 'addedAt'> & {
   settings: Settings
 }
-
-/**
- * The note that gives reminders to the model, and the line in the transcript that shows it was
- * sent. The model does not read the line.
- */
-export type ReminderNote = { text: string; line: string }
 
 /**
  * The reminders of `kind` switched on in the running session, by number. A reminder whose values
@@ -59,7 +54,7 @@ export function enabledRemindersOf<Settings, Field extends string>(
 /** The note on the reminders `due`, which are sent at once, or undefined when none is due. */
 export function describeReminderNote(
   due: readonly Pick<Reminder, 'number' | 'text'>[],
-): ReminderNote | undefined {
+): TextWithLine | undefined {
   if (due.length === 0) {
     return undefined
   }

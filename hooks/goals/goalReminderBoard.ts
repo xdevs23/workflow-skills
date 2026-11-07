@@ -2,10 +2,10 @@ import type { EngineInterface } from 'claude-code'
 
 import type { Board } from '../../types'
 import { showFailure } from '../failureToast'
+import type { TextWithLine } from '../sendToModel'
 import { Outcome } from './board'
 import { readBoardOfSession } from './goalActions'
 import { describeOpenGoalsSent, describeReminderNotRead } from './goalReminders'
-import type { GoalsSent } from './goalReminders'
 import { exchangeSeenBoard } from './goalState'
 import { withGoalsNotExhaustive } from './goalToolTexts'
 
@@ -13,7 +13,7 @@ import { withGoalsNotExhaustive } from './goalToolTexts'
  * The text that lists the open goals to the model with its transcript line, unless there was
  * nothing to send, and the board the model saw before it.
  */
-export type GoalList = { sent: GoalsSent | undefined; seenBefore: Board | null }
+export type GoalList = { sent: TextWithLine | undefined; seenBefore: Board | null }
 
 /**
  * Reads the board of the session `sessionId` from the store for a reminder. A board that cannot be

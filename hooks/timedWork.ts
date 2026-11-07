@@ -35,6 +35,20 @@ export function runAfter(
 }
 
 /**
+ * Runs `work` at once in a separate timer, so the hook that starts it does not wait for it. A
+ * prompt submitted by the plugin starts its turn once the session is idle, and the submit resolves
+ * only then. Nothing cancels the work, so the timer is not returned. A failure of `work` is shown
+ * as `runAfter` shows it.
+ */
+export function runDetached(
+  $: EngineInterface,
+  work: () => Promise<void>,
+  describeFailure: (message: string) => string,
+): void {
+  void runAfter($, 0, work, describeFailure)
+}
+
+/**
  * The first due time after `after`, of the due times every `interval` from `from` on, `from`
  * itself not counted. Work idle through several due times is due once, at the last of them.
  */

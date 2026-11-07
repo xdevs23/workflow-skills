@@ -103,13 +103,14 @@ function notRemindedToastsOf(session: Session): string[] {
 
 describe('the open goals after a compaction', () => {
   test(
-    'a compaction adds the open goals and the changes before it to the context, and the ' +
-      'changes are not sent again',
+    'a compaction during a turn adds the open goals and the changes before it to the context, ' +
+      'and the changes are not sent again',
     async ($, on) => {
       const session = await startSession($, on, { stored: storedBoard() })
       const pane = await mountGoalsPane($, 'terminal')
       await clearInPane(pane, 2)
       await addInPane(pane, 3, 'Write the release notes')
+      await startTurn($)
 
       expect((await compact($)).additionalContext?.map(withoutHeading)).toEqual([
         withSentence(
@@ -136,6 +137,7 @@ describe('the open goals after a compaction', () => {
       const pane = await mountGoalsPane($, 'terminal')
       await clearInPane(pane, 1)
       await clearInPane(pane, 2)
+      await startTurn($)
 
       expect((await compact($)).additionalContext).toEqual([
         'The user cleared Goal 1. The user cleared Goal 2. No goal is open now.',
@@ -169,6 +171,7 @@ describe('the open goals after a compaction', () => {
     const pane = await mountGoalsPane($, 'terminal')
     await clearInPane(pane, 2)
     await notesOfToolResult($)
+    await startTurn($)
     await compact($)
 
     expect(goalLinesOf(session)).toEqual([
@@ -176,6 +179,73 @@ describe('the open goals after a compaction', () => {
       'Goals: the open goal was sent to Claude',
     ])
   })
+
+  test(
+    'a compaction while no turn runs sends the open goals and the changes before it as a prompt ' +
+      'that starts a turn, without a line in the transcript',
+    async ($, on) => {
+      const session = await startSession($, on, { stored: storedBoard() })
+      const pane = await mountGoalsPane($, 'terminal')
+      await clearInPane(pane, 2)
+
+      expect((await compact($)).additionalContext).toBeUndefined()
+      await session.clock.settle()
+      expect(promptsOfPlugin(session).map(withoutHeading)).toEqual([
+        withSentence(
+          [
+            '1. Ship the offline mode',
+            '   #61 - Drafts sync once the connection returns',
+            '',
+            'The user cleared Goal 2.',
+          ].join('\n'),
+        ),
+      ])
+      expect(goalLinesOf(session)).toEqual([])
+      expect(await notesOfToolResult($)).toEqual([])
+    },
+  )
+
+  test(
+    'a prompt dropped by the engine after a compaction shows the reason in a toast, and leaves ' +
+      'the changes for the next tool result',
+    async ($, on) => {
+      const session = await startSession($, on, { stored: storedBoard() })
+      const pane = await mountGoalsPane($, 'terminal')
+      await clearInPane(pane, 2)
+      session.droppedPrompt = 'a stop hook is active'
+      await compact($)
+      await session.clock.settle()
+
+      expect(promptsOfPlugin(session)).toHaveLength(1)
+      expect(session.toasts).toEqual([
+        'The open goals could not be sent to Claude: a stop hook is active. Ask Claude to list ' +
+          'the goals to send them now.',
+      ])
+      expect(await notesOfToolResult($)).toEqual([withSentence('The user cleared Goal 2.')])
+    },
+  )
+
+  test(
+    'a prompt after a compaction that fails beneath the plugin shows the failure in a toast, ' +
+      'and leaves the changes for the next tool result',
+    async ($, on) => {
+      on('prompt.submit', { origin: { kind: 'plugin' } }, () => {
+        throw new Error('failed in a test hook')
+      })
+      const session = await startSession($, on, { stored: storedBoard() })
+      const pane = await mountGoalsPane($, 'terminal')
+      await clearInPane(pane, 2)
+      await compact($)
+      await session.clock.settle()
+
+      expect(session.toasts).toEqual([
+        expect.stringMatching(
+          /^The open goals could not be sent to Claude: .+\. Ask Claude to list the goals to send them now\.$/u,
+        ),
+      ])
+      expect(await notesOfToolResult($)).toEqual([withSentence('The user cleared Goal 2.')])
+    },
+  )
 
   test(
     'a compaction whose read of the board fails shows the reason in a toast and adds nothing',

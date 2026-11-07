@@ -1,14 +1,17 @@
 import type { EngineInterface, MatchedHook } from 'claude-code'
 
 import type { Board } from '../../types'
-import { isMainConversation } from '../conversation'
+import type { CompactionNote, CompactionNoteSource } from '../afterCompaction'
 import type { EveryEvent } from '../everyEvent'
 import { callToolWithNote, submitWithNoteOrRestore } from '../sendToModel'
-import type { COMPACTION_SOURCE } from '../sessionSources'
+import type { TextWithLine } from '../sendToModel'
 import { Outcome } from './board'
 import { listOpenGoals, readBoardToRemind } from './goalReminderBoard'
-import { describeGoalChangesSent, describeOpenGoalsAfterCompaction } from './goalReminders'
-import type { GoalsSent } from './goalReminders'
+import {
+  describeGoalChangesSent,
+  describeOpenGoalsAfterCompaction,
+  describeOpenGoalsNotSent,
+} from './goalReminders'
 import { exchangeSeenBoard, readBoardInState, readSeenBoard, restoreSeenBoard } from './goalState'
 import { GOAL_TOOLS } from './goalTools'
 import { withGoalsNotExhaustive } from './goalToolTexts'
@@ -17,28 +20,33 @@ import { withGoalsNotExhaustive } from './goalToolTexts'
  * The changes from the board `before` the model saw to the board `after`. `note` is `text` ended by
  * `withGoalsNotExhaustive`.
  */
-type GoalChanges = GoalsSent & { note: string; before: Board | null; after: Board }
+type GoalChanges = TextWithLine & { note: string; before: Board | null; after: Board }
 
-export const addOpenGoalsAfterCompaction: MatchedHook<
-  'classic.SessionStart',
-  { source: typeof COMPACTION_SOURCE }
-> = async ($, e, next) => {
-  const ran = await next(e)
-  if (!isMainConversation({ agentId: e.agent_id })) {
-    return ran
-  }
+/** The open goals and the changes before them, sent to the main conversation after a compaction. */
+export function openGoalsAfterCompaction($: EngineInterface): CompactionNoteSource {
+  return { takeNote: () => takeOpenGoals($), describeNotSent: describeOpenGoalsNotSent }
+}
+
+/**
+ * Records the board as seen by the model running the session, and returns the open goals on it with
+ * the changes before them, unless there was nothing to send.
+ */
+async function takeOpenGoals($: EngineInterface): Promise<CompactionNote | undefined> {
   const sessionId = await $.session.id()
   const board = await readBoardToRemind($, sessionId)
   if (board === undefined) {
-    return ran
+    return undefined
   }
-  const { sent } = await listOpenGoals($, sessionId, board, describeOpenGoalsAfterCompaction)
-  if (sent === undefined) {
-    return ran
-  }
-  $.ui.log(sent.line)
+  const { sent, seenBefore } = await listOpenGoals(
+    $,
+    sessionId,
+    board,
+    describeOpenGoalsAfterCompaction,
+  )
 
-  return { ...ran, additionalContext: [...(ran.additionalContext ?? []), sent.text] }
+  return sent === undefined
+    ? undefined
+    : { ...sent, restore: () => restoreSeenBoard($, sessionId, seenBefore, board) }
 }
 
 // The note is taken once the tool ran, so no hook beneath can drop it, and nothing is restored. The

@@ -3,7 +3,14 @@ import type { Engine } from 'claude-code/testing'
 
 import { test } from '../testDeclaration'
 import type { Reminder } from '../../types'
-import { FIRST_SESSION, SUBAGENT, startSession, typePrompt } from '../testSupport'
+import {
+  FIRST_SESSION,
+  SUBAGENT,
+  promptsOfPlugin,
+  startSession,
+  startTurn,
+  typePrompt,
+} from '../testSupport'
 import type { Session } from '../testSupport'
 import type { CadenceKind } from './cadenceKind'
 import { AFTER_BACKGROUND_TASK, AFTER_COMPACTION } from './eventCadence'
@@ -54,6 +61,10 @@ function compact($: Engine, agentId?: string) {
   })
 }
 
+/** The toast for the reminders after a compaction left unsent, with any reason. */
+const NOT_SENT_TOAST =
+  /^The reminders set to come after a compaction could not be sent to Claude: .+\. Open \/reminders and send their texts to Claude in a prompt\.$/u
+
 /** The transcript lines about the reminders, which the model does not read. */
 function reminderLinesOf(session: Session): string[] {
   return session.chatLines.filter(line => line.startsWith('Reminders: '))
@@ -98,12 +109,55 @@ describe('the reminders sent after a background task', () => {
 
 describe('the reminders sent after a compaction', () => {
   test(
-    'a compaction adds the texts of those switched on to the context',
+    'a compaction during a turn adds the texts of those switched on to the context',
+    async ($, on) => {
+      const session = await startSession($, on, { stored: storedRemindersOf(BOTH_ON) })
+      await startTurn($)
+
+      expect((await compact($)).additionalContext).toEqual([`Reminder from the user: ${READ_SPEC}`])
+      await session.clock.settle()
+      expect(promptsOfPlugin(session)).toEqual([])
+      expect(reminderLinesOf(session)).toEqual(['Reminders: reminder 2 sent to Claude'])
+    },
+  )
+
+  test(
+    'a compaction while no turn runs sends the texts as a prompt that starts a turn',
     async ($, on) => {
       const session = await startSession($, on, { stored: storedRemindersOf(BOTH_ON) })
 
-      expect((await compact($)).additionalContext).toEqual([`Reminder from the user: ${READ_SPEC}`])
-      expect(reminderLinesOf(session)).toEqual(['Reminders: reminder 2 sent to Claude'])
+      expect((await compact($)).additionalContext).toBeUndefined()
+      await session.clock.settle()
+      expect(promptsOfPlugin(session)).toEqual([`Reminder from the user: ${READ_SPEC}`])
+      expect(reminderLinesOf(session)).toEqual([])
+    },
+  )
+
+  test(
+    'a prompt dropped by the engine after a compaction shows the reason in a toast',
+    async ($, on) => {
+      const session = await startSession($, on, { stored: storedRemindersOf(BOTH_ON) })
+      session.droppedPrompt = 'a stop hook is active'
+      await compact($)
+      await session.clock.settle()
+
+      expect(promptsOfPlugin(session)).toEqual([`Reminder from the user: ${READ_SPEC}`])
+      expect(session.toasts).toEqual([expect.stringMatching(NOT_SENT_TOAST)])
+      expect(session.toasts[0]).toContain(': a stop hook is active.')
+    },
+  )
+
+  test(
+    'a prompt after a compaction that fails beneath the plugin shows the failure in a toast',
+    async ($, on) => {
+      on('prompt.submit', { origin: { kind: 'plugin' } }, () => {
+        throw new Error('failed in a test hook')
+      })
+      const session = await startSession($, on, { stored: storedRemindersOf(BOTH_ON) })
+      await compact($)
+      await session.clock.settle()
+
+      expect(session.toasts).toEqual([expect.stringMatching(NOT_SENT_TOAST)])
     },
   )
 
@@ -111,6 +165,8 @@ describe('the reminders sent after a compaction', () => {
     const session = await startSession($, on, { stored: storedRemindersOf(BOTH_ON) })
 
     expect((await compact($, SUBAGENT)).additionalContext).toBeUndefined()
+    await session.clock.settle()
+    expect(promptsOfPlugin(session)).toEqual([])
     expect(reminderLinesOf(session)).toEqual([])
   })
 })

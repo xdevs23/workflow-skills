@@ -2,7 +2,7 @@ import type { Hook, On } from 'claude-code'
 
 import { EVERY_EVENT } from '../everyEvent'
 import type { PromptFooter } from '../promptFooter'
-import { COMPACTION_SOURCE, SWITCHING_SOURCES } from '../sessionSources'
+import { SWITCHING_SOURCES } from '../sessionSources'
 import { loadBoardAtStart } from './goalActions'
 import { replyWithGoalsHookFailure, runGoalsCommand } from './goalCommands'
 import {
@@ -15,11 +15,7 @@ import {
   UNMARK_GOAL_DONE_TOOL,
 } from './goalNames'
 import { endIdleStretch, waitAfterTurn } from './goalIdleReminder'
-import {
-  addGoalChangesToToolResult,
-  addOpenGoalsAfterCompaction,
-  submitWithGoalChanges,
-} from './goalReminderHooks'
+import { addGoalChangesToToolResult, submitWithGoalChanges } from './goalReminderHooks'
 import { handleMarkGoalDoneCall, handleUnmarkGoalDoneCall } from './goalMarkTools'
 import { drawGoalsPane } from './goalScreens'
 import { GOALS_BUTTON, openGoalsFromButton } from './goalsButton'
@@ -48,7 +44,6 @@ const startGoals: Hook<'session.start'> = async ($, e, next) => {
 export function registerGoals(on: On, footer: PromptFooter): void {
   on('session.start', startGoals)
   on('classic.SessionStart', { source: SWITCHING_SOURCES }, readGoalsOfSwitchedSession)
-  on('classic.SessionStart', { source: COMPACTION_SOURCE }, addOpenGoalsAfterCompaction)
   // Registered before the tools of the goals, so the results of those tools contain the notes too.
   on('tool.call', EVERY_EVENT, addGoalChangesToToolResult)
   on('prompt.submit', EVERY_EVENT, submitWithGoalChanges)

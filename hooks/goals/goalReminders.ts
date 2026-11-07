@@ -1,5 +1,6 @@
 import type { Board, DoneMark, Goal } from '../../types'
 import { AND_LIST } from '../listFormat'
+import type { TextWithLine } from '../sendToModel'
 import { openGoalsByIdOf, openGoalsByPriorityOf, openGoalsOf } from './board'
 import { ChangeKind, changesBetween } from './boardChanges'
 import { MarkRemover, doneMarkOf } from './doneMark'
@@ -11,22 +12,16 @@ import { describePriority, priorityOf } from './priority'
 import { GoalsReader, describeDoneMarkForModel } from './goalToolTexts'
 import { describeEntry, describeTodoNumber } from './todoEntry'
 
-/**
- * A text that gives the goals to the model, and the line in the transcript that shows it was sent.
- * The model does not read the line.
- */
-export type GoalsSent = { text: string; line: string }
-
 /** The toast for a board that could not be read for a reminder, with the failure from the store. */
 export function describeReminderNotRead(storeFailure: string): string {
   return `The goals could not be read, so Claude was not reminded of them. ${storeFailure}`
 }
 
-/** The toast for an idle reminder that failed, with the message of the failure. */
-export function describeIdleReminderFailed(message: string): string {
+/** The toast for open goals left unsent by a reminder, with the reason or the failure message. */
+export function describeOpenGoalsNotSent(reason: string): string {
   return (
-    `The open goals could not be sent to Claude after the idle minutes: ${message}. ` +
-    'Claude reads them after the next compaction, or when you ask it to list the goals.'
+    `The open goals could not be sent to Claude: ${reason}. ` +
+    'Ask Claude to list the goals to send them now.'
   )
 }
 
@@ -81,7 +76,7 @@ export function describeOpenGoalsSent(
   now: Board,
   seen: Board | null,
   describeList: (board: Board) => string | undefined,
-): GoalsSent | undefined {
+): TextWithLine | undefined {
   return describeSent(now, describeList(now), seen === null ? [] : changesSince(seen, now))
 }
 
@@ -90,7 +85,7 @@ export function describeOpenGoalsSent(
  * user since the model saw the board as `seen`, or the open goals on `now` for a model that has
  * not seen a board yet.
  */
-export function describeGoalChangesSent(seen: Board | null, now: Board): GoalsSent | undefined {
+export function describeGoalChangesSent(seen: Board | null, now: Board): TextWithLine | undefined {
   return seen === null
     ? describeOpenGoalsSent(now, seen, describeOpenGoalsAfterCompaction)
     : describeSent(now, undefined, changesSince(seen, now))
@@ -248,7 +243,7 @@ function describeSent(
   now: Board,
   list: string | undefined,
   changes: readonly NotedChange[],
-): GoalsSent | undefined {
+): TextWithLine | undefined {
   const texts = [list, describeChangeNote(now, changes)].filter(text => text !== undefined)
   if (texts.length === 0) {
     return undefined

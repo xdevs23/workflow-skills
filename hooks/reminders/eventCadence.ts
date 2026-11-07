@@ -1,15 +1,14 @@
-import type { MatchedHook, On } from 'claude-code'
+import type { EngineInterface, MatchedHook, On } from 'claude-code'
 
-import { isMainConversation } from '../conversation'
+import type { CompactionNoteSource } from '../afterCompaction'
 import { submitWithNote } from '../sendToModel'
-import { COMPACTION_SOURCE } from '../sessionSources'
 import { listKind } from './cadenceKind'
 import type { CadenceKind, ListedKind } from './cadenceKind'
 import { describeReminderNote, readEnabledReminders } from './reminderDelivery'
 
 // The cadences of reminders sent after an event of the session. The engine hands the model the
 // notification of a background task that ended as a prompt, and the reminders go beside it. After
-// a compaction, the reminders go into the context block that follows the summary.
+// a compaction, they go with the other notes sent by hooks/afterCompaction.ts.
 
 /** A cadence that an event of the session brings. It has no value fields and no settings. */
 type EventKind = CadenceKind<undefined, never>
@@ -40,21 +39,14 @@ const submitTaskNotificationWithReminders: MatchedHook<
   return delivery.result
 }
 
-const addRemindersAfterCompaction: MatchedHook<
-  'classic.SessionStart',
-  { source: typeof COMPACTION_SOURCE }
-> = async ($, e, next) => {
-  const ran = await next(e)
-  if (!isMainConversation({ agentId: e.agent_id })) {
-    return ran
+/** The reminders of the cadence after a compaction, switched on, sent after every compaction. */
+export function remindersAfterCompaction($: EngineInterface): CompactionNoteSource {
+  return {
+    takeNote: async () => describeReminderNote(await readEnabledReminders($, AFTER_COMPACTION)),
+    describeNotSent: reason =>
+      `The reminders set to come after a compaction could not be sent to Claude: ${reason}. ` +
+      'Open /reminders and send their texts to Claude in a prompt.',
   }
-  const note = describeReminderNote(await readEnabledReminders($, AFTER_COMPACTION))
-  if (note === undefined) {
-    return ran
-  }
-  $.ui.log(note.line)
-
-  return { ...ran, additionalContext: [...(ran.additionalContext ?? []), note.text] }
 }
 
 /** The event cadences, in the order of the kind dropdown. */
@@ -66,5 +58,4 @@ export const EVENT_CADENCES: readonly ListedKind[] = [
 /** Registers the hooks that send the reminders of the event cadences. */
 export function registerEventCadences(on: On): void {
   on('prompt.submit', TASK_NOTIFICATION, submitTaskNotificationWithReminders)
-  on('classic.SessionStart', { source: COMPACTION_SOURCE }, addRemindersAfterCompaction)
 }

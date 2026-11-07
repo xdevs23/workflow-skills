@@ -6,7 +6,7 @@ import { undeliveredAnswersOf } from './questions'
 import type { AnsweredQuestion } from './questions'
 import { saveAnswer, saveDelivery, toastStoreFailure } from './questionStore'
 import { PromptOutcome, submitToSession } from './sendToModel'
-import { runAfter } from './timedWork'
+import { runDetached } from './timedWork'
 import type { Delivery } from './sendToModel'
 import {
   claimAnswers,
@@ -87,15 +87,12 @@ export async function recordAnswerAndDeliver(
 
 /**
  * Sends the undelivered answers of the session to the model as a prompt in the name of the user,
- * and stores them as delivered once the prompt is accepted. The delivery runs in a timer of its
- * own: a prompt starts its turn once the session is idle, and the call resolves only then, so the
- * hook that asks for the delivery does not wait for it.
+ * and stores them as delivered once the prompt is accepted. The delivery takes only answers not
+ * delivered yet, so a delivery started while another one runs sends no answer twice.
  */
 export function deliverWhenIdle($: EngineInterface, sessionId: string): void {
-  // The timer is not kept: it fires at once, and the delivery takes only answers not delivered yet.
-  void runAfter(
+  runDetached(
     $,
-    0,
     () => deliverAsPrompt($, sessionId),
     message =>
       `The answers to your questions could not be sent to Claude: ${message}. ` +

@@ -13,6 +13,12 @@ import type {
 
 import { isMainConversation, isModelToolCall } from './conversation'
 
+/**
+ * A text read by the model, and the line in the transcript that shows it was sent. The model does
+ * not read the line.
+ */
+export type TextWithLine = { text: string; line: string }
+
 /** The result of a delivery, and whether the model received what was handed to it. */
 export type Delivery<T> = { result: T; isAccepted: boolean }
 
@@ -123,16 +129,16 @@ export async function submitToSession(
 }
 
 /**
- * Submits `prompt` as a prompt of the plugin to the session `sessionId`, and runs `restore` when
- * the prompt did not enter or the submit failed.
+ * Submits `prompt` as a prompt of the plugin to the session `sessionId`, runs `restore` when the
+ * prompt did not enter or the submit failed, and returns what became of the prompt.
  */
-export async function submitToSessionOrRestore(
+export function submitToSessionOrRestore(
   $: EngineInterface,
   sessionId: string,
   prompt: PromptSubmitArgs,
   restore: () => Promise<void>,
-): Promise<void> {
-  await sendOrRestore(
+): Promise<SubmittedPrompt> {
+  return sendOrRestore(
     () => submitToSession($, sessionId, prompt),
     ({ outcome }) => outcome === PromptOutcome.Entered,
     restore,

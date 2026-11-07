@@ -7,7 +7,7 @@ import { submitToSessionOrRestore } from '../sendToModel'
 import { runAfter, waitAgainAfterTurn } from '../timedWork'
 import { openGoalsOf } from './board'
 import { listOpenGoals, readBoardToRemind } from './goalReminderBoard'
-import { describeIdleReminderFailed, describeOpenGoalsAfterIdle } from './goalReminders'
+import { describeOpenGoalsAfterIdle, describeOpenGoalsNotSent } from './goalReminders'
 import { readIdleStretch, restoreSeenBoard, updateIdleStretch } from './goalState'
 
 /**
@@ -63,7 +63,7 @@ function waitForIdleMinutes($: EngineInterface, waiting: IdleStretch): void {
     $,
     IDLE_MINUTES * MILLISECONDS_PER_MINUTE,
     () => remindAfterIdle($, waiting),
-    describeIdleReminderFailed,
+    describeOpenGoalsNotSent,
   )
 }
 

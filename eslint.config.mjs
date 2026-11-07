@@ -2,6 +2,23 @@
 import { defineConfig } from 'eslint/config'
 import tseslint from 'typescript-eslint'
 
+const TEST_DECLARATION_SELECTORS = [
+  "ImportDeclaration[source.value='claude-code/testing'] > " +
+    ':matches(ImportSpecifier[imported.name=\'test\'], ImportNamespaceSpecifier, ' +
+    'ImportDefaultSpecifier)',
+  "ExportNamedDeclaration[source.value='claude-code/testing']",
+  "ExportAllDeclaration[source.value='claude-code/testing']",
+  "ImportExpression[source.value='claude-code/testing']",
+].map(selector => ({
+  selector,
+  message: 'Declare tests with the test of testDeclaration.ts, which sets no time limit.',
+}))
+
+const RUN_AT_ONCE = {
+  selector: "CallExpression[callee.name='runAfter'][arguments.1.value=0]",
+  message: 'Run work at once with runDetached of timedWork.ts, which states why it is detached.',
+}
+
 export default defineConfig({
   files: ['hooks/**/*.ts', 'hooks/**/*.tsx', 'types/**/*.ts'],
   languageOptions: {
@@ -44,20 +61,8 @@ export default defineConfig({
 }, {
   files: ['hooks/**/*.ts', 'hooks/**/*.tsx'],
   ignores: ['hooks/testDeclaration.ts'],
-  rules: {
-    'no-restricted-syntax': [
-      'error',
-      ...[
-        "ImportDeclaration[source.value='claude-code/testing'] > " +
-          ':matches(ImportSpecifier[imported.name=\'test\'], ImportNamespaceSpecifier, ' +
-          'ImportDefaultSpecifier)',
-        "ExportNamedDeclaration[source.value='claude-code/testing']",
-        "ExportAllDeclaration[source.value='claude-code/testing']",
-        "ImportExpression[source.value='claude-code/testing']",
-      ].map(selector => ({
-        selector,
-        message: 'Declare tests with the test of testDeclaration.ts, which sets no time limit.',
-      })),
-    ],
-  },
+  rules: { 'no-restricted-syntax': ['error', ...TEST_DECLARATION_SELECTORS, RUN_AT_ONCE] },
+}, {
+  files: ['hooks/timedWork.ts'],
+  rules: { 'no-restricted-syntax': ['error', ...TEST_DECLARATION_SELECTORS] },
 })
