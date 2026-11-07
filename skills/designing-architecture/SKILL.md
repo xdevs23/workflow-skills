@@ -99,6 +99,12 @@ description: Design or plan shape of change or system: modules, layers, interfac
 - Fix hazard through architecture, never by bolting on hack, band-aid, workaround or protective
   check
 - Redesign shape to which such checks get added again and again
+- Fix anything, whether it comes from review or not, by preferring to delete, rewrite or refactor
+  code over bolting on more conditionals or catch guards
+- In place of added if check, try/catch, switch, error message or handling of more edge cases,
+  revamp architecture, rewrite code or delete problematic lines altogether, where that achieves
+  result same way
+- Less code means fewer lines, not less good code: files get smaller while getting better
 
 ## Limits
 
