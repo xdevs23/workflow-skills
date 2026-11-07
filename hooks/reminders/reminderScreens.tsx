@@ -9,6 +9,7 @@ import type {
 
 import type { Cadence, CardDraft, CardInPane, CardWarning, Reminder } from '../../types'
 import { sortedByNumber } from '../numbered'
+import { DONE_LABEL } from '../paneTexts'
 import { describeUnreadableRecord } from '../pluginStore'
 import { drawsFields } from '../surfaces'
 import type { SurfaceWithFields } from '../surfaces'
@@ -49,7 +50,6 @@ import {
   ADD_LABEL,
   BLANK_TEXT_WARNING,
   CADENCE_LABEL,
-  DONE_LABEL,
   EDIT_LABEL,
   FIELDS_IN_TERMINAL_ONLY,
   KEEP_LABEL,

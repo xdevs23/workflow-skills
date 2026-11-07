@@ -2,10 +2,11 @@ import type { EngineInterface } from 'claude-code'
 
 import type { DoneMark, Goal } from '../../types'
 import { showFailure } from '../failureToast'
-import { Outcome, Refusal, isGoalOpen, nextGoalNumberOf } from './board'
+import { Outcome, Refusal, nextGoalNumberOf, openGoalsByIdOf } from './board'
 import type {
   Changed,
   EditRefused,
+  GoalEdit,
   LoopRefused,
   NotChanged,
   NotOpenRefused,
@@ -29,6 +30,9 @@ import {
   dropGoalInPane,
   endSaving,
   readBoardInState,
+  readEdit,
+  recordTypedText,
+  redrawEditField,
   refuseBlankText,
   setGoalInPane,
   startSaving,
@@ -37,6 +41,7 @@ import {
   PaneField,
   describeDependencyLoop,
   describeDependencyNotSet,
+  describeEditedElsewhere,
   describeFocusNotMoved,
   describeMarkNoLongerShown,
   describeNoLongerOpen,
@@ -52,8 +57,9 @@ import type { Priority } from './priority'
 // What a press or an entry in the Goals pane does. The pane draws what the state and the board
 // have after it.
 
-export function editFieldKeyOf(goal: Goal): string {
-  return `edit-goal-${goal.number}`
+/** The key of the field for `goal` drawn under `fieldId`, new each time the field is drawn anew. */
+export function editFieldKeyOf(goal: Goal, fieldId: string): string {
+  return `edit-goal-${goal.number}-${fieldId}`
 }
 
 export function reasonFieldKeyOf(goal: Goal): string {
@@ -93,21 +99,22 @@ export async function saveOnce($: EngineInterface, save: () => Promise<void>): P
 }
 
 /**
- * Runs `act` once the board of the session `sessionId` is read again from the store, unless the
- * goal is no longer open on it, which a toast then shows.
+ * Runs `act` with the goal as the board of the session `sessionId` has it once read again from the
+ * store, unless the goal is no longer open on it, which a toast then shows.
  */
 async function actOnOpenGoal(
   $: EngineInterface,
   sessionId: string,
   goal: Goal,
-  act: () => Promise<void>,
+  act: (open: Goal) => Promise<void>,
 ): Promise<void> {
   const loaded = await loadBoardShowingFailure($, sessionId)
   if (loaded.outcome === Outcome.Failed) {
     return
   }
-  if (isGoalOpen(loaded.board, goal.id)) {
-    await act()
+  const open = openGoalsByIdOf(loaded.board).get(goal.id)
+  if (open !== undefined) {
+    await act(open)
   } else {
     $.ui.toast(describeNoLongerOpen(goal))
   }
@@ -129,34 +136,55 @@ export async function startEditing(
   sessionId: string,
   goal: Goal,
 ): Promise<void> {
-  await actOnOpenGoal($, sessionId, goal, async () => {
-    await setGoalInPane($, sessionId, goal.id, {
+  await actOnOpenGoal($, sessionId, goal, async open => {
+    const fieldId = crypto.randomUUID()
+    await setGoalInPane($, sessionId, open.id, {
       mode: RowMode.Editing,
+      fieldId,
+      drawn: open.text,
+      editedFrom: open.text,
       isBlankTextRefused: false,
     })
-    await focusField($, editFieldKeyOf(goal), { field: PaneField.GoalText, goal })
+    await recordTypedText($, sessionId, open.id, open.text)
+    await focusField($, editFieldKeyOf(open, fieldId), { field: PaneField.GoalText, goal: open })
   })
 }
 
-/**
- * Saves the text entered in the field of `goal`, and draws the goal with its text again once the
- * text is saved or was the text of the goal already. A blank text keeps the field open with a
- * warning, and a failed save keeps it open with the entered text.
- */
-export async function editOnScreen(
+/** Saves `text`, the whole text of the field for `goal` at the Enter pressed in it, as Done does. */
+export async function submitEdit(
   $: EngineInterface,
   sessionId: string,
   goal: Goal,
   text: string,
 ): Promise<void> {
-  const edited = await editGoalOfSession($, sessionId, goal.number, text)
+  await recordTypedText($, sessionId, goal.id, text)
+  await finishEditing($, sessionId, goal)
+}
+
+/**
+ * Saves the text typed into the field for `goal`, while `goal` is edited, and draws the goal with
+ * its text again once the text is saved or was the text of the goal already. A blank text shows a
+ * warning under the field, and a failed save draws the field anew with the typed text. A text saved
+ * elsewhere since the edit started is named in a toast, and the edit then starts from it, so the
+ * next save replaces it.
+ */
+export async function finishEditing(
+  $: EngineInterface,
+  sessionId: string,
+  goal: Goal,
+): Promise<void> {
+  const edit = await readEdit($, goal.id)
+  if (edit === undefined) {
+    return
+  }
+  const edited = await editGoalOfSession($, sessionId, goal.number, edit)
   switch (edited.outcome) {
     case Outcome.Failed:
       showFailure($, describeNotEdited(edited))
 
-      return
+      return redrawEditField($, goal.id, edit)
     case Outcome.Refused:
-      return showEditRefusal($, goal, edited)
+      return showEditRefusal($, goal, edit, edited)
     case Outcome.Changed:
     case Outcome.Unchanged:
       return dropGoalInPane($, goal.id, RowMode.Editing)
@@ -166,6 +194,7 @@ export async function editOnScreen(
 async function showEditRefusal(
   $: EngineInterface,
   goal: Goal,
+  edit: GoalEdit,
   refused: EditRefused,
 ): Promise<void> {
   switch (refused.refusal) {
@@ -175,6 +204,10 @@ async function showEditRefusal(
       $.ui.toast(describeNoLongerOpen(goal))
 
       return dropGoalInPane($, goal.id, RowMode.Editing)
+    case Refusal.TextChangedElsewhere:
+      $.ui.toast(describeEditedElsewhere(refused))
+
+      return redrawEditField($, goal.id, { text: edit.text, editedFrom: refused.text })
   }
 }
 

@@ -115,6 +115,20 @@ export type RowInPane =
   | { mode: RowMode.WaitingForYes }
   | {
       mode: RowMode.Editing
+      /**
+       * New for each press of Edit and each time the field is drawn anew, the key of the field: a
+       * field drawn again under an earlier key would show the value the engine stored for it, such
+       * as the empty text after an Enter.
+       */
+      fieldId: string
+      /** The text drawn into the field when the field was last drawn anew. */
+      drawn: string
+      /**
+       * The text of the goal at the start of the edit: the text when Edit was pressed, or the text
+       * saved elsewhere since, once a save was refused for it. A save is refused while the stored
+       * text differs from it.
+       */
+      editedFrom: string
       /** Whether the last text entered in the field was refused as blank. */
       isBlankTextRefused: boolean
     }
@@ -126,6 +140,9 @@ export type RowInPane =
 
 /** The goal of a session pressed in the Goals pane, with what the pane does with it. */
 export type GoalInPane = { sessionId: string; goalId: string } & RowInPane
+
+/** The text typed into the field for the goal with the id `goalId`, edited in the Goals pane. */
+export type TypedGoalText = { sessionId: string; goalId: string; text: string }
 
 /** The board of a session as its model last saw it, which the notes on the changes compare with. */
 export type SeenBoard = {
@@ -270,6 +287,11 @@ declare module 'claude-code' {
       sessionBoard: SessionBoard | null
       /** The one goal of the Goals pane in the yes, edit or unmark row mode, if any. */
       goalInPane: GoalInPane | null
+      /**
+       * The text typed into the field for the goal edited in the Goals pane. The pane does not
+       * read it while drawn, so a change of the text does not draw the pane again.
+       */
+      typedGoalText: TypedGoalText | null
       /** True while the Goals pane saves an added, an edited or a cleared goal. */
       isSavingGoal: boolean
       /** The board seen by the model of the session; null before the board is first read. */

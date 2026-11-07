@@ -10,6 +10,7 @@ import type {
   Changed,
   DependentGoal,
   EditRefused,
+  GoalEdit,
   LoopRefused,
   MarkRefused,
   NotChanged,
@@ -117,15 +118,15 @@ export async function clearGoalOfSession(
   return loadBoardAfterChange($, sessionId, cleared)
 }
 
-/** Gives the goal numbered `number` on the board of the session `sessionId` the text `text`. */
+/** Gives the goal numbered `number` on the board of the session `sessionId` the text of `edit`. */
 export async function editGoalOfSession(
   $: EngineInterface,
   sessionId: string,
   number: number,
-  text: string,
+  edit: GoalEdit,
 ): Promise<Changed | Unchanged | EditRefused | Failed> {
   const scope = sessionScope(sessionId)
-  const edited = await saveEditedGoal($, scope, number, text, await $.clock.now())
+  const edited = await saveEditedGoal($, scope, number, edit, await $.clock.now())
 
   return loadBoardAfterChange($, sessionId, edited)
 }

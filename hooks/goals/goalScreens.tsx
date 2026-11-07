@@ -1,4 +1,5 @@
 import type {
+  ButtonProps,
   ElementTable,
   EngineInterface,
   MatchedHook,
@@ -8,6 +9,7 @@ import type {
 } from 'claude-code'
 
 import type { Board, DoneMark, Goal, RowInPane, UnreadBoard } from '../../types'
+import { DONE_LABEL } from '../paneTexts'
 import { drawsFields } from '../surfaces'
 import type { SurfaceWithFields } from '../surfaces'
 import { Outcome, nextGoalNumberOf, openGoalsByIdOf, openGoalsByPriorityOf } from './board'
@@ -23,15 +25,22 @@ import {
   askToClear,
   clearOnScreen,
   editFieldKeyOf,
-  editOnScreen,
+  finishEditing,
   newGoalFieldKeyOf,
   reasonFieldKeyOf,
   saveOnce,
   startEditing,
   startUnmarking,
+  submitEdit,
   unmarkOnScreen,
 } from './goalPresses'
-import { RowMode, dropGoalInPane, readBoardInState, readGoalInPane } from './goalState'
+import {
+  RowMode,
+  dropGoalInPane,
+  readBoardInState,
+  readGoalInPane,
+  recordTypedText,
+} from './goalState'
 import {
   ADD_LABEL,
   BLANK_TEXT_WARNING,
@@ -44,7 +53,6 @@ import {
   NEW_GOAL_PLACEHOLDER,
   PANE_TITLE,
   REASON_PLACEHOLDER,
-  SAVE_LABEL,
   UNMARK_LABEL,
   UNMARK_SUBMIT_LABEL,
   YES_CLEAR_LABEL,
@@ -66,10 +74,13 @@ type GoalElements = Pick<ElementTable, 'Box' | 'Button' | 'Text'>
  * elsewhere the priority and the dependency show as badges before the text.
  */
 type GoalFields = {
-  drawTextField: (goal: Goal, isBlankTextRefused: boolean) => RenderElement
+  drawTextField: (goal: Goal, field: EditedField) => RenderElement
   drawReasonField: (goal: Goal, shown: DoneMark) => RenderElement
   drawPickers: (goal: Goal) => RenderElement
 }
+
+/** The part of the key and the text of the field drawn for a goal being edited. */
+type EditedField = Pick<Extract<RowInPane, { mode: RowMode.Editing }>, 'fieldId' | 'drawn'>
 
 /** The priority and the dependency of a goal: in its pickers, or as badges before its text. */
 type SettingsInRow = { pickers: RenderElement } | { badges: readonly string[] }
@@ -104,8 +115,7 @@ export const drawGoalsPane: MatchedHook<
   const open = openGoalsByIdOf(board)
   const fields: GoalFields | undefined = drawsFields(e)
     ? {
-        drawTextField: (goal, isBlankTextRefused) =>
-          drawGoalTextField($, e, sessionId, goal, isBlankTextRefused),
+        drawTextField: (goal, field) => drawGoalTextField($, e, sessionId, goal, field),
         drawReasonField: (goal, shown) => drawReasonField($, e, sessionId, goal, shown),
         drawPickers: goal => drawGoalPickers($, e, sessionId, open, goal),
       }
@@ -161,7 +171,7 @@ function drawnRowOf(
     case RowMode.Editing:
       return {
         mode: RowMode.Editing,
-        field: fields.drawTextField(goal, row.isBlankTextRefused),
+        field: fields.drawTextField(goal, row),
         isBlankTextRefused: row.isBlankTextRefused,
       }
     case RowMode.Unmarking:
@@ -319,9 +329,10 @@ function drawClearQuestion(
 }
 
 /**
- * The buttons beside a row: Cancel while the goal is edited or unmarked, none while it waits for a
- * yes, and otherwise Clear, with Edit before it where the surface draws input fields. In a narrow
- * row, Clear shows on the next line as a whole.
+ * The buttons beside a row: Done and Cancel while the goal is edited, Cancel while it is unmarked,
+ * none while it waits for a yes, and otherwise Clear, with Edit before it where the surface draws
+ * input fields. In a narrow row, a button that does not fit shows on the next line, with its label
+ * unbroken.
  */
 function drawRowButtons(
   $: EngineInterface,
@@ -330,88 +341,98 @@ function drawRowButtons(
   goal: Goal,
   row: DrawnRow,
 ) {
-  const { Box, Button } = elements
   switch (row.mode) {
     case RowMode.WaitingForYes:
       return null
     case RowMode.Editing:
-      return drawCancel($, elements, goal, row.mode, 'cancel-edit')
+      return drawButtonRow(elements, [
+        {
+          key: `done-edit-${goal.number}`,
+          label: DONE_LABEL,
+          onPress: () => saveOnce($, () => finishEditing($, sessionId, goal)),
+        },
+        cancelButtonOf($, goal, row.mode, 'cancel-edit'),
+      ])
     case RowMode.Unmarking:
-      return drawCancel($, elements, goal, row.mode, 'cancel-unmark')
+      return drawButtonRow(elements, [cancelButtonOf($, goal, row.mode, 'cancel-unmark')])
     case undefined:
-      return (
-        <Box columnGap={1} flexWrap="wrap" justifyContent="flex-end">
-          {row.fields !== undefined &&
-            drawWhole(
-              elements,
-              <Button
-                key={`edit-${goal.number}`}
-                label={EDIT_LABEL}
-                dimColor
-                onPress={() => startEditing($, sessionId, goal)}
-              />,
-            )}
-          {drawWhole(
-            elements,
-            <Button
-              key={`clear-${goal.number}`}
-              label={CLEAR_LABEL}
-              dimColor
-              onPress={() => askToClear($, sessionId, goal)}
-            />,
-          )}
-        </Box>
-      )
+      return drawButtonRow(elements, [
+        ...(row.fields === undefined
+          ? []
+          : [
+              {
+                key: `edit-${goal.number}`,
+                label: EDIT_LABEL,
+                dimColor: true,
+                onPress: () => startEditing($, sessionId, goal),
+              },
+            ]),
+        {
+          key: `clear-${goal.number}`,
+          label: CLEAR_LABEL,
+          dimColor: true,
+          onPress: () => askToClear($, sessionId, goal),
+        },
+      ])
   }
+}
+
+/** A button beside a row, with the key that addresses it. */
+type RowButton = ButtonProps & { key: string }
+
+/**
+ * `buttons` side by side at the end of a row, each in a box that never shrinks, so a narrow row does
+ * not break its label.
+ */
+function drawButtonRow({ Box, Button }: GoalElements, buttons: readonly RowButton[]) {
+  return (
+    <Box columnGap={1} flexWrap="wrap" justifyContent="flex-end">
+      {buttons.map(button => (
+        <Box flexShrink={0}>
+          <Button {...button} />
+        </Box>
+      ))}
+    </Box>
+  )
 }
 
 /**
  * Cancel beside the row of `goal` in the mode `mode`, which ends that mode. Its key is `keyPrefix`
  * followed by the number of the goal.
  */
-function drawCancel(
+function cancelButtonOf(
   $: EngineInterface,
-  elements: GoalElements,
   goal: Goal,
   mode: RowMode.Editing | RowMode.Unmarking,
   keyPrefix: string,
-) {
-  const { Button } = elements
-
-  return drawWhole(
-    elements,
-    <Button
-      key={`${keyPrefix}-${goal.number}`}
-      label={CANCEL_LABEL}
-      onPress={() => dropGoalInPane($, goal.id, mode)}
-    />,
-  )
-}
-
-/** `button` in a box that never shrinks, so a narrow row does not break its label. */
-function drawWhole({ Box }: GoalElements, button: RenderElement) {
-  return <Box flexShrink={0}>{button}</Box>
+): RowButton {
+  return {
+    key: `${keyPrefix}-${goal.number}`,
+    label: CANCEL_LABEL,
+    onPress: () => dropGoalInPane($, goal.id, mode),
+  }
 }
 
 /**
- * The field with the text of `goal`, which saves the text entered in it. After a blank text was
- * refused, the field is drawn empty under the warning.
+ * The field that edits the text of `goal`, drawn as `field` sets it. Done saves the text typed into
+ * it, and Enter saves the text submitted from it.
  */
 function drawGoalTextField(
   $: EngineInterface,
   e: ResolveInput<'Pane', SurfaceWithFields>,
   sessionId: string,
   goal: Goal,
-  isBlankTextRefused: boolean,
+  { fieldId, drawn }: EditedField,
 ) {
   const { Input } = $.ui.resolve(e)
 
   return (
     <Input
-      key={editFieldKeyOf(goal)}
-      value={isBlankTextRefused ? '' : goal.text}
-      submitLabel={SAVE_LABEL}
-      onSubmit={text => saveOnce($, () => editOnScreen($, sessionId, goal, text))}
+      key={editFieldKeyOf(goal, fieldId)}
+      value={drawn}
+      submitLabel={DONE_LABEL.toLowerCase()}
+      onInput={typed => recordTypedText($, sessionId, goal.id, typed)}
+      onSubmit={text => saveOnce($, () => submitEdit($, sessionId, goal, text))}
     />
   )
 }

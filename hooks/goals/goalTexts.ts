@@ -1,6 +1,7 @@
 import type { DoneMark, Goal } from '../../types'
 import type { HookSubject } from '../hookFailure'
-import type { LoopRefused } from './board'
+import { DONE_LABEL } from '../paneTexts'
+import type { LoopRefused, TextChangedRefused } from './board'
 import { describeStoreFailure } from './boardStore'
 import type { Failed } from './boardStore'
 import { GOALS_COMMAND } from './goalNames'
@@ -13,7 +14,6 @@ export const GOALS_BUTTON_LABEL = PANE_TITLE
 export const NEW_GOAL_PLACEHOLDER = 'Add a goal'
 export const ADD_LABEL = 'add'
 export const EDIT_LABEL = 'Edit'
-export const SAVE_LABEL = 'save'
 export const CANCEL_LABEL = 'Cancel'
 export const BLANK_TEXT_WARNING = `A goal needs a text. Type one, or press ${CANCEL_LABEL}.`
 export const UNMARK_LABEL = 'Unmark'
@@ -73,6 +73,14 @@ export function describeDoneMarkForPerson(mark: DoneMark): string {
 /** What a press in the Goals pane shows for a goal cleared since the pane drew it. */
 export function describeNoLongerOpen(goal: Pick<Goal, 'number'>): string {
   return `${nameGoal(goal.number)} is no longer open.`
+}
+
+/** What a save shows for a goal whose text was saved elsewhere since the edit of it started. */
+export function describeEditedElsewhere(refused: TextChangedRefused): string {
+  return (
+    `${nameGoal(refused.goal)} was edited elsewhere to "${refused.text}". Press ${DONE_LABEL} ` +
+    'again to save the text in the field instead.'
+  )
 }
 
 /** What a press of Unmark shows for a done mark removed or replaced since the pane drew it. */

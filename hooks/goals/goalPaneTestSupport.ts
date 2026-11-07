@@ -1,5 +1,5 @@
 import { expect } from 'claude-code/testing'
-import type { Engine } from 'claude-code/testing'
+import type { Engine, FoundElement, MountInputTarget } from 'claude-code/testing'
 import type { PromptOrigin, RenderPropsOf } from 'claude-code'
 
 import type { Goal } from '../../types'
@@ -7,7 +7,13 @@ import { PLUGIN } from '../names'
 import { RecordKind, recordPrefixOf } from '../pluginStore'
 import { FIRST_SESSION } from '../testSupport'
 import type { Session } from '../testSupport'
-import { clearanceRecordOf, doneMarkRecordOf, goalRecordOf, todoRecordOf } from './boardRecord'
+import {
+  clearanceRecordOf,
+  doneMarkRecordOf,
+  goalRecordOf,
+  textRecordOf,
+  todoRecordOf,
+} from './boardRecord'
 import { sessionScope } from './boardScope'
 import { GOALS_COMMAND, GOALS_PANE } from './goalNames'
 
@@ -105,6 +111,12 @@ export function clearElsewhere(session: Session, goal: Goal): void {
   session.store.set(clearance.key, clearance.value)
 }
 
+/** Stores `text` as the text of `goal`, as another process of the session does. */
+export function editElsewhere(session: Session, goal: Goal, text: string): void {
+  const record = textRecordOf(sessionScope(FIRST_SESSION), { ...goal, text }, 500)
+  session.store.set(record.key, record.value)
+}
+
 export function mountGoalsPane<Surface extends 'terminal' | 'mobile'>(
   $: Engine,
   surface: Surface,
@@ -131,7 +143,31 @@ export async function addInPane(pane: GoalsPane, number: number, text: string): 
 /** Gives goal `number` the text `text` with Edit in `pane`. */
 export async function editInPane(pane: GoalsPane, number: number, text: string): Promise<void> {
   await expect(pane.press({ key: `edit-${number}` })).rejects.toThrow(NO_FOCUS_IN_KIT)
-  await pane.input({ key: `edit-goal-${number}`, text })
+  await typeIntoEditField(pane, number, text)
+}
+
+/** The field that edits goal `number` in `pane`, whose key is new each time it is drawn anew. */
+export async function editFieldIn(
+  pane: Pick<GoalsPane, 'findAll'>,
+  number: number,
+): Promise<FoundElement | undefined> {
+  const inputs = await pane.findAll({ type: 'Input' })
+
+  return inputs.find(input => input.key?.startsWith(`edit-goal-${number}-`))
+}
+
+/** Types `text` into the field that edits goal `number` in `pane`, as the input `kind`. */
+export async function typeIntoEditField(
+  pane: GoalsPane,
+  number: number,
+  text: string,
+  kind: NonNullable<MountInputTarget['kind']> = 'submit',
+): Promise<void> {
+  const key = (await editFieldIn(pane, number))?.key
+  if (key === undefined) {
+    throw new Error(`The pane draws no field that edits Goal ${number}.`)
+  }
+  await pane.input({ key, text, kind })
 }
 
 /** Removes the done mark of goal `number` with Unmark in `pane`, without a reason. */

@@ -22,6 +22,7 @@ import type {
   AddRefused,
   BoardChange,
   EditRefused,
+  GoalEdit,
   LoopRefused,
   MarkRefused,
   NotOpenRefused,
@@ -59,6 +60,11 @@ const TEST_HARNESS: Goal = {
 }
 
 const THREE_GOALS: Board = { goals: [FULL_APP, LOGIN_FIX, TEST_HARNESS] }
+
+/** An edit of LOGIN_FIX to `text`, started from the text of LOGIN_FIX. */
+function loginFixEditedTo(text: string): GoalEdit {
+  return { text, editedFrom: LOGIN_FIX.text }
+}
 
 /** The board after a change, failing the test when the change was refused. */
 function boardOf(
@@ -164,7 +170,8 @@ describe('clearing a goal', () => {
 
 describe('editing a goal', () => {
   test('an edited goal keeps its number, its TODO entries and its place, with the new text', () => {
-    const edited = boardOf(editGoal(THREE_GOALS, 2, '  Fix the export timeout by Friday\n', 500))
+    const edit = loginFixEditedTo('  Fix the export timeout by Friday\n')
+    const edited = boardOf(editGoal(THREE_GOALS, 2, edit, 500))
 
     expect(edited.goals).toEqual([
       FULL_APP,
@@ -174,7 +181,7 @@ describe('editing a goal', () => {
   })
 
   test('an edit to the text already on the goal leaves the board unchanged', () => {
-    expect(editGoal(THREE_GOALS, 2, ' Fix the export timeout ', 500)).toEqual({
+    expect(editGoal(THREE_GOALS, 2, loginFixEditedTo(' Fix the export timeout '), 500)).toEqual({
       outcome: Outcome.Unchanged,
       board: THREE_GOALS,
     })
@@ -182,7 +189,8 @@ describe('editing a goal', () => {
 
   test('an edit removes the done mark of the goal, as removed by the user', () => {
     const marked = boardOf(markGoalDone(THREE_GOALS, 2, 'release/v3.2.0', 400))
-    const goal = goalOf(boardOf(editGoal(marked, 2, 'Release v3.2.1', 500)), 2) ?? LOGIN_FIX
+    const edited = boardOf(editGoal(marked, 2, loginFixEditedTo('Release v3.2.1'), 500))
+    const goal = goalOf(edited, 2) ?? LOGIN_FIX
 
     expect(doneMarkOf(goal)).toBeUndefined()
     expect(goal.markRemoval).toEqual({
@@ -192,8 +200,26 @@ describe('editing a goal', () => {
     })
   })
 
+  test(
+    'an edit started from an older text of the goal is refused, with the current text',
+    () => {
+      const elsewhere = boardOf(editGoal(THREE_GOALS, 2, loginFixEditedTo('Release v3.2.1'), 400))
+
+      expect(editGoal(elsewhere, 2, loginFixEditedTo('Release v3.2.2'), 500)).toEqual({
+        outcome: Outcome.Refused,
+        refusal: Refusal.TextChangedElsewhere,
+        goal: 2,
+        text: 'Release v3.2.1',
+      })
+      expect(editGoal(elsewhere, 2, loginFixEditedTo('Release v3.2.1'), 500)).toEqual({
+        outcome: Outcome.Unchanged,
+        board: elsewhere,
+      })
+    },
+  )
+
   test('an edit without text is refused', () => {
-    expect(editGoal(THREE_GOALS, 2, ' \n', 500)).toEqual({
+    expect(editGoal(THREE_GOALS, 2, loginFixEditedTo(' \n'), 500)).toEqual({
       outcome: Outcome.Refused,
       refusal: Refusal.BlankText,
     })
@@ -203,7 +229,8 @@ describe('editing a goal', () => {
     const cleared = boardOf(clearGoal(THREE_GOALS, 2, 400))
 
     for (const number of [2, 7]) {
-      expect(editGoal(cleared, number, 'Fix the export timeout by Friday', 500)).toEqual({
+      const edit = loginFixEditedTo('Fix the export timeout by Friday')
+      expect(editGoal(cleared, number, edit, 500)).toEqual({
         outcome: Outcome.Refused,
         refusal: Refusal.GoalNotOpen,
         goal: number,
@@ -526,7 +553,8 @@ describe('the dependency of a goal', () => {
   })
 
   test('editing a goal removes its mark and the marks of the goals depending on it', () => {
-    const edited = editGoal(chainMarkedDone(), 2, 'Fix the export timeout today', 600)
+    const edit = loginFixEditedTo('Fix the export timeout today')
+    const edited = editGoal(chainMarkedDone(), 2, edit, 600)
 
     expect(unmarkedBy(edited)).toEqual([
       [2, MarkRemover.User],
@@ -568,8 +596,11 @@ describe('combining two copies of a board', () => {
   })
 
   test('uses the text of the later edit of an open goal', () => {
-    const edited = boardOf(editGoal(THREE_GOALS, 2, 'Fix the export timeout by Friday', 400))
-    const editedAgain = boardOf(editGoal(edited, 2, 'Fix the export timeout today', 500))
+    const byFriday = 'Fix the export timeout by Friday'
+    const edited = boardOf(editGoal(THREE_GOALS, 2, loginFixEditedTo(byFriday), 400))
+    const editedAgain = boardOf(
+      editGoal(edited, 2, { text: 'Fix the export timeout today', editedFrom: byFriday }, 500),
+    )
 
     for (const [first, second] of [
       [THREE_GOALS, editedAgain],
@@ -645,7 +676,8 @@ describe('taking back the changes of a note', () => {
   })
 
   test('sets back the text of a goal edited between two copies', () => {
-    const after = boardOf(editGoal(THREE_GOALS, 2, 'Fix the export timeout by Friday', 400))
+    const edit = loginFixEditedTo('Fix the export timeout by Friday')
+    const after = boardOf(editGoal(THREE_GOALS, 2, edit, 400))
 
     expect(boardWithChangesTakenBack(after, THREE_GOALS, after)).toEqual(THREE_GOALS)
   })

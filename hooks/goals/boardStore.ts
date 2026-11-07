@@ -33,6 +33,7 @@ import type {
   Changed,
   DependentGoal,
   EditRefused,
+  GoalEdit,
   LoopRefused,
   MarkRefused,
   NotChanged,
@@ -136,13 +137,13 @@ export function saveEditedGoal(
   $: StoreEngine,
   scope: BoardScope,
   number: number,
-  text: string,
+  edit: GoalEdit,
   editedAt: number,
 ): Promise<Changed | Unchanged | EditRefused | Failed> {
   return changeBoard(
     $,
     scope,
-    board => editGoal(board, number, text, editedAt),
+    board => editGoal(board, number, edit, editedAt),
     goal => writeRecord($, textRecordOf(scope, goal, editedAt)),
   )
 }

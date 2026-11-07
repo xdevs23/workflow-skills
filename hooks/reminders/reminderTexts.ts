@@ -12,7 +12,6 @@ export const PANE_TITLE = 'Reminders'
 export const REMINDERS_BUTTON_LABEL = PANE_TITLE
 export const ADD_LABEL = '+ Add reminder'
 export const EDIT_LABEL = 'Edit'
-export const DONE_LABEL = 'Done'
 export const REMOVE_LABEL = 'Remove'
 export const YES_REMOVE_LABEL = 'Yes, remove'
 export const KEEP_LABEL = 'Keep'

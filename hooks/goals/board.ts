@@ -52,6 +52,7 @@ export enum Refusal {
   NotMarkedDone = 'not-marked-done',
   NotTodoNumber = 'not-todo-number',
   NumberTaken = 'number-taken',
+  TextChangedElsewhere = 'text-changed-elsewhere',
   TodoNotAttached = 'todo-not-attached',
 }
 
@@ -72,8 +73,28 @@ export type ChangeRefused = { outcome: Outcome.Refused } & (
 /** The refusal of a change of a goal whose number is not the number of an open goal. */
 export type NotOpenRefused = Extract<ChangeRefused, { refusal: Refusal.GoalNotOpen }>
 
-/** The refusal of an edit of a goal: a blank text, or a number that is not of an open goal. */
-export type EditRefused = Extract<AddRefused, { refusal: Refusal.BlankText }> | NotOpenRefused
+/**
+ * The refusal of an edit of goal `goal`, whose text was changed to `text` since the edit started
+ * from another text.
+ */
+export type TextChangedRefused = {
+  outcome: Outcome.Refused
+  refusal: Refusal.TextChangedElsewhere
+  goal: number
+  text: string
+}
+
+/**
+ * The refusal of an edit of a goal: a blank text, a number that is not of an open goal, or a text
+ * changed since the edit started.
+ */
+export type EditRefused =
+  | Extract<AddRefused, { refusal: Refusal.BlankText }>
+  | NotOpenRefused
+  | TextChangedRefused
+
+/** The new text `text` of a goal, and `editedFrom`, the text of the goal when the edit started. */
+export type GoalEdit = { text: string; editedFrom: string }
 
 /** The refusal of a done mark on goal `goal`, whose dependency `dependsOn` is not done yet. */
 export type DependencyNotDoneRefused = {
@@ -160,11 +181,6 @@ export function clearedGoalsOf(board: Board): Goal[] {
   return board.goals.filter(goal => !isOpen(goal))
 }
 
-/** Whether the goal with the id `goalId` is on the board and open. */
-export function isGoalOpen(board: Board, goalId: string): boolean {
-  return openGoalsOf(board).some(goal => goal.id === goalId)
-}
-
 /** The open goals of `board` in the order of their priorities, as sortedByPriority orders them. */
 export function openGoalsByPriorityOf(board: Board): Goal[] {
   return sortedByPriority(openGoalsOf(board))
@@ -239,26 +255,37 @@ export function clearGoal(
 }
 
 /**
- * Gives the open goal numbered `number` the text `text`. The goal keeps its number, its TODO
+ * Gives the open goal numbered `number` the text of `edit`. The goal keeps its number, its TODO
  * entries and its place on the board. A done mark of the goal was set for the text before the
  * edit, so the edit removes it, as removed by the user, with the marks of the goals depending on
- * it. An edit to the text already set changes nothing.
+ * it. An edit to the text already set changes nothing. An edit started from a text other than the
+ * current text of the goal is refused, so a text saved elsewhere since is not replaced unseen.
  */
 export function editGoal(
   board: Board,
   number: number,
-  text: string,
+  edit: GoalEdit,
   editedAt: number,
 ): Changed | Unchanged | EditRefused {
-  const edited = text.trim()
+  const edited = edit.text.trim()
   if (edited === '') {
     return { outcome: Outcome.Refused, refusal: Refusal.BlankText }
   }
-  const changed = changeOpenGoal<Unchanged>(board, number, goal =>
-    goal.text === edited
-      ? { outcome: Outcome.Unchanged, board }
-      : { outcome: Outcome.Changed, goal: { ...goal, text: edited, editedAt } },
-  )
+  const changed = changeOpenGoal<Unchanged | TextChangedRefused>(board, number, goal => {
+    if (goal.text === edited) {
+      return { outcome: Outcome.Unchanged, board }
+    }
+    if (goal.text !== edit.editedFrom) {
+      return {
+        outcome: Outcome.Refused,
+        refusal: Refusal.TextChangedElsewhere,
+        goal: number,
+        text: goal.text,
+      }
+    }
+
+    return { outcome: Outcome.Changed, goal: { ...goal, text: edited, editedAt } }
+  })
   if (changed.outcome !== Outcome.Changed) {
     return changed
   }

@@ -95,6 +95,12 @@ async function addFullApp($: StoreEngine): Promise<Goal> {
   return goalOf(await saveNewGoal($, SCOPE, 'Write the migration guide', 100))
 }
 
+/** An edit of the goal added by addFullApp to a new text. */
+const upgradeGuideEdit = {
+  text: 'Write the upgrade guide',
+  editedFrom: 'Write the migration guide',
+}
+
 describe('the board of a session in the store', () => {
   test('a session without stored records has an empty board', async ($, on) => {
     const store = startStore(on)
@@ -273,7 +279,7 @@ describe('writing only what changed', () => {
     const fullApp = await addFullApp(store.$)
     await saveAttachedTodo(store.$, SCOPE, 1, { number: '45', title: 'One emulator boot' }, 200)
     const keys = [...store.fake.store.keys()]
-    const edited = await saveEditedGoal(store.$, SCOPE, 1, 'Write the upgrade guide', 300)
+    const edited = await saveEditedGoal(store.$, SCOPE, 1, upgradeGuideEdit, 300)
 
     expect([...store.fake.store.keys()]).toEqual([
       ...keys,
@@ -298,7 +304,7 @@ describe('writing only what changed', () => {
     const fullApp = await addFullApp(store.$)
     await saveDoneMark(store.$, SCOPE, 1, 'release/v3.2.0', 300)
     const keys = [...store.fake.store.keys()]
-    const edited = await saveEditedGoal(store.$, SCOPE, 1, 'Write the upgrade guide', 400)
+    const edited = await saveEditedGoal(store.$, SCOPE, 1, upgradeGuideEdit, 400)
     const removal = { markedAt: 300, removedAt: 400, removedBy: MarkRemover.User } as const
 
     expect([...store.fake.store.keys()]).toEqual([
@@ -320,7 +326,13 @@ describe('writing only what changed', () => {
     await addFullApp(store.$)
     store.fake.refusedWrites.push('the store is over 4 MiB')
 
-    const edited = await saveEditedGoal(store.$, SCOPE, 1, 'Write the migration guide', 300)
+    const edited = await saveEditedGoal(
+      store.$,
+      SCOPE,
+      1,
+      { text: 'Write the migration guide', editedFrom: 'Write the migration guide' },
+      300,
+    )
 
     expect(edited.outcome).toBe(Outcome.Unchanged)
     expect(store.fake.refusedWrites).toHaveLength(1)

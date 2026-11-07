@@ -8,6 +8,7 @@ import type {
   RowInPane,
   SeenBoard,
   SessionBoard,
+  TypedGoalText,
   UnreadBoard,
 } from '../../types'
 import {
@@ -17,7 +18,7 @@ import {
   updateOfSession,
 } from '../sessionBoundState'
 import { Outcome } from './board'
-import type { Read } from './board'
+import type { GoalEdit, Read } from './board'
 import { boardWithChangesTakenBack } from './boardChanges'
 import { combinedBoardOf } from './boardMerge'
 
@@ -25,6 +26,7 @@ import { combinedBoardOf } from './boardMerge'
 // state reference of the goals is written in this file with its plugin and key as literals.
 const sessionBoard = atom({ plugin: 'workflow-skills', key: 'sessionBoard' } as const, null)
 const goalInPane = atom({ plugin: 'workflow-skills', key: 'goalInPane' } as const, null)
+const typedGoalText = atom({ plugin: 'workflow-skills', key: 'typedGoalText' } as const, null)
 const isSavingGoal = atom({ plugin: 'workflow-skills', key: 'isSavingGoal' } as const, false)
 const seenBoard = atom({ plugin: 'workflow-skills', key: 'seenBoard' } as const, null)
 const idleStretch = atom({ plugin: 'workflow-skills', key: 'idleStretch' } as const, null)
@@ -87,12 +89,44 @@ export async function setGoalInPane(
   )
 }
 
-/** Records that a blank text was refused for the goal with the id `goalId`, while it is edited. */
+/**
+ * Records that a blank text was refused for the goal with the id `goalId`, while the goal is edited.
+ * The field is drawn empty under the warning.
+ */
 export async function refuseBlankText($: EngineInterface, goalId: string): Promise<void> {
+  await updateEditedGoal($, goalId, edited => ({ ...edited, drawn: '', isBlankTextRefused: true }))
+}
+
+/**
+ * Draws the field for the goal with the id `goalId` anew with the text of `edit`, for an edit
+ * started from the text `edit.editedFrom`, while the goal is edited. The engine empties a field
+ * once its Enter was handled, so the field gets a new key.
+ */
+export async function redrawEditField(
+  $: EngineInterface,
+  goalId: string,
+  { text, editedFrom }: GoalEdit,
+): Promise<void> {
+  await updateEditedGoal($, goalId, edited => ({
+    ...edited,
+    fieldId: crypto.randomUUID(),
+    drawn: text,
+    editedFrom,
+    isBlankTextRefused: false,
+  }))
+}
+
+/**
+ * Replaces the goal with the id `goalId` in the Goals pane with the value that `change` returns,
+ * while the goal is edited.
+ */
+async function updateEditedGoal(
+  $: EngineInterface,
+  goalId: string,
+  change: (edited: GoalInMode<RowMode.Editing>) => GoalInPane,
+): Promise<void> {
   await update($, goalInPane, inState =>
-    inState?.goalId === goalId && inState.mode === RowMode.Editing
-      ? { ...inState, isBlankTextRefused: true }
-      : inState,
+    isGoalInMode(inState, goalId, RowMode.Editing) ? change(inState) : inState,
   )
 }
 
@@ -105,9 +139,49 @@ export async function dropGoalInPane(
   goalId: string,
   mode: RowMode,
 ): Promise<void> {
-  await update($, goalInPane, inState =>
-    inState?.goalId === goalId && inState.mode === mode ? null : inState,
+  await update($, goalInPane, inState => (isGoalInMode(inState, goalId, mode) ? null : inState))
+}
+
+/** A goal in the Goals pane in the row mode `Mode`. */
+type GoalInMode<Mode extends RowMode> = Extract<GoalInPane, { mode: Mode }>
+
+/** Whether `inState` is the goal with the id `goalId` in the row mode `mode`. */
+function isGoalInMode<Mode extends RowMode>(
+  inState: GoalInPane | null,
+  goalId: string,
+  mode: Mode,
+): inState is GoalInMode<Mode> {
+  return inState?.goalId === goalId && inState.mode === mode
+}
+
+/**
+ * Sets `text` as the text typed into the field for the goal with the id `goalId` of the session
+ * `sessionId`.
+ */
+export async function recordTypedText(
+  $: EngineInterface,
+  sessionId: string,
+  goalId: string,
+  text: string,
+): Promise<void> {
+  await updateOfSession<TypedGoalText>(
+    $,
+    sessionId,
+    () => ({ sessionId, goalId, text }),
+    changeInState => update($, typedGoalText, changeInState),
   )
+}
+
+/**
+ * The text typed into the field for the goal with the id `goalId`, and the text of the goal at the
+ * start of the edit, while the goal is edited in the Goals pane.
+ */
+export async function readEdit($: EngineInterface, goalId: string): Promise<GoalEdit | undefined> {
+  const [inPane, typed] = await Promise.all([readGoalInPane($), read($, typedGoalText)])
+
+  return isGoalInMode(inPane, goalId, RowMode.Editing) && typed?.goalId === goalId
+    ? { text: typed.text, editedFrom: inPane.editedFrom }
+    : undefined
 }
 
 /** Marks a save of the Goals pane as running, and returns false when one was running already. */
