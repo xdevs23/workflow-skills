@@ -1,4 +1,5 @@
 import type { Board, DoneMark, Goal } from '../../types'
+import { AND_LIST } from '../listFormat'
 import { openGoalsByIdOf, openGoalsByPriorityOf, openGoalsOf } from './board'
 import { ChangeKind, changesBetween } from './boardChanges'
 import { MarkRemover, doneMarkOf } from './doneMark'
@@ -218,9 +219,6 @@ function describeDependencyNote(goal: Goal, now: Board): string {
     : `The user made ${name} depend on ${nameGoal(dependsOn.number)}.`
 }
 
-/** Joins the changes in a transcript line, as in "Goal 2 cleared and Goal 3 added". */
-const CHANGES_IN_LINE = new Intl.ListFormat('en', { type: 'conjunction' })
-
 /** A change sent to the model. */
 type NotedChange = { goal: Goal; kind: NotedKind }
 
@@ -279,7 +277,7 @@ function describeSentLine(
   listedCount: number,
   changes: readonly NotedChange[],
 ): string {
-  const changed = CHANGES_IN_LINE.format(
+  const changed = AND_LIST.format(
     changes.map(({ goal, kind }) => CHANGE_TEXTS[kind].describeInLine(goal, now)))
   if (listedCount === 0) {
     return `${PANE_TITLE}: ${changed}, sent to Claude`

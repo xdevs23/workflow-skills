@@ -8,7 +8,7 @@ import { PHRASE_KINDS, WHOLE_MESSAGE_KINDS, kindsWithPhraseIn } from './hintKind
 import { NOTHING_NEEDS_ACTION_HINT } from './nothingNeedsActionHint'
 import { IDLE_REPLY_HINT } from './idleReplyHint'
 import { test } from './testDeclaration'
-import { endTurn, startSession, stopTurn, typePrompt } from './testSupport'
+import { FIRST_SESSION, endTurn, startSession, stopTurn, typePrompt } from './testSupport'
 import { WAITING_HINT } from './waitingHint'
 
 /** The paragraphs of the reason of a block before its closing paragraph. */
@@ -632,9 +632,13 @@ describe('the phrases of a message that announces a question in place of asking 
 })
 
 describe('the end of a turn on a message with a hint phrase', () => {
-  /** Replaces the classic Stop hook of the engine beneath the plugin, so it returns `result`. */
+  /**
+   * Replaces the classic Stop hook of the engine beneath the plugin, so it returns `result`. The
+   * engine also returns the id of the session, which the reminders read at every end of a turn.
+   */
   function stopBeneath(on: On, result: ClassicResultOf['classic.Stop'] = {}): void {
     on('classic.Stop', () => result)
+    on('session.id', () => ({ value: FIRST_SESSION }))
   }
 
   test('the first end on a waiting message is blocked with the waiting hint', async ($, on) => {

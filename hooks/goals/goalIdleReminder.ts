@@ -4,7 +4,7 @@ import type { Board, IdleStretch } from '../../types'
 import { isMainConversation } from '../conversation'
 import type { EveryEvent } from '../everyEvent'
 import { submitToSessionOrRestore } from '../sendToModel'
-import { runAfter } from '../timedWork'
+import { runAfter, waitAgainAfterTurn } from '../timedWork'
 import { openGoalsOf } from './board'
 import { listOpenGoals, readBoardToRemind } from './goalReminderBoard'
 import { describeIdleReminderFailed, describeOpenGoalsAfterIdle } from './goalReminders'
@@ -41,19 +41,18 @@ export const endIdleStretch: MatchedHook<'turn.start', EveryEvent> = async ($, e
   return next(e)
 }
 
-export const waitAfterTurn: MatchedHook<'turn.complete', EveryEvent> = async ($, e, next) => {
-  const completed = await next(e)
-  if (isMainConversation(e)) {
-    const waiting = newStretch(await $.session.id(), IdlePhase.Waiting)
-    const inState = await updateIdleStretch($, waiting.sessionId, stretch =>
-      stretch?.phase === IdlePhase.Reminded ? null : waiting,
-    )
-    if (isSameStretch(inState, waiting)) {
-      waitForIdleMinutes($, waiting)
-    }
-  }
+export const waitAfterTurn: MatchedHook<'turn.complete', EveryEvent> = ($, e, next) =>
+  waitAgainAfterTurn(e, next, () => startIdleStretch($))
 
-  return completed
+/** Starts the idle minutes after a turn, unless the turn was started by the open goals sent. */
+async function startIdleStretch($: EngineInterface): Promise<void> {
+  const waiting = newStretch(await $.session.id(), IdlePhase.Waiting)
+  const inState = await updateIdleStretch($, waiting.sessionId, stretch =>
+    stretch?.phase === IdlePhase.Reminded ? null : waiting,
+  )
+  if (isSameStretch(inState, waiting)) {
+    waitForIdleMinutes($, waiting)
+  }
 }
 
 /** Sends the open goals once the idle minutes of the stretch `waiting` passed. */

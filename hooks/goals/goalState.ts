@@ -10,7 +10,12 @@ import type {
   SessionBoard,
   UnreadBoard,
 } from '../../types'
-import { ofRunningSession, ofSession, updateOfSession } from '../sessionBoundState'
+import {
+  keepReadOverFailure,
+  ofRunningSession,
+  ofSession,
+  updateOfSession,
+} from '../sessionBoundState'
 import { Outcome } from './board'
 import type { Read } from './board'
 import { boardWithChangesTakenBack } from './boardChanges'
@@ -45,10 +50,7 @@ export async function setLoadedBoard(
   await updateOfSession<SessionBoard>(
     $,
     sessionId,
-    shown =>
-      loaded.outcome === Outcome.Failed && shown?.outcome === Outcome.Read
-        ? shown
-        : { sessionId, ...loaded },
+    shown => keepReadOverFailure(shown, { sessionId, ...loaded }, Outcome.Read),
     changeInState => update($, sessionBoard, changeInState),
   )
 }

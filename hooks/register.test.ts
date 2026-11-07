@@ -1,5 +1,5 @@
 import { describe, expect } from 'claude-code/testing'
-import type { ApiMessage } from 'claude-code'
+import type { ApiMessage, On } from 'claude-code'
 
 import {
   ANSWER_COMMAND,
@@ -21,6 +21,8 @@ import {
   QuestionSkillLoadState,
 } from './questionSkill'
 import { questionSkillLoadKeyOf, storeKeyOf } from './questionStore'
+import { registerReminders } from './reminders'
+import { CADENCE_KINDS } from './reminders/registeredKinds'
 import { test } from './testDeclaration'
 import {
   FIRST_SESSION,
@@ -69,6 +71,28 @@ function forgetQuestionSkillLoad(session: Session) {
 function failedSkillLoad(skill: string): ApiMessage[] {
   return toolCall({ tool: 'Skill', input: { skill }, isFailed: true })
 }
+
+/** The hooks that `register` registers, in the order it registers them. */
+function hooksRegisteredBy(register: (on: On) => void): unknown[] {
+  const hooks: unknown[] = []
+  register((...registration: readonly unknown[]) => {
+    hooks.push(registration.at(-1))
+
+    return { catch: () => undefined }
+  })
+
+  return hooks
+}
+
+describe('the cadence kinds of the reminders', () => {
+  test('the reminders register the hooks of every cadence kind in the kind dropdown', () => {
+    const registered = hooksRegisteredBy(registerReminders)
+
+    for (const kind of CADENCE_KINDS) {
+      expect(registered).toEqual(expect.arrayContaining(hooksRegisteredBy(kind.register)))
+    }
+  })
+})
 
 describe('asking without waiting', () => {
   for (const surface of ['terminal', 'desktop'] as const) {

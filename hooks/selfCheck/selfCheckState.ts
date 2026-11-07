@@ -3,6 +3,7 @@ import type { EngineInterface } from 'claude-code'
 
 import type { SelfCheckSchedule } from '../../types'
 import { ofSession, updateOfSession } from '../sessionBoundState'
+import { firstDueTimeAfter } from '../timedWork'
 
 /**
  * How long the user sends no message before the main conversation is told to check the work
@@ -67,7 +68,7 @@ export async function takeDueTime(
 
       return schedule
     }
-    const next = { ...schedule, dueAt: firstDueTimeAfter(schedule.dueAt, now) }
+    const next = { ...schedule, dueAt: firstDueTimeAfter(schedule.dueAt, CHECK_INTERVAL, now) }
     taken = { due: schedule, next }
 
     return next
@@ -104,12 +105,4 @@ function updateSelfCheckSchedule(
 
 function isDue(schedule: SelfCheckSchedule | null, now: number): schedule is SelfCheckSchedule {
   return schedule !== null && schedule.dueAt <= now
-}
-
-/**
- * The first due time after `now`, of the due times every CHECK_INTERVAL from `dueAt` on. A session
- * that is idle through several due times is sent the self-check once.
- */
-function firstDueTimeAfter(dueAt: number, now: number): number {
-  return dueAt + (Math.floor((now - dueAt) / CHECK_INTERVAL) + 1) * CHECK_INTERVAL
 }

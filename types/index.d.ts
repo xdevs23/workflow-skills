@@ -3,6 +3,9 @@ import type { MarkRemovalAsked } from '../hooks/goals/doneMark'
 import type { IdlePhase } from '../hooks/goals/goalIdleReminder'
 import type { RowMode } from '../hooks/goals/goalState'
 import type { Priority } from '../hooks/goals/priority'
+import type { ReadReminders, RemindersNotRead } from '../hooks/reminders/reminderStore'
+import type { CardMode } from '../hooks/reminders/reminderState'
+import type { Refusal as ReminderRefusal } from '../hooks/reminders/reminders'
 
 /** What the user wrote in reply to a question. */
 export type Answer = {
@@ -145,6 +148,95 @@ export type IdleStretch = {
   phase: IdlePhase
 }
 
+/** When a reminder is sent: the cadence kind, and the values typed into the fields of the kind. */
+export type Cadence = {
+  /** The id of the cadence kind. */
+  kind: string
+  /** The values by the keys of the fields, read only by the cadence kind. */
+  values: Readonly<Record<string, string>>
+}
+
+/**
+ * A reminder set by the user in a session. While it is switched on, the model is sent its text
+ * alone whenever its cadence comes.
+ */
+export type Reminder = {
+  /** The part of the store keys of the reminder that names it, unique across every session. */
+  id: string
+  /** The number the user knows the reminder by: its place in the order the reminders were added. */
+  number: number
+  text: string
+  addedAt: number
+  cadence: Cadence
+  /** Whether the user switched the reminder on. A reminder never switched is off. */
+  isEnabled: boolean
+  removedAt?: number
+}
+
+/** The reminders of a session as the session last read them, or why the store could not. */
+export type SessionReminders = { sessionId: string } & (ReadReminders | RemindersNotRead)
+
+/** What the user typed into the card of a reminder, before it is saved. */
+export type CardDraft = { text: string; cadence: Cadence }
+
+/**
+ * The warning on a card whose save was refused: a blank text, a kind this version of the plugin
+ * does not know, or the problem with its values.
+ */
+export type CardWarning =
+  | { refusal: ReminderRefusal.BlankText | ReminderRefusal.UnknownCadence }
+  | { refusal: ReminderRefusal.CadenceProblem; problem: string }
+
+/**
+ * What the Reminders pane draws for a card pressed in it: the card being edited, the reminder of
+ * which is not stored yet for a new card, or the card waiting for the yes to remove its reminder.
+ */
+export type CardInPane = { reminderId: string } & (
+  | {
+      mode: CardMode.Editing
+      /**
+       * New for each opening of the card, the key of its kind dropdown, which keeps it while the
+       * card is open: the engine opens the list of a focused dropdown whose key changes.
+       */
+      openingId: string
+      /**
+       * New for each opening of the card and each time its fields are drawn anew, the key of its
+       * text field and value fields: a field drawn again under an earlier key would show the value
+       * the engine stored for it, such as the empty text after an Enter.
+       */
+      fieldsId: string
+      /** The text and the cadence the fields of the card were last drawn anew with. */
+      opened: CardDraft
+      /** What was typed into the card and picked in it since it opened. */
+      draft: CardDraft
+      warning?: CardWarning
+    }
+  | { mode: CardMode.WaitingForYes }
+)
+
+/** The card of a session pressed in the Reminders pane. */
+export type ReminderCard = { sessionId: string } & CardInPane
+
+/**
+ * How far the due times of the reminders sent every given time are handled in a session: by the id
+ * of each such reminder switched on, the time up to which its due times were sent to the model or
+ * passed before it was switched on, in milliseconds since the epoch.
+ */
+export type TimedRemindersHandled = {
+  sessionId: string
+  handledUntil: Readonly<Record<string, number>>
+}
+
+/**
+ * The next times at which the reminders of a session are sent, by the id of the cadence kind that
+ * sends them, then by the id of the reminder, in milliseconds since the epoch. A kind puts only
+ * the reminders it sends at times known ahead, while they are switched on.
+ */
+export type ReminderNextSends = {
+  sessionId: string
+  byKind: Readonly<Record<string, Readonly<Record<string, number>>>>
+}
+
 /** When the main conversation of a session is next told to check the work delivered by it. */
 export type SelfCheckSchedule = {
   sessionId: string
@@ -189,6 +281,19 @@ declare module 'claude-code' {
       idleStretch: IdleStretch | null
       /** When the session is next sent the self-check; null before the user typed in it. */
       selfCheckSchedule: SelfCheckSchedule | null
+      /**
+       * The reminders of the session that last read them, with the id of that session; null
+       * before any session read them.
+       */
+      sessionReminders: SessionReminders | null
+      /** The one card of the Reminders pane being edited or waiting for a yes, if any. */
+      reminderCard: ReminderCard | null
+      /** The id of the reminder whose save in the Reminders pane runs, if one runs. */
+      savingReminder: string | null
+      /** When the reminders of the session are next sent, as their cadence kinds put it. */
+      reminderNextSends: ReminderNextSends | null
+      /** How far the due times of the timed reminders of the session are handled. */
+      timedRemindersHandled: TimedRemindersHandled | null
     }
   }
 }

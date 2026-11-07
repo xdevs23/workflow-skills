@@ -1,8 +1,12 @@
 import type { AttachedTodo, Board, Goal } from '../../types'
 import {
+  StoreCall,
+  callStore,
   describeRefusedRead,
   describeRefusedWrite,
   describeUnreadableRecord,
+  readEntriesUnder,
+  returningStoreFailure,
   writeRetryingWhileLocked,
 } from '../pluginStore'
 import type { StoreEngine } from '../pluginStore'
@@ -79,14 +83,11 @@ export type Failed = { outcome: Outcome.Failed } & (
   | { failure: StoreFailure.NotSaved; key: string; cause: Error }
 )
 
-/** A failed call on the store, passed up to the change that made it. */
-class StoreCallError extends Error {
-  readonly failed: Failed
-
-  constructor(failed: Failed) {
-    super(failed.failure)
-    this.failed = failed
-  }
+/** The failure of the board for each failed call on the store. */
+const FAILURE_OF_CALL: Record<StoreCall, StoreFailure.NotRead | StoreFailure.NotSaved> = {
+  [StoreCall.List]: StoreFailure.NotRead,
+  [StoreCall.Read]: StoreFailure.NotRead,
+  [StoreCall.Write]: StoreFailure.NotSaved,
 }
 
 export function loadBoard($: StoreEngine, scope: BoardScope): Promise<Read | Failed> {
@@ -306,22 +307,7 @@ async function readSettledBoard($: StoreEngine, scope: BoardScope): Promise<Boar
 }
 
 async function readStoredBoard($: StoreEngine, scope: BoardScope): Promise<Board> {
-  const prefix = boardPrefixOf(scope)
-  const keys = await callStore(StoreFailure.NotRead, prefix, () => $.store.keys())
-  const entries = await Promise.all(
-    keys
-      .filter(key => key.startsWith(prefix))
-      .map(async key => ({
-        key,
-        value: await callStore(StoreFailure.NotRead, key, () => $.store.get(key)),
-      })),
-  )
-
-  // A record deleted after the keys were listed is left out.
-  return readBoard(
-    scope,
-    entries.filter(entry => entry.value !== undefined),
-  )
+  return readBoard(scope, await readEntriesUnder($, boardPrefixOf(scope)))
 }
 
 async function writeMarkRemovals(
@@ -337,33 +323,19 @@ function writeRecord($: StoreEngine, record: BoardRecord): Promise<void> {
 }
 
 function writeToStore($: StoreEngine, key: string, write: () => Promise<void>): Promise<void> {
-  return callStore(StoreFailure.NotSaved, key, () => writeRetryingWhileLocked($, key, write))
-}
-
-/** Runs the call `call` on the store, and fails with the failure of the store under `key`. */
-async function callStore<T>(
-  failure: StoreFailure.NotRead | StoreFailure.NotSaved,
-  key: string,
-  call: () => Promise<T>,
-): Promise<T> {
-  try {
-    return await call()
-  } catch (error) {
-    if (!(error instanceof Error)) {
-      throw error
-    }
-    throw new StoreCallError({ outcome: Outcome.Failed, failure, key, cause: error })
-  }
+  return callStore(StoreCall.Write, key, () => writeRetryingWhileLocked($, key, write))
 }
 
 /** Runs `work`, and returns the failure of the store or of a stored record that stopped it. */
 async function returningFailure<T>(work: () => Promise<T>): Promise<T | Failed> {
   try {
-    return await work()
+    return await returningStoreFailure(work, ({ call, key, cause }) => ({
+      outcome: Outcome.Failed,
+      failure: FAILURE_OF_CALL[call],
+      key,
+      cause,
+    }))
   } catch (error) {
-    if (error instanceof StoreCallError) {
-      return error.failed
-    }
     if (error instanceof UnreadableRecordError) {
       return { outcome: Outcome.Failed, failure: StoreFailure.Unreadable, key: error.key }
     }

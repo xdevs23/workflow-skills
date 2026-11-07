@@ -15,6 +15,7 @@ export enum RecordKind {
   Delivery = 'deliveries',
   QuestionSkillLoad = 'questionSkillLoads',
   Goal = 'goals',
+  Reminder = 'reminders',
 }
 
 const KEY_SEPARATOR = ':'
@@ -41,20 +42,115 @@ export function describeUnreadableRecord(key: string): string {
   )
 }
 
+/** The calls on the store that can fail. */
+export enum StoreCall {
+  List = 'list',
+  Read = 'read',
+  Write = 'write',
+}
+
+/**
+ * A call on the store that failed: the call, the key it was made for, or the start of the keys
+ * listed, and the error of the store.
+ */
+export type FailedStoreCall = { call: StoreCall; key: string; cause: Error }
+
+/** A record of the store under its key, as read, before it is parsed. */
+export type StoredEntry = { key: string; value: unknown }
+
+/** A failed call on the store, passed up to the read or the change that made it. */
+class StoreCallError extends Error {
+  readonly failed: FailedStoreCall
+
+  constructor(failed: FailedStoreCall) {
+    super(failed.cause.message, { cause: failed.cause })
+    this.failed = failed
+  }
+}
+
+/** Runs the call `call` on the store, made as `storeCall` for `key`, and fails with its failure. */
+export async function callStore<T>(
+  storeCall: StoreCall,
+  key: string,
+  call: () => Promise<T>,
+): Promise<T> {
+  try {
+    return await call()
+  } catch (error) {
+    if (!(error instanceof Error)) {
+      throw error
+    }
+    throw new StoreCallError({ call: storeCall, key, cause: error })
+  }
+}
+
+/**
+ * Runs `work`, and returns the failure of the call on the store that stopped it, as `toFailed`
+ * makes it from that failure.
+ */
+export async function returningStoreFailure<T, Failed>(
+  work: () => Promise<T>,
+  toFailed: (failed: FailedStoreCall) => Failed,
+): Promise<T | Failed> {
+  try {
+    return await work()
+  } catch (error) {
+    if (error instanceof StoreCallError) {
+      return toFailed(error.failed)
+    }
+    throw error
+  }
+}
+
+/**
+ * Reads every record of the store whose key starts with `prefix`, in the order the keys were first
+ * set, through callStore. A record deleted after the keys were listed is left out.
+ */
+export async function readEntriesUnder($: StoreEngine, prefix: string): Promise<StoredEntry[]> {
+  const keys = await callStore(StoreCall.List, prefix, () => $.store.keys())
+  const entries = await Promise.all(
+    keys
+      .filter(key => key.startsWith(prefix))
+      .map(async key => ({
+        key,
+        value: await callStore(StoreCall.Read, key, () => $.store.get(key)),
+      })),
+  )
+
+  return entries.filter(entry => entry.value !== undefined)
+}
+
+/** The reason and the next step for the failed call on the store `failed`. */
+export function describeFailedStoreCall(failed: {
+  call: StoreCall
+  key: string
+  cause: Pick<Error, 'message'>
+}): string {
+  const { key, cause } = failed
+  switch (failed.call) {
+    case StoreCall.List:
+      return describeRefusedListing(cause)
+    case StoreCall.Read:
+      return describeRefusedRead(key, cause)
+    case StoreCall.Write:
+      return describeRefusedWrite(key, cause)
+  }
+}
+
 /** The next step after a read refused by the store. */
 const CHECK_READABLE =
   `Check that the store file used by this plugin in ${STORE_FOLDER} can be read, ` +
   'then try again.'
 
-export function describeRefusedRead(key: string, cause: Error): string {
+export function describeRefusedRead(key: string, cause: Pick<Error, 'message'>): string {
   return `The store could not read the key ${key}: ${cause.message}. ${CHECK_READABLE}`
 }
 
-export function describeRefusedListing(cause: Error): string {
+export function describeRefusedListing(cause: Pick<Error, 'message'>): string {
   return `The store could not list its keys: ${cause.message}. ${CHECK_READABLE}`
 }
 
-export function describeRefusedWrite(key: string, cause: Error): string {
+export function describeRefusedWrite(key: string, cause: Pick<Error, 'message'>): string {
   return (
     `The store did not save the change to the key ${key}: ${cause.message}. Check that the ` +
     `store file used by this plugin in ${STORE_FOLDER} can be written. If the store is over ` +

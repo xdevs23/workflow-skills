@@ -1,8 +1,8 @@
 import { describe, expect } from 'claude-code/testing'
 
+import type { CommandRegistrar } from '../commandRegistration'
 import { test } from '../testDeclaration'
 import { registerGoalsCommand } from './goalSession'
-import type { CommandRegistrar } from './goalSession'
 
 /** An engine whose registration rejects with `rejection`, and the texts it showed and logged. */
 function rejectingRegistrar(rejection: unknown) {

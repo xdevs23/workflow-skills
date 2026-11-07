@@ -2,6 +2,7 @@ import type { Hook, On } from 'claude-code'
 
 import { EVERY_EVENT } from '../everyEvent'
 import type { FooterRow } from '../promptFooter'
+import { COMPACTION_SOURCE, SWITCHING_SOURCES } from '../sessionSources'
 import { loadBoardAtStart } from './goalActions'
 import { replyWithGoalsHookFailure, runGoalsCommand } from './goalCommands'
 import {
@@ -22,12 +23,7 @@ import {
 import { handleMarkGoalDoneCall, handleUnmarkGoalDoneCall } from './goalMarkTools'
 import { drawGoalsPane } from './goalScreens'
 import { drawGoalsButton } from './goalsButton'
-import {
-  COMPACTION_SOURCE,
-  SWITCHING_SOURCES,
-  readGoalsOfSwitchedSession,
-  registerGoalsCommand,
-} from './goalSession'
+import { readGoalsOfSwitchedSession, registerGoalsCommand } from './goalSession'
 import {
   attachTodo,
   denyGoalToolFailure,

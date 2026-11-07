@@ -1,4 +1,6 @@
 import type {
+  Args,
+  ClassicResultOf,
   EngineInterface,
   Frozen,
   Next,
@@ -9,7 +11,7 @@ import type {
   ToolCallResult,
 } from 'claude-code'
 
-import { isModelToolCall } from './conversation'
+import { isMainConversation, isModelToolCall } from './conversation'
 
 /** The result of a delivery, and whether the model received what was handed to it. */
 export type Delivery<T> = { result: T; isAccepted: boolean }
@@ -42,6 +44,39 @@ export async function callToolWithNote(
   const note = await takeNote()
 
   return note === undefined ? ran : { ...ran, context: [...(ran.context ?? []), note] }
+}
+
+/**
+ * Runs the end of the turn `e`, and blocks it with the note made by `takeNote` from the last
+ * message as the reason, so the main conversation goes back to work with the note. A block asked
+ * by a hook beneath comes first in the reason. Only the first end of a turn is blocked: the engine
+ * marks the next end of that turn as one that follows a block, and that end passes, so a turn that
+ * finds nothing more to do can end. `takeNote` runs only for the first end of a turn of the main
+ * conversation, on a message, where no hook beneath stopped the session.
+ */
+export async function stopWithNote(
+  e: Frozen<Args<'classic.Stop'>>,
+  next: Next<'classic.Stop'>,
+  takeNote: (message: string) => Promise<string | undefined> | string | undefined,
+): Promise<ClassicResultOf['classic.Stop']> {
+  const stopped = await next(e)
+  const message = e.last_assistant_message
+  const followsBlock = e.stop_hook_active
+  if (
+    message === undefined ||
+    followsBlock ||
+    stopped.preventContinuation === true ||
+    !isMainConversation({ agentId: e.agent_id })
+  ) {
+    return stopped
+  }
+  const note = await takeNote(message)
+  if (note === undefined) {
+    return stopped
+  }
+  const reasons = stopped.block === undefined ? [note] : [stopped.block, note]
+
+  return { ...stopped, block: reasons.join('\n\n') }
 }
 
 /** Submits the prompt `e` with `note` beside it, and tells whether the prompt entered with it. */

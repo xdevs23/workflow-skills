@@ -50,3 +50,15 @@ export async function updateOfSession<T extends OfSession>(
 
   return ofSession(inState, sessionId)
 }
+
+/**
+ * `loaded` in place of `shown`, unless `shown` was read and `loaded` was not, so a failed read
+ * leaves the last values read on screen. A value was read when its outcome is `read`.
+ */
+export function keepReadOverFailure<Outcome, T extends { outcome: Outcome }>(
+  shown: T | null,
+  loaded: T,
+  read: Outcome,
+): T {
+  return shown?.outcome === read && loaded.outcome !== read ? shown : loaded
+}

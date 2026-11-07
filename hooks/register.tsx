@@ -21,6 +21,7 @@ import {
   withdrawQuestion,
 } from './questionHooks'
 import { drawQuestionBand, drawQuestionPane } from './questionScreens'
+import { registerReminders } from './reminders'
 import { registerSelfCheck } from './selfCheck'
 
 export const register: Register = on => {
@@ -42,5 +43,6 @@ export const register: Register = on => {
   on('ui.render', { component: 'Pane', requestId: PANE }, drawQuestionPane)
   registerPromptFooter(on, footerRow)
   registerGoals(on, footerRow)
+  registerReminders(on)
   registerSelfCheck(on)
 }

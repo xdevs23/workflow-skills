@@ -1,12 +1,11 @@
 import type { EngineInterface, MatchedHook, Timer } from 'claude-code'
 
 import type { SelfCheckSchedule } from '../../types'
-import { isMainConversation } from '../conversation'
 import type { EveryEvent } from '../everyEvent'
 import { isTypedByUser } from '../promptOrigin'
 import { submitToSessionOrRestore, submitWithNoteOrRestore } from '../sendToModel'
 import { readIsTurnRunning } from '../sessionState'
-import { runAfter } from '../timedWork'
+import { runAfter, waitAgainAfterTurn } from '../timedWork'
 import {
   readSelfCheckSchedule,
   restoreDueTime,
@@ -84,18 +83,8 @@ export const submitWithSelfCheck: MatchedHook<'prompt.submit', EveryEvent> = asy
 }
 
 // A due time that passed during the turn is sent once the turn ended.
-export const waitForDueTimeAfterTurn: MatchedHook<'turn.complete', EveryEvent> = async (
-  $,
-  e,
-  next,
-) => {
-  const completed = await next(e)
-  if (isMainConversation(e)) {
-    await waitForStoredDueTime($)
-  }
-
-  return completed
-}
+export const waitForDueTimeAfterTurn: MatchedHook<'turn.complete', EveryEvent> = ($, e, next) =>
+  waitAgainAfterTurn(e, next, () => waitForStoredDueTime($))
 
 /** Waits for the due time in the self-check schedule of the running session, if it has one. */
 async function waitForStoredDueTime($: EngineInterface): Promise<void> {
