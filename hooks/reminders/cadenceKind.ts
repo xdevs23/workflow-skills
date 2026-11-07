@@ -28,31 +28,34 @@ export enum FieldKind {
   List = 'list',
 }
 
-/**
- * A value field in the card of a reminder, whose value is stored under `key`. A field with a label
- * is drawn on a line of its own after that label, and a field without one beside the kind dropdown.
- */
+/** A value field in the card of a reminder, whose value is stored under `key`. */
 export type CardField<Field extends string = string> = SingleValueField<Field> | ListCardField<Field>
 
 /** A list field, whose items are stored under `key`. */
 export type ListCardField<Field extends string = string> = {
   kind: FieldKind.List
   key: Field
-  label?: string
+  label: string
   /** The text of the empty field that adds an item. */
   placeholder?: string
 }
 
 /** A text field or a dropdown, whose text is stored under `key`. */
-export type SingleValueField<Field extends string = string> = { key: Field; label?: string } & (
+export type SingleValueField<Field extends string = string> = { key: Field } & (
   | {
       kind: FieldKind.Text
+      /**
+       * The label of the field on a card whose values `valueOf` reads, so the label can name
+       * another value, such as the unit picked for an amount.
+       */
+      label: (valueOf: ValueOfField<Field>) => string
       /** The text the field starts with, on a new card and on a card picking the kind. */
       initial?: string
       placeholder?: string
     }
   | {
       kind: FieldKind.Choice
+      label?: string
       /**
        * The options of the dropdown on a card whose values `valueOf` reads, so a label can agree
        * with another value, such as "hour" beside an amount of 1. Their values are the same on
@@ -61,6 +64,61 @@ export type SingleValueField<Field extends string = string> = { key: Field; labe
       options: (valueOf: ValueOfField<Field>) => readonly [SelectOption, ...SelectOption[]]
     }
 )
+
+/** A text field, whose text is stored under `key`. */
+export type TextField<Field extends string = string> = Extract<
+  SingleValueField<Field>,
+  { kind: FieldKind.Text }
+>
+
+/** A dropdown, whose value is stored under `key`. */
+export type ChoiceField<Field extends string = string> = Extract<
+  SingleValueField<Field>,
+  { kind: FieldKind.Choice }
+>
+
+/** Where the edited card of a reminder draws a field. */
+export enum FieldPlace {
+  /** On the cadence line, beside the kind dropdown. */
+  BesideKindDropdown = 'besideKindDropdown',
+  /** In the card, on a line of its own after its label. */
+  LineInCard = 'lineInCard',
+  /** Under the card, at the full width of the pane, after its label. */
+  UnderCard = 'underCard',
+}
+
+/** A field of a card with the place where the edited card draws it. */
+type PlacedField =
+  | { place: FieldPlace.BesideKindDropdown; field: ChoiceField }
+  | { place: FieldPlace.LineInCard; field: ChoiceField; label: string }
+  | { place: FieldPlace.UnderCard; field: TextField | ListCardField }
+
+/**
+ * Where the edited card draws `field`. A dropdown with a label is drawn in the card on a line of
+ * its own after that label. A dropdown without a label is drawn beside the kind dropdown. A text
+ * field and the field that adds an item to a list are drawn under the card after their label.
+ */
+function placeOf(field: CardField): PlacedField {
+  switch (field.kind) {
+    case FieldKind.Choice:
+      return field.label === undefined
+        ? { place: FieldPlace.BesideKindDropdown, field }
+        : { place: FieldPlace.LineInCard, field, label: field.label }
+    case FieldKind.Text:
+    case FieldKind.List:
+      return { place: FieldPlace.UnderCard, field }
+  }
+}
+
+/** The fields of `fields` that the edited card draws at `place`, in their order. */
+export function fieldsPlacedAt<Place extends FieldPlace>(
+  fields: readonly CardField[],
+  place: Place,
+): Extract<PlacedField, { place: Place }>[] {
+  return fields
+    .map(placeOf)
+    .filter((placed): placed is Extract<PlacedField, { place: Place }> => placed.place === place)
+}
 
 /**
  * The value in the field with the key `field`: the text typed into a text field, or the value of
@@ -282,11 +340,20 @@ export function removeItem(
     : values
 }
 
+/** The label of the text field `field`, one of `fields`, on a card with the values `values`. */
+export function labelOf(
+  fields: readonly CardField[],
+  values: Cadence['values'],
+  field: TextField,
+): string {
+  return field.label(key => valueOfKey(fields, values, key))
+}
+
 /** The options of the dropdown `field`, one of `fields`, on a card with the values `values`. */
 export function optionsOf(
   fields: readonly CardField[],
   values: Cadence['values'],
-  field: Extract<CardField, { kind: FieldKind.Choice }>,
+  field: ChoiceField,
 ): readonly [SelectOption, ...SelectOption[]] {
   return field.options(key => valueOfKey(fields, values, key))
 }

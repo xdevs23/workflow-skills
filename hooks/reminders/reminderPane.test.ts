@@ -1,12 +1,14 @@
 import { describe, expect } from 'claude-code/testing'
 import type { Engine, FoundElement, MountInputTarget } from 'claude-code/testing'
 
+import { cardKeyedIn, shownTextsIn } from '../cardFieldsTestSupport'
 import { test } from '../testDeclaration'
 import type { Cadence } from '../../types'
 import { EVERY_EVENT } from '../everyEvent'
 import { NO_FOCUS_IN_KIT } from '../goals/goalPaneTestSupport'
 import { FIRST_SESSION, mountPane, startSession } from '../testSupport'
 import type { Session } from '../testSupport'
+import { isListField } from './cadenceKind'
 import { PHRASE_KIND } from './phraseCadence'
 import { REMINDERS_COMMAND, REMINDERS_PANE } from './reminderNames'
 import {
@@ -17,7 +19,7 @@ import {
   removalRecordOf,
   textRecordOf,
 } from './reminderRecord'
-import { describeRemoveItem } from './reminderTexts'
+import { REMOVE_ITEM_MARK, TEXT_LABEL, describeRemoveItem } from './reminderTexts'
 import { TIME_KIND, TimeUnit } from './timeKind'
 
 const MARK_GOAL = 'Mark the goal done with its evidence when you finish testing.'
@@ -36,6 +38,24 @@ const FULL_STORE = 'the store is over 4 MiB'
  */
 const PHRASE = 'tests pass'
 const SAYS_TESTS_PASS: Cadence = { kind: PHRASE_KIND.id, values: { phrases: [PHRASE] } }
+
+/** The labels of the fields that add a phrase, drawn under a card of the kind "when Claude says". */
+const PHRASE_FIELD_LABELS = PHRASE_KIND.fields.filter(isListField).map(field => field.label)
+
+/**
+ * What a card of the kind "when Claude says", the Box keyed `cardKey`, is drawn beside while it is
+ * edited: its text field and the fields that add a phrase, each after the label of its field.
+ */
+function layoutOfEditedPhraseCard(cardKey: string) {
+  return {
+    props: { flexDirection: 'column' },
+    children: [
+      { type: 'Box', props: { key: cardKey } },
+      { type: 'Input', props: { label: TEXT_LABEL } },
+      ...PHRASE_FIELD_LABELS.map(label => ({ type: 'Input', props: { label } })),
+    ],
+  }
+}
 
 /**
  * The records of reminders 1 and 2 of FIRST_SESSION, with reminder 1 switched on and reminder 2
@@ -126,6 +146,16 @@ async function textsOf(pane: Pick<RemindersPane, 'findAll'>): Promise<string[]> 
  */
 async function textFieldOf(pane: Pick<RemindersPane, 'find'>): Promise<FoundElement | undefined> {
   return pane.find({ type: 'Input' })
+}
+
+/** The key of the kind dropdown of the card edited in the pane: the first dropdown drawn. */
+async function kindDropdownOf(pane: Pick<RemindersPane, 'find'>): Promise<string> {
+  const key = (await pane.find({ type: 'Select' }))?.key
+  if (key === undefined) {
+    throw new Error('The pane draws no card with a kind dropdown.')
+  }
+
+  return key
 }
 
 /** Types `text` into the text field of the card edited in the pane, as the input `kind`. */
@@ -403,7 +433,7 @@ describe('the Reminders pane', () => {
       await startSession($, on, { stored: storedReminders() })
       const pane = await mountRemindersPane($, 'terminal')
       await expect(pane.press({ key: 'add-reminder' })).rejects.toThrow(NO_FOCUS_IN_KIT)
-      const kindDropdown = (await pane.find({ type: 'Select' }))?.key ?? ''
+      const kindDropdown = await kindDropdownOf(pane)
       const [, phrasesField] = await pane.findAll({ type: 'Input' })
       await pane.select({ key: kindDropdown, value: TIME_KIND.id })
 
@@ -440,7 +470,7 @@ describe('the Reminders pane', () => {
       const pane = await mountRemindersPane($, 'terminal')
       await expect(pane.press({ key: 'add-reminder' })).rejects.toThrow(NO_FOCUS_IN_KIT)
       await typeIntoCard(pane, UPDATE_SPEC, 'change')
-      await pane.select({ key: (await pane.find({ type: 'Select' }))?.key ?? '', value: TIME_KIND.id })
+      await pane.select({ key: await kindDropdownOf(pane), value: TIME_KIND.id })
       const [, amountField] = await pane.findAll({ type: 'Input' })
       expect(amountField?.props.value).toBe('1')
       await pane.press({ key: 'done-4' })
@@ -463,7 +493,7 @@ describe('the Reminders pane', () => {
       const session = await startSession($, on, { stored: storedReminders() })
       const pane = await mountRemindersPane($, 'terminal')
       await addCard(pane, UPDATE_SPEC)
-      await pane.select({ key: (await pane.find({ type: 'Select' }))?.key ?? '', value: TIME_KIND.id })
+      await pane.select({ key: await kindDropdownOf(pane), value: TIME_KIND.id })
       await pane.press({ key: 'done-4' })
 
       const added = reminderRecordOf(FIRST_SESSION, {
@@ -579,6 +609,43 @@ describe('the Reminders pane', () => {
       await expect(pane.press({ key: 'edit-1' })).rejects.toThrow(NO_FOCUS_IN_KIT)
       expect(await removePhraseButtonOf(pane, unreadable)).toBeUndefined()
       expect(await removePhraseButtonOf(pane, PHRASE)).toBeUndefined()
+    },
+  )
+
+  test(
+    'the text field and the field that adds a phrase are drawn under the edited card, each ' +
+      'after its label, and the phrases added stay in the card',
+    async ($, on) => {
+      await startSession($, on, { stored: storedReminders() })
+      const pane = await mountRemindersPane($, 'terminal')
+      await expect(pane.press({ key: 'edit-1' })).rejects.toThrow(NO_FOCUS_IN_KIT)
+      const { card, holder } = cardKeyedIn(await pane.drawn(), 'reminder-1')
+
+      expect(holder).toMatchObject(layoutOfEditedPhraseCard('reminder-1'))
+      expect(shownTextsIn(card)).toContain(describeRemoveItem(PHRASE))
+    },
+  )
+
+  test(
+    'a new card lists no phrase and no label of the phrases in the card, and a phrase added from ' +
+      'the field under it is listed in the card without a label',
+    async ($, on) => {
+      await startSession($, on, { stored: storedReminders() })
+      const pane = await mountRemindersPane($, 'terminal')
+      await expect(pane.press({ key: 'add-reminder' })).rejects.toThrow(NO_FOCUS_IN_KIT)
+      const newCard = async () => cardKeyedIn(await pane.drawn(), 'reminder-4')
+      const labelsOfPhrasesIn = (texts: readonly string[]) =>
+        texts.filter(text => PHRASE_FIELD_LABELS.includes(text))
+      const { card, holder } = await newCard()
+
+      expect(holder).toMatchObject(layoutOfEditedPhraseCard('reminder-4'))
+      expect(shownTextsIn(card)).not.toContain(REMOVE_ITEM_MARK)
+      expect(labelsOfPhrasesIn(shownTextsIn(card))).toEqual([])
+      await addPhrase(pane, PHRASE)
+
+      const added = shownTextsIn((await newCard()).card)
+      expect(added).toContain(describeRemoveItem(PHRASE))
+      expect(labelsOfPhrasesIn(added)).toEqual([])
     },
   )
 

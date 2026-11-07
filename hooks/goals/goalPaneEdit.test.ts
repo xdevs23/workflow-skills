@@ -1,5 +1,6 @@
 import { describe, expect } from 'claude-code/testing'
 
+import { cardKeyedIn } from '../cardFieldsTestSupport'
 import { test } from '../testDeclaration'
 import { FIRST_SESSION, startSession } from '../testSupport'
 import { textRecordOf } from './boardRecord'
@@ -19,6 +20,7 @@ import {
   storedBoardWithMark,
   typeIntoEditField,
 } from './goalPaneTestSupport'
+import { nameGoal } from './goalTexts'
 
 const BLANK_TEXT_WARNING = 'A goal needs a text. Type one, or press Cancel.'
 const TEXT_ELSEWHERE = 'Fix the crash on rotation, then publish v1.45.3'
@@ -56,6 +58,32 @@ describe('editing a goal in the Goals pane', () => {
       expect(goalRecordsOf(session)).toEqual(
         storedBoard().set(textRecord.key, textRecord.value),
       )
+    },
+  )
+
+  test(
+    'the field of an edited goal is drawn under its box, named as the goal, and the warning on a ' +
+      'blank text after it',
+    async ($, on) => {
+      await startSession($, on, { stored: storedBoard() })
+      const pane = await mountGoalsPane($, 'terminal')
+      await expect(pane.press({ key: 'edit-2' })).rejects.toThrow(NO_FOCUS_IN_KIT)
+      const box = { type: 'Box', props: { key: 'goal-2' } }
+      const fieldOfGoal = async () => ({
+        type: 'Input',
+        props: { key: (await editFieldIn(pane, 2))?.key, label: nameGoal(2) },
+      })
+
+      expect(cardKeyedIn(await pane.drawn(), 'goal-2').holder).toMatchObject({
+        props: { flexDirection: 'column' },
+        children: [box, await fieldOfGoal()],
+      })
+      await typeIntoEditField(pane, 2, '  ', 'change')
+      await pane.press({ key: 'done-edit-2' })
+
+      expect(cardKeyedIn(await pane.drawn(), 'goal-2').holder).toMatchObject({
+        children: [box, await fieldOfGoal(), { type: 'Text', props: { color: 'warning' } }],
+      })
     },
   )
 

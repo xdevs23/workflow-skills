@@ -1,5 +1,6 @@
 import { describe, expect } from 'claude-code/testing'
 
+import { cardKeyedIn } from '../cardFieldsTestSupport'
 import { test } from '../testDeclaration'
 import { FIRST_SESSION, startSession } from '../testSupport'
 import { doneMarkRecordOf, markRemovalRecordOf } from './boardRecord'
@@ -15,6 +16,7 @@ import {
   mountGoalsPane,
   storedBoardWithMark,
 } from './goalPaneTestSupport'
+import { nameGoal } from './goalTexts'
 import { MarkRemover } from './doneMark'
 
 const REASON = 'The release notes still name v1.45.2'
@@ -60,6 +62,23 @@ describe('done marks in the Goals pane', () => {
       expect(session.toasts).toEqual([])
     },
   )
+
+  test('the field for the reason is drawn under the box of the goal, named as the goal', async (
+    $,
+    on,
+  ) => {
+    await startSession($, on, { stored: storedBoardWithMark() })
+    const pane = await mountGoalsPane($, 'terminal')
+    await expect(pane.press({ key: 'unmark-2' })).rejects.toThrow(NO_FOCUS_IN_KIT)
+
+    expect(cardKeyedIn(await pane.drawn(), 'goal-2').holder).toMatchObject({
+      props: { flexDirection: 'column' },
+      children: [
+        { type: 'Box', props: { key: 'goal-2' } },
+        { type: 'Input', props: { key: 'unmark-reason-2', label: nameGoal(2) } },
+      ],
+    })
+  })
 
   test('an empty reason removes the mark without a reason', async ($, on) => {
     const session = await startSession($, on, { stored: storedBoardWithMark() })

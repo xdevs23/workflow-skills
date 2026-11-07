@@ -9,6 +9,8 @@ import type {
 } from 'claude-code'
 
 import type { Board, DoneMark, Goal, RowInPane, UnreadBoard } from '../../types'
+import { drawCardWithFields } from '../cardFields'
+import type { FieldUnderCard, FieldsWithWarning } from '../cardFields'
 import { DONE_LABEL } from '../paneTexts'
 import { drawsFields } from '../surfaces'
 import type { SurfaceWithFields } from '../surfaces'
@@ -60,6 +62,7 @@ import {
   describeDependencyBadge,
   describeDoneMarkForPerson,
   describeNotRead,
+  nameGoal,
 } from './goalTexts'
 import { describePriority, priorityOf } from './priority'
 import { describeEntry } from './todoEntry'
@@ -68,15 +71,17 @@ import { describeEntry } from './todoEntry'
 type GoalElements = Pick<ElementTable, 'Box' | 'Button' | 'Text'>
 
 /**
- * Draws the fields of a goal: the field that edits its text, the field for the reason to remove its
- * done mark `shown`, and the pickers of its priority and its dependency. Only a surface with fields
- * has them, so the Goals pane draws Edit only there, Unmark removes the mark at once elsewhere, and
- * elsewhere the priority and the dependency show as badges before the text.
+ * The fields of a goal: the field that edits its text, the field for the reason to remove its done
+ * mark `shown`, the pickers of its priority and its dependency, and the row of the goal drawn with
+ * fields under it. Only a surface with fields has them, so the Goals pane draws Edit only there,
+ * Unmark removes the mark at once elsewhere, and elsewhere the priority and the dependency show as
+ * badges before the text.
  */
 type GoalFields = {
-  drawTextField: (goal: Goal, field: EditedField) => RenderElement
-  drawReasonField: (goal: Goal, shown: DoneMark) => RenderElement
+  textFieldOf: (goal: Goal, field: EditedField) => FieldUnderCard
+  reasonFieldOf: (goal: Goal, shown: DoneMark) => FieldUnderCard
   drawPickers: (goal: Goal) => RenderElement
+  drawUnderRow: (row: RenderElement, under: readonly FieldsWithWarning[]) => RenderElement
 }
 
 /** The part of the key and the text of the field drawn for a goal being edited. */
@@ -115,9 +120,10 @@ export const drawGoalsPane: MatchedHook<
   const open = openGoalsByIdOf(board)
   const fields: GoalFields | undefined = drawsFields(e)
     ? {
-        drawTextField: (goal, field) => drawGoalTextField($, e, sessionId, goal, field),
-        drawReasonField: (goal, shown) => drawReasonField($, e, sessionId, goal, shown),
+        textFieldOf: (goal, field) => goalTextFieldOf($, sessionId, goal, field),
+        reasonFieldOf: (goal, shown) => reasonFieldOf($, sessionId, goal, shown),
         drawPickers: goal => drawGoalPickers($, e, sessionId, open, goal),
+        drawUnderRow: (row, under) => drawCardWithFields($.ui.resolve(e), row, under),
       }
     : undefined
 
@@ -148,8 +154,13 @@ export const drawGoalsPane: MatchedHook<
 type DrawnRow =
   | { mode: undefined; fields: GoalFields | undefined }
   | { mode: RowMode.WaitingForYes }
-  | { mode: RowMode.Editing; field: RenderElement; isBlankTextRefused: boolean }
-  | { mode: RowMode.Unmarking; field: RenderElement }
+  | {
+      mode: RowMode.Editing
+      fields: GoalFields
+      field: FieldUnderCard
+      isBlankTextRefused: boolean
+    }
+  | { mode: RowMode.Unmarking; fields: GoalFields; field: FieldUnderCard }
 
 /**
  * How the row of `goal` is drawn, for `row`, the goal pressed in the pane when it is this goal. A
@@ -171,12 +182,13 @@ function drawnRowOf(
     case RowMode.Editing:
       return {
         mode: RowMode.Editing,
-        field: fields.drawTextField(goal, row),
+        fields,
+        field: fields.textFieldOf(goal, row),
         isBlankTextRefused: row.isBlankTextRefused,
       }
     case RowMode.Unmarking:
       return doneMarkOf(goal)?.markedAt === row.shown.markedAt
-        ? { mode: RowMode.Unmarking, field: fields.drawReasonField(goal, row.shown) }
+        ? { mode: RowMode.Unmarking, fields, field: fields.reasonFieldOf(goal, row.shown) }
         : { mode: undefined, fields }
   }
 }
@@ -196,9 +208,10 @@ function badgesOf(open: OpenGoals, goal: Goal): string[] {
 }
 
 /**
- * Draws the row of one open goal: its number, its text with its badges or the field that edits it,
- * its pickers, its done mark, the question to clear it, its TODO entries and the buttons of its
- * mode.
+ * Draws the row of one open goal: its number, its text with its badges, its pickers, its done mark,
+ * the question to clear it, its TODO entries and the buttons of the mode the row is in, and under
+ * the row the field that edits its text, in place of the text, with the warning on a blank text
+ * after it, or the field for the reason to unmark it.
  */
 function drawGoal(
   $: EngineInterface,
@@ -211,7 +224,7 @@ function drawGoal(
   const { Box, Text } = elements
   const mark = doneMarkOf(goal)
 
-  return (
+  const card = (
     <Box
       key={`goal-${goal.number}`}
       borderStyle="round"
@@ -221,15 +234,10 @@ function drawGoal(
     >
       <Text bold color="claude">{`${goal.number}`}</Text>
       <Box flexDirection="column" flexGrow={1} flexShrink={1}>
-        {row.mode === RowMode.Editing
-          ? row.field
-          : drawGoalText(elements, goal, 'badges' in settings ? settings.badges : [])}
-        {row.mode === RowMode.Editing && row.isBlankTextRefused && (
-          <Text color="warning">{BLANK_TEXT_WARNING}</Text>
-        )}
+        {row.mode !== RowMode.Editing &&
+          drawGoalText(elements, goal, 'badges' in settings ? settings.badges : [])}
         {'pickers' in settings && settings.pickers}
         {mark !== undefined && drawDoneMark($, elements, sessionId, goal, mark, row)}
-        {row.mode === RowMode.Unmarking && row.field}
         {row.mode === RowMode.WaitingForYes && drawClearQuestion($, elements, sessionId, goal)}
         {goal.todos.map(todo => (
           <Text dimColor>{describeEntry(todo)}</Text>
@@ -238,6 +246,23 @@ function drawGoal(
       {drawRowButtons($, elements, sessionId, goal, row)}
     </Box>
   )
+
+  return drawUnderRow(card, row)
+}
+
+/** `card`, the box of a goal, with the fields drawn under it in the mode of `row`. */
+function drawUnderRow(card: RenderElement, row: DrawnRow): RenderElement {
+  switch (row.mode) {
+    case RowMode.Editing:
+      return row.fields.drawUnderRow(card, [
+        { fields: [row.field], warning: row.isBlankTextRefused ? BLANK_TEXT_WARNING : undefined },
+      ])
+    case RowMode.Unmarking:
+      return row.fields.drawUnderRow(card, [{ fields: [row.field], warning: undefined }])
+    case RowMode.WaitingForYes:
+    case undefined:
+      return card
+  }
 }
 
 /** The text of `goal`, after `badges`, each drawn inverse and set apart by a space. */
@@ -417,49 +442,39 @@ function cancelButtonOf(
  * The field that edits the text of `goal`, drawn as `field` sets it. Done saves the text typed into
  * it, and Enter saves the text submitted from it.
  */
-function drawGoalTextField(
+function goalTextFieldOf(
   $: EngineInterface,
-  e: ResolveInput<'Pane', SurfaceWithFields>,
   sessionId: string,
   goal: Goal,
   { fieldId, drawn }: EditedField,
-) {
-  const { Input } = $.ui.resolve(e)
-
-  return (
-    <Input
-      key={editFieldKeyOf(goal, fieldId)}
-      value={drawn}
-      submitLabel={DONE_LABEL.toLowerCase()}
-      onInput={typed => recordTypedText($, sessionId, goal.id, typed)}
-      onSubmit={text => saveOnce($, () => submitEdit($, sessionId, goal, text))}
-    />
-  )
+): FieldUnderCard {
+  return {
+    key: editFieldKeyOf(goal, fieldId),
+    label: nameGoal(goal.number),
+    value: drawn,
+    submitLabel: DONE_LABEL.toLowerCase(),
+    onInput: typed => recordTypedText($, sessionId, goal.id, typed),
+    onSubmit: text => saveOnce($, () => submitEdit($, sessionId, goal, text)),
+  }
 }
 
 /**
  * The field for the reason to remove the done mark `shown` of `goal`, which removes the mark with
  * the reason entered in it.
  */
-function drawReasonField(
+function reasonFieldOf(
   $: EngineInterface,
-  e: ResolveInput<'Pane', SurfaceWithFields>,
   sessionId: string,
   goal: Goal,
   shown: DoneMark,
-) {
-  const { Input } = $.ui.resolve(e)
-
-  return (
-    <Input
-      key={reasonFieldKeyOf(goal)}
-      placeholder={REASON_PLACEHOLDER}
-      submitLabel={UNMARK_SUBMIT_LABEL}
-      onSubmit={reason =>
-        saveOnce($, () => unmarkOnScreen($, sessionId, goal, shown, { reason }))
-      }
-    />
-  )
+): FieldUnderCard {
+  return {
+    key: reasonFieldKeyOf(goal),
+    label: nameGoal(goal.number),
+    placeholder: REASON_PLACEHOLDER,
+    submitLabel: UNMARK_SUBMIT_LABEL,
+    onSubmit: reason => saveOnce($, () => unmarkOnScreen($, sessionId, goal, shown, { reason })),
+  }
 }
 
 function drawNewGoalField(

@@ -26,7 +26,7 @@ const WORD_KIND: CadenceKind<WordSettings, 'word' | 'match'> = {
   id: 'when-the-user-says',
   label: 'when the user says',
   fields: [
-    { kind: FieldKind.Text, key: 'word', label: 'Word', placeholder: 'deploy' },
+    { kind: FieldKind.Text, key: 'word', label: () => 'Word', placeholder: 'deploy' },
     {
       kind: FieldKind.Choice,
       key: 'match',

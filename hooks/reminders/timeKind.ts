@@ -14,12 +14,23 @@ export enum TimeUnit {
 
 const MILLISECONDS_PER_MINUTE = 60_000
 
-/** A unit by its length, and how the cadence line and the dropdown write an amount of it. */
-type UnitOfTime = { milliseconds: number; amount: Intl.NumberFormat }
+/**
+ * A unit by its length, how the cadence line and the dropdown write an amount of it, and the label
+ * of the field the amount is typed into.
+ */
+type UnitOfTime = { milliseconds: number; amount: Intl.NumberFormat; amountLabel: string }
 
 const UNITS: Record<TimeUnit, UnitOfTime> = {
-  [TimeUnit.Minutes]: { milliseconds: MILLISECONDS_PER_MINUTE, amount: amountFormatOf('minute') },
-  [TimeUnit.Hours]: { milliseconds: 60 * MILLISECONDS_PER_MINUTE, amount: amountFormatOf('hour') },
+  [TimeUnit.Minutes]: {
+    milliseconds: MILLISECONDS_PER_MINUTE,
+    amount: amountFormatOf('minute'),
+    amountLabel: 'Minutes',
+  },
+  [TimeUnit.Hours]: {
+    milliseconds: 60 * MILLISECONDS_PER_MINUTE,
+    amount: amountFormatOf('hour'),
+    amountLabel: 'Hours',
+  },
 }
 
 /** Writes an amount of `unit` in words, such as "1 hour" and "2 hours". */
@@ -45,11 +56,19 @@ const UNIT_PROBLEM = 'Pick minutes or hours.'
 
 const EVERY = 'every'
 
+/** The label of the amount on a card whose unit this version cannot read. */
+const AMOUNT_LABEL = 'Amount'
+
 export const TIME_KIND: CadenceKind<TimeSettings, 'amount' | 'unit'> = {
   id: 'every',
   label: EVERY,
   fields: [
-    { kind: FieldKind.Text, key: 'amount', initial: '1' },
+    {
+      kind: FieldKind.Text,
+      key: 'amount',
+      label: valueOf => amountLabelOf(valueOf('unit')),
+      initial: '1',
+    },
     {
       kind: FieldKind.Choice,
       key: 'unit',
@@ -77,6 +96,11 @@ export const TIME_KIND: CadenceKind<TimeSettings, 'amount' | 'unit'> = {
 /** The time between two due times of a reminder with `settings`, in milliseconds. */
 export function intervalOf({ amount, unit }: TimeSettings): number {
   return amount * UNITS[unit].milliseconds
+}
+
+/** The label of the amount on a card with the unit `unit` picked. */
+function amountLabelOf(unit: string): string {
+  return isTimeUnit(unit) ? UNITS[unit].amountLabel : AMOUNT_LABEL
 }
 
 function isTimeUnit(text: string): text is TimeUnit {

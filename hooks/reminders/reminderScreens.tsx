@@ -8,15 +8,26 @@ import type {
 } from 'claude-code'
 
 import type { Cadence, CardDraft, CardInPane, CardWarning, Reminder } from '../../types'
+import { drawCardWithFields } from '../cardFields'
+import type { FieldUnderCard } from '../cardFields'
 import { sortedByNumber } from '../numbered'
 import { DONE_LABEL } from '../paneTexts'
 import { describeUnreadableRecord } from '../pluginStore'
 import { drawsFields } from '../surfaces'
 import type { SurfaceWithFields } from '../surfaces'
-import { FieldKind, kindOf, optionsOf, valueOfField } from './cadenceKind'
-import type { CadenceKinds, CardField } from './cadenceKind'
+import {
+  FieldKind,
+  FieldPlace,
+  fieldsPlacedAt,
+  isListField,
+  kindOf,
+  labelOf,
+  optionsOf,
+  valueOfField,
+} from './cadenceKind'
+import type { CadenceKinds, CardField, ChoiceField, ListCardField, TextField } from './cadenceKind'
 import { loadRemindersIntoState } from './reminderActions'
-import { drawListField } from './reminderListField'
+import { drawListItems, nextItemFieldOf } from './reminderListField'
 import { REMINDERS_PANE } from './reminderNames'
 import {
   askToRemove,
@@ -289,11 +300,13 @@ function drawCadence(
 }
 
 /**
- * The card `card` with its text and its cadence in fields, the warning on its last save, and its
- * switch, Done and Remove. Remove on a card not stored yet drops the card. Every field is drawn
- * with what its fields were last drawn anew with, and the engine stores what is typed and picked
- * after that: a value drawn anew after every change would replace the typing that arrived meanwhile.
- * The labels of the options and the rows of a list follow what is `typed`.
+ * The card `card` with its cadence and its switch, Done and Remove, and under it the fields its
+ * text and the values of its cadence are typed into. The warning from the last save is drawn after
+ * the fields it is about, or in the card for the kind of the cadence. Remove on a card not stored
+ * yet drops the card. Every field is drawn with what its fields were last drawn anew with, and the
+ * engine stores what is typed and picked after that: a value drawn anew after every change would
+ * replace the typing that arrived meanwhile. The labels of the fields and of the options, and the
+ * items of a list, follow what is `typed`.
  */
 function drawEditedCard(
   $: EngineInterface,
@@ -308,14 +321,15 @@ function drawEditedCard(
   },
 ) {
   const elements = $.ui.resolve(e)
-  const { Box, Button, Input, Text } = elements
+  const { Box, Button, Text } = elements
   const { kinds, savingId } = context
   const { number, reminderId, fieldsId, opened } = card
   const { isEnabled, isStored, warning, typed } = shown
   const fields = kindOf(kinds, opened.cadence.kind)?.fields ?? []
   const labelColumns = labelColumnsOf(kinds)
-
-  return (
+  const values = { card, typed, fields }
+  const warnings = warningsOf(warning)
+  const box = (
     <Box
       key={`reminder-${number}`}
       borderStyle="round"
@@ -325,32 +339,19 @@ function drawEditedCard(
     >
       <Text bold color="claude">{`${number}`}</Text>
       <Box flexDirection="column" flexGrow={1} flexShrink={1}>
-        {drawFieldLine(elements, labelColumns, TEXT_LABEL, [
-          <Input
-            key={textFieldKeyOf(fieldsId)}
-            value={opened.text}
-            placeholder={TEXT_PLACEHOLDER}
-            submitLabel={DONE_LABEL.toLowerCase()}
-            onInput={text => typeText($, reminderId, text)}
-            onSubmit={text => submitText($, context, card, text)}
-          />,
-        ])}
         {drawFieldLine(elements, labelColumns, CADENCE_LABEL, [
           drawKindDropdown($, e, context, card),
-          ...fields
-            .filter(field => field.label === undefined)
-            .map(field => drawValueField($, e, context, { card, typed, fields, field })),
+          ...fieldsPlacedAt(fields, FieldPlace.BesideKindDropdown).map(({ field }) =>
+            drawDropdown($, e, values, field),
+          ),
         ])}
-        {fields.flatMap(field =>
-          field.label === undefined
-            ? []
-            : [
-                drawFieldLine(elements, labelColumns, field.label, [
-                  drawValueField($, e, context, { card, typed, fields, field }),
-                ]),
-              ],
+        {fieldsPlacedAt(fields, FieldPlace.LineInCard).map(({ field, label }) =>
+          drawFieldLine(elements, labelColumns, label, [drawDropdown($, e, values, field)]),
         )}
-        {warning !== undefined && <Text color="warning">{describeWarning(warning)}</Text>}
+        {fields
+          .filter(isListField)
+          .flatMap(field => drawListItems($, elements, { card, typed, field }))}
+        {warnings.inCard !== undefined && <Text color="warning">{warnings.inCard}</Text>}
         {savingId === reminderId && <Text dimColor>{SAVING}</Text>}
         <Box justifyContent="flex-end" flexWrap="wrap">
           {drawSwitch(elements, number, isEnabled, () =>
@@ -375,6 +376,26 @@ function drawEditedCard(
       </Box>
     </Box>
   )
+
+  const textField: FieldUnderCard = {
+    key: textFieldKeyOf(fieldsId),
+    label: TEXT_LABEL,
+    value: opened.text,
+    placeholder: TEXT_PLACEHOLDER,
+    submitLabel: DONE_LABEL.toLowerCase(),
+    onInput: text => typeText($, reminderId, text),
+    onSubmit: text => submitText($, context, card, text),
+  }
+
+  return drawCardWithFields(elements, box, [
+    { fields: [textField], warning: warnings.onText },
+    {
+      fields: fieldsPlacedAt(fields, FieldPlace.UnderCard).map(({ field }) =>
+        fieldUnderCardOf($, context, values, field),
+      ),
+      warning: warnings.onCadence,
+    },
+  ])
 }
 
 /** The dropdown of the cadence kinds, on the kind the card `card` opened with. */
@@ -391,52 +412,51 @@ function drawKindDropdown($: EngineInterface, e: FieldsInput, pane: PaneContext,
   )
 }
 
-/**
- * The field `field` of the cadence of `card`, one of the fields `fields` of its kind: a text
- * field, a dropdown of its options as the values `typed` label them, or a list field.
- */
-function drawValueField(
+/** A card being edited, with the values `typed` into it and the fields `fields` of its kind. */
+type CardValues = { card: EditedCard; typed: CardDraft; fields: readonly CardField[] }
+
+/** The field under the card of `values` where the value of `field` is typed. */
+function fieldUnderCardOf(
   $: EngineInterface,
-  e: FieldsInput,
   pane: PaneContext,
-  {
-    card,
-    typed,
-    fields,
-    field,
-  }: { card: EditedCard; typed: CardDraft; fields: readonly CardField[]; field: CardField },
-) {
-  const elements = $.ui.resolve(e)
-  const { Input, Select } = elements
+  { card, typed, fields }: CardValues,
+  field: TextField | ListCardField,
+): FieldUnderCard {
   const { reminderId, fieldsId, opened } = card
-  const key = valueFieldKeyOf(fieldsId, field.key)
-  const typeInto = (typed: string) => typeValue($, reminderId, field.key, typed)
   switch (field.kind) {
     case FieldKind.Text:
-      return (
-        <Input
-          key={key}
-          value={valueOfField(fields, opened.cadence.values, field)}
-          {...(field.placeholder === undefined ? {} : { placeholder: field.placeholder })}
-          submitLabel={DONE_LABEL.toLowerCase()}
-          onInput={typeInto}
-          onSubmit={typed =>
-            submitValue($, pane, card, { key: field.key, value: typed })
-          }
-        />
-      )
-    case FieldKind.Choice:
-      return (
-        <Select
-          key={key}
-          options={optionsOf(fields, typed.cadence.values, field)}
-          value={valueOfField(fields, opened.cadence.values, field)}
-          onSelect={typeInto}
-        />
-      )
+      return {
+        key: valueFieldKeyOf(fieldsId, field.key),
+        label: labelOf(fields, typed.cadence.values, field),
+        value: valueOfField(fields, opened.cadence.values, field),
+        ...(field.placeholder === undefined ? {} : { placeholder: field.placeholder }),
+        submitLabel: DONE_LABEL.toLowerCase(),
+        onInput: typed => typeValue($, reminderId, field.key, typed),
+        onSubmit: typed => submitValue($, pane, card, { key: field.key, value: typed }),
+      }
     case FieldKind.List:
-      return drawListField($, elements, { card, typed, field })
+      return nextItemFieldOf($, { card, field })
   }
+}
+
+/** The dropdown `field` of `card`, with its options as the values `typed` label them. */
+function drawDropdown(
+  $: EngineInterface,
+  e: FieldsInput,
+  { card, typed, fields }: CardValues,
+  field: ChoiceField,
+) {
+  const { Select } = $.ui.resolve(e)
+  const { reminderId, fieldsId, opened } = card
+
+  return (
+    <Select
+      key={valueFieldKeyOf(fieldsId, field.key)}
+      options={optionsOf(fields, typed.cadence.values, field)}
+      value={valueOfField(fields, opened.cadence.values, field)}
+      onSelect={picked => typeValue($, reminderId, field.key, picked)}
+    />
+  )
 }
 
 /** One line of an edited card: `label` in a column as wide as the widest label, then `parts`. */
@@ -474,24 +494,36 @@ function drawSwitch(
   )
 }
 
-/** The columns of the widest label of an edited card, with every labeled field of `kinds`. */
+/**
+ * The columns of the widest label in an edited card, with every dropdown of `kinds` drawn on a line
+ * of its own after its label.
+ */
 function labelColumnsOf(kinds: CadenceKinds): number {
   const labels = [
-    TEXT_LABEL,
     CADENCE_LABEL,
-    ...kinds.flatMap(kind => kind.fields.flatMap(field => field.label ?? [])),
+    ...kinds.flatMap(kind =>
+      fieldsPlacedAt(kind.fields, FieldPlace.LineInCard).map(({ label }) => label),
+    ),
   ]
 
   return Math.max(...labels.map(label => [...label].length))
 }
 
-function describeWarning(warning: CardWarning): string {
-  switch (warning.refusal) {
+/**
+ * The text of a warning on an edited card, drawn by the part of the card it is about: after the
+ * text field, after the fields of the cadence, or in the card for the kind of the cadence.
+ */
+type WarningsOfCard = { onText?: string; onCadence?: string; inCard?: string }
+
+function warningsOf(warning: CardWarning | undefined): WarningsOfCard {
+  switch (warning?.refusal) {
+    case undefined:
+      return {}
     case Refusal.BlankText:
-      return BLANK_TEXT_WARNING
-    case Refusal.UnknownCadence:
-      return UNKNOWN_CADENCE
+      return { onText: BLANK_TEXT_WARNING }
     case Refusal.CadenceProblem:
-      return warning.problem
+      return { onCadence: warning.problem }
+    case Refusal.UnknownCadence:
+      return { inCard: UNKNOWN_CADENCE }
   }
 }
