@@ -3,7 +3,7 @@ import type { Engine } from 'claude-code/testing'
 import { storeEngineOf } from '../testSupport'
 import type { Session } from '../testSupport'
 import { sessionScope } from './boardScope'
-import { saveClearedGoal, saveNewGoal } from './boardStore'
+import { saveClearedGoal, saveGoalDependency, saveNewGoal } from './boardStore'
 import { LIST_GOALS_TOOL } from './goalNames'
 
 // The board and the calls shared by the tests of the goal tools.
@@ -28,6 +28,16 @@ export async function addGoals(
   for (const number of cleared) {
     await saveClearedGoal(store, scope, number, 200)
   }
+}
+
+/** Makes goal `number` depend on goal `dependsOn`, as the user does in the Goals pane. */
+export async function makeDependent(
+  session: Session,
+  number: number,
+  dependsOn: number,
+): Promise<void> {
+  const store = storeEngineOf(session, session.clock, session.logs)
+  await saveGoalDependency(store, sessionScope(session.id), number, dependsOn, 150)
 }
 
 export async function listGoals($: Engine, agentId?: string): Promise<string> {

@@ -1,7 +1,12 @@
 import type { Board, DoneMark, Goal } from '../../types'
-import { sortedByNumber } from '../numbered'
-import { ChangeKind, MarkRemover, changesBetween, doneMarkOf, openGoalsOf } from './board'
+import { openGoalsByIdOf, openGoalsByPriorityOf, openGoalsOf } from './board'
+import { ChangeKind, changesBetween } from './boardChanges'
+import { MarkRemover, doneMarkOf } from './doneMark'
+import { dependedGoalOf, unfinishedDependencyOf } from './dependency'
+import type { OpenGoals } from './dependency'
+import { describeUnfinishedDependency, nameGoalWithPriority, priorityTagOf } from './goalListTexts'
 import { PANE_TITLE, nameGoal } from './goalTexts'
+import { describePriority, priorityOf } from './priority'
 import { GoalsReader, describeDoneMarkForModel } from './goalToolTexts'
 import { describeEntry, describeTodoNumber } from './todoEntry'
 
@@ -24,16 +29,19 @@ export function describeIdleReminderFailed(message: string): string {
   )
 }
 
+const OPEN_GOALS_HEADING = '# Open goals, by priority (P0 most important)'
+
 /**
- * The block added to the context after a compaction: the open goals with their done marks and
- * their TODO entries.
+ * The block added to the context after a compaction: the open goals by priority, with their
+ * priorities, the goals each of them depends on, their done marks and their TODO entries.
  */
 export function describeOpenGoalsAfterCompaction(board: Board): string | undefined {
-  const goals = sortedByNumber(openGoalsOf(board))
+  const goals = openGoalsByPriorityOf(board)
+  const open = openGoalsByIdOf(board)
 
   return goals.length === 0
     ? undefined
-    : ['# Open goals', ...goals.flatMap(describeGoalWithTodos)].join('\n')
+    : [OPEN_GOALS_HEADING, ...goals.flatMap(goal => describeGoalWithTodos(open, goal))].join('\n')
 }
 
 /**
@@ -41,30 +49,32 @@ export function describeOpenGoalsAfterCompaction(board: Board): string | undefin
  * done mark. It tells the model to work on the goals.
  */
 const IDLE_WITH_UNFINISHED_GOALS =
-  'You are idle while goals are open. Pick up the work on them in this turn. Do not end the turn ' +
-  'on a status report.'
+  'You are idle while goals are open. Pick up the work on them in this turn, P0 first. Do not ' +
+  'end the turn on a status report.'
 
 /**
- * The reminder sent once the model has been idle for a while: one paragraph per open goal, after
- * `IDLE_WITH_UNFINISHED_GOALS` while a goal is open without a done mark. Goals marked done wait for
- * the user, so a board of only those does not ask for more work.
+ * The reminder sent once the model has been idle for a while opens with
+ * `IDLE_WITH_UNFINISHED_GOALS` and then has one paragraph per open goal, in priority order. Goals
+ * marked as done are left out of the opening, so the reminder does not ask for more work on a board
+ * with only those goals.
  */
 export function describeOpenGoalsAfterIdle(board: Board): string | undefined {
-  const goals = sortedByNumber(openGoalsOf(board))
+  const goals = openGoalsByPriorityOf(board)
   if (goals.length === 0) {
     return undefined
   }
   const opening = goals.some(goal => doneMarkOf(goal) === undefined)
     ? [IDLE_WITH_UNFINISHED_GOALS]
     : []
+  const open = openGoalsByIdOf(board)
 
-  return [...opening, ...goals.map(describeUnsatisfiedGoal)].join('\n\n')
+  return [...opening, ...goals.map(goal => describeUnsatisfiedGoal(open, goal))].join('\n\n')
 }
 
 /**
  * The open goals on `now` as `describeList` writes them, followed by the note on the goals added,
- * edited, unmarked by the user and cleared since the model saw the board as `seen`. The list has no
- * cleared goal in it, so the note goes with it.
+ * edited, unmarked, prioritized, made dependent and cleared by the user since the model saw the
+ * board as `seen`. The list contains only open goals, so the note goes with it.
  */
 export function describeOpenGoalsSent(
   now: Board,
@@ -75,8 +85,9 @@ export function describeOpenGoalsSent(
 }
 
 /**
- * The note on the goals added, edited, unmarked by the user and cleared since the model saw the
- * board as `seen`, or the open goals on `now` for a model that saw no board yet.
+ * The note on the goals added, edited, unmarked, prioritized, made dependent and cleared by the
+ * user since the model saw the board as `seen`, or the open goals on `now` for a model that has
+ * not seen a board yet.
  */
 export function describeGoalChangesSent(seen: Board | null, now: Board): GoalsSent | undefined {
   return seen === null
@@ -84,39 +95,55 @@ export function describeGoalChangesSent(seen: Board | null, now: Board): GoalsSe
     : describeSent(now, undefined, changesSince(seen, now))
 }
 
-function describeGoalWithTodos(goal: Goal): string[] {
+function describeGoalWithTodos(open: OpenGoals, goal: Goal): string[] {
   const label = `${goal.number}. `
   const indent = ' '.repeat(label.length)
-
+  const tag = priorityTagOf(goal)
+  const unfinished = unfinishedDependencyOf(open, goal)
   const mark = doneMarkOf(goal)
 
   return [
-    `${label}${goal.text}`,
+    `${label}${tag === undefined ? '' : `${tag} `}${goal.text}`,
+    ...(unfinished === undefined ? [] : [`${indent}${describeUnfinishedDependency(unfinished)}`]),
     ...(mark === undefined ? [] : [`${indent}${describeMarkToMainConversation(mark)}`]),
     ...goal.todos.map(todo => `${indent}${describeEntry(todo)}`),
   ]
 }
 
-function describeUnsatisfiedGoal(goal: Goal): string {
+function describeUnsatisfiedGoal(open: OpenGoals, goal: Goal): string {
+  const unfinished = unfinishedDependencyOf(open, goal)
   const mark = doneMarkOf(goal)
   const attached = goal.todos
     .map(todo => `${describeTodoNumber(todo.number)} (${todo.title})`)
     .join(', ')
 
   return [
-    `${nameGoal(goal.number)} is not satisfied yet: ${asSentence(goal.text)}`,
+    `${nameGoalWithPriority(goal)} is not satisfied yet: ${asSentence(goal.text)}`,
+    ...(unfinished === undefined ? [] : [describeUnfinishedDependency(unfinished)]),
     ...(mark === undefined ? [] : [asSentence(describeMarkToMainConversation(mark))]),
     ...(goal.todos.length === 0 ? [] : [`Attached: ${attached}.`]),
   ].join(' ')
 }
 
 /** The kinds of change sent to the model: the changes made by the user. */
-type NotedKind = ChangeKind.Added | ChangeKind.Edited | ChangeKind.MarkRemoved | ChangeKind.Cleared
+type NotedKind =
+  | ChangeKind.Added
+  | ChangeKind.Edited
+  | ChangeKind.MarkRemoved
+  | ChangeKind.PriorityChanged
+  | ChangeKind.DependencyChanged
+  | ChangeKind.Cleared
 
-/** How a change of each kind is written in the note to the model and in the transcript line. */
+/**
+ * How a change of each kind is written in the note to the model and in the transcript line, for the
+ * goal as the board `now` has it.
+ */
 const CHANGE_TEXTS: Record<
   NotedKind,
-  { describeNote: (goal: Goal) => string; describeInLine: (goal: Goal) => string }
+  {
+    describeNote: (goal: Goal, now: Board) => string
+    describeInLine: (goal: Goal, now: Board) => string
+  }
 > = {
   [ChangeKind.Added]: {
     describeNote: goal => `The user added ${nameGoal(goal.number)}: ${asSentence(goal.text)}`,
@@ -130,21 +157,65 @@ const CHANGE_TEXTS: Record<
     describeNote: describeMarkRemovedNote,
     describeInLine: goal => `${nameGoal(goal.number)} unmarked`,
   },
+  [ChangeKind.PriorityChanged]: {
+    describeNote: describePriorityNote,
+    describeInLine: goal =>
+      `${nameGoal(goal.number)} priority ${priorityOf(goal) === undefined ? 'removed' : 'set'}`,
+  },
+  [ChangeKind.DependencyChanged]: {
+    describeNote: describeDependencyNote,
+    describeInLine: (goal, now) =>
+      `${nameGoal(goal.number)} dependency ${
+        dependedGoalOf(openGoalsByIdOf(now), goal) === undefined ? 'removed' : 'set'
+      }`,
+  },
   [ChangeKind.Cleared]: {
     describeNote: goal => `The user cleared ${nameGoal(goal.number)}.`,
     describeInLine: goal => `${nameGoal(goal.number)} cleared`,
   },
 }
 
-/** The note on a done mark removed by the user, with the reason the user gave, if any. */
+/**
+ * The note on a done mark removed by the user, with the reason the user gave, or removed because
+ * its dependency was not done.
+ */
 function describeMarkRemovedNote(goal: Goal): string {
-  const removed = `The user removed your done mark from ${nameGoal(goal.number)}`
+  const name = nameGoal(goal.number)
   const removal = goal.markRemoval
+  if (removal?.removedBy === MarkRemover.Dependency) {
+    const dependsOn = nameGoal(removal.dependencyNumber)
+
+    return (
+      `Your done mark on ${name} was removed, since ${name} depends on ${dependsOn}, which was ` +
+      'not marked as done.'
+    )
+  }
+  const removed = `The user removed your done mark from ${name}`
   const reason = removal?.removedBy === MarkRemover.User ? removal.reason : undefined
 
   return reason === undefined
     ? `${removed}.`
     : `${removed}, with the reason: ${asSentence(reason)}`
+}
+
+/** The note on the priority the user set on a goal or removed from it. */
+function describePriorityNote(goal: Goal): string {
+  const priority = priorityOf(goal)
+  const name = nameGoal(goal.number)
+
+  return priority === undefined
+    ? `The user removed the priority of ${name}.`
+    : `The user set the priority of ${name} to ${describePriority(priority)}.`
+}
+
+/** The note on the dependency of a goal, set or removed by the user. */
+function describeDependencyNote(goal: Goal, now: Board): string {
+  const dependsOn = dependedGoalOf(openGoalsByIdOf(now), goal)
+  const name = nameGoal(goal.number)
+
+  return dependsOn === undefined
+    ? `The user removed the dependency of ${name}.`
+    : `The user made ${name} depend on ${nameGoal(dependsOn.number)}.`
 }
 
 /** Joins the changes in a transcript line, as in "Goal 2 cleared and Goal 3 added". */
@@ -154,20 +225,22 @@ const CHANGES_IN_LINE = new Intl.ListFormat('en', { type: 'conjunction' })
 type NotedChange = { goal: Goal; kind: NotedKind }
 
 /**
- * The changes made by the user since the model last saw the board as `seen`. The model sets and
- * removes its own marks, so the note leaves those out.
+ * The changes made by the user since the model last saw the board as `seen`, with the marks
+ * removed with them. The model sets and removes its own marks, so the note leaves those out.
  */
 function changesSince(seen: Board, now: Board): NotedChange[] {
-  return changesBetween(seen, now).flatMap(({ goal, ...change }): NotedChange[] => {
-    switch (change.kind) {
+  return changesBetween(seen, now).flatMap(({ goal, kind }): NotedChange[] => {
+    switch (kind) {
       case ChangeKind.MarkSet:
         return []
       case ChangeKind.MarkRemoved:
-        return change.removedBy === MarkRemover.User ? [{ goal, kind: change.kind }] : []
+        return goal.markRemoval?.removedBy === MarkRemover.Model ? [] : [{ goal, kind }]
       case ChangeKind.Added:
       case ChangeKind.Edited:
+      case ChangeKind.PriorityChanged:
+      case ChangeKind.DependencyChanged:
       case ChangeKind.Cleared:
-        return [{ goal, kind: change.kind }]
+        return [{ goal, kind }]
     }
   })
 }
@@ -184,23 +257,30 @@ function describeSent(
   }
   const listedCount = list === undefined ? 0 : openGoalsOf(now).length
 
-  return { text: texts.join('\n\n'), line: describeSentLine(listedCount, changes) }
+  return { text: texts.join('\n\n'), line: describeSentLine(now, listedCount, changes) }
 }
 
 function describeChangeNote(now: Board, changes: readonly NotedChange[]): string | undefined {
   if (changes.length === 0) {
     return undefined
   }
-  const notes = changes.map(({ goal, kind }) => CHANGE_TEXTS[kind].describeNote(goal))
+  const notes = changes.map(({ goal, kind }) => CHANGE_TEXTS[kind].describeNote(goal, now))
   const closing = openGoalsOf(now).length === 0 ? ['No goal is open now.'] : []
 
   return [...notes, ...closing].join(' ')
 }
 
-/** The transcript line for `listedCount` open goals and the changes `changes` sent to the model. */
-function describeSentLine(listedCount: number, changes: readonly NotedChange[]): string {
+/**
+ * The transcript line for `listedCount` open goals and the changes `changes` sent to the model, for
+ * the board `now`.
+ */
+function describeSentLine(
+  now: Board,
+  listedCount: number,
+  changes: readonly NotedChange[],
+): string {
   const changed = CHANGES_IN_LINE.format(
-    changes.map(({ goal, kind }) => CHANGE_TEXTS[kind].describeInLine(goal)))
+    changes.map(({ goal, kind }) => CHANGE_TEXTS[kind].describeInLine(goal, now)))
   if (listedCount === 0) {
     return `${PANE_TITLE}: ${changed}, sent to Claude`
   }

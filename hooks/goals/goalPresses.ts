@@ -2,14 +2,26 @@ import type { EngineInterface } from 'claude-code'
 
 import type { DoneMark, Goal } from '../../types'
 import { showFailure } from '../failureToast'
-import { MarkRemover, Outcome, Refusal, isGoalOpen, nextGoalNumberOf } from './board'
-import type { EditRefused, UnmarkRefused } from './board'
+import { Outcome, Refusal, isGoalOpen, nextGoalNumberOf } from './board'
+import type {
+  Changed,
+  EditRefused,
+  LoopRefused,
+  NotChanged,
+  NotOpenRefused,
+  Unchanged,
+  UnmarkRefused,
+} from './board'
+import type { Failed } from './boardStore'
+import { MarkRemover } from './doneMark'
 import {
   addGoalToSession,
   clearGoalOfSession,
   editGoalOfSession,
   loadBoardShowingFailure,
   removeDoneMarkInSession,
+  setGoalDependencyInSession,
+  setGoalPriorityInSession,
 } from './goalActions'
 import { GOALS_PANE } from './goalNames'
 import {
@@ -23,6 +35,8 @@ import {
 } from './goalState'
 import {
   PaneField,
+  describeDependencyLoop,
+  describeDependencyNotSet,
   describeFocusNotMoved,
   describeMarkNoLongerShown,
   describeNoLongerOpen,
@@ -30,8 +44,10 @@ import {
   describeNotCleared,
   describeNotEdited,
   describeNotUnmarked,
+  describePriorityNotSet,
 } from './goalTexts'
 import type { FocusTarget } from './goalTexts'
+import type { Priority } from './priority'
 
 // What a press or an entry in the Goals pane does. The pane draws what the state and the board
 // have after it.
@@ -42,6 +58,14 @@ export function editFieldKeyOf(goal: Goal): string {
 
 export function reasonFieldKeyOf(goal: Goal): string {
   return `unmark-reason-${goal.number}`
+}
+
+export function priorityPickerKeyOf(goal: Goal): string {
+  return `priority-${goal.number}`
+}
+
+export function dependencyPickerKeyOf(goal: Goal): string {
+  return `dependency-${goal.number}`
 }
 
 /**
@@ -211,6 +235,67 @@ function describeUnmarkRefusal(goal: Goal, shown: DoneMark, refused: UnmarkRefus
       return describeNoLongerOpen(goal)
     case Refusal.NotMarkedDone:
       return describeMarkNoLongerShown(goal, shown)
+  }
+}
+
+/**
+ * Gives the goal the priority picked in the pane, or removes its priority when `priority` is
+ * undefined. A goal cleared since the pane drew it is left as it is, and a toast shows it.
+ */
+export async function prioritizeOnScreen(
+  $: EngineInterface,
+  sessionId: string,
+  goal: Goal,
+  priority: Priority | undefined,
+): Promise<void> {
+  const set = await setGoalPriorityInSession($, sessionId, goal.number, priority)
+  showSettingNotSet($, set, describePriorityNotSet, () => describeNoLongerOpen(goal))
+}
+
+/**
+ * Makes the goal depend on `dependsOn`, picked in the pane, or removes its dependency when
+ * `dependsOn` is undefined. A goal cleared since the pane drew it, and a dependency that closes a
+ * loop set after the pane drew it, are left as they are, and a toast shows them.
+ */
+export async function setDependencyOnScreen(
+  $: EngineInterface,
+  sessionId: string,
+  goal: Goal,
+  dependsOn: Goal | undefined,
+): Promise<void> {
+  const set = await setGoalDependencyInSession($, sessionId, goal.number, dependsOn?.number)
+  showSettingNotSet($, set, describeDependencyNotSet, describeDependencyRefusal)
+}
+
+/**
+ * Shows a setting picked in the pane that was not saved: a failure of the store as
+ * `describeFailure` writes it, and a refusal in a toast as `describeRefusal` writes it.
+ */
+function showSettingNotSet<Refused extends NotChanged & { outcome: Outcome.Refused }>(
+  $: EngineInterface,
+  set: Changed<Goal> | Unchanged | Refused | Failed,
+  describeFailure: (failed: Failed) => string,
+  describeRefusal: (refused: Refused) => string,
+): void {
+  switch (set.outcome) {
+    case Outcome.Failed:
+      showFailure($, describeFailure(set))
+      break
+    case Outcome.Refused:
+      $.ui.toast(describeRefusal(set))
+      break
+    case Outcome.Changed:
+    case Outcome.Unchanged:
+      break
+  }
+}
+
+function describeDependencyRefusal(refused: NotOpenRefused | LoopRefused): string {
+  switch (refused.refusal) {
+    case Refusal.GoalNotOpen:
+      return describeNoLongerOpen({ number: refused.goal })
+    case Refusal.DependencyLoop:
+      return describeDependencyLoop(refused)
   }
 }
 

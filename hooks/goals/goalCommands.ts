@@ -8,15 +8,11 @@ import type {
 } from 'claude-code'
 
 import { replyToFailedHook } from '../hookFailure'
-import { Outcome, openGoalsOf } from './board'
+import { Outcome } from './board'
+import { describeOpenGoals } from './goalListTexts'
 import { GOALS_COMMAND } from './goalNames'
 import { openGoalsPaneOnFreshBoard } from './goalScreens'
-import {
-  GOALS_SUBJECT,
-  describeNotRead,
-  describeOpenGoals,
-  describePaneNotOpened,
-} from './goalTexts'
+import { GOALS_SUBJECT, describeNotRead, describePaneNotOpened } from './goalTexts'
 
 /** Opens the Goals pane for /goals, whatever arguments follow it. */
 export const runGoalsCommand: MatchedHook<
@@ -50,5 +46,5 @@ async function openFromCommand($: EngineInterface): Promise<CommandRunResult> {
     return {}
   }
 
-  return { text: [...notOpened, ...describeOpenGoals(openGoalsOf(loaded.board))].join('\n') }
+  return { text: [...notOpened, ...describeOpenGoals(loaded.board)].join('\n') }
 }

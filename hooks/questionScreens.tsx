@@ -10,8 +10,8 @@ import { openQuestionsOf } from './questions'
 import { sessionForUse } from './questionSession'
 import { toastStoreFailure } from './questionStore'
 import { loadQuestionsFromStore, readQuestionsInState } from './sessionState'
-import { drawsInputFields } from './surfaces'
-import type { SurfaceWithInputFields } from './surfaces'
+import { drawsFields } from './surfaces'
+import type { SurfaceWithFields } from './surfaces'
 
 export const drawQuestionBand: MatchedHook<'ui.render', { component: 'AbovePrompt' }> = async (
   $,
@@ -51,7 +51,7 @@ export const drawQuestionPane: MatchedHook<
       {open.map(question => (
         <Box flexDirection="column" marginBottom={1}>
           <Text bold>{`#${question.number} ${question.text}`}</Text>
-          {drawsInputFields(e)
+          {drawsFields(e)
             ? drawAnswerFields($, e, question)
             : drawAnswerCommand({ Box, Text }, question)}
         </Box>
@@ -63,7 +63,7 @@ export const drawQuestionPane: MatchedHook<
 /** The list of the choices and the field for a typed answer, which answer the question. */
 function drawAnswerFields(
   $: EngineInterface,
-  e: ResolveInput<'Pane', SurfaceWithInputFields>,
+  e: ResolveInput<'Pane', SurfaceWithFields>,
   question: Question,
 ) {
   const { Box, Input, Select } = $.ui.resolve(e)

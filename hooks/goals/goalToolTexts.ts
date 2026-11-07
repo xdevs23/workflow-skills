@@ -1,9 +1,20 @@
 import type { Board, DoneMark, Goal } from '../../types'
 import type { HookSubject } from '../hookFailure'
 import { sortedByNumber } from '../numbered'
-import { MAX_EVIDENCE_LENGTH, Refusal, clearedGoalsOf, doneMarkOf, openGoalsOf } from './board'
+import {
+  MAX_EVIDENCE_LENGTH,
+  Refusal,
+  clearedGoalsOf,
+  openGoalsByIdOf,
+  openGoalsByPriorityOf,
+  openGoalsOf,
+} from './board'
 import type { ChangeRefused, MarkRefused, UnmarkRefused } from './board'
+import { doneMarkOf } from './doneMark'
+import { unfinishedDependencyOf } from './dependency'
+import type { OpenGoals } from './dependency'
 import { LIST_GOALS_TOOL, MARK_GOAL_DONE_TOOL } from './goalNames'
+import { describeGoalWithPriority, describeUnfinishedDependency } from './goalListTexts'
 import { PANE_TITLE, describeGoal, nameGoal } from './goalTexts'
 import { describeEntry, describeTodoNumber } from './todoEntry'
 import type { TodoEntry } from './todoEntry'
@@ -12,10 +23,13 @@ import type { TodoEntry } from './todoEntry'
 
 export const LIST_GOALS_DESCRIPTION = [
   'Lists the goals set by the user on the goals board of this session: each open goal with its',
-  'number, your done mark if it has one, and the TODO entries attached to it, then the goals',
-  'cleared by the user. Only the user adds, edits and clears goals. Goals of other sessions are',
-  'not listed. The open goals are work waited for by the user. Check them before you report work',
-  `as finished, and mark a goal you consider done with ${MARK_GOAL_DONE_TOOL}.`,
+  'number, its priority if the user set one, the goal it depends on while that goal is not marked',
+  'as done, your done mark if it has one, and the TODO entries attached to it, then the goals',
+  'cleared by the user. The open goals are listed by priority, P0 the most important and goals',
+  'without a priority last. Only the user adds, edits, prioritizes and clears goals, and sets',
+  'which goal depends on which. Goals of other sessions are not listed. The open goals are work',
+  'the user needs done. Check them before you report work as finished, and mark a goal you',
+  `consider done with ${MARK_GOAL_DONE_TOOL}.`,
 ].join(' ')
 
 export const ATTACH_TODO_DESCRIPTION = [
@@ -41,13 +55,14 @@ export const MARK_GOAL_DONE_DESCRIPTION = [
   'Marks an open goal of the goals board of this session as done, so the user knows what to look',
   'at. Give the number of the goal, and the evidence in at most',
   `${MAX_EVIDENCE_LENGTH} characters. ${EVIDENCE_EXAMPLES} Marked again, the goal gets the new`,
-  'evidence. The goal stays open and is still reminded until the user clears it: only the user',
-  'does.',
+  'evidence. A goal that depends on another open goal can be marked only once that goal is marked',
+  'as done. The goal is open and reminded until the user clears it: only the user clears it.',
 ].join(' ')
 
 export const UNMARK_GOAL_DONE_DESCRIPTION = [
   'Removes your done mark from an open goal of the goals board of this session, once you find',
-  'that the goal needs more work. Give the number of the goal.',
+  'that the goal needs more work. Give the number of the goal. Your marks on the goals that depend',
+  'on it are removed with it.',
 ].join(' ')
 
 /** The goals board, as written in the texts about a failed hook of a goal tool. */
@@ -154,6 +169,15 @@ export function describeRefusal(refused: ChangeRefused | MarkRefused | UnmarkRef
       return `Give the evidence in at most ${MAX_EVIDENCE_LENGTH} characters. ${EVIDENCE_EXAMPLES}`
     case Refusal.NotMarkedDone:
       return `${nameGoal(refused.goal)} is not marked as done. ${SEE_OPEN_GOALS}`
+    case Refusal.DependencyNotDone: {
+      const dependsOn = nameGoal(refused.dependsOn)
+
+      return (
+        `${nameGoal(refused.goal)} depends on ${dependsOn}, which is not marked as done yet. ` +
+        `Mark ${dependsOn} as done first. Only the user changes a dependency, in the ` +
+        `${PANE_TITLE} pane.`
+      )
+    }
   }
 }
 
@@ -162,27 +186,32 @@ function describeGoalNotOpen(goal: number): string {
 }
 
 /**
- * The open goals with their done marks and the entries attached to them, then the cleared goals,
- * each sorted by number, as written for `reader`.
+ * The open goals by priority, with the goals each of them depends on, their done marks and the
+ * entries attached to them, then the cleared goals by number, as written for `reader`.
  */
 export function describeGoals(board: Board, reader: GoalsReader): string {
-  const open = sortedByNumber(openGoalsOf(board))
+  const open = openGoalsByPriorityOf(board)
   const cleared = sortedByNumber(clearedGoalsOf(board))
+  const byId = openGoalsByIdOf(board)
 
   return [
-    open.length === 0 ? NO_OPEN_GOAL : open.map(goal => describeOpenGoal(goal, reader)).join('\n'),
+    open.length === 0
+      ? NO_OPEN_GOAL
+      : open.map(goal => describeOpenGoal(byId, goal, reader)).join('\n'),
     ...(cleared.length === 0
       ? []
       : [['Cleared by the user:', ...cleared.map(describeGoal)].join('\n')]),
   ].join('\n\n')
 }
 
-function describeOpenGoal(goal: Goal, reader: GoalsReader): string {
+function describeOpenGoal(open: OpenGoals, goal: Goal, reader: GoalsReader): string {
+  const unfinished = unfinishedDependencyOf(open, goal)
   const mark = doneMarkOf(goal)
   const attached = goal.todos.map(describeEntry).join(', ')
 
   return [
-    describeGoal(goal),
+    describeGoalWithPriority(goal),
+    ...(unfinished === undefined ? [] : [describeUnfinishedDependency(unfinished)]),
     ...(mark === undefined ? [] : [describeDoneMarkForModel(mark, reader)]),
     ...(goal.todos.length === 0 ? [] : [`Attached: ${attached}`]),
   ].join('\n')

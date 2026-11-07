@@ -8,16 +8,18 @@ import type {
   BoardChange,
   ChangeRefused,
   Changed,
+  DependentGoal,
   EditRefused,
+  LoopRefused,
   MarkRefused,
-  MarkRemovalAsked,
-  MarkedGoal,
   NotChanged,
+  NotOpenRefused,
+  PrioritizedGoal,
   Read,
   Unchanged,
   UnmarkRefused,
-  UnmarkedGoal,
 } from './board'
+import type { MarkRemovalAsked, MarkedGoal, UnmarkedGoal } from './doneMark'
 import { sessionScope } from './boardScope'
 import {
   describeStoreFailure,
@@ -27,12 +29,15 @@ import {
   saveDetachedTodo,
   saveDoneMark,
   saveEditedGoal,
+  saveGoalDependency,
+  saveGoalPriority,
   saveNewGoal,
   saveRemovedDoneMark,
 } from './boardStore'
 import type { Failed } from './boardStore'
 import { recordBoardSeenAtStart, setLoadedBoard } from './goalState'
 import { describeNotRead } from './goalTexts'
+import type { Priority } from './priority'
 import type { TodoEntry } from './todoEntry'
 
 // After every change of a board, the state gets the board read again from the store, through the
@@ -153,6 +158,38 @@ export async function removeDoneMarkInSession(
   const removed = await saveRemovedDoneMark($, sessionScope(sessionId), number, removal, markedAt)
 
   return loadBoardAfterChange($, sessionId, removed)
+}
+
+/**
+ * Gives the goal numbered `number` on the board of the session `sessionId` the priority `priority`,
+ * or removes its priority when `priority` is undefined.
+ */
+export async function setGoalPriorityInSession(
+  $: EngineInterface,
+  sessionId: string,
+  number: number,
+  priority: Priority | undefined,
+): Promise<Changed<PrioritizedGoal> | Unchanged | NotOpenRefused | Failed> {
+  const scope = sessionScope(sessionId)
+  const set = await saveGoalPriority($, scope, number, priority, await $.clock.now())
+
+  return loadBoardAfterChange($, sessionId, set)
+}
+
+/**
+ * Makes the goal numbered `number` on the board of the session `sessionId` depend on the goal
+ * numbered `dependsOn`, or removes its dependency when `dependsOn` is undefined.
+ */
+export async function setGoalDependencyInSession(
+  $: EngineInterface,
+  sessionId: string,
+  number: number,
+  dependsOn: number | undefined,
+): Promise<Changed<DependentGoal> | Unchanged | NotOpenRefused | LoopRefused | Failed> {
+  const scope = sessionScope(sessionId)
+  const set = await saveGoalDependency($, scope, number, dependsOn, await $.clock.now())
+
+  return loadBoardAfterChange($, sessionId, set)
 }
 
 /** Attaches the TODO entry to the goal numbered `goalNumber` of the session `sessionId`. */

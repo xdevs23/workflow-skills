@@ -8,12 +8,16 @@ import type {
 } from 'claude-code'
 
 import type { Board, DoneMark, Goal, RowInPane, UnreadBoard } from '../../types'
-import { drawsInputFields } from '../surfaces'
-import type { SurfaceWithInputFields } from '../surfaces'
-import { Outcome, doneMarkOf, nextGoalNumberOf, openGoalsOf } from './board'
+import { drawsFields } from '../surfaces'
+import type { SurfaceWithFields } from '../surfaces'
+import { Outcome, nextGoalNumberOf, openGoalsByIdOf, openGoalsByPriorityOf } from './board'
 import type { Read } from './board'
+import { doneMarkOf } from './doneMark'
+import { dependedGoalOf } from './dependency'
+import type { OpenGoals } from './dependency'
 import { loadBoardIntoState } from './goalActions'
 import { GOALS_PANE } from './goalNames'
+import { drawGoalPickers } from './goalPickers'
 import {
   addOnScreen,
   askToClear,
@@ -45,23 +49,30 @@ import {
   UNMARK_SUBMIT_LABEL,
   YES_CLEAR_LABEL,
   describeClearQuestion,
+  describeDependencyBadge,
   describeDoneMarkForPerson,
   describeNotRead,
 } from './goalTexts'
+import { describePriority, priorityOf } from './priority'
 import { describeEntry } from './todoEntry'
 
 /** The elements every surface draws, which the rows of the goals use. */
 type GoalElements = Pick<ElementTable, 'Box' | 'Button' | 'Text'>
 
 /**
- * Draws the fields of a goal: the field that edits its text, and the field for the reason to remove
- * its done mark `shown`. Only a surface with input fields has them, so the Goals pane draws Edit
- * only there, and Unmark removes the mark at once elsewhere.
+ * Draws the fields of a goal: the field that edits its text, the field for the reason to remove its
+ * done mark `shown`, and the pickers of its priority and its dependency. Only a surface with fields
+ * has them, so the Goals pane draws Edit only there, Unmark removes the mark at once elsewhere, and
+ * elsewhere the priority and the dependency show as badges before the text.
  */
 type GoalFields = {
   drawTextField: (goal: Goal, isBlankTextRefused: boolean) => RenderElement
   drawReasonField: (goal: Goal, shown: DoneMark) => RenderElement
+  drawPickers: (goal: Goal) => RenderElement
 }
+
+/** The priority and the dependency of a goal: in its pickers, or as badges before its text. */
+type SettingsInRow = { pickers: RenderElement } | { badges: readonly string[] }
 
 /** The board of the session read again from the store, and the Goals pane opened on it. */
 type PaneOnFreshBoard = { loaded: Read | UnreadBoard; opened: UiOpenResult }
@@ -90,22 +101,28 @@ export const drawGoalsPane: MatchedHook<
     return <Text color="warning">{describeNotRead(inState.failure)}</Text>
   }
   const { sessionId, board } = inState
-  const fields: GoalFields | undefined = drawsInputFields(e)
+  const open = openGoalsByIdOf(board)
+  const fields: GoalFields | undefined = drawsFields(e)
     ? {
         drawTextField: (goal, isBlankTextRefused) =>
           drawGoalTextField($, e, sessionId, goal, isBlankTextRefused),
         drawReasonField: (goal, shown) => drawReasonField($, e, sessionId, goal, shown),
+        drawPickers: goal => drawGoalPickers($, e, sessionId, open, goal),
       }
     : undefined
 
   return (
     <Box flexDirection="column">
-      {openGoalsOf(board).map(goal => {
+      {openGoalsByPriorityOf(board).map(goal => {
         const row = goal.id === goalInPane?.goalId ? goalInPane : undefined
+        const settings: SettingsInRow =
+          fields === undefined
+            ? { badges: badgesOf(open, goal) }
+            : { pickers: fields.drawPickers(goal) }
 
-        return drawGoal($, elements, sessionId, goal, drawnRowOf(goal, row, fields))
+        return drawGoal($, elements, sessionId, goal, drawnRowOf(goal, row, fields), settings)
       })}
-      {drawsInputFields(e) ? (
+      {drawsFields(e) ? (
         drawNewGoalField($, e, sessionId, board)
       ) : (
         <Text dimColor>{FIELDS_IN_TERMINAL_ONLY}</Text>
@@ -155,8 +172,23 @@ function drawnRowOf(
 }
 
 /**
- * The row of one open goal: its number, its text or the field that edits it, its done mark, the
- * question to clear it, its TODO entries and the buttons of its mode.
+ * The badges before the text of `goal` on a surface without pickers: its priority, and the goal
+ * among the open goals `open` depended on by it.
+ */
+function badgesOf(open: OpenGoals, goal: Goal): string[] {
+  const priority = priorityOf(goal)
+  const dependsOn = dependedGoalOf(open, goal)
+
+  return [
+    ...(priority === undefined ? [] : [describePriority(priority)]),
+    ...(dependsOn === undefined ? [] : [describeDependencyBadge(dependsOn)]),
+  ]
+}
+
+/**
+ * Draws the row of one open goal: its number, its text with its badges or the field that edits it,
+ * its pickers, its done mark, the question to clear it, its TODO entries and the buttons of its
+ * mode.
  */
 function drawGoal(
   $: EngineInterface,
@@ -164,6 +196,7 @@ function drawGoal(
   sessionId: string,
   goal: Goal,
   row: DrawnRow,
+  settings: SettingsInRow,
 ) {
   const { Box, Text } = elements
   const mark = doneMarkOf(goal)
@@ -178,10 +211,13 @@ function drawGoal(
     >
       <Text bold color="claude">{`${goal.number}`}</Text>
       <Box flexDirection="column" flexGrow={1} flexShrink={1}>
-        {row.mode === RowMode.Editing ? row.field : <Text bold>{goal.text}</Text>}
+        {row.mode === RowMode.Editing
+          ? row.field
+          : drawGoalText(elements, goal, 'badges' in settings ? settings.badges : [])}
         {row.mode === RowMode.Editing && row.isBlankTextRefused && (
           <Text color="warning">{BLANK_TEXT_WARNING}</Text>
         )}
+        {'pickers' in settings && settings.pickers}
         {mark !== undefined && drawDoneMark($, elements, sessionId, goal, mark, row)}
         {row.mode === RowMode.Unmarking && row.field}
         {row.mode === RowMode.WaitingForYes && drawClearQuestion($, elements, sessionId, goal)}
@@ -191,6 +227,23 @@ function drawGoal(
       </Box>
       {drawRowButtons($, elements, sessionId, goal, row)}
     </Box>
+  )
+}
+
+/** The text of `goal`, after `badges`, each drawn inverse and set apart by a space. */
+function drawGoalText({ Text }: GoalElements, goal: Goal, badges: readonly string[]) {
+  if (badges.length === 0) {
+    return <Text bold>{goal.text}</Text>
+  }
+
+  return (
+    <Text bold>
+      {badges.flatMap((badge, index) => [
+        ...(index === 0 ? [] : [' ']),
+        <Text inverse>{` ${badge} `}</Text>,
+      ])}
+      {` ${goal.text}`}
+    </Text>
   )
 }
 
@@ -346,7 +399,7 @@ function drawWhole({ Box }: GoalElements, button: RenderElement) {
  */
 function drawGoalTextField(
   $: EngineInterface,
-  e: ResolveInput<'Pane', SurfaceWithInputFields>,
+  e: ResolveInput<'Pane', SurfaceWithFields>,
   sessionId: string,
   goal: Goal,
   isBlankTextRefused: boolean,
@@ -369,7 +422,7 @@ function drawGoalTextField(
  */
 function drawReasonField(
   $: EngineInterface,
-  e: ResolveInput<'Pane', SurfaceWithInputFields>,
+  e: ResolveInput<'Pane', SurfaceWithFields>,
   sessionId: string,
   goal: Goal,
   shown: DoneMark,
@@ -390,7 +443,7 @@ function drawReasonField(
 
 function drawNewGoalField(
   $: EngineInterface,
-  e: ResolveInput<'Pane', SurfaceWithInputFields>,
+  e: ResolveInput<'Pane', SurfaceWithFields>,
   sessionId: string,
   board: Board,
 ) {

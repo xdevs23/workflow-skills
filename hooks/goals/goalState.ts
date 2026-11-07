@@ -11,8 +11,10 @@ import type {
   UnreadBoard,
 } from '../../types'
 import { ofRunningSession, ofSession, updateOfSession } from '../sessionBoundState'
-import { Outcome, boardWithChangesTakenBack, combinedBoardOf } from './board'
+import { Outcome } from './board'
 import type { Read } from './board'
+import { boardWithChangesTakenBack } from './boardChanges'
+import { combinedBoardOf } from './boardMerge'
 
 // The engine lists the state a module reads and writes from the source of the module, so every
 // state reference of the goals is written in this file with its plugin and key as literals.
@@ -164,9 +166,9 @@ export async function exchangeSeenBoard(
 }
 
 /**
- * Takes back the goals added, edited, marked or cleared between `before` and `after` from the board
- * seen by the model of the session `sessionId`, after the note on them was not sent to the model.
- * Changes recorded since stay recorded.
+ * Takes back the goals added, edited, marked, prioritized, made dependent or cleared between
+ * `before` and `after` from the board seen by the model in the session `sessionId`, after the note
+ * on them was not sent to the model. Changes recorded since are not taken back.
  */
 export async function restoreSeenBoard(
   $: EngineInterface,

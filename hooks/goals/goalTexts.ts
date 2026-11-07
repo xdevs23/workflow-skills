@@ -1,10 +1,9 @@
 import type { DoneMark, Goal } from '../../types'
 import type { HookSubject } from '../hookFailure'
-import { doneMarkOf } from './board'
+import type { LoopRefused } from './board'
 import { describeStoreFailure } from './boardStore'
 import type { Failed } from './boardStore'
 import { GOALS_COMMAND } from './goalNames'
-import { describeEntry } from './todoEntry'
 
 // The texts of the goals read by the person at the prompt.
 
@@ -24,6 +23,10 @@ export const REASON_PLACEHOLDER = 'Reason (optional)'
 export const CLEAR_LABEL = 'Clear'
 export const YES_CLEAR_LABEL = 'Yes, clear'
 export const KEEP_LABEL = 'Keep'
+export const PRIORITY_LABEL = 'Priority'
+export const DEPENDENCY_LABEL = 'After'
+/** What a picker shows for a goal without its setting, and the choice that removes the setting. */
+export const NO_CHOICE_LABEL = '–'
 export const BOARD_LOADING = 'Reading the goals of this session…'
 /** The line in place of the field that adds a goal, on a surface without input fields. */
 export const FIELDS_IN_TERMINAL_ONLY = `Add and edit goals in the ${PANE_TITLE} pane in a terminal.`
@@ -61,17 +64,9 @@ export function describeGoal(goal: Goal): string {
   return `${nameGoal(goal.number)}: ${goal.text}`
 }
 
-/** The open goals, each with its done mark and its TODO entries below it, one to a line. */
-export function describeOpenGoals(open: readonly Goal[]): string[] {
-  return open.flatMap(goal => {
-    const mark = doneMarkOf(goal)
-
-    return [
-      describeGoal(goal),
-      ...(mark === undefined ? [] : [`  ${describeDoneMarkForPerson(mark)}`]),
-      ...goal.todos.map(todo => `  ${describeEntry(todo)}`),
-    ]
-  })
+/** The badge before the text of a goal depending on `dependsOn`, on a surface without pickers. */
+export function describeDependencyBadge(dependsOn: Goal): string {
+  return `after ${nameGoal(dependsOn.number)}`
 }
 
 /** The done mark of a goal as the person reads it, with the evidence given by Claude. */
@@ -80,7 +75,7 @@ export function describeDoneMarkForPerson(mark: DoneMark): string {
 }
 
 /** What a press in the Goals pane shows for a goal cleared since the pane drew it. */
-export function describeNoLongerOpen(goal: Goal): string {
+export function describeNoLongerOpen(goal: Pick<Goal, 'number'>): string {
   return `${nameGoal(goal.number)} is no longer open.`
 }
 
@@ -99,6 +94,25 @@ export function describeNotEdited(failed: Failed): string {
 
 export function describeNotUnmarked(failed: Failed): string {
   return `The done mark was not removed. ${describeStoreFailure(failed)}`
+}
+
+export function describePriorityNotSet(failed: Failed): string {
+  return `The priority was not set. ${describeStoreFailure(failed)}`
+}
+
+export function describeDependencyNotSet(failed: Failed): string {
+  return `The dependency was not set. ${describeStoreFailure(failed)}`
+}
+
+/** What a pick of a dependency that closes a loop shows, with the next step. */
+export function describeDependencyLoop(refused: LoopRefused): string {
+  const goal = nameGoal(refused.goal)
+  const dependsOn = nameGoal(refused.dependsOn)
+
+  return (
+    `${goal} cannot depend on ${dependsOn}: ${dependsOn} depends on ${goal}. Pick another goal, ` +
+    `or remove the dependency of ${dependsOn} first.`
+  )
 }
 
 export function describeNotCleared(failed: Failed): string {

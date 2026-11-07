@@ -6,7 +6,6 @@ import { PLUGIN } from '../names'
 import {
   FIRST_SESSION,
   GOALS_NOT_EXHAUSTIVE,
-  IDLE_WITH_UNFINISHED_GOALS,
   NO_TIME_LIMIT,
   SECOND_SESSION,
   SUBAGENT,
@@ -56,6 +55,16 @@ const NOT_REMINDED = 'The goals could not be read, so Claude was not reminded of
 const UNREADABLE_STORE = 'the store file is not readable'
 
 /** A text on goals as the model reads it while a goal is open, followed by the sentence on them. */
+/** `text` without its first line, the heading of the open goals. */
+function withoutHeading(text: string): string {
+  return text.split('\n').slice(1).join('\n')
+}
+
+/** `text` without its first paragraph, the opening that tells the model to work on the goals. */
+function withoutOpening(text: string): string {
+  return text.split('\n\n').slice(1).join('\n\n')
+}
+
 function withSentence(note: string): string {
   return `${note}\n\n${GOALS_NOT_EXHAUSTIVE}`
 }
@@ -103,10 +112,9 @@ describe('the open goals after a compaction', () => {
       await clearInPane(pane, 2)
       await addInPane(pane, 3, 'Write the release notes')
 
-      expect((await compact($)).additionalContext).toEqual([
+      expect((await compact($)).additionalContext?.map(withoutHeading)).toEqual([
         withSentence(
           [
-            '# Open goals',
             '1. Ship the offline mode',
             '   #61 - Drafts sync once the connection returns',
             '3. Write the release notes',
@@ -443,10 +451,9 @@ describe('a board that could not be read at the start', () => {
       session.store.delete(damagedKey)
       expect(await goalsCommand($, '')).toBeUndefined()
       await addInPane(pane, 3, 'Write the release notes')
-      expect(await notesOfToolResult($)).toEqual([
+      expect((await notesOfToolResult($)).map(withoutHeading)).toEqual([
         withSentence(
           [
-            '# Open goals',
             '1. Ship the offline mode',
             '   #61 - Drafts sync once the connection returns',
             '2. Add the dark theme',
@@ -464,8 +471,8 @@ describe('the open goals after the idle minutes', () => {
   const REMINDER_OF_FIRST_GOAL =
     'Goal 1 is not satisfied yet: Ship the offline mode. Attached: #61 (Drafts sync once the ' +
     'connection returns).'
+  /** The reminder after its opening, which tells the model to work on the goals. */
   const REMINDER = [
-    IDLE_WITH_UNFINISHED_GOALS,
     REMINDER_OF_FIRST_GOAL,
     'Goal 2 is not satisfied yet: Add the dark theme.',
     GOALS_NOT_EXHAUSTIVE,
@@ -483,18 +490,18 @@ describe('the open goals after the idle minutes', () => {
       expect(promptsOfPlugin(session)).toEqual([])
       await session.clock.advance(1)
 
-      expect(promptsOfPlugin(session)).toEqual([REMINDER])
+      expect(promptsOfPlugin(session).map(withoutOpening)).toEqual([REMINDER])
       expect(session.prompts.at(-1)?.origin).toEqual({ kind: 'plugin', name: PLUGIN })
       await startTurn($)
       await endTurn($)
       await session.clock.advance(IDLE_TIME)
-      expect(promptsOfPlugin(session)).toEqual([REMINDER])
+      expect(promptsOfPlugin(session).map(withoutOpening)).toEqual([REMINDER])
 
       await typePrompt($, 'go on')
       await startTurn($)
       await endTurn($)
       await session.clock.advance(IDLE_TIME)
-      expect(promptsOfPlugin(session)).toEqual([REMINDER, REMINDER])
+      expect(promptsOfPlugin(session).map(withoutOpening)).toEqual([REMINDER, REMINDER])
     },
   )
 
@@ -512,7 +519,7 @@ describe('the open goals after the idle minutes', () => {
 
       await endTurn($)
       await session.clock.advance(IDLE_TIME)
-      expect(promptsOfPlugin(session)).toEqual([REMINDER])
+      expect(promptsOfPlugin(session).map(withoutOpening)).toEqual([REMINDER])
     },
   )
 
@@ -534,7 +541,7 @@ describe('the open goals after the idle minutes', () => {
       })
       await session.clock.advance(IDLE_TIME)
 
-      expect(promptsOfPlugin(session)).toEqual([REMINDER])
+      expect(promptsOfPlugin(session).map(withoutOpening)).toEqual([REMINDER])
     },
   )
 
@@ -547,7 +554,7 @@ describe('the open goals after the idle minutes', () => {
     await endTurn($, { reason: 'aborted' })
     await session.clock.advance(IDLE_TIME)
 
-    expect(promptsOfPlugin(session)).toEqual([REMINDER])
+    expect(promptsOfPlugin(session).map(withoutOpening)).toEqual([REMINDER])
   })
 
   test(
@@ -559,7 +566,7 @@ describe('the open goals after the idle minutes', () => {
       await endTurn($)
       await session.clock.advance(IDLE_TIME)
 
-      expect(promptsOfPlugin(session)).toEqual([REMINDER])
+      expect(promptsOfPlugin(session).map(withoutOpening)).toEqual([REMINDER])
     },
   )
 
@@ -574,9 +581,8 @@ describe('the open goals after the idle minutes', () => {
       await clearInPane(pane, 2)
       await session.clock.advance(IDLE_TIME)
 
-      expect(promptsOfPlugin(session)).toEqual([
+      expect(promptsOfPlugin(session).map(withoutOpening)).toEqual([
         [
-          IDLE_WITH_UNFINISHED_GOALS,
           REMINDER_OF_FIRST_GOAL,
           'The user cleared Goal 2.',
           GOALS_NOT_EXHAUSTIVE,
@@ -619,10 +625,10 @@ describe('the open goals after the idle minutes', () => {
       await endTurn($)
       await session.clock.advance(IDLE_TIME)
 
-      expect(promptsOfPlugin(session)).toEqual([REMINDER])
+      expect(promptsOfPlugin(session).map(withoutOpening)).toEqual([REMINDER])
       expect(session.toasts).toEqual([])
       await session.clock.advance(IDLE_TIME)
-      expect(promptsOfPlugin(session)).toEqual([REMINDER, REMINDER])
+      expect(promptsOfPlugin(session).map(withoutOpening)).toEqual([REMINDER, REMINDER])
     },
   )
 
@@ -650,7 +656,7 @@ describe('the open goals after the idle minutes', () => {
       expect(submitted).toEqual([])
       expect(session.toasts).toHaveLength(1)
       await session.clock.advance(IDLE_TIME)
-      expect(submitted).toEqual([REMINDER])
+      expect(submitted.map(withoutOpening)).toEqual([REMINDER])
       expect(session.toasts).toHaveLength(1)
     },
   )
@@ -678,7 +684,7 @@ describe('the open goals after the idle minutes', () => {
       await endTurn($)
       await session.clock.advance(IDLE_TIME)
 
-      expect(submitted).toEqual([REMINDER, REMINDER])
+      expect(submitted.map(withoutOpening)).toEqual([REMINDER, REMINDER])
     },
   )
 

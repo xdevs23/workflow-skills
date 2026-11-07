@@ -16,7 +16,10 @@ import {
   isNumberTaken,
   markGoalDone,
   nextGoalNumberOf,
+  openGoalsByIdOf,
   removeDoneMark,
+  setGoalDependency,
+  setGoalPriority,
   settledBoardOf,
 } from './board'
 import type {
@@ -24,22 +27,27 @@ import type {
   BoardChange,
   ChangeRefused,
   Changed,
+  DependentGoal,
   EditRefused,
+  LoopRefused,
   MarkRefused,
-  MarkRemovalAsked,
-  MarkedGoal,
   NotChanged,
+  NotOpenRefused,
+  PrioritizedGoal,
   Read,
   Unchanged,
   UnmarkRefused,
-  UnmarkedGoal,
 } from './board'
+import { goalsUnmarkedForDependency } from './dependency'
+import type { MarkRemovalAsked, MarkedGoal, UnmarkedGoal } from './doneMark'
 import {
   UnreadableRecordError,
   clearanceRecordOf,
+  dependencyRecordOf,
   doneMarkRecordOf,
   goalRecordOf,
   markRemovalRecordOf,
+  priorityRecordOf,
   readBoard,
   textRecordOf,
   todoKeyOf,
@@ -48,14 +56,15 @@ import {
 import type { BoardRecord } from './boardRecord'
 import { boardPrefixOf } from './boardScope'
 import type { BoardScope } from './boardScope'
+import type { Priority } from './priority'
 
 // The store does not offer compare-and-set. Changes made at once by several processes do not
 // overwrite each other, since every change writes only the record of its own part of the board: a
 // new goal, the text of a goal, the clearance of a goal, the done mark of a goal, the removal of a
-// done mark, or one TODO entry of a goal. Two changes write one key only when both change the same
-// part, such as one TODO number of one goal, and the later write is then the newer state of that
-// part. A removal contains the time of the mark it removes, so a mark set while the removal is
-// written is still set afterwards.
+// done mark, the priority of a goal, the dependency of a goal, or one TODO entry of a goal. Two
+// changes write one key only when both change the same part, such as one TODO number of one goal,
+// and the later write is then the newer state of that part. A removal contains the time of the mark
+// it removes, so a mark set while the removal is written is still set afterwards.
 
 /** Why the store could not read or change a board. The stored records are left as they were. */
 export enum StoreFailure {
@@ -133,18 +142,15 @@ export function saveEditedGoal(
     $,
     scope,
     board => editGoal(board, number, text, editedAt),
-    async (goal, before) => {
-      // The removal goes first, so a text that is not written leaves the goal without its mark,
-      // never with a mark set for a text it no longer has.
-      const { markRemoval } = goal
-      if (markRemoval !== undefined && markRemoval.removedAt !== before?.markRemoval?.removedAt) {
-        await writeRecord($, markRemovalRecordOf(scope, { ...goal, markRemoval }))
-      }
-      await writeRecord($, textRecordOf(scope, goal, editedAt))
-    },
+    goal => writeRecord($, textRecordOf(scope, goal, editedAt)),
   )
 }
 
+/**
+ * Marks the goal as done as markGoalDone does, and writes the mark. A dependency can lose its mark,
+ * or be set on the goal, while the mark is written, so the board is read back after the write, and
+ * every mark it leaves waiting for a dependency is removed.
+ */
 export function saveDoneMark(
   $: StoreEngine,
   scope: BoardScope,
@@ -156,7 +162,11 @@ export function saveDoneMark(
     $,
     scope,
     board => markGoalDone(board, number, evidence, markedAt),
-    goal => writeRecord($, doneMarkRecordOf(scope, goal)),
+    async goal => {
+      await writeRecord($, doneMarkRecordOf(scope, goal))
+      const stored = openGoalsByIdOf(await readSettledBoard($, scope))
+      await writeMarkRemovals($, scope, goalsUnmarkedForDependency(stored, markedAt))
+    },
   )
 }
 
@@ -173,6 +183,38 @@ export function saveRemovedDoneMark(
     scope,
     board => removeDoneMark(board, number, removal, markedAt),
     goal => writeRecord($, markRemovalRecordOf(scope, goal)),
+  )
+}
+
+/** Sets or removes the priority as setGoalPriority does, and writes the priority. */
+export function saveGoalPriority(
+  $: StoreEngine,
+  scope: BoardScope,
+  number: number,
+  priority: Priority | undefined,
+  setAt: number,
+): Promise<Changed<PrioritizedGoal> | Unchanged | NotOpenRefused | Failed> {
+  return changeBoard(
+    $,
+    scope,
+    board => setGoalPriority(board, number, priority, setAt),
+    goal => writeRecord($, priorityRecordOf(scope, goal)),
+  )
+}
+
+/** Sets or removes the dependency as setGoalDependency does, and writes the dependency. */
+export function saveGoalDependency(
+  $: StoreEngine,
+  scope: BoardScope,
+  number: number,
+  dependsOn: number | undefined,
+  setAt: number,
+): Promise<Changed<DependentGoal> | Unchanged | NotOpenRefused | LoopRefused | Failed> {
+  return changeBoard(
+    $,
+    scope,
+    board => setGoalDependency(board, number, dependsOn, setAt),
+    goal => writeRecord($, dependencyRecordOf(scope, goal)),
   )
 }
 
@@ -222,20 +264,21 @@ export function describeStoreFailure(failed: Failed): string {
 
 /**
  * Reads the board of the scope, applies `change` to it, and when the board changed, writes the
- * goal changed by it with `save`, which gets the goal as it was read too.
+ * removals of the done marks removed with the change, and then the goal changed by it with `save`.
+ * A change whose save failed is not stored, so a retry finds the same marks to remove again, and a
+ * goal is never stored with a mark that the change removed.
  */
 function changeBoard<Other extends NotChanged, Changing extends Goal = Goal>(
   $: StoreEngine,
   scope: BoardScope,
   change: (board: Board) => Changed<Changing> | Other,
-  save: (goal: Changing, before: Goal | undefined) => Promise<void>,
+  save: (goal: Changing) => Promise<void>,
 ): Promise<Changed<Changing> | Other | Failed> {
   return returningFailure(async () => {
-    const board = await readSettledBoard($, scope)
-    const changed = change(board)
+    const changed = change(await readSettledBoard($, scope))
     if (changed.outcome === Outcome.Changed) {
-      const { goal } = changed
-      await save(goal, board.goals.find(each => each.id === goal.id))
+      await writeMarkRemovals($, scope, changed.unmarked)
+      await save(changed.goal)
     }
 
     return changed
@@ -252,7 +295,7 @@ async function saveUnderFreeNumber(
     await writeRecord($, goalRecordOf(scope, goal))
     const board = await readStoredBoard($, scope)
     if (!isNumberTaken(goal, board)) {
-      return { outcome: Outcome.Changed, board: settledBoardOf(board), goal }
+      return { outcome: Outcome.Changed, board: settledBoardOf(board), goal, unmarked: [] }
     }
     goal = { ...goal, number: nextGoalNumberOf(board) }
   }
@@ -279,6 +322,14 @@ async function readStoredBoard($: StoreEngine, scope: BoardScope): Promise<Board
     scope,
     entries.filter(entry => entry.value !== undefined),
   )
+}
+
+async function writeMarkRemovals(
+  $: StoreEngine,
+  scope: BoardScope,
+  unmarked: readonly UnmarkedGoal[],
+): Promise<void> {
+  await Promise.all(unmarked.map(goal => writeRecord($, markRemovalRecordOf(scope, goal))))
 }
 
 function writeRecord($: StoreEngine, record: BoardRecord): Promise<void> {

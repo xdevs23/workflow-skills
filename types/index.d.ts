@@ -1,6 +1,8 @@
-import type { MarkRemovalAsked, Outcome, Read } from '../hooks/goals/board'
+import type { Outcome, Read } from '../hooks/goals/board'
+import type { MarkRemovalAsked } from '../hooks/goals/doneMark'
 import type { IdlePhase } from '../hooks/goals/goalIdleReminder'
 import type { RowMode } from '../hooks/goals/goalState'
+import type { Priority } from '../hooks/goals/priority'
 
 /** What the user wrote in reply to a question. */
 export type Answer = {
@@ -78,7 +80,17 @@ export type Goal = {
    * the `markedAt` of the removal is removed by it.
    */
   markRemoval?: MarkRemoval
+  /** The last priority set or removed by the user, if the user ever set one. */
+  prioritySetting?: Setting<Priority>
+  /**
+   * The last dependency set or removed by the user, if the user ever set one, by the id of the goal
+   * depended on.
+   */
+  dependencySetting?: Setting<string>
 }
+
+/** A value set on a goal by the user at `setAt`, or its removal when `value` is absent. */
+export type Setting<Value> = { value?: Value; setAt: number }
 
 /** The goals of one board in the order they were added, cleared goals included. */
 export type Board = {

@@ -1,8 +1,12 @@
-import type { AttachedTodo, Board, DoneMark, Goal, MarkRemoval } from '../../types'
+import type { AttachedTodo, Board, Goal, Setting } from '../../types'
 import { describeUnreadableRecord, isRecord } from '../pluginStore'
 import { isPositiveInteger } from '../positiveInteger'
-import { MarkRemover, markRemovalAskedOf } from './board'
-import type { MarkRemovalAsked, MarkedGoal, UnmarkedGoal } from './board'
+import type { DependentGoal, PrioritizedGoal } from './board'
+import { MarkRemover, markRemovalAskedOf } from './doneMark'
+import type { MarkRemovalAsked, MarkedGoal, UnmarkedGoal } from './doneMark'
+import { isPriority } from './priority'
+import type { Priority } from './priority'
+import { settingOf } from './setting'
 import { isTodoNumber } from './todoEntry'
 import { boardPrefixOf } from './boardScope'
 import type { BoardScope } from './boardScope'
@@ -19,6 +23,8 @@ enum RecordPart {
   Todo = 'todo',
   DoneMark = 'done-mark',
   MarkRemoval = 'done-mark-removal',
+  Priority = 'priority',
+  Dependency = 'dependency',
 }
 
 type StoredRecord = { version: typeof RECORD_VERSION } & (
@@ -33,10 +39,9 @@ type StoredRecord = { version: typeof RECORD_VERSION } & (
       markedAt: number
       removedAt: number
     } & MarkRemovalAsked)
+  | ({ part: RecordPart.Priority; goalId: string } & Setting<Priority>)
+  | ({ part: RecordPart.Dependency; goalId: string } & Setting<string>)
 )
-
-type DoneMarkRecord = Extract<StoredRecord, { part: RecordPart.DoneMark }>
-type MarkRemovalRecord = Extract<StoredRecord, { part: RecordPart.MarkRemoval }>
 
 /** A record of a board in the form written to the store, under its key. */
 export type BoardRecord = { key: string; value: StoredRecord }
@@ -132,20 +137,35 @@ export function markRemovalRecordOf(scope: BoardScope, goal: UnmarkedGoal): Boar
   })
 }
 
+/**
+ * The record of the priority of `goal`. The removal of a priority is a record without a priority,
+ * so a copy of the board read before the removal cannot set the priority again.
+ */
+export function priorityRecordOf(scope: BoardScope, goal: PrioritizedGoal): BoardRecord {
+  return recordOf(scope, {
+    version: RECORD_VERSION,
+    part: RecordPart.Priority,
+    goalId: goal.id,
+    ...goal.prioritySetting,
+  })
+}
+
+/**
+ * The record of the dependency of `goal`, by the id of the goal depended on. The removal of a
+ * dependency is a record without one, so a copy of the board read before the removal cannot set
+ * the dependency again.
+ */
+export function dependencyRecordOf(scope: BoardScope, goal: DependentGoal): BoardRecord {
+  return recordOf(scope, {
+    version: RECORD_VERSION,
+    part: RecordPart.Dependency,
+    goalId: goal.id,
+    ...goal.dependencySetting,
+  })
+}
+
 export function todoKeyOf(scope: BoardScope, goal: Pick<Goal, 'id'>, todoNumber: string): string {
   return `${partKeyOf(scope, goal.id, RecordPart.Todo)}:${todoNumber}`
-}
-
-function markOfRecord(record: DoneMarkRecord): DoneMark {
-  const { evidence, markedAt } = record
-
-  return { evidence, markedAt }
-}
-
-function removalOfRecord(record: MarkRemovalRecord): MarkRemoval {
-  const { markedAt, removedAt } = record
-
-  return { markedAt, removedAt, ...markRemovalAskedOf(record) }
 }
 
 /**
@@ -157,11 +177,8 @@ function removalOfRecord(record: MarkRemovalRecord): MarkRemoval {
 export function readBoard(scope: BoardScope, entries: readonly StoredEntry[]): Board {
   const records = entries.map(({ key, value }) => ({ key, record: readRecord(scope, key, value) }))
   const goals: Goal[] = []
-  const edits = new Map<string, { text: string; editedAt: number }>()
-  const clearances = new Map<string, number>()
   const todos = new Map<string, AttachedTodo[]>()
-  const doneMarks = new Map<string, DoneMark>()
-  const removals = new Map<string, MarkRemoval>()
+  const patches = new Map<string, GoalPatch>()
   for (const { record } of records) {
     switch (record.part) {
       case RecordPart.Goal: {
@@ -169,12 +186,6 @@ export function readBoard(scope: BoardScope, entries: readonly StoredEntry[]): B
         goals.push({ id, number, text, addedAt, todos: [] })
         break
       }
-      case RecordPart.Text:
-        edits.set(record.goalId, { text: record.text, editedAt: record.editedAt })
-        break
-      case RecordPart.Clearance:
-        clearances.set(record.goalId, record.clearedAt)
-        break
       case RecordPart.Todo: {
         const { goalId, number, title, attachedAt } = record
         const entries = todos.get(goalId) ?? []
@@ -182,12 +193,8 @@ export function readBoard(scope: BoardScope, entries: readonly StoredEntry[]): B
         todos.set(goalId, entries)
         break
       }
-      case RecordPart.DoneMark:
-        doneMarks.set(record.goalId, markOfRecord(record))
-        break
-      case RecordPart.MarkRemoval:
-        removals.set(record.goalId, removalOfRecord(record))
-        break
+      default:
+        patches.set(record.goalId, { ...patches.get(record.goalId), ...patchOf(record) })
     }
   }
   const goalIds = new Set(goals.map(goal => goal.id))
@@ -199,16 +206,37 @@ export function readBoard(scope: BoardScope, entries: readonly StoredEntry[]): B
   }
 
   return {
-    goals: goals.map(goal => {
-      const withTodos = { ...goal, ...edits.get(goal.id), todos: todos.get(goal.id) ?? [] }
-      const doneMark = doneMarks.get(goal.id)
-      const withMark = doneMark === undefined ? withTodos : { ...withTodos, doneMark }
-      const markRemoval = removals.get(goal.id)
-      const withRemoval = markRemoval === undefined ? withMark : { ...withMark, markRemoval }
-      const clearedAt = clearances.get(goal.id)
+    goals: goals.map(goal => ({
+      ...goal,
+      ...patches.get(goal.id),
+      todos: todos.get(goal.id) ?? [],
+    })),
+  }
+}
 
-      return clearedAt === undefined ? withRemoval : { ...withRemoval, clearedAt }
-    }),
+/** The fields of a goal stored in records of their own, each replaced by a later record. */
+type GoalPatch = Partial<Omit<Goal, 'id' | 'number' | 'addedAt' | 'todos'>>
+
+/** The fields of a goal stored in `record`. */
+function patchOf(
+  record: Exclude<StoredRecord, { part: RecordPart.Goal | RecordPart.Todo }>,
+): GoalPatch {
+  switch (record.part) {
+    case RecordPart.Text:
+      return { text: record.text, editedAt: record.editedAt }
+    case RecordPart.Clearance:
+      return { clearedAt: record.clearedAt }
+    case RecordPart.DoneMark:
+      return { doneMark: { evidence: record.evidence, markedAt: record.markedAt } }
+    case RecordPart.MarkRemoval: {
+      const { markedAt, removedAt } = record
+
+      return { markRemoval: { markedAt, removedAt, ...markRemovalAskedOf(record) } }
+    }
+    case RecordPart.Priority:
+      return { prioritySetting: settingOf(record.value, record.setAt) }
+    case RecordPart.Dependency:
+      return { dependencySetting: settingOf(record.value, record.setAt) }
   }
 }
 
@@ -226,6 +254,8 @@ function keyOf(scope: BoardScope, record: StoredRecord): string {
     case RecordPart.Clearance:
     case RecordPart.DoneMark:
     case RecordPart.MarkRemoval:
+    case RecordPart.Priority:
+    case RecordPart.Dependency:
       return partKeyOf(scope, record.goalId, record.part)
   }
 }
@@ -280,21 +310,59 @@ const PARSERS: Record<RecordPart, (value: Record<string, unknown>) => StoredReco
     typeof goalId === 'string' && typeof evidence === 'string' && typeof markedAt === 'number'
       ? { version: RECORD_VERSION, part: RecordPart.DoneMark, goalId, evidence, markedAt }
       : undefined,
-  [RecordPart.MarkRemoval]: ({ goalId, markedAt, removedAt, removedBy, reason }) => {
-    const remover = Object.values(MarkRemover).find(each => each === removedBy)
+  [RecordPart.MarkRemoval]: ({ goalId, markedAt, removedAt, ...asked }) => {
+    const removal = readMarkRemovalAsked(asked)
 
     return typeof goalId === 'string' &&
       typeof markedAt === 'number' &&
       typeof removedAt === 'number' &&
-      remover !== undefined
+      removal !== undefined
       ? {
           version: RECORD_VERSION,
           part: RecordPart.MarkRemoval,
           goalId,
           markedAt,
           removedAt,
-          ...markRemovalAskedOf({ removedBy: remover, reason }),
+          ...removal,
         }
       : undefined
   },
+  [RecordPart.Priority]: ({ goalId, value, setAt }) =>
+    typeof goalId === 'string' &&
+    (value === undefined || isPriority(value)) &&
+    typeof setAt === 'number'
+      ? { version: RECORD_VERSION, part: RecordPart.Priority, goalId, ...settingOf(value, setAt) }
+      : undefined,
+  [RecordPart.Dependency]: ({ goalId, value, setAt }) =>
+    typeof goalId === 'string' &&
+    (value === undefined || typeof value === 'string') &&
+    typeof setAt === 'number'
+      ? { version: RECORD_VERSION, part: RecordPart.Dependency, goalId, ...settingOf(value, setAt) }
+      : undefined,
+}
+
+/**
+ * Reads the remover of a stored removal, with the fields of that remover. A reason that is not
+ * text, or is blank, reads as absent.
+ */
+function readMarkRemovalAsked({
+  removedBy,
+  reason,
+  dependencyNumber,
+}: Record<string, unknown>): MarkRemovalAsked | undefined {
+  const remover = Object.values(MarkRemover).find(each => each === removedBy)
+  switch (remover) {
+    case undefined:
+      return undefined
+    case MarkRemover.Model:
+      return { removedBy: remover }
+    case MarkRemover.User:
+      return markRemovalAskedOf(
+        typeof reason === 'string' ? { removedBy: remover, reason } : { removedBy: remover },
+      )
+    case MarkRemover.Dependency:
+      return isPositiveInteger(dependencyNumber)
+        ? { removedBy: remover, dependencyNumber }
+        : undefined
+  }
 }

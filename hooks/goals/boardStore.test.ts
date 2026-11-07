@@ -11,7 +11,7 @@ import {
   storeEngineOf,
   storeFakeWith,
 } from '../testSupport'
-import { EMPTY_BOARD, MarkRemover, Outcome, Refusal, doneMarkOf } from './board'
+import { EMPTY_BOARD, Outcome, Refusal } from './board'
 import type {
   AddRefused,
   BoardChange,
@@ -20,6 +20,7 @@ import type {
   Read,
   UnmarkRefused,
 } from './board'
+import { MarkRemover, doneMarkOf } from './doneMark'
 import {
   clearanceRecordOf,
   doneMarkRecordOf,
@@ -39,6 +40,7 @@ import {
   saveDetachedTodo,
   saveDoneMark,
   saveEditedGoal,
+  saveGoalDependency,
   saveNewGoal,
   saveRemovedDoneMark,
 } from './boardStore'
@@ -223,12 +225,33 @@ describe('changes made at the same moment', () => {
       const newMark = { evidence: 'release/v1.45.4', markedAt: 350 }
       const other = doneMarkRecordOf(SCOPE, { ...fullApp, doneMark: newMark })
       store.fake.beforeNextWrite = () => store.fake.store.set(other.key, other.value)
-      const removal = { removedAt: 400, removedBy: MarkRemover.User }
+      const removal = { removedAt: 400, removedBy: MarkRemover.User } as const
       await saveRemovedDoneMark(store.$, SCOPE, 1, removal, 300)
       const goal = boardOf(await loadBoard(store.$, SCOPE)).goals[0] ?? fullApp
 
       expect(doneMarkOf(goal)).toEqual(newMark)
       expect(goal.markRemoval).toEqual({ ...removal, markedAt: 300 })
+    },
+  )
+
+  test(
+    'a done mark set while another process removes the mark of its dependency is removed',
+    NO_TIME_LIMIT,
+    async ($, on) => {
+      const store = startStore(on)
+      await addFullApp(store.$)
+      const loginFix = goalOf(await saveNewGoal(store.$, SCOPE, 'Fix the export timeout', 110))
+      await saveGoalDependency(store.$, SCOPE, 1, 2, 200)
+      await saveDoneMark(store.$, SCOPE, 2, 'release/v3.2.0', 300)
+      const removal = { markedAt: 300, removedAt: 350, removedBy: MarkRemover.User } as const
+      const other = markRemovalRecordOf(SCOPE, { ...loginFix, markRemoval: removal })
+      store.fake.beforeNextWrite = () => store.fake.store.set(other.key, other.value)
+      await saveDoneMark(store.$, SCOPE, 1, 'branch full-app', 400)
+
+      expect(boardOf(await loadBoard(store.$, SCOPE)).goals.map(doneMarkOf)).toEqual([
+        undefined,
+        undefined,
+      ])
     },
   )
 })
@@ -300,14 +323,16 @@ describe('writing only what changed', () => {
       await saveDoneMark(store.$, SCOPE, 1, 'release/v3.2.0', 300)
       const keys = [...store.fake.store.keys()]
       const edited = await saveEditedGoal(store.$, SCOPE, 1, 'Write the upgrade guide', 400)
-      const removal = { markedAt: 300, removedAt: 400, removedBy: MarkRemover.User }
+      const removal = { markedAt: 300, removedAt: 400, removedBy: MarkRemover.User } as const
 
       expect([...store.fake.store.keys()]).toEqual([
         ...keys,
         markRemovalRecordOf(SCOPE, { ...fullApp, markRemoval: removal }).key,
         textRecordOf(SCOPE, fullApp, 400).key,
       ])
-      expect(goalOf(edited).markRemoval).toEqual(removal)
+      expect(edited.outcome === Outcome.Changed && edited.unmarked).toEqual([
+        { ...goalOf(edited), markRemoval: removal },
+      ])
       expect(await loadBoard(store.$, SCOPE)).toEqual({
         outcome: Outcome.Read,
         board: boardOf(edited),
@@ -334,7 +359,7 @@ describe('writing only what changed', () => {
       await addFullApp(store.$)
       const keys = [...store.fake.store.keys()]
       const marked = await saveDoneMark(store.$, SCOPE, 1, 'release/v3.2.0', 300)
-      const removal = { removedAt: 400, removedBy: MarkRemover.Model }
+      const removal = { removedAt: 400, removedBy: MarkRemover.Model } as const
       const removed = await saveRemovedDoneMark(store.$, SCOPE, 1, removal)
       const removedGoal = {
         ...goalOf(marked),
@@ -348,6 +373,40 @@ describe('writing only what changed', () => {
         markRemovalRecordOf(SCOPE, removedGoal).key,
       ])
       expect(goalOf(removed)).toEqual(removedGoal)
+      expect(await loadBoard(store.$, SCOPE)).toEqual({
+        outcome: Outcome.Read,
+        board: boardOf(removed),
+      })
+    },
+  )
+
+  test(
+    'a removed mark writes the removals of the marks depending on it first, so a retry of a ' +
+      'failed write removes every mark',
+    NO_TIME_LIMIT,
+    async ($, on) => {
+      const store = startStore(on)
+      const fullApp = await addFullApp(store.$)
+      const loginFix = goalOf(await saveNewGoal(store.$, SCOPE, 'Fix the export timeout', 110))
+      await saveGoalDependency(store.$, SCOPE, 1, 2, 200)
+      await saveDoneMark(store.$, SCOPE, 2, 'release/v3.2.0', 300)
+      await saveDoneMark(store.$, SCOPE, 1, 'branch full-app', 310)
+      const keys = [...store.fake.store.keys()]
+      const removal = { removedAt: 400, removedBy: MarkRemover.User } as const
+      store.fake.beforeNextWrite = () => store.fake.refusedWrites.push('the store is over 4 MiB')
+      const failed = await saveRemovedDoneMark(store.$, SCOPE, 2, removal)
+      const removed = await saveRemovedDoneMark(store.$, SCOPE, 2, removal)
+
+      expect(failed.outcome).toBe(Outcome.Failed)
+      expect([...store.fake.store.keys()]).toEqual([
+        ...keys,
+        markRemovalRecordOf(SCOPE, { ...fullApp, markRemoval: { ...removal, markedAt: 310 } }).key,
+        markRemovalRecordOf(SCOPE, { ...loginFix, markRemoval: { ...removal, markedAt: 300 } }).key,
+      ])
+      expect(boardOf(await loadBoard(store.$, SCOPE)).goals.map(doneMarkOf)).toEqual([
+        undefined,
+        undefined,
+      ])
       expect(await loadBoard(store.$, SCOPE)).toEqual({
         outcome: Outcome.Read,
         board: boardOf(removed),

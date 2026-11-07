@@ -9,6 +9,7 @@ import {
   startSession,
   switchSession,
 } from '../testSupport'
+import { dependencyRecordOf } from './boardRecord'
 import { boardPrefixOf, sessionScope } from './boardScope'
 import { GOALS_COMMAND, GOALS_PANE } from './goalNames'
 import {
@@ -48,6 +49,24 @@ describe('the /goals command', () => {
           '  #41 - Rotation keeps the open form',
         ].join('\n'),
       )
+    },
+  )
+
+  test(
+    'where the pane cannot open, /goals lists a dependency below the goal depending on it',
+    NO_TIME_LIMIT,
+    async ($, on) => {
+      on('ui.open', { id: GOALS_PANE }, () => ({
+        value: { isPlaced: false, reason: 'no-surface' },
+      }))
+      const dependency = dependencyRecordOf(sessionScope(FIRST_SESSION), {
+        ...MIGRATION_GUIDE,
+        dependencySetting: { value: ROTATION_CRASH.id, setAt: 500 },
+      })
+      await startSession($, on, { stored: storedBoard().set(dependency.key, dependency.value) })
+      const lines = (await goalsCommand($, ''))?.split('\n') ?? []
+
+      expect(lines[lines.indexOf(`Goal 1: ${MIGRATION_GUIDE.text}`) + 1]).toContain('Goal 2')
     },
   )
 

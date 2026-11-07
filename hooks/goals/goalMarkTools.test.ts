@@ -23,6 +23,7 @@ import {
   SEE_OPEN_GOALS,
   addGoals,
   listGoals,
+  makeDependent,
 } from './goalToolTestSupport'
 
 const EVIDENCE = '.cache/drafts/migration-guide.html'
@@ -142,6 +143,41 @@ describe('removing a done mark', () => {
     )
     expect([...session.store]).toEqual(stored)
   })
+})
+
+describe('a goal that depends on another goal', () => {
+  test(
+    'is denied a mark until the goal it depends on is marked',
+    NO_TIME_LIMIT,
+    async ($, on) => {
+      const session = await startSession($, on)
+      await addGoals(session, [MIGRATION_GUIDE, ROTATION_CRASH])
+      await makeDependent(session, 1, 2)
+      const stored = [...session.store]
+
+      expect((await markGoalDone($, { goal: 1, evidence: EVIDENCE })).deny).toContain('Goal 2')
+      expect([...session.store]).toEqual(stored)
+      await markGoalDone($, { goal: 2, evidence: 'release/v2.4.0' })
+      expect((await markGoalDone($, { goal: 1, evidence: EVIDENCE })).deny).toBeUndefined()
+    },
+  )
+
+  test(
+    'loses its mark with the mark of the goal it depends on, and the model is told',
+    NO_TIME_LIMIT,
+    async ($, on) => {
+      const session = await startSession($, on)
+      await addGoals(session, [MIGRATION_GUIDE, ROTATION_CRASH])
+      await makeDependent(session, 1, 2)
+      await markGoalDone($, { goal: 2, evidence: 'release/v2.4.0' })
+      await markGoalDone($, { goal: 1, evidence: EVIDENCE })
+
+      const unmarked = await unmarkGoalDone($, { goal: 2 })
+      expect(unmarked.context).toHaveLength(1)
+      expect(unmarked.context?.[0]).toContain('Goal 1')
+      expect(await listGoals($)).not.toContain('Marked as done')
+    },
+  )
 })
 
 describe('input the model gives, and a goal that is not open', () => {

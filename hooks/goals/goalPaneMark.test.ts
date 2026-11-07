@@ -1,7 +1,6 @@
 import { describe, expect, test } from 'claude-code/testing'
 
 import { FIRST_SESSION, NO_TIME_LIMIT, startSession } from '../testSupport'
-import { MarkRemover } from './board'
 import { doneMarkRecordOf, markRemovalRecordOf } from './boardRecord'
 import { sessionScope } from './boardScope'
 import { MARK_GOAL_DONE_TOOL, UNMARK_GOAL_DONE_TOOL } from './goalNames'
@@ -15,6 +14,7 @@ import {
   mountGoalsPane,
   storedBoardWithMark,
 } from './goalPaneTestSupport'
+import { MarkRemover } from './doneMark'
 
 const REASON = 'The release notes still name v1.45.2'
 

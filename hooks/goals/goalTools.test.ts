@@ -13,12 +13,14 @@ import {
   mountPane,
   startSession,
 } from '../testSupport'
-import { MarkRemover } from './board'
+import type { PrioritizedGoal } from './board'
+import { MarkRemover } from './doneMark'
 import {
   clearanceRecordOf,
   doneMarkRecordOf,
   goalRecordOf,
   markRemovalRecordOf,
+  priorityRecordOf,
   todoRecordOf,
 } from './boardRecord'
 import { sessionScope } from './boardScope'
@@ -122,6 +124,32 @@ describe('listing the goals', () => {
   )
 
   test(
+    'the open goals are listed by priority, and those without one last',
+    NO_TIME_LIMIT,
+    async ($, on) => {
+      const scope = sessionScope(FIRST_SESSION)
+      const atP0: PrioritizedGoal = {
+        ...goalNumbered(2, ROTATION_CRASH),
+        prioritySetting: { value: 0, setAt: 500 },
+      }
+      const atP1: PrioritizedGoal = {
+        ...goalNumbered(3, STORE_LISTING),
+        prioritySetting: { value: 1, setAt: 510 },
+      }
+      const records = [
+        ...[goalNumbered(1, MIGRATION_GUIDE), atP1, atP0].map(goal => goalRecordOf(scope, goal)),
+        ...[atP1, atP0].map(goal => priorityRecordOf(scope, goal)),
+      ]
+      const stored = new Map(records.map(record => [record.key, record.value]))
+      await startSession($, on, { stored })
+
+      const listed = (await listGoals($)).split('\n')
+
+      expect(listed.flatMap(line => /^Goal (\d+)/.exec(line)?.[1] ?? [])).toEqual(['2', '3', '1'])
+    },
+  )
+
+  test(
     'a board whose goals are all cleared, or that has none, is listed as the empty board, with ' +
       'its cleared goals after it',
     NO_TIME_LIMIT,
@@ -153,7 +181,7 @@ describe('listing the goals', () => {
       const unmarked = {
         ...goalNumbered(2, ROTATION_CRASH),
         doneMark,
-        markRemoval: { markedAt: 300, removedAt: 400, removedBy: MarkRemover.User },
+        markRemoval: { markedAt: 300, removedAt: 400, removedBy: MarkRemover.User } as const,
       }
       const records = [
         ...[marked, unmarked].flatMap(goal => [

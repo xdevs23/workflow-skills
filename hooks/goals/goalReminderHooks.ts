@@ -79,8 +79,8 @@ export const submitWithGoalChanges: MatchedHook<'prompt.submit', EveryEvent> = a
 
 /**
  * Records the board in the state as seen by the model running the session `sessionId`, and returns
- * the goals added, edited, unmarked by the user or cleared since the model saw the board before. A
- * model that saw no board yet is given the open goals.
+ * the goals added, edited, unmarked, prioritized, made dependent or cleared by the user since the
+ * model saw the board before. A model that has not seen a board yet is given the open goals.
  */
 async function takeGoalChanges(
   $: EngineInterface,

@@ -20,11 +20,6 @@ export const GOALS_NOT_EXHAUSTIVE =
   'The goals are not exhaustive. Requests from the conversation, entries in TODO.md and rules ' +
   'still apply. Continue working on tasks where you left off and keep working towards the goals.'
 
-/** The first paragraph of the idle reminder while a goal is open without a done mark. */
-export const IDLE_WITH_UNFINISHED_GOALS =
-  'You are idle while goals are open. Pick up the work on them in this turn. Do not end the turn ' +
-  'on a status report.'
-
 const PANE_PROPS: RenderPropsOf['Pane'] = {
   title: 'Questions',
   isFocused: true,

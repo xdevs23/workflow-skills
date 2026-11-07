@@ -3,22 +3,34 @@ import { describe, expect, test } from 'claude-code/testing'
 import type { Board, Goal } from '../../types'
 import {
   EMPTY_BOARD,
-  MarkRemover,
   Outcome,
   Refusal,
   addGoal,
   attachTodo,
-  boardWithChangesTakenBack,
   clearGoal,
-  combinedBoardOf,
   detachTodo,
-  doneMarkOf,
   editGoal,
   markGoalDone,
+  openGoalsByIdOf,
   openGoalsOf,
   removeDoneMark,
+  setGoalDependency,
+  setGoalPriority,
 } from './board'
-import type { AddRefused, BoardChange, EditRefused, MarkRefused, UnmarkRefused } from './board'
+import type {
+  AddRefused,
+  BoardChange,
+  EditRefused,
+  LoopRefused,
+  MarkRefused,
+  NotOpenRefused,
+  UnmarkRefused,
+} from './board'
+import { boardWithChangesTakenBack } from './boardChanges'
+import { combinedBoardOf } from './boardMerge'
+import { MarkRemover, doneMarkOf } from './doneMark'
+import { dependencyChoicesOf } from './dependency'
+import { priorityOf, sortedByPriority } from './priority'
 
 const FULL_APP: Goal = {
   id: 'full-app',
@@ -49,7 +61,14 @@ const THREE_GOALS: Board = { goals: [FULL_APP, LOGIN_FIX, TEST_HARNESS] }
 
 /** The board after a change, failing the test when the change was refused. */
 function boardOf(
-  change: BoardChange | AddRefused | EditRefused | MarkRefused | UnmarkRefused,
+  change:
+    | BoardChange
+    | AddRefused
+    | EditRefused
+    | MarkRefused
+    | UnmarkRefused
+    | NotOpenRefused
+    | LoopRefused,
 ): Board {
   if (change.outcome === Outcome.Refused) {
     throw new Error(`The change was refused: ${change.refusal}`)
@@ -193,7 +212,7 @@ describe('editing a goal', () => {
 })
 
 describe('marking a goal as done', () => {
-  const BY_USER = { removedAt: 600, removedBy: MarkRemover.User }
+  const BY_USER = { removedAt: 600, removedBy: MarkRemover.User } as const
 
   test('a marked goal stays open, with the evidence without the white space around it', () => {
     const marked = boardOf(markGoalDone(THREE_GOALS, 2, ' release/v3.2.0 \n', 500))
@@ -409,6 +428,128 @@ describe('detaching a TODO entry', () => {
   })
 })
 
+describe('the priority of a goal', () => {
+  test('a priority set on a goal is its priority until it is removed', () => {
+    const set = boardOf(setGoalPriority(THREE_GOALS, 2, 0, 400))
+    const removed = boardOf(setGoalPriority(set, 2, undefined, 500))
+
+    expect(goalOf(set, 2)?.prioritySetting).toEqual({ value: 0, setAt: 400 })
+    expect(goalOf(removed, 2)?.prioritySetting).toEqual({ setAt: 500 })
+    expect(removed.goals.map(priorityOf)).toEqual([undefined, undefined, undefined])
+  })
+
+  test('goals sort by priority, P0 first, by number within one priority, and unset last', () => {
+    const fourGoals = { goals: [...THREE_GOALS.goals, { ...TEST_HARNESS, id: 'four', number: 4 }] }
+    const atP2 = boardOf(setGoalPriority(fourGoals, 3, 2, 400))
+    const atP0 = boardOf(setGoalPriority(atP2, 4, 0, 410))
+    const prioritized = boardOf(setGoalPriority(atP0, 1, 2, 420))
+
+    expect(sortedByPriority(prioritized.goals).map(goal => goal.number)).toEqual([4, 1, 3, 2])
+  })
+})
+
+describe('the dependency of a goal', () => {
+  const BY_USER = { removedAt: 600, removedBy: MarkRemover.User } as const
+
+  /** THREE_GOALS with goal 1 depending on goal 2, which depends on goal 3. */
+  function chainedBoard(): Board {
+    return boardOf(setGoalDependency(boardOf(setGoalDependency(THREE_GOALS, 1, 2, 400)), 2, 3, 410))
+  }
+
+  /** `chainedBoard` with goals 3, 2 and 1 marked as done, in that order. */
+  function chainMarkedDone(): Board {
+    const third = boardOf(markGoalDone(chainedBoard(), 3, 'v3.2.0', 500))
+
+    return boardOf(markGoalDone(boardOf(markGoalDone(third, 2, 'v3.2.1', 510)), 1, 'v3.3.0', 520))
+  }
+
+  /** The numbers of the goals unmarked with `change`, each with the remover of its mark. */
+  function unmarkedBy(change: { outcome: Outcome; unmarked?: readonly Goal[] }) {
+    return (change.unmarked ?? []).map(goal => [goal.number, goal.markRemoval?.removedBy])
+  }
+
+  test('a dependency that closes a loop is refused, directly, through a goal, or on itself', () => {
+    for (const [number, dependsOn] of [
+      [2, 1],
+      [3, 1],
+      [1, 1],
+    ] as const) {
+      expect(setGoalDependency(chainedBoard(), number, dependsOn, 500)).toEqual({
+        outcome: Outcome.Refused,
+        refusal: Refusal.DependencyLoop,
+        goal: number,
+        dependsOn,
+      })
+    }
+  })
+
+  test('the choices of a goal leave out the goals closing a loop', () => {
+    const board = chainedBoard()
+    const open = openGoalsByIdOf(board)
+    const choicesOf = (number: number) =>
+      dependencyChoicesOf(open, goalOf(board, number) ?? FULL_APP).map(goal => goal.number)
+
+    expect(choicesOf(1)).toEqual([2, 3])
+    expect(choicesOf(3)).toEqual([])
+  })
+
+  test('a goal is marked as done only once the goal it depends on is marked or cleared', () => {
+    const board = boardOf(setGoalDependency(THREE_GOALS, 1, 2, 400))
+    const marked = boardOf(markGoalDone(board, 2, 'v3.2.0', 500))
+    const cleared = boardOf(clearGoal(board, 2, 500))
+
+    expect(markGoalDone(board, 1, 'branch full-app', 600)).toEqual({
+      outcome: Outcome.Refused,
+      refusal: Refusal.DependencyNotDone,
+      goal: 1,
+      dependsOn: 2,
+    })
+    for (const done of [marked, cleared]) {
+      expect(markGoalDone(done, 1, 'branch full-app', 600).outcome).toBe(Outcome.Changed)
+    }
+  })
+
+  test('removing a mark removes the marks of the goals depending on it, down the chain', () => {
+    const removed = removeDoneMark(chainMarkedDone(), 3, BY_USER)
+
+    expect(unmarkedBy(removed)).toEqual([
+      [2, MarkRemover.Dependency],
+      [1, MarkRemover.Dependency],
+    ])
+    expect(goalOf(boardOf(removed), 1)?.markRemoval).toEqual({
+      markedAt: 520,
+      removedAt: 600,
+      removedBy: MarkRemover.Dependency,
+      dependencyNumber: 2,
+    })
+  })
+
+  test('editing a goal removes its mark and the marks of the goals depending on it', () => {
+    const edited = editGoal(chainMarkedDone(), 2, 'Fix the export timeout today', 600)
+
+    expect(unmarkedBy(edited)).toEqual([
+      [2, MarkRemover.User],
+      [1, MarkRemover.Dependency],
+    ])
+    expect(doneMarkOf(goalOf(boardOf(edited), 3) ?? TEST_HARNESS)).toBeDefined()
+  })
+
+  test('a marked goal made to depend on a goal not marked as done loses its mark', () => {
+    const marked = boardOf(markGoalDone(THREE_GOALS, 1, 'branch full-app', 400))
+
+    expect(unmarkedBy(setGoalDependency(marked, 1, 2, 500))).toEqual([[1, MarkRemover.Dependency]])
+  })
+
+  test('removing a dependency on a cleared goal changes nothing', () => {
+    const cleared = boardOf(clearGoal(boardOf(setGoalDependency(THREE_GOALS, 1, 2, 400)), 2, 450))
+
+    expect(setGoalDependency(cleared, 1, undefined, 500)).toEqual({
+      outcome: Outcome.Unchanged,
+      board: cleared,
+    })
+  })
+})
+
 describe('combining two copies of a board', () => {
   test('keeps every goal added and every goal cleared in either copy', () => {
     const older = { goals: [FULL_APP, LOGIN_FIX] }
@@ -441,7 +582,7 @@ describe('combining two copies of a board', () => {
 
   test('uses the done mark set later and the removal made later', () => {
     const marked = boardOf(markGoalDone(THREE_GOALS, 2, 'v3.2.0', 400))
-    const removal = { removedAt: 500, removedBy: MarkRemover.User }
+    const removal = { removedAt: 500, removedBy: MarkRemover.User } as const
     const removed = boardOf(removeDoneMark(marked, 2, removal))
     const markedAgain = boardOf(markGoalDone(removed, 2, 'v3.2.1', 600))
 
@@ -457,9 +598,25 @@ describe('combining two copies of a board', () => {
     }
   })
 
+  test('uses the priority and the dependency set or removed later', () => {
+    const prioritized = boardOf(setGoalPriority(THREE_GOALS, 1, 1, 400))
+    const set = boardOf(setGoalDependency(prioritized, 1, 2, 410))
+    const unprioritized = boardOf(setGoalPriority(set, 1, undefined, 500))
+    const removed = boardOf(setGoalDependency(unprioritized, 1, undefined, 510))
+
+    for (const [older, newer] of [
+      [THREE_GOALS, set],
+      [set, removed],
+    ] as const) {
+      for (const [first, second] of [[older, newer], [newer, older]] as const) {
+        expect(goalOf(combinedBoardOf(first, second), 1)).toEqual(goalOf(newer, 1))
+      }
+    }
+  })
+
   test('a mark set in one copy is still set when the other copy removed an older mark', () => {
     const marked = boardOf(markGoalDone(THREE_GOALS, 2, 'v3.2.0', 400))
-    const removal = { removedAt: 500, removedBy: MarkRemover.User }
+    const removal = { removedAt: 500, removedBy: MarkRemover.User } as const
     const removed = boardOf(removeDoneMark(marked, 2, removal, 400))
     const markedElsewhere = boardOf(markGoalDone(marked, 2, 'v3.2.1', 450))
 
@@ -494,7 +651,7 @@ describe('taking back the changes of a note', () => {
 
   test('sets back the done mark of a goal marked or unmarked between two copies', () => {
     const marked = boardOf(markGoalDone(THREE_GOALS, 2, 'v3.2.0', 400))
-    const removal = { removedAt: 500, removedBy: MarkRemover.User }
+    const removal = { removedAt: 500, removedBy: MarkRemover.User } as const
     const removed = boardOf(removeDoneMark(marked, 2, removal))
 
     expect(boardWithChangesTakenBack(marked, THREE_GOALS, marked)).toEqual(THREE_GOALS)

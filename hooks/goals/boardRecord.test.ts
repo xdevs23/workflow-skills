@@ -2,13 +2,16 @@ import { expect, test } from 'claude-code/testing'
 
 import type { Board } from '../../types'
 import { FIRST_SESSION } from '../testSupport'
-import { MarkRemover } from './board'
+import type { DependentGoal, PrioritizedGoal } from './board'
+import { MarkRemover } from './doneMark'
 import {
   UnreadableRecordError,
   clearanceRecordOf,
+  dependencyRecordOf,
   doneMarkRecordOf,
   goalRecordOf,
   markRemovalRecordOf,
+  priorityRecordOf,
   readBoard,
   textRecordOf,
   todoRecordOf,
@@ -79,7 +82,7 @@ test('a done mark and a removed done mark are read back as they were written', (
   const marked = { ...added, doneMark: { evidence: 'release/v3.2.0', markedAt: 300 } }
   const removed = {
     ...marked,
-    markRemoval: { markedAt: 300, removedAt: 400, removedBy: MarkRemover.User },
+    markRemoval: { markedAt: 300, removedAt: 400, removedBy: MarkRemover.User } as const,
   }
 
   const markRecords = [goalRecordOf(SCOPE, marked), doneMarkRecordOf(SCOPE, marked)]
@@ -102,7 +105,7 @@ test('a done mark removed by someone this code does not know is unreadable', () 
     addedAt: 200,
     todos: [],
     doneMark: { evidence: 'v3.2.0', markedAt: 300 },
-    markRemoval: { markedAt: 300, removedAt: 400, removedBy: MarkRemover.User },
+    markRemoval: { markedAt: 300, removedAt: 400, removedBy: MarkRemover.User } as const,
   }
   const record = markRemovalRecordOf(SCOPE, removed)
   const stored = [
@@ -123,7 +126,7 @@ const MARKED = {
 }
 const UNMARKED = {
   ...MARKED,
-  markRemoval: { markedAt: 300, removedAt: 400, removedBy: MarkRemover.User },
+  markRemoval: { markedAt: 300, removedAt: 400, removedBy: MarkRemover.User } as const,
 }
 const MARK_RECORDS = [goalRecordOf(SCOPE, MARKED), doneMarkRecordOf(SCOPE, MARKED)]
 const REMOVAL_RECORD = markRemovalRecordOf(SCOPE, UNMARKED)
@@ -153,5 +156,68 @@ test('a removal with a reason that is not a text or is blank is read without a r
     const stored = { key: REMOVAL_RECORD.key, value: { ...REMOVAL_RECORD.value, reason } }
 
     expect(readBoard(SCOPE, [...MARK_RECORDS, stored])).toEqual({ goals: [UNMARKED] })
+  }
+})
+
+const PRIORITIZED: PrioritizedGoal = { ...MARKED, prioritySetting: { value: 2, setAt: 500 } }
+const PRIORITY_RECORD = priorityRecordOf(SCOPE, PRIORITIZED)
+
+test('a priority and the removal of a priority are read back under one key as written', () => {
+  const removed = { ...MARKED, prioritySetting: { setAt: 600 } }
+  const removal = priorityRecordOf(SCOPE, removed)
+
+  expect(removal.key).toBe(PRIORITY_RECORD.key)
+  expect(readBoard(SCOPE, [...MARK_RECORDS, PRIORITY_RECORD])).toEqual({ goals: [PRIORITIZED] })
+  expect(readBoard(SCOPE, [...MARK_RECORDS, removal])).toEqual({ goals: [removed] })
+})
+
+test('a priority record with a priority other than P0 to P9 is unreadable', () => {
+  for (const value of [10, -1, 1.5, '1', null]) {
+    const stored = { key: PRIORITY_RECORD.key, value: { ...PRIORITY_RECORD.value, value } }
+
+    expect(() => readBoard(SCOPE, [...MARK_RECORDS, stored])).toThrow(UnreadableRecordError)
+  }
+})
+
+const DEPENDENT: DependentGoal = {
+  ...MARKED,
+  dependencySetting: { value: 'full-app', setAt: 500 },
+}
+const DEPENDENCY_RECORD = dependencyRecordOf(SCOPE, DEPENDENT)
+
+test('a dependency and its removal are read back under one key as written', () => {
+  const removed = { ...MARKED, dependencySetting: { setAt: 600 } }
+  const removal = dependencyRecordOf(SCOPE, removed)
+
+  expect(removal.key).toBe(DEPENDENCY_RECORD.key)
+  expect(readBoard(SCOPE, [...MARK_RECORDS, DEPENDENCY_RECORD])).toEqual({ goals: [DEPENDENT] })
+  expect(readBoard(SCOPE, [...MARK_RECORDS, removal])).toEqual({ goals: [removed] })
+})
+
+test('a dependency record whose goal depended on is not an id is unreadable', () => {
+  for (const value of [7, null]) {
+    const stored = { key: DEPENDENCY_RECORD.key, value: { ...DEPENDENCY_RECORD.value, value } }
+
+    expect(() => readBoard(SCOPE, [...MARK_RECORDS, stored])).toThrow(UnreadableRecordError)
+  }
+})
+
+test('a mark removed for a dependency is read back with the number of the goal depended on', () => {
+  const unmarked = {
+    ...MARKED,
+    markRemoval: {
+      markedAt: 300,
+      removedAt: 400,
+      removedBy: MarkRemover.Dependency,
+      dependencyNumber: 1,
+    },
+  } as const
+  const removal = markRemovalRecordOf(SCOPE, unmarked)
+
+  expect(readBoard(SCOPE, [...MARK_RECORDS, removal])).toEqual({ goals: [unmarked] })
+  for (const dependencyNumber of [undefined, 0, '1']) {
+    const stored = { key: removal.key, value: { ...removal.value, dependencyNumber } }
+
+    expect(() => readBoard(SCOPE, [...MARK_RECORDS, stored])).toThrow(UnreadableRecordError)
   }
 })
