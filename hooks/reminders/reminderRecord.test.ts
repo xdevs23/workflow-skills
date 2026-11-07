@@ -1,5 +1,6 @@
 import { describe, expect } from 'claude-code/testing'
 
+import type { StoredEntry } from '../pluginStore'
 import { test } from '../testDeclaration'
 import { readReminders, reminderRecordOf } from './reminderRecord'
 
@@ -24,5 +25,35 @@ describe('the numbers of stored reminders', () => {
       ['c', 3],
       ['d', 4],
     ])
+  })
+})
+
+describe('the cadence values of stored reminders', () => {
+  /** The stored record of a reminder whose cadence has `phrases` as the value of its field. */
+  function entryWithPhrases(phrases: readonly unknown[]): StoredEntry {
+    const { key, value } = reminderRecordOf(SESSION, {
+      id: 'a',
+      number: 1,
+      text: 'a',
+      addedAt: 0,
+      cadence: CADENCE,
+    })
+
+    return { key, value: { ...value, cadence: { kind: 'when-claude-says', values: { phrases } } } }
+  }
+
+  for (const phrases of [['a', 'b'], []]) {
+    test(`a list of texts ${JSON.stringify(phrases)} reads back as stored`, () => {
+      const { reminders, unreadableKeys } = readReminders(SESSION, [entryWithPhrases(phrases)])
+
+      expect(reminders.map(({ cadence }) => cadence.values)).toEqual([{ phrases }])
+      expect(unreadableKeys).toEqual([])
+    })
+  }
+
+  test('a list holding something other than a text makes the record unreadable', () => {
+    const entry = entryWithPhrases(['a', 3])
+
+    expect(readReminders(SESSION, [entry])).toEqual({ reminders: [], unreadableKeys: [entry.key] })
   })
 })

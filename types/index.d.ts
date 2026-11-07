@@ -165,12 +165,18 @@ export type IdleStretch = {
   phase: IdlePhase
 }
 
+/**
+ * The value stored for a field: the text typed into a text field, the value of the option picked
+ * in a dropdown, or the items added to a list field.
+ */
+export type CadenceValue = string | readonly string[]
+
 /** When a reminder is sent: the cadence kind, and the values typed into the fields of the kind. */
 export type Cadence = {
   /** The id of the cadence kind. */
   kind: string
   /** The values by the keys of the fields, read only by the cadence kind. */
-  values: Readonly<Record<string, string>>
+  values: Readonly<Record<string, CadenceValue>>
 }
 
 /**
@@ -193,8 +199,15 @@ export type Reminder = {
 /** The reminders of a session as the session last read them, or why the store could not. */
 export type SessionReminders = { sessionId: string } & (ReadReminders | RemindersNotRead)
 
-/** What the user typed into the card of a reminder, before it is saved. */
-export type CardDraft = { text: string; cadence: Cadence }
+/**
+ * What the user typed into the card of a reminder, before it is saved. `nextItems` has, by the key
+ * of each list field, the text typed into the field that adds its next item, not added yet.
+ */
+export type CardDraft = {
+  text: string
+  cadence: Cadence
+  nextItems: Readonly<Record<string, string>>
+}
 
 /**
  * The warning on a card whose save was refused: a blank text, a kind this version of the plugin
@@ -309,7 +322,7 @@ declare module 'claude-code' {
        */
       sessionReminders: SessionReminders | null
       /** The one card of the Reminders pane being edited or waiting for a yes, if any. */
-      reminderCard: ReminderCard | null
+      reminderCard: Shaped<ReminderCard | null>
       /** The id of the reminder whose save in the Reminders pane runs, if one runs. */
       savingReminder: string | null
       /** When the reminders of the session are next sent, as their cadence kinds put it. */

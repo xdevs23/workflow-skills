@@ -20,7 +20,14 @@ export const OFF_LABEL = '○ Off'
 export const TEXT_LABEL = 'Text'
 export const CADENCE_LABEL = 'Cadence'
 export const TEXT_PLACEHOLDER = 'What Claude should do'
+/** What Enter does in the field that adds an item to a list, drawn beside the field. */
+export const ADD_ITEM_SUBMIT = 'add'
+/** The mark on the button that removes an item of a list. */
+export const REMOVE_ITEM_MARK = '×'
 export const BLANK_TEXT_WARNING = 'A reminder needs a text.'
+export const MISSHAPEN_VALUES =
+  'This version of the plugin cannot read the values stored for this cadence. Press Edit to set ' +
+  'them again.'
 export const UNKNOWN_CADENCE =
   'This version of the plugin does not know this cadence. Press Edit to pick another.'
 export const REMINDERS_LOADING = 'Reading the reminders of this session…'
@@ -61,6 +68,11 @@ export function describeNextSend(at: number, now: number): string {
 /** The name of reminder `number` in every text, such as "Reminder 2". */
 export function nameReminder(number: number): string {
   return `Reminder ${number}`
+}
+
+/** The name of the button that removes `item` from a list, read out in place of its mark. */
+export function describeRemoveItem(item: string): string {
+  return `Remove "${item}"`
 }
 
 export function describeRemoveQuestion(number: number): string {
@@ -106,4 +118,5 @@ export function describeFocusNotMoved(denial: string, target: FocusTarget): stri
 
 const FOCUS_FIELD_NAMES: Record<CardFocus, string> = {
   [CardFocus.Text]: 'text field',
+  [CardFocus.NextItem]: 'field that adds the next item',
 }

@@ -4,7 +4,7 @@ import type { On } from 'claude-code'
 import { test } from '../testDeclaration'
 import { FIRST_SESSION, SUBAGENT, startSession, stopTurn } from '../testSupport'
 import { CadenceProblem, readSettings } from './cadenceKind'
-import { PHRASE_KIND } from './phraseCadence'
+import { PHRASE_CADENCE, PHRASE_KIND } from './phraseCadence'
 import { enabledRecordOf, reminderRecordOf } from './reminderRecord'
 
 const MARK_GOAL = 'Mark the goal done with its evidence when you finish testing.'
@@ -15,14 +15,15 @@ const TESTS_PASS = 'Finished testing: all 212 tests pass.'
 
 /**
  * The records of three reminders of the kind "when Claude says" in FIRST_SESSION: reminder 1 on
- * the phrases "finished testing" and "tests pass", reminder 2 on "installed on the emulator" and
- * switched off, and reminder 3 on "tests pass".
+ * the phrases "finished testing" and "tests pass", stored as the text an earlier version typed
+ * them into, reminder 2 on "installed on the emulator" and switched off, and reminder 3 on
+ * "tests pass".
  */
 function storedReminders(): Map<string, unknown> {
   const reminders = [
     { id: 'mark-goal', text: MARK_GOAL, phrases: '"finished testing", "tests pass"' },
-    { id: 'screenshot', text: SCREENSHOT, phrases: '"installed on the emulator"' },
-    { id: 'start-build', text: START_BUILD, phrases: '"tests pass"' },
+    { id: 'screenshot', text: SCREENSHOT, phrases: ['installed on the emulator'] },
+    { id: 'start-build', text: START_BUILD, phrases: ['tests pass'] },
   ]
   const records = [
     ...reminders.map(({ id, text, phrases }, index) =>
@@ -46,18 +47,33 @@ function stopBeneath(on: On): void {
   on('classic.Stop', () => ({}))
 }
 
-describe('the phrases typed into a card of the kind "when Claude says"', () => {
-  test('phrases in double quotes with commas between them are read', () => {
-    const read = readSettings(PHRASE_KIND, { phrases: ' "finished testing" ,"tests pass" ' })
+describe('the phrases of a card set to the kind "when Claude says"', () => {
+  test('the phrases added to the card are read', () => {
+    const read = readSettings(PHRASE_KIND, { phrases: ['finished testing', 'tests pass'] })
 
     expect(read instanceof CadenceProblem ? read : read.phrases).toHaveLength(2)
   })
 
-  for (const typed of ['', 'tests pass', '"tests pass" "done"', '"tests pass",', '"", "done"', '3']) {
-    test(`${JSON.stringify(typed)} is refused with the problem shown on the card`, () => {
-      expect(readSettings(PHRASE_KIND, { phrases: typed })).toBeInstanceOf(CadenceProblem)
+  for (const phrases of [[], ['tests pass', ' ']]) {
+    test(`${JSON.stringify(phrases)} is refused with the problem shown on the card`, () => {
+      expect(readSettings(PHRASE_KIND, { phrases })).toBeInstanceOf(CadenceProblem)
     })
   }
+
+  test('a text stored by an earlier version is read as phrases in double quotes', () => {
+    const stored = ' "finished testing" ,"tests pass" '
+
+    expect(PHRASE_CADENCE.describe({ phrases: stored })).toBe(
+      'when Claude says "finished testing", "tests pass"',
+    )
+  })
+
+  test('a stored text that does not read as phrases in double quotes is a problem', () => {
+    const unreadable = { phrases: '"tests pass", "done' }
+
+    expect(readSettings(PHRASE_KIND, unreadable)).toBeInstanceOf(CadenceProblem)
+    expect(PHRASE_CADENCE.describe(unreadable)).toBe(PHRASE_KIND.label)
+  })
 })
 
 describe('the end of a turn on a message with a phrase of a reminder', () => {

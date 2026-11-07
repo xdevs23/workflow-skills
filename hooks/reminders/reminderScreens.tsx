@@ -16,6 +16,7 @@ import type { SurfaceWithFields } from '../surfaces'
 import { FieldKind, kindOf, optionsOf, valueOfField } from './cadenceKind'
 import type { CadenceKinds, CardField } from './cadenceKind'
 import { loadRemindersIntoState } from './reminderActions'
+import { drawListField } from './reminderListField'
 import { REMINDERS_PANE } from './reminderNames'
 import {
   askToRemove,
@@ -292,7 +293,7 @@ function drawCadence(
  * switch, Done and Remove. Remove on a card not stored yet drops the card. Every field is drawn
  * with what its fields were last drawn anew with, and the engine stores what is typed and picked
  * after that: a value drawn anew after every change would replace the typing that arrived meanwhile.
- * The labels of the options follow what is `typed`.
+ * The labels of the options and the rows of a list follow what is `typed`.
  */
 function drawEditedCard(
   $: EngineInterface,
@@ -392,7 +393,7 @@ function drawKindDropdown($: EngineInterface, e: FieldsInput, pane: PaneContext,
 
 /**
  * The field `field` of the cadence of `card`, one of the fields `fields` of its kind: a text
- * field, or a dropdown of its options as the values `typed` label them.
+ * field, a dropdown of its options as the values `typed` label them, or a list field.
  */
 function drawValueField(
   $: EngineInterface,
@@ -405,17 +406,17 @@ function drawValueField(
     field,
   }: { card: EditedCard; typed: CardDraft; fields: readonly CardField[]; field: CardField },
 ) {
-  const { Input, Select } = $.ui.resolve(e)
+  const elements = $.ui.resolve(e)
+  const { Input, Select } = elements
   const { reminderId, fieldsId, opened } = card
   const key = valueFieldKeyOf(fieldsId, field.key)
-  const value = valueOfField(fields, opened.cadence.values, field.key)
   const typeInto = (typed: string) => typeValue($, reminderId, field.key, typed)
   switch (field.kind) {
     case FieldKind.Text:
       return (
         <Input
           key={key}
-          value={value}
+          value={valueOfField(fields, opened.cadence.values, field)}
           {...(field.placeholder === undefined ? {} : { placeholder: field.placeholder })}
           submitLabel={DONE_LABEL.toLowerCase()}
           onInput={typeInto}
@@ -429,10 +430,12 @@ function drawValueField(
         <Select
           key={key}
           options={optionsOf(fields, typed.cadence.values, field)}
-          value={value}
+          value={valueOfField(fields, opened.cadence.values, field)}
           onSelect={typeInto}
         />
       )
+    case FieldKind.List:
+      return drawListField($, elements, { card, typed, field })
   }
 }
 

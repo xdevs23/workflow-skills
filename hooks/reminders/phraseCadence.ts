@@ -1,5 +1,6 @@
 import type { MatchedHook, On } from 'claude-code'
 
+import type { Cadence } from '../../types'
 import { EVERY_EVENT } from '../everyEvent'
 import type { EveryEvent } from '../everyEvent'
 import { LETTER_OR_DIGIT, withoutQuotedText } from '../quotedText'
@@ -17,9 +18,13 @@ type PhraseSettings = { phrases: readonly RegExp[] }
 
 const PHRASES_FIELD = 'phrases'
 
-const PHRASES_PROBLEM = new CadenceProblem(
-  'Type each phrase in double quotes, with a comma between two phrases, such as ' +
-    '"finished testing", "tests pass".',
+const NO_PHRASE_PROBLEM = new CadenceProblem('Type a phrase and press Enter to add it.')
+
+const BLANK_PHRASE_PROBLEM = new CadenceProblem('Remove the blank phrase.')
+
+const UNREADABLE_PHRASES_PROBLEM = new CadenceProblem(
+  'This version of the plugin cannot read the phrases stored for this reminder. Press Edit to ' +
+    'add them again.',
 )
 
 /** Keeps a phrase from matching inside a longer word, such as "pass" inside "password". */
@@ -34,13 +39,14 @@ export const PHRASE_KIND: CadenceKind<PhraseSettings, typeof PHRASES_FIELD> = {
   label: 'when Claude says',
   fields: [
     {
-      kind: FieldKind.Text,
+      kind: FieldKind.List,
       key: PHRASES_FIELD,
       label: 'Phrases',
-      placeholder: '"tests pass", …',
+      placeholder: 'A phrase, such as tests pass',
     },
   ],
-  read: valueOf => readPhrases(valueOf(PHRASES_FIELD)),
+  read: (_valueOf, itemsOf) => readPhrases(itemsOf(PHRASES_FIELD)),
+  upgradeStored: upgradeQuotedPhrases,
 }
 
 /** The kind "when Claude says" as the core lists it in the kind dropdown. */
@@ -72,32 +78,48 @@ const sendRemindersOnPhrase: MatchedHook<'classic.Stop', EveryEvent> = ($, e, ne
     return note.text
   })
 
+/** Reads `phrases`, the items of the card: at least one phrase, and no blank phrase. */
+function readPhrases(phrases: readonly string[]): PhraseSettings | CadenceProblem {
+  if (phrases.length === 0) {
+    return NO_PHRASE_PROBLEM
+  }
+
+  return phrases.some(phrase => phrase.trim() === '')
+    ? BLANK_PHRASE_PROBLEM
+    : { phrases: phrases.map(patternOfPhrase) }
+}
+
+/** `values` with the phrases stored as text by an earlier version read into a list. */
+function upgradeQuotedPhrases(values: Cadence['values']): Cadence['values'] | CadenceProblem {
+  const stored = values[PHRASES_FIELD]
+  if (typeof stored !== 'string') {
+    return values
+  }
+  const phrases = phrasesOfQuotedText(stored)
+
+  return phrases instanceof CadenceProblem ? phrases : { ...values, [PHRASES_FIELD]: phrases }
+}
+
 /**
- * Reads the phrases typed into the card as `typed`: strings in double quotes as JSON writes them,
- * with a comma between two. At least one phrase, and no blank phrase.
+ * The phrases read from `typed`, as an earlier version stored them in a text field: strings in
+ * double quotes as JSON writes them, with a comma between two.
  */
-function readPhrases(typed: string): PhraseSettings | CadenceProblem {
+function phrasesOfQuotedText(typed: string): readonly string[] | CadenceProblem {
   let listed: unknown
   try {
     listed = JSON.parse(`[${typed}]`)
   } catch (error) {
     if (error instanceof SyntaxError) {
-      return PHRASES_PROBLEM
+      return UNREADABLE_PHRASES_PROBLEM
     }
     throw error
   }
-  if (!Array.isArray(listed) || listed.length === 0) {
-    return PHRASES_PROBLEM
+  if (!Array.isArray(listed)) {
+    return UNREADABLE_PHRASES_PROBLEM
   }
-  const phrases = listed.filter(isPhrase)
+  const phrases = listed.filter(phrase => typeof phrase === 'string')
 
-  return phrases.length === listed.length
-    ? { phrases: phrases.map(patternOfPhrase) }
-    : PHRASES_PROBLEM
-}
-
-function isPhrase(listed: unknown): listed is string {
-  return typeof listed === 'string' && listed.trim() !== ''
+  return phrases.length === listed.length ? phrases : UNREADABLE_PHRASES_PROBLEM
 }
 
 /** Matches `phrase` as whole words in any case, with any white space between its words. */

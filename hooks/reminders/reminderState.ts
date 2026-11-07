@@ -20,7 +20,9 @@ const sessionReminders = atom(
   { plugin: 'workflow-skills', key: 'sessionReminders' } as const,
   null,
 )
-const reminderCard = atom({ plugin: 'workflow-skills', key: 'reminderCard' } as const, null)
+const reminderCard = atom({ plugin: 'workflow-skills', key: 'reminderCard' } as const, null, {
+  shape: 'card-with-next-items',
+})
 const savingReminder = atom({ plugin: 'workflow-skills', key: 'savingReminder' } as const, null)
 const reminderNextSends = atom(
   { plugin: 'workflow-skills', key: 'reminderNextSends' } as const,
@@ -126,13 +128,14 @@ export async function changeDraft(
 }
 
 /**
- * Draws the fields of the card of the reminder with the id `reminderId` anew with what `change`
- * makes of what was typed into it, while the card is edited. The kind dropdown keeps its key, so the
- * focus stays on it. A `change` that returns the draft it got leaves the card as it is.
+ * Draws the fields of the card of the reminder with the id `reminderId` anew, as the fields with
+ * the id `fieldsId`, with what `change` makes of what was typed into it, while the card is edited.
+ * The kind dropdown keeps its key, so the focus stays on it. A `change` that returns the draft it
+ * got leaves the card as it is.
  */
 export async function reopenCard(
   $: EngineInterface,
-  reminderId: string,
+  { reminderId, fieldsId }: { reminderId: string; fieldsId: string },
   change: (draft: CardDraft) => CardDraft,
 ): Promise<void> {
   await update($, reminderCard, inState => {
@@ -150,7 +153,7 @@ export async function reopenCard(
       reminderId,
       mode: CardMode.Editing,
       openingId,
-      fieldsId: crypto.randomUUID(),
+      fieldsId,
       opened: changed,
       draft: changed,
     }

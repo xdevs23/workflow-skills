@@ -10,12 +10,14 @@ import type { Session } from '../testSupport'
 import { PHRASE_KIND } from './phraseCadence'
 import { REMINDERS_COMMAND, REMINDERS_PANE } from './reminderNames'
 import {
+  cadenceRecordOf,
   enabledRecordOf,
   reminderRecordOf,
   remindersPrefixOf,
   removalRecordOf,
   textRecordOf,
 } from './reminderRecord'
+import { describeRemoveItem } from './reminderTexts'
 import { TIME_KIND, TimeUnit } from './timeKind'
 
 const MARK_GOAL = 'Mark the goal done with its evidence when you finish testing.'
@@ -30,10 +32,10 @@ const FULL_STORE = 'the store is over 4 MiB'
 
 /**
  * The cadence of every reminder of the tests. The kind "when Claude says" is the first in the kind
- * dropdown, so a new card starts with it and is saved once its phrases are typed.
+ * dropdown, so a new card starts with it and is saved once its phrase is typed.
  */
-const PHRASES = '"tests pass"'
-const SAYS_TESTS_PASS: Cadence = { kind: PHRASE_KIND.id, values: { phrases: PHRASES } }
+const PHRASE = 'tests pass'
+const SAYS_TESTS_PASS: Cadence = { kind: PHRASE_KIND.id, values: { phrases: [PHRASE] } }
 
 /**
  * The records of reminders 1 and 2 of FIRST_SESSION, with reminder 1 switched on and reminder 2
@@ -139,20 +141,58 @@ async function typeIntoCard(
   await pane.input({ key, text, kind })
 }
 
-/** Types PHRASES into the phrases field of the card edited in the pane, the Input after its text. */
-async function typePhrases(pane: RemindersPane): Promise<void> {
-  const [, phrasesField] = await pane.findAll({ type: 'Input' })
-  if (phrasesField?.key === undefined) {
+/**
+ * Types `phrase` into the field that adds a phrase to the card edited in the pane, the Input after
+ * its text, as the input `kind`.
+ */
+async function typePhrase(
+  pane: RemindersPane,
+  phrase: string,
+  kind: NonNullable<MountInputTarget['kind']>,
+): Promise<void> {
+  const [, phraseField] = await pane.findAll({ type: 'Input' })
+  if (phraseField?.key === undefined) {
     throw new Error('The pane draws no card with a phrases field.')
   }
-  await pane.input({ key: phrasesField.key, text: PHRASES, kind: 'change' })
+  await pane.input({ key: phraseField.key, text: phrase, kind })
 }
 
-/** Presses + Add reminder and types `text` and PHRASES into the new card. */
+/**
+ * Types `phrase` with an Enter into the field that adds a phrase to the card edited in the pane.
+ * The Enter rejects with `NO_FOCUS_IN_KIT` after the phrase is added.
+ */
+async function addPhrase(pane: RemindersPane, phrase: string): Promise<void> {
+  await expect(typePhrase(pane, phrase, 'submit')).rejects.toThrow(NO_FOCUS_IN_KIT)
+}
+
+/** Presses + Add reminder and types `text` and PHRASE into the new card, without an Enter. */
 async function addCard(pane: RemindersPane, text: string): Promise<void> {
   await expect(pane.press({ key: 'add-reminder' })).rejects.toThrow(NO_FOCUS_IN_KIT)
   await typeIntoCard(pane, text, 'change')
-  await typePhrases(pane)
+  await typePhrase(pane, PHRASE, 'change')
+}
+
+/** The button that removes the phrase `phrase` from the card edited in the pane. */
+async function removePhraseButtonOf(
+  pane: Pick<RemindersPane, 'findAll'>,
+  phrase: string,
+): Promise<FoundElement | undefined> {
+  const buttons = await pane.findAll({ type: 'Button' })
+
+  return buttons.find(button => button.props.label === describeRemoveItem(phrase))
+}
+
+/** The records of storedReminders, with reminder 1 on `phrases`, as an earlier version stored them. */
+function storedWithPhrasesOfReminder1(phrases: string): Map<string, unknown> {
+  const reminder1 = reminderRecordOf(FIRST_SESSION, {
+    id: 'mark-goal',
+    number: 1,
+    text: MARK_GOAL,
+    addedAt: 100,
+    cadence: { kind: PHRASE_KIND.id, values: { phrases } },
+  })
+
+  return storedReminders().set(reminder1.key, reminder1.value)
 }
 
 describe('the Reminders pane', () => {
@@ -248,6 +288,20 @@ describe('the Reminders pane', () => {
   )
 
   test(
+    'the switch of a card draws the phrase typed without an Enter as a row, above an empty field',
+    async ($, on) => {
+      await startSession($, on, { stored: storedReminders() })
+      const pane = await mountRemindersPane($, 'terminal')
+      await addCard(pane, UPDATE_SPEC)
+      await pane.press({ key: 'switch-4' })
+
+      expect(await removePhraseButtonOf(pane, PHRASE)).toBeDefined()
+      const [, phraseField] = await pane.findAll({ type: 'Input' })
+      expect(phraseField?.props.value).toBe('')
+    },
+  )
+
+  test(
     'a new card with a blank text shows a warning on Done and on its switch, and stores nothing',
     async ($, on) => {
       const session = await startSession($, on, { stored: storedReminders() })
@@ -325,7 +379,7 @@ describe('the Reminders pane', () => {
       const session = await startSession($, on, { stored: storedReminders() })
       const pane = await mountRemindersPane($, 'terminal')
       await expect(pane.press({ key: 'add-reminder' })).rejects.toThrow(NO_FOCUS_IN_KIT)
-      await typePhrases(pane)
+      await typePhrase(pane, PHRASE, 'change')
       await typeIntoCard(pane, UPDATE_SPEC, 'submit')
 
       const id = addedIdOf(session)
@@ -400,6 +454,131 @@ describe('the Reminders pane', () => {
       })
       expect(reminderRecordsOf(session)).toEqual(storedReminders().set(added.key, added.value))
       expect(await pane.find({ type: 'Text', text: 'every 1 hour' })).toBeDefined()
+    },
+  )
+
+  test(
+    'a phrase typed without an Enter is dropped when another kind is picked',
+    async ($, on) => {
+      const session = await startSession($, on, { stored: storedReminders() })
+      const pane = await mountRemindersPane($, 'terminal')
+      await addCard(pane, UPDATE_SPEC)
+      await pane.select({ key: (await pane.find({ type: 'Select' }))?.key ?? '', value: TIME_KIND.id })
+      await pane.press({ key: 'done-4' })
+
+      const added = reminderRecordOf(FIRST_SESSION, {
+        id: addedIdOf(session),
+        number: 4,
+        text: UPDATE_SPEC,
+        addedAt: NOW,
+        cadence: { kind: TIME_KIND.id, values: { amount: '1', unit: TimeUnit.Hours } },
+      })
+      expect(reminderRecordsOf(session)).toEqual(storedReminders().set(added.key, added.value))
+    },
+  )
+
+  test(
+    'Enter in the phrase field adds the phrase as a row, and its button removes the row',
+    async ($, on) => {
+      const session = await startSession($, on, { stored: storedReminders() })
+      const pane = await mountRemindersPane($, 'terminal')
+      await expect(pane.press({ key: 'add-reminder' })).rejects.toThrow(NO_FOCUS_IN_KIT)
+      await typeIntoCard(pane, UPDATE_SPEC, 'change')
+      await addPhrase(pane, ' finished testing ')
+      await addPhrase(pane, PHRASE)
+
+      expect(await pane.find({ type: 'Text', text: 'finished testing' })).toBeDefined()
+      expect(await pane.find({ type: 'Text', text: PHRASE })).toBeDefined()
+      expect(reminderRecordsOf(session)).toEqual(storedReminders())
+      const removeButton = await removePhraseButtonOf(pane, 'finished testing')
+      await pane.press({ key: removeButton?.key ?? '' })
+      expect(await pane.find({ type: 'Text', text: 'finished testing' })).toBeUndefined()
+
+      await pane.press({ key: 'done-4' })
+      const added = reminderRecordOf(FIRST_SESSION, {
+        id: addedIdOf(session),
+        number: 4,
+        text: UPDATE_SPEC,
+        addedAt: NOW,
+        cadence: SAYS_TESTS_PASS,
+      })
+      expect(reminderRecordsOf(session)).toEqual(storedReminders().set(added.key, added.value))
+      expect(await pane.find({ type: 'Text', text: `when Claude says "${PHRASE}"` })).toBeDefined()
+    },
+  )
+
+  // The pane keeps its focus as a position among its fields and buttons, and the row of a new phrase
+  // is drawn at the position of the phrase field, so the next phrase typed went into the prompt. The
+  // kit keeps no focus ring and does not pass a move of the focus to the hooks of a test, so the
+  // test reads that the Enter asks for a move, after the field is drawn anew under a new key.
+  test(
+    'Enter in the phrase field draws an empty phrase field under a new key and moves the focus',
+    async ($, on) => {
+      await startSession($, on, { stored: storedReminders() })
+      const pane = await mountRemindersPane($, 'terminal')
+      await expect(pane.press({ key: 'add-reminder' })).rejects.toThrow(NO_FOCUS_IN_KIT)
+      const [, typedInto] = await pane.findAll({ type: 'Input' })
+      await addPhrase(pane, PHRASE)
+
+      const [, nextPhraseField] = await pane.findAll({ type: 'Input' })
+      expect(await removePhraseButtonOf(pane, PHRASE)).toBeDefined()
+      expect(nextPhraseField?.props.value).toBe('')
+      expect(nextPhraseField?.key).not.toBe(typedInto?.key)
+    },
+  )
+
+  test(
+    'two remove buttons pressed before the pane draws the first removal remove only the first row',
+    async ($, on) => {
+      await startSession($, on, { stored: storedReminders() })
+      const pane = await mountRemindersPane($, 'terminal')
+      await expect(pane.press({ key: 'add-reminder' })).rejects.toThrow(NO_FOCUS_IN_KIT)
+      for (const phrase of ['finished testing', 'all green', PHRASE, 'build done']) {
+        await addPhrase(pane, phrase)
+      }
+      const first = await removePhraseButtonOf(pane, 'finished testing')
+      const third = await removePhraseButtonOf(pane, PHRASE)
+
+      await Promise.all([
+        pane.press({ key: first?.key ?? '' }),
+        pane.press({ key: third?.key ?? '' }),
+      ])
+      expect(await removePhraseButtonOf(pane, 'finished testing')).toBeUndefined()
+      for (const phrase of ['all green', PHRASE, 'build done']) {
+        expect(await removePhraseButtonOf(pane, phrase)).toBeDefined()
+      }
+    },
+  )
+
+  test(
+    'Edit on a reminder stored with phrases typed in quotes draws each phrase on a row, and Done ' +
+      'stores them as a list',
+    async ($, on) => {
+      const stored = storedWithPhrasesOfReminder1('"finished testing", "tests pass"')
+      const session = await startSession($, on, { stored })
+      const pane = await mountRemindersPane($, 'terminal')
+      await expect(pane.press({ key: 'edit-1' })).rejects.toThrow(NO_FOCUS_IN_KIT)
+
+      expect(await removePhraseButtonOf(pane, 'finished testing')).toBeDefined()
+      expect(await removePhraseButtonOf(pane, PHRASE)).toBeDefined()
+      await pane.press({ key: 'done-1' })
+      const cadence = { kind: PHRASE_KIND.id, values: { phrases: ['finished testing', PHRASE] } }
+      const listed = cadenceRecordOf(FIRST_SESSION, 'mark-goal', cadence, NOW)
+      expect(reminderRecordsOf(session)).toEqual(stored.set(listed.key, listed.value))
+    },
+  )
+
+  test(
+    'a reminder stored with phrases that cannot be read shows the problem, and Edit draws no row',
+    async ($, on) => {
+      const unreadable = '"tests pass", "done'
+      await startSession($, on, { stored: storedWithPhrasesOfReminder1(unreadable) })
+      const pane = await mountRemindersPane($, 'terminal')
+
+      expect(await warningsOf(pane)).toHaveLength(1)
+      await expect(pane.press({ key: 'edit-1' })).rejects.toThrow(NO_FOCUS_IN_KIT)
+      expect(await removePhraseButtonOf(pane, unreadable)).toBeUndefined()
+      expect(await removePhraseButtonOf(pane, PHRASE)).toBeUndefined()
     },
   )
 

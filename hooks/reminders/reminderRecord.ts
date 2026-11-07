@@ -1,4 +1,4 @@
-import type { Cadence, Reminder } from '../../types'
+import type { Cadence, CadenceValue, Reminder } from '../../types'
 import { RecordKind, isRecord, recordPrefixOf } from '../pluginStore'
 import { isPositiveInteger } from '../positiveInteger'
 import type { StoredEntry } from '../pluginStore'
@@ -261,16 +261,27 @@ const PARSERS: Record<RecordPart, (value: Record<string, unknown>) => StoredReco
       : undefined,
 }
 
-/** Reads a stored cadence: the id of its kind, and a text for each of its values. */
+/** Reads a stored cadence: the id of the kind, and a text or a list of texts for each value. */
 function parseCadence(value: unknown): Cadence | undefined {
   if (!isRecord(value) || typeof value.kind !== 'string' || !isRecord(value.values)) {
     return undefined
   }
-  const values = Object.entries(value.values).flatMap(([key, each]) =>
-    typeof each === 'string' ? [[key, each] as const] : [],
-  )
+  const values = Object.entries(value.values).flatMap(([key, each]) => {
+    const read = parseCadenceValue(each)
+
+    return read === undefined ? [] : [[key, read] as const]
+  })
 
   return values.length === Object.keys(value.values).length
     ? { kind: value.kind, values: Object.fromEntries(values) }
     : undefined
+}
+
+function parseCadenceValue(value: unknown): CadenceValue | undefined {
+  if (!Array.isArray(value)) {
+    return typeof value === 'string' ? value : undefined
+  }
+  const items = value.filter(item => typeof item === 'string')
+
+  return items.length === value.length ? items : undefined
 }

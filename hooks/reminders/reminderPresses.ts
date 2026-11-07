@@ -1,10 +1,10 @@
 import type { EngineInterface } from 'claude-code'
 
-import type { CardDraft, Reminder } from '../../types'
+import type { Cadence, CardDraft, Reminder } from '../../types'
 import { showFailure } from '../failureToast'
 import type { FailedStoreCall } from '../pluginStore'
-import { defaultCadenceOf, kindOf } from './cadenceKind'
-import type { CadenceKinds } from './cadenceKind'
+import { CadenceProblem, addItem, defaultCadenceOf, kindOf, removeItem } from './cadenceKind'
+import type { CadenceKinds, ListCardField } from './cadenceKind'
 import { CardFocus } from './cardFocus'
 import type { FocusTarget } from './cardFocus'
 import {
@@ -14,6 +14,7 @@ import {
 } from './reminderActions'
 import { REMINDERS_PANE } from './reminderNames'
 import { Outcome, checkDraft } from './reminders'
+import type { CheckedDraft } from './reminders'
 import {
   CardMode,
   changeDraft,
@@ -70,6 +71,14 @@ export function valueFieldKeyOf(fieldsId: string, fieldKey: string): string {
 }
 
 /**
+ * The key of the button that removes the item at `index` of the list field with the key `fieldKey`,
+ * on the opening `openingId` of a card.
+ */
+export function itemKeyOf(openingId: string, fieldKey: string, index: number): string {
+  return `item-${openingId}-${fieldKey}-${index}`
+}
+
+/**
  * Draws a new card numbered `number`, empty and with the first kind of the pane, and moves the
  * focus to its text field. Its reminder gets its id now and is stored once the card is saved.
  */
@@ -78,13 +87,13 @@ export async function startAdding(
   { kinds, sessionId }: PaneContext,
   number: number,
 ): Promise<void> {
-  const opened = { text: '', cadence: defaultCadenceOf(kinds[0]) }
+  const opened = draftOf('', defaultCadenceOf(kinds[0]))
   await openCard($, sessionId, number, crypto.randomUUID(), opened)
 }
 
 /**
  * Draws the card of `reminder` with its text and cadence in fields, and moves the focus to its
- * text field. A cadence of a kind the pane does not have is drawn as the first kind.
+ * text field.
  */
 export async function startEditing(
   $: EngineInterface,
@@ -92,11 +101,28 @@ export async function startEditing(
   reminder: Reminder,
 ): Promise<void> {
   const { text, cadence } = reminder
-  const opened = {
-    text,
-    cadence: kindOf(kinds, cadence.kind) === undefined ? defaultCadenceOf(kinds[0]) : cadence,
-  }
+  const opened = draftOf(text, editedCadenceOf(kinds, cadence))
   await openCard($, sessionId, reminder.number, reminder.id, opened)
+}
+
+/** A card typed as `text` and `cadence`, with no text typed for the next item of a list. */
+function draftOf(text: string, cadence: Cadence): CardDraft {
+  return { text, cadence, nextItems: {} }
+}
+
+/**
+ * `cadence` as the fields of a card draw it: with the values read by its kind, every field at its
+ * default where the kind cannot read them, and as the first kind of `kinds` when the pane does not
+ * have its kind.
+ */
+function editedCadenceOf(kinds: CadenceKinds, cadence: Cadence): Cadence {
+  const kind = kindOf(kinds, cadence.kind)
+  if (kind === undefined) {
+    return defaultCadenceOf(kinds[0])
+  }
+  const values = kind.readValues(cadence.values)
+
+  return values instanceof CadenceProblem ? defaultCadenceOf(kind) : { kind: kind.id, values }
 }
 
 /**
@@ -146,8 +172,8 @@ export async function pickKind(
   if (kind === undefined) {
     return
   }
-  await reopenCard($, reminderId, draft =>
-    draft.cadence.kind === kind.id ? draft : { ...draft, cadence: defaultCadenceOf(kind) },
+  await reopenCard($, { reminderId, fieldsId: crypto.randomUUID() }, draft =>
+    draft.cadence.kind === kind.id ? draft : draftOf(draft.text, defaultCadenceOf(kind)),
   )
 }
 
@@ -158,9 +184,59 @@ export async function typeValue(
   key: string,
   value: string,
 ): Promise<void> {
-  await changeDraft($, reminderId, ({ text, cadence }) => ({
-    text,
-    cadence: { kind: cadence.kind, values: { ...cadence.values, [key]: value } },
+  await changeDraft($, reminderId, draft => ({
+    ...draft,
+    cadence: { ...draft.cadence, values: { ...draft.cadence.values, [key]: value } },
+  }))
+}
+
+/** Sets `typed` as the text typed into the field that adds an item to the list field `key`. */
+export async function typeIntoNextItemField(
+  $: EngineInterface,
+  reminderId: string,
+  { key, typed }: { key: string; typed: string },
+): Promise<void> {
+  await changeDraft($, reminderId, draft => ({
+    ...draft,
+    nextItems: { ...draft.nextItems, [key]: typed },
+  }))
+}
+
+/**
+ * Adds `typed`, the whole text of the field that adds an item at the Enter pressed in it, to the
+ * list field `field` of `card`, and moves the focus to the empty field that adds the next item.
+ * The pane keeps its focus as a position among the fields and buttons it draws, and the row of the
+ * new item is drawn at the position of that field. So the fields are drawn anew under new keys,
+ * and the focus moves to the new key once the pane draws it.
+ */
+export async function addItemOnEnter(
+  $: EngineInterface,
+  card: Pick<EditedCard, 'number' | 'reminderId'>,
+  field: ListCardField,
+  typed: string,
+): Promise<void> {
+  const fieldsId = crypto.randomUUID()
+  await reopenCard($, { reminderId: card.reminderId, fieldsId }, draft => ({
+    ...draft,
+    cadence: { ...draft.cadence, values: addItem(field, draft.cadence.values, typed) },
+    nextItems: { ...draft.nextItems, [field.key]: '' },
+  }))
+  await focusField($, valueFieldKeyOf(fieldsId, field.key), {
+    field: CardFocus.NextItem,
+    number: card.number,
+  })
+}
+
+/** Removes `item`, drawn at `index` of the list field `field`, from the card. */
+export async function removeListItem(
+  $: EngineInterface,
+  reminderId: string,
+  field: ListCardField,
+  drawn: { index: number; item: string },
+): Promise<void> {
+  await changeDraft($, reminderId, draft => ({
+    ...draft,
+    cadence: { ...draft.cadence, values: removeItem(field, draft.cadence.values, drawn) },
   }))
 }
 
@@ -202,17 +278,18 @@ export async function finishCard(
   card: EditedCard,
 ): Promise<void> {
   await saveOnce($, card.reminderId, async () => {
-    if (await saveCard($, pane, card)) {
-      await dropCard($, card.reminderId, CardMode.Editing)
-    } else {
+    if ((await saveCard($, pane, card)) === undefined) {
       await redrawFields($, card.reminderId)
+    } else {
+      await dropCard($, card.reminderId, CardMode.Editing)
     }
   })
 }
 
 /**
  * Saves the card, and then switches its reminder on or off as `isEnabled` sets it, so a new card is
- * stored before it is switched. The card is still drawn with its fields.
+ * stored before it is switched. The card is still drawn with its fields, on the cadence saved, so
+ * the text typed for the next item of a list shows as an item.
  */
 export async function switchCard(
   $: EngineInterface,
@@ -221,9 +298,14 @@ export async function switchCard(
   isEnabled: boolean,
 ): Promise<void> {
   await saveOnce($, card.reminderId, async () => {
-    if (await saveCard($, pane, card)) {
-      await switchReminder($, pane, card, isEnabled)
+    const saved = await saveCard($, pane, card)
+    if (saved === undefined) {
+      return
     }
+    await reopenCard($, { reminderId: card.reminderId, fieldsId: crypto.randomUUID() }, draft =>
+      draftOf(draft.text, saved.cadence),
+    )
+    await switchReminder($, pane, card, isEnabled)
   })
 }
 
@@ -295,24 +377,24 @@ async function switchReminder(
 }
 
 /**
- * Saves what was typed into the card, while it is edited, and returns whether the store has it
- * now. A refused save shows its warning on the card, or for a reminder removed since, a toast, and
- * closes the card.
+ * Saves what was typed into the card, while it is edited, and returns the card as saved when the
+ * store has it now. A refused save shows its warning on the card, or for a reminder removed since,
+ * a toast, and closes the card.
  */
 async function saveCard(
   $: EngineInterface,
   { kinds, sessionId }: PaneContext,
   card: EditedCard,
-): Promise<boolean> {
+): Promise<CheckedDraft | undefined> {
   const inState = await readCardInState($)
   if (inState?.reminderId !== card.reminderId || inState.mode !== CardMode.Editing) {
-    return false
+    return undefined
   }
   const checked = checkDraft(inState.draft, kinds)
   if (checked.outcome === Outcome.Refused) {
     await warnOnCard($, card.reminderId, checked)
 
-    return false
+    return undefined
   }
   const saved = await saveDraftOfSession($, sessionId, card.reminderId, checked)
   if (saved.outcome === Outcome.Refused) {
@@ -321,6 +403,8 @@ async function saveCard(
   showChangeFailure($, card, saved, describeNotSaved)
 
   return saved.outcome === Outcome.Changed || saved.outcome === Outcome.Unchanged
+    ? checked
+    : undefined
 }
 /**
  * Shows a toast for `change` of the reminder of `card` that did not happen: the failure of the
