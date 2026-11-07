@@ -1,5 +1,6 @@
-import { describe, expect, test } from 'claude-code/testing'
+import { describe, expect } from 'claude-code/testing'
 
+import { test } from '../testDeclaration'
 import { registerGoalsCommand } from './goalSession'
 import type { CommandRegistrar } from './goalSession'
 

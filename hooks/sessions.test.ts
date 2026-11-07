@@ -1,12 +1,12 @@
-import { describe, expect, test } from 'claude-code/testing'
+import { describe, expect } from 'claude-code/testing'
 
 import { QUESTION_SKILL, WITHDRAW_TOOL } from './names'
 import { ALL_CLOSED } from './modelText'
 import { SESSION_QUESTIONS_MAX_AGE_MS } from './questionSkill'
 import { storeKeyOf } from './questionStore'
+import { test } from './testDeclaration'
 import {
   FIRST_SESSION,
-  NO_TIME_LIMIT,
   SECOND_SESSION,
   answerByCommand,
   askAboutFriday,
@@ -31,7 +31,6 @@ const DAY_MS = 24 * 60 * 60 * 1000
 describe('the questions of each session', () => {
   test(
     'a new session does not see the questions of another session, and counts its own from #1',
-    NO_TIME_LIMIT,
     async ($, on) => {
       const session = await startSession($, on)
       await askWhichDatabase($)
@@ -49,7 +48,6 @@ describe('the questions of each session', () => {
 
   test(
     'a session resumed after a restart shows its open questions and reads their answers',
-    NO_TIME_LIMIT,
     async ($, on) => {
       const session = await startSession($, on)
       await askWhichDatabase($)
@@ -65,28 +63,23 @@ describe('the questions of each session', () => {
     },
   )
 
-  test(
-    'a session that /resume switched to uses the tools as itself',
-    NO_TIME_LIMIT,
-    async ($, on) => {
-      const session = await startSession($, on)
-      await askWhichDatabase($)
-      await switchSession($, session, { id: SECOND_SESSION, reason: 'resume' })
-      await callSkillTool($, QUESTION_SKILL)
+  test('a session that /resume switched to uses the tools as itself', async ($, on) => {
+    const session = await startSession($, on)
+    await askWhichDatabase($)
+    await switchSession($, session, { id: SECOND_SESSION, reason: 'resume' })
+    await callSkillTool($, QUESTION_SKILL)
 
-      expect(await listQuestions($)).not.toContain('Which database?')
-      expect(String((await askAboutFriday($)).result)).toContain('#1')
-      expect((await $.tool.call({ tool: WITHDRAW_TOOL, number: 1 })).deny).toBeUndefined()
-      await switchSession($, session, { id: FIRST_SESSION, reason: 'resume' })
-      const listed = await listQuestions($)
-      expect(listed).toContain('#1: Which database?')
-      expect(listed).not.toContain('Ship on Friday?')
-    },
-  )
+    expect(await listQuestions($)).not.toContain('Which database?')
+    expect(String((await askAboutFriday($)).result)).toContain('#1')
+    expect((await $.tool.call({ tool: WITHDRAW_TOOL, number: 1 })).deny).toBeUndefined()
+    await switchSession($, session, { id: FIRST_SESSION, reason: 'resume' })
+    const listed = await listQuestions($)
+    expect(listed).toContain('#1: Which database?')
+    expect(listed).not.toContain('Ship on Friday?')
+  })
 
   test(
     'a session that /clear switched to starts without the questions of the session before',
-    NO_TIME_LIMIT,
     async ($, on) => {
       const session = await startSession($, on)
       await askWhichDatabase($)
@@ -103,7 +96,6 @@ describe('the questions of each session', () => {
 
   test(
     'the first prompt typed after /resume switched back includes the answers given before',
-    NO_TIME_LIMIT,
     async ($, on) => {
       const session = await startSession($, on)
       await askWhichDatabase($)
@@ -122,7 +114,6 @@ describe('the questions of each session', () => {
   test(
     'the band and the pane of a session that /resume switched to start without the questions of ' +
       'the session before',
-    NO_TIME_LIMIT,
     async ($, on) => {
       const session = await startSession($, on)
       await askWhichDatabase($)
@@ -138,7 +129,6 @@ describe('the questions of each session', () => {
   test(
     'the band and the pane of a session that /resume switched back to show its open questions ' +
       'at once',
-    NO_TIME_LIMIT,
     async ($, on) => {
       const session = await startSession($, on)
       await askWhichDatabase($)
@@ -158,7 +148,6 @@ describe('the questions of each session', () => {
   test(
     'the band of a session that /clear switched to drops the open questions of the session ' +
       'before at once',
-    NO_TIME_LIMIT,
     async ($, on) => {
       const session = await startSession($, on, { isStateKept: true })
       await askWhichDatabase($)
@@ -170,38 +159,29 @@ describe('the questions of each session', () => {
     },
   )
 
-  test(
-    'a store entry of another shape at a process start is shown in one toast',
-    NO_TIME_LIMIT,
-    async ($, on) => {
-      const key = storeKeyOf(FIRST_SESSION, 'damaged')
-      const session = await startSession($, on, {
-        stored: new Map([[key, { questions: 'not a list' }]]),
-      })
+  test('a store entry of another shape at a process start is shown in one toast', async ($, on) => {
+    const key = storeKeyOf(FIRST_SESSION, 'damaged')
+    const session = await startSession($, on, {
+      stored: new Map([[key, { questions: 'not a list' }]]),
+    })
 
-      expect(session.toasts).toHaveLength(1)
-      expect(session.toasts[0]).toContain(key)
-    },
-  )
+    expect(session.toasts).toHaveLength(1)
+    expect(session.toasts[0]).toContain(key)
+  })
 
-  test(
-    'a compaction after a start on a damaged store reads the store again',
-    NO_TIME_LIMIT,
-    async ($, on) => {
-      const damaged = storeKeyOf(FIRST_SESSION, 'damaged')
-      const session = await startSession($, on, {
-        stored: new Map([[damaged, { questions: 'not a list' }]]),
-      })
-      await $.classic.SessionStart({ source: 'compact' })
+  test('a compaction after a start on a damaged store reads the store again', async ($, on) => {
+    const damaged = storeKeyOf(FIRST_SESSION, 'damaged')
+    const session = await startSession($, on, {
+      stored: new Map([[damaged, { questions: 'not a list' }]]),
+    })
+    await $.classic.SessionStart({ source: 'compact' })
 
-      expect(session.toasts).toHaveLength(2)
-      expect(session.toasts[1]).toContain(damaged)
-    },
-  )
+    expect(session.toasts).toHaveLength(2)
+    expect(session.toasts[1]).toContain(damaged)
+  })
 
   test(
     'a store entry of another shape in a session that /resume switched to is shown in a toast',
-    NO_TIME_LIMIT,
     async ($, on) => {
       const key = storeKeyOf(SECOND_SESSION, 'damaged')
       const session = await startSession($, on, {
@@ -217,7 +197,6 @@ describe('the questions of each session', () => {
   test(
     'a prompt typed after the questions could not be read at /resume reads them again and ' +
       'includes the answers',
-    NO_TIME_LIMIT,
     async ($, on) => {
       const session = await startSession($, on)
       await askWhichDatabase($)
@@ -239,7 +218,6 @@ describe('the questions of each session', () => {
   test(
     'the band of a session whose questions /resume could not read starts without the questions ' +
       'of the session before',
-    NO_TIME_LIMIT,
     async ($, on) => {
       const damaged = storeKeyOf(SECOND_SESSION, 'damaged')
       const session = await startSession($, on, {
@@ -258,7 +236,6 @@ describe('the questions of each session', () => {
   test(
     'an answer whose delivery starts after /clear is not sent to the session that /clear ' +
       'switched to, and is sent once its own session is back',
-    NO_TIME_LIMIT,
     async ($, on) => {
       const session = await startSession($, on, { isStateKept: true })
       await askWhichDatabase($)
@@ -280,7 +257,6 @@ describe('the questions of each session', () => {
 
   test(
     'a compaction keeps the questions in the band and does not read the store',
-    NO_TIME_LIMIT,
     async ($, on) => {
       const session = await startSession($, on)
       await askWhichDatabase($)
@@ -296,7 +272,6 @@ describe('the questions of each session', () => {
   test(
     'questions saved under the project before they belonged to a session are moved to the ' +
       'session that asked them, with their answers',
-    NO_TIME_LIMIT,
     async ($, on) => {
       const project = '0123456789abcdef'.repeat(4)
       const asked = { choices: [], sessionId: SECOND_SESSION }
@@ -327,7 +302,6 @@ describe('the questions of each session', () => {
   test(
     'a load deletes the questions of another session once its newest record is older than the ' +
       'age limit',
-    NO_TIME_LIMIT,
     async ($, on) => {
       const session = await startSession($, on)
       await askWhichDatabase($)
@@ -350,7 +324,6 @@ describe('the questions of each session', () => {
   test(
     'a load keeps the old questions of the session that loads, and of a session with a record ' +
       'of another shape',
-    NO_TIME_LIMIT,
     async ($, on) => {
       const damaged = storeKeyOf(THIRD_SESSION, 'damaged')
       const session = await startSession($, on, {
@@ -368,7 +341,6 @@ describe('the questions of each session', () => {
 
   test(
     'a session forked from another starts without the questions of that session',
-    NO_TIME_LIMIT,
     async ($, on) => {
       const session = await startSession($, on, { isStateKept: true })
       await askWhichDatabase($)

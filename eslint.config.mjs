@@ -41,4 +41,23 @@ export default defineConfig({
       },
     ],
   },
+}, {
+  files: ['hooks/**/*.ts', 'hooks/**/*.tsx'],
+  ignores: ['hooks/testDeclaration.ts'],
+  rules: {
+    'no-restricted-syntax': [
+      'error',
+      ...[
+        "ImportDeclaration[source.value='claude-code/testing'] > " +
+          ':matches(ImportSpecifier[imported.name=\'test\'], ImportNamespaceSpecifier, ' +
+          'ImportDefaultSpecifier)',
+        "ExportNamedDeclaration[source.value='claude-code/testing']",
+        "ExportAllDeclaration[source.value='claude-code/testing']",
+        "ImportExpression[source.value='claude-code/testing']",
+      ].map(selector => ({
+        selector,
+        message: 'Declare tests with the test of testDeclaration.ts, which sets no time limit.',
+      })),
+    ],
+  },
 })

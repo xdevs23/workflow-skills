@@ -1,6 +1,7 @@
-import { describe, expect, test } from 'claude-code/testing'
+import { describe, expect } from 'claude-code/testing'
 
-import { FIRST_SESSION, NO_TIME_LIMIT, startSession } from '../testSupport'
+import { test } from '../testDeclaration'
+import { FIRST_SESSION, startSession } from '../testSupport'
 import { priorityRecordOf } from './boardRecord'
 import { sessionScope } from './boardScope'
 import {
@@ -25,7 +26,6 @@ async function pickerKeysOf(
 describe('the priority of a goal in the Goals pane', () => {
   test(
     'every open goal has a priority picker from none through P0 to P9, on none without a priority',
-    NO_TIME_LIMIT,
     async ($, on) => {
       await startSession($, on, { stored: storedBoard() })
       const pane = await mountGoalsPane($, 'terminal')
@@ -41,7 +41,6 @@ describe('the priority of a goal in the Goals pane', () => {
 
   test(
     'a picked priority is stored, and the goal moves before the goals without one',
-    NO_TIME_LIMIT,
     async ($, on) => {
       const session = await startSession($, on, { stored: storedBoard() })
       const pane = await mountGoalsPane($, 'terminal')
@@ -59,7 +58,6 @@ describe('the priority of a goal in the Goals pane', () => {
 
   test(
     'picking none removes the priority with a record of its own, and the goal moves back',
-    NO_TIME_LIMIT,
     async ($, on) => {
       const session = await startSession($, on, { stored: storedBoard() })
       const pane = await mountGoalsPane($, 'terminal')
@@ -75,7 +73,7 @@ describe('the priority of a goal in the Goals pane', () => {
     },
   )
 
-  test('a pick the store does not save shows the failure in a toast', NO_TIME_LIMIT, async (
+  test('a pick the store does not save shows the failure in a toast', async (
     $,
     on,
   ) => {

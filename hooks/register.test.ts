@@ -1,4 +1,4 @@
-import { describe, expect, test } from 'claude-code/testing'
+import { describe, expect } from 'claude-code/testing'
 import type { ApiMessage } from 'claude-code'
 
 import {
@@ -21,9 +21,9 @@ import {
   QuestionSkillLoadState,
 } from './questionSkill'
 import { questionSkillLoadKeyOf, storeKeyOf } from './questionStore'
+import { test } from './testDeclaration'
 import {
   FIRST_SESSION,
-  NO_TIME_LIMIT,
   SECOND_SESSION,
   TOKENS_AT_START,
   answerByCommand,
@@ -74,7 +74,6 @@ describe('asking without waiting', () => {
   for (const surface of ['terminal', 'desktop'] as const) {
     test(
       `an answer picked on the ${surface} while idle is sent to the model as a prompt`,
-      NO_TIME_LIMIT,
       async ($, on) => {
         const session = await startSession($, on)
         expect((await askWhichDatabase($)).deny).toBeUndefined()
@@ -92,7 +91,6 @@ describe('asking without waiting', () => {
 
   test(
     'an asked question is written into the chat history with its number and choices',
-    NO_TIME_LIMIT,
     async ($, on) => {
       const session = await startSession($, on)
       await askWhichDatabase($)
@@ -105,27 +103,22 @@ describe('asking without waiting', () => {
     },
   )
 
-  test(
-    'an answer given during a turn is added to the next tool result once',
-    NO_TIME_LIMIT,
-    async ($, on) => {
-      const session = await startSession($, on)
-      await askWhichDatabase($)
-      await startTurn($)
-      await answerByCommand($, '1 postgres')
+  test('an answer given during a turn is added to the next tool result once', async ($, on) => {
+    const session = await startSession($, on)
+    await askWhichDatabase($)
+    await startTurn($)
+    await answerByCommand($, '1 postgres')
 
-      expect((await readFile($)).context?.join('\n')).toContain('postgres')
-      expect((await readFile($)).context).toBeUndefined()
-      await endTurn($)
-      await session.clock.settle()
-      expect(session.prompts).toHaveLength(0)
-    },
-  )
+    expect((await readFile($)).context?.join('\n')).toContain('postgres')
+    expect((await readFile($)).context).toBeUndefined()
+    await endTurn($)
+    await session.clock.settle()
+    expect(session.prompts).toHaveLength(0)
+  })
 
   test(
     'an answer given during a turn that finishes without reading a tool result goes out when ' +
       'the turn ends',
-    NO_TIME_LIMIT,
     async ($, on) => {
       const session = await startSession($, on)
       await askWhichDatabase($)
@@ -144,7 +137,6 @@ describe('asking without waiting', () => {
 
   test(
     'an answer given during a turn the user interrupts is sent with the next prompt of the user',
-    NO_TIME_LIMIT,
     async ($, on) => {
       const session = await startSession($, on)
       await askWhichDatabase($)
@@ -163,7 +155,6 @@ describe('asking without waiting', () => {
 
   test(
     'an answer whose prompt the engine drops is added to the next tool result',
-    NO_TIME_LIMIT,
     async ($, on) => {
       const session = await startSession($, on)
       await askWhichDatabase($)
@@ -177,30 +168,25 @@ describe('asking without waiting', () => {
     },
   )
 
-  test(
-    'a subagent reads no answer, and its turns leave the session idle',
-    NO_TIME_LIMIT,
-    async ($, on) => {
-      const session = await startSession($, on)
-      await askWhichDatabase($)
-      await startTurn($)
-      await answerByCommand($, '1 postgres')
+  test('a subagent reads no answer, and its turns leave the session idle', async ($, on) => {
+    const session = await startSession($, on)
+    await askWhichDatabase($)
+    await startTurn($)
+    await answerByCommand($, '1 postgres')
 
-      expect((await readFile($, 'agent-1')).context).toBeUndefined()
-      expect((await readFile($)).context?.join('\n')).toContain('postgres')
-      await endTurn($)
-      await startTurn($, 'agent-1')
-      await askAboutFriday($)
-      await answerByCommand($, '2 yes')
-      await session.clock.settle()
-      expect(session.prompts).toHaveLength(1)
-      expect(session.prompts[0]?.text).toContain('yes')
-    },
-  )
+    expect((await readFile($, 'agent-1')).context).toBeUndefined()
+    expect((await readFile($)).context?.join('\n')).toContain('postgres')
+    await endTurn($)
+    await startTurn($, 'agent-1')
+    await askAboutFriday($)
+    await answerByCommand($, '2 yes')
+    await session.clock.settle()
+    expect(session.prompts).toHaveLength(1)
+    expect(session.prompts[0]?.text).toContain('yes')
+  })
 
   test(
     'the list contains open questions and answers, and the band opens the pane',
-    NO_TIME_LIMIT,
     async ($, on) => {
       const session = await startSession($, on)
       await askWhichDatabase($)
@@ -219,7 +205,6 @@ describe('asking without waiting', () => {
 
   test(
     'an answer not saved by the store shows the refusal in a toast, and the question stays open',
-    NO_TIME_LIMIT,
     async ($, on) => {
       const session = await startSession($, on)
       await askWhichDatabase($)
@@ -238,7 +223,6 @@ describe('asking without waiting', () => {
 
   test(
     'a store that cannot be read shows the refusal in a toast at the press of Answer',
-    NO_TIME_LIMIT,
     async ($, on) => {
       const session = await startSession($, on)
       await askWhichDatabase($)
@@ -256,7 +240,6 @@ describe('asking without waiting', () => {
   test(
     'an error other than a failure of the store fails the press of Answer, and does not show a ' +
       'toast',
-    NO_TIME_LIMIT,
     async ($, on) => {
       on('ui.open', { id: PANE }, () => ({ deny: 'every pane slot is taken' }))
       const session = await startSession($, on)
@@ -268,7 +251,7 @@ describe('asking without waiting', () => {
     },
   )
 
-  test('the answer command lists, answers and explains its form', NO_TIME_LIMIT, async ($, on) => {
+  test('the answer command lists, answers and explains its form', async ($, on) => {
     const session = await startSession($, on)
     await askWhichDatabase($)
 
@@ -283,22 +266,17 @@ describe('asking without waiting', () => {
     expect(await answerByCommand($, '1 postgres')).not.toContain('Answered')
   })
 
-  test(
-    'the pane on a surface without input fields still draws every question',
-    NO_TIME_LIMIT,
-    async ($, on) => {
-      await startSession($, on)
-      await askWhichDatabase($)
-      const pane = await mountPane($, 'mobile')
+  test('the pane on a surface without input fields still draws every question', async ($, on) => {
+    await startSession($, on)
+    await askWhichDatabase($)
+    const pane = await mountPane($, 'mobile')
 
-      expect(await pane.find({ type: 'Text', text: /Which database/ })).toBeDefined()
-    },
-  )
+    expect(await pane.find({ type: 'Text', text: /Which database/ })).toBeDefined()
+  })
 
   test(
     'the pane on a surface without input fields shows the answer command and the choices in ' +
       'place of the fields',
-    NO_TIME_LIMIT,
     async ($, on) => {
       await startSession($, on)
       await askWhichDatabase($)
@@ -316,7 +294,6 @@ describe('asking without waiting', () => {
   test(
     'a store that cannot be read makes the tools fail with the reason, which the debug log shows ' +
       'too',
-    NO_TIME_LIMIT,
     async ($, on) => {
       const session = await startSession($, on)
       const refusal = 'the store file is not readable'
@@ -330,27 +307,22 @@ describe('asking without waiting', () => {
     },
   )
 
-  test(
-    'a withdrawn question is closed for the user and listed as withdrawn',
-    NO_TIME_LIMIT,
-    async ($, on) => {
-      await startSession($, on)
-      await askWhichDatabase($)
-      await askAboutFriday($)
+  test('a withdrawn question is closed for the user and listed as withdrawn', async ($, on) => {
+    await startSession($, on)
+    await askWhichDatabase($)
+    await askAboutFriday($)
 
-      expect((await $.tool.call({ tool: WITHDRAW_TOOL, number: 1 })).deny).toBeUndefined()
-      expect((await $.tool.call({ tool: WITHDRAW_TOOL, number: 1 })).deny).toBeDefined()
-      expect(await answerByCommand($, '')).not.toContain('Which database?')
-      expect(await answerByCommand($, '1 sqlite')).not.toContain('Answered')
-      expect(await listQuestions($)).toMatch(/Withdrawn questions:\n#1: Which database\?/)
-      const band = await mountBand($)
-      expect(await band.find({ type: 'Text', text: /^1 open question/ })).toBeDefined()
-    },
-  )
+    expect((await $.tool.call({ tool: WITHDRAW_TOOL, number: 1 })).deny).toBeUndefined()
+    expect((await $.tool.call({ tool: WITHDRAW_TOOL, number: 1 })).deny).toBeDefined()
+    expect(await answerByCommand($, '')).not.toContain('Which database?')
+    expect(await answerByCommand($, '1 sqlite')).not.toContain('Answered')
+    expect(await listQuestions($)).toMatch(/Withdrawn questions:\n#1: Which database\?/)
+    const band = await mountBand($)
+    expect(await band.find({ type: 'Text', text: /^1 open question/ })).toBeDefined()
+  })
 
   test(
     'an answer given while the question is withdrawn is kept, and the withdrawal is denied',
-    NO_TIME_LIMIT,
     async ($, on) => {
       const session = await startSession($, on)
       await askWhichDatabase($)
@@ -365,27 +337,23 @@ describe('asking without waiting', () => {
     },
   )
 
-  test(
-    'two questions asked at the same moment get different numbers',
-    NO_TIME_LIMIT,
-    async ($, on) => {
-      const session = await startSession($, on)
-      session.beforeNextWrite = () =>
-        session.store.set(storeKeyOf(session.id, 'asked-in-parallel'), {
-          id: 'asked-in-parallel',
-          number: 1,
-          text: 'Keep the old API?',
-          choices: [],
-          askedAt: 900,
-        })
+  test('two questions asked at the same moment get different numbers', async ($, on) => {
+    const session = await startSession($, on)
+    session.beforeNextWrite = () =>
+      session.store.set(storeKeyOf(session.id, 'asked-in-parallel'), {
+        id: 'asked-in-parallel',
+        number: 1,
+        text: 'Keep the old API?',
+        choices: [],
+        askedAt: 900,
+      })
 
-      expect(String((await askWhichDatabase($)).result)).toContain('#2')
-      const [first, second] = await Promise.all([askAboutFriday($), askAboutFriday($)])
-      expect(new Set([String(first.result), String(second.result)]).size).toBe(2)
-    },
-  )
+    expect(String((await askWhichDatabase($)).result)).toContain('#2')
+    const [first, second] = await Promise.all([askAboutFriday($), askAboutFriday($)])
+    expect(new Set([String(first.result), String(second.result)]).size).toBe(2)
+  })
 
-  test('a store busy with another write is written again', NO_TIME_LIMIT, async ($, on) => {
+  test('a store busy with another write is written again', async ($, on) => {
     const session = await startSession($, on)
     session.refusedWrites.push(LOCK_REFUSAL)
     const asking = askWhichDatabase($)
@@ -399,7 +367,7 @@ describe('asking without waiting', () => {
     expect(session.chatLines.filter(line => line.includes(LOCK_REFUSAL))).toEqual([])
   })
 
-  test('a write the store refuses is denied with its reason', NO_TIME_LIMIT, async ($, on) => {
+  test('a write the store refuses is denied with its reason', async ($, on) => {
     const session = await startSession($, on)
     session.refusedWrites.push('the store is over 4 MiB')
 
@@ -408,7 +376,7 @@ describe('asking without waiting', () => {
     expect(session.chatLines).toEqual([])
   })
 
-  test('input the model gives outside the schema fails the check', NO_TIME_LIMIT, async ($, on) => {
+  test('input the model gives outside the schema fails the check', async ($, on) => {
     const session = await startSession($, on)
 
     expect((await $.tool.call({ tool: ASK_TOOL, question: '  ' })).deny).toBeDefined()
@@ -425,24 +393,20 @@ describe('asking without waiting', () => {
     expect(session.chatLines).toEqual([])
   })
 
-  test(
-    'a statement without a question mark is refused as a question',
-    NO_TIME_LIMIT,
-    async ($, on) => {
-      const session = await startSession($, on)
-      const statement = 'The build waits until someone chooses a database.'
+  test('a statement without a question mark is refused as a question', async ($, on) => {
+    const session = await startSession($, on)
+    const statement = 'The build waits until someone chooses a database.'
 
-      expect((await $.tool.call({ tool: ASK_TOOL, question: statement })).deny).toBeDefined()
-      expect(session.chatLines).toEqual([])
-    },
-  )
+    expect((await $.tool.call({ tool: ASK_TOOL, question: statement })).deny).toBeDefined()
+    expect(session.chatLines).toEqual([])
+  })
 
   for (const question of [
     'Postgres or SQLite? Both work.',
     '? Postgres or SQLite',
     'Postgres oder SQLite？',
   ]) {
-    test(`"${question}" is asked`, NO_TIME_LIMIT, async ($, on) => {
+    test(`"${question}" is asked`, async ($, on) => {
       const session = await startSession($, on)
 
       expect((await $.tool.call({ tool: ASK_TOOL, question })).deny).toBeUndefined()
@@ -462,18 +426,14 @@ describe('asking without waiting', () => {
     },
   ]
   for (const asked of draftQuestions) {
-    test(
-      `"${asked.question}" is asked with the reminder about drafts`,
-      NO_TIME_LIMIT,
-      async ($, on) => {
-        await startSession($, on)
-        const called = await $.tool.call({ tool: ASK_TOOL, ...asked })
+    test(`"${asked.question}" is asked with the reminder about drafts`, async ($, on) => {
+      await startSession($, on)
+      const called = await $.tool.call({ tool: ASK_TOOL, ...asked })
 
-        expect(String(called.result)).toStartWith('Your question is #1.')
-        expect(called.context?.join('\n')).toContain('Question #1 may ask about a draft.')
-        expect(called.context?.join('\n')).toContain(WITHDRAW_TOOL)
-      },
-    )
+      expect(String(called.result)).toStartWith('Your question is #1.')
+      expect(called.context?.join('\n')).toContain('Question #1 may ask about a draft.')
+      expect(called.context?.join('\n')).toContain(WITHDRAW_TOOL)
+    })
   }
 
   for (const question of [
@@ -483,39 +443,30 @@ describe('asking without waiting', () => {
     'Open the change as a draft PR?',
     'Is the redrafted plan in TODO.md right?',
   ]) {
-    test(
-      `"${question}" is asked without the reminder about drafts`,
-      NO_TIME_LIMIT,
-      async ($, on) => {
-        await startSession($, on)
-        const called = await $.tool.call({ tool: ASK_TOOL, question })
+    test(`"${question}" is asked without the reminder about drafts`, async ($, on) => {
+      await startSession($, on)
+      const called = await $.tool.call({ tool: ASK_TOOL, question })
 
-        expect(called.deny).toBeUndefined()
-        expect(called.context).toBeUndefined()
-      },
-    )
+      expect(called.deny).toBeUndefined()
+      expect(called.context).toBeUndefined()
+    })
   }
 
-  test(
-    'a store entry of another shape fails the check and is left unchanged',
-    NO_TIME_LIMIT,
-    async ($, on) => {
-      const key = storeKeyOf(FIRST_SESSION, 'damaged')
-      const session = await startSession($, on, {
-        stored: new Map([[key, { questions: 'not a list' }]]),
-      })
+  test('a store entry of another shape fails the check and is left unchanged', async ($, on) => {
+    const key = storeKeyOf(FIRST_SESSION, 'damaged')
+    const session = await startSession($, on, {
+      stored: new Map([[key, { questions: 'not a list' }]]),
+    })
 
-      expect((await askWhichDatabase($)).deny).toContain(key)
-      expect((await $.tool.call({ tool: LIST_TOOL })).deny).toContain(key)
-      expect(session.store.get(key)).toEqual({ questions: 'not a list' })
-      expect(questionCountOf(session)).toBe(1)
-    },
-  )
+    expect((await askWhichDatabase($)).deny).toContain(key)
+    expect((await $.tool.call({ tool: LIST_TOOL })).deny).toContain(key)
+    expect(session.store.get(key)).toEqual({ questions: 'not a list' })
+    expect(questionCountOf(session)).toBe(1)
+  })
 
   test(
     'a session without a person at the prompt does not get the tools and does not read any ' +
       'question',
-    NO_TIME_LIMIT,
     async ($, on) => {
       const key = storeKeyOf(FIRST_SESSION, 'damaged')
       const session = await startSession($, on, {
@@ -539,7 +490,6 @@ describe('asking with the question skill in context', () => {
   test(
     'a question asked by a session that has not loaded the question skill is denied and not ' +
       'stored',
-    NO_TIME_LIMIT,
     async ($, on) => {
       const session = await startSession($, on)
       session.context = []
@@ -570,22 +520,17 @@ describe('asking with the question skill in context', () => {
     ],
   ]
   for (const [contains, context] of notLoaded) {
-    test(
-      `a question asked from a context with ${contains} is denied`,
-      NO_TIME_LIMIT,
-      async ($, on) => {
-        const session = await startSession($, on)
-        session.context = context()
+    test(`a question asked from a context with ${contains} is denied`, async ($, on) => {
+      const session = await startSession($, on)
+      session.context = context()
 
-        expect((await askWhichDatabase($)).deny).toBeDefined()
-        expect(questionCountOf(session)).toBe(0)
-      },
-    )
+      expect((await askWhichDatabase($)).deny).toBeDefined()
+      expect(questionCountOf(session)).toBe(0)
+    })
   }
 
   test(
     'a question asked after a Skill tool call with spaces and a slash around the name is stored',
-    NO_TIME_LIMIT,
     async ($, on) => {
       const session = await startSession($, on)
       session.context = skillLoad(` /${QUESTION_SKILL} `)
@@ -598,7 +543,6 @@ describe('asking with the question skill in context', () => {
   test(
     'a question is denied once more tokens than the limit came into the context after the load ' +
       'of the question skill',
-    NO_TIME_LIMIT,
     async ($, on) => {
       const session = await startSession($, on)
       session.contextTokens = TOKENS_AT_START + QUESTION_SKILL_MAX_TOKENS_AFTER_LOAD
@@ -618,7 +562,6 @@ describe('asking with the question skill in context', () => {
   test(
     'a question is denied when the plugin did not see a load of the question skill, although ' +
       'the context contains one',
-    NO_TIME_LIMIT,
     async ($, on) => {
       const session = await startSession($, on)
       forgetQuestionSkillLoad(session)
@@ -631,7 +574,6 @@ describe('asking with the question skill in context', () => {
   test(
     'a failed or denied Skill tool call, a load by a subagent and a load of another skill do ' +
       'not count as a load of the question skill',
-    NO_TIME_LIMIT,
     async ($, on) => {
       const session = await startSession($, on)
       forgetQuestionSkillLoad(session)
@@ -652,22 +594,17 @@ describe('asking with the question skill in context', () => {
     },
   )
 
-  test(
-    'a question asked after the question skill was loaded again is stored',
-    NO_TIME_LIMIT,
-    async ($, on) => {
-      const session = await startSession($, on)
-      session.contextTokens = 2 * (TOKENS_AT_START + QUESTION_SKILL_MAX_TOKENS_AFTER_LOAD)
-      await callSkillTool($, ` /${QUESTION_SKILL}`)
+  test('a question asked after the question skill was loaded again is stored', async ($, on) => {
+    const session = await startSession($, on)
+    session.contextTokens = 2 * (TOKENS_AT_START + QUESTION_SKILL_MAX_TOKENS_AFTER_LOAD)
+    await callSkillTool($, ` /${QUESTION_SKILL}`)
 
-      expect((await askWhichDatabase($)).deny).toBeUndefined()
-      expect(questionCountOf(session)).toBe(1)
-    },
-  )
+    expect((await askWhichDatabase($)).deny).toBeUndefined()
+    expect(questionCountOf(session)).toBe(1)
+  })
 
   test(
     'a load made while the engine does not report the context size removes the earlier record',
-    NO_TIME_LIMIT,
     async ($, on) => {
       const session = await startSession($, on)
       session.contextTokens = undefined
@@ -682,7 +619,6 @@ describe('asking with the question skill in context', () => {
 
   test(
     'a question asked while the engine does not report the context size is denied',
-    NO_TIME_LIMIT,
     async ($, on) => {
       const session = await startSession($, on)
       session.contextTokens = undefined
@@ -696,7 +632,6 @@ describe('asking with the question skill in context', () => {
 
   test(
     'a question asked after a compaction kept the load in a smaller context is denied',
-    NO_TIME_LIMIT,
     async ($, on) => {
       const session = await startSession($, on)
       session.contextTokens = TOKENS_AT_START - 1
@@ -706,25 +641,20 @@ describe('asking with the question skill in context', () => {
     },
   )
 
-  test(
-    'a load record of another shape fails the check and is left unchanged',
-    NO_TIME_LIMIT,
-    async ($, on) => {
-      const session = await startSession($, on)
-      const key = questionSkillLoadKeyOf(session.id)
-      for (const damaged of [{ contextTokens: 'many', savedAt: 1000 }, { contextTokens: 1000 }]) {
-        session.store.set(key, damaged)
+  test('a load record of another shape fails the check and is left unchanged', async ($, on) => {
+    const session = await startSession($, on)
+    const key = questionSkillLoadKeyOf(session.id)
+    for (const damaged of [{ contextTokens: 'many', savedAt: 1000 }, { contextTokens: 1000 }]) {
+      session.store.set(key, damaged)
 
-        expect((await askWhichDatabase($)).deny).toContain(key)
-        expect(session.store.get(key)).toEqual(damaged)
-      }
-      expect(questionCountOf(session)).toBe(0)
-    },
-  )
+      expect((await askWhichDatabase($)).deny).toContain(key)
+      expect(session.store.get(key)).toEqual(damaged)
+    }
+    expect(questionCountOf(session)).toBe(0)
+  })
 
   test(
     'a load record the store refuses is shown with its reason, and the next question is denied',
-    NO_TIME_LIMIT,
     async ($, on) => {
       const session = await startSession($, on)
       forgetQuestionSkillLoad(session)
@@ -739,7 +669,6 @@ describe('asking with the question skill in context', () => {
 
   test(
     'a load deletes the load records of other sessions once they are older than the age limit',
-    NO_TIME_LIMIT,
     async ($, on) => {
       const session = await startSession($, on)
       const firstKey = questionSkillLoadKeyOf(session.id)
@@ -757,7 +686,6 @@ describe('asking with the question skill in context', () => {
 
   test(
     'a question asked after a compaction removed the question skill from context is denied',
-    NO_TIME_LIMIT,
     async ($, on) => {
       const session = await startSession($, on)
       expect((await askWhichDatabase($)).deny).toBeUndefined()
@@ -770,7 +698,6 @@ describe('asking with the question skill in context', () => {
 
   test(
     'a question asked by a subagent is stored without a check of the main conversation',
-    NO_TIME_LIMIT,
     async ($, on) => {
       const session = await startSession($, on)
       session.context = []

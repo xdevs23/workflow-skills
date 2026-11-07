@@ -1,4 +1,4 @@
-import { describe, expect, test } from 'claude-code/testing'
+import { describe, expect } from 'claude-code/testing'
 import type { ClassicResultOf, On } from 'claude-code'
 
 import { ANNOUNCED_WORK_HINT } from './announcedWorkHint'
@@ -7,7 +7,8 @@ import { HELD_QUESTION_HINT } from './heldQuestionHint'
 import { PHRASE_KINDS, WHOLE_MESSAGE_KINDS, kindsWithPhraseIn } from './hintKinds'
 import { NOTHING_NEEDS_ACTION_HINT } from './nothingNeedsActionHint'
 import { IDLE_REPLY_HINT } from './idleReplyHint'
-import { NO_TIME_LIMIT, endTurn, startSession, stopTurn, typePrompt } from './testSupport'
+import { test } from './testDeclaration'
+import { endTurn, startSession, stopTurn, typePrompt } from './testSupport'
 import { WAITING_HINT } from './waitingHint'
 
 /** The paragraphs of the reason of a block before its closing paragraph. */
@@ -636,32 +637,23 @@ describe('the end of a turn on a message with a hint phrase', () => {
     on('classic.Stop', () => result)
   }
 
-  test(
-    'the first end on a waiting message is blocked with the waiting hint',
-    NO_TIME_LIMIT,
-    async ($, on) => {
-      stopBeneath(on)
+  test('the first end on a waiting message is blocked with the waiting hint', async ($, on) => {
+    stopBeneath(on)
 
-      const stopped = await stopTurn($, { message: WAITING })
+    const stopped = await stopTurn($, { message: WAITING })
 
-      expect(reasonsIn(stopped.block)).toEqual([WAITING_HINT.text])
-    },
-  )
+    expect(reasonsIn(stopped.block)).toEqual([WAITING_HINT.text])
+  })
 
-  test(
-    'the first end on a blocked message is blocked with the blocked hint',
-    NO_TIME_LIMIT,
-    async ($, on) => {
-      stopBeneath(on)
-      const message = 'Packaging is still blocked on the signing key.'
+  test('the first end on a blocked message is blocked with the blocked hint', async ($, on) => {
+    stopBeneath(on)
+    const message = 'Packaging is still blocked on the signing key.'
 
-      expect(reasonsIn((await stopTurn($, { message })).block)).toEqual([BLOCKED_HINT.text])
-    },
-  )
+    expect(reasonsIn((await stopTurn($, { message })).block)).toEqual([BLOCKED_HINT.text])
+  })
 
   test(
     'the first end on a message that reports that nothing needs action is blocked with the nothing needs action hint',
-    NO_TIME_LIMIT,
     async ($, on) => {
       stopBeneath(on)
       const message = 'Nothing needs action.'
@@ -672,22 +664,17 @@ describe('the end of a turn on a message with a hint phrase', () => {
     },
   )
 
-  test(
-    'the first end on an idle reply is blocked with the idle reply hint',
-    NO_TIME_LIMIT,
-    async ($, on) => {
-      stopBeneath(on)
-      const message = 'All clear.'
+  test('the first end on an idle reply is blocked with the idle reply hint', async ($, on) => {
+    stopBeneath(on)
+    const message = 'All clear.'
 
-      expect(reasonsIn((await stopTurn($, { message })).block)).toEqual([IDLE_REPLY_HINT.text])
-    },
-  )
+    expect(reasonsIn((await stopTurn($, { message })).block)).toEqual([IDLE_REPLY_HINT.text])
+  })
 
   for (const message of ['Nothing to do.', 'No change.']) {
     test(
       `the first end on ${JSON.stringify(message)}, which a phrase of the blocked hint matches too, ` +
         'is blocked with the idle reply hint alone',
-      NO_TIME_LIMIT,
       async ($, on) => {
         stopBeneath(on)
 
@@ -698,7 +685,6 @@ describe('the end of a turn on a message with a hint phrase', () => {
 
   test(
     'the first end on a message that announces work is blocked with the announced work hint',
-    NO_TIME_LIMIT,
     async ($, on) => {
       stopBeneath(on)
       const message = "Next\n- While the build runs, I'm working out why the cache is slow."
@@ -709,7 +695,6 @@ describe('the end of a turn on a message with a hint phrase', () => {
 
   test(
     'a message with phrases of several kinds is blocked with the hint of each, in the order of the kinds',
-    NO_TIME_LIMIT,
     async ($, on) => {
       stopBeneath(on)
       const stopped = await stopTurn($, {
@@ -729,7 +714,6 @@ describe('the end of a turn on a message with a hint phrase', () => {
 
   test(
     'a message with phrases of the waiting and the blocked kind is blocked with both hints',
-    NO_TIME_LIMIT,
     async ($, on) => {
       stopBeneath(on)
       const stopped = await stopTurn($, {
@@ -742,7 +726,6 @@ describe('the end of a turn on a message with a hint phrase', () => {
 
   test(
     'every block ends with the same closing paragraph, which is no text of a hint kind',
-    NO_TIME_LIMIT,
     async ($, on) => {
       stopBeneath(on)
       const closings = [
@@ -756,31 +739,31 @@ describe('the end of a turn on a message with a hint phrase', () => {
     },
   )
 
-  test('the end that follows a block passes', NO_TIME_LIMIT, async ($, on) => {
+  test('the end that follows a block passes', async ($, on) => {
     stopBeneath(on)
 
     expect((await stopTurn($, { message: WAITING, followsBlock: true })).block).toBeUndefined()
   })
 
-  test('the end of a subagent passes', NO_TIME_LIMIT, async ($, on) => {
+  test('the end of a subagent passes', async ($, on) => {
     stopBeneath(on)
 
     expect((await stopTurn($, { message: WAITING, agentId: 'agent-1' })).block).toBeUndefined()
   })
 
-  test('a message without a hint phrase passes', NO_TIME_LIMIT, async ($, on) => {
+  test('a message without a hint phrase passes', async ($, on) => {
     stopBeneath(on)
 
     expect((await stopTurn($, { message: 'Build 62 passed.' })).block).toBeUndefined()
   })
 
-  test('an end without a message passes', NO_TIME_LIMIT, async ($, on) => {
+  test('an end without a message passes', async ($, on) => {
     stopBeneath(on)
 
     expect((await stopTurn($)).block).toBeUndefined()
   })
 
-  test('a block asked by a hook beneath comes before the hint', NO_TIME_LIMIT, async ($, on) => {
+  test('a block asked by a hook beneath comes before the hint', async ($, on) => {
     stopBeneath(on, { block: 'Run the linter first.' })
 
     expect(reasonsIn((await stopTurn($, { message: WAITING })).block)).toEqual([
@@ -789,32 +772,24 @@ describe('the end of a turn on a message with a hint phrase', () => {
     ])
   })
 
-  test(
-    'a stop of the session asked by a hook beneath is returned unchanged',
-    NO_TIME_LIMIT,
-    async ($, on) => {
-      stopBeneath(on, { preventContinuation: true })
+  test('a stop of the session asked by a hook beneath is returned unchanged', async ($, on) => {
+    stopBeneath(on, { preventContinuation: true })
 
-      expect(await stopTurn($, { message: WAITING })).toEqual({ preventContinuation: true })
-    },
-  )
+    expect(await stopTurn($, { message: WAITING })).toEqual({ preventContinuation: true })
+  })
 
-  test(
-    'the other fields returned by a hook beneath stay in the result',
-    NO_TIME_LIMIT,
-    async ($, on) => {
-      stopBeneath(on, { additionalContext: ['The build is green.'] })
+  test('the other fields returned by a hook beneath stay in the result', async ($, on) => {
+    stopBeneath(on, { additionalContext: ['The build is green.'] })
 
-      const stopped = await stopTurn($, { message: WAITING })
+    const stopped = await stopTurn($, { message: WAITING })
 
-      expect(stopped.additionalContext).toEqual(['The build is green.'])
-      expect(reasonsIn(stopped.block)).toEqual([WAITING_HINT.text])
-    },
-  )
+    expect(stopped.additionalContext).toEqual(['The build is green.'])
+    expect(reasonsIn(stopped.block)).toEqual([WAITING_HINT.text])
+  })
 })
 
 describe('the prompt after a turn that ended on a message with a hint phrase', () => {
-  test('the next prompt carries no hint', NO_TIME_LIMIT, async ($, on) => {
+  test('the next prompt carries no hint', async ($, on) => {
     const session = await startSession($, on)
     await endTurn($, { answer: WAITING })
     await typePrompt($, 'go on')

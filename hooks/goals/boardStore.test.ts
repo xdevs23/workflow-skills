@@ -1,16 +1,11 @@
-import { describe, expect, mock, test } from 'claude-code/testing'
+import { describe, expect, mock } from 'claude-code/testing'
 import type { On } from 'claude-code'
 
 import type { Board, Goal } from '../../types'
 import { LOCK_REFUSAL } from '../pluginStore'
 import type { StoreEngine } from '../pluginStore'
-import {
-  FIRST_SESSION,
-  NO_TIME_LIMIT,
-  SECOND_SESSION,
-  storeEngineOf,
-  storeFakeWith,
-} from '../testSupport'
+import { test } from '../testDeclaration'
+import { FIRST_SESSION, SECOND_SESSION, storeEngineOf, storeFakeWith } from '../testSupport'
 import { EMPTY_BOARD, Outcome, Refusal } from './board'
 import type {
   AddRefused,
@@ -101,7 +96,7 @@ async function addFullApp($: StoreEngine): Promise<Goal> {
 }
 
 describe('the board of a session in the store', () => {
-  test('a session without stored records has an empty board', NO_TIME_LIMIT, async ($, on) => {
+  test('a session without stored records has an empty board', async ($, on) => {
     const store = startStore(on)
 
     expect(await loadBoard(store.$, SCOPE)).toEqual({
@@ -110,7 +105,7 @@ describe('the board of a session in the store', () => {
     })
   })
 
-  test('a board is read back as the changes made it', NO_TIME_LIMIT, async ($, on) => {
+  test('a board is read back as the changes made it', async ($, on) => {
     const store = startStore(on)
     const fullApp = await addFullApp(store.$)
     const exportFix = goalOf(await saveNewGoal(store.$, SCOPE, 'Fix the export timeout', 200))
@@ -135,7 +130,7 @@ describe('the board of a session in the store', () => {
     })
   })
 
-  test('each session reads only its own board', NO_TIME_LIMIT, async ($, on) => {
+  test('each session reads only its own board', async ($, on) => {
     const store = startStore(on)
     const otherScope = sessionScope(SECOND_SESSION)
     await saveNewGoal(store.$, SCOPE, 'Write the migration guide', 100)
@@ -151,7 +146,7 @@ describe('the board of a session in the store', () => {
 })
 
 describe('changes made at the same moment', () => {
-  test('goals added at the same moment get different numbers', NO_TIME_LIMIT, async ($, on) => {
+  test('goals added at the same moment get different numbers', async ($, on) => {
     const store = startStore(on)
     await Promise.all(
       ['Write the migration guide', 'Fix the export timeout', 'Speed up the nightly build'].map(text =>
@@ -165,7 +160,6 @@ describe('changes made at the same moment', () => {
 
   test(
     'a goal added while another process adds a goal with the same number gets the next number',
-    NO_TIME_LIMIT,
     async ($, on) => {
       const store = startStore(on)
       const other = goalRecordOf(SCOPE, {
@@ -186,7 +180,6 @@ describe('changes made at the same moment', () => {
 
   test(
     'a TODO entry attached by another process during an attach is still attached',
-    NO_TIME_LIMIT,
     async ($, on) => {
       const store = startStore(on)
       const fullApp = await addFullApp(store.$)
@@ -201,23 +194,18 @@ describe('changes made at the same moment', () => {
     },
   )
 
-  test(
-    'a goal cleared by another process during an attach is still cleared',
-    NO_TIME_LIMIT,
-    async ($, on) => {
-      const store = startStore(on)
-      const fullApp = await addFullApp(store.$)
-      const other = clearanceRecordOf(SCOPE, fullApp, 150)
-      store.fake.beforeNextWrite = () => store.fake.store.set(other.key, other.value)
-      await saveAttachedTodo(store.$, SCOPE, 1, { number: '45', title: 'One emulator boot' }, 200)
+  test('a goal cleared by another process during an attach is still cleared', async ($, on) => {
+    const store = startStore(on)
+    const fullApp = await addFullApp(store.$)
+    const other = clearanceRecordOf(SCOPE, fullApp, 150)
+    store.fake.beforeNextWrite = () => store.fake.store.set(other.key, other.value)
+    await saveAttachedTodo(store.$, SCOPE, 1, { number: '45', title: 'One emulator boot' }, 200)
 
-      expect(boardOf(await loadBoard(store.$, SCOPE)).goals[0]?.clearedAt).toBe(150)
-    },
-  )
+    expect(boardOf(await loadBoard(store.$, SCOPE)).goals[0]?.clearedAt).toBe(150)
+  })
 
   test(
     'a done mark set by another process during the removal of an older mark is still set',
-    NO_TIME_LIMIT,
     async ($, on) => {
       const store = startStore(on)
       const fullApp = await addFullApp(store.$)
@@ -236,7 +224,6 @@ describe('changes made at the same moment', () => {
 
   test(
     'a done mark set while another process removes the mark of its dependency is removed',
-    NO_TIME_LIMIT,
     async ($, on) => {
       const store = startStore(on)
       await addFullApp(store.$)
@@ -257,7 +244,7 @@ describe('changes made at the same moment', () => {
 })
 
 describe('writing only what changed', () => {
-  test('a refused change writes nothing', NO_TIME_LIMIT, async ($, on) => {
+  test('a refused change writes nothing', async ($, on) => {
     const store = startStore(on)
     await addFullApp(store.$)
     const stored = [...store.fake.store]
@@ -270,77 +257,65 @@ describe('writing only what changed', () => {
     expect([...store.fake.store]).toEqual(stored)
   })
 
-  test(
-    'attaching a TODO entry again under the same title writes nothing',
-    NO_TIME_LIMIT,
-    async ($, on) => {
-      const store = startStore(on)
-      await addFullApp(store.$)
-      const todo = { number: '45', title: 'One emulator boot' }
-      await saveAttachedTodo(store.$, SCOPE, 1, todo, 200)
-      store.fake.refusedWrites.push('the store is over 4 MiB')
+  test('attaching a TODO entry again under the same title writes nothing', async ($, on) => {
+    const store = startStore(on)
+    await addFullApp(store.$)
+    const todo = { number: '45', title: 'One emulator boot' }
+    await saveAttachedTodo(store.$, SCOPE, 1, todo, 200)
+    store.fake.refusedWrites.push('the store is over 4 MiB')
 
-      expect((await saveAttachedTodo(store.$, SCOPE, 1, todo, 300)).outcome).toBe(Outcome.Unchanged)
-      expect(store.fake.refusedWrites).toHaveLength(1)
-    },
-  )
+    expect((await saveAttachedTodo(store.$, SCOPE, 1, todo, 300)).outcome).toBe(Outcome.Unchanged)
+    expect(store.fake.refusedWrites).toHaveLength(1)
+  })
 
-  test(
-    'an edit writes one record, and the goal is read back with its new text',
-    NO_TIME_LIMIT,
-    async ($, on) => {
-      const store = startStore(on)
-      const fullApp = await addFullApp(store.$)
-      await saveAttachedTodo(store.$, SCOPE, 1, { number: '45', title: 'One emulator boot' }, 200)
-      const keys = [...store.fake.store.keys()]
-      const edited = await saveEditedGoal(store.$, SCOPE, 1, 'Write the upgrade guide', 300)
+  test('an edit writes one record, and the goal is read back with its new text', async ($, on) => {
+    const store = startStore(on)
+    const fullApp = await addFullApp(store.$)
+    await saveAttachedTodo(store.$, SCOPE, 1, { number: '45', title: 'One emulator boot' }, 200)
+    const keys = [...store.fake.store.keys()]
+    const edited = await saveEditedGoal(store.$, SCOPE, 1, 'Write the upgrade guide', 300)
 
-      expect([...store.fake.store.keys()]).toEqual([
-        ...keys,
-        textRecordOf(SCOPE, fullApp, 300).key,
-      ])
-      expect(await loadBoard(store.$, SCOPE)).toEqual({
-        outcome: Outcome.Read,
-        board: boardOf(edited),
-      })
-      expect(boardOf(edited).goals).toEqual([
-        {
-          ...fullApp,
-          text: 'Write the upgrade guide',
-          editedAt: 300,
-          todos: [{ number: '45', title: 'One emulator boot', attachedAt: 200 }],
-        },
-      ])
-    },
-  )
+    expect([...store.fake.store.keys()]).toEqual([
+      ...keys,
+      textRecordOf(SCOPE, fullApp, 300).key,
+    ])
+    expect(await loadBoard(store.$, SCOPE)).toEqual({
+      outcome: Outcome.Read,
+      board: boardOf(edited),
+    })
+    expect(boardOf(edited).goals).toEqual([
+      {
+        ...fullApp,
+        text: 'Write the upgrade guide',
+        editedAt: 300,
+        todos: [{ number: '45', title: 'One emulator boot', attachedAt: 200 }],
+      },
+    ])
+  })
 
-  test(
-    'an edit of a marked goal writes the removal of the mark and the text',
-    NO_TIME_LIMIT,
-    async ($, on) => {
-      const store = startStore(on)
-      const fullApp = await addFullApp(store.$)
-      await saveDoneMark(store.$, SCOPE, 1, 'release/v3.2.0', 300)
-      const keys = [...store.fake.store.keys()]
-      const edited = await saveEditedGoal(store.$, SCOPE, 1, 'Write the upgrade guide', 400)
-      const removal = { markedAt: 300, removedAt: 400, removedBy: MarkRemover.User } as const
+  test('an edit of a marked goal writes the removal of the mark and the text', async ($, on) => {
+    const store = startStore(on)
+    const fullApp = await addFullApp(store.$)
+    await saveDoneMark(store.$, SCOPE, 1, 'release/v3.2.0', 300)
+    const keys = [...store.fake.store.keys()]
+    const edited = await saveEditedGoal(store.$, SCOPE, 1, 'Write the upgrade guide', 400)
+    const removal = { markedAt: 300, removedAt: 400, removedBy: MarkRemover.User } as const
 
-      expect([...store.fake.store.keys()]).toEqual([
-        ...keys,
-        markRemovalRecordOf(SCOPE, { ...fullApp, markRemoval: removal }).key,
-        textRecordOf(SCOPE, fullApp, 400).key,
-      ])
-      expect(edited.outcome === Outcome.Changed && edited.unmarked).toEqual([
-        { ...goalOf(edited), markRemoval: removal },
-      ])
-      expect(await loadBoard(store.$, SCOPE)).toEqual({
-        outcome: Outcome.Read,
-        board: boardOf(edited),
-      })
-    },
-  )
+    expect([...store.fake.store.keys()]).toEqual([
+      ...keys,
+      markRemovalRecordOf(SCOPE, { ...fullApp, markRemoval: removal }).key,
+      textRecordOf(SCOPE, fullApp, 400).key,
+    ])
+    expect(edited.outcome === Outcome.Changed && edited.unmarked).toEqual([
+      { ...goalOf(edited), markRemoval: removal },
+    ])
+    expect(await loadBoard(store.$, SCOPE)).toEqual({
+      outcome: Outcome.Read,
+      board: boardOf(edited),
+    })
+  })
 
-  test('an edit to the text already on the goal writes nothing', NO_TIME_LIMIT, async ($, on) => {
+  test('an edit to the text already on the goal writes nothing', async ($, on) => {
     const store = startStore(on)
     await addFullApp(store.$)
     store.fake.refusedWrites.push('the store is over 4 MiB')
@@ -353,7 +328,6 @@ describe('writing only what changed', () => {
 
   test(
     'a done mark and its removal write one record each, which are read back with the goal',
-    NO_TIME_LIMIT,
     async ($, on) => {
       const store = startStore(on)
       await addFullApp(store.$)
@@ -383,7 +357,6 @@ describe('writing only what changed', () => {
   test(
     'a removed mark writes the removals of the marks depending on it first, so a retry of a ' +
       'failed write removes every mark',
-    NO_TIME_LIMIT,
     async ($, on) => {
       const store = startStore(on)
       const fullApp = await addFullApp(store.$)
@@ -414,23 +387,19 @@ describe('writing only what changed', () => {
     },
   )
 
-  test(
-    'a done mark with the evidence already on the goal writes nothing',
-    NO_TIME_LIMIT,
-    async ($, on) => {
-      const store = startStore(on)
-      await addFullApp(store.$)
-      await saveDoneMark(store.$, SCOPE, 1, 'release/v3.2.0', 300)
-      store.fake.refusedWrites.push('the store is over 4 MiB')
+  test('a done mark with the evidence already on the goal writes nothing', async ($, on) => {
+    const store = startStore(on)
+    await addFullApp(store.$)
+    await saveDoneMark(store.$, SCOPE, 1, 'release/v3.2.0', 300)
+    store.fake.refusedWrites.push('the store is over 4 MiB')
 
-      expect((await saveDoneMark(store.$, SCOPE, 1, 'release/v3.2.0', 310)).outcome).toBe(
-        Outcome.Unchanged,
-      )
-      expect(store.fake.refusedWrites).toHaveLength(1)
-    },
-  )
+    expect((await saveDoneMark(store.$, SCOPE, 1, 'release/v3.2.0', 310)).outcome).toBe(
+      Outcome.Unchanged,
+    )
+    expect(store.fake.refusedWrites).toHaveLength(1)
+  })
 
-  test('detaching a TODO entry deletes its record', NO_TIME_LIMIT, async ($, on) => {
+  test('detaching a TODO entry deletes its record', async ($, on) => {
     const store = startStore(on)
     const fullApp = await addFullApp(store.$)
     await saveAttachedTodo(store.$, SCOPE, 1, { number: '45', title: 'One emulator boot' }, 200)
@@ -443,7 +412,6 @@ describe('writing only what changed', () => {
 describe('a damaged record, a refused read or a refused write', () => {
   test(
     'a damaged record is reported with its key, and a change leaves the store untouched',
-    NO_TIME_LIMIT,
     async ($, on) => {
       const store = startStore(on)
       const fullApp = await addFullApp(store.$)
@@ -481,7 +449,6 @@ describe('a damaged record, a refused read or a refused write', () => {
 
   test(
     'a goal stored under a number already taken is left out until it is given a free number',
-    NO_TIME_LIMIT,
     async ($, on) => {
       const store = startStore(on)
       const fullApp = await addFullApp(store.$)
@@ -495,7 +462,6 @@ describe('a damaged record, a refused read or a refused write', () => {
 
   test(
     'a write the store refuses is reported with its error, and the board is as stored before',
-    NO_TIME_LIMIT,
     async ($, on) => {
       const store = startStore(on)
       const fullApp = await addFullApp(store.$)
@@ -511,7 +477,6 @@ describe('a damaged record, a refused read or a refused write', () => {
 
   test(
     'keys the store cannot list are reported with the error, for a load and a change',
-    NO_TIME_LIMIT,
     async ($, on) => {
       const store = startStore(on)
       await addFullApp(store.$)
@@ -530,20 +495,16 @@ describe('a damaged record, a refused read or a refused write', () => {
     },
   )
 
-  test(
-    'a write refused while another process holds the lock is made again',
-    NO_TIME_LIMIT,
-    async ($, on) => {
-      const store = startStore(on)
-      await addFullApp(store.$)
-      store.fake.refusedWrites.push(LOCK_REFUSAL)
-      const clearing = saveClearedGoal(store.$, SCOPE, 1, 400)
-      await store.clock.settle()
-      await store.clock.advance(60_000)
+  test('a write refused while another process holds the lock is made again', async ($, on) => {
+    const store = startStore(on)
+    await addFullApp(store.$)
+    store.fake.refusedWrites.push(LOCK_REFUSAL)
+    const clearing = saveClearedGoal(store.$, SCOPE, 1, 400)
+    await store.clock.settle()
+    await store.clock.advance(60_000)
 
-      expect(goalOf(await clearing).clearedAt).toBe(400)
-      expect(boardOf(await loadBoard(store.$, SCOPE)).goals[0]?.clearedAt).toBe(400)
-      expect(store.logs.filter(line => line.includes(LOCK_REFUSAL))).toHaveLength(1)
-    },
-  )
+    expect(goalOf(await clearing).clearedAt).toBe(400)
+    expect(boardOf(await loadBoard(store.$, SCOPE)).goals[0]?.clearedAt).toBe(400)
+    expect(store.logs.filter(line => line.includes(LOCK_REFUSAL))).toHaveLength(1)
+  })
 })

@@ -1,7 +1,8 @@
-import { describe, expect, test } from 'claude-code/testing'
+import { describe, expect } from 'claude-code/testing'
 
 import type { Goal } from '../../types'
-import { FIRST_SESSION, NO_TIME_LIMIT, startSession } from '../testSupport'
+import { test } from '../testDeclaration'
+import { FIRST_SESSION, startSession } from '../testSupport'
 import { clearanceRecordOf, dependencyRecordOf, priorityRecordOf } from './boardRecord'
 import { sessionScope } from './boardScope'
 import {
@@ -38,7 +39,6 @@ describe('the dependency of a goal in the Goals pane', () => {
   test(
     'every open goal has an After picker beside its priority, from none through the other open ' +
       'goals',
-    NO_TIME_LIMIT,
     async ($, on) => {
       await startSession($, on, { stored: storedBoard() })
       const pane = await mountGoalsPane($, 'terminal')
@@ -59,7 +59,6 @@ describe('the dependency of a goal in the Goals pane', () => {
 
   test(
     'a picked goal is stored by its id, and the goal depended on no longer offers a loop',
-    NO_TIME_LIMIT,
     async ($, on) => {
       const session = await startSession($, on, { stored: storedBoard() })
       const pane = await mountGoalsPane($, 'terminal')
@@ -74,7 +73,7 @@ describe('the dependency of a goal in the Goals pane', () => {
     },
   )
 
-  test('a dependency on a cleared goal shows as none', NO_TIME_LIMIT, async ($, on) => {
+  test('a dependency on a cleared goal shows as none', async ($, on) => {
     const clearance = clearanceRecordOf(SCOPE, ROTATION_CRASH, 600)
     await startSession($, on, {
       stored: storedBoardWithDependency().set(clearance.key, clearance.value),
@@ -89,7 +88,6 @@ describe('the dependency of a goal in the Goals pane', () => {
 
   test(
     'a pick that closes a loop set by another process shows a toast and stores nothing',
-    NO_TIME_LIMIT,
     async ($, on) => {
       const session = await startSession($, on, { stored: storedBoard() })
       const pane = await mountGoalsPane($, 'terminal')
@@ -105,7 +103,6 @@ describe('the dependency of a goal in the Goals pane', () => {
 
   test(
     'on a surface without Select, a dependency shows as a badge after the priority badge',
-    NO_TIME_LIMIT,
     async ($, on) => {
       const priority = priorityRecordOf(SCOPE, {
         ...MIGRATION_GUIDE,

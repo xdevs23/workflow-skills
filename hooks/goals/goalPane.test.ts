@@ -1,7 +1,8 @@
-import { describe, expect, test } from 'claude-code/testing'
+import { describe, expect } from 'claude-code/testing'
 
 import { PLUGIN } from '../names'
-import { FIRST_SESSION, NO_TIME_LIMIT, startSession } from '../testSupport'
+import { test } from '../testDeclaration'
+import { FIRST_SESSION, startSession } from '../testSupport'
 import { clearanceRecordOf } from './boardRecord'
 import { boardPrefixOf, sessionScope } from './boardScope'
 import { GOALS_PANE } from './goalNames'
@@ -24,7 +25,6 @@ import {
 describe('the Goals pane', () => {
   test(
     '/goals opens the pane on every open goal with its TODO entries, without a reply',
-    NO_TIME_LIMIT,
     async ($, on) => {
       const session = await startSession($, on, { stored: storedBoard() })
 
@@ -42,7 +42,6 @@ describe('the Goals pane', () => {
 
   test(
     'a goal entered in the field gets the next number, and the pane draws a new field',
-    NO_TIME_LIMIT,
     async ($, on) => {
       await startSession($, on, { stored: storedBoard() })
       const pane = await mountGoalsPane($, 'terminal')
@@ -57,7 +56,7 @@ describe('the Goals pane', () => {
     },
   )
 
-  test('an entry of white space alone adds nothing', NO_TIME_LIMIT, async ($, on) => {
+  test('an entry of white space alone adds nothing', async ($, on) => {
     const session = await startSession($, on, { stored: storedBoard() })
     const pane = await mountGoalsPane($, 'terminal')
     await pane.input({ key: 'new-goal-4', text: '   ' })
@@ -66,25 +65,20 @@ describe('the Goals pane', () => {
     expect(session.toasts).toEqual([])
   })
 
-  test(
-    'an entry made while another goal is saved adds nothing',
-    NO_TIME_LIMIT,
-    async ($, on) => {
-      const session = await startSession($, on, { stored: storedBoard() })
-      const pane = await mountGoalsPane($, 'terminal')
-      const added = pane.input({ key: 'new-goal-4', text: 'Ship the tablet layout' })
-      const repeated = pane.input({ key: 'new-goal-4', text: 'Ship the tablet layout' })
+  test('an entry made while another goal is saved adds nothing', async ($, on) => {
+    const session = await startSession($, on, { stored: storedBoard() })
+    const pane = await mountGoalsPane($, 'terminal')
+    const added = pane.input({ key: 'new-goal-4', text: 'Ship the tablet layout' })
+    const repeated = pane.input({ key: 'new-goal-4', text: 'Ship the tablet layout' })
 
-      await expect(added).rejects.toThrow(NO_FOCUS_IN_KIT)
-      await repeated
-      expect(goalRecordsOf(session).size).toBe(storedBoard().size + 1)
-      expect(await pane.find({ key: 'clear-5' })).toBeUndefined()
-    },
-  )
+    await expect(added).rejects.toThrow(NO_FOCUS_IN_KIT)
+    await repeated
+    expect(goalRecordsOf(session).size).toBe(storedBoard().size + 1)
+    expect(await pane.find({ key: 'clear-5' })).toBeUndefined()
+  })
 
   test(
     'Clear asks once, Keep cancels the question, and Yes, clear clears the goal',
-    NO_TIME_LIMIT,
     async ($, on) => {
       const session = await startSession($, on, { stored: storedBoard() })
       const pane = await mountGoalsPane($, 'terminal')
@@ -111,26 +105,21 @@ describe('the Goals pane', () => {
     },
   )
 
-  test(
-    'a second Yes, clear pressed while the clear is saved does nothing',
-    NO_TIME_LIMIT,
-    async ($, on) => {
-      const session = await startSession($, on, { stored: storedBoard() })
-      const pane = await mountGoalsPane($, 'terminal')
-      await pane.press({ key: 'clear-2' })
-      await Promise.all([
-        pane.press({ key: 'confirm-clear-2' }),
-        pane.press({ key: 'confirm-clear-2' }),
-      ])
+  test('a second Yes, clear pressed while the clear is saved does nothing', async ($, on) => {
+    const session = await startSession($, on, { stored: storedBoard() })
+    const pane = await mountGoalsPane($, 'terminal')
+    await pane.press({ key: 'clear-2' })
+    await Promise.all([
+      pane.press({ key: 'confirm-clear-2' }),
+      pane.press({ key: 'confirm-clear-2' }),
+    ])
 
-      expect(session.toasts).toEqual([])
-      expect(await pane.find({ type: 'Text', text: ROTATION_CRASH.text })).toBeUndefined()
-    },
-  )
+    expect(session.toasts).toEqual([])
+    expect(await pane.find({ type: 'Text', text: ROTATION_CRASH.text })).toBeUndefined()
+  })
 
   test(
     'a question to clear another goal, asked while a clear is saved, stays open',
-    NO_TIME_LIMIT,
     async ($, on) => {
       await startSession($, on, { stored: storedBoard() })
       const pane = await mountGoalsPane($, 'terminal')
@@ -144,7 +133,6 @@ describe('the Goals pane', () => {
 
   test(
     'Clear pressed on a goal cleared by another process shows a toast, and the goal leaves',
-    NO_TIME_LIMIT,
     async ($, on) => {
       const session = await startSession($, on, { stored: storedBoard() })
       const pane = await mountGoalsPane($, 'terminal')
@@ -159,7 +147,6 @@ describe('the Goals pane', () => {
 
   test(
     'Yes, clear pressed on a goal cleared by another process shows a toast, and the goal leaves',
-    NO_TIME_LIMIT,
     async ($, on) => {
       const session = await startSession($, on, { stored: storedBoard() })
       const pane = await mountGoalsPane($, 'terminal')
@@ -174,7 +161,6 @@ describe('the Goals pane', () => {
 
   test(
     'Clear pressed while the board cannot be read shows the failure, and the goals stay drawn',
-    NO_TIME_LIMIT,
     async ($, on) => {
       const session = await startSession($, on, { stored: storedBoard() })
       const pane = await mountGoalsPane($, 'terminal')
@@ -192,7 +178,6 @@ describe('the Goals pane', () => {
 
   test(
     'a board that cannot be read after a refused clear stays drawn as it was last read',
-    NO_TIME_LIMIT,
     async ($, on) => {
       const damagedKey = `${boardPrefixOf(sessionScope(FIRST_SESSION))}damaged`
       let isDamageHidden = false
@@ -224,7 +209,6 @@ describe('the Goals pane', () => {
   test(
     'when the store does not save a goal, the pane draws the same field again, and the toast ' +
       'shows the refusal',
-    NO_TIME_LIMIT,
     async ($, on) => {
       const session = await startSession($, on, { stored: storedBoard() })
       const pane = await mountGoalsPane($, 'terminal')
@@ -243,7 +227,6 @@ describe('the Goals pane', () => {
   test(
     'a clear the store does not save leaves the goal and its question open, and the toast shows ' +
       'the refusal',
-    NO_TIME_LIMIT,
     async ($, on) => {
       const session = await startSession($, on, { stored: storedBoard() })
       const pane = await mountGoalsPane($, 'terminal')
@@ -264,7 +247,6 @@ describe('the Goals pane', () => {
   test(
     'an error other than a failure of the store fails the press of Clear, and does not show a ' +
       'toast',
-    NO_TIME_LIMIT,
     async ($, on) => {
       on('state.set', { plugin: PLUGIN, key: 'goalInPane' }, () => ({
         deny: 'the state of the plugin is held by another write',
@@ -283,7 +265,6 @@ describe('the Goals pane', () => {
   test(
     'on a surface without input fields the pane draws a dim line that points to a terminal in ' +
       'place of the field and Edit, draws Unmark, and Clear still works',
-    NO_TIME_LIMIT,
     async ($, on) => {
       await startSession($, on, { stored: storedBoardWithMark() })
       const pane = await mountGoalsPane($, 'mobile')

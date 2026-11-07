@@ -1,6 +1,7 @@
-import { describe, expect, test } from 'claude-code/testing'
+import { describe, expect } from 'claude-code/testing'
 
-import { FIRST_SESSION, NO_TIME_LIMIT, startSession } from '../testSupport'
+import { test } from '../testDeclaration'
+import { FIRST_SESSION, startSession } from '../testSupport'
 import { textRecordOf } from './boardRecord'
 import { sessionScope } from './boardScope'
 import {
@@ -21,7 +22,6 @@ const BLANK_TEXT_WARNING = 'A goal needs a text. Type one, or press Cancel.'
 describe('editing a goal in the Goals pane', () => {
   test(
     'Edit draws the text as a field with Cancel, and Enter saves the new text in place',
-    NO_TIME_LIMIT,
     async ($, on) => {
       const session = await startSession($, on, { stored: storedBoard() })
       const pane = await mountGoalsPane($, 'terminal')
@@ -51,7 +51,7 @@ describe('editing a goal in the Goals pane', () => {
     },
   )
 
-  test('an edit of a marked goal removes its done mark', NO_TIME_LIMIT, async ($, on) => {
+  test('an edit of a marked goal removes its done mark', async ($, on) => {
     const session = await startSession($, on, { stored: storedBoardWithMark() })
     const pane = await mountGoalsPane($, 'terminal')
     await expect(pane.press({ key: 'edit-2' })).rejects.toThrow(NO_FOCUS_IN_KIT)
@@ -62,24 +62,19 @@ describe('editing a goal in the Goals pane', () => {
     expect(session.toasts).toEqual([])
   })
 
-  test(
-    'Clear pressed on another goal while a goal is edited ends the edit',
-    NO_TIME_LIMIT,
-    async ($, on) => {
-      await startSession($, on, { stored: storedBoard() })
-      const pane = await mountGoalsPane($, 'terminal')
-      await expect(pane.press({ key: 'edit-1' })).rejects.toThrow(NO_FOCUS_IN_KIT)
-      await pane.press({ key: 'clear-2' })
+  test('Clear pressed on another goal while a goal is edited ends the edit', async ($, on) => {
+    await startSession($, on, { stored: storedBoard() })
+    const pane = await mountGoalsPane($, 'terminal')
+    await expect(pane.press({ key: 'edit-1' })).rejects.toThrow(NO_FOCUS_IN_KIT)
+    await pane.press({ key: 'clear-2' })
 
-      expect(await pane.find({ key: 'edit-goal-1' })).toBeUndefined()
-      expect(await pane.find({ type: 'Text', text: MIGRATION_GUIDE.text })).toBeDefined()
-      expect(await pane.find({ type: 'Text', text: 'Clear Goal 2?' })).toBeDefined()
-    },
-  )
+    expect(await pane.find({ key: 'edit-goal-1' })).toBeUndefined()
+    expect(await pane.find({ type: 'Text', text: MIGRATION_GUIDE.text })).toBeDefined()
+    expect(await pane.find({ type: 'Text', text: 'Clear Goal 2?' })).toBeDefined()
+  })
 
   test(
     'a blank text is not saved, the field stays open with the warning, and Cancel closes it',
-    NO_TIME_LIMIT,
     async ($, on) => {
       const session = await startSession($, on, { stored: storedBoard() })
       const pane = await mountGoalsPane($, 'terminal')
@@ -96,7 +91,7 @@ describe('editing a goal in the Goals pane', () => {
     },
   )
 
-  test('the text already on the goal saves nothing, and closes the field', NO_TIME_LIMIT, async (
+  test('the text already on the goal saves nothing, and closes the field', async (
     $,
     on,
   ) => {
@@ -113,7 +108,6 @@ describe('editing a goal in the Goals pane', () => {
 
   test(
     'a text not saved by the store leaves the field open, and the toast shows the refusal',
-    NO_TIME_LIMIT,
     async ($, on) => {
       const session = await startSession($, on, { stored: storedBoard() })
       const pane = await mountGoalsPane($, 'terminal')
@@ -132,7 +126,6 @@ describe('editing a goal in the Goals pane', () => {
   test(
     'Edit pressed, or a text entered, for a goal cleared by another process shows a toast, and ' +
       'the goal leaves',
-    NO_TIME_LIMIT,
     async ($, on) => {
       const session = await startSession($, on, { stored: storedBoard() })
       const pane = await mountGoalsPane($, 'terminal')

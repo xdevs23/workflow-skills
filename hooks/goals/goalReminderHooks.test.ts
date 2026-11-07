@@ -1,12 +1,12 @@
-import { describe, expect, test } from 'claude-code/testing'
+import { describe, expect } from 'claude-code/testing'
 import type { Engine } from 'claude-code/testing'
 
 import type { Goal } from '../../types'
 import { PLUGIN } from '../names'
+import { test } from '../testDeclaration'
 import {
   FIRST_SESSION,
   GOALS_NOT_EXHAUSTIVE,
-  NO_TIME_LIMIT,
   SECOND_SESSION,
   SUBAGENT,
   endTurn,
@@ -105,7 +105,6 @@ describe('the open goals after a compaction', () => {
   test(
     'a compaction adds the open goals and the changes before it to the context, and the ' +
       'changes are not sent again',
-    NO_TIME_LIMIT,
     async ($, on) => {
       const session = await startSession($, on, { stored: storedBoard() })
       const pane = await mountGoalsPane($, 'terminal')
@@ -132,7 +131,6 @@ describe('the open goals after a compaction', () => {
 
   test(
     'a compaction after the last open goal was cleared adds the note on the clear alone',
-    NO_TIME_LIMIT,
     async ($, on) => {
       const session = await startSession($, on, { stored: storedBoard() })
       const pane = await mountGoalsPane($, 'terminal')
@@ -149,21 +147,21 @@ describe('the open goals after a compaction', () => {
     },
   )
 
-  test('a compaction on a board without open goals adds nothing', NO_TIME_LIMIT, async ($, on) => {
+  test('a compaction on a board without open goals adds nothing', async ($, on) => {
     const session = await startSession($, on)
 
     expect((await compact($)).additionalContext).toBeUndefined()
     expect(goalLinesOf(session)).toEqual([])
   })
 
-  test('a compaction in a subagent adds nothing', NO_TIME_LIMIT, async ($, on) => {
+  test('a compaction in a subagent adds nothing', async ($, on) => {
     const session = await startSession($, on, { stored: storedBoard() })
 
     expect((await compact($, SUBAGENT)).additionalContext).toBeUndefined()
     expect(goalLinesOf(session)).toEqual([])
   })
 
-  test('a compaction with one open goal names it in the transcript', NO_TIME_LIMIT, async (
+  test('a compaction with one open goal names it in the transcript', async (
     $,
     on,
   ) => {
@@ -181,7 +179,6 @@ describe('the open goals after a compaction', () => {
 
   test(
     'a compaction whose read of the board fails shows the reason in a toast and adds nothing',
-    NO_TIME_LIMIT,
     async ($, on) => {
       const session = await startSession($, on, { stored: storedBoard() })
       session.keysRefusal = UNREADABLE_STORE
@@ -195,7 +192,7 @@ describe('the open goals after a compaction', () => {
 })
 
 describe('the goals added or cleared since the model saw the board', () => {
-  test('a goal added during a turn is sent with the next tool result once', NO_TIME_LIMIT, async (
+  test('a goal added during a turn is sent with the next tool result once', async (
     $,
     on,
   ) => {
@@ -212,7 +209,7 @@ describe('the goals added or cleared since the model saw the board', () => {
     expect(goalLinesOf(session)).toHaveLength(1)
   })
 
-  test('a goal cleared while idle is sent with the next prompt once', NO_TIME_LIMIT, async (
+  test('a goal cleared while idle is sent with the next prompt once', async (
     $,
     on,
   ) => {
@@ -226,7 +223,7 @@ describe('the goals added or cleared since the model saw the board', () => {
     expect(await notesOfToolResult($)).toEqual([])
   })
 
-  test('a goal edited during a turn is sent with its new text once', NO_TIME_LIMIT, async (
+  test('a goal edited during a turn is sent with its new text once', async (
     $,
     on,
   ) => {
@@ -242,7 +239,7 @@ describe('the goals added or cleared since the model saw the board', () => {
     expect(await notesOfPrompt($)).toEqual([])
   })
 
-  test('a done mark removed by the user reaches the next tool result once', NO_TIME_LIMIT, async (
+  test('a done mark removed by the user reaches the next tool result once', async (
     $,
     on,
   ) => {
@@ -261,7 +258,6 @@ describe('the goals added or cleared since the model saw the board', () => {
 
   test(
     'tool results that finish at the same moment give the note to one of them',
-    NO_TIME_LIMIT,
     async ($, on) => {
       await startSession($, on, { stored: storedBoard() })
       const pane = await mountGoalsPane($, 'terminal')
@@ -274,26 +270,21 @@ describe('the goals added or cleared since the model saw the board', () => {
     },
   )
 
-  test(
-    'a prompt that does not enter leaves the note for the next prompt',
-    NO_TIME_LIMIT,
-    async ($, on) => {
-      on('prompt.submit', { text: 'refused prompt' }, () => ({ drop: 'refused by a test hook' }))
-      const session = await startSession($, on, { stored: storedBoard() })
-      const pane = await mountGoalsPane($, 'terminal')
-      await clearInPane(pane, 1)
+  test('a prompt that does not enter leaves the note for the next prompt', async ($, on) => {
+    on('prompt.submit', { text: 'refused prompt' }, () => ({ drop: 'refused by a test hook' }))
+    const session = await startSession($, on, { stored: storedBoard() })
+    const pane = await mountGoalsPane($, 'terminal')
+    await clearInPane(pane, 1)
 
-      expect((await typePrompt($, 'refused prompt')).drop).toBe('refused by a test hook')
-      expect(goalLinesOf(session)).toEqual([])
-      expect(await notesOfPrompt($)).toEqual([withSentence('The user cleared Goal 1.')])
-      expect(goalLinesOf(session)).toEqual(['Goals: Goal 1 cleared, sent to Claude'])
-    },
-  )
+    expect((await typePrompt($, 'refused prompt')).drop).toBe('refused by a test hook')
+    expect(goalLinesOf(session)).toEqual([])
+    expect(await notesOfPrompt($)).toEqual([withSentence('The user cleared Goal 1.')])
+    expect(goalLinesOf(session)).toEqual(['Goals: Goal 1 cleared, sent to Claude'])
+  })
 
   test(
     'a tool result from a subagent has no note, and the next tool result in the main ' +
       'conversation does',
-    NO_TIME_LIMIT,
     async ($, on) => {
       const session = await startSession($, on, { stored: storedBoard() })
       const pane = await mountGoalsPane($, 'terminal')
@@ -307,7 +298,6 @@ describe('the goals added or cleared since the model saw the board', () => {
 
   test(
     'clearing the last open goal adds a note that no goal is open, and then nothing follows',
-    NO_TIME_LIMIT,
     async ($, on) => {
       await startSession($, on, { stored: storedBoard() })
       const pane = await mountGoalsPane($, 'terminal')
@@ -324,7 +314,6 @@ describe('the goals added or cleared since the model saw the board', () => {
 
   test(
     'the goals on the board when the session starts or is resumed are not sent as changes',
-    NO_TIME_LIMIT,
     async ($, on) => {
       const session = await startSession($, on, { stored: storedBoard() })
 
@@ -335,23 +324,18 @@ describe('the goals added or cleared since the model saw the board', () => {
     },
   )
 
-  test(
-    'a tool call denied by a hook has no note, and the next tool result does',
-    NO_TIME_LIMIT,
-    async ($, on) => {
-      on('tool.call', { tool: 'Bash' }, () => ({ deny: 'refused by a test hook' }))
-      await startSession($, on, { stored: storedBoard() })
-      const pane = await mountGoalsPane($, 'terminal')
-      await clearInPane(pane, 1)
+  test('a tool call denied by a hook has no note, and the next tool result does', async ($, on) => {
+    on('tool.call', { tool: 'Bash' }, () => ({ deny: 'refused by a test hook' }))
+    await startSession($, on, { stored: storedBoard() })
+    const pane = await mountGoalsPane($, 'terminal')
+    await clearInPane(pane, 1)
 
-      expect((await $.tool.call({ tool: 'Bash', command: 'ls' })).context).toBeUndefined()
-      expect(await notesOfToolResult($)).toEqual([withSentence('The user cleared Goal 1.')])
-    },
-  )
+    expect((await $.tool.call({ tool: 'Bash', command: 'ls' })).context).toBeUndefined()
+    expect(await notesOfToolResult($)).toEqual([withSentence('The user cleared Goal 1.')])
+  })
 
   test(
     'the result of a goal tool contains the note, and the sentence on the goals once',
-    NO_TIME_LIMIT,
     async ($, on) => {
       await startSession($, on, { stored: storedBoard() })
       const pane = await mountGoalsPane($, 'terminal')
@@ -367,28 +351,23 @@ describe('the goals added or cleared since the model saw the board', () => {
     },
   )
 
-  test(
-    'a slash command has no note, and the next prompt sent to the model does',
-    NO_TIME_LIMIT,
-    async ($, on) => {
-      await startSession($, on, { stored: storedBoard() })
-      const pane = await mountGoalsPane($, 'terminal')
-      await clearInPane(pane, 1)
-      const command = await $.prompt.submit({
-        text: '/review',
-        command: { name: 'review', args: '' },
-        origin: { kind: 'composer' },
-        wait: false,
-      })
+  test('a slash command has no note, and the next prompt sent to the model does', async ($, on) => {
+    await startSession($, on, { stored: storedBoard() })
+    const pane = await mountGoalsPane($, 'terminal')
+    await clearInPane(pane, 1)
+    const command = await $.prompt.submit({
+      text: '/review',
+      command: { name: 'review', args: '' },
+      origin: { kind: 'composer' },
+      wait: false,
+    })
 
-      expect(command.context).toBeUndefined()
-      expect(await notesOfPrompt($)).toEqual([withSentence('The user cleared Goal 1.')])
-    },
-  )
+    expect(command.context).toBeUndefined()
+    expect(await notesOfPrompt($)).toEqual([withSentence('The user cleared Goal 1.')])
+  })
 
   test(
     'a prompt that fails beneath the plugin leaves the note for the next prompt',
-    NO_TIME_LIMIT,
     async ($, on) => {
       on('prompt.submit', { text: 'failing prompt' }, () => {
         throw new Error('failed in a test hook')
@@ -404,7 +383,6 @@ describe('the goals added or cleared since the model saw the board', () => {
 
   test(
     'a prompt that does not enter takes back its note and keeps a change sent since',
-    NO_TIME_LIMIT,
     async ($, on) => {
       let readDuringPrompt: Promise<readonly string[]> | undefined
       on('prompt.submit', { text: 'refused prompt' }, async () => {
@@ -424,7 +402,7 @@ describe('the goals added or cleared since the model saw the board', () => {
     },
   )
 
-  test('a goal added after /clear is sent to the model', NO_TIME_LIMIT, async ($, on) => {
+  test('a goal added after /clear is sent to the model', async ($, on) => {
     const session = await startSession($, on, { stored: storedBoard() })
     const pane = await mountGoalsPane($, 'terminal')
     await switchSession($, session, { id: SECOND_SESSION, reason: 'clear' })
@@ -439,7 +417,6 @@ describe('the goals added or cleared since the model saw the board', () => {
 describe('a board that could not be read at the start', () => {
   test(
     'shows only the toast from the start, and the first read that works sends the open goals once',
-    NO_TIME_LIMIT,
     async ($, on) => {
       const damagedKey = `${boardPrefixOf(sessionScope(FIRST_SESSION))}damaged`
       const stored = storedBoard().set(damagedKey, { text: 'no version' })
@@ -481,7 +458,6 @@ describe('the open goals after the idle minutes', () => {
   test(
     'the open goals are sent as a prompt from the plugin 30 idle minutes after a turn, once ' +
       'until another turn starts',
-    NO_TIME_LIMIT,
     async ($, on) => {
       const session = await startSession($, on, { stored: storedBoard() })
       await startTurn($)
@@ -507,7 +483,6 @@ describe('the open goals after the idle minutes', () => {
 
   test(
     'a turn that starts within the idle minutes sends nothing, and its end waits again',
-    NO_TIME_LIMIT,
     async ($, on) => {
       const session = await startSession($, on, { stored: storedBoard() })
       await startTurn($)
@@ -523,29 +498,25 @@ describe('the open goals after the idle minutes', () => {
     },
   )
 
-  test(
-    'a turn of a subagent neither ends the idle minutes nor starts them',
-    NO_TIME_LIMIT,
-    async ($, on) => {
-      const session = await startSession($, on, { stored: storedBoard() })
-      await startTurn($)
-      await endTurn($)
-      await startTurn($, SUBAGENT)
-      await $.turn.complete({
-        answer: '',
-        durationMs: 5,
-        isAborted: false,
-        turnId: 'subagent-turn',
-        reason: 'answer',
-        agentId: SUBAGENT,
-      })
-      await session.clock.advance(IDLE_TIME)
+  test('a turn of a subagent neither ends the idle minutes nor starts them', async ($, on) => {
+    const session = await startSession($, on, { stored: storedBoard() })
+    await startTurn($)
+    await endTurn($)
+    await startTurn($, SUBAGENT)
+    await $.turn.complete({
+      answer: '',
+      durationMs: 5,
+      isAborted: false,
+      turnId: 'subagent-turn',
+      reason: 'answer',
+      agentId: SUBAGENT,
+    })
+    await session.clock.advance(IDLE_TIME)
 
-      expect(promptsOfPlugin(session).map(withoutOpening)).toEqual([REMINDER])
-    },
-  )
+    expect(promptsOfPlugin(session).map(withoutOpening)).toEqual([REMINDER])
+  })
 
-  test('a turn the user interrupted is followed by the open goals too', NO_TIME_LIMIT, async (
+  test('a turn the user interrupted is followed by the open goals too', async (
     $,
     on,
   ) => {
@@ -557,22 +528,17 @@ describe('the open goals after the idle minutes', () => {
     expect(promptsOfPlugin(session).map(withoutOpening)).toEqual([REMINDER])
   })
 
-  test(
-    'a session without a person at the prompt is sent the open goals too',
-    NO_TIME_LIMIT,
-    async ($, on) => {
-      const session = await startSession($, on, { stored: storedBoard(), isInteractive: false })
-      await startTurn($)
-      await endTurn($)
-      await session.clock.advance(IDLE_TIME)
+  test('a session without a person at the prompt is sent the open goals too', async ($, on) => {
+    const session = await startSession($, on, { stored: storedBoard(), isInteractive: false })
+    await startTurn($)
+    await endTurn($)
+    await session.clock.advance(IDLE_TIME)
 
-      expect(promptsOfPlugin(session).map(withoutOpening)).toEqual([REMINDER])
-    },
-  )
+    expect(promptsOfPlugin(session).map(withoutOpening)).toEqual([REMINDER])
+  })
 
   test(
     'the reminder carries the changes the model has not seen, and they are not sent again',
-    NO_TIME_LIMIT,
     async ($, on) => {
       const session = await startSession($, on, { stored: storedBoard() })
       const pane = await mountGoalsPane($, 'terminal')
@@ -592,7 +558,7 @@ describe('the open goals after the idle minutes', () => {
     },
   )
 
-  test('a board without open goals sends nothing', NO_TIME_LIMIT, async ($, on) => {
+  test('a board without open goals sends nothing', async ($, on) => {
     const session = await startSession($, on)
     await startTurn($)
     await endTurn($)
@@ -601,23 +567,18 @@ describe('the open goals after the idle minutes', () => {
     expect(promptsOfPlugin(session)).toEqual([])
   })
 
-  test(
-    'a switch to another session sends no prompt after the idle minutes',
-    NO_TIME_LIMIT,
-    async ($, on) => {
-      const session = await startSession($, on, { stored: storedBoard() })
-      await startTurn($)
-      await endTurn($)
-      await switchSession($, session, { id: SECOND_SESSION, reason: 'clear' })
-      await session.clock.advance(IDLE_TIME)
+  test('a switch to another session sends no prompt after the idle minutes', async ($, on) => {
+    const session = await startSession($, on, { stored: storedBoard() })
+    await startTurn($)
+    await endTurn($)
+    await switchSession($, session, { id: SECOND_SESSION, reason: 'clear' })
+    await session.clock.advance(IDLE_TIME)
 
-      expect(promptsOfPlugin(session)).toEqual([])
-    },
-  )
+    expect(promptsOfPlugin(session)).toEqual([])
+  })
 
   test(
     'a reminder that the engine drops shows no toast, and the next idle minutes send it again',
-    NO_TIME_LIMIT,
     async ($, on) => {
       const session = await startSession($, on, { stored: storedBoard() })
       session.droppedPrompt = 'a stop hook is active'
@@ -635,7 +596,6 @@ describe('the open goals after the idle minutes', () => {
   test(
     'a reminder that fails beneath the plugin shows the failure in a toast, and the next idle ' +
       'minutes send it again',
-    NO_TIME_LIMIT,
     async ($, on) => {
       const submitted: string[] = []
       let isFailing = true
@@ -664,7 +624,6 @@ describe('the open goals after the idle minutes', () => {
   test(
     'a turn of the user that runs while the reminder is submitted counts as the turn of the ' +
       'reminder, and the end of the next turn waits again',
-    NO_TIME_LIMIT,
     async ($, on) => {
       const submitted: string[] = []
       on('prompt.submit', { origin: { kind: 'plugin' } }, async (_, e) => {
@@ -690,7 +649,6 @@ describe('the open goals after the idle minutes', () => {
 
   test(
     'a turn that starts while the board is read for the reminder sends nothing',
-    NO_TIME_LIMIT,
     async ($, on) => {
       let startsTurn = false
       const recordKey = goalRecordOf(sessionScope(FIRST_SESSION), OFFLINE_MODE).key

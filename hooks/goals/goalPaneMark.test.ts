@@ -1,6 +1,7 @@
-import { describe, expect, test } from 'claude-code/testing'
+import { describe, expect } from 'claude-code/testing'
 
-import { FIRST_SESSION, NO_TIME_LIMIT, startSession } from '../testSupport'
+import { test } from '../testDeclaration'
+import { FIRST_SESSION, startSession } from '../testSupport'
 import { doneMarkRecordOf, markRemovalRecordOf } from './boardRecord'
 import { sessionScope } from './boardScope'
 import { MARK_GOAL_DONE_TOOL, UNMARK_GOAL_DONE_TOOL } from './goalNames'
@@ -35,7 +36,6 @@ describe('done marks in the Goals pane', () => {
   test(
     'Unmark draws a field for the reason with Cancel, and Enter removes the mark with the ' +
       'reason, and the goal is still drawn',
-    NO_TIME_LIMIT,
     async ($, on) => {
       const session = await startSession($, on, { stored: storedBoardWithMark() })
       const pane = await mountGoalsPane($, 'terminal')
@@ -61,7 +61,7 @@ describe('done marks in the Goals pane', () => {
     },
   )
 
-  test('an empty reason removes the mark without a reason', NO_TIME_LIMIT, async ($, on) => {
+  test('an empty reason removes the mark without a reason', async ($, on) => {
     const session = await startSession($, on, { stored: storedBoardWithMark() })
     const pane = await mountGoalsPane($, 'terminal')
     await expect(pane.press({ key: 'unmark-2' })).rejects.toThrow(NO_FOCUS_IN_KIT)
@@ -71,7 +71,7 @@ describe('done marks in the Goals pane', () => {
     expect(goalRecordsOf(session)).toEqual(storedBoardUnmarked())
   })
 
-  test('Cancel closes the field for the reason and removes nothing', NO_TIME_LIMIT, async (
+  test('Cancel closes the field for the reason and removes nothing', async (
     $,
     on,
   ) => {
@@ -88,7 +88,6 @@ describe('done marks in the Goals pane', () => {
 
   test(
     'a done mark removed by the model while the field for the reason is drawn closes the field',
-    NO_TIME_LIMIT,
     async ($, on) => {
       await startSession($, on, { stored: storedBoardWithMark() })
       const pane = await mountGoalsPane($, 'terminal')
@@ -104,7 +103,6 @@ describe('done marks in the Goals pane', () => {
 
   test(
     'a done mark replaced by the model while the field for the reason is drawn closes the field',
-    NO_TIME_LIMIT,
     async ($, on) => {
       await startSession($, on, { stored: storedBoardWithMark() })
       const pane = await mountGoalsPane($, 'terminal')
@@ -121,7 +119,6 @@ describe('done marks in the Goals pane', () => {
 
   test(
     'on a surface without input fields, Unmark removes the mark at once, without a reason',
-    NO_TIME_LIMIT,
     async ($, on) => {
       const session = await startSession($, on, { stored: storedBoardWithMark() })
       const pane = await mountGoalsPane($, 'mobile')
@@ -135,7 +132,6 @@ describe('done marks in the Goals pane', () => {
   test(
     'a reason entered after the model gave a new evidence removes nothing, and a toast shows ' +
       'the mark that was shown',
-    NO_TIME_LIMIT,
     async ($, on) => {
       const session = await startSession($, on, { stored: storedBoardWithMark() })
       const pane = await mountGoalsPane($, 'terminal')
@@ -158,7 +154,6 @@ describe('done marks in the Goals pane', () => {
 
   test(
     'Unmark pressed on a goal cleared by another process shows a toast, and the goal leaves',
-    NO_TIME_LIMIT,
     async ($, on) => {
       const session = await startSession($, on, { stored: storedBoardWithMark() })
       const pane = await mountGoalsPane($, 'terminal')
@@ -173,7 +168,6 @@ describe('done marks in the Goals pane', () => {
   test(
     'a removal not saved by the store draws the mark and the field again, and the toast shows ' +
       'the refusal',
-    NO_TIME_LIMIT,
     async ($, on) => {
       const session = await startSession($, on, { stored: storedBoardWithMark() })
       const pane = await mountGoalsPane($, 'terminal')
@@ -192,7 +186,6 @@ describe('done marks in the Goals pane', () => {
 
   test(
     'while a marked goal waits for a yes to clear it, its mark shows without Unmark',
-    NO_TIME_LIMIT,
     async ($, on) => {
       await startSession($, on, { stored: storedBoardWithMark() })
       const pane = await mountGoalsPane($, 'terminal')

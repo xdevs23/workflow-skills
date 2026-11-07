@@ -1,12 +1,12 @@
-import { describe, expect, test } from 'claude-code/testing'
+import { describe, expect } from 'claude-code/testing'
 import type { Engine } from 'claude-code/testing'
 import type { On } from 'claude-code'
 
 import { EVERY_EVENT } from '../everyEvent'
 import { PLUGIN } from '../names'
+import { test } from '../testDeclaration'
 import {
   FIRST_SESSION,
-  NO_TIME_LIMIT,
   SECOND_SESSION,
   endTurn,
   notesOfToolResult,
@@ -60,7 +60,6 @@ describe('the self-check while the session is idle', () => {
   test(
     'four hours after the message of the user, the self-check is sent as a prompt from the ' +
       'plugin, and again after every further four hours',
-    NO_TIME_LIMIT,
     async ($, on) => {
       const session = await startAfterTypedMessage($, on)
       await session.clock.advance(CHECK_INTERVAL - 1)
@@ -78,7 +77,7 @@ describe('the self-check while the session is idle', () => {
     },
   )
 
-  test('a message of the user starts the four hours again', NO_TIME_LIMIT, async ($, on) => {
+  test('a message of the user starts the four hours again', async ($, on) => {
     const session = await startAfterTypedMessage($, on)
     await session.clock.advance(3 * HOUR)
     await typePrompt($, 'go on')
@@ -91,25 +90,20 @@ describe('the self-check while the session is idle', () => {
     expect(promptsOfPlugin(session)).toEqual([SELF_CHECK_TEXT])
   })
 
-  test(
-    'a message of the user that starts no turn moves the due time too',
-    NO_TIME_LIMIT,
-    async ($, on) => {
-      const session = await startAfterTypedMessage($, on)
-      await session.clock.advance(3 * HOUR)
-      await typePrompt($, 'go on')
-      await session.clock.advance(CHECK_INTERVAL - 1)
-      expect(promptsOfPlugin(session)).toEqual([])
+  test('a message of the user that starts no turn moves the due time too', async ($, on) => {
+    const session = await startAfterTypedMessage($, on)
+    await session.clock.advance(3 * HOUR)
+    await typePrompt($, 'go on')
+    await session.clock.advance(CHECK_INTERVAL - 1)
+    expect(promptsOfPlugin(session)).toEqual([])
 
-      await session.clock.advance(1)
-      expect(promptsOfPlugin(session)).toEqual([SELF_CHECK_TEXT])
-    },
-  )
+    await session.clock.advance(1)
+    expect(promptsOfPlugin(session)).toEqual([SELF_CHECK_TEXT])
+  })
 
   test(
     'turns started by a scheduled task neither start the four hours again nor send the ' +
       'self-check before it is due',
-    NO_TIME_LIMIT,
     async ($, on) => {
       const session = await startAfterTypedMessage($, on)
       await session.clock.advance(3 * HOUR)
@@ -122,23 +116,18 @@ describe('the self-check while the session is idle', () => {
     },
   )
 
-  test(
-    'a session in which the user typed nothing is not sent the self-check',
-    NO_TIME_LIMIT,
-    async ($, on) => {
-      const session = await startSession($, on)
-      await startTurn($)
-      await endTurn($)
-      await session.clock.advance(2 * CHECK_INTERVAL)
+  test('a session in which the user typed nothing is not sent the self-check', async ($, on) => {
+    const session = await startSession($, on)
+    await startTurn($)
+    await endTurn($)
+    await session.clock.advance(2 * CHECK_INTERVAL)
 
-      expect(promptsOfPlugin(session)).toEqual([])
-    },
-  )
+    expect(promptsOfPlugin(session)).toEqual([])
+  })
 
   test(
     'a self-check dropped by the engine is still due for the next prompt of a scheduled task, ' +
       'without a toast',
-    NO_TIME_LIMIT,
     async ($, on) => {
       const session = await startAfterTypedMessage($, on)
       session.droppedPrompt = 'a stop hook is active'
@@ -150,24 +139,19 @@ describe('the self-check while the session is idle', () => {
     },
   )
 
-  test(
-    'a self-check dropped by the engine is sent again at the next due time',
-    NO_TIME_LIMIT,
-    async ($, on) => {
-      const session = await startAfterTypedMessage($, on)
-      session.droppedPrompt = 'a stop hook is active'
-      await session.clock.advance(CHECK_INTERVAL)
-      await session.clock.advance(CHECK_INTERVAL - 1)
-      expect(promptsOfPlugin(session)).toEqual([SELF_CHECK_TEXT])
+  test('a self-check dropped by the engine is sent again at the next due time', async ($, on) => {
+    const session = await startAfterTypedMessage($, on)
+    session.droppedPrompt = 'a stop hook is active'
+    await session.clock.advance(CHECK_INTERVAL)
+    await session.clock.advance(CHECK_INTERVAL - 1)
+    expect(promptsOfPlugin(session)).toEqual([SELF_CHECK_TEXT])
 
-      await session.clock.advance(1)
-      expect(promptsOfPlugin(session)).toEqual([SELF_CHECK_TEXT, SELF_CHECK_TEXT])
-    },
-  )
+    await session.clock.advance(1)
+    expect(promptsOfPlugin(session)).toEqual([SELF_CHECK_TEXT, SELF_CHECK_TEXT])
+  })
 
   test(
     'a self-check that fails beneath the plugin shows the failure in a toast and is still due',
-    NO_TIME_LIMIT,
     async ($, on) => {
       on('prompt.submit', { origin: { kind: 'plugin' } }, () => {
         throw new Error('failed in a test hook')
@@ -183,7 +167,6 @@ describe('the self-check while the session is idle', () => {
   test(
     'a message of the user typed while the self-check is sent sets the next due time, also when ' +
       'the prompt of the self-check is dropped',
-    NO_TIME_LIMIT,
     async ($, on) => {
       let isNextDropped = true
       on('prompt.submit', { origin: { kind: 'plugin' } }, async (hookEngine, e, next) => {
@@ -213,7 +196,6 @@ describe('the self-check while the session is idle', () => {
   test(
     'a command contains nothing while the self-check is due, and the next prompt of a scheduled ' +
       'task contains the self-check',
-    NO_TIME_LIMIT,
     async ($, on) => {
       const session = await startAfterTypedMessage($, on)
       await startTurn($)
@@ -232,7 +214,6 @@ describe('the self-check while the session is idle', () => {
 
   test(
     'a reload of the plugin, which cancels its timers, sends the self-check at the due time',
-    NO_TIME_LIMIT,
     async ($, on) => {
       let isTimerCancelled = false
       on('clock.after', EVERY_EVENT, ($, e, next) =>
@@ -256,7 +237,6 @@ describe('the self-check during a turn', () => {
   test(
     'a self-check due during a turn is left out of tool results and sent as a prompt when the ' +
       'turn ends',
-    NO_TIME_LIMIT,
     async ($, on) => {
       const session = await startAfterTypedMessage($, on)
       await startTurn($)
@@ -273,7 +253,6 @@ describe('the self-check during a turn', () => {
 
   test(
     'a self-check due when a scheduled task sends its prompt is added to that prompt once',
-    NO_TIME_LIMIT,
     async ($, on) => {
       const session = await startAfterTypedMessage($, on)
       await startTurn($)
@@ -291,7 +270,6 @@ describe('the self-check during a turn', () => {
   test(
     'a turn that runs through several due times is followed by the self-check once, and the ' +
       'next one comes at the following due time after the message of the user',
-    NO_TIME_LIMIT,
     async ($, on) => {
       const session = await startAfterTypedMessage($, on)
       await startTurn($)
@@ -312,7 +290,6 @@ describe('the self-check across sessions', () => {
   test(
     'a switch to another session sends nothing, also after a turn, a tool call and a scheduled ' +
       'prompt there, and the session switched back to is sent its self-check',
-    NO_TIME_LIMIT,
     async ($, on) => {
       const session = await startSession($, on, { isStateKept: true })
       await typePrompt($, 'build the export')

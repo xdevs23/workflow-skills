@@ -1,14 +1,14 @@
 // The tools are tested as the plugin registers them at the start of a session, since the engine
 // rejects calls, such as the call that registers a tool, to hooks registered by a test.
-import { describe, expect, test } from 'claude-code/testing'
+import { describe, expect } from 'claude-code/testing'
 import type { Engine } from 'claude-code/testing'
 
 import type { Goal } from '../../types'
 import { describeHookFailure } from '../hookFailure'
+import { test } from '../testDeclaration'
 import {
   FIRST_SESSION,
   GOALS_NOT_EXHAUSTIVE,
-  NO_TIME_LIMIT,
   SUBAGENT,
   mountPane,
   startSession,
@@ -70,7 +70,6 @@ describe('the tools of the goals board', () => {
     test(
       `a session ${isInteractive ? 'with' : 'without'} a person at the prompt registers the ` +
         'three tools at its start',
-      NO_TIME_LIMIT,
       async ($, on) => {
         const session = await startSession($, on, { isInteractive })
 
@@ -85,7 +84,6 @@ describe('the tools of the goals board', () => {
 describe('listing the goals', () => {
   test(
     'the open goals are listed by number with their entries, then the cleared goals by number',
-    NO_TIME_LIMIT,
     async ($, on) => {
       const scope = sessionScope(FIRST_SESSION)
       // The goals are stored in the reverse order of their numbers.
@@ -123,36 +121,31 @@ describe('listing the goals', () => {
     },
   )
 
-  test(
-    'the open goals are listed by priority, and those without one last',
-    NO_TIME_LIMIT,
-    async ($, on) => {
-      const scope = sessionScope(FIRST_SESSION)
-      const atP0: PrioritizedGoal = {
-        ...goalNumbered(2, ROTATION_CRASH),
-        prioritySetting: { value: 0, setAt: 500 },
-      }
-      const atP1: PrioritizedGoal = {
-        ...goalNumbered(3, STORE_LISTING),
-        prioritySetting: { value: 1, setAt: 510 },
-      }
-      const records = [
-        ...[goalNumbered(1, MIGRATION_GUIDE), atP1, atP0].map(goal => goalRecordOf(scope, goal)),
-        ...[atP1, atP0].map(goal => priorityRecordOf(scope, goal)),
-      ]
-      const stored = new Map(records.map(record => [record.key, record.value]))
-      await startSession($, on, { stored })
+  test('the open goals are listed by priority, and those without one last', async ($, on) => {
+    const scope = sessionScope(FIRST_SESSION)
+    const atP0: PrioritizedGoal = {
+      ...goalNumbered(2, ROTATION_CRASH),
+      prioritySetting: { value: 0, setAt: 500 },
+    }
+    const atP1: PrioritizedGoal = {
+      ...goalNumbered(3, STORE_LISTING),
+      prioritySetting: { value: 1, setAt: 510 },
+    }
+    const records = [
+      ...[goalNumbered(1, MIGRATION_GUIDE), atP1, atP0].map(goal => goalRecordOf(scope, goal)),
+      ...[atP1, atP0].map(goal => priorityRecordOf(scope, goal)),
+    ]
+    const stored = new Map(records.map(record => [record.key, record.value]))
+    await startSession($, on, { stored })
 
-      const listed = (await listGoals($)).split('\n')
+    const listed = (await listGoals($)).split('\n')
 
-      expect(listed.flatMap(line => /^Goal (\d+)/.exec(line)?.[1] ?? [])).toEqual(['2', '3', '1'])
-    },
-  )
+    expect(listed.flatMap(line => /^Goal (\d+)/.exec(line)?.[1] ?? [])).toEqual(['2', '3', '1'])
+  })
 
   test(
     'a board whose goals are all cleared, or that has none, is listed as the empty board, with ' +
       'its cleared goals after it',
-    NO_TIME_LIMIT,
     async ($, on) => {
       const session = await startSession($, on)
       const empty = await listGoals($)
@@ -170,7 +163,6 @@ describe('listing the goals', () => {
 
   test(
     'a goal marked as done is listed with its evidence, and a removed mark is left out',
-    NO_TIME_LIMIT,
     async ($, on) => {
       const scope = sessionScope(FIRST_SESSION)
       const doneMark = { evidence: 'release/v2.4.0', markedAt: 300 }
@@ -209,7 +201,6 @@ describe('listing the goals', () => {
   test(
     'a subagent lists the goals as the main conversation does, without the sentence that the ' +
       'goals are not exhaustive',
-    NO_TIME_LIMIT,
     async ($, on) => {
       const session = await startSession($, on)
       await addGoals(session, [MIGRATION_GUIDE, ROTATION_CRASH])
@@ -225,28 +216,23 @@ describe('listing the goals', () => {
 })
 
 describe('attaching and detaching a TODO entry', () => {
-  test(
-    'an entry attached to a goal is listed under it until it is detached',
-    NO_TIME_LIMIT,
-    async ($, on) => {
-      const session = await startSession($, on)
-      await addGoals(session, [MIGRATION_GUIDE, ROTATION_CRASH])
+  test('an entry attached to a goal is listed under it until it is detached', async ($, on) => {
+    const session = await startSession($, on)
+    await addGoals(session, [MIGRATION_GUIDE, ROTATION_CRASH])
 
-      const attached = await attachTodo($, { goal: 2, todo: ROTATION_ENTRY })
-      expect(attached.result).toBe(
-        `Attached ${ROTATION_ENTRY} to Goal 2.\n\n${GOALS_NOT_EXHAUSTIVE}`,
-      )
-      expect(await listGoals($)).toContain(`Goal 2: ${ROTATION_CRASH}\nAttached: ${ROTATION_ENTRY}`)
+    const attached = await attachTodo($, { goal: 2, todo: ROTATION_ENTRY })
+    expect(attached.result).toBe(
+      `Attached ${ROTATION_ENTRY} to Goal 2.\n\n${GOALS_NOT_EXHAUSTIVE}`,
+    )
+    expect(await listGoals($)).toContain(`Goal 2: ${ROTATION_CRASH}\nAttached: ${ROTATION_ENTRY}`)
 
-      const detached = await detachTodo($, { goal: 2, todo: '#41' })
-      expect(detached.result).toBe(`Detached #41 from Goal 2.\n\n${GOALS_NOT_EXHAUSTIVE}`)
-      expect(await listGoals($)).not.toContain('#41')
-    },
-  )
+    const detached = await detachTodo($, { goal: 2, todo: '#41' })
+    expect(detached.result).toBe(`Detached #41 from Goal 2.\n\n${GOALS_NOT_EXHAUSTIVE}`)
+    expect(await listGoals($)).not.toContain('#41')
+  })
 
   test(
     'the Goals pane shows an entry once it is attached, and stops showing it once it is detached',
-    NO_TIME_LIMIT,
     async ($, on) => {
       const session = await startSession($, on)
       await addGoals(session, [MIGRATION_GUIDE])
@@ -259,7 +245,7 @@ describe('attaching and detaching a TODO entry', () => {
     },
   )
 
-  test('an entry under the number of a sub-unit is attached', NO_TIME_LIMIT, async ($, on) => {
+  test('an entry under the number of a sub-unit is attached', async ($, on) => {
     const session = await startSession($, on)
     await addGoals(session, [MIGRATION_GUIDE])
     await attachTodo($, { goal: 1, todo: '#41.1 - Rotation keeps the scroll position' })
@@ -270,7 +256,6 @@ describe('attaching and detaching a TODO entry', () => {
   test(
     'an entry is read without the white space around it and its title, so attaching it again ' +
       'leaves the board unchanged',
-    NO_TIME_LIMIT,
     async ($, on) => {
       const session = await startSession($, on)
       await addGoals(session, [MIGRATION_GUIDE])
@@ -288,7 +273,6 @@ describe('attaching and detaching a TODO entry', () => {
   test(
     'detaching an entry not attached to the goal is denied with the entry, the goal and the ' +
       'list tool',
-    NO_TIME_LIMIT,
     async ($, on) => {
       const session = await startSession($, on)
       await addGoals(session, [MIGRATION_GUIDE, ROTATION_CRASH])
@@ -303,7 +287,6 @@ describe('attaching and detaching a TODO entry', () => {
 
   test(
     'a subagent cannot attach or detach an entry, and the board is left as it was',
-    NO_TIME_LIMIT,
     async ($, on) => {
       const session = await startSession($, on)
       await addGoals(session, [MIGRATION_GUIDE, ROTATION_CRASH])
@@ -322,7 +305,6 @@ describe('attaching and detaching a TODO entry', () => {
 describe('input the model gives outside the schema', () => {
   test(
     'a goal that is not a whole number from 1 up is denied, and nothing is written',
-    NO_TIME_LIMIT,
     async ($, on) => {
       const session = await startSession($, on)
       await addGoals(session, [MIGRATION_GUIDE])
@@ -340,7 +322,7 @@ describe('input the model gives outside the schema', () => {
     },
   )
 
-  test('a blank or missing entry is denied with the form to use', NO_TIME_LIMIT, async ($, on) => {
+  test('a blank or missing entry is denied with the form to use', async ($, on) => {
     const session = await startSession($, on)
     await addGoals(session, [MIGRATION_GUIDE])
     const stored = [...session.store]
@@ -359,7 +341,6 @@ describe('input the model gives outside the schema', () => {
 
   test(
     'an entry in another form, or with a title over several lines, is denied with the form to use',
-    NO_TIME_LIMIT,
     async ($, on) => {
       const session = await startSession($, on)
       await addGoals(session, [MIGRATION_GUIDE])
@@ -378,7 +359,7 @@ describe('input the model gives outside the schema', () => {
     },
   )
 
-  test('an entry over 200 characters is denied', NO_TIME_LIMIT, async ($, on) => {
+  test('an entry over 200 characters is denied', async ($, on) => {
     const session = await startSession($, on)
     await addGoals(session, [MIGRATION_GUIDE])
     const longEntry = `#41 - ${'a'.repeat(195)}`
@@ -393,7 +374,6 @@ describe('input the model gives outside the schema', () => {
 
   test(
     'an entry whose number is not a TODO number, or that lacks a title, is not attached',
-    NO_TIME_LIMIT,
     async ($, on) => {
       const session = await startSession($, on)
       await addGoals(session, [MIGRATION_GUIDE])
@@ -414,7 +394,6 @@ describe('a goal that is not open', () => {
   test(
     'a goal never added and a cleared goal are denied with one answer that names the goal and ' +
       'the list tool',
-    NO_TIME_LIMIT,
     async ($, on) => {
       const session = await startSession($, on)
       await addGoals(session, [MIGRATION_GUIDE, ROTATION_CRASH], [2])
@@ -432,7 +411,6 @@ describe('a goal that is not open', () => {
 describe('a store or a hook that fails', () => {
   test(
     'a store that cannot be read denies every tool with the reason, which the debug log has too',
-    NO_TIME_LIMIT,
     async ($, on) => {
       const session = await startSession($, on)
       const refusal = 'the store file is not readable'
@@ -458,7 +436,6 @@ describe('a store or a hook that fails', () => {
   test(
     'a change written to a store over 4 MiB is denied with the reason, and the entry is not ' +
       'attached',
-    NO_TIME_LIMIT,
     async ($, on) => {
       const session = await startSession($, on)
       await addGoals(session, [MIGRATION_GUIDE])
@@ -475,7 +452,6 @@ describe('a store or a hook that fails', () => {
 
   test(
     'a hook that fails denies the call with the reason, which the debug log has too',
-    NO_TIME_LIMIT,
     async ($, on) => {
       let isSessionIdFailing = false
       on('session.id', {}, ($, e, next) => {

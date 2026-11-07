@@ -38,10 +38,6 @@ const BAND_PROPS: RenderPropsOf['AbovePrompt'] = {
   view: {},
 }
 
-// The kit stops a test after five seconds unless told otherwise. These tests end once the work
-// they start has settled, so they disable the time limit.
-export const NO_TIME_LIMIT = { timeoutMs: Number.POSITIVE_INFINITY }
-
 /**
  * Replaces the engine beneath the plugin for prompts, and returns the prompts the engine receives.
  * A prompt for which `dropOf` returns a reason is dropped with that reason.

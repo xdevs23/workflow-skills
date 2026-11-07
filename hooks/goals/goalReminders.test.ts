@@ -1,6 +1,7 @@
-import { describe, expect, test } from 'claude-code/testing'
+import { describe, expect } from 'claude-code/testing'
 
 import type { Board, Goal } from '../../types'
+import { test } from '../testDeclaration'
 import { EMPTY_BOARD } from './board'
 import { MarkRemover } from './doneMark'
 import type { MarkRemovalAsked } from './doneMark'
