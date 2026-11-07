@@ -24,6 +24,12 @@ Write smallest clean change that does what was asked for. Write it so user can r
 - If code hard to read, add level of indirection with clear, natural name
 - Do not add dependency for what few lines do
 - Make change correct on every edge case, using architecture design, not bolt-on conditionals
+- Fix anything, whether it comes from review or not, by preferring to delete, rewrite or refactor
+  code over bolting on more conditionals or catch guards
+- In place of added if check, try/catch, switch, error message or handling of more edge cases,
+  revamp architecture, rewrite code or delete problematic lines altogether, where that achieves
+  result same way
+- Less code means fewer lines, not less good code: files get smaller while getting better
 - Fix bug cause, not bug symptom
 - Do not shrink change by leaving out validation of outside input, error handling that prevents
   data loss, security, accessibility or anything notes ask for
