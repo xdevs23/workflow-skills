@@ -12,8 +12,15 @@ const EARLIER_MESSAGE = String.raw`(?:\bmy\s+(?:previous|earlier|prior|last|othe
 const ASKED = String.raw`\b(?:questions?|asked)\b`
 const OPEN_WORD = String.raw`(?:open|unanswered|pending)`
 const OPEN_STATE = String.raw`(?:${OPEN_WORD}|outstanding|unresolved|there|in\s+my|above)\b`
+const NUMBER = String.raw`#?\d+`
+/** Numbers listed one after the other, such as 2, 3 and 4. */
+const NUMBERS = String.raw`${NUMBER}(?:(?:\s*,\s*|\s+and\s+)${NUMBER})*`
+/** The numbers that name an item, such as 2, #21, (#21) or (#21, #22). */
+const ITEM_NUMBER = String.raw`(?:\s+${NUMBERS}|\s*\(${NUMBERS}\))`
+/** An item named after a pull request or an issue, whose state is not an open question. */
+const NOT_AFTER_TRACKER = String.raw`(?<!\b(?:PRs?|pull\s+requests?|issues?)\b[^.!?\n]{0,40})`
 /** What is left to the user besides a question, such as a decision or point 2. */
-const OPEN_ITEM = String.raw`\b(?:decisions?|answers?|approvals?|choices?|points?|items?)(?:\s+\d+)?`
+const OPEN_ITEM = String.raw`\b(?:decisions?|answers?|approvals?|choices?|points?|items?)${ITEM_NUMBER}?`
 
 const phrase = (source: string): RegExp => new RegExp(source, 'i')
 
@@ -21,7 +28,7 @@ const phrase = (source: string): RegExp => new RegExp(source, 'i')
 export const WAITING_HINT: HintKind = {
   phrases: [
     phrase(
-      String.raw`${OPEN_ITEM}(?:\s+(?:on|about|of|for|from)\b${CLAUSE})?\s+(?:is|are|remains?|stays?)\s+still\s+${OPEN_WORD}\b`,
+      String.raw`${NOT_AFTER_TRACKER}${OPEN_ITEM}(?:\s+(?:on|about|of|for|from)\b${CLAUSE})?\s+(?:is|are|remains?|stays?)\s+still\s+${OPEN_WORD}\b`,
     ),
     phrase(String.raw`\bstill\s+${OPEN_WORD}\s*:`),
     phrase(String.raw`\b${OPEN_WORD}\s+from\s+(?:(?:earlier|before)${AT_CLAUSE_END}|${EARLIER_MESSAGE})`),
