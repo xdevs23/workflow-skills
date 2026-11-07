@@ -15,6 +15,7 @@ import {
 } from './names'
 import { describeQuestionSkillDenial } from './modelText'
 import { LOCK_REFUSAL } from './pluginStore'
+import { createPromptFooter } from './promptFooter'
 import {
   QUESTION_SKILL_LOAD_MAX_AGE_MS,
   QUESTION_SKILL_MAX_TOKENS_AFTER_LOAD,
@@ -86,7 +87,7 @@ function hooksRegisteredBy(register: (on: On) => void): unknown[] {
 
 describe('the cadence kinds of the reminders', () => {
   test('the reminders register the hooks of every cadence kind in the kind dropdown', () => {
-    const registered = hooksRegisteredBy(registerReminders)
+    const registered = hooksRegisteredBy(on => registerReminders(on, createPromptFooter()))
 
     for (const kind of CADENCE_KINDS) {
       expect(registered).toEqual(expect.arrayContaining(hooksRegisteredBy(kind.register)))

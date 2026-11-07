@@ -39,7 +39,8 @@ describe('the /goals command', () => {
 
       expect(await goalsCommand($, '')).toBe(
         [
-          'The Goals pane could not open: no-surface.',
+          'The Goals pane could not open: no-surface. Run /goals again, and look for the cause ' +
+            'in the debug log if the pane still does not open.',
           `Goal 1: ${MIGRATION_GUIDE.text}`,
           '  #38 - Guide covers the schema changes',
           '  #234 - Guide lists the removed flags',
@@ -89,7 +90,10 @@ describe('the /goals command', () => {
       session.keysRefusal = UNREADABLE_STORE
       const replied = (await goalsCommand($, ''))?.split('\n')
 
-      expect(replied?.[0]).toBe('The Goals pane could not open: no-surface.')
+      expect(replied?.[0]).toBe(
+        'The Goals pane could not open: no-surface. Run /goals again, and look for the cause in ' +
+          'the debug log if the pane still does not open.',
+      )
       expect(replied?.[1]).toStartWith(NOT_READ)
       expect(replied?.[1]).toContain(UNREADABLE_STORE)
     },

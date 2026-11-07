@@ -9,6 +9,7 @@ import type { RemindersNotRead } from './reminderStore'
 // The texts of the reminders shown to the user at the prompt.
 
 export const PANE_TITLE = 'Reminders'
+export const REMINDERS_BUTTON_LABEL = PANE_TITLE
 export const ADD_LABEL = '+ Add reminder'
 export const EDIT_LABEL = 'Edit'
 export const DONE_LABEL = 'Done'
@@ -70,13 +71,6 @@ export function describeRemoveQuestion(number: number): string {
 /** What a press shows for a reminder removed since the pane drew it. */
 export function describeRemovedMeanwhile(number: number): string {
   return `${nameReminder(number)} was removed.`
-}
-
-export function describePaneNotOpened(reason: string): string {
-  return (
-    `The ${PANE_TITLE} pane could not open: ${reason}. Run /${REMINDERS_COMMAND} again, and ` +
-    'look for the cause in the debug log if the pane still does not open.'
-  )
 }
 
 export function describeNotRegistered(reason: string): string {

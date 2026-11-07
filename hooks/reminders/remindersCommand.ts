@@ -9,6 +9,7 @@ import type {
 
 import { registerCommandShowingRejection } from '../commandRegistration'
 import { replyToFailedHook } from '../hookFailure'
+import { describePaneNotOpened } from '../paneOpening'
 import type { SWITCHING_SOURCES } from '../sessionSources'
 import { loadRemindersShowingFailure } from './reminderActions'
 import { REMINDERS_COMMAND } from './reminderNames'
@@ -16,11 +17,11 @@ import { Outcome } from './reminders'
 import { openRemindersPane } from './reminderScreens'
 import { readRemindersInState } from './reminderState'
 import {
+  PANE_TITLE,
   REMINDERS_DESCRIPTION,
   REMINDERS_SUBJECT,
   describeNotRead,
   describeNotRegistered,
-  describePaneNotOpened,
 } from './reminderTexts'
 
 /**
@@ -63,7 +64,9 @@ export const runRemindersCommand: MatchedHook<
 > = async $ => {
   const { loaded, opened } = await openRemindersPane($)
   const texts = [
-    ...(opened.isPlaced ? [] : [describePaneNotOpened(opened.reason)]),
+    ...(opened.isPlaced
+      ? []
+      : [describePaneNotOpened(PANE_TITLE, opened.reason, { command: REMINDERS_COMMAND })]),
     ...(loaded.outcome === Outcome.Failed ? [describeNotRead(loaded)] : []),
   ]
   if (texts.length === 0) {

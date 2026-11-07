@@ -1,6 +1,7 @@
 import type { Hook, On } from 'claude-code'
 
 import { EVERY_EVENT } from '../everyEvent'
+import type { PromptFooter } from '../promptFooter'
 import { SWITCHING_SOURCES } from '../sessionSources'
 import { registerEventCadences } from './eventCadence'
 import { registerPhraseCadence } from './phraseCadence'
@@ -13,6 +14,7 @@ import {
   runRemindersCommand,
   startReminders,
 } from './remindersCommand'
+import { REMINDERS_BUTTON, openRemindersFromButton } from './remindersButton'
 import { registerTimeCadence } from './timedDelivery'
 
 /** Starts the reminders in a session, with or without the user at the prompt. */
@@ -24,10 +26,10 @@ const startRemindersOfSession: Hook<'session.start'> = async ($, e, next) => {
 
 /**
  * Registers the hooks of the reminders, with the kinds of registeredKinds.ts in the kind dropdown
- * of a card. The hooks of each cadence kind come first, so they run around the requests for the
- * reminders here.
+ * of a card, and places the Reminders button on the prompt footer `footer`. The hooks of each
+ * cadence kind come first, so they run around the requests for the reminders here.
  */
-export function registerReminders(on: On): void {
+export function registerReminders(on: On, footer: PromptFooter): void {
   registerPhraseCadence(on)
   registerTimeCadence(on)
   registerEventCadences(on)
@@ -39,4 +41,5 @@ export function registerReminders(on: On): void {
   on('ui.render', { component: 'Pane', requestId: REMINDERS_PANE }, ($, e) =>
     drawRemindersPane(CADENCE_KINDS, $, e),
   )
+  on('ui.press', footer.place(REMINDERS_BUTTON), openRemindersFromButton)
 }

@@ -4,7 +4,7 @@ import { EVERY_EVENT } from './everyEvent'
 import { registerGoals } from './goals'
 import { blockStopOnHintPhrase } from './hints'
 import { ANSWER_COMMAND, ASK_TOOL, LIST_TOOL, PANE, SKILL_TOOL, WITHDRAW_TOOL } from './names'
-import { FooterRow, registerPromptFooter } from './promptFooter'
+import { createPromptFooter, registerPromptFooter } from './promptFooter'
 import {
   addAnswersToToolResult,
   askQuestion,
@@ -25,7 +25,6 @@ import { registerReminders } from './reminders'
 import { registerSelfCheck } from './selfCheck'
 
 export const register: Register = on => {
-  const footerRow = new FooterRow()
   on('session.start', { isInteractive: true }, startQuestions)
   on('classic.SessionStart', readQuestionsOfStartedSession)
   // Registered before the tools of this plugin, so their results also contain the answers.
@@ -41,8 +40,10 @@ export const register: Register = on => {
   on('command.run', { command: ANSWER_COMMAND }, runAnswerCommand).catch(replyWithHookFailure)
   on('ui.render', { component: 'AbovePrompt' }, drawQuestionBand)
   on('ui.render', { component: 'Pane', requestId: PANE }, drawQuestionPane)
-  registerPromptFooter(on, footerRow)
-  registerGoals(on, footerRow)
-  registerReminders(on)
+  // The footer draws the buttons in the order placed: Goals first, then Reminders.
+  const footer = createPromptFooter()
+  registerPromptFooter(on, footer)
+  registerGoals(on, footer)
+  registerReminders(on, footer)
   registerSelfCheck(on)
 }

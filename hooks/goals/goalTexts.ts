@@ -48,10 +48,6 @@ export function describeClearQuestion(goal: Goal): string {
   return `Clear ${nameGoal(goal.number)}?`
 }
 
-export function describePaneNotOpened(reason: string): string {
-  return `The Goals pane could not open: ${reason}.`
-}
-
 export function describeNotRegistered(reason: string): string {
   return (
     `/${GOALS_COMMAND} could not be registered, so the goals of this session cannot be opened ` +
