@@ -51,6 +51,8 @@ tools: Read, Grep, Glob, Bash, Edit, Write, Skill
 - Run key scenes edge to edge. Keep reading text in narrow column beside visual
 - Fill width of browser window at every width, phone included. Never set page or scene to fixed
   width
+- Build layout for every width between phone and widest window, not only for widths checked. As
+  window narrows, parts reflow or shrink. Never let them slide over text or control of other part
 - Give every section composition of its own. Change colour world or surface between sections,
   with shaped or hard edge, never by slight change of tint
 - Never draw section edge as large rounded corner with coloured line along it
