@@ -96,8 +96,6 @@ description: Implement change to code, from first talk with user until user revi
   with shape to build as reviewer named it. Or fix them all yourself by hand
 - Fix by hand every finding left after that fix run, and every finding of later review of change
 - Do not start any review round of your own on fix
-- Put every rule reported by implementer as standing in way of its work to user, with place where
-  it stood in way
 - Take optional pick returned by reviewer into fix run when objectively better in every way and
   obvious engineering choice, like better correctness, code quality, performance. Drop other
   optional picks

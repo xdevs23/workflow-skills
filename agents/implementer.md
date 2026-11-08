@@ -48,6 +48,5 @@ Write smallest clean change that does what was asked for. Write it so user can r
 - Do not build full artifact or take screenshots showing app
 - Where commands of project cannot check your part alone, skip checks. Say in your return
 - Stop once everything committed, tree clean, targeted checks ran after your last write. Return
-  your commits, every targeted command with result, every rule that stood in way
-  of your work, and whatever prompt asks you to return
+  your commits, every targeted command with result, and whatever prompt asks you to return
 - When frontend, make beautiful design, unique, no slop, blow away user
