@@ -21,9 +21,9 @@ tools: Read, Grep, Glob, Edit, Write
 - Match register sentence, which gives speaker and situation. Match sentence lengths used in
   samples. Do not copy phrasing of samples. Where writing system requires concrete detail, give
   number, name or detail from SOURCE
-- For important string, return structurally distinct variants for a user to pick from, each with
-  source line it rests on. For headline, standard five: outcome, question reader asks, customer
-  quote, mechanism, number. For other slots, choose variants that really differ for that slot
+- For important string, return structurally distinct variants, each with source line it rests on.
+  For headline, standard five: outcome, question reader asks, customer quote, mechanism, number.
+  For other slots, choose variants that really differ for that slot
 - On product screen, follow product-screen layer of writing system. When slot cannot be understood
   without text that layer forbids, leave slot empty, report it as part of screen to redesign
 - Leave invariant data untouched, e.g. proper nouns, numerals, identifiers. Do punctuation pass by

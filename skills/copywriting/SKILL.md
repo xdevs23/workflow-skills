@@ -98,7 +98,7 @@ surface pattern known to it.
   3. **A SOURCE block**: document with facts, every claim must trace back to it, line by line.
      Claim without source line is left out. Writer names line used for each claim
 
-## Required variants and the choice made by a person
+## Required variants
 
 - Have model produce **structurally distinct variants** for important strings: headline, hero,
   primary call to action. Each variant comes with source line used for it
@@ -106,9 +106,7 @@ surface pattern known to it.
   mechanism, number
 - Count variant as structurally distinct only when its construction differs. Same sentence in other
   words does not count
-- **Let a person choose the one that ships.** For hero and headline, model supplies candidates,
-  user picks one. Never optimize this step away as bottleneck: generating variants costs little,
-  and picking is exactly the part where a model cannot base its choice on evidence
+- Pick variant that ships yourself, by intent of slot, SOURCE and writing system
 
 ## Multilingual (only if the product ships more than one locale)
 
@@ -124,7 +122,7 @@ surface pattern known to it.
 
 ## Verification: what makes this a workflow
 
-- Verify in four stages, in this order: tool, two agents, person
+- Verify in three stages, in this order: tool, then two agents
 
 1. **Mechanical check: a committed tool run with ONE COMMAND.** Reviewer does not do this check.
    Tool RECOMPUTES everything from files: key parity across locales, length limits for slots,
@@ -142,12 +140,11 @@ surface pattern known to it.
 3. **Critic with a fresh context** (`agentType:'workflow-skills:copy-critic'`): reviewer that never
    saw the writing happen. Names source line for each sentence, lists every sentence without
    subject and finite verb, counts markers of machine-written text. Audits, never rewrites
-4. **The user reads the important strings before they ship.**
 
-- Run **completeness pass** alongside stages 2 and 3, inside Verify and always **before** user. In
-  it, ask one question about whole list of work, once and explicitly: "which item is missing
-  entirely?" Check of single items cannot see an absent item by its structure, and missing item is
-  worst kind of defect to ship
+- Run **completeness pass** alongside stages 2 and 3, inside Verify. In it, ask one question
+  about whole list of work, once and explicitly: "which item is missing entirely?" Check of single
+  items cannot see an absent item by its structure, and missing item is worst kind of defect to
+  ship
 
 ## The forbidden-literals manifest
 
@@ -159,7 +156,7 @@ surface pattern known to it.
 
 ## The shape
 
-Run copy phase as a `Workflow()` in five phases: **Intent → Write → Check → Verify → User.**
+Run copy phase as a `Workflow()` in four phases: **Intent → Write → Check → Verify.**
 
 - **Intent**: write or decide intent catalog before any writer starts. Without intents stated as
   goals, each writer invents separate standard, critic has nothing to check against
@@ -168,10 +165,9 @@ Run copy phase as a `Workflow()` in five phases: **Intent → Write → Check �
   i18n strings file directly, fills every slot in its area in one sitting, returns what it changed.
   Give each writer: line naming file of `workflow-skills:hygiene`, writing system VERBATIM, intents
   for its area, voice inputs, SOURCE block
-- **Check**: run mechanical check, recomputed from files, before user spends any attention
+- **Check**: run mechanical check, recomputed from files
 - **Verify**: run `workflow-skills:copy-source-verify` and `workflow-skills:copy-critic` in
   parallel, plus completeness pass
-- **User**: user picks variants for important strings, reads them in place
 
 ## Laws
 

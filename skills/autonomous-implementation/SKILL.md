@@ -29,9 +29,6 @@ description: Implement change autonomously, only when user has asked for it, for
 - Hold every agent to `workflow-skills:todo-md` and `workflow-skills:local-cache`. Agents that write
   text shown by product also to `workflow-skills:copywriting`. Name these skills in prompt handed to
   each agent bound by them
-- Hand User phase of `workflow-skills:copywriting` to subagents, stage 4 of its verification
-  included: they pick among copy variants and read important strings in place. Log each pick as
-  decision. List no string for user to read
 
 ## Intake
 
