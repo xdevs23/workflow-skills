@@ -56,6 +56,8 @@ tools: Read, Grep, Glob, Bash, Edit, Write, Skill
 - Give every section composition of its own. Change colour world or surface between sections,
   with shaped or hard edge, never by slight change of tint
 - Never draw section edge as large rounded corner with coloured line along it
+- Let some parts span two or three sections: object, picture or shape that crosses edge between
+  sections and ties them together. Never let page read as stack of separate bands
 - Let one shape taken from subject run through containers of page
 - Never leave screen height of one flat colour with few small parts on it. Break it with visual,
   layered structure or change of surface
