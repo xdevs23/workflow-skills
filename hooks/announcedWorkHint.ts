@@ -1,9 +1,7 @@
 import type { HintKind } from './hintKind'
+import { EMPHASIS, HEADING_MARK, LIST_MARK } from './lineMarks'
 import { WORK_GERUND, WORK_VERB } from './workVerbs'
 
-const LIST_MARK = String.raw`(?:[-*•][ \t]+)?`
-const HEADING_MARK = String.raw`(?:#{1,6}[ \t]*)?`
-const EMPHASIS = String.raw`(?:\*\*?|__?)?`
 /** The start of a sentence or clause: the start of a line past any list mark or heading mark, or
  * the place after a stop, colon, semicolon, comma, dash or "and", in both cases past any emphasis. */
 const SENTENCE_START = String.raw`(?:^[ \t]*${LIST_MARK}${HEADING_MARK}|[.!?:;,]\s+|\s*[—–]\s*|\s-\s+|\band\s+)${EMPHASIS}`

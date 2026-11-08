@@ -13,6 +13,9 @@ import {
   WITHDRAW,
   WITHDRAW_TOOL,
 } from './names'
+import { COST_FRAMING } from './costFraming'
+import { HANDED_DECISION } from './handedDecision'
+import { AskOutcome, askProblemOf } from './inputs'
 import { describeQuestionSkillDenial } from './modelText'
 import { LOCK_REFUSAL } from './pluginStore'
 import { createPromptFooter } from './promptFooter'
@@ -416,6 +419,36 @@ describe('asking without waiting', () => {
     ).toBeDefined()
     expect((await $.tool.call({ tool: WITHDRAW_TOOL, number: 0 })).deny).toBeDefined()
     expect(session.chatLines).toEqual([])
+  })
+
+  test('a question that ends on a choice left to the user is refused and not stored', async ($, on) => {
+    const session = await startSession($, on)
+    const question = 'Track both repositories, or switch the kernel check off. Which way?'
+
+    expect((await $.tool.call({ tool: ASK_TOOL, question })).deny).toBe(
+      askProblemOf({ outcome: AskOutcome.Refused, refusal: HANDED_DECISION }),
+    )
+    expect(questionCountOf(session)).toBe(0)
+    expect(session.chatLines).toEqual([])
+  })
+
+  test('a question that labels a decision as a cost is refused and not stored', async ($, on) => {
+    const session = await startSession($, on)
+    const question = 'Should the trial use the intent layer?\nWhat it costs: a layer for text jobs.'
+
+    expect((await $.tool.call({ tool: ASK_TOOL, question })).deny).toBe(
+      askProblemOf({ outcome: AskOutcome.Refused, refusal: COST_FRAMING }),
+    )
+    expect(questionCountOf(session)).toBe(0)
+    expect(session.chatLines).toEqual([])
+  })
+
+  test('a question that quotes a cost label in code is stored', async ($, on) => {
+    const session = await startSession($, on)
+    const question = 'Should the plain-words box drop this line?\n```\nCost: one more module.\n```'
+
+    expect((await $.tool.call({ tool: ASK_TOOL, question })).deny).toBeUndefined()
+    expect(questionCountOf(session)).toBe(1)
   })
 
   test('a statement without a question mark is refused as a question', async ($, on) => {

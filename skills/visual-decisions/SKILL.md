@@ -33,7 +33,7 @@ description: Draw page for user to look at: drafts, product decisions, plans and
 - Below that line, put box titled "What this is about, in plain words": at most 4 bullets of at
   most 14 words each, explaining change or decision to someone who never saw the code. Contents:
   one concrete example, what goes wrong or is missing today, what After does, what After does not
-  change although reader could expect it to, what it costs. Put last two into one bullet
+  change although reader could expect it to
 - Under that box, put two short lists side by side: "What this draft builds" and "What this draft
   doesn't build". In first, name unit or sub-unit drawn, by number of its entry in `TODO.md`, and
   what it builds. In second, name every part shown on page or expected by reader that comes later

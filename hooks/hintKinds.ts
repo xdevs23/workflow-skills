@@ -5,7 +5,14 @@ import type { HintKind } from './hintKind'
 import { IDLE_REPLY_HINT } from './idleReplyHint'
 import { NOTHING_NEEDS_ACTION_HINT } from './nothingNeedsActionHint'
 import { withoutQuotedText } from './quotedText'
+import type { Refusal } from './refusal'
+import { REFUSALS } from './refusals'
 import { WAITING_HINT } from './waitingHint'
+
+/** The hint that blocks the end of a turn on a message with the shape of the refusal. */
+export function hintOf(refusal: Refusal): HintKind {
+  return { phrases: [refusal.pattern], text: `Your message is not valid. ${refusal.reason}` }
+}
 
 /**
  * The kinds of hint whose phrase spans a whole message, in the order in which they are tried. A
@@ -17,6 +24,7 @@ export const WHOLE_MESSAGE_KINDS: readonly HintKind[] = [IDLE_REPLY_HINT]
 /** The kinds of hint whose phrases can stand anywhere in a message, in the order in which their
  * texts go into the reason for a block. */
 export const PHRASE_KINDS: readonly HintKind[] = [
+  ...REFUSALS.map(hintOf),
   WAITING_HINT,
   HELD_QUESTION_HINT,
   BLOCKED_HINT,

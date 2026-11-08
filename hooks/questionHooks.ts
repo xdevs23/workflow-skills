@@ -22,9 +22,9 @@ import { denyFailedHook, replyToFailedHook } from './hookFailure'
 import {
   ANSWER_ARGUMENTS,
   ANSWER_USAGE_PROBLEM,
-  ASK_PROBLEMS,
   ASK_SCHEMA,
   AnswerRequest,
+  askProblemOf,
   AskOutcome,
   WITHDRAW_PROBLEM,
   WITHDRAW_SCHEMA,
@@ -187,7 +187,7 @@ export const askQuestion: MatchedHook<'tool.call', { tool: typeof ASK_TOOL }> = 
   }
   const input = readAskInput(e)
   if (input.outcome !== AskOutcome.Valid) {
-    return { deny: ASK_PROBLEMS[input.outcome] }
+    return { deny: askProblemOf(input) }
   }
   const asked = { text: input.question, choices: input.choices, askedAt: await $.clock.now() }
   const { question, questions } = await saveNewQuestion($, sessionId, asked)

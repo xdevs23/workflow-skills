@@ -3,10 +3,13 @@ import type { ClassicResultOf, On } from 'claude-code'
 
 import { ANNOUNCED_WORK_HINT } from './announcedWorkHint'
 import { BLOCKED_HINT } from './blockedHint'
+import { COST_FRAMING } from './costFraming'
+import { HANDED_DECISION } from './handedDecision'
 import { HELD_QUESTION_HINT } from './heldQuestionHint'
-import { PHRASE_KINDS, WHOLE_MESSAGE_KINDS, kindsWithPhraseIn } from './hintKinds'
+import { PHRASE_KINDS, WHOLE_MESSAGE_KINDS, hintOf, kindsWithPhraseIn } from './hintKinds'
 import { NOTHING_NEEDS_ACTION_HINT } from './nothingNeedsActionHint'
 import { IDLE_REPLY_HINT } from './idleReplyHint'
+import { refusalsIn } from './refusals'
 import { test } from './testDeclaration'
 import { FIRST_SESSION, endTurn, startSession, stopTurn, typePrompt } from './testSupport'
 import { WAITING_HINT } from './waitingHint'
@@ -603,6 +606,69 @@ describe('the phrases of a message that announces work while the turn ends', () 
   }
 })
 
+describe('the phrases of a message that ends on a choice left to the user', () => {
+  const handing = [
+    'Track both repositories, or switch the kernel check off. Which way?',
+    'Option A keeps the cache, option B drops it. Which one?',
+    'There are two ways to fix it. Which option?\n',
+    'Two ways are open. which way?',
+    'Two ways are open. Which way ？',
+    'Two ways are open. **Which way?**',
+    'Two ways are open. _Which one?_',
+    'Two ways are open. Which way?!',
+  ]
+  for (const message of handing) {
+    test(`${JSON.stringify(message)} leaves a choice to the user`, () => {
+      expect(refusalsIn(message)).toContain(HANDED_DECISION)
+    })
+  }
+
+  const notHanding = [
+    'Which way the cache goes is decided by the rules, so it moves to the new disk.',
+    'Which way? That was the question in the issue, and the fix answers it.',
+    'I tracked both repositories. The kernel check now passes.',
+    'You asked: "Which way?"',
+    'The guide shows which one to use.',
+  ]
+  for (const message of notHanding) {
+    test(`${JSON.stringify(message)} does not leave a choice to the user`, () => {
+      expect(refusalsIn(message)).not.toContain(HANDED_DECISION)
+    })
+  }
+})
+
+describe('the phrases of a message that labels a decision as a cost', () => {
+  const costing = [
+    'The intent layer covers both paths.\n- What it costs: text jobs move to the layer first.',
+    '**What it costs:** a second registry for text jobs.',
+    '- **The cost**: one more module.',
+    'Cost: the old client stays for a while.',
+    '* What that costs: a rebase of the open branch.',
+  ]
+  for (const message of costing) {
+    test(`${JSON.stringify(message)} labels a decision as a cost`, () => {
+      expect(refusalsIn(message)).toContain(COST_FRAMING)
+    })
+  }
+
+  const notCosting = [
+    'The cost of a full run is about four minutes.',
+    'Each run costs less once the cache is shared.',
+    'The page loads cost-free from the cache.',
+    'Cost centres are listed in the report.',
+    '> Cost: one more module.',
+    '```\nCost: one more module.\n```',
+    'The cost',
+    ' '.repeat(50_000) + 'x',
+    'Cost' + ' '.repeat(50_000) + 'x',
+  ]
+  for (const message of notCosting) {
+    test(`${JSON.stringify(message)} does not label a decision as a cost`, () => {
+      expect(refusalsIn(message)).not.toContain(COST_FRAMING)
+    })
+  }
+})
+
 describe('the phrases of a message that announces a question in place of asking it', () => {
   const holding = [
     'Should I deploy main to the board? I have one more question after that.',
@@ -656,6 +722,23 @@ describe('the end of a turn on a message with a hint phrase', () => {
     const stopped = await stopTurn($, { message: WAITING })
 
     expect(reasonsIn(stopped.block)).toEqual([WAITING_HINT.text])
+  })
+
+  test('the first end on a message closing on a choice left to the user is blocked', async ($, on) => {
+    stopBeneath(on)
+    const message = 'Track both repositories, or switch the kernel check off. Which way?'
+
+    expect(reasonsIn((await stopTurn($, { message })).block)).toEqual([hintOf(HANDED_DECISION).text])
+  })
+
+  test('the first end on a message with a cost label is blocked with the cost hint', async ($, on) => {
+    stopBeneath(on)
+    const message = `The intent layer covers both paths.\n- What it costs: one more module.\n${WAITING}`
+
+    expect(reasonsIn((await stopTurn($, { message })).block)).toEqual([
+      hintOf(COST_FRAMING).text,
+      WAITING_HINT.text,
+    ])
   })
 
   test('the first end on a blocked message is blocked with the blocked hint', async ($, on) => {

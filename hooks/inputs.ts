@@ -1,5 +1,7 @@
 import { ANSWER_COMMAND } from './names'
 import { isPositiveInteger } from './positiveInteger'
+import type { Refusal } from './refusal'
+import { refusalsIn } from './refusals'
 
 /** A text with at least one character other than white space. */
 export const NON_BLANK = /\S/
@@ -40,19 +42,26 @@ export const ASK_SCHEMA = {
 export enum AskOutcome {
   Valid = 'valid',
   QuestionInvalid = 'question-invalid',
+  Refused = 'refused',
   ChoicesInvalid = 'choices-invalid',
 }
 
-type AskProblem = Exclude<AskOutcome, AskOutcome.Valid>
+type FixedAskProblem = AskOutcome.QuestionInvalid | AskOutcome.ChoicesInvalid
 
-export type AskInput =
-  | { outcome: AskOutcome.Valid; question: string; choices: readonly string[] }
-  | { outcome: AskProblem }
+export type AskFailure = { outcome: FixedAskProblem } | { outcome: AskOutcome.Refused; refusal: Refusal }
 
-/** What the model is told when its input to the asking tool breaks a rule. */
-export const ASK_PROBLEMS: Record<AskProblem, string> = {
+export type AskInput = { outcome: AskOutcome.Valid; question: string; choices: readonly string[] } | AskFailure
+
+const ASK_PROBLEMS: Record<FixedAskProblem, string> = {
   [AskOutcome.QuestionInvalid]: `Give the question as ${QUESTION_RULE}.`,
   [AskOutcome.ChoicesInvalid]: `Give the choices as ${CHOICES_RULE}, or leave them out.`,
+}
+
+/** What the model is told when its input to the asking tool breaks a rule. */
+export function askProblemOf(failure: AskFailure): string {
+  return failure.outcome === AskOutcome.Refused
+    ? `The question is refused. ${failure.refusal.reason}`
+    : ASK_PROBLEMS[failure.outcome]
 }
 
 /** Reads the input of the model to the asking tool, which arrives unchecked, into a typed model. */
@@ -60,6 +69,10 @@ export function readAskInput(input: ToolArguments): AskInput {
   const { question, choices } = input
   if (typeof question !== 'string' || !QUESTION_MARK.test(question)) {
     return { outcome: AskOutcome.QuestionInvalid }
+  }
+  const [refusal] = refusalsIn(question)
+  if (refusal !== undefined) {
+    return { outcome: AskOutcome.Refused, refusal }
   }
   if (choices === undefined) {
     return { outcome: AskOutcome.Valid, question: question.trim(), choices: [] }
