@@ -84,13 +84,19 @@ description: Draw page for user to look at: drafts, product decisions, plans and
 - Draw what goes wrong at place in picture where it happens, in color of state to which it belongs
 - Where decision depends on a number, show that number above each picture of decision as short bar
   named in legend
+- Draw behavior that unfolds over time as timeline of sample: earlier state and After on same time
+  axis, count of events that matter written on each
 - Draw technical details, e.g. migrations, data models, schemas, as pictures or graphs
 - Draw change happening out of sight, e.g. where in code a decision is made, as boxes and arrows:
-  which part calls which, what passes between them, in each state
+  which part calls which, what passes between them, in each state. Label first and last box with
+  real name of setting, service, file or hardware switch. Write under each box what it does in
+  After, in at most 3 words
 - Never paste code, diff or test list into draft. Approval of draft would approve that code
 - Show code only as short snippet of few lines that shows idea, under header with component and
   path. Go one layer up and abstract away internal details of code, so functions, variables and
   other declarations read like what it does in real world
+- Write code asked for by user on page of its own next to draft, files side by side under their
+  paths, dark mode. Open it like draft. Never answer such request in chat
 
 ## Choices
 
