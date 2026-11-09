@@ -34,6 +34,8 @@ description: Write commit message
   - Why: observation or motivation, what was seen going wrong or missing that made this the fix
   - Why useful: what change prevents or enables from now on, for people who plan the product
     and the work of the team. Never announce this part with label
+- Back every claim of better performance or efficiency with numbers measured before and after
+  change, with what was measured and how. Never claim gain that was not measured
 - The last paragraph may say what change deliberately does not do, where that boundary matters
 - Prefer periods over semicolons
 - Use unambiguous language: expand compressed words
