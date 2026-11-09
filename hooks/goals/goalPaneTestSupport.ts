@@ -59,10 +59,11 @@ const GOAL_RECORD_PREFIX = recordPrefixOf(RecordKind.Goal)
 
 /**
  * The error of the test kit for each `$.ui.focus` call made by a plugin. The kit fails that call
- * also with a `ui.focus` hook of the test or of an inline plugin in place, where the engine answers
- * a move it does not make with a deny. The pane moves the focus to the new field after every goal
- * added by the pane, and to the field of a goal after a press of its Edit, so such an entry or
- * press rejects with this error in a test.
+ * also with a `ui.focus` hook of the test or of an inline plugin in place, where the engine returns
+ * a deny for a move it does not make. The pane moves the focus to the new field after every goal
+ * added by the pane, to the field of a goal after a press of its Edit, and with a goal whose row has
+ * the focus after a change of the board moved that row, so such an entry, press or pick rejects
+ * with this error in a test.
  */
 export const NO_FOCUS_IN_KIT = 'no implementation for ui.focus'
 
@@ -130,7 +131,7 @@ export function mountGoalsPane<Surface extends 'terminal' | 'mobile'>(
   })
 }
 
-type GoalsPane = Awaited<ReturnType<typeof mountGoalsPane<'terminal'>>>
+export type GoalsPane = Awaited<ReturnType<typeof mountGoalsPane<'terminal'>>>
 
 /**
  * Adds a goal with `text` in the field of `pane` that adds goal `number`. The press rejects with

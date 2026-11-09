@@ -24,8 +24,8 @@ import {
   setGoalDependencyInSession,
   setGoalPriorityInSession,
 } from './goalActions'
-import { RowElement, editFieldKeyOf, newGoalFieldKeyOf, rowElementKeyOf } from './goalKeys'
-import { GOALS_PANE } from './goalNames'
+import { focusElement } from './goalFocus'
+import { PaneElement, editFieldKeyOf, newGoalFieldKeyOf, rowElementKeyOf } from './goalKeys'
 import {
   RowMode,
   dropGoalInPane,
@@ -39,11 +39,9 @@ import {
   startSaving,
 } from './goalState'
 import {
-  PaneField,
   describeDependencyLoop,
   describeDependencyNotSet,
   describeEditedElsewhere,
-  describeFocusNotMoved,
   describeMarkNoLongerShown,
   describeNoLongerOpen,
   describeNotAdded,
@@ -52,7 +50,6 @@ import {
   describeNotUnmarked,
   describePriorityNotSet,
 } from './goalTexts'
-import type { FocusTarget } from './goalTexts'
 import type { Priority } from './priority'
 
 // What a press or an entry in the Goals pane does. The pane draws what the state and the board
@@ -121,7 +118,10 @@ export async function startEditing(
       isBlankTextRefused: false,
     })
     await recordTypedText($, sessionId, open.id, open.text)
-    await focusField($, editFieldKeyOf(open, fieldId), { field: PaneField.GoalText, goal: open })
+    await focusElement($, editFieldKeyOf(open, fieldId), {
+      element: PaneElement.GoalText,
+      number: open.number,
+    })
   })
 }
 
@@ -157,7 +157,7 @@ export async function finishEditing(
     case Outcome.Failed:
       showFailure($, describeNotEdited(edited))
 
-      return redrawEditField($, goal.id, edit)
+      return redrawEditField($, goal.id, edit, crypto.randomUUID())
     case Outcome.Refused:
       return showEditRefusal($, goal, edit, edited)
     case Outcome.Changed:
@@ -182,7 +182,12 @@ async function showEditRefusal(
     case Refusal.TextChangedElsewhere:
       $.ui.toast(describeEditedElsewhere(refused))
 
-      return redrawEditField($, goal.id, { text: edit.text, editedFrom: refused.text })
+      return redrawEditField(
+        $,
+        goal.id,
+        { text: edit.text, editedFrom: refused.text },
+        crypto.randomUUID(),
+      )
   }
 }
 
@@ -198,9 +203,9 @@ export async function startUnmarking(
 ): Promise<void> {
   await actOnOpenGoal($, sessionId, goal, async () => {
     await setGoalInPane($, sessionId, goal.id, { mode: RowMode.Unmarking, shown })
-    await focusField($, rowElementKeyOf(goal, RowElement.UnmarkReason), {
-      field: PaneField.UnmarkReason,
-      goal,
+    await focusElement($, rowElementKeyOf(goal, PaneElement.UnmarkReason), {
+      element: PaneElement.UnmarkReason,
+      number: goal.number,
     })
   })
 }
@@ -367,17 +372,6 @@ async function focusNewGoalField($: EngineInterface): Promise<void> {
   if (inState?.outcome !== Outcome.Read) {
     return
   }
-  const key = newGoalFieldKeyOf(nextGoalNumberOf(inState.board))
-  await focusField($, key, { field: PaneField.NewGoal })
-}
-
-/**
- * Moves the focus to the field `target` with the key `key` in the Goals pane. A move denied by the
- * engine is written to the debug log.
- */
-async function focusField($: EngineInterface, key: string, target: FocusTarget): Promise<void> {
-  const focused = await $.ui.focus({ requestId: GOALS_PANE, key })
-  if (focused.deny !== undefined) {
-    $.ui.log(describeFocusNotMoved(focused.deny, target), { to: 'debug' })
-  }
+  const number = nextGoalNumberOf(inState.board)
+  await focusElement($, newGoalFieldKeyOf(number), { element: PaneElement.NewGoal, number })
 }

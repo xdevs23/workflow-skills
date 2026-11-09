@@ -4,6 +4,8 @@ import { DONE_LABEL } from '../paneTexts'
 import type { LoopRefused, TextChangedRefused } from './board'
 import { describeStoreFailure } from './boardStore'
 import type { Failed } from './boardStore'
+import { PaneElement } from './goalKeys'
+import type { FocusedElement } from './goalKeys'
 import { GOALS_COMMAND } from './goalNames'
 
 // The texts of the goals read by the person at the prompt.
@@ -123,33 +125,24 @@ export function describeNotCleared(failed: Failed): string {
   return `The goal was not cleared. ${describeStoreFailure(failed)}`
 }
 
-/** The fields of the Goals pane that a press moves the focus to. */
-export enum PaneField {
-  NewGoal = 'new-goal',
-  GoalText = 'goal-text',
-  UnmarkReason = 'unmark-reason',
+/**
+ * An element of the Goals pane the plugin moves the focus to, with the number of its goal, or the
+ * number of the goal added by the field that adds a goal.
+ */
+export type FocusTarget = { element: FocusedElement; number: number }
+
+const FOCUS_TARGET_DESCRIPTIONS: Record<FocusedElement, (goal: string) => string> = {
+  [PaneElement.NewGoal]: goal => `the field that adds ${goal}`,
+  [PaneElement.GoalText]: goal => `the field that edits ${goal}`,
+  [PaneElement.UnmarkReason]: goal => `the field for the reason to unmark ${goal}`,
+  [PaneElement.FirstButton]: goal => `the first button of ${goal}`,
 }
 
-/** A field of the Goals pane, with the goal it belongs to. */
-export type FocusTarget =
-  | { field: PaneField.NewGoal }
-  | { field: PaneField.GoalText; goal: Goal }
-  | { field: PaneField.UnmarkReason; goal: Goal }
+/** The line in the debug log when the engine returns a deny for moving the focus to `target`. */
+export function describeFocusNotMoved(denial: string, { element, number }: FocusTarget): string {
+  const described = FOCUS_TARGET_DESCRIPTIONS[element](nameGoal(number))
 
-/** The line in the debug log when the engine denies moving the focus to the field `target`. */
-export function describeFocusNotMoved(denial: string, target: FocusTarget): string {
-  return `The focus did not move to ${describeField(target)}: ${denial}`
-}
-
-function describeField(target: FocusTarget): string {
-  switch (target.field) {
-    case PaneField.NewGoal:
-      return 'the field that adds a goal'
-    case PaneField.GoalText:
-      return `the field that edits ${nameGoal(target.goal.number)}`
-    case PaneField.UnmarkReason:
-      return `the field for the reason to unmark ${nameGoal(target.goal.number)}`
-  }
+  return `The focus did not move to ${described}: ${denial}`
 }
 
 /** The text for a board that could not be read, with the reason and the next step of the store. */

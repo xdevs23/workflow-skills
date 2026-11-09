@@ -1,6 +1,7 @@
 import type { Outcome, Read } from '../hooks/goals/board'
 import type { MarkRemovalAsked } from '../hooks/goals/doneMark'
 import type { IdlePhase } from '../hooks/goals/goalIdleReminder'
+import type { FollowedElement } from '../hooks/goals/goalKeys'
 import type { RowMode } from '../hooks/goals/goalState'
 import type { Priority } from '../hooks/goals/priority'
 import type { LoopLedger } from '../hooks/neededSkills/loadLedger'
@@ -141,6 +142,18 @@ export type RowInPane =
 
 /** The goal of a session pressed in the Goals pane, with what the pane does with it. */
 export type GoalInPane = { sessionId: string; goalId: string } & RowInPane
+
+/**
+ * The goal of a session whose row in the Goals pane has the focus, followed by the focus when the
+ * row moves: the element of the row the focus is on, and `keyId`, the key id of the element moved
+ * to by the focus, new to each move.
+ */
+export type FollowedGoal = {
+  sessionId: string
+  goalId: string
+  element: FollowedElement
+  keyId?: string
+}
 
 /** The text typed into the field for the goal with the id `goalId`, edited in the Goals pane. */
 export type TypedGoalText = { sessionId: string; goalId: string; text: string }
@@ -316,6 +329,11 @@ declare module 'claude-code' {
        * read it while drawn, so a change of the text does not draw the pane again.
        */
       typedGoalText: TypedGoalText | null
+      /**
+       * The goal whose row in the Goals pane has the focus; null while the focus is outside every
+       * goal row.
+       */
+      followedGoal: FollowedGoal | null
       /** True while the Goals pane saves an added, an edited or a cleared goal. */
       isSavingGoal: boolean
       /** The board seen by the model of the session; null before the board is first read. */

@@ -8,7 +8,7 @@ import type {
   UiOpenResult,
 } from 'claude-code'
 
-import type { Board, DoneMark, Goal, RowInPane, UnreadBoard } from '../../types'
+import type { Board, DoneMark, FollowedGoal, Goal, RowInPane, UnreadBoard } from '../../types'
 import { drawCardWithFields } from '../cardFields'
 import type { FieldUnderCard, FieldsWithWarning } from '../cardFields'
 import { DONE_LABEL } from '../paneTexts'
@@ -20,7 +20,14 @@ import { doneMarkOf } from './doneMark'
 import { dependedGoalOf } from './dependency'
 import type { OpenGoals } from './dependency'
 import { loadBoardIntoState } from './goalActions'
-import { RowElement, editFieldKeyOf, newGoalFieldKeyOf, rowElementKeyOf } from './goalKeys'
+import {
+  PaneElement,
+  editFieldKeyOf,
+  movedElementKeyOf,
+  newGoalFieldKeyOf,
+  rowElementKeyOf,
+} from './goalKeys'
+import type { ButtonElement, FollowedElement } from './goalKeys'
 import { GOALS_PANE } from './goalNames'
 import { drawGoalPickers } from './goalPickers'
 import {
@@ -38,8 +45,10 @@ import {
   RowMode,
   dropGoalInPane,
   readBoardInState,
+  readFollowedGoal,
   readGoalInPane,
   recordTypedText,
+  setFollowedGoal,
 } from './goalState'
 import {
   ADD_LABEL,
@@ -93,9 +102,12 @@ type PaneOnFreshBoard = { loaded: Read | UnreadBoard; opened: UiOpenResult }
 
 /**
  * Reads the board of the session again into the state, and opens the Goals pane, which shows it.
+ * The focus follows a goal again only once the focus moves onto its row in the opened pane.
  */
 export async function openGoalsPaneOnFreshBoard($: EngineInterface): Promise<PaneOnFreshBoard> {
-  const loaded = await loadBoardIntoState($, await $.session.id())
+  const sessionId = await $.session.id()
+  await setFollowedGoal($, sessionId, null)
+  const loaded = await loadBoardIntoState($, sessionId)
   const opened = await $.ui.open({ id: GOALS_PANE, title: PANE_TITLE, focus: true })
 
   return { loaded, opened }
@@ -105,7 +117,11 @@ export const drawGoalsPane: MatchedHook<
   'ui.render',
   { component: 'Pane'; requestId: typeof GOALS_PANE }
 > = async ($, e) => {
-  const [inState, goalInPane] = await Promise.all([readBoardInState($), readGoalInPane($)])
+  const [inState, goalInPane, followed] = await Promise.all([
+    readBoardInState($),
+    readGoalInPane($),
+    readFollowedGoal($),
+  ])
   const elements = $.ui.resolve(e)
   const { Box, Text } = elements
   if (inState === null) {
@@ -133,8 +149,11 @@ export const drawGoalsPane: MatchedHook<
           fields === undefined
             ? { badges: badgesOf(open, goal) }
             : { pickers: fields.drawPickers(goal) }
+        const drawn = drawnRowOf(goal, row, fields)
+        const buttons = rowButtonsOf($, sessionId, goal, drawn)
+        const moved = movedTo(goal, followed)
 
-        return drawGoal($, elements, sessionId, goal, drawnRowOf(goal, row, fields), settings)
+        return drawGoal(elements, goalRowOf(goal, drawn, settings, buttons, moved))
       })}
       {drawsFields(e) ? (
         drawNewGoalField($, e, sessionId, board)
@@ -191,6 +210,188 @@ function drawnRowOf(
   }
 }
 
+/** Where in the row of a goal a button is drawn. */
+enum ButtonPlace {
+  DoneMark = 'done-mark',
+  ClearQuestion = 'clear-question',
+  BesideRow = 'beside-row',
+}
+
+/** A button of a goal row: the element it is, where in the row it is drawn, its label and press. */
+type RowButton = { element: ButtonElement; place: ButtonPlace; props: ButtonProps }
+
+/** A button of a goal row, with the key it is drawn under. */
+type KeyedButton = RowButton & { key: string }
+
+/**
+ * The buttons of the row of `goal`, drawn as `row`, in the order they are drawn: in a row not
+ * pressed, Unmark in its done mark, then Edit where the surface draws input fields, and Clear; the
+ * yes and the keep of the question to clear it; Done and Cancel while it is edited; Cancel while it
+ * is unmarked.
+ */
+function rowButtonsOf(
+  $: EngineInterface,
+  sessionId: string,
+  goal: Goal,
+  row: DrawnRow,
+): RowButton[] {
+  switch (row.mode) {
+    case RowMode.WaitingForYes:
+      return [
+        {
+          element: PaneElement.YesClear,
+          place: ButtonPlace.ClearQuestion,
+          props: {
+            label: YES_CLEAR_LABEL,
+            variant: 'primary',
+            onPress: () => saveOnce($, () => clearOnScreen($, sessionId, goal)),
+          },
+        },
+        {
+          element: PaneElement.Keep,
+          place: ButtonPlace.ClearQuestion,
+          props: {
+            label: KEEP_LABEL,
+            onPress: () => dropGoalInPane($, goal.id, RowMode.WaitingForYes),
+          },
+        },
+      ]
+    case RowMode.Editing:
+      return [
+        {
+          element: PaneElement.DoneEditing,
+          place: ButtonPlace.BesideRow,
+          props: {
+            label: DONE_LABEL,
+            onPress: () => saveOnce($, () => finishEditing($, sessionId, goal)),
+          },
+        },
+        cancelButtonOf($, goal, row.mode, PaneElement.CancelEditing),
+      ]
+    case RowMode.Unmarking:
+      return [cancelButtonOf($, goal, row.mode, PaneElement.CancelUnmarking)]
+    case undefined: {
+      const mark = doneMarkOf(goal)
+      const unmark: RowButton[] =
+        mark === undefined
+          ? []
+          : [
+              {
+                element: PaneElement.Unmark,
+                place: ButtonPlace.DoneMark,
+                props: {
+                  label: UNMARK_LABEL,
+                  dimColor: true,
+                  onPress: () =>
+                    row.fields === undefined
+                      ? saveOnce($, () => unmarkOnScreen($, sessionId, goal, mark))
+                      : startUnmarking($, sessionId, goal, mark),
+                },
+              },
+            ]
+      const edit: RowButton[] =
+        row.fields === undefined
+          ? []
+          : [
+              {
+                element: PaneElement.Edit,
+                place: ButtonPlace.BesideRow,
+                props: {
+                  label: EDIT_LABEL,
+                  dimColor: true,
+                  onPress: () => startEditing($, sessionId, goal),
+                },
+              },
+            ]
+
+      return [
+        ...unmark,
+        ...edit,
+        {
+          element: PaneElement.Clear,
+          place: ButtonPlace.BesideRow,
+          props: {
+            label: CLEAR_LABEL,
+            dimColor: true,
+            onPress: () => askToClear($, sessionId, goal),
+          },
+        },
+      ]
+    }
+  }
+}
+
+/** Cancel beside the row of `goal` in the mode `mode`, drawn as `element`, which ends that mode. */
+function cancelButtonOf(
+  $: EngineInterface,
+  goal: Goal,
+  mode: RowMode.Editing | RowMode.Unmarking,
+  element: PaneElement.CancelEditing | PaneElement.CancelUnmarking,
+): RowButton {
+  return {
+    element,
+    place: ButtonPlace.BesideRow,
+    props: { label: CANCEL_LABEL, onPress: () => dropGoalInPane($, goal.id, mode) },
+  }
+}
+
+/** The element of a goal row moved to by the focus, and the key of the move. */
+type MovedElement = { element: FollowedElement; key: string }
+
+/** The element of the row of `goal` moved to by the focus, while `followed` follows `goal`. */
+function movedTo(goal: Goal, followed: FollowedGoal | null): MovedElement | undefined {
+  return followed?.goalId === goal.id && followed.keyId !== undefined
+    ? { element: followed.element, key: movedElementKeyOf(goal, followed.keyId) }
+    : undefined
+}
+
+/** A goal row as drawn: its goal, its mode, its pickers or badges, and its buttons with keys. */
+type GoalRow = {
+  goal: Goal
+  drawn: DrawnRow
+  settings: SettingsInRow
+  buttons: readonly KeyedButton[]
+}
+
+/**
+ * The row of `goal`, drawn as `drawn`, with its buttons `buttons` under their keys, and the element
+ * `moved` to by the focus under the key of the move: the field for the reason while the focus was
+ * on it and the row draws it, and otherwise the first button other than the yes of the question to
+ * clear the goal, which one Enter turns into a clear.
+ */
+function goalRowOf(
+  goal: Goal,
+  drawn: DrawnRow,
+  settings: SettingsInRow,
+  buttons: readonly RowButton[],
+  moved: MovedElement | undefined,
+): GoalRow {
+  const keyed = buttons.map(button => ({ ...button, key: rowElementKeyOf(goal, button.element) }))
+  if (moved === undefined) {
+    return { goal, drawn, settings, buttons: keyed }
+  }
+  if (moved.element === PaneElement.UnmarkReason && drawn.mode === RowMode.Unmarking) {
+    const field = { ...drawn.field, key: moved.key }
+
+    return { goal, drawn: { ...drawn, field }, settings, buttons: keyed }
+  }
+  const focused = keyed.findIndex(button => button.element !== PaneElement.YesClear)
+
+  return {
+    goal,
+    drawn,
+    settings,
+    buttons: keyed.map((button, index) =>
+      index === focused ? { ...button, key: moved.key } : button,
+    ),
+  }
+}
+
+/** The buttons of `buttons` drawn at `place` in the row. */
+function buttonsAt(buttons: readonly KeyedButton[], place: ButtonPlace): KeyedButton[] {
+  return buttons.filter(button => button.place === place)
+}
+
 /**
  * The badges before the text of `goal` on a surface without pickers: its priority, and the goal
  * among the open goals `open` depended on by it.
@@ -211,41 +412,37 @@ function badgesOf(open: OpenGoals, goal: Goal): string[] {
  * the row the field that edits its text, in place of the text, with the warning on a blank text
  * after it, or the field for the reason to unmark it.
  */
-function drawGoal(
-  $: EngineInterface,
-  elements: GoalElements,
-  sessionId: string,
-  goal: Goal,
-  row: DrawnRow,
-  settings: SettingsInRow,
-) {
+function drawGoal(elements: GoalElements, { goal, drawn, settings, buttons }: GoalRow) {
   const { Box, Text } = elements
   const mark = doneMarkOf(goal)
+  const besideRow = buttonsAt(buttons, ButtonPlace.BesideRow)
 
   const card = (
     <Box
       key={`goal-${goal.number}`}
       borderStyle="round"
-      borderColor={borderColorOf(row, mark)}
+      borderColor={borderColorOf(drawn, mark)}
       paddingX={1}
       columnGap={1}
     >
       <Text bold color="claude">{`${goal.number}`}</Text>
       <Box flexDirection="column" flexGrow={1} flexShrink={1}>
-        {row.mode !== RowMode.Editing &&
+        {drawn.mode !== RowMode.Editing &&
           drawGoalText(elements, goal, 'badges' in settings ? settings.badges : [])}
         {'pickers' in settings && settings.pickers}
-        {mark !== undefined && drawDoneMark($, elements, sessionId, goal, mark, row)}
-        {row.mode === RowMode.WaitingForYes && drawClearQuestion($, elements, sessionId, goal)}
+        {mark !== undefined &&
+          drawDoneMark(elements, mark, buttonsAt(buttons, ButtonPlace.DoneMark))}
+        {drawn.mode === RowMode.WaitingForYes &&
+          drawClearQuestion(elements, goal, buttonsAt(buttons, ButtonPlace.ClearQuestion))}
         {goal.todos.map(todo => (
           <Text dimColor>{describeEntry(todo)}</Text>
         ))}
       </Box>
-      {drawRowButtons($, elements, sessionId, goal, row)}
+      {besideRow.length > 0 && drawButtonRow(elements, besideRow)}
     </Box>
   )
 
-  return drawUnderRow(card, row)
+  return drawUnderRow(card, drawn)
 }
 
 /** `card`, the box of a goal, with the fields drawn under it in the mode of `row`. */
@@ -295,144 +492,51 @@ function borderColorOf(row: DrawnRow, mark: DoneMark | undefined) {
 }
 
 /**
- * The done mark of `goal` in the color of success, with Unmark on a row not pressed. Unmark draws
- * the field for a reason where the surface has input fields, and removes the mark at once
+ * The done mark `mark` in the color of success, with `buttons`: Unmark on a row not pressed. Unmark
+ * draws the field for a reason where the surface has input fields, and removes the mark at once
  * elsewhere.
  */
-function drawDoneMark(
-  $: EngineInterface,
-  { Box, Button, Text }: GoalElements,
-  sessionId: string,
-  goal: Goal,
-  mark: DoneMark,
-  row: DrawnRow,
-) {
+function drawDoneMark(elements: GoalElements, mark: DoneMark, buttons: readonly KeyedButton[]) {
+  const { Box, Text } = elements
+
   return (
     <Box columnGap={1} flexWrap="wrap">
       <Text color="success">{describeDoneMarkForPerson(mark)}</Text>
-      {row.mode === undefined && (
-        <Button
-          key={rowElementKeyOf(goal, RowElement.Unmark)}
-          label={UNMARK_LABEL}
-          dimColor
-          onPress={() =>
-            row.fields === undefined
-              ? saveOnce($, () => unmarkOnScreen($, sessionId, goal, mark))
-              : startUnmarking($, sessionId, goal, mark)
-          }
-        />
-      )}
+      {buttons.map(button => drawButton(elements, button))}
     </Box>
   )
 }
 
-/** The question to clear `goal`, with its yes and its keep. */
-function drawClearQuestion(
-  $: EngineInterface,
-  { Box, Button, Text }: GoalElements,
-  sessionId: string,
-  goal: Goal,
-) {
+/** The question to clear `goal`, with `buttons`: its yes and its keep. */
+function drawClearQuestion(elements: GoalElements, goal: Goal, buttons: readonly KeyedButton[]) {
+  const { Box, Text } = elements
+
   return (
     <Box columnGap={1} flexWrap="wrap">
       <Text color="warning">{describeClearQuestion(goal)}</Text>
-      <Button
-        key={rowElementKeyOf(goal, RowElement.YesClear)}
-        label={YES_CLEAR_LABEL}
-        variant="primary"
-        onPress={() => saveOnce($, () => clearOnScreen($, sessionId, goal))}
-      />
-      <Button
-        key={rowElementKeyOf(goal, RowElement.Keep)}
-        label={KEEP_LABEL}
-        onPress={() => dropGoalInPane($, goal.id, RowMode.WaitingForYes)}
-      />
+      {buttons.map(button => drawButton(elements, button))}
     </Box>
   )
 }
-
-/**
- * The buttons beside a row: Done and Cancel while the goal is edited, Cancel while it is unmarked,
- * none while it waits for a yes, and otherwise Clear, with Edit before it where the surface draws
- * input fields. In a narrow row, a button that does not fit shows on the next line, with its label
- * unbroken.
- */
-function drawRowButtons(
-  $: EngineInterface,
-  elements: GoalElements,
-  sessionId: string,
-  goal: Goal,
-  row: DrawnRow,
-) {
-  switch (row.mode) {
-    case RowMode.WaitingForYes:
-      return null
-    case RowMode.Editing:
-      return drawButtonRow(elements, [
-        {
-          key: rowElementKeyOf(goal, RowElement.DoneEditing),
-          label: DONE_LABEL,
-          onPress: () => saveOnce($, () => finishEditing($, sessionId, goal)),
-        },
-        cancelButtonOf($, goal, row.mode, RowElement.CancelEditing),
-      ])
-    case RowMode.Unmarking:
-      return drawButtonRow(elements, [
-        cancelButtonOf($, goal, row.mode, RowElement.CancelUnmarking),
-      ])
-    case undefined:
-      return drawButtonRow(elements, [
-        ...(row.fields === undefined
-          ? []
-          : [
-              {
-                key: rowElementKeyOf(goal, RowElement.Edit),
-                label: EDIT_LABEL,
-                dimColor: true,
-                onPress: () => startEditing($, sessionId, goal),
-              },
-            ]),
-        {
-          key: rowElementKeyOf(goal, RowElement.Clear),
-          label: CLEAR_LABEL,
-          dimColor: true,
-          onPress: () => askToClear($, sessionId, goal),
-        },
-      ])
-  }
-}
-
-/** A button beside a row, with the key that addresses it. */
-type RowButton = ButtonProps & { key: string }
 
 /**
  * `buttons` side by side at the end of a row, each in a box that never shrinks, so a narrow row does
  * not break its label.
  */
-function drawButtonRow({ Box, Button }: GoalElements, buttons: readonly RowButton[]) {
+function drawButtonRow(elements: GoalElements, buttons: readonly KeyedButton[]) {
+  const { Box } = elements
+
   return (
     <Box columnGap={1} flexWrap="wrap" justifyContent="flex-end">
       {buttons.map(button => (
-        <Box flexShrink={0}>
-          <Button {...button} />
-        </Box>
+        <Box flexShrink={0}>{drawButton(elements, button)}</Box>
       ))}
     </Box>
   )
 }
 
-/** Cancel beside the row of `goal` in the mode `mode`, drawn as `element`, which ends that mode. */
-function cancelButtonOf(
-  $: EngineInterface,
-  goal: Goal,
-  mode: RowMode.Editing | RowMode.Unmarking,
-  element: RowElement.CancelEditing | RowElement.CancelUnmarking,
-): RowButton {
-  return {
-    key: rowElementKeyOf(goal, element),
-    label: CANCEL_LABEL,
-    onPress: () => dropGoalInPane($, goal.id, mode),
-  }
+function drawButton({ Button }: GoalElements, button: KeyedButton) {
+  return <Button key={button.key} {...button.props} />
 }
 
 /**
@@ -466,7 +570,7 @@ function reasonFieldOf(
   shown: DoneMark,
 ): FieldUnderCard {
   return {
-    key: rowElementKeyOf(goal, RowElement.UnmarkReason),
+    key: rowElementKeyOf(goal, PaneElement.UnmarkReason),
     label: nameGoal(goal.number),
     placeholder: REASON_PLACEHOLDER,
     submitLabel: UNMARK_SUBMIT_LABEL,

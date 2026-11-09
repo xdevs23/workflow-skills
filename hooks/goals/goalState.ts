@@ -3,6 +3,7 @@ import type { EngineInterface } from 'claude-code'
 
 import type {
   Board,
+  FollowedGoal,
   GoalInPane,
   IdleStretch,
   RowInPane,
@@ -27,6 +28,7 @@ import { combinedBoardOf } from './boardMerge'
 const sessionBoard = atom({ plugin: 'workflow-skills', key: 'sessionBoard' } as const, null)
 const goalInPane = atom({ plugin: 'workflow-skills', key: 'goalInPane' } as const, null)
 const typedGoalText = atom({ plugin: 'workflow-skills', key: 'typedGoalText' } as const, null)
+const followedGoal = atom({ plugin: 'workflow-skills', key: 'followedGoal' } as const, null)
 const isSavingGoal = atom({ plugin: 'workflow-skills', key: 'isSavingGoal' } as const, false)
 const seenBoard = atom({ plugin: 'workflow-skills', key: 'seenBoard' } as const, null)
 const idleStretch = atom({ plugin: 'workflow-skills', key: 'idleStretch' } as const, null)
@@ -99,17 +101,18 @@ export async function refuseBlankText($: EngineInterface, goalId: string): Promi
 
 /**
  * Draws the field for the goal with the id `goalId` anew with the text of `edit`, for an edit
- * started from the text `edit.editedFrom`, while the goal is edited. The engine empties a field
- * once its Enter was handled, so the field gets a new key.
+ * started from the text `edit.editedFrom`, under the new field id `fieldId`, while the goal is
+ * edited. The engine empties a field once its Enter was handled, so the field gets a new key.
  */
 export async function redrawEditField(
   $: EngineInterface,
   goalId: string,
   { text, editedFrom }: GoalEdit,
+  fieldId: string,
 ): Promise<void> {
   await updateEditedGoal($, goalId, edited => ({
     ...edited,
-    fieldId: crypto.randomUUID(),
+    fieldId,
     drawn: text,
     editedFrom,
     isBlankTextRefused: false,
@@ -182,6 +185,28 @@ export async function readEdit($: EngineInterface, goalId: string): Promise<Goal
   return isGoalInMode(inPane, goalId, RowMode.Editing) && typed?.goalId === goalId
     ? { text: typed.text, editedFrom: inPane.editedFrom }
     : undefined
+}
+
+/** The goal of the running session whose row in the Goals pane has the focus, if any. */
+export async function readFollowedGoal($: EngineInterface): Promise<FollowedGoal | null> {
+  return ofRunningSession($, await read($, followedGoal))
+}
+
+/**
+ * Records `followed` as the goal of the session `sessionId` whose row in the Goals pane has the
+ * focus. Null records that the focus is outside every goal row.
+ */
+export async function setFollowedGoal(
+  $: EngineInterface,
+  sessionId: string,
+  followed: Omit<FollowedGoal, 'sessionId'> | null,
+): Promise<void> {
+  await updateOfSession<FollowedGoal>(
+    $,
+    sessionId,
+    () => (followed === null ? null : { sessionId, ...followed }),
+    changeInState => update($, followedGoal, changeInState),
+  )
 }
 
 /** Marks a save of the Goals pane as running, and returns false when one was running already. */

@@ -1,6 +1,7 @@
 import type { Hook, On } from 'claude-code'
 
 import { EVERY_EVENT } from '../everyEvent'
+import { PLUGIN } from '../names'
 import type { PromptFooter } from '../promptFooter'
 import { SWITCHING_SOURCES } from '../sessionSources'
 import { loadBoardAtStart } from './goalActions'
@@ -14,6 +15,14 @@ import {
   MARK_GOAL_DONE_TOOL,
   UNMARK_GOAL_DONE_TOOL,
 } from './goalNames'
+import {
+  followGoalAfterEntry,
+  followGoalAfterPick,
+  followGoalAfterPress,
+  followGoalWithFocus,
+  recordFollowedGoal,
+  stopFollowingOnClose,
+} from './goalFocus'
 import { endIdleStretch, waitAfterTurn } from './goalIdleReminder'
 import { addGoalChangesToToolResult, submitWithGoalChanges } from './goalReminderHooks'
 import { handleMarkGoalDoneCall, handleUnmarkGoalDoneCall } from './goalMarkTools'
@@ -60,5 +69,11 @@ export function registerGoals(on: On, footer: PromptFooter): void {
     denyGoalToolFailure,
   )
   on('ui.render', { component: 'Pane', requestId: GOALS_PANE }, drawGoalsPane)
+  on('ui.focus', { component: 'Pane', requestId: GOALS_PANE }, recordFollowedGoal)
+  on('ui.close', { id: GOALS_PANE }, stopFollowingOnClose)
+  on('state.set', { plugin: PLUGIN, key: 'sessionBoard' }, followGoalWithFocus)
+  on('ui.press', { component: 'Pane', requestId: GOALS_PANE }, followGoalAfterPress)
+  on('ui.select', { component: 'Pane', requestId: GOALS_PANE }, followGoalAfterPick)
+  on('ui.input', { component: 'Pane', requestId: GOALS_PANE }, followGoalAfterEntry)
   on('ui.press', footer.place(GOALS_BUTTON), openGoalsFromButton)
 }
