@@ -76,9 +76,8 @@ description: Decide what may go into anything that leaves machine or goes to som
 ## Third-party material
 
 - Never put proprietary upstream code or proprietary prompt text into public repository
-- Download third-party asset meant to ship with the work, e.g. font file, only when user approves
-  it. Font package that comes with license of the font, e.g. Fontsource package, is one way to
-  avoid the download
+- Add third-party asset meant to ship with the work, font file included, only when user approves
+  it, and only as `workflow-skills:changing-the-build` describes
 - Keep every license and notice that comes with third-party material
 - Keep author attribution that comes with copied code
 - Never relicense adopted code silently

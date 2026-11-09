@@ -141,6 +141,13 @@ description: Visual design of screen or page
 ## Colour and type
 
 - Write every colour in `oklch()`, palette of `frontend-design` plan included
+- Define colours as design tokens in CSS variables. Each hue gets private ladder of `oklch()`
+  steps. Number each step by its lightness in thousandths. Semantic tokens, named by surface on
+  which they sit, are set to steps of ladder
+- Let parts use semantic tokens alone, never ladder step or colour of their own
+- Decide dark or light theme by one property on root element, class or attribute. Theme switch and
+  system setting set only that property. Dark theme sets new values of semantic tokens and
+  nothing else
 - Tune palette as one family: few related hues, even steps of lightness and chroma between them
 - Draw object set apart from page in hue of same family
 - Give large surface full chroma only when object or texture fills it. Keep other large

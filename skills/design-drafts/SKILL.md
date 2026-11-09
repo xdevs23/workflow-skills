@@ -12,7 +12,8 @@ description: Draw several design drafts for user to choose from
   for resolution in question at end of message when user did not name one, and draw shell as plain
   frame labeled as stand-in
 - Keep drafts in folder of drafts in project cache defined by `workflow-skills:local-cache`
-- Write each page as standalone HTML file, all CSS inside it
+- Write each page as standalone HTML file, all CSS inside it, as raw CSS or Tailwind classes
+- Draw draft of app screen in dark and light theme. Follow system setting
 - Copy font and image files used by product into folder of drafts. Draw with them
 - Load nothing from network
 - Use one realistic sample in every draft: real-looking names, texts and values. At least one long

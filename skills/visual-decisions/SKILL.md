@@ -24,7 +24,8 @@ description: Draw page for user to look at: drafts, product decisions, plans and
 ## The page
 
 - Write one standalone HTML file, all CSS inside it, without external resources
-- Write every HTML page meant for user in dark mode
+- Write every HTML page meant for user in dark mode, except draft of app screen, which follows
+  `workflow-skills:design-drafts`
 - Keep file on filesystem on which you work, in project cache defined by
   `workflow-skills:local-cache`.
   Upload or publish elsewhere only when user explicitly allowed it
