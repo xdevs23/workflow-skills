@@ -13,9 +13,9 @@ tools: Read, Grep, Glob, Bash, Edit, Write, Skill
 - Position taken by habit, often middle or quiet end of an axis, makes screen look generated
 - Match how playful page is to how serious subject is for reader. Serious subject gets calm, exact
   page, with input close to real handling of thing
-- Shape layout itself from idea of screen. Layout that fits any other subject unchanged looks
-  generic
-- Shape navigation and page header from idea of screen too
+- Shape layout of web page itself from idea of page. Layout that fits any other subject unchanged
+  looks generic
+- Shape navigation and page header of web page from idea of page too
 - Never build page on stock frame: wordmark top left, links and button top right, large headline
   with button under it, then row of sections
 - Shrink header to wordmark and few small controls set into scene. Never give it bar or block of
@@ -26,6 +26,25 @@ tools: Read, Grep, Glob, Bash, Edit, Write, Skill
   section and opens list of all sections
 - Let reader choose outcome that reader wants, in reader's terms. Never ask reader to choose step
   of business behind it
+- Make screen show at first glance what it is and what reader does on it. Bold composition that
+  stranger cannot read as its subject within two seconds is mess
+- Finish every panel, list and control of app screen with care given to its main object. Plain
+  parts around one pretty object leave screen unfinished
+
+## App screens
+
+- Build app screen on layout known from apps of same kind: lists, detail, toolbar, tabs and main
+  action where users of such apps look for them
+- Use bold idea, scenes, first screen and sections of Scenes for web pages only. Rules of Scenes on
+  covering, overlap and widths bind app screens too
+- Never turn app screen into metaphor or scene of objects. At most one rendered object, and only
+  when it is content of app itself
+- Show data of app in plain form: list, table, chart or timeline. Never encode data as picture that
+  reader has to decode
+- Give app screen one main task in focus. Keep other parts few, quiet and out of its way
+- Make app screen beautiful through type, colour, spacing, surfaces and finish of every control
+- Match look of app to its audience and to how often it is used. App used every day for hours gets
+  calm, neutral look that reads fast. Never dress app in material or craft of trade of its user
 
 ## Scenes
 
@@ -40,6 +59,9 @@ tools: Read, Grep, Glob, Bash, Edit, Write, Skill
 - Build first screen around one bold idea made from motif of page: scene or object. Never let
   text carry first screen as picture. Never put sentence under main headline. Put its fact into
   section further down
+- Never write headline for first screen only to have text there. Where page has brand name, set
+  brand name there, in treatment taken from idea of page, at size that eye reads as one word.
+  Otherwise leave headline out
 - Spread text, actions and facts of first screen to edges and corners of viewport, around open
   centre given to idea of page. Never stack headline, sentence and button in one column
 - Pick at most one or two of these, only where idea of page calls for them. Leave out the rest:
@@ -56,6 +78,7 @@ tools: Read, Grep, Glob, Bash, Edit, Write, Skill
 - Give every section composition of its own. Change colour world or surface between sections,
   with shaped or hard edge, never by slight change of tint
 - Never draw section edge as large rounded corner with coloured line along it
+- Give each edge between sections shape of its own. Never repeat one edge shape down page
 - Let some parts span two or three sections: object, picture or shape that crosses edge between
   sections and ties them together. Never let page read as stack of separate bands
 - Let one shape taken from subject run through containers of page
@@ -82,9 +105,17 @@ tools: Read, Grep, Glob, Bash, Edit, Write, Skill
 - Show number, state, schedule or contrast as shape that reads faster than sentence, where one
   exists. Then cut sentence that says it again
 - Let each graphic answer one question at a glance. Split graphic that needs study to read
+- Draw chart so it reads at zero too: baseline, scale and state named for value of nothing. Never
+  leave empty plot that looks broken
 - Show short fact repeated across items as icon, with its text on hover and as accessible name
 - Draw icon, scale or mark in form taken from subject of screen. Form borrowed from other device
   or domain misleads
+- Draw control as icon wherever known icon shows its action. Give it accessible name and text on
+  hover. Never write label on it
+- Never draw button as pill with fully rounded ends. Take shape of buttons from idea of page
+- Draw object in true proportions of real thing. Never stretch or thin it to fit row
+- Draw map with true geometry of place and clear order: labels free of collisions, one symbol for
+  each kind of place, few labels
 - Leave out legend for marks whose form shows their meaning
 - Keep mark next to label or value to which it belongs
 - Set text drawn on ruled or squared surface on its lines
@@ -121,6 +152,8 @@ tools: Read, Grep, Glob, Bash, Edit, Write, Skill
   sentence that adds nothing to sentence before it, and quote or statistic that proves nothing are
   fluff
 - Put explanation of how service or process works into FAQ, or into step where reader needs it
+- Put conditions, payment, delivery, cancellation and house rules into FAQ or terms. Never on
+  front page
 - Write price, value and condition as row of table or label with value, in table already on
   page. Never write them as prose
 - Show rule with numbers as picture. Write several facts side by side as bullets or icons with
@@ -132,6 +165,7 @@ tools: Read, Grep, Glob, Bash, Edit, Write, Skill
   one condition
 - Make headline short title for what section offers. Never write headline as sentence that tells
   story, and never put detail into it. Put detail into content under headline
+- Read every headline alone. Rewrite headline that does not tell stranger what section offers
 - Put sentence under headline only when reader needs it to act. Sentence next to headline or next
   to other sentence says something that belongs with it
 - Replace sentence that adds nothing with picture, control, number or nothing
@@ -140,6 +174,13 @@ tools: Read, Grep, Glob, Bash, Edit, Write, Skill
 - Where headline contains example, set example apart in look. Let several examples
   take turns there, each change with transition
 - Cut word that thing named already makes clear
+- Write each fact in fewest words that carry it. Never repeat qualifier within sentence or in
+  sentence next to it
+- Never cut word off from object or clause that it needs
+- Name offer of page by what reader gets, in words of this page. Never by generic noun of trade
+  carried over from other pages
+- Use each noun at most once per screen height, across headings, buttons and cards. Let context,
+  picture or other word carry it
 - Use words that reader uses. Replace word of trade or industry. State what rule of trade means
   for reader, or leave rule out
 - Give thing only verb of what happens to it or what it does as
@@ -155,10 +196,13 @@ tools: Read, Grep, Glob, Bash, Edit, Write, Skill
 - Use depth, light, glass, gradient, texture and ornament only where each carries idea of screen
 - Use stronger effect less often
 - Keep shadow, glow and blur inside their part
+- Draw shadow as wide, soft spread blur. Never as hard edge, band or small dark halo
 - Set text on background that changes colour under it, or on lines, pattern or texture close to
   tone of text, only with mask cutting background away behind text, backdrop blur, backdrop shadow
-  spread behind text, or safe zone of clean background under it
-- Keep colour mixes and gradients clean
+  spread behind text, or safe zone of clean background under it. Put protection behind text only
+  where text falls short of contrast without it
+- Keep colour mixes and gradients clean. Let gradient run without visible step or line, also
+  where two surfaces blend
 - Finish every edge, control and empty state
 - Draw each control with one frame. Never draw second outline around or inside it
 
@@ -202,7 +246,16 @@ tools: Read, Grep, Glob, Bash, Edit, Write, Skill
 
 - Build every 3D object whole from every angle shown to reader: each part attached to what holds
   it, without holes, floating pieces or dark artefacts
+- Place 3D objects so that no two cut into each other. Objects stand apart or touch at surface,
+  as real objects do
 - Look at every 3D object at real size before returning page
+
+## Speed
+
+- Keep page smooth on ordinary laptop and phone. Draw 3D only while it is visible, at resolution
+  and frame rate that machine holds, and stop drawing scene that does not change
+- Show rendered object on every load. Load page several times before returning. Where rendering
+  fails or context is lost, show still picture of object, never black or empty area
 
 ## Before returning
 
