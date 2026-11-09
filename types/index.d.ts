@@ -3,6 +3,7 @@ import type { MarkRemovalAsked } from '../hooks/goals/doneMark'
 import type { IdlePhase } from '../hooks/goals/goalIdleReminder'
 import type { RowMode } from '../hooks/goals/goalState'
 import type { Priority } from '../hooks/goals/priority'
+import type { LoopLedger } from '../hooks/neededSkills/loadLedger'
 import type { ReadReminders, RemindersNotRead } from '../hooks/reminders/reminderStore'
 import type { CardMode } from '../hooks/reminders/reminderState'
 import type { Refusal as ReminderRefusal } from '../hooks/reminders/reminders'
@@ -277,6 +278,16 @@ export type SelfCheckSchedule = {
   dueAt: number
 }
 
+/**
+ * The ledgers of the loops of a session: what the main conversation and each running subagent or
+ * workflow agent loaded, by the agent id the engine gives it, with the context size of each.
+ */
+export type SessionLoadLedgers = {
+  sessionId: string
+  main: LoopLedger
+  agents: Readonly<Record<string, LoopLedger>>
+}
+
 declare module 'claude-code' {
   interface PluginState {
     'workflow-skills': {
@@ -329,6 +340,8 @@ declare module 'claude-code' {
       reminderNextSends: ReminderNextSends | null
       /** How far the due times of the timed reminders of the session are handled. */
       timedRemindersHandled: TimedRemindersHandled | null
+      /** The ledgers of the loops of the session; null before any loop made a load or a request. */
+      loadLedgers: SessionLoadLedgers | null
     }
   }
 }

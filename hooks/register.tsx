@@ -5,7 +5,8 @@ import { EVERY_EVENT } from './everyEvent'
 import { registerGoals } from './goals'
 import { openGoalsAfterCompaction } from './goals/goalReminderHooks'
 import { blockStopOnHintPhrase } from './hints'
-import { ANSWER_COMMAND, ASK_TOOL, LIST_TOOL, PANE, SKILL_TOOL, WITHDRAW_TOOL } from './names'
+import { ANSWER_COMMAND, ASK_TOOL, LIST_TOOL, PANE, WITHDRAW_TOOL } from './names'
+import { registerNeededSkills } from './neededSkills'
 import { createPromptFooter, registerPromptFooter } from './promptFooter'
 import {
   addAnswersToToolResult,
@@ -15,7 +16,6 @@ import {
   listQuestions,
   markTurnRunning,
   readQuestionsOfStartedSession,
-  recordSkillLoad,
   replyWithHookFailure,
   runAnswerCommand,
   startQuestions,
@@ -40,7 +40,8 @@ export const register: Register = on => {
   )
   // Registered before the tools of this plugin, so their results also contain the answers.
   on('tool.call', EVERY_EVENT, addAnswersToToolResult)
-  on('tool.call', { tool: SKILL_TOOL }, recordSkillLoad)
+  // Registered before the tools of this plugin, so it denies a call before the tool runs.
+  registerNeededSkills(on)
   on('tool.call', { tool: ASK_TOOL }, askQuestion).catch(denyHookFailure)
   on('tool.call', { tool: LIST_TOOL }, listQuestions).catch(denyHookFailure)
   on('tool.call', { tool: WITHDRAW_TOOL }, withdrawQuestion).catch(denyHookFailure)

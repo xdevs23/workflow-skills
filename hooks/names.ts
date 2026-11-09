@@ -10,6 +10,14 @@ export function toolName<Name extends string>(name: Name): `mcp__${typeof PLUGIN
   return `mcp__${PLUGIN}__${name}`
 }
 
+/** The qualified name of a skill of this plugin, such as `workflow-skills:writing-code`. */
+export type QualifiedSkill = `${typeof PLUGIN}:${string}`
+
+/** The qualified name of the skill `name` of this plugin. */
+export function skillName<Name extends string>(name: Name): `${typeof PLUGIN}:${Name}` {
+  return `${PLUGIN}:${name}`
+}
+
 export const ASK_TOOL = toolName(ASK)
 export const LIST_TOOL = toolName(LIST)
 export const WITHDRAW_TOOL = toolName(WITHDRAW)
@@ -18,10 +26,10 @@ export const WITHDRAW_TOOL = toolName(WITHDRAW)
 export const SKILL_TOOL = 'Skill'
 
 /** The qualified name for the skill to load before a question is put to the user. */
-export const QUESTION_SKILL = `${PLUGIN}:question`
+export const QUESTION_SKILL = skillName('question')
 
 /** The qualified name for the skill that draws drafts and opens them for the user. */
-export const VISUAL_DECISIONS_SKILL = `${PLUGIN}:visual-decisions`
+export const VISUAL_DECISIONS_SKILL = skillName('visual-decisions')
 
 export const ANSWER_COMMAND = 'answer'
 

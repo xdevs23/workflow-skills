@@ -1,5 +1,5 @@
 import { describe, expect } from 'claude-code/testing'
-import type { ApiMessage, On } from 'claude-code'
+import type { On } from 'claude-code'
 
 import {
   ANSWER_COMMAND,
@@ -8,7 +8,6 @@ import {
   LIST,
   LIST_TOOL,
   PANE,
-  PLUGIN,
   QUESTION_SKILL,
   WITHDRAW,
   WITHDRAW_TOOL,
@@ -16,65 +15,29 @@ import {
 import { COST_FRAMING } from './costFraming'
 import { HANDED_DECISION } from './handedDecision'
 import { AskOutcome, askProblemOf } from './inputs'
-import { describeQuestionSkillDenial } from './modelText'
 import { LOCK_REFUSAL } from './pluginStore'
 import { createPromptFooter } from './promptFooter'
-import {
-  QUESTION_SKILL_LOAD_MAX_AGE_MS,
-  QUESTION_SKILL_MAX_TOKENS_AFTER_LOAD,
-  QuestionSkillLoadState,
-} from './questionSkill'
-import { questionSkillLoadKeyOf, storeKeyOf } from './questionStore'
+import { storeKeyOf } from './questionStore'
 import { registerReminders } from './reminders'
 import { CADENCE_KINDS } from './reminders/registeredKinds'
 import { test } from './testDeclaration'
 import {
   FIRST_SESSION,
-  SECOND_SESSION,
-  TOKENS_AT_START,
+  SUBAGENT,
   answerByCommand,
   askAboutFriday,
   askWhichDatabase,
-  callSkillTool,
   endTurn,
   listQuestions,
+  loadQuestionSkill,
   mountBand,
   mountPane,
   questionCountOf,
   readFile,
-  skillLoad,
   startSession,
   startTurn,
-  toolCall,
   typePrompt,
 } from './testSupport'
-import type { Session } from './testSupport'
-
-/** The summary left by a compaction in place of the messages replaced by it. */
-const COMPACTION_SUMMARY: ApiMessage = {
-  role: 'user',
-  content: [
-    {
-      type: 'text',
-      text: 'This session is being continued from a previous conversation. Summary: work on the API.',
-    },
-  ],
-}
-
-/** A message that mentions the question skill without loading it. */
-const QUESTION_SKILL_NAMED: ApiMessage = {
-  role: 'user',
-  content: [{ type: 'text', text: `Load ${QUESTION_SKILL} before you ask.` }],
-}
-
-/** Removes the load record of the session, as for a load never seen by the plugin. */
-function forgetQuestionSkillLoad(session: Session) {
-  session.store.delete(questionSkillLoadKeyOf(session.id))
-}
-
-function failedSkillLoad(skill: string): ApiMessage[] {
-  return toolCall({ tool: 'Skill', input: { skill }, isFailed: true })
-}
 
 /** The hooks that `register` registers, in the order it registers them. */
 function hooksRegisteredBy(register: (on: On) => void): unknown[] {
@@ -542,226 +505,26 @@ describe('asking without waiting', () => {
   )
 })
 
-describe('asking with the question skill in context', () => {
-  const NOT_RECORDED = describeQuestionSkillDenial({ state: QuestionSkillLoadState.NotRecorded })
-
+describe('asking with the question skill loaded', () => {
   test(
-    'a question asked by a session that has not loaded the question skill is denied and not ' +
-      'stored',
+    'a question asked before the question skill is loaded is refused and not stored, and asked ' +
+      'once it is loaded',
     async ($, on) => {
-      const session = await startSession($, on)
-      session.context = []
+      const session = await startSession($, on, { loadsQuestionSkill: false })
 
-      expect((await askWhichDatabase($)).deny).toBeDefined()
+      expect((await askWhichDatabase($)).deny).toContain(QUESTION_SKILL)
       expect(questionCountOf(session)).toBe(0)
       expect(session.chatLines).toEqual([])
-    },
-  )
-
-  const notLoaded: [string, () => ApiMessage[]][] = [
-    ['another skill loaded by the Skill tool', () => skillLoad(`${PLUGIN}:writing-style`)],
-    ['a Skill tool call for the question skill that failed', () => failedSkillLoad(QUESTION_SKILL)],
-    ['a message that mentions the question skill', () => [QUESTION_SKILL_NAMED]],
-    [
-      'another tool called with the name of the question skill',
-      () => toolCall({ tool: 'Read', input: { skill: QUESTION_SKILL }, isFailed: false }),
-    ],
-    [
-      'a Skill tool call for the question skill without its result',
-      () =>
-        toolCall({
-          tool: 'Skill',
-          input: { skill: QUESTION_SKILL },
-          isFailed: false,
-          resultOf: 'call-other',
-        }),
-    ],
-  ]
-  for (const [contains, context] of notLoaded) {
-    test(`a question asked from a context with ${contains} is denied`, async ($, on) => {
-      const session = await startSession($, on)
-      session.context = context()
-
-      expect((await askWhichDatabase($)).deny).toBeDefined()
-      expect(questionCountOf(session)).toBe(0)
-    })
-  }
-
-  test(
-    'a question asked after a Skill tool call with spaces and a slash around the name is stored',
-    async ($, on) => {
-      const session = await startSession($, on)
-      session.context = skillLoad(` /${QUESTION_SKILL} `)
-
+      await loadQuestionSkill($)
       expect((await askWhichDatabase($)).deny).toBeUndefined()
       expect(questionCountOf(session)).toBe(1)
     },
   )
 
-  test(
-    'a question is denied once more tokens than the limit came into the context after the load ' +
-      'of the question skill',
-    async ($, on) => {
-      const session = await startSession($, on)
-      session.contextTokens = TOKENS_AT_START + QUESTION_SKILL_MAX_TOKENS_AFTER_LOAD
-      expect((await askWhichDatabase($)).deny).toBeUndefined()
-      session.contextTokens = TOKENS_AT_START + QUESTION_SKILL_MAX_TOKENS_AFTER_LOAD + 1
+  test('a question asked by a subagent is stored without a load', async ($, on) => {
+    const session = await startSession($, on, { loadsQuestionSkill: false })
 
-      expect((await askAboutFriday($)).deny).toBe(
-        describeQuestionSkillDenial({
-          state: QuestionSkillLoadState.OverLimit,
-          tokensAfterLoad: QUESTION_SKILL_MAX_TOKENS_AFTER_LOAD + 1,
-        }),
-      )
-      expect(questionCountOf(session)).toBe(1)
-    },
-  )
-
-  test(
-    'a question is denied when the plugin did not see a load of the question skill, although ' +
-      'the context contains one',
-    async ($, on) => {
-      const session = await startSession($, on)
-      forgetQuestionSkillLoad(session)
-
-      expect((await askWhichDatabase($)).deny).toBe(NOT_RECORDED)
-      expect(questionCountOf(session)).toBe(0)
-    },
-  )
-
-  test(
-    'a failed or denied Skill tool call, a load by a subagent and a load of another skill do ' +
-      'not count as a load of the question skill',
-    async ($, on) => {
-      const session = await startSession($, on)
-      forgetQuestionSkillLoad(session)
-      session.isSkillFailing = true
-      await callSkillTool($, QUESTION_SKILL)
-      expect((await askWhichDatabase($)).deny).toBe(NOT_RECORDED)
-      session.isSkillFailing = false
-      session.isSkillDenied = true
-      await callSkillTool($, QUESTION_SKILL)
-      expect((await askWhichDatabase($)).deny).toBe(NOT_RECORDED)
-      session.isSkillDenied = false
-      await callSkillTool($, QUESTION_SKILL, 'agent-1')
-      expect((await askWhichDatabase($)).deny).toBe(NOT_RECORDED)
-      await callSkillTool($, `${PLUGIN}:writing-style`)
-
-      expect((await askAboutFriday($)).deny).toBe(NOT_RECORDED)
-      expect(questionCountOf(session)).toBe(0)
-    },
-  )
-
-  test('a question asked after the question skill was loaded again is stored', async ($, on) => {
-    const session = await startSession($, on)
-    session.contextTokens = 2 * (TOKENS_AT_START + QUESTION_SKILL_MAX_TOKENS_AFTER_LOAD)
-    await callSkillTool($, ` /${QUESTION_SKILL}`)
-
-    expect((await askWhichDatabase($)).deny).toBeUndefined()
+    expect((await askAboutFriday($, SUBAGENT)).deny).toBeUndefined()
     expect(questionCountOf(session)).toBe(1)
   })
-
-  test(
-    'a load made while the engine does not report the context size removes the earlier record',
-    async ($, on) => {
-      const session = await startSession($, on)
-      session.contextTokens = undefined
-      await callSkillTool($, QUESTION_SKILL)
-      expect(session.store.has(questionSkillLoadKeyOf(session.id))).toBe(false)
-      session.contextTokens = TOKENS_AT_START
-
-      expect((await askWhichDatabase($)).deny).toBe(NOT_RECORDED)
-      expect(questionCountOf(session)).toBe(0)
-    },
-  )
-
-  test(
-    'a question asked while the engine does not report the context size is denied',
-    async ($, on) => {
-      const session = await startSession($, on)
-      session.contextTokens = undefined
-
-      expect((await askWhichDatabase($)).deny).toBe(
-        describeQuestionSkillDenial({ state: QuestionSkillLoadState.NoContextSize }),
-      )
-      expect(questionCountOf(session)).toBe(0)
-    },
-  )
-
-  test(
-    'a question asked after a compaction kept the load in a smaller context is denied',
-    async ($, on) => {
-      const session = await startSession($, on)
-      session.contextTokens = TOKENS_AT_START - 1
-
-      expect((await askWhichDatabase($)).deny).toBe(NOT_RECORDED)
-      expect(questionCountOf(session)).toBe(0)
-    },
-  )
-
-  test('a load record of another shape fails the check and is left unchanged', async ($, on) => {
-    const session = await startSession($, on)
-    const key = questionSkillLoadKeyOf(session.id)
-    for (const damaged of [{ contextTokens: 'many', savedAt: 1000 }, { contextTokens: 1000 }]) {
-      session.store.set(key, damaged)
-
-      expect((await askWhichDatabase($)).deny).toContain(key)
-      expect(session.store.get(key)).toEqual(damaged)
-    }
-    expect(questionCountOf(session)).toBe(0)
-  })
-
-  test(
-    'a load record the store refuses is shown with its reason, and the next question is denied',
-    async ($, on) => {
-      const session = await startSession($, on)
-      forgetQuestionSkillLoad(session)
-      session.refusedWrites.push('the store is over 4 MiB')
-      await callSkillTool($, QUESTION_SKILL)
-
-      expect(session.toasts).toHaveLength(1)
-      expect(session.toasts[0]).toContain('the store is over 4 MiB')
-      expect((await askWhichDatabase($)).deny).toBe(NOT_RECORDED)
-    },
-  )
-
-  test(
-    'a load deletes the load records of other sessions once they are older than the age limit',
-    async ($, on) => {
-      const session = await startSession($, on)
-      const firstKey = questionSkillLoadKeyOf(session.id)
-      session.id = SECOND_SESSION
-      await session.clock.advance(QUESTION_SKILL_LOAD_MAX_AGE_MS)
-      await callSkillTool($, QUESTION_SKILL)
-      expect(session.store.has(firstKey)).toBe(true)
-      await session.clock.advance(1)
-      await callSkillTool($, QUESTION_SKILL)
-
-      expect(session.store.has(firstKey)).toBe(false)
-      expect(session.store.has(questionSkillLoadKeyOf(SECOND_SESSION))).toBe(true)
-    },
-  )
-
-  test(
-    'a question asked after a compaction removed the question skill from context is denied',
-    async ($, on) => {
-      const session = await startSession($, on)
-      expect((await askWhichDatabase($)).deny).toBeUndefined()
-      session.context = [COMPACTION_SUMMARY]
-
-      expect((await askAboutFriday($)).deny).toBeDefined()
-      expect(questionCountOf(session)).toBe(1)
-    },
-  )
-
-  test(
-    'a question asked by a subagent is stored without a check of the main conversation',
-    async ($, on) => {
-      const session = await startSession($, on)
-      session.context = []
-
-      expect((await askAboutFriday($, 'agent-1')).deny).toBeUndefined()
-      expect(questionCountOf(session)).toBe(1)
-    },
-  )
 })

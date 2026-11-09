@@ -13,7 +13,6 @@ export enum RecordKind {
   Answer = 'answers',
   Withdrawal = 'withdrawals',
   Delivery = 'deliveries',
-  QuestionSkillLoad = 'questionSkillLoads',
   Goal = 'goals',
   Reminder = 'reminders',
 }

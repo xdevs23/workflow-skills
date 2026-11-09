@@ -1,9 +1,8 @@
 import { describe, expect } from 'claude-code/testing'
 
-import { QUESTION_SKILL, WITHDRAW_TOOL } from './names'
+import { WITHDRAW_TOOL } from './names'
 import { ALL_CLOSED } from './modelText'
-import { SESSION_QUESTIONS_MAX_AGE_MS } from './questionSkill'
-import { storeKeyOf } from './questionStore'
+import { SESSION_QUESTIONS_MAX_AGE_MS, storeKeyOf } from './questionStore'
 import { test } from './testDeclaration'
 import {
   FIRST_SESSION,
@@ -11,9 +10,9 @@ import {
   answerByCommand,
   askAboutFriday,
   askWhichDatabase,
-  callSkillTool,
   endTurn,
   listQuestions,
+  loadQuestionSkill,
   mountBand,
   mountPane,
   questionCountOf,
@@ -35,7 +34,7 @@ describe('the questions of each session', () => {
       const session = await startSession($, on)
       await askWhichDatabase($)
       await startProcess($, session, { id: SECOND_SESSION, source: 'startup' })
-      await callSkillTool($, QUESTION_SKILL)
+      await loadQuestionSkill($)
       const band = await mountBand($)
 
       expect(await band.find({ type: 'Text', text: /open question/ })).toBeUndefined()
@@ -56,7 +55,7 @@ describe('the questions of each session', () => {
       const band = await mountBand($)
 
       expect(await band.find({ type: 'Text', text: /^1 open question/ })).toBeDefined()
-      await callSkillTool($, QUESTION_SKILL)
+      await loadQuestionSkill($)
       await startTurn($)
       await answerByCommand($, '1 sqlite')
       expect((await readFile($)).context?.join('\n')).toContain('sqlite')
@@ -67,7 +66,7 @@ describe('the questions of each session', () => {
     const session = await startSession($, on)
     await askWhichDatabase($)
     await switchSession($, session, { id: SECOND_SESSION, reason: 'resume' })
-    await callSkillTool($, QUESTION_SKILL)
+    await loadQuestionSkill($)
 
     expect(await listQuestions($)).not.toContain('Which database?')
     expect(String((await askAboutFriday($)).result)).toContain('#1')
@@ -84,7 +83,7 @@ describe('the questions of each session', () => {
       const session = await startSession($, on)
       await askWhichDatabase($)
       await switchSession($, session, { id: SECOND_SESSION, reason: 'clear' })
-      await callSkillTool($, QUESTION_SKILL)
+      await loadQuestionSkill($)
       await startTurn($)
 
       expect(await answerByCommand($, '1 sqlite')).toBe('Question #1 is not open.')
@@ -241,7 +240,7 @@ describe('the questions of each session', () => {
       await askWhichDatabase($)
       await answerByCommand($, '1 sqlite')
       await switchSession($, session, { id: SECOND_SESSION, reason: 'clear' })
-      await callSkillTool($, QUESTION_SKILL)
+      await loadQuestionSkill($)
       await askAboutFriday($)
       await session.clock.settle()
       const band = await mountBand($)
@@ -294,14 +293,14 @@ describe('the questions of each session', () => {
 
       expect([...session.store.keys()].filter(key => key.includes(project))).toEqual([])
       expect(await band.find({ type: 'Text', text: /^1 open question/ })).toBeDefined()
-      expect((await callSkillTool($, QUESTION_SKILL)).context?.join('\n')).toContain('sqlite')
+      expect((await loadQuestionSkill($)).context?.join('\n')).toContain('sqlite')
       expect(String((await askWhichDatabase($)).result)).toContain('#3')
     },
   )
 
   test(
-    'a load deletes the questions of another session once its newest record is older than the ' +
-      'age limit',
+    'a process start deletes the questions of another session once its newest record is older ' +
+      'than the age limit',
     async ($, on) => {
       const session = await startSession($, on)
       await askWhichDatabase($)
@@ -310,20 +309,19 @@ describe('the questions of each session', () => {
       await session.clock.settle()
       const recordsOfFirstSession = () =>
         [...session.store.keys()].filter(key => key.includes(`:${FIRST_SESSION}:`))
-      session.id = SECOND_SESSION
       await session.clock.advance(SESSION_QUESTIONS_MAX_AGE_MS)
-      await callSkillTool($, QUESTION_SKILL)
+      await startProcess($, session, { id: SECOND_SESSION, source: 'startup' })
       expect(recordsOfFirstSession()).toHaveLength(3)
       await session.clock.advance(1)
-      await callSkillTool($, QUESTION_SKILL)
+      await startProcess($, session, { id: SECOND_SESSION, source: 'resume' })
 
       expect(recordsOfFirstSession()).toEqual([])
     },
   )
 
   test(
-    'a load keeps the old questions of the session that loads, and of a session with a record ' +
-      'of another shape',
+    'a process start leaves the old questions of the session that starts, and of a session with ' +
+      'a record of another shape',
     async ($, on) => {
       const damaged = storeKeyOf(THIRD_SESSION, 'damaged')
       const session = await startSession($, on, {
@@ -331,7 +329,7 @@ describe('the questions of each session', () => {
       })
       await askWhichDatabase($)
       await session.clock.advance(SESSION_QUESTIONS_MAX_AGE_MS + 1)
-      await callSkillTool($, QUESTION_SKILL)
+      await startProcess($, session, { id: FIRST_SESSION, source: 'resume' })
 
       expect(questionCountOf(session)).toBe(1)
       expect(session.store.has(damaged)).toBe(true)
@@ -349,7 +347,7 @@ describe('the questions of each session', () => {
       const band = await mountBand($)
 
       expect(await band.find({ type: 'Text', text: /open question/ })).toBeUndefined()
-      await callSkillTool($, QUESTION_SKILL)
+      await loadQuestionSkill($)
       expect(await listQuestions($)).not.toContain('Which database?')
       expect(String((await askAboutFriday($)).result)).toContain('#1')
     },

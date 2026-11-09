@@ -25,9 +25,8 @@ import type { AnsweredQuestion } from './questions'
 
 /**
  * The kinds of record stored for a question. Every record of a question is written by the session
- * that asked it, and the record of the last load of the question skill in a session by that
- * session, each under a key that includes the id of the session. The one exception is an old load
- * record, which any session deletes.
+ * that asked it, under a key that includes the id of the session. The one exception is a record of
+ * a session idle for SESSION_QUESTIONS_MAX_AGE_MS, which any session deletes.
  */
 const QUESTION_RECORD_KINDS = [
   RecordKind.Question,
@@ -51,11 +50,15 @@ type QuestionRecordKey = { key: string; kind: QuestionRecordKind; owner: string;
  */
 const PROJECT_DIGEST = /^[0-9a-f]{64}$/
 
+/**
+ * The questions of another session are deleted at the start of a process once the newest of their
+ * records is this old, so the store contains no questions of sessions ended long ago. The age
+ * leaves a month for `claude --resume` to bring a session back with its questions.
+ */
+export const SESSION_QUESTIONS_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000
+
 type StoredQuestion = Omit<Question, 'answer' | 'withdrawnAt'>
 type StoredAnswer = { text: string; answeredAt: number }
-
-/** The context size of a session when the Skill tool loaded the question skill, and when saved. */
-export type QuestionSkillLoad = { contextTokens: number; savedAt: number }
 
 /** A failure of the store of the plugin that a person can act on, its next step in the message. */
 export class QuestionStoreError extends Error {}
@@ -115,11 +118,6 @@ export class QuestionNotSavedError extends QuestionStoreError {
 
 export function storeKeyOf(sessionId: string, id: string): string {
   return recordKeyOf(RecordKind.Question, sessionId, id)
-}
-
-/** The key of the load record of the session `sessionId`, and with an empty id their prefix. */
-export function questionSkillLoadKeyOf(sessionId: string): string {
-  return recordKeyOf(RecordKind.QuestionSkillLoad, sessionId)
 }
 
 /**
@@ -321,75 +319,16 @@ export async function saveDelivery(
   return answered.map(question => ({ ...question, answer: { ...question.answer, isDelivered: true } }))
 }
 
-/** The load record of the session `sessionId`, undefined when the store has none. */
-export async function readQuestionSkillLoad(
-  $: EngineInterface,
-  sessionId: string,
-): Promise<QuestionSkillLoad | undefined> {
-  return readQuestionSkillLoadUnder($, questionSkillLoadKeyOf(sessionId))
-}
-
-export async function saveQuestionSkillLoad(
-  $: EngineInterface,
-  sessionId: string,
-  load: QuestionSkillLoad,
-): Promise<void> {
-  await saveRecord($, questionSkillLoadKeyOf(sessionId), load)
-}
-
-export async function deleteQuestionSkillLoad(
-  $: EngineInterface,
-  sessionId: string,
-): Promise<void> {
-  await deleteRecord($, questionSkillLoadKeyOf(sessionId))
-}
-
 /**
- * Deletes every load record saved before `loadsSavedBefore`, and every record of the questions of
- * a session other than `sessionId` whose newest record was made before `questionsMadeBefore`.
+ * Deletes the records of the questions of every session other than `old.sessionId` whose newest
+ * record was made before `old.questionsMadeBefore`. A record of another shape, or one deleted since
+ * the keys were listed, protects the session from deletion, since the age of the record is unknown.
  */
 export async function deleteOldRecords(
   $: EngineInterface,
-  old: { sessionId: string; loadsSavedBefore: number; questionsMadeBefore: number },
+  { sessionId, questionsMadeBefore }: { sessionId: string; questionsMadeBefore: number },
 ): Promise<void> {
-  const keys = await readStoreKeys($)
-  await Promise.all([
-    deleteQuestionSkillLoadsSavedBefore($, keys, old.loadsSavedBefore),
-    deleteQuestionsOfSessionsIdleSince($, keys, old.sessionId, old.questionsMadeBefore),
-  ])
-}
-
-/** Deletes every load record among `keys` saved before the time `time`. */
-async function deleteQuestionSkillLoadsSavedBefore(
-  $: EngineInterface,
-  keys: readonly string[],
-  time: number,
-): Promise<void> {
-  const prefix = questionSkillLoadKeyOf('')
-  await Promise.all(
-    keys
-      .filter(key => key.startsWith(prefix))
-      .map(async key => {
-        const load = await readQuestionSkillLoadUnder($, key)
-        if (load !== undefined && load.savedAt < time) {
-          await deleteRecord($, key)
-        }
-      }),
-  )
-}
-
-/**
- * Deletes the records among `keys` of the questions of every session other than `sessionId` whose
- * newest record was made before the time `time`. A record of another shape, or one deleted since
- * the keys were listed, keeps its session, since its age is unknown.
- */
-async function deleteQuestionsOfSessionsIdleSince(
-  $: EngineInterface,
-  keys: readonly string[],
-  sessionId: string,
-  time: number,
-): Promise<void> {
-  const records = keys.flatMap(key => {
+  const records = (await readStoreKeys($)).flatMap(key => {
     const record = readQuestionRecordKey(key)
 
     return record === undefined || record.owner === sessionId ? [] : [record]
@@ -405,17 +344,10 @@ async function deleteQuestionsOfSessionsIdleSince(
   for (const { owner, madeAt } of made) {
     newest.set(owner, Math.max(newest.get(owner) ?? madeAt, madeAt))
   }
-  const idle = new Set([...newest].filter(([, madeAt]) => madeAt < time).map(([owner]) => owner))
+  const idle = new Set(
+    [...newest].filter(([, madeAt]) => madeAt < questionsMadeBefore).map(([owner]) => owner),
+  )
   await Promise.all(made.filter(({ owner }) => idle.has(owner)).map(({ key }) => deleteRecord($, key)))
-}
-
-async function readQuestionSkillLoadUnder(
-  $: EngineInterface,
-  key: string,
-): Promise<QuestionSkillLoad | undefined> {
-  const value = await readStoreValue($, key)
-
-  return value === undefined ? undefined : parseQuestionSkillLoad(key, value)
 }
 
 function readStoreKeys($: EngineInterface): Promise<string[]> {
@@ -521,18 +453,6 @@ const RECORD_TIMES: Record<QuestionRecordKind, (value: unknown) => number | unde
   [RecordKind.Answer]: value => (isAnswer(value) ? value.answeredAt : undefined),
   [RecordKind.Withdrawal]: value => timeIn(value, 'withdrawnAt'),
   [RecordKind.Delivery]: value => timeIn(value, 'deliveredAt'),
-}
-
-function parseQuestionSkillLoad(key: string, value: unknown): QuestionSkillLoad {
-  if (
-    !isRecord(value) ||
-    typeof value.contextTokens !== 'number' ||
-    typeof value.savedAt !== 'number'
-  ) {
-    throw new UnreadableQuestionError(key)
-  }
-
-  return { contextTokens: value.contextTokens, savedAt: value.savedAt }
 }
 
 function isQuestion(value: unknown): value is StoredQuestion {

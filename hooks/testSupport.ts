@@ -1,7 +1,7 @@
 import { mock } from 'claude-code/testing'
 import type { Engine, MockClock } from 'claude-code/testing'
 import type {
-  ApiMessage,
+  AgentInfo,
   On,
   PromptSubmitInput,
   RenderPropsOf,
@@ -15,11 +15,12 @@ import { storeKeyOf } from './questionStore'
 
 export const TURN = 'turn-1'
 
-const ROOT = '/work/project'
+/** The root of the project the session works in. */
+export const PROJECT_ROOT = '/work/project'
 export const FIRST_SESSION = 'session-1'
 export const SECOND_SESSION = 'session-2'
 export const SUBAGENT = 'agent-1'
-/** The context size of a session when it starts and loads the question skill. */
+/** The context size of a session when it starts and loads the question skill, in tokens. */
 export const TOKENS_AT_START = 1000
 
 /** The sentence that ends what the main conversation is sent on its goals while one is open. */
@@ -130,10 +131,8 @@ export type Session = StoreFake & {
   panes: string[]
   toasts: string[]
   logs: string[]
-  /** The messages in the main conversation seen by the model, in the api form. */
-  context: ApiMessage[]
-  /** The input tokens counted for the last response, as `session.usage` reports them. */
-  contextTokens: number | undefined
+  /** The context size every model request reports, in tokens; null for one without usage. */
+  contextTokens: number | null
   /** Whether the Skill tool reports an error for the next call. */
   isSkillFailing: boolean
   /** Whether a hook beneath the plugin denies the next Skill tool call. */
@@ -150,6 +149,8 @@ export type Session = StoreFake & {
   stateWriters: Map<string, number>
   /** The reason the engine drops the next prompt of the plugin with. */
   droppedPrompt: string | undefined
+  /** The subagents and teammates the engine lists. */
+  agents: AgentInfo[]
 }
 
 /**
@@ -162,6 +163,8 @@ export async function startSession(
   options: {
     stored?: ReadonlyMap<string, unknown>
     isInteractive?: boolean
+    /** Whether the main conversation loads the question skill once the session started. */
+    loadsQuestionSkill?: boolean
     /** Whether the host stores the state of the plugin across a switch to another session. */
     isStateKept?: boolean
   } = {},
@@ -179,7 +182,6 @@ export async function startSession(
     panes: [],
     toasts: [],
     logs: [],
-    context: skillLoad(QUESTION_SKILL),
     contextTokens: TOKENS_AT_START,
     isSkillFailing: false,
     isSkillDenied: false,
@@ -188,6 +190,7 @@ export async function startSession(
     stateHolder: 0,
     stateWriters: new Map(),
     droppedPrompt: undefined,
+    agents: [],
   }
   // The host stores the state of the plugin for each session. A session that a switch or a new
   // process brings does not read the values written before, unless the test sets `isStateKept`.
@@ -206,18 +209,27 @@ export async function startSession(
     return next(e)
   })
   on('session.id', () => ({ value: session.id }))
-  // The hook returns the main conversation for the api form and an empty list for the rows form.
-  on('session.messages', ($, e) => ({ value: e.as === 'api' ? session.context : [] }))
-  on('session.usage', () => ({
-    value: {
-      startedAt: 0,
-      context:
-        session.contextTokens === undefined
-          ? { window: 1_000_000 }
-          : { tokens: session.contextTokens, window: 1_000_000 },
-      rateLimits: [],
-    },
-  }))
+  on('session.root', () => ({ value: PROJECT_ROOT }))
+  on('agent.list', () => ({ value: session.agents }))
+  on('turn.step', async function* (_, e) {
+    return {
+      turnId: e.turnId,
+      index: e.index,
+      answer: '',
+      toolUses: [],
+      stopReason: 'end_turn',
+      usage:
+        session.contextTokens === null
+          ? null
+          : {
+              input_tokens: 10,
+              cache_read_input_tokens: session.contextTokens - 15,
+              cache_creation_input_tokens: 5,
+              output_tokens: 1,
+              model: e.model,
+            },
+    }
+  })
   fakeStore(on, session)
   on('tool.register', ($, e) => {
     session.registered.push(e.name)
@@ -255,6 +267,8 @@ export async function startSession(
   on('ui.render', { component: 'AbovePrompt' }, () => ({ type: 'Box' }))
   on('turn.start', ($, e) => ({ turnId: e.turnId }))
   on('turn.complete', () => ({ text: '' }))
+  // The engine allows every call that reaches the permission check.
+  on('tool.check', () => ({ decision: 'allow' }))
   on('tool.call', { tool: 'Read' }, () => ({ result: 'the file' }))
   on('tool.call', { tool: 'Skill' }, () => {
     if (session.isSkillDenied) {
@@ -270,7 +284,9 @@ export async function startSession(
     source: 'startup',
     ...(options.isInteractive === undefined ? {} : { isInteractive: options.isInteractive }),
   })
-  await callSkillTool($, QUESTION_SKILL)
+  if (options.loadsQuestionSkill ?? true) {
+    await loadQuestionSkill($)
+  }
 
   return session
 }
@@ -351,37 +367,33 @@ function writeToStoreFake(fake: StoreFake, key: string, value: unknown): string 
   return undefined
 }
 
-/** A tool call and its result as the api form contains them. */
-export function toolCall(call: {
-  tool: string
-  input: Record<string, string>
-  isFailed: boolean
-  resultOf?: string
-}): ApiMessage[] {
-  const id = `call-${call.tool}`
-
-  return [
-    {
-      role: 'assistant',
-      content: [{ type: 'tool_use', id, name: call.tool, input: call.input }],
-    },
-    {
-      role: 'user',
-      content: [
-        {
-          type: 'tool_result',
-          tool_use_id: call.resultOf ?? id,
-          content: 'the result',
-          is_error: call.isFailed,
-        },
-      ],
-    },
-  ]
-}
-
 /** Calls the Skill tool for `skill`, as the model in the main conversation or in `agentId` does. */
 export function callSkillTool($: Engine, skill: string, agentId?: string) {
   return $.tool.call({ tool: 'Skill', skill, ...(agentId === undefined ? {} : { agentId }) })
+}
+
+/**
+ * Sends a model request of the loop of `agentId`, or of the main conversation, which reports the
+ * context size of the session.
+ */
+export async function sendModelRequest($: Engine, agentId?: string) {
+  const stream = $.turn.step({
+    turnId: TURN,
+    index: 0,
+    model: 'claude-opus-5-5',
+    messageCount: 1,
+    ...(agentId === undefined ? {} : { agentId }),
+  })
+  while ((await stream.next()).done !== true) {
+    // The response is read to its end, as the engine reads it.
+  }
+}
+
+/** Loads the question skill in the main conversation, as its model does after a request. */
+export async function loadQuestionSkill($: Engine) {
+  await sendModelRequest($)
+
+  return callSkillTool($, QUESTION_SKILL)
 }
 
 /** The number of questions of the session in the store, leaving out the other records. */
@@ -389,10 +401,6 @@ export function questionCountOf(session: Session): number {
   const prefix = storeKeyOf(session.id, '')
 
   return [...session.store.keys()].filter(key => key.startsWith(prefix)).length
-}
-
-export function skillLoad(skill: string): ApiMessage[] {
-  return toolCall({ tool: 'Skill', input: { skill }, isFailed: false })
 }
 
 /**
@@ -423,13 +431,17 @@ export async function startProcess(
   const isInteractive = started.isInteractive ?? true
   session.id = started.id
   session.stateHolder += 1
-  await $.session.start({ cwd: ROOT, surface: isInteractive ? 'terminal' : null, isInteractive })
+  await $.session.start({
+    cwd: PROJECT_ROOT,
+    surface: isInteractive ? 'terminal' : null,
+    isInteractive,
+  })
   await $.classic.SessionStart({ source: started.source, session_id: started.id })
 }
 
 /** Raises the start of the session again, as a reload of the plugin does: the state is kept. */
 export function reloadPlugin($: Engine) {
-  return $.session.start({ cwd: ROOT, surface: 'terminal', isInteractive: true })
+  return $.session.start({ cwd: PROJECT_ROOT, surface: 'terminal', isInteractive: true })
 }
 
 export function askWhichDatabase($: Engine) {

@@ -44,9 +44,7 @@ import {
   describeAsked,
   describeOpenQuestion,
   describeQuestionInChat,
-  describeQuestionSkillDenial,
   describeQuestions,
-  describeUnrecordedLoad,
 } from './modelText'
 import {
   ANSWER_COMMAND,
@@ -55,7 +53,6 @@ import {
   LIST,
   LIST_TOOL,
   PANE,
-  SKILL_TOOL,
   WITHDRAW,
   WITHDRAW_TOOL,
 } from './names'
@@ -64,11 +61,8 @@ import { isTypedByUser } from './promptOrigin'
 import { Withdrawal, openQuestionsOf } from './questions'
 import { awaitingSessionOf, sessionForUse } from './questionSession'
 import {
-  QuestionSkillLoadState,
-  checkQuestionSkillLoad,
-  recordQuestionSkillLoad,
-} from './questionSkill'
-import {
+  SESSION_QUESTIONS_MAX_AGE_MS,
+  deleteOldRecords,
   handleStoreFailure,
   moveProjectRecordsToSessions,
   saveNewQuestion,
@@ -121,6 +115,8 @@ export const startQuestions: MatchedHook<'session.start', { isInteractive: true 
   // session first, so the load finds them.
   await toastStoreFailure($, () => moveProjectRecordsToSessions($))
   const sessionId = await $.session.id()
+  const questionsMadeBefore = (await $.clock.now()) - SESSION_QUESTIONS_MAX_AGE_MS
+  await toastStoreFailure($, () => deleteOldRecords($, { sessionId, questionsMadeBefore }))
   await toastStoreFailure($, () => loadQuestionsUnlessInState($, sessionId))
   recordReadAtStart(sessionId)
 
@@ -162,29 +158,8 @@ export const addAnswersToToolResult: Hook<'tool.call'> = ($, e, next) =>
     )
   })
 
-export const recordSkillLoad: MatchedHook<'tool.call', { tool: typeof SKILL_TOOL }> = async (
-  $,
-  e,
-  next,
-) => {
-  const ran = await next(e)
-  await handleStoreFailure(
-    $,
-    () => recordQuestionSkillLoad($, e, ran),
-    message => $.ui.toast(describeUnrecordedLoad(message)),
-  )
-
-  return ran
-}
-
 export const askQuestion: MatchedHook<'tool.call', { tool: typeof ASK_TOOL }> = async ($, e) => {
   const sessionId = await sessionForUse($)
-  if (isMainConversation(e)) {
-    const check = await checkQuestionSkillLoad($, sessionId)
-    if (check.state !== QuestionSkillLoadState.Counted) {
-      return { deny: describeQuestionSkillDenial(check) }
-    }
-  }
   const input = readAskInput(e)
   if (input.outcome !== AskOutcome.Valid) {
     return { deny: askProblemOf(input) }

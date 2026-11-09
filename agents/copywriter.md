@@ -1,7 +1,7 @@
 ---
 name: copywriter
 description: Copywriter
-tools: Read, Grep, Glob, Edit, Write
+tools: Read, Grep, Glob, Edit, Write, Skill
 ---
 
 - Read hygiene file named in prompt before writing. Follow it in every
