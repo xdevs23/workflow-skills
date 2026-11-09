@@ -26,6 +26,8 @@ description: Write or change code in any language, including types, comments, na
 - Never invent metaphor for name. Never use `util`, `misc`, `helper` or similar grab-bag name
 - Apply naming test to each name as you write it: hide its docstring, read only name and one line
   using it. Rename when you then cannot say what value contains or what code does
+- Name type, value or function by what it is in its domain, specific enough that name read alone
+  fits nothing outside this code. Rename name made of generic words that fit many things
 - Library call whose flags decide shape of its result, e.g. serializer called with several flags:
   write it once, as function or method named for that result, in module that owns the type. Call
   that function wherever result needed. Applies with one caller too
