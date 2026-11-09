@@ -50,7 +50,7 @@ description: Write user-facing text for product screens, marketing pages and tra
   - Then cut, read text aloud, test it on a stranger
 - Give it a **product-screen layer**, every string in it a label, action or state for reader to act
   on:
-  - Copy into layer, word for word, bullets in `workflow-skills:building-screens` with definition of
+  - Copy into layer, word for word, bullets in `workflow-skills:ux-design` with definition of
     text that explains a product and rule for wording a state
 - Give it a **marketing-page layer**:
   - Give each page one action

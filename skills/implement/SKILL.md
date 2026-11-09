@@ -71,9 +71,10 @@ description: Implement change to code, from first talk with user until user revi
   layer by list below. Rules: `workflow-skills:designing-architecture`,
   `workflow-skills:writing-code` with file in its `languages` directory for each language in changed
   files, `workflow-skills:handling-errors`, `workflow-skills:writing-tests`,
-  `workflow-skills:debugging`, `workflow-skills:building-screens`, `workflow-skills:storing-data`,
-  `workflow-skills:securing-access`, `workflow-skills:changing-the-build`,
-  `workflow-skills:verifying-work`, `workflow-skills:working-with-outside-systems`,
+  `workflow-skills:debugging`, `workflow-skills:building-screens`, `workflow-skills:ux-design`,
+  `workflow-skills:storing-data`, `workflow-skills:securing-access`,
+  `workflow-skills:changing-the-build`, `workflow-skills:verifying-work`,
+  `workflow-skills:working-with-outside-systems`,
   `workflow-skills:writing-style`, `workflow-skills:hygiene`, and instruction files in project root,
   in every directory edited by change, and global instruction file
   - Correctness reviewer loads `workflow-skills:reviewer-correctness`,

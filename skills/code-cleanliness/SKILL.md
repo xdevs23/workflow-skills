@@ -24,7 +24,7 @@ Review change for code cleanliness only: readability and hygiene.
 - Report every tunable, as defined in `workflow-skills:writing-code`, written into code or handed
   in by caller, also when a named constant or parameter contains it. Name what it derives from at
   runtime and how it adjusts while code runs
-- Report text that explains a product, as defined in `workflow-skills:building-screens`. Name part
+- Report text that explains a product, as defined in `workflow-skills:ux-design`. Name part
   of interface that has to change so text can be removed
 - Report inconsistent style within file or module, and noisy or accidental debug logging
 - Report orphaned TODO and FIXME comments, dead imports, unused variables
