@@ -28,6 +28,10 @@ description: Write or change code in any language, including types, comments, na
   using it. Rename when you then cannot say what value contains or what code does
 - Name type, value or function by what it is in its domain, specific enough that name read alone
   fits nothing outside this code. Rename name made of generic words that fit many things
+- Test every new name on stranger: read it alone, as someone who never saw project hears it.
+  Rename when stranger cannot say what thing it names and what it is about
+- Name type of reasons by what they are reasons for: subject and what it cannot do. Name each value
+  by fact it states
 - Library call whose flags decide shape of its result, e.g. serializer called with several flags:
   write it once, as function or method named for that result, in module that owns the type. Call
   that function wherever result needed. Applies with one caller too
