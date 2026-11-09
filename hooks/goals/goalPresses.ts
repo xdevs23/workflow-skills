@@ -24,6 +24,7 @@ import {
   setGoalDependencyInSession,
   setGoalPriorityInSession,
 } from './goalActions'
+import { RowElement, editFieldKeyOf, newGoalFieldKeyOf, rowElementKeyOf } from './goalKeys'
 import { GOALS_PANE } from './goalNames'
 import {
   RowMode,
@@ -56,32 +57,6 @@ import type { Priority } from './priority'
 
 // What a press or an entry in the Goals pane does. The pane draws what the state and the board
 // have after it.
-
-/** The key of the field for `goal` drawn under `fieldId`, new each time the field is drawn anew. */
-export function editFieldKeyOf(goal: Goal, fieldId: string): string {
-  return `edit-goal-${goal.number}-${fieldId}`
-}
-
-export function reasonFieldKeyOf(goal: Goal): string {
-  return `unmark-reason-${goal.number}`
-}
-
-export function priorityPickerKeyOf(goal: Goal): string {
-  return `priority-${goal.number}`
-}
-
-export function dependencyPickerKeyOf(goal: Goal): string {
-  return `dependency-${goal.number}`
-}
-
-/**
- * The key of the field that adds the goal numbered `number`, the next number of the board. A goal
- * added from anywhere changes the key, so the pane draws an empty field, while a failed add leaves
- * the typed text in the field.
- */
-export function newGoalFieldKeyOf(number: number): string {
-  return `new-goal-${number}`
-}
 
 /**
  * Runs `save` unless another save of the pane runs. Button and Input have no disabled state, so a
@@ -223,7 +198,10 @@ export async function startUnmarking(
 ): Promise<void> {
   await actOnOpenGoal($, sessionId, goal, async () => {
     await setGoalInPane($, sessionId, goal.id, { mode: RowMode.Unmarking, shown })
-    await focusField($, reasonFieldKeyOf(goal), { field: PaneField.UnmarkReason, goal })
+    await focusField($, rowElementKeyOf(goal, RowElement.UnmarkReason), {
+      field: PaneField.UnmarkReason,
+      goal,
+    })
   })
 }
 

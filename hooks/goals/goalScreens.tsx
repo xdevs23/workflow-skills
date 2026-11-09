@@ -20,16 +20,14 @@ import { doneMarkOf } from './doneMark'
 import { dependedGoalOf } from './dependency'
 import type { OpenGoals } from './dependency'
 import { loadBoardIntoState } from './goalActions'
+import { RowElement, editFieldKeyOf, newGoalFieldKeyOf, rowElementKeyOf } from './goalKeys'
 import { GOALS_PANE } from './goalNames'
 import { drawGoalPickers } from './goalPickers'
 import {
   addOnScreen,
   askToClear,
   clearOnScreen,
-  editFieldKeyOf,
   finishEditing,
-  newGoalFieldKeyOf,
-  reasonFieldKeyOf,
   saveOnce,
   startEditing,
   startUnmarking,
@@ -314,7 +312,7 @@ function drawDoneMark(
       <Text color="success">{describeDoneMarkForPerson(mark)}</Text>
       {row.mode === undefined && (
         <Button
-          key={`unmark-${goal.number}`}
+          key={rowElementKeyOf(goal, RowElement.Unmark)}
           label={UNMARK_LABEL}
           dimColor
           onPress={() =>
@@ -339,13 +337,13 @@ function drawClearQuestion(
     <Box columnGap={1} flexWrap="wrap">
       <Text color="warning">{describeClearQuestion(goal)}</Text>
       <Button
-        key={`confirm-clear-${goal.number}`}
+        key={rowElementKeyOf(goal, RowElement.YesClear)}
         label={YES_CLEAR_LABEL}
         variant="primary"
         onPress={() => saveOnce($, () => clearOnScreen($, sessionId, goal))}
       />
       <Button
-        key={`keep-${goal.number}`}
+        key={rowElementKeyOf(goal, RowElement.Keep)}
         label={KEEP_LABEL}
         onPress={() => dropGoalInPane($, goal.id, RowMode.WaitingForYes)}
       />
@@ -372,28 +370,30 @@ function drawRowButtons(
     case RowMode.Editing:
       return drawButtonRow(elements, [
         {
-          key: `done-edit-${goal.number}`,
+          key: rowElementKeyOf(goal, RowElement.DoneEditing),
           label: DONE_LABEL,
           onPress: () => saveOnce($, () => finishEditing($, sessionId, goal)),
         },
-        cancelButtonOf($, goal, row.mode, 'cancel-edit'),
+        cancelButtonOf($, goal, row.mode, RowElement.CancelEditing),
       ])
     case RowMode.Unmarking:
-      return drawButtonRow(elements, [cancelButtonOf($, goal, row.mode, 'cancel-unmark')])
+      return drawButtonRow(elements, [
+        cancelButtonOf($, goal, row.mode, RowElement.CancelUnmarking),
+      ])
     case undefined:
       return drawButtonRow(elements, [
         ...(row.fields === undefined
           ? []
           : [
               {
-                key: `edit-${goal.number}`,
+                key: rowElementKeyOf(goal, RowElement.Edit),
                 label: EDIT_LABEL,
                 dimColor: true,
                 onPress: () => startEditing($, sessionId, goal),
               },
             ]),
         {
-          key: `clear-${goal.number}`,
+          key: rowElementKeyOf(goal, RowElement.Clear),
           label: CLEAR_LABEL,
           dimColor: true,
           onPress: () => askToClear($, sessionId, goal),
@@ -421,18 +421,15 @@ function drawButtonRow({ Box, Button }: GoalElements, buttons: readonly RowButto
   )
 }
 
-/**
- * Cancel beside the row of `goal` in the mode `mode`, which ends that mode. Its key is `keyPrefix`
- * followed by the number of the goal.
- */
+/** Cancel beside the row of `goal` in the mode `mode`, drawn as `element`, which ends that mode. */
 function cancelButtonOf(
   $: EngineInterface,
   goal: Goal,
   mode: RowMode.Editing | RowMode.Unmarking,
-  keyPrefix: string,
+  element: RowElement.CancelEditing | RowElement.CancelUnmarking,
 ): RowButton {
   return {
-    key: `${keyPrefix}-${goal.number}`,
+    key: rowElementKeyOf(goal, element),
     label: CANCEL_LABEL,
     onPress: () => dropGoalInPane($, goal.id, mode),
   }
@@ -469,7 +466,7 @@ function reasonFieldOf(
   shown: DoneMark,
 ): FieldUnderCard {
   return {
-    key: reasonFieldKeyOf(goal),
+    key: rowElementKeyOf(goal, RowElement.UnmarkReason),
     label: nameGoal(goal.number),
     placeholder: REASON_PLACEHOLDER,
     submitLabel: UNMARK_SUBMIT_LABEL,

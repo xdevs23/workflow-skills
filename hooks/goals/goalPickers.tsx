@@ -5,13 +5,8 @@ import { sortedByNumber } from '../numbered'
 import type { SurfaceWithFields } from '../surfaces'
 import { dependedGoalOf, dependencyChoicesOf } from './dependency'
 import type { OpenGoals } from './dependency'
-import {
-  dependencyPickerKeyOf,
-  prioritizeOnScreen,
-  priorityPickerKeyOf,
-  saveOnce,
-  setDependencyOnScreen,
-} from './goalPresses'
+import { RowElement, rowElementKeyOf } from './goalKeys'
+import { prioritizeOnScreen, saveOnce, setDependencyOnScreen } from './goalPresses'
 import { DEPENDENCY_LABEL, NO_CHOICE_LABEL, PRIORITY_LABEL, nameGoal } from './goalTexts'
 import { PRIORITIES, describePriority, priorityOf } from './priority'
 import type { Priority } from './priority'
@@ -54,7 +49,7 @@ function priorityPickerOf($: EngineInterface, sessionId: string, goal: Goal): Pi
   })
 
   return {
-    key: priorityPickerKeyOf(goal),
+    key: rowElementKeyOf(goal, RowElement.Priority),
     label: PRIORITY_LABEL,
     choices: [undefined, ...PRIORITIES].map(choiceOf),
     selected: choiceOf(priorityOf(goal)).value,
@@ -74,7 +69,7 @@ function dependencyPickerOf(
   })
 
   return {
-    key: dependencyPickerKeyOf(goal),
+    key: rowElementKeyOf(goal, RowElement.Dependency),
     label: DEPENDENCY_LABEL,
     choices: [undefined, ...sortedByNumber(dependencyChoicesOf(open, goal))].map(choiceOf),
     selected: choiceOf(dependedGoalOf(open, goal)).value,
