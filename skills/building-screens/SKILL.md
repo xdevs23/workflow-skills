@@ -12,6 +12,9 @@ description: Build or change user interface
   diverge
 - Prefer creating entity by asking server for new empty entity in inactive state, such as
   disabled, unpublished or disarmed, then opening shared form on it, loaded as on any reload
+- Keep in URL which dialog, sheet, sidebar or other view over screen is open, never in memory
+  alone, so reload shows same screen. URL reflects structure of screen at all times, in every app
+  with URL navigation, single-page or rendered on server
 
 ## Rules in other skills
 
