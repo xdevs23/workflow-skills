@@ -86,7 +86,19 @@ description: Draw page for user to look at: drafts, product decisions, plans and
   named in legend
 - Draw behavior that unfolds over time as timeline of sample: earlier state and After on same time
   axis, count of events that matter written on each
+- Draw work repeated many times as one mark per run, earlier state and After side by side, so
+  count shows at first glance
+- Write beside each measured number what was measured, how often and under which conditions
+- Draw physical quantity as picture of thing to which it belongs, filled to its value
+- Draw samples passing series of steps or checks as table: one row per sample, one column per
+  step, outcome in each cell. Show real output of step where sample stops
+- Draw rules that differ by person, role or place as table: one row per rule, one column per
+  sample person or place, outcome in each cell
 - Draw technical details, e.g. migrations, data models, schemas, as pictures or graphs
+- Draw added or changed data as tree of fields, earlier state and After side by side. Mark each
+  field added by After. Write in plain words, in column beside each field, what field is used for
+- Draw value defined in one place and used in several as graph from place defining it to every
+  place using it
 - Draw change happening out of sight, e.g. where in code a decision is made, as boxes and arrows:
   which part calls which, what passes between them, in each state. Label first and last box with
   real name of setting, service, file or hardware switch. Write under each box what it does in
@@ -94,7 +106,8 @@ description: Draw page for user to look at: drafts, product decisions, plans and
 - Never paste code, diff or test list into draft. Approval of draft would approve that code
 - Show code only as short snippet of few lines that shows idea, under header with component and
   path. Go one layer up and abstract away internal details of code, so functions, variables and
-  other declarations read like what it does in real world
+  other declarations read like what it does in real world. Write in separate column beside each
+  line what line does in plain words
 - Write code asked for by user on page of its own next to draft, files side by side under their
   paths, dark mode. Open it like draft. Never answer such request in chat
 
