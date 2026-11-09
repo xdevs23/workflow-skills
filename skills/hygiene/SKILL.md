@@ -29,7 +29,7 @@ description: Decide what may go into anything that leaves machine or goes to som
 ## Commit messages
 
 - Describe technical change in commit message. Keep out of it: process vocabulary, narration about
-  the session, names of reviewers or stages, actor words, e.g. owner, founder or admin
+  the session, names of reviewers or stages, actor words, e.g. user, owner, founder or admin
 - Never add `Co-Authored-By` line to a commit
 - Describe check in `Test:` line in words where literal command would reveal the setup
 

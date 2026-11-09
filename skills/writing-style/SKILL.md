@@ -170,7 +170,7 @@ pin, owner, masthead, flagging.
 
 ## Commits
 
-- Write body of commit message from zero, for reader who never saw session
+- Write commit message by `workflow-skills:commit-messages`
 
 ## Messages
 
