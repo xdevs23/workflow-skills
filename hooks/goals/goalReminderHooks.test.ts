@@ -9,6 +9,7 @@ import {
   GOALS_NOT_EXHAUSTIVE,
   SECOND_SESSION,
   SUBAGENT,
+  compact,
   endTurn,
   notesOfToolResult,
   promptsOfPlugin,
@@ -85,13 +86,6 @@ async function notesOfPrompt($: Engine, text = 'go on'): Promise<readonly string
   return (await typePrompt($, text)).context ?? []
 }
 
-function compact($: Engine, agentId?: string) {
-  return $.classic.SessionStart({
-    source: 'compact',
-    ...(agentId === undefined ? {} : { agent_id: agentId }),
-  })
-}
-
 /** The transcript lines about the goals, which the model does not read. */
 function goalLinesOf(session: Session): string[] {
   return session.chatLines.filter(line => line.startsWith('Goals: '))
@@ -103,7 +97,7 @@ function notRemindedToastsOf(session: Session): string[] {
 
 describe('the open goals after a compaction', () => {
   test(
-    'a compaction during a turn adds the open goals and the changes before it to the context, ' +
+    'a compaction during a turn adds the open goals and the changes before it after the summary, ' +
       'and the changes are not sent again',
     async ($, on) => {
       const session = await startSession($, on, { stored: storedBoard() })
@@ -112,7 +106,7 @@ describe('the open goals after a compaction', () => {
       await addInPane(pane, 3, 'Write the release notes')
       await startTurn($)
 
-      expect((await compact($)).additionalContext?.map(withoutHeading)).toEqual([
+      expect((await compact($)).map(withoutHeading)).toEqual([
         withSentence(
           [
             '1. Ship the offline mode',
@@ -124,9 +118,7 @@ describe('the open goals after a compaction', () => {
         ),
       ])
       expect(await notesOfToolResult($)).toEqual([])
-      expect(goalLinesOf(session)).toEqual([
-        'Goals: the 2 open goals were sent to Claude, with Goal 2 cleared and Goal 3 added',
-      ])
+      expect(goalLinesOf(session)).toEqual([])
     },
   )
 
@@ -139,46 +131,35 @@ describe('the open goals after a compaction', () => {
       await clearInPane(pane, 2)
       await startTurn($)
 
-      expect((await compact($)).additionalContext).toEqual([
+      expect(await compact($)).toEqual([
         'The user cleared Goal 1. The user cleared Goal 2. No goal is open now.',
       ])
       expect(await notesOfToolResult($)).toEqual([])
-      expect(goalLinesOf(session)).toEqual([
-        'Goals: Goal 1 cleared and Goal 2 cleared, sent to Claude',
-      ])
+      expect(goalLinesOf(session)).toEqual([])
     },
   )
 
   test('a compaction on a board without open goals adds nothing', async ($, on) => {
     const session = await startSession($, on)
 
-    expect((await compact($)).additionalContext).toBeUndefined()
+    expect(await compact($)).toEqual([])
     expect(goalLinesOf(session)).toEqual([])
   })
 
-  test('a compaction in a subagent adds nothing', async ($, on) => {
-    const session = await startSession($, on, { stored: storedBoard() })
+  test(
+    'a compaction of a subagent leaves a cleared goal for the next tool result in the main ' +
+      'conversation',
+    async ($, on) => {
+      const session = await startSession($, on, { stored: storedBoard() })
+      const pane = await mountGoalsPane($, 'terminal')
+      await clearInPane(pane, 2)
+      await startTurn($)
 
-    expect((await compact($, SUBAGENT)).additionalContext).toBeUndefined()
-    expect(goalLinesOf(session)).toEqual([])
-  })
-
-  test('a compaction with one open goal names it in the transcript', async (
-    $,
-    on,
-  ) => {
-    const session = await startSession($, on, { stored: storedBoard() })
-    const pane = await mountGoalsPane($, 'terminal')
-    await clearInPane(pane, 2)
-    await notesOfToolResult($)
-    await startTurn($)
-    await compact($)
-
-    expect(goalLinesOf(session)).toEqual([
-      'Goals: Goal 2 cleared, sent to Claude',
-      'Goals: the open goal was sent to Claude',
-    ])
-  })
+      expect(await compact($, { agentId: SUBAGENT })).toEqual([])
+      expect(goalLinesOf(session)).toEqual([])
+      expect(await notesOfToolResult($)).toEqual([withSentence('The user cleared Goal 2.')])
+    },
+  )
 
   test(
     'a compaction while no turn runs sends the open goals and the changes before it as a prompt ' +
@@ -188,7 +169,7 @@ describe('the open goals after a compaction', () => {
       const pane = await mountGoalsPane($, 'terminal')
       await clearInPane(pane, 2)
 
-      expect((await compact($)).additionalContext).toBeUndefined()
+      expect(await compact($)).toEqual([])
       await session.clock.settle()
       expect(promptsOfPlugin(session).map(withoutHeading)).toEqual([
         withSentence(
@@ -253,7 +234,7 @@ describe('the open goals after a compaction', () => {
       const session = await startSession($, on, { stored: storedBoard() })
       session.keysRefusal = UNREADABLE_STORE
 
-      expect((await compact($)).additionalContext).toBeUndefined()
+      expect(await compact($)).toEqual([])
       expect(notRemindedToastsOf(session)).toHaveLength(1)
       expect(notRemindedToastsOf(session)[0]).toContain(UNREADABLE_STORE)
       expect(session.logs).toContain(notRemindedToastsOf(session)[0])
@@ -377,7 +358,7 @@ describe('the goals added or cleared since the model saw the board', () => {
       expect(await notesOfToolResult($)).toEqual([
         'The user cleared Goal 1. The user cleared Goal 2. No goal is open now.',
       ])
-      expect((await compact($)).additionalContext).toBeUndefined()
+      expect(await compact($)).toEqual([])
       expect(await notesOfToolResult($)).toEqual([])
     },
   )

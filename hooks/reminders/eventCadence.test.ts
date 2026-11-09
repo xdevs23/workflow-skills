@@ -5,7 +5,7 @@ import { test } from '../testDeclaration'
 import type { Reminder } from '../../types'
 import {
   FIRST_SESSION,
-  SUBAGENT,
+  compact,
   promptsOfPlugin,
   startSession,
   startTurn,
@@ -51,13 +51,6 @@ function notifyTaskEnded($: Engine) {
     text: 'Agent "Run the connected tests" completed',
     origin: { kind: 'task-notification' },
     wait: false,
-  })
-}
-
-function compact($: Engine, agentId?: string) {
-  return $.classic.SessionStart({
-    source: 'compact',
-    ...(agentId === undefined ? {} : { agent_id: agentId }),
   })
 }
 
@@ -109,15 +102,15 @@ describe('the reminders sent after a background task', () => {
 
 describe('the reminders sent after a compaction', () => {
   test(
-    'a compaction during a turn adds the texts of those switched on to the context',
+    'a compaction during a turn adds the texts of those switched on after the summary',
     async ($, on) => {
       const session = await startSession($, on, { stored: storedRemindersOf(BOTH_ON) })
       await startTurn($)
 
-      expect((await compact($)).additionalContext).toEqual([`Reminder from the user: ${READ_SPEC}`])
+      expect(await compact($)).toEqual([`Reminder from the user: ${READ_SPEC}`])
       await session.clock.settle()
       expect(promptsOfPlugin(session)).toEqual([])
-      expect(reminderLinesOf(session)).toEqual(['Reminders: reminder 2 sent to Claude'])
+      expect(reminderLinesOf(session)).toEqual([])
     },
   )
 
@@ -126,7 +119,7 @@ describe('the reminders sent after a compaction', () => {
     async ($, on) => {
       const session = await startSession($, on, { stored: storedRemindersOf(BOTH_ON) })
 
-      expect((await compact($)).additionalContext).toBeUndefined()
+      expect(await compact($)).toEqual([])
       await session.clock.settle()
       expect(promptsOfPlugin(session)).toEqual([`Reminder from the user: ${READ_SPEC}`])
       expect(reminderLinesOf(session)).toEqual([])
@@ -160,13 +153,4 @@ describe('the reminders sent after a compaction', () => {
       expect(session.toasts).toEqual([expect.stringMatching(NOT_SENT_TOAST)])
     },
   )
-
-  test('a compaction in a subagent adds nothing', async ($, on) => {
-    const session = await startSession($, on, { stored: storedRemindersOf(BOTH_ON) })
-
-    expect((await compact($, SUBAGENT)).additionalContext).toBeUndefined()
-    await session.clock.settle()
-    expect(promptsOfPlugin(session)).toEqual([])
-    expect(reminderLinesOf(session)).toEqual([])
-  })
 })

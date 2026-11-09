@@ -39,7 +39,10 @@ const submitTaskNotificationWithReminders: MatchedHook<
   return delivery.result
 }
 
-/** The reminders of the cadence after a compaction, switched on, sent after every compaction. */
+/**
+ * The reminders of the cadence after a compaction, switched on, sent to the main conversation after
+ * it compacts, together with the open goals.
+ */
 export function remindersAfterCompaction($: EngineInterface): CompactionNoteSource {
   return {
     takeNote: async () => describeReminderNote(await readEnabledReminders($, AFTER_COMPACTION)),

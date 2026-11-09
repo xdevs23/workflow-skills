@@ -1,5 +1,4 @@
 import { describe, expect } from 'claude-code/testing'
-import type { Engine } from 'claude-code/testing'
 
 import type { Goal } from '../types'
 import { takeNotes } from './afterCompaction'
@@ -12,6 +11,8 @@ import { test } from './testDeclaration'
 import {
   FIRST_SESSION,
   GOALS_NOT_EXHAUSTIVE,
+  SUBAGENT,
+  compact,
   promptsOfPlugin,
   startSession,
   startTurn,
@@ -53,39 +54,89 @@ function storedGoalAndReminder(): Map<string, unknown> {
   return new Map(records.map(record => [record.key, record.value]))
 }
 
-function compact($: Engine) {
-  return $.classic.SessionStart({ source: 'compact' })
-}
+/** The triggers of a compaction that puts its summary in place of the conversation. */
+const REPLACING_TRIGGERS = ['manual', 'auto', 'plugin'] as const
+
+const VETO = 'The compaction is switched off.'
 
 describe('the goals and the reminders after a compaction', () => {
+  for (const trigger of REPLACING_TRIGGERS) {
+    test(
+      `a ${trigger} compaction during a turn adds both texts after the summary`,
+      async ($, on) => {
+        const session = await startSession($, on, { stored: storedGoalAndReminder() })
+        await startTurn($)
+
+        expect(await compact($, { trigger })).toEqual([`${OPEN_GOALS}\n\n${REMINDER}`])
+        await session.clock.settle()
+        expect(promptsOfPlugin(session)).toEqual([])
+        expect(session.chatLines).toEqual([])
+      },
+    )
+
+    test(
+      `a ${trigger} compaction while no turn runs submits one prompt with both texts`,
+      async ($, on) => {
+        const session = await startSession($, on, { stored: storedGoalAndReminder() })
+
+        expect(await compact($, { trigger })).toEqual([])
+        await session.clock.settle()
+        expect(promptsOfPlugin(session)).toEqual([`${OPEN_GOALS}\n\n${REMINDER}`])
+        expect(session.chatLines).toEqual([])
+      },
+    )
+  }
+
   test(
-    'a compaction during a turn adds both texts to the context and shows both lines',
+    'a compaction of a subagent or a workflow agent sends nothing and shows no line',
     async ($, on) => {
       const session = await startSession($, on, { stored: storedGoalAndReminder() })
-      await startTurn($)
 
-      expect((await compact($)).additionalContext).toEqual([OPEN_GOALS, REMINDER])
+      expect(await compact($, { agentId: SUBAGENT })).toEqual([])
+      await startTurn($)
+      expect(await compact($, { agentId: SUBAGENT })).toEqual([])
       await session.clock.settle()
       expect(promptsOfPlugin(session)).toEqual([])
-      expect(session.chatLines).toEqual(
-        expect.arrayContaining([
-          'Goals: the open goal was sent to Claude',
-          'Reminders: reminder 1 sent to Claude',
-        ]),
-      )
+      expect(session.chatLines).toEqual([])
     },
   )
 
   test(
-    'a compaction while no turn runs submits one prompt that carries both texts',
+    'a compaction of the main conversation after one of an agent adds both texts',
     async ($, on) => {
-      const session = await startSession($, on, { stored: storedGoalAndReminder() })
+      await startSession($, on, { stored: storedGoalAndReminder() })
+      await startTurn($)
+      await compact($, { agentId: SUBAGENT })
 
-      expect((await compact($)).additionalContext).toBeUndefined()
-      await session.clock.settle()
-      expect(promptsOfPlugin(session)).toEqual([`${OPEN_GOALS}\n\n${REMINDER}`])
+      expect(await compact($)).toEqual([`${OPEN_GOALS}\n\n${REMINDER}`])
     },
   )
+
+  test(
+    'a compaction skipped by a hook beneath sends nothing, and the next compaction adds both texts',
+    async ($, on) => {
+      on('session.compact', { trigger: 'auto' }, () => ({ skip: VETO }))
+      const session = await startSession($, on, { stored: storedGoalAndReminder() })
+
+      await expect(compact($)).rejects.toThrow(VETO)
+      await session.clock.settle()
+      await startTurn($)
+      await expect(compact($)).rejects.toThrow(VETO)
+      expect(promptsOfPlugin(session)).toEqual([])
+      expect(session.chatLines).toEqual([])
+      expect(await compact($, { trigger: 'manual' })).toEqual([`${OPEN_GOALS}\n\n${REMINDER}`])
+    },
+  )
+
+  test('a summary computed ahead of time sends nothing and shows no line', async ($, on) => {
+    const session = await startSession($, on, { stored: storedGoalAndReminder() })
+    await startTurn($)
+
+    expect(await compact($, { trigger: 'precompute' })).toEqual([])
+    await session.clock.settle()
+    expect(promptsOfPlugin(session)).toEqual([])
+    expect(session.chatLines).toEqual([])
+  })
 
   test('a source that fails puts back the notes taken by the other sources', async () => {
     const restored: string[] = []
@@ -93,7 +144,6 @@ describe('the goals and the reminders after a compaction', () => {
       takeNote: () =>
         Promise.resolve({
           text: OPEN_GOALS,
-          line: 'Goals: the open goal was sent to Claude',
           restore: () => {
             restored.push(OPEN_GOALS)
 

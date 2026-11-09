@@ -1,6 +1,6 @@
 import type { Register } from 'claude-code'
 
-import { startWithNotesAfterCompaction } from './afterCompaction'
+import { compactWithNotes } from './afterCompaction'
 import { EVERY_EVENT } from './everyEvent'
 import { registerGoals } from './goals'
 import { openGoalsAfterCompaction } from './goals/goalReminderHooks'
@@ -26,15 +26,14 @@ import { drawQuestionBand, drawQuestionPane } from './questionScreens'
 import { registerReminders } from './reminders'
 import { remindersAfterCompaction } from './reminders/eventCadence'
 import { registerSelfCheck } from './selfCheck'
-import { COMPACTION_SOURCE } from './sessionSources'
 
 export const register: Register = on => {
   on('session.start', { isInteractive: true }, startQuestions)
   on('classic.SessionStart', readQuestionsOfStartedSession)
   // The engine passes `$` only to a function named at the call, so each note sent after a
   // compaction is named here. The open goals come before the reminders.
-  on('classic.SessionStart', { source: COMPACTION_SOURCE }, ($, e, next) =>
-    startWithNotesAfterCompaction($, e, next, [
+  on('session.compact', EVERY_EVENT, ($, e, next) =>
+    compactWithNotes($, e, next, [
       openGoalsAfterCompaction($),
       remindersAfterCompaction($),
     ]),

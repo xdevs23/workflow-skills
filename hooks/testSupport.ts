@@ -1,6 +1,13 @@
 import { mock } from 'claude-code/testing'
 import type { Engine, MockClock } from 'claude-code/testing'
-import type { ApiMessage, On, PromptSubmitInput, RenderPropsOf } from 'claude-code'
+import type {
+  ApiMessage,
+  On,
+  PromptSubmitInput,
+  RenderPropsOf,
+  SessionCompactTrigger,
+  SessionMessage,
+} from 'claude-code'
 
 import { ANSWER_COMMAND, ASK_TOOL, LIST_TOOL, PANE, PLUGIN, QUESTION_SKILL } from './names'
 import type { StoreEngine } from './pluginStore'
@@ -19,6 +26,18 @@ export const TOKENS_AT_START = 1000
 export const GOALS_NOT_EXHAUSTIVE =
   'The goals are not exhaustive. Requests from the conversation, entries in TODO.md and rules ' +
   'still apply. Continue working on tasks where you left off and keep working towards the goals.'
+
+/** The conversation that a compaction replaces. */
+const CONVERSATION_BEFORE_COMPACTION: readonly SessionMessage[] = [
+  { role: 'user', text: 'Fix the login.', toolUses: [] },
+]
+
+/** The summary that the engine puts in place of a conversation that it compacts. */
+const COMPACTION_SUMMARY: SessionMessage = {
+  role: 'user',
+  text: 'This session is being continued from a previous conversation.',
+  toolUses: [],
+}
 
 const PANE_PROPS: RenderPropsOf['Pane'] = {
   title: 'Questions',
@@ -231,6 +250,7 @@ export async function startSession(
   on('session.start', ($, e) => ({ cwd: e.cwd }))
   on('session.end', ($, e) => ({ sessionId: e.sessionId }))
   on('classic.SessionStart', () => ({}))
+  on('session.compact', () => ({ messages: [COMPACTION_SUMMARY] }))
   // The engine draws nothing of its own above the prompt.
   on('ui.render', { component: 'AbovePrompt' }, () => ({ type: 'Box' }))
   on('turn.start', ($, e) => ({ turnId: e.turnId }))
@@ -467,6 +487,29 @@ export function startTurn($: Engine, agentId?: string) {
     turnId: TURN,
     ...(agentId === undefined ? {} : { agentId }),
   })
+}
+
+/**
+ * Compacts the conversation of the agent `agentId`, or the main conversation, by `trigger`, as the
+ * engine does, and returns the texts of the messages after the summary. Throws an error with the
+ * reason given by a hook that skipped the compaction. Around the compaction of any agent, the
+ * engine raises the classic SessionStart hook with the source compact, without the agent id.
+ */
+export async function compact(
+  $: Engine,
+  { trigger = 'auto', agentId }: { trigger?: SessionCompactTrigger; agentId?: string } = {},
+): Promise<string[]> {
+  await $.classic.SessionStart({ source: 'compact' })
+  const compacted = await $.session.compact({
+    trigger,
+    messages: CONVERSATION_BEFORE_COMPACTION,
+    ...(agentId === undefined ? {} : { agentId }),
+  })
+  if (compacted.skip !== undefined) {
+    throw new Error(compacted.skip)
+  }
+
+  return compacted.messages.slice(1).map(({ text }) => text)
 }
 
 /** Mounts the pane with the id `requestId` of the plugin, the questions pane by default. */

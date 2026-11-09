@@ -28,8 +28,8 @@ export function describeOpenGoalsNotSent(reason: string): string {
 const OPEN_GOALS_HEADING = '# Open goals, by priority (P0 most important)'
 
 /**
- * The block added to the context after a compaction: the open goals by priority, with their
- * priorities, the goals each of them depends on, their done marks and their TODO entries.
+ * The text sent to the main conversation after it compacts: the open goals by priority, with
+ * their priorities, the goals each of them depends on, their done marks and their TODO entries.
  */
 export function describeOpenGoalsAfterCompaction(board: Board): string | undefined {
   const goals = openGoalsByPriorityOf(board)

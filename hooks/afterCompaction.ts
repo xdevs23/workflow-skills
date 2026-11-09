@@ -1,19 +1,26 @@
-import type { Args, ClassicResultOf, EngineInterface, Frozen, Next } from 'claude-code'
+import type {
+  EngineInterface,
+  Frozen,
+  Next,
+  SessionCompactInput,
+  SessionCompactResult,
+  SessionCompactTrigger,
+} from 'claude-code'
 
 import { isMainConversation } from './conversation'
 import { showFailure } from './failureToast'
 import { PromptOutcome, submitToSessionOrRestore } from './sendToModel'
-import type { TextWithLine } from './sendToModel'
 import { readIsTurnRunning } from './sessionState'
 import { runDetached } from './timedWork'
 
 /** A text read by the main conversation after a compaction. */
-export type CompactionNote = TextWithLine & {
+export type CompactionNote = {
+  text: string
   /** Puts back the state recorded as sent when the note was taken, once the text was not sent. */
   restore?: () => Promise<void>
 }
 
-/** A feature that sends a note to the main conversation after every compaction. */
+/** A feature that sends a note to the main conversation after every compaction of it. */
 export type CompactionNoteSource = {
   /** Takes the note to send, or returns undefined when there is nothing to send. */
   takeNote: () => Promise<CompactionNote | undefined>
@@ -25,38 +32,55 @@ export type CompactionNoteSource = {
 type TakenNote = { source: CompactionNoteSource; note: CompactionNote }
 
 /**
- * Runs the start `e` that follows a compaction, and sends the notes of `sources` to the main
- * conversation. A compaction during a turn is followed by the next model call of that turn, which
- * reads the context block after the summary, so the texts go there, and their lines in the
- * transcript show that they were sent. A compaction while no turn runs, such as /compact or a
- * compaction run on an idle session, is followed by no model call, so the texts go as one prompt
- * submitted by the plugin, which starts a turn.
+ * Whether a compaction by each trigger puts its summary in place of the conversation. A
+ * `precompute` computes a summary ahead of time and changes nothing.
  */
-export async function startWithNotesAfterCompaction(
+const REPLACES_CONVERSATION: Record<SessionCompactTrigger, boolean> = {
+  manual: true,
+  auto: true,
+  plugin: true,
+  precompute: false,
+}
+
+/**
+ * Runs the compaction `e`, and sends the notes of `sources` to the main conversation once the
+ * compaction replaced it. A compaction skipped by a hook beneath, a `precompute`, and a compaction
+ * by a subagent or a workflow agent, which has the agent id, do not send the notes. The texts go as
+ * one message, which shows in the transcript itself, so the plugin does not log a line for it. A
+ * compaction during a turn is followed by the next model call of that turn, which reads the
+ * messages after the summary, so the message goes there. A compaction while no turn runs, such as
+ * /compact or a compaction run on an idle session, is followed by no model call, so the message
+ * goes as a prompt submitted by the plugin, which starts a turn.
+ */
+export async function compactWithNotes(
   $: EngineInterface,
-  e: Frozen<Args<'classic.SessionStart'>>,
-  next: Next<'classic.SessionStart'>,
+  e: Frozen<SessionCompactInput>,
+  next: Next<'session.compact'>,
   sources: readonly CompactionNoteSource[],
-): Promise<ClassicResultOf['classic.SessionStart']> {
-  const ran = await next(e)
-  if (!isMainConversation({ agentId: e.agent_id })) {
-    return ran
+): Promise<SessionCompactResult> {
+  const compacted = await next(e)
+  if (
+    compacted.skip !== undefined ||
+    !REPLACES_CONVERSATION[e.trigger] ||
+    !isMainConversation(e)
+  ) {
+    return compacted
   }
   const taken = await takeNotes(sources)
   if (taken.length === 0) {
-    return ran
+    return compacted
   }
   if (!(await readIsTurnRunning($))) {
     const sessionId = await $.session.id()
     runDetached($, () => submitNotes($, sessionId, taken), reason => describeNotSent(taken, reason))
 
-    return ran
-  }
-  for (const { note } of taken) {
-    $.ui.log(note.line)
+    return compacted
   }
 
-  return { ...ran, additionalContext: [...(ran.additionalContext ?? []), ...textsOf(taken)] }
+  return {
+    ...compacted,
+    messages: [...compacted.messages, { role: 'user', text: textOf(taken), toolUses: [] }],
+  }
 }
 
 /** Takes the note of every source. When one source fails, the notes taken by the others are put back. */
@@ -79,10 +103,9 @@ export async function takeNotes(sources: readonly CompactionNoteSource[]): Promi
 }
 
 /**
- * Submits the texts of `taken` as one prompt submitted by the plugin to the session `sessionId`.
- * The prompt shows in the transcript itself, so the lines are not shown. A prompt that does not
- * enter puts back what each note recorded as sent, and a dropped prompt shows the toast of each
- * source.
+ * Submits the texts of `taken` as one prompt submitted by the plugin to the session `sessionId`. A
+ * prompt that does not enter puts back what each note recorded as sent, and a dropped prompt shows
+ * the toast of each source.
  */
 async function submitNotes(
   $: EngineInterface,
@@ -92,7 +115,7 @@ async function submitNotes(
   const submitted = await submitToSessionOrRestore(
     $,
     sessionId,
-    { text: textsOf(taken).join('\n\n') },
+    { text: textOf(taken) },
     () => restoreNotes(taken),
   )
   if (submitted.outcome === PromptOutcome.Dropped) {
@@ -104,8 +127,9 @@ async function restoreNotes(taken: readonly TakenNote[]): Promise<void> {
   await Promise.all(taken.map(({ note }) => note.restore?.()))
 }
 
-function textsOf(taken: readonly TakenNote[]): string[] {
-  return taken.map(({ note }) => note.text)
+/** The texts of `taken`, in one text. */
+function textOf(taken: readonly TakenNote[]): string {
+  return taken.map(({ note }) => note.text).join('\n\n')
 }
 
 /** The toasts of the sources of `taken`, each with `reason`, in one text. */
