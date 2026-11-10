@@ -41,6 +41,8 @@
 - Introduce each capability once, at outermost call of operation needing it, e.g.
   `invoice.country.context { }`. Nest further context block inside that block for each further
   capability
+- Introduce context through extension function on data value that picks variant. Function looks up
+  implementation for that value in registry and puts value and implementation into context of block
 - Give data access three layers: interface of suspend functions, swappable implementation,
   serializable models
 - Never let business code use client library. Give every interface mock implementation
