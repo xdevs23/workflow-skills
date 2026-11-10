@@ -1,7 +1,6 @@
 import { describe, expect } from 'claude-code/testing'
 
-import { drawFooterAsEngine, mountFooterModes, runOnEngine } from '../footerTestSupport'
-import { FOOTER_FACTS_ENGINE_VERSION } from '../promptFooter'
+import { drawFooterAsEngine, mountFooterModes } from '../footerTestSupport'
 import { test } from '../testDeclaration'
 import { startSession } from '../testSupport'
 import { GOALS_PANE } from './goalNames'
@@ -17,7 +16,6 @@ import { GOALS_BUTTON } from './goalsButton'
 describe('the Goals button in the prompt footer', () => {
   test('a press reads the board again and opens the Goals pane on it', async ($, on) => {
     drawFooterAsEngine(on)
-    runOnEngine(on, FOOTER_FACTS_ENGINE_VERSION)
     const session = await startSession($, on)
     for (const [key, value] of storedBoard()) {
       session.store.set(key, value)
@@ -35,7 +33,6 @@ describe('the Goals button in the prompt footer', () => {
       value: { isPlaced: false, reason: 'every pane slot is taken' },
     }))
     drawFooterAsEngine(on)
-    runOnEngine(on, FOOTER_FACTS_ENGINE_VERSION)
     const session = await startSession($, on, { stored: storedBoard() })
     const footer = await mountFooterModes($)
     await footer.press({ key: GOALS_BUTTON.key })
@@ -49,7 +46,6 @@ describe('the Goals button in the prompt footer', () => {
 
   test('a board that cannot be read is shown in a toast with the reason', async ($, on) => {
     drawFooterAsEngine(on)
-    runOnEngine(on, FOOTER_FACTS_ENGINE_VERSION)
     const session = await startSession($, on, { stored: storedBoard() })
     session.keysRefusal = UNREADABLE_STORE
     const footer = await mountFooterModes($)

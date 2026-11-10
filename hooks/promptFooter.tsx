@@ -3,9 +3,9 @@ import type { EngineInterface, MatchedHook, On, RenderInput, RenderPropsOf } fro
 import { PLUGIN } from './names'
 
 // The facts about the footer row of the terminal below were read from the engine of Claude Code
-// FOOTER_FACTS_ENGINE_VERSION on 2026-11-06. The engine does not publish the layout of its footer,
-// so another version of the engine may draw the row in another way.
-export const FOOTER_FACTS_ENGINE_VERSION = '2.1.316'
+// 2.1.316 on 2026-11-06. The engine does not publish the layout of its footer. The facts decide
+// only how many buttons fit. Where they no longer match the engine, a row too narrow for the
+// buttons makes the engine move its right part onto a row of its own.
 // The engine draws the permission mode before the hint line as `<symbol> <name> on`, from its table
 // listing the modes, and hooks cannot read it. The mode that bypasses permissions has the longest
 // label.
@@ -168,22 +168,13 @@ function recordRightPartOf(row: FooterRow, e: RenderInput<'SessionMode'>): void 
 
 /**
  * The buttons placed on `row`, counted from the first, with room after the mode labels where `e`
- * is drawn. The facts about the row hold for the terminal running one version of the engine. Every
- * button fits on every other surface. The terminal running another version draws the mode labels
- * alone.
+ * is drawn. Every button fits on every surface but the terminal.
  */
-async function findButtonsWithRoom(
-  $: EngineInterface,
+function findButtonsWithRoom(
   row: FooterRow,
   e: RenderInput<'SessionMode'>,
-): Promise<readonly FooterButton[]> {
-  if (e.surface !== 'terminal') {
-    return row.buttons
-  }
-
-  return (await $.session.version()).version === FOOTER_FACTS_ENGINE_VERSION
-    ? row.findButtonsFitting()
-    : []
+): readonly FooterButton[] {
+  return e.surface === 'terminal' ? row.findButtonsFitting() : row.buttons
 }
 
 type DrawModes = MatchedHook<'ui.render', { component: 'SessionMode' }>
@@ -200,7 +191,7 @@ async function drawButtonsAfterModes(
   next: Parameters<DrawModes>[2],
 ): Promise<Awaited<ReturnType<DrawModes>>> {
   recordRightPartOf(row, e)
-  const drawn = await findButtonsWithRoom($, row, e)
+  const drawn = findButtonsWithRoom(row, e)
   if (drawn.length === 0) {
     return next(e)
   }

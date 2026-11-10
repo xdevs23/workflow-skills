@@ -34,11 +34,6 @@ export function drawFooterAsEngine(on: On): { modesDrawn: number } {
   return drawings
 }
 
-/** Sets `$.session.version()` to return the engine version `version`. */
-export function runOnEngine(on: On, version: string): void {
-  on('session.version', () => ({ value: { version } }))
-}
-
 export function hintOf(hint: string, tail?: string): RenderPropsOf['PromptHint'] {
   const props = { isDraft: false, isWorking: false, hint }
 

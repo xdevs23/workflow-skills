@@ -1,8 +1,7 @@
 import { describe, expect } from 'claude-code/testing'
 
 import type { Cadence } from '../../types'
-import { drawFooterAsEngine, mountFooterModes, runOnEngine } from '../footerTestSupport'
-import { FOOTER_FACTS_ENGINE_VERSION } from '../promptFooter'
+import { drawFooterAsEngine, mountFooterModes } from '../footerTestSupport'
 import { test } from '../testDeclaration'
 import { FIRST_SESSION, mountPane, startSession } from '../testSupport'
 import { PHRASE_KIND } from './phraseCadence'
@@ -17,7 +16,6 @@ const UNREADABLE_STORE = 'the store file is not readable'
 describe('the Reminders button in the prompt footer', () => {
   test('a press reads the reminders again and opens the Reminders pane on them', async ($, on) => {
     drawFooterAsEngine(on)
-    runOnEngine(on, FOOTER_FACTS_ENGINE_VERSION)
     const session = await startSession($, on)
     const record = reminderRecordOf(FIRST_SESSION, {
       id: 'start-build',
@@ -38,7 +36,6 @@ describe('the Reminders button in the prompt footer', () => {
 
   test('reminders that cannot be read are shown in a toast with the reason', async ($, on) => {
     drawFooterAsEngine(on)
-    runOnEngine(on, FOOTER_FACTS_ENGINE_VERSION)
     const session = await startSession($, on)
     session.keysRefusal = UNREADABLE_STORE
     const footer = await mountFooterModes($)
@@ -56,7 +53,6 @@ describe('the Reminders button in the prompt footer', () => {
       value: { isPlaced: false, reason: 'every pane slot is taken' },
     }))
     drawFooterAsEngine(on)
-    runOnEngine(on, FOOTER_FACTS_ENGINE_VERSION)
     const session = await startSession($, on)
     const footer = await mountFooterModes($)
     await footer.press({ key: REMINDERS_BUTTON.key })
