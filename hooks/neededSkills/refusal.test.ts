@@ -37,7 +37,9 @@ function denialRequiring(steps: string): RegExp {
 
 const LOAD_WRITING_CODE = `load ${regExpLiteralOf(WRITING_CODE)} with the Skill tool`
 const LOAD_WRITING_STYLE = `load ${regExpLiteralOf(WRITING_STYLE)} with the Skill tool`
-const LOAD_COMMIT_MESSAGES = `load ${regExpLiteralOf(COMMIT_MESSAGES)} with the Skill tool`
+const LOAD_COMMIT_SKILLS = `load ${regExpLiteralOf(COMMIT_MESSAGES)} and ${regExpLiteralOf(
+  WRITING_STYLE,
+)} with the Skill tool`
 const LOAD_ALL_FOR_KOTLIN = denialRequiring(`${LOAD_WRITING_CODE} and read ${KOTLIN_RULES}`)
 
 /** Starts a session in which Edit and Bash run beneath the plugin. */
@@ -104,13 +106,15 @@ describe('the denial of a call that needs a skill not loaded', () => {
     expect((await editKotlinFile($)).text).toMatch(denialRequiring(`read ${KOTLIN_RULES}`))
   })
 
-  test('git commit runs once commit-messages is loaded', async ($, on) => {
+  test('git commit runs once commit-messages and writing-style are loaded', async ($, on) => {
     const ledger = await startSessionThatRuns($, on)
     await requestModel($, ledger, 40_000)
     const commit = () => $.tool.call({ tool: 'Bash', command: 'git commit -m x' })
 
-    expect((await commit()).text).toMatch(denialRequiring(LOAD_COMMIT_MESSAGES))
+    expect((await commit()).text).toMatch(denialRequiring(LOAD_COMMIT_SKILLS))
     await callSkillTool($, COMMIT_MESSAGES)
+    expect((await commit()).text).toMatch(denialRequiring(LOAD_WRITING_STYLE))
+    await callSkillTool($, WRITING_STYLE)
 
     expect((await commit()).result).toBe(RAN)
   })

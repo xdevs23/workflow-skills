@@ -127,7 +127,7 @@ describe('rows for files of other skills', () => {
 })
 
 describe('rows for shell commands', () => {
-  test('git commit and git add need commit-messages', () => {
+  test('git commit and git add need commit-messages and writing-style', () => {
     const commands = [
       'git commit -m "fix badge"',
       'git commit --amend --no-edit',
@@ -135,7 +135,10 @@ describe('rows for shell commands', () => {
       'cd app && git   commit -F msg.txt',
     ]
     for (const command of commands) {
-      expect(needsOf(bash(command))).toEqual({ skills: [COMMIT_MESSAGES], files: [] })
+      expect(needsOf(bash(command))).toEqual({
+        skills: [COMMIT_MESSAGES, WRITING_STYLE],
+        files: [],
+      })
     }
   })
 

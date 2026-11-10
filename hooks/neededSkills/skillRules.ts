@@ -38,7 +38,7 @@ export const SKILL_RULES: readonly SkillRule[] = [
   codeIn('nix', '*.nix'),
   {
     when: runsCommand('git commit', 'git add'),
-    skills: [skillName('commit-messages')],
+    skills: [skillName('commit-messages'), skillName('writing-style')],
     files: [],
   },
   { when: writesFile({ names: ['*.md'] }), skills: [skillName('writing-style')], files: [] },
