@@ -111,11 +111,13 @@ description: Resume workflow run interrupted after agents did substantial work b
   them.
   Otherwise resume plainly
 - Edit **the persisted script file**, whose path is also returned at launch
-- Tell interrupted agent all seven of these things in note:
+- Tell interrupted agent all eight of these things in note:
   - earlier attempt **by this exact agent** was interrupted **through no fault of the agent**,
     because agent must know transcript contains sound work by this agent and can be trusted;
   - complete transcript of that attempt is at `<absolute path>`;
   - **read it first**, then pick up where it left off;
+  - **leave out content blocks of type `thinking` and `redacted_thinking`** while reading it. The
+    API refuses request that contains thinking of another request;
   - where an input in prompt of agent differs from what transcript shows, prompt is authority on
     that input;
   - **verify again only what the code or an input that differs from the transcript changed
@@ -148,7 +150,9 @@ description: Resume workflow run interrupted after agents did substantial work b
 const RESUME_NOTE = [
   'RESUME NOTE. An earlier attempt by THIS EXACT AGENT was interrupted mid-flight, through no',
   'fault of that attempt. Its complete transcript is at <ABS>/agent-<id>.jsonl.',
-  'READ IT FIRST and pick up where it left off. Where an input in this prompt differs from what',
+  'READ IT FIRST and pick up where it left off. Filter out its content blocks of type thinking',
+  'and redacted_thinking before reading it: the API refuses a request that contains them.',
+  'Where an input in this prompt differs from what',
   'the transcript shows, this prompt is the authority on that input. VERIFY AGAIN ONLY WHAT THE',
   'CODE OR SUCH A DIFFERING INPUT CHANGED UNDERNEATH, the findings based on it included. Carry',
   'every other finding it already made forward VERBATIM. Do not redo any other investigation it',
