@@ -11,6 +11,9 @@
   `extensions/androidx/compose/ui/graphics/Color.kt`
 - Make call site read like the domain with operators, infix functions, extension properties and DSL
   builders
+- Let component declare what it consumes, what it produces and how it turns one into another
+- Let each component produce its part of composed result from input context alone. Only compositor
+  sees every part
 - Make adding one more entry of a kind, e.g. new variant or new handler, take same number of lines
   whether third entry or fiftieth
 - Make domain quantities value types with operators and extensions that construct them (`120.dp`,
@@ -21,8 +24,9 @@
 - Read text into closed set where text arrives, with one lookup by serialized form
 - Make records immutable data classes, built with named arguments, changed with `copy()`
 - Validate in `init` with `require`, so invalid instance cannot exist
-- Model finite set of states as sealed class, exposed as `StateFlow` when observed
-- Type errors as enums with structured records
+- Model finite set of states as sealed class, exposed as `StateFlow` when observed. Derive helper
+  properties from current state value
+- Type errors as `@Serializable` enums. Decode errors returned by API into structured records
 - Convert errors into error type shared across layers of application with extension function, never
   with scattered catch blocks
 - Split capabilities into small interfaces. Let component implement only interfaces supported by it.
@@ -31,6 +35,9 @@
   it, never `when` dispatch
 - Pass capabilities to code as context parameters, so call lacking needed capability fails to
   compile
+- Split operation into data, context and code. Data has same structure for every variant. Code
+  takes same path for every variant
+- Give domain entity readable methods as extension functions requiring capability in context
 - Introduce each capability once, at outermost call of operation needing it, e.g.
   `invoice.country.context { }`. Nest further context block inside that block for each further
   capability
@@ -47,11 +54,17 @@
 - Give class whose job is one action an `operator fun invoke()`, so class is called like function
 - Give view class constructor taking initializer lambda with view itself as receiver, e.g.
   `class Button(init: Button.() -> Unit)`
+- Give container view `operator fun invoke` taking block of its children. Keep layout configuration
+  apart from children
+- Draw custom view in `paint(canvas)` with canvas as receiver, through typed primitives in domain
+  units
+- Resolve setting from own value first, then from named bundles of defaults in declared order,
+  through typed chain
 - Build generated output from typed combinator vocabulary (`.spaced`, `.prefixed("| ")`), never by
   string interpolation in generator
-- Express invariants as property delegates: property writable only once, property initialized
-  later, animated value, and value preserved across frames with `remember` inside body of render
-  loop
+- Express invariants as property delegates: property writable only once, throwing on second write
+  and on read before first write, property initialized later, animated value, and value preserved
+  across frames with `remember` inside body of render loop
 - Write conversions between layers as extension functions with exhaustive `when`
   (`TextAlign.toTreeTextAlign()`)
 - Mark implementation `internal`. Mark what inline functions need `@PublishedApi internal`
