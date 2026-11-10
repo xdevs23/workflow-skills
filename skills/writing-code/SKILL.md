@@ -27,7 +27,8 @@ description: Write or change code in any language, including types, comments, na
 - Apply naming test to each name as you write it: hide its docstring, read only name and one line
   using it. Rename when you then cannot say what value contains or what code does
 - Name type, value or function by what it is in its domain, specific enough that name read alone
-  fits nothing outside this code. Rename name made of generic words that fit many things
+  fits nothing outside this code. Rename name made of generic words that fit many things, or of
+  word that says nothing of what thing records, computes or contains
 - Test every new name on stranger: read it alone, as someone who never saw project hears it.
   Rename when stranger cannot say what thing it names and what it is about
 - Name type of reasons by what they are reasons for: subject and what it cannot do. Name each value
@@ -77,6 +78,10 @@ description: Write or change code in any language, including types, comments, na
 ## Write once
 
 - Write every part once
+- Convert between units through type that represents quantity, from standard library or from
+  project. Never write ratio between units already contained by such type
+- Define once each ratio not contained by any such type, in module for that quantity, shared by all
+  code using it
 - Reuse utilities, patterns, dependencies and code paths of project. Prior art in codebase
   determines how new piece behaves
 - Never add carve-out where existing path already covers case
