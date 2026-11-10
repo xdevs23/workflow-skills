@@ -24,7 +24,7 @@ import {
   setGoalDependencyInSession,
   setGoalPriorityInSession,
 } from './goalActions'
-import { focusElement } from './goalFocus'
+import { focusElement, followGoalAfter } from './goalFocus'
 import { PaneElement, editFieldKeyOf, newGoalFieldKeyOf, rowElementKeyOf } from './goalKeys'
 import {
   RowMode,
@@ -56,15 +56,16 @@ import type { Priority } from './priority'
 // have after it.
 
 /**
- * Runs `save` unless another save of the pane runs. Button and Input have no disabled state, so a
- * press or an entry that arrives meanwhile is ignored.
+ * Runs `save` unless another save of the pane runs, and moves the focus with the goal it follows
+ * once `save` moved the row of that goal. Button and Input have no disabled state, so a press or an
+ * entry that arrives meanwhile is ignored.
  */
 export async function saveOnce($: EngineInterface, save: () => Promise<void>): Promise<void> {
   if (!(await startSaving($))) {
     return
   }
   try {
-    await save()
+    await followGoalAfter($, save)
   } finally {
     await endSaving($)
   }

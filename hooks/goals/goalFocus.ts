@@ -122,55 +122,46 @@ function keysInRowOf(
   ]
 }
 
-/** The Goals pane, as the events of a press, a pick and an entry in it match it. */
-type InGoalsPane = { component: 'Pane'; requestId: typeof GOALS_PANE }
-
 /**
- * Moves the focus with the goal it follows in the Goals pane, when `e`, a write of the board, moves
- * the row of that goal while the pane has the keyboard. The element moved to is drawn under a key
- * new to the move, written before the board, so the first drawing of the board has it.
+ * Moves the focus with the goal it follows in the Goals pane, once `e`, a write of the board, moved
+ * the row of that goal while the pane has the keyboard.
  */
 export const followGoalWithFocus: MatchedHook<
   'state.set',
   { plugin: typeof PLUGIN; key: 'sessionBoard' }
 > = async ($, e, next) => {
-  const asked = await drawMoveOfFocus($, e.previous ?? null, e.value)
   const written = await next(e)
-  if (asked !== undefined) {
-    await moveFocus($, asked)
-  }
+  await followGoalBetween($, e.previous ?? null, e.value)
 
   return written
 }
 
-// Claude Code 2.1.316 does not raise the `state.set` hooks of a plugin for a write made by one of
-// its handler closures, so a board written by a press, a pick or an entry in the pane does not
-// reach followGoalWithFocus. The hooks below follow the goal once the closure has run, so for these
-// the key of the move is written after the board, and the pane is drawn in the new order once
-// before the focus moves.
+// Claude Code 2.1.316 raises no `state.set` hook of a plugin for a write made by one of its handler
+// closures, so a save made in the Goals pane follows the goal itself.
 
-export const followGoalAfterPress: MatchedHook<'ui.press', InGoalsPane> = ($, e, next) =>
-  followGoalAfter($, () => next(e))
-
-export const followGoalAfterPick: MatchedHook<'ui.select', InGoalsPane> = ($, e, next) =>
-  followGoalAfter($, () => next(e))
-
-export const followGoalAfterEntry: MatchedHook<'ui.input', InGoalsPane> = ($, e, next) =>
-  followGoalAfter($, () => next(e))
-
-/** Runs `act`, and moves the focus with the followed goal once `act` moved the row of the goal. */
-async function followGoalAfter<Acted>(
+/** Runs `write`, and moves the focus with the followed goal once `write` moved its row. */
+export async function followGoalAfter(
   $: EngineInterface,
-  act: () => Promise<Acted>,
-): Promise<Acted> {
+  write: () => Promise<void>,
+): Promise<void> {
   const shown = await readBoardInState($)
-  const acted = await act()
-  const asked = await drawMoveOfFocus($, shown, await readBoardInState($))
+  await write()
+  await followGoalBetween($, shown, await readBoardInState($))
+}
+
+/**
+ * Moves the focus with the followed goal, once `written`, the board in place of `shown`, moved its
+ * row.
+ */
+async function followGoalBetween(
+  $: EngineInterface,
+  shown: SessionBoard | null,
+  written: SessionBoard | null,
+): Promise<void> {
+  const asked = await drawMoveOfFocus($, shown, written)
   if (asked !== undefined) {
     await moveFocus($, asked)
   }
-
-  return acted
 }
 
 /**
