@@ -1,5 +1,6 @@
 import { AT_CLAUSE_END } from './clauses'
 import type { HintKind } from './hintKind'
+import { phrase } from './phrase'
 import { COUNT } from './quantityWords'
 
 /** Text up to the end of the sentence: a stop counts only before a space, and a line break only
@@ -8,11 +9,12 @@ const SENTENCE = String.raw`(?:[^.!?\n]|[.!?](?=\S)|\n(?![\s\-*•]|\d+[.)]))*`
 /** Text up to the end of the clause, which also ends at a comma, a semicolon, a colon or a dash. */
 const CLAUSE = String.raw`(?:[^.!?\n,;:—–]|[.!?](?=\S))*`
 const MESSAGE = String.raw`(?:messages?|repl(?:y|ies)|turns?|posts?)`
+const MY_EARLIER_MESSAGE = String.raw`\bmy\s+(?:previous|earlier|prior|last|other)\s+${MESSAGE}`
+const MY_MESSAGE_BEFORE = String.raw`\bmy\s+${MESSAGE}\s+(?:before|above)`
+const MESSAGE_ABOVE = String.raw`\b${MESSAGE}\s+(?:above|before\s+the\s+last)`
+const MESSAGE_AGO = String.raw`\b(?:two|three|[2-9])\s+${MESSAGE}\s+ago`
 const EARLIER_MESSAGE =
-  String.raw`(?:\bmy\s+(?:previous|earlier|prior|last|other)\s+${MESSAGE}|` +
-  String.raw`\bmy\s+${MESSAGE}\s+(?:before|above)|` +
-  String.raw`\b${MESSAGE}\s+(?:above|before\s+the\s+last)|` +
-  String.raw`\b(?:two|three|[2-9])\s+${MESSAGE}\s+ago)\b`
+  String.raw`(?:${MY_EARLIER_MESSAGE}|${MY_MESSAGE_BEFORE}|${MESSAGE_ABOVE}|${MESSAGE_AGO})\b`
 const ASKED = String.raw`\b(?:questions?|asked)\b`
 const OPEN_WORD = String.raw`(?:open|unanswered|pending)`
 const OPEN_STATE = String.raw`(?:${OPEN_WORD}|outstanding|unresolved|there|in\s+my|above)\b`
@@ -27,7 +29,10 @@ const NOT_AFTER_TRACKER = String.raw`(?<!\b(?:PRs?|pull\s+requests?|issues?)\b[^
 const OPEN_ITEM =
   String.raw`\b(?:decisions?|answers?|approvals?|choices?|points?|items?)${ITEM_NUMBER}?`
 
-const phrase = (source: string): RegExp => new RegExp(source, 'i')
+const HAVE_NOT_ANSWERED = String.raw`(?:have\s+not|haven['’]t)\s+(?:yet\s+)?answered`
+const DID_NOT_ANSWER = String.raw`(?:did\s+not|didn['’]t)\s+(?:yet\s+)?answer`
+const STILL_STANDS = String.raw`still\s+(?:stands?|applies|needs?)`
+const IS_NOT_YET_ANSWERED = String.raw`(?:has|have|is|are)\s+not\s+(?:yet\s+)?(?:been\s+)?answered`
 
 /** The hint after a message that waits for an answer from the user. */
 export const WAITING_HINT: HintKind = {
@@ -45,10 +50,7 @@ export const WAITING_HINT: HintKind = {
     /\bawait(?:s|ing)?\s+your\b/i,
     phrase(String.raw`\byour\s+answer\s+on\s+${SENTENCE}\s+is\s+still\b`),
     /(?<!\b(?:blocks?|holds?|stops?|pauses?)\b[^.!?\n]{0,40})\b(?:once|until)\s+you\s+answer\b/i,
-    phrase(
-      String.raw`\byou\s+(?:(?:have\s+not|haven['’]t)\s+(?:yet\s+)?answered|` +
-        String.raw`(?:did\s+not|didn['’]t)\s+(?:yet\s+)?answer)\b`,
-    ),
+    phrase(String.raw`\byou\s+(?:${HAVE_NOT_ANSWERED}|${DID_NOT_ANSWER})\b`),
     /\byou\s+have\s+yet\s+to\s+answer\b/i,
     /\bonce\s+you(?:['’]ve|\s+have)\s+answered\b/i,
     /\bneeds\s+your\s+(?:answer|approval|go)\b/i,
@@ -60,10 +62,7 @@ export const WAITING_HINT: HintKind = {
       String.raw`\bquestions?\b${CLAUSE}(?:\s+(?:is|are|remains?|stays?)|['’](?:s|re))` +
         String.raw`\s+(?:still\s+)?${OPEN_STATE}`,
     ),
-    phrase(
-      String.raw`\bquestions?\b${CLAUSE}\b(?:still\s+(?:stands?|applies|needs?)|` +
-        String.raw`(?:has|have|is|are)\s+not\s+(?:yet\s+)?(?:been\s+)?answered)\b`,
-    ),
+    phrase(String.raw`\bquestions?\b${CLAUSE}\b(?:${STILL_STANDS}|${IS_NOT_YET_ANSWERED})\b`),
     phrase(String.raw`${ASKED}${SENTENCE}${EARLIER_MESSAGE}`),
     phrase(String.raw`${EARLIER_MESSAGE}${SENTENCE}${ASKED}`),
     /\bmy\s+(?:earlier|previous|last|other)\s+questions?\b/i,

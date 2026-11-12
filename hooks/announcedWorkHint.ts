@@ -1,5 +1,6 @@
 import type { HintKind } from './hintKind'
 import { EMPHASIS, HEADING_MARK, LIST_MARK } from './lineMarks'
+import { phrase } from './phrase'
 import { WORK_GERUND, WORK_VERB } from './workVerbs'
 
 /** The start of a sentence or clause: the start of a line past any list mark or heading mark, or
@@ -18,9 +19,12 @@ const WILL = String.raw`(?:['’]ll|\s+will|(?:['’](?:m|re)|\s+(?:am|are))\s+(
 /** A plan said after a condition, as in "if you want, I'll rebase", waits on that condition. */
 const NOT_AFTER_CONDITION =
   String.raw`(?<!\b(?:if|once|when|whenever|unless|as\s+soon\s+as)\b[^.!?\n]*)`
+/** A plan said after a lead word, as in "then I'll rebase", or without one, as in "I'll rebase". */
+const PLAN_WITH_LEAD = String.raw`${SENTENCE_START}${PLAN_LEAD},?\s+(?:I|we)${WILL}?`
+const PLAN_WITHOUT_LEAD = String.raw`\b(?:I|we)${WILL}`
+const I_AM_OR_WE_ARE = String.raw`\b(?:I(?:['’]m|\s+am)|we(?:['’]re|\s+are))`
 const SELF_NOW =
-  String.raw`\b(?:I(?:['’]m|\s+am)|we(?:['’]re|\s+are))\s+` +
-  String.raw`(?:(?:now|currently|still|also|meanwhile|already)\s+)?`
+  String.raw`${I_AM_OR_WE_ARE}\s+(?:(?:now|currently|still|also|meanwhile|already)\s+)?`
 
 /** The hint after a message that announces work as next or as underway while the turn ends. */
 export const ANNOUNCED_WORK_HINT: HintKind = {
@@ -34,19 +38,16 @@ export const ANNOUNCED_WORK_HINT: HintKind = {
       'im',
     ),
     new RegExp(
-      String.raw`${NOT_AFTER_CONDITION}(?:${SENTENCE_START}${PLAN_LEAD},?\s+(?:I|we)${WILL}?|` +
-        String.raw`\b(?:I|we)${WILL})\s+${WORK_VERB}`,
+      String.raw`${NOT_AFTER_CONDITION}(?:${PLAN_WITH_LEAD}|${PLAN_WITHOUT_LEAD})\s+${WORK_VERB}`,
       'im',
     ),
     /\b(?:now\s+I['’]ll|I['’]ll\s+now)\b/i,
     /\bwhat\s+(?:I|we)(?:['’]m|\s+am|['’]re|\s+are|['’]ll|\s+will)\s+(?:doing|do)\s+next\b/i,
-    new RegExp(
-      String.raw`\b(?:I(?:['’]m|\s+am)|we(?:['’]re|\s+are))\s+not\s+stopping\b` +
-        String.raw`(?!\s+(?:the|a|an|it|this|that|them)\b)`,
-      'i',
+    phrase(
+      String.raw`${I_AM_OR_WE_ARE}\s+not\s+stopping\b(?!\s+(?:the|a|an|it|this|that|them)\b)`,
     ),
-    new RegExp(String.raw`${SELF_NOW}${WORK_GERUND}`, 'i'),
-    new RegExp(String.raw`\blet\s+me\s+${WORK_VERB}`, 'i'),
+    phrase(String.raw`${SELF_NOW}${WORK_GERUND}`),
+    phrase(String.raw`\blet\s+me\s+${WORK_VERB}`),
   ],
   text:
     'Your message announces work as next or as underway, and your turn is ending. If no running ' +

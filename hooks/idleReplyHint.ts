@@ -1,15 +1,16 @@
 import type { HintKind } from './hintKind'
 import { CHECK_FOR_OPEN_WORK, OPTIMIZE_IDLE_TIME } from './openWork'
 
+const WELL_WORD = String.raw`(?:clear|fine|good|healthy|quiet|ok(?:ay)?|well|set)`
+
 /** A reply made only of "all is well", such as "All clear", "Everything’s fine" or "All set". */
-const ALL_IS_WELL =
-  String.raw`(?:everything|all)(?:['’]s|\s+is)?\s+` +
-  String.raw`(?:clear|fine|good|healthy|quiet|ok(?:ay)?|well|set)|fine`
+const ALL_IS_WELL = String.raw`(?:everything|all)(?:['’]s|\s+is)?\s+${WELL_WORD}|fine`
+
+const AFTER_NOTHING =
+  String.raw`(?:(?:left\s+)?to\s+(?:do|report)|new|(?:has\s+)?changed|pending|open)`
 
 /** A reply made only of "nothing is there", such as "Nothing new" or "No change". */
-const NOTHING_THERE =
-  String.raw`nothing\s+(?:(?:left\s+)?to\s+(?:do|report)|new|(?:has\s+)?changed|pending|open)|` +
-  String.raw`no\s+(?:changes?|news)`
+const NOTHING_THERE = String.raw`nothing\s+${AFTER_NOTHING}|no\s+(?:changes?|news)`
 
 /** A reply made only of the waiting itself, such as "Standing by". */
 const STANDING_BY = String.raw`idle|standing\s+by`
