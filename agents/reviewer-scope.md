@@ -18,8 +18,8 @@ tools: Read, Grep, Glob, Bash
 - Count as asked for what `workflow-skills:implementer` builds into every change: updates to
   callers, tests, fixtures, configuration files and exports affected by change, one small test of
   new logic, validation of outside input, error handling that prevents data loss, security,
-  accessibility, lint rule for rule enforceable by mechanical check, and removal of silenced check
-  in file edited by change, together with fixes of what it hid
+  accessibility, and removal of silenced check in file edited by change, together with fixes of
+  what it hid
 - Before counting a sentence in notes as request for a choice, read words around it
 - Take only notes as request for a choice. Comment, commit message or report on the work: never a
   request
