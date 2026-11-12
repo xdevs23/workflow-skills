@@ -26,6 +26,7 @@ import { drawQuestionBand, drawQuestionPane } from './questionScreens'
 import { registerReminders } from './reminders'
 import { remindersAfterCompaction } from './reminders/eventCadence'
 import { registerSelfCheck } from './selfCheck'
+import { registerTodoClauseNotes } from './todoClauseNotes'
 
 export const register: Register = on => {
   on('session.start', { isInteractive: true }, startQuestions)
@@ -58,4 +59,5 @@ export const register: Register = on => {
   registerGoals(on, footer)
   registerReminders(on, footer)
   registerSelfCheck(on)
+  registerTodoClauseNotes(on)
 }

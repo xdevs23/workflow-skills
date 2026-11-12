@@ -211,6 +211,8 @@ export async function startSession(
   })
   on('session.id', () => ({ value: session.id }))
   on('session.root', () => ({ value: PROJECT_ROOT }))
+  // The project contains no file, unless a test fakes one before the session starts.
+  on('fs.stat', ($, e) => denyMissingFile(e.path))
   on('agent.list', () => ({ value: session.agents }))
   on('turn.step', async function* (_, e) {
     return {
@@ -290,6 +292,11 @@ export async function startSession(
   }
 
   return session
+}
+
+/** The answer by which the engine rejects a stat or a read of the missing file at `path`. */
+export function denyMissingFile(path: string): { deny: string } {
+  return { deny: `ENOENT: no such file or directory, '${path}'` }
 }
 
 /** A store fake that contains `stored`, with every switch off. */

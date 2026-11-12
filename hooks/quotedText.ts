@@ -25,3 +25,17 @@ const BLANKED_WORD = '·'
 export function withoutQuotedText(message: string): string {
   return message.replace(QUOTED_TEXT, quoted => quoted.replace(WORD, BLANKED_WORD))
 }
+
+/**
+ * Returns the message with each character of its code, quotations and quoted lines blanked, except
+ * line breaks. The result has the length of the message, so a position in the result is a position
+ * in the message, and no stop inside quoted text ends a sentence.
+ */
+export function maskQuotedText(message: string): string {
+  return message.replace(QUOTED_TEXT, quoted =>
+    quoted
+      .split('\n')
+      .map(line => BLANKED_WORD.repeat(line.length))
+      .join('\n'),
+  )
+}
