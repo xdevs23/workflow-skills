@@ -112,6 +112,12 @@ export function clearElsewhere(session: Session, goal: Goal): void {
   session.store.set(clearance.key, clearance.value)
 }
 
+/** Stores the done mark DONE_MARK on `goal`, as the model in another process of the session does. */
+export function markElsewhere(session: Session, goal: Goal): void {
+  const mark = doneMarkRecordOf(sessionScope(FIRST_SESSION), { ...goal, doneMark: DONE_MARK })
+  session.store.set(mark.key, mark.value)
+}
+
 /** Stores `text` as the text of `goal`, as another process of the session does. */
 export function editElsewhere(session: Session, goal: Goal, text: string): void {
   const record = textRecordOf(sessionScope(FIRST_SESSION), { ...goal, text }, 500)

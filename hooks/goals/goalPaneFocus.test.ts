@@ -178,8 +178,10 @@ describe('the focus of the Goals pane follows the goal whose row has the focus',
     expect(await buttonsOf(pane)).toEqual([
       { key: await lastMoveKeyOf(pane, focus, ROTATION_CRASH), label: 'Edit' },
       buttonOf(ROTATION_CRASH, PaneElement.Clear, 'Clear'),
+      buttonOf(ROTATION_CRASH, PaneElement.Nudge, 'Nudge'),
       buttonOf(MIGRATION_GUIDE, PaneElement.Edit, 'Edit'),
       buttonOf(MIGRATION_GUIDE, PaneElement.Clear, 'Clear'),
+      buttonOf(MIGRATION_GUIDE, PaneElement.Nudge, 'Nudge'),
     ])
   })
 
@@ -194,6 +196,7 @@ describe('the focus of the Goals pane follows the goal whose row has the focus',
       buttonOf(MIGRATION_GUIDE, PaneElement.Unmark, 'Unmark'),
       buttonOf(MIGRATION_GUIDE, PaneElement.Clear, 'Clear'),
       { key: await lastMoveKeyOf(pane, focus, ROTATION_CRASH), label: 'Clear' },
+      buttonOf(ROTATION_CRASH, PaneElement.Nudge, 'Nudge'),
     ])
   })
 
@@ -209,6 +212,7 @@ describe('the focus of the Goals pane follows the goal whose row has the focus',
       buttonOf(ROTATION_CRASH, PaneElement.Clear, 'Clear'),
       buttonOf(MIGRATION_GUIDE, PaneElement.Edit, 'Edit'),
       buttonOf(MIGRATION_GUIDE, PaneElement.Clear, 'Clear'),
+      buttonOf(MIGRATION_GUIDE, PaneElement.Nudge, 'Nudge'),
     ])
   })
 
@@ -225,6 +229,7 @@ describe('the focus of the Goals pane follows the goal whose row has the focus',
       buttonOf(ROTATION_CRASH, PaneElement.CancelEditing, 'Cancel'),
       buttonOf(MIGRATION_GUIDE, PaneElement.Edit, 'Edit'),
       buttonOf(MIGRATION_GUIDE, PaneElement.Clear, 'Clear'),
+      buttonOf(MIGRATION_GUIDE, PaneElement.Nudge, 'Nudge'),
     ])
   })
 
@@ -240,6 +245,7 @@ describe('the focus of the Goals pane follows the goal whose row has the focus',
       { key: await lastMoveKeyOf(pane, focus, ROTATION_CRASH), label: 'Cancel' },
       buttonOf(MIGRATION_GUIDE, PaneElement.Edit, 'Edit'),
       buttonOf(MIGRATION_GUIDE, PaneElement.Clear, 'Clear'),
+      buttonOf(MIGRATION_GUIDE, PaneElement.Nudge, 'Nudge'),
     ])
   })
 
@@ -258,6 +264,7 @@ describe('the focus of the Goals pane follows the goal whose row has the focus',
       { key: await lastMoveKeyOf(pane, focus, ROTATION_CRASH), label: 'Keep' },
       buttonOf(MIGRATION_GUIDE, PaneElement.Edit, 'Edit'),
       buttonOf(MIGRATION_GUIDE, PaneElement.Clear, 'Clear'),
+      buttonOf(MIGRATION_GUIDE, PaneElement.Nudge, 'Nudge'),
     ])
   })
 
@@ -295,8 +302,10 @@ describe('the focus of the Goals pane follows the goal whose row has the focus',
     expect(await buttonsOf(pane)).toEqual([
       buttonOf(MIGRATION_GUIDE, PaneElement.Edit, 'Edit'),
       buttonOf(MIGRATION_GUIDE, PaneElement.Clear, 'Clear'),
+      buttonOf(MIGRATION_GUIDE, PaneElement.Nudge, 'Nudge'),
       { key: await lastMoveKeyOf(pane, focus, ROTATION_CRASH), label: 'Edit' },
       buttonOf(ROTATION_CRASH, PaneElement.Clear, 'Clear'),
+      buttonOf(ROTATION_CRASH, PaneElement.Nudge, 'Nudge'),
     ])
   })
 
@@ -331,8 +340,10 @@ describe('the focus of the Goals pane follows the goal whose row has the focus',
     expect(await buttonsOf(pane)).toEqual([
       buttonOf(MIGRATION_GUIDE, PaneElement.Edit, 'Edit'),
       buttonOf(MIGRATION_GUIDE, PaneElement.Clear, 'Clear'),
+      buttonOf(MIGRATION_GUIDE, PaneElement.Nudge, 'Nudge'),
       { key: second, label: 'Edit' },
       buttonOf(ROTATION_CRASH, PaneElement.Clear, 'Clear'),
+      buttonOf(ROTATION_CRASH, PaneElement.Nudge, 'Nudge'),
     ])
   })
 
@@ -349,8 +360,10 @@ describe('the focus of the Goals pane follows the goal whose row has the focus',
     expect(await buttonsOf(pane)).toEqual([
       buttonOf(MIGRATION_GUIDE, PaneElement.Edit, 'Edit'),
       buttonOf(MIGRATION_GUIDE, PaneElement.Clear, 'Clear'),
+      buttonOf(MIGRATION_GUIDE, PaneElement.Nudge, 'Nudge'),
       buttonOf(ROTATION_CRASH, PaneElement.Edit, 'Edit'),
       buttonOf(ROTATION_CRASH, PaneElement.Clear, 'Clear'),
+      buttonOf(ROTATION_CRASH, PaneElement.Nudge, 'Nudge'),
     ])
   })
 
@@ -403,9 +416,10 @@ describe('the focus of the Goals pane follows the goal whose row has the focus',
       expect(goalRecordsOf(session)).toEqual(
         storedBoardWithFourOpen().set(removed.key, removed.value),
       )
-      expect((await buttonsOf(pane)).slice(-2)).toEqual([
+      expect((await buttonsOf(pane)).slice(-3)).toEqual([
         { key: await lastMoveKeyOf(pane, focus, RELEASE_POST), label: 'Edit' },
         buttonOf(RELEASE_POST, PaneElement.Clear, 'Clear'),
+        buttonOf(RELEASE_POST, PaneElement.Nudge, 'Nudge'),
       ])
     },
   )
@@ -434,6 +448,7 @@ describe('the focus of the Goals pane follows the goal whose row has the focus',
     expect(await buttonsOf(pane)).toEqual([
       buttonOf(MIGRATION_GUIDE, PaneElement.Edit, 'Edit'),
       buttonOf(MIGRATION_GUIDE, PaneElement.Clear, 'Clear'),
+      buttonOf(MIGRATION_GUIDE, PaneElement.Nudge, 'Nudge'),
     ])
   })
 

@@ -25,6 +25,7 @@ import {
   setGoalPriorityInSession,
 } from './goalActions'
 import { focusElement, followGoalAfter } from './goalFocus'
+import { nudgeOpenGoal } from './goalNudge'
 import { PaneElement, editFieldKeyOf, newGoalFieldKeyOf, rowElementKeyOf } from './goalKeys'
 import {
   RowMode,
@@ -91,6 +92,11 @@ async function actOnOpenGoal(
   } else {
     $.ui.toast(describeNoLongerOpen(goal))
   }
+}
+
+/** Nudges the model to finish the goal, while it is open. */
+export async function nudgeGoal($: EngineInterface, sessionId: string, goal: Goal): Promise<void> {
+  await actOnOpenGoal($, sessionId, goal, open => nudgeOpenGoal($, sessionId, open))
 }
 
 /** Shows the yes and the keep of a clear in place of the Clear of the goal, while it is open. */

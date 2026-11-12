@@ -35,6 +35,7 @@ import {
   askToClear,
   clearOnScreen,
   finishEditing,
+  nudgeGoal,
   saveOnce,
   startEditing,
   startUnmarking,
@@ -60,6 +61,7 @@ import {
   FIELDS_IN_TERMINAL_ONLY,
   KEEP_LABEL,
   NEW_GOAL_PLACEHOLDER,
+  NUDGE_LABEL,
   PANE_TITLE,
   REASON_PLACEHOLDER,
   UNMARK_LABEL,
@@ -225,9 +227,9 @@ type KeyedButton = RowButton & { key: string }
 
 /**
  * The buttons of the row of `goal`, drawn as `row`, in the order they are drawn: in a row not
- * pressed, Unmark in its done mark, then Edit where the surface draws input fields, and Clear; the
- * yes and the keep of the question to clear it; Done and Cancel while it is edited; Cancel while it
- * is unmarked.
+ * pressed, Unmark in its done mark, then Edit where the surface draws input fields, Clear, and
+ * Nudge while it is not marked as done; the yes and the keep of the question to clear it; Done and
+ * Cancel while it is edited; Cancel while it is unmarked.
  */
 function rowButtonsOf(
   $: EngineInterface,
@@ -304,6 +306,21 @@ function rowButtonsOf(
               },
             ]
 
+      const nudge: RowButton[] =
+        mark === undefined
+          ? [
+              {
+                element: PaneElement.Nudge,
+                place: ButtonPlace.BesideRow,
+                props: {
+                  label: NUDGE_LABEL,
+                  dimColor: true,
+                  onPress: () => nudgeGoal($, sessionId, goal),
+                },
+              },
+            ]
+          : []
+
       return [
         ...unmark,
         ...edit,
@@ -316,6 +333,7 @@ function rowButtonsOf(
             onPress: () => askToClear($, sessionId, goal),
           },
         },
+        ...nudge,
       ]
     }
   }

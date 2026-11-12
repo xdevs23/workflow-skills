@@ -21,6 +21,7 @@ import {
   stopFollowingOnClose,
 } from './goalFocus'
 import { endIdleStretch, waitAfterTurn } from './goalIdleReminder'
+import { sendNudgeAfterTurn } from './goalNudge'
 import { addGoalChangesToToolResult, submitWithGoalChanges } from './goalReminderHooks'
 import { handleMarkGoalDoneCall, handleUnmarkGoalDoneCall } from './goalMarkTools'
 import { drawGoalsPane } from './goalScreens'
@@ -55,6 +56,7 @@ export function registerGoals(on: On, footer: PromptFooter): void {
   on('prompt.submit', EVERY_EVENT, submitWithGoalChanges)
   on('turn.start', EVERY_EVENT, endIdleStretch)
   on('turn.complete', EVERY_EVENT, waitAfterTurn)
+  on('turn.complete', EVERY_EVENT, sendNudgeAfterTurn)
   on('command.run', { command: GOALS_COMMAND }, runGoalsCommand).catch(replyWithGoalsHookFailure)
   on('tool.call', { tool: LIST_GOALS_TOOL }, listGoals).catch(denyGoalToolFailure)
   on('tool.call', { tool: ATTACH_TODO_TOOL }, attachTodo).catch(denyGoalToolFailure)

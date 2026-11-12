@@ -7,6 +7,7 @@ import { MarkRemover, doneMarkOf } from './doneMark'
 import { dependedGoalOf, unfinishedDependencyOf } from './dependency'
 import type { OpenGoals } from './dependency'
 import { describeUnfinishedDependency, nameGoalWithPriority, priorityTagOf } from './goalListTexts'
+import { MARK_GOAL_DONE_TOOL } from './goalNames'
 import { PANE_TITLE, nameGoal } from './goalTexts'
 import { describePriority, priorityOf } from './priority'
 import { GoalsReader, describeDoneMarkForModel } from './goalToolTexts'
@@ -119,6 +120,23 @@ function describeUnsatisfiedGoal(open: OpenGoals, goal: Goal): string {
     ...(mark === undefined ? [] : [asSentence(describeMarkToMainConversation(mark))]),
     ...(goal.todos.length === 0 ? [] : [`Attached: ${attached}.`]),
   ].join(' ')
+}
+
+/**
+ * The prompt sent when the user presses Nudge on `goal`: the goal as the reminder after the idle
+ * minutes writes it, between the request to finish it and how to finish it.
+ */
+export function describeNudge(open: OpenGoals, goal: Goal): string {
+  return [
+    'The user has noticed that the following goal has not been marked as done for quite a while, ' +
+      'and would like you to work on it and bring it to completion.',
+    describeUnsatisfiedGoal(open, goal),
+    'Start working on it as soon as possible, without interrupting the current work. Either ' +
+      'finish the goal cleanly and properly, as the rules require, or mark it as done with ' +
+      `${MARK_GOAL_DONE_TOOL}, so the user can check the result. If the result of the goal is a ` +
+      'draft, open it now. The user will not tolerate more delays that you cannot seriously ' +
+      'explain and back with clear evidence of why you cannot complete the goal.',
+  ].join('\n\n')
 }
 
 /** The kinds of change sent to the model: the changes made by the user. */

@@ -22,6 +22,7 @@ export const UNMARK_LABEL = 'Unmark'
 /** The word beside the field for the reason, for what Enter does there. */
 export const UNMARK_SUBMIT_LABEL = 'unmark'
 export const REASON_PLACEHOLDER = 'Reason (optional)'
+export const NUDGE_LABEL = 'Nudge'
 export const CLEAR_LABEL = 'Clear'
 export const YES_CLEAR_LABEL = 'Yes, clear'
 export const KEEP_LABEL = 'Keep'
@@ -70,6 +71,21 @@ export function describeDependencyBadge(dependsOn: Goal): string {
 /** The done mark of a goal as the person reads it, with the evidence given by Claude. */
 export function describeDoneMarkForPerson(mark: DoneMark): string {
   return `Marked done by Claude: ${mark.evidence}`
+}
+
+/** What a press of Nudge shows while the nudge for `goal` waits for the current turn to end. */
+export function describeNudgeWaiting(goal: Pick<Goal, 'number'>): string {
+  return `The nudge for ${nameGoal(goal.number)} is sent to Claude once the current turn ends.`
+}
+
+/** What a press of Nudge shows for a goal marked as done since the pane drew it. */
+export function describeAlreadyMarkedDone(goal: Pick<Goal, 'number'>): string {
+  return `${nameGoal(goal.number)} is already marked as done.`
+}
+
+/** The toast for the nudge for `goal` left unsent, with the reason. */
+export function describeNudgeNotSent(goal: Pick<Goal, 'number'>, reason: string): string {
+  return `The nudge for ${nameGoal(goal.number)} was not sent to Claude: ${reason}.`
 }
 
 /** What a press in the Goals pane shows for a goal cleared since the pane drew it. */

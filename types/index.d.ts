@@ -179,6 +179,20 @@ export type IdleStretch = {
   phase: IdlePhase
 }
 
+/** The nudge to finish a goal, pressed in the Goals pane and not yet entered in its session. */
+export type WaitingNudge = {
+  sessionId: string
+  /**
+   * New for each press and for each start of a send, so the press or the send that set it tells
+   * it from one set before.
+   */
+  nudgeId: string
+  goalId: string
+  goalNumber: number
+  /** True once a send took the nudge, so a second send leaves it to that one. */
+  isSending: boolean
+}
+
 /**
  * The value stored for a field: the text typed into a text field, the value of the option picked
  * in a dropdown, or the items added to a list field.
@@ -343,6 +357,8 @@ declare module 'claude-code' {
        * the idle minutes run, before the first turn and after the turn started by the reminder.
        */
       idleStretch: IdleStretch | null
+      /** The nudge of the session waiting to be sent to the model; null while none waits. */
+      waitingNudge: WaitingNudge | null
       /** When the session is next sent the self-check; null before the user typed in it. */
       selfCheckSchedule: SelfCheckSchedule | null
       /**
