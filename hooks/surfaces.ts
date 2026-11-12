@@ -9,10 +9,12 @@ type SurfaceWith<Element extends string> = {
 export type SurfaceWithFields = SurfaceWith<'Input'> & SurfaceWith<'Select'>
 
 // The engine completes the table of elements of every surface with every name, and an element
-// unknown to a surface draws nothing there, so whether an element is drawn follows from the surface
-// alone. The checker compares each value below with the elements declared for its surface.
+// unknown to a surface draws nothing there, so a surface whose table lacks the fields never draws
+// them. A surface whose table has them may still draw an empty Box in their place: a mobile app is
+// sent Input and Select only if it named them when it attached, and a hook cannot tell which app it
+// got. So mobile draws without fields, which works on every app.
 const DRAWS_FIELDS: {
-  [S in RenderSurface]: S extends SurfaceWithFields ? true : false
+  [S in RenderSurface]: S extends SurfaceWithFields ? boolean : false
 } = {
   terminal: true,
   desktop: true,

@@ -51,6 +51,7 @@ const PANE_PROPS: RenderPropsOf['Pane'] = {
 
 const BAND_PROPS: RenderPropsOf['AbovePrompt'] = {
   hasSurvey: false,
+  isCollapsed: false,
   isWorking: false,
   maxRows: 10,
   bodyColumns: 80,
