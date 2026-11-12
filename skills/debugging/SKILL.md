@@ -10,6 +10,11 @@ description: Find and fix cause of bug, failing build, check or test, or limit h
   condition met
 - When something fails or hits limit, first ask whether design is right one, also for code that
   existed before your change
+- Weigh every count found while measuring against what job needs, e.g. files opened, modules
+  loaded, queries sent, rows read. Count far above that need = defect of code. Find what in code
+  causes it before looking at machine, disk or setup
+- Where code runs into machine or setup, make code fit them, as section Limits of
+  `workflow-skills:designing-architecture` describes
 - Work out how failing part would be built cleanly: which phase or component does the work, what it
   has in memory, what it writes for later
 - Where clean design differs from code, rewrite the part or change how it works, in place of fix

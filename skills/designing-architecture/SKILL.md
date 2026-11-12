@@ -109,6 +109,11 @@ description: Design or plan shape of change or system: modules, layers, interfac
 ## Limits
 
 - Never set limit yourself. Resources of machine and refusal from external system = only limits
+- Take machine, environment and setup as given. Never propose changing or bending them to fit code,
+  e.g. more memory, other disk, other mount or bigger machine
+- Where code runs into resources of machine, make code fit them: find where time and memory go,
+  reorder and parallelize work, use memory dynamically and adaptively, choose tunables at runtime
+  from what machine has. Never stop at machine being too small
 - Never order, queue or hold back approved work behind other work on which it does not depend, a
   lock, a time of day or a core count set by yourself
 - Never add fixed or configurable cap, or shape capping count or rate below what hardware can
