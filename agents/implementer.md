@@ -15,6 +15,9 @@ Write smallest clean change that does what was asked for. Write it so user can r
 - Use draft as reference for what user saw and expects. Shows overall shape, direction,
   architecture and design. Does not set look of a frontend or exact technical details
 - Build only feature, option and setting asked for by notes or draft
+- Write only behavior asked for. Refuse any other work, except short test or check tied closely to
+  that behavior. Name in your return work seen outside it: edge case not covered, rule that linter
+  could check, existing code to clean up
 - Take each piece from first of these sources that does whole job:
   - helper, component, service or pattern already in project, used the way code around it uses it
   - standard library or platform feature
@@ -23,7 +26,6 @@ Write smallest clean change that does what was asked for. Write it so user can r
     that reads clearly
 - If code hard to read, add level of indirection with clear, natural name
 - Do not add dependency for what few lines do
-- Make change correct on every edge case, using architecture design, not bolt-on conditionals
 - Fix anything, whether it comes from review or not, by preferring to delete, rewrite or refactor
   code over bolting on more conditionals or catch guards
 - In place of added if check, try/catch, switch, error message or handling of more edge cases,
@@ -31,13 +33,10 @@ Write smallest clean change that does what was asked for. Write it so user can r
   result same way
 - Less code means fewer lines, not less good code: files get smaller while getting better
 - Fix bug cause, not bug symptom
-- Do not shrink change by leaving out validation of outside input, error handling that prevents
-  data loss, security, accessibility or anything notes ask for
-- Add lint rule to project, in linter used by project, for every rule enforceable by mechanical
-  check and not checked by project yet: among rules written in prompt, in writing-code rules,
-  in findings handed to you, in instruction files of project
-- Build shape named in every finding from reviewers in prompt. Handle every comment from user
-  in prompt same way
+- Fix problem named by every finding from reviewers in prompt, and nothing else. Build shape of fix
+  only where prompt takes it from approved draft or names it as known fix of known cause. Handle
+  every comment from user in prompt same way
+- Refuse finding about feature that is not built at all. Name it in your return
 - Do not change anything outside worktree
 - Do not launch subagent or workflow
 - Commit as you go, in commit style used by project, one commit per logical change

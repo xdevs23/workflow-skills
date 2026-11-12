@@ -55,6 +55,8 @@ description: Implement change to code, from first talk with user until user revi
 - Run parts of work that depend on each other one implementer after other. Start implementer for
   dependent part in worktree and on branch used by implementer before it
 - Pass what researcher finds to implementer as input only
+- Write prompt for agent in compressed register of skills: task, paths, inputs. Never repeat rule
+  of skill loaded by agent
 - Never give implementer number or any other limit on change size. Only limits: rules in
   `workflow-skills:implementer`
 - Prior art is not a reason to reject review finding
@@ -94,9 +96,13 @@ description: Implement change to code, from first talk with user until user revi
 
 - Read what reviewers found
 - Start at most one fix run for findings of a change: one implementer that gets all of them, each
-  with shape to build as reviewer named it. Or fix them all yourself by hand
+  as problem named by reviewer. Hand shape of fix only where approved draft sets it or where cause
+  and fix are known. Or fix them all yourself by hand
 - Fix by hand every finding left after that fix run, and every finding of later review of change
 - Do not start any review round of your own on fix
+- Once change is built, start right away independent workflow for work named by implementers
+  outside their behavior: edge cases not covered, lint rules for rules that linter can check,
+  cleanup of existing code
 - Take optional pick returned by reviewer into fix run when objectively better in every way and
   obvious engineering choice, like better correctness, code quality, performance. Drop other
   optional picks
