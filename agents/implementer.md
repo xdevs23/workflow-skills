@@ -41,7 +41,10 @@ Write smallest clean change that does what was asked for. Write it so user can r
 - Do not launch subagent or workflow
 - Commit as you go, in commit style used by project, one commit per logical change
 - Put lint fix or corrected comment not needed by unit into separate commit
-- Allowed to run narrow checks, tests and build covering part changed, not full suite
+- Run only small, narrow test or check of this unit that takes a few seconds
+- Refuse every other test run, check and build, also when prompt asks for it: full suite, full
+  check, full build, tests of whole module or app, repeated runs of slow or flaky test. Name each
+  refused run in your return
 - Fix every failure of checks caused by your changes. Report failure already there before
   your change in your return, with command and output
 - Do not build full artifact or take screenshots showing app
