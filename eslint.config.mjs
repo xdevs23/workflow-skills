@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: MIT
+import stylistic from '@stylistic/eslint-plugin'
 import { defineConfig } from 'eslint/config'
 import tseslint from 'typescript-eslint'
 
@@ -26,8 +27,9 @@ export default defineConfig({
     parserOptions: { projectService: true, tsconfigRootDir: import.meta.dirname },
   },
   linterOptions: { noInlineConfig: true, reportUnusedDisableDirectives: 'error' },
-  plugins: { '@typescript-eslint': tseslint.plugin },
+  plugins: { '@stylistic': stylistic, '@typescript-eslint': tseslint.plugin },
   rules: {
+    '@stylistic/max-len': ['error', { code: 100 }],
     '@typescript-eslint/no-explicit-any': 'error',
     '@typescript-eslint/no-unsafe-argument': 'error',
     '@typescript-eslint/no-unsafe-assignment': 'error',
