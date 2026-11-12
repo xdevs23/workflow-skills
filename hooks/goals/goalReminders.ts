@@ -122,20 +122,47 @@ function describeUnsatisfiedGoal(open: OpenGoals, goal: Goal): string {
   ].join(' ')
 }
 
-/**
- * The prompt sent when the user presses Nudge on `goal`: the goal as the reminder after the idle
- * minutes writes it, between the request to finish it and how to finish it.
- */
-export function describeNudge(open: OpenGoals, goal: Goal): string {
-  return [
-    'The user has noticed that the following goal has not been marked as done for quite a while, ' +
-      'and would like you to work on it and bring it to completion.',
-    describeUnsatisfiedGoal(open, goal),
+/** The goals nudged in one prompt, at least one. */
+export type GoalsToNudge = readonly [Goal, ...Goal[]]
+
+/** The request to finish the goals and how to finish them, around the goals of a nudge. */
+type NudgeTexts = { opening: string; closing: string }
+
+const NUDGE_FOR_ONE_GOAL: NudgeTexts = {
+  opening:
+    'The user has noticed that the following goal has not been marked as done for quite a ' +
+    'while, and would like you to work on it and bring it to completion.',
+  closing:
     'Start working on it as soon as possible, without interrupting the current work. Either ' +
-      'finish the goal cleanly and properly, as the rules require, or mark it as done with ' +
-      `${MARK_GOAL_DONE_TOOL}, so the user can check the result. If the result of the goal is a ` +
-      'draft, open it now. The user will not tolerate more delays that you cannot seriously ' +
-      'explain and back with clear evidence of why you cannot complete the goal.',
+    'finish the goal cleanly and properly, as the rules require, or mark it as done with ' +
+    `${MARK_GOAL_DONE_TOOL}, so the user can check the result. If the result of the goal is a ` +
+    'draft, open it now. The user will not tolerate more delays that you cannot seriously ' +
+    'explain and back with clear evidence of why you cannot complete the goal.',
+}
+
+const NUDGE_FOR_SEVERAL_GOALS: NudgeTexts = {
+  opening:
+    'The user has noticed that the following goals have not been marked as done for quite a ' +
+    'while, and would like you to work on them and bring them to completion.',
+  closing:
+    'Start working on them as soon as possible, without interrupting the current work. Either ' +
+    'finish each goal cleanly and properly, as the rules require, or mark it as done with ' +
+    `${MARK_GOAL_DONE_TOOL}, so the user can check the result. If the result of a goal is a ` +
+    'draft, open it now. The user will not tolerate more delays that you cannot seriously ' +
+    'explain and back with clear evidence of why you cannot complete them.',
+}
+
+/**
+ * The prompt sent when the user presses Nudge on `goals`: the goals as the reminder after the idle
+ * minutes writes them, between the request to finish them and how to finish them.
+ */
+export function describeNudge(open: OpenGoals, goals: GoalsToNudge): string {
+  const texts = goals.length === 1 ? NUDGE_FOR_ONE_GOAL : NUDGE_FOR_SEVERAL_GOALS
+
+  return [
+    texts.opening,
+    ...goals.map(goal => describeUnsatisfiedGoal(open, goal)),
+    texts.closing,
   ].join('\n\n')
 }
 

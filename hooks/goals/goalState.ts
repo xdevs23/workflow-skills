@@ -11,7 +11,7 @@ import type {
   SessionBoard,
   TypedGoalText,
   UnreadBoard,
-  WaitingNudge,
+  WaitingNudges,
 } from '../../types'
 import {
   keepReadOverFailure,
@@ -33,7 +33,7 @@ const followedGoal = atom({ plugin: 'workflow-skills', key: 'followedGoal' } as 
 const isSavingGoal = atom({ plugin: 'workflow-skills', key: 'isSavingGoal' } as const, false)
 const seenBoard = atom({ plugin: 'workflow-skills', key: 'seenBoard' } as const, null)
 const idleStretch = atom({ plugin: 'workflow-skills', key: 'idleStretch' } as const, null)
-const waitingNudge = atom({ plugin: 'workflow-skills', key: 'waitingNudge' } as const, null)
+const waitingNudges = atom({ plugin: 'workflow-skills', key: 'waitingNudges' } as const, null)
 
 /**
  * The board in the state while its session runs, and null otherwise, such as before the session
@@ -324,23 +324,16 @@ export function updateIdleStretch(
   )
 }
 
-export async function readWaitingNudge(
-  $: EngineInterface,
-  sessionId: string,
-): Promise<WaitingNudge | null> {
-  return ofSession(await read($, waitingNudge), sessionId)
-}
-
 /**
- * Replaces the waiting nudge of the session `sessionId` with what `change` makes of it, unless
- * another session runs by now, and returns the nudge of that session in the state after it.
+ * Replaces the waiting nudges of the session `sessionId` with what `change` makes of them, unless
+ * another session runs by now, and returns the nudges of that session in the state after it.
  */
-export function updateWaitingNudge(
+export function updateWaitingNudges(
   $: EngineInterface,
   sessionId: string,
-  change: (nudge: WaitingNudge | null) => WaitingNudge | null,
-): Promise<WaitingNudge | null> {
+  change: (nudges: WaitingNudges | null) => WaitingNudges | null,
+): Promise<WaitingNudges | null> {
   return updateOfSession($, sessionId, change, changeInState =>
-    update($, waitingNudge, changeInState),
+    update($, waitingNudges, changeInState),
   )
 }

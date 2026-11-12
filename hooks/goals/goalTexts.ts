@@ -1,5 +1,6 @@
 import type { DoneMark, Goal } from '../../types'
 import type { HookSubject } from '../hookFailure'
+import { AND_LIST } from '../listFormat'
 import { DONE_LABEL } from '../paneTexts'
 import type { LoopRefused, TextChangedRefused } from './board'
 import { describeStoreFailure } from './boardStore'
@@ -83,9 +84,14 @@ export function describeAlreadyMarkedDone(goal: Pick<Goal, 'number'>): string {
   return `${nameGoal(goal.number)} is already marked as done.`
 }
 
-/** The toast for the nudge for `goal` left unsent, with the reason. */
-export function describeNudgeNotSent(goal: Pick<Goal, 'number'>, reason: string): string {
-  return `The nudge for ${nameGoal(goal.number)} was not sent to Claude: ${reason}.`
+/** The toast for the nudge for `goals` left unsent, with the reason. */
+export function describeNudgeNotSent(
+  goals: readonly [Pick<Goal, 'number'>, ...Pick<Goal, 'number'>[]],
+  reason: string,
+): string {
+  const named = AND_LIST.format(goals.map(goal => nameGoal(goal.number)))
+
+  return `The nudge for ${named} was not sent to Claude: ${reason}.`
 }
 
 /** What a press in the Goals pane shows for a goal cleared since the pane drew it. */
