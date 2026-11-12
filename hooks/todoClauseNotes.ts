@@ -3,12 +3,12 @@ import type { Caught, EngineInterface, MatchedHook, On } from 'claude-code'
 import { isMainConversation } from './conversation'
 import { EVERY_EVENT } from './everyEvent'
 import type { EveryEvent } from './everyEvent'
-import { LETTER_OR_DIGIT, maskQuotedText } from './quotedText'
+import { NO_LETTER_AFTER, maskQuotedText } from './quotedText'
 import { callToolWithNote } from './sendToModel'
 import { copyTodo, takeTodoChange } from './todoCopy'
 import type { TodoChange } from './todoCopy'
 
-const AND_CLAUSE = new RegExp(String.raw`, and(?!${LETTER_OR_DIGIT})`, 'u')
+const AND_CLAUSE = new RegExp(`, and${NO_LETTER_AFTER}`, 'u')
 const SENTENCES = new Intl.Segmenter('en', { granularity: 'sentence' })
 
 /**

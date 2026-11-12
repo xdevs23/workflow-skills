@@ -3,7 +3,7 @@ import type { MatchedHook, On } from 'claude-code'
 import type { Cadence } from '../../types'
 import { EVERY_EVENT } from '../everyEvent'
 import type { EveryEvent } from '../everyEvent'
-import { LETTER_OR_DIGIT, withoutQuotedText } from '../quotedText'
+import { NO_LETTER_AFTER, NO_LETTER_BEFORE, withoutQuotedText } from '../quotedText'
 import { stopWithNote } from '../sendToModel'
 import { CadenceProblem, FieldKind, listKind } from './cadenceKind'
 import type { CadenceKind, ListedKind } from './cadenceKind'
@@ -27,9 +27,6 @@ const UNREADABLE_PHRASES_PROBLEM = new CadenceProblem(
     'add them again.',
 )
 
-/** Keeps a phrase from matching inside a longer word, such as "pass" inside "password". */
-const NO_LETTER_BEFORE = `(?<!${LETTER_OR_DIGIT})`
-const NO_LETTER_AFTER = `(?!${LETTER_OR_DIGIT})`
 const SPACE_BETWEEN_WORDS = String.raw`\s+`
 /** The characters with a meaning of their own in a pattern, written with a backslash to match. */
 const PATTERN_SYNTAX = /[\\^$.*+?()[\]{}|/]/gu

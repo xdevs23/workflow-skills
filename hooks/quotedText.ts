@@ -1,5 +1,8 @@
 /** A letter or a digit of any script. */
 export const LETTER_OR_DIGIT = String.raw`[\p{L}\p{N}]`
+/** Prevents a match inside a longer word, such as "pass" inside "password". */
+export const NO_LETTER_BEFORE = `(?<!${LETTER_OR_DIGIT})`
+export const NO_LETTER_AFTER = `(?!${LETTER_OR_DIGIT})`
 
 /** \x60 is the backtick, which a template literal cannot hold unescaped. */
 const FENCED_CODE =
