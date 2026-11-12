@@ -1,5 +1,5 @@
 import type { Matcher, SeenToolCall, ToolCall } from './matcher'
-import { regExpLiteralOf } from './regExpLiteral'
+import { regExpLiteralOf } from '../regExpLiteral'
 
 /** Patterns over the path of a file, each of which matches on its own. */
 export type FilePatterns = {

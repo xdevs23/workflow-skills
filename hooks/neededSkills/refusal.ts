@@ -11,7 +11,7 @@ import type { Load } from './loadKind'
 import { loadsMissingFrom } from './loadLedger'
 import type { ToolCall } from './matcher'
 import { loadsNeededBy } from './neededLoads'
-import { regExpLiteralOf } from './regExpLiteral'
+import { regExpLiteralOf } from '../regExpLiteral'
 
 /** The matcher of the calls to the tools of this plugin, whose names share the prefix. */
 export const PLUGIN_TOOLS = { tool: new RegExp(`^${regExpLiteralOf(toolName(''))}`, 'u') }

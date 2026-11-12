@@ -7,7 +7,7 @@ import { test } from '../testDeclaration'
 import { PROJECT_ROOT, SUBAGENT, callSkillTool } from '../testSupport'
 import { requestModel, startLedgerSession } from './ledgerTestSupport'
 import type { LedgerSession } from './ledgerTestSupport'
-import { regExpLiteralOf } from './regExpLiteral'
+import { regExpLiteralOf } from '../regExpLiteral'
 
 const WRITING_CODE = `${PLUGIN}:writing-code`
 const COMMIT_MESSAGES = `${PLUGIN}:commit-messages`

@@ -1,5 +1,5 @@
 import type { Matcher } from './matcher'
-import { regExpLiteralOf } from './regExpLiteral'
+import { regExpLiteralOf } from '../regExpLiteral'
 
 /**
  * Matches a Bash call whose command text runs one of `commands`, each given as its words, such as
