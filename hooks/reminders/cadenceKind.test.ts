@@ -1,5 +1,6 @@
 import { describe, expect } from 'claude-code/testing'
 
+import { textContainingInOrder } from '../orderedTextTestSupport'
 import { test } from '../testDeclaration'
 import type { Reminder } from '../../types'
 import {
@@ -253,18 +254,31 @@ describe('a cadence kind plugged into the core', () => {
     })
   })
 
-  test('the note gives the model the texts of the reminders due, and nothing else', () => {
+  test('the note gives the model the texts of the reminders due by number, no cadence', () => {
     const due = enabledRemindersOf(WORD_KIND, [
       reminderOf(3, { text: 'Read the spec again.' }),
       reminderOf(1, { text: 'Start a build.' }),
     ])
 
     expect(describeReminderNote(due)).toEqual({
-      text:
-        'Reminder from the user: Start a build.\n\nReminder from the user: Read the spec again.',
+      text: textContainingInOrder(['Start a build.', 'Read the spec again.'], ['deploy']),
       line: 'Reminders: reminders 1 and 3 sent to Claude',
     })
     expect(describeReminderNote(due.slice(0, 1))?.line).toBe('Reminders: reminder 1 sent to Claude')
     expect(describeReminderNote([])).toBeUndefined()
+  })
+
+  test('the note has one paragraph per reminder, then one closing paragraph', () => {
+    const paragraphs = describeReminderNote([
+      reminderOf(1, { text: 'Start a build.' }),
+      reminderOf(2, { text: 'Read the spec again.' }),
+    ])?.text.split('\n\n')
+
+    expect(paragraphs).toEqual([
+      expect.stringContaining('Start a build.'),
+      expect.stringContaining('Read the spec again.'),
+      expect.any(String),
+    ])
+    expect(paragraphs?.[2]).not.toContain('Read the spec again.')
   })
 })

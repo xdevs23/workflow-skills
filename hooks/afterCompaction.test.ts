@@ -7,6 +7,7 @@ import { goalRecordOf } from './goals/boardRecord'
 import { sessionScope } from './goals/boardScope'
 import { AFTER_COMPACTION } from './reminders/eventCadence'
 import { enabledRecordOf, reminderRecordOf } from './reminders/reminderRecord'
+import { textContainingInOrder } from './orderedTextTestSupport'
 import { test } from './testDeclaration'
 import {
   FIRST_SESSION,
@@ -35,7 +36,7 @@ const OPEN_GOALS = [
   GOALS_NOT_EXHAUSTIVE,
 ].join('\n')
 
-const REMINDER = `Reminder from the user: ${READ_SPEC}`
+const GOALS_THEN_REMINDER = textContainingInOrder([OPEN_GOALS, READ_SPEC])
 
 /** The records of the open goal 1 and of reminder 1, sent after a compaction and switched on. */
 function storedGoalAndReminder(): Map<string, unknown> {
@@ -67,7 +68,7 @@ describe('the goals and the reminders after a compaction', () => {
         const session = await startSession($, on, { stored: storedGoalAndReminder() })
         await startTurn($)
 
-        expect(await compact($, { trigger })).toEqual([`${OPEN_GOALS}\n\n${REMINDER}`])
+        expect(await compact($, { trigger })).toEqual([GOALS_THEN_REMINDER])
         await session.clock.settle()
         expect(promptsOfPlugin(session)).toEqual([])
         expect(session.chatLines).toEqual([])
@@ -81,7 +82,7 @@ describe('the goals and the reminders after a compaction', () => {
 
         expect(await compact($, { trigger })).toEqual([])
         await session.clock.settle()
-        expect(promptsOfPlugin(session)).toEqual([`${OPEN_GOALS}\n\n${REMINDER}`])
+        expect(promptsOfPlugin(session)).toEqual([GOALS_THEN_REMINDER])
         expect(session.chatLines).toEqual([])
       },
     )
@@ -108,7 +109,7 @@ describe('the goals and the reminders after a compaction', () => {
       await startTurn($)
       await compact($, { agentId: SUBAGENT })
 
-      expect(await compact($)).toEqual([`${OPEN_GOALS}\n\n${REMINDER}`])
+      expect(await compact($)).toEqual([GOALS_THEN_REMINDER])
     },
   )
 
@@ -124,7 +125,7 @@ describe('the goals and the reminders after a compaction', () => {
       await expect(compact($)).rejects.toThrow(VETO)
       expect(promptsOfPlugin(session)).toEqual([])
       expect(session.chatLines).toEqual([])
-      expect(await compact($, { trigger: 'manual' })).toEqual([`${OPEN_GOALS}\n\n${REMINDER}`])
+      expect(await compact($, { trigger: 'manual' })).toEqual([GOALS_THEN_REMINDER])
     },
   )
 

@@ -1,6 +1,7 @@
 import { describe, expect } from 'claude-code/testing'
 import type { On } from 'claude-code'
 
+import { textContainingInOrder } from '../orderedTextTestSupport'
 import { test } from '../testDeclaration'
 import { FIRST_SESSION, SUBAGENT, startSession, stopTurn } from '../testSupport'
 import { CadenceProblem, readSettings } from './cadenceKind'
@@ -78,16 +79,14 @@ describe('the phrases of a card set to the kind "when Claude says"', () => {
 
 describe('the end of a turn on a message with a phrase of a reminder', () => {
   test(
-    'the reminders switched on with a phrase in the message are sent by their texts alone',
+    'the reminders switched on with a phrase in the message are sent by their texts',
     async ($, on) => {
       stopBeneath(on)
       const session = await startSession($, on, { stored: storedReminders() })
 
       const stopped = await stopTurn($, { message: TESTS_PASS })
 
-      expect(stopped.block).toBe(
-        `Reminder from the user: ${MARK_GOAL}\n\nReminder from the user: ${START_BUILD}`,
-      )
+      expect(stopped.block).toEqual(textContainingInOrder([MARK_GOAL, START_BUILD], [SCREENSHOT]))
       expect(session.chatLines).toContain('Reminders: reminders 1 and 3 sent to Claude')
     },
   )
@@ -100,7 +99,7 @@ describe('the end of a turn on a message with a phrase of a reminder', () => {
 
       const stopped = await stopTurn($, { message: 'The suite is green, so I FINISHED\ntesting.' })
 
-      expect(stopped.block).toBe(`Reminder from the user: ${MARK_GOAL}`)
+      expect(stopped.block).toEqual(textContainingInOrder([MARK_GOAL], [START_BUILD, SCREENSHOT]))
     },
   )
 

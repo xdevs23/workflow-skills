@@ -4,6 +4,7 @@ import type { Engine } from 'claude-code/testing'
 import { test } from '../testDeclaration'
 import type { Cadence } from '../../types'
 import { EVERY_EVENT } from '../everyEvent'
+import { textContainingInOrder } from '../orderedTextTestSupport'
 import {
   FIRST_SESSION,
   mountPane,
@@ -37,8 +38,9 @@ const READ_SPEC = 'Read .cache/specs/login-fix.md again before you go on.'
 
 const EVERY_HOUR: Cadence = { kind: TIME_KIND.id, values: { amount: '1', unit: TimeUnit.Hours } }
 
-function noteOf(text: string): string {
-  return `Reminder from the user: ${text}`
+/** The note that contains the reminder texts `first` and `rest` in the order given. */
+function noteOf(first: string, ...rest: string[]) {
+  return textContainingInOrder([first, ...rest])
 }
 
 /** The records of the reminders `reminders` of FIRST_SESSION, added at NOW. */
@@ -170,7 +172,7 @@ describe('the card of a reminder sent every given time', () => {
 
 describe('a reminder sent every given time', () => {
   test(
-    'while the session is idle, the text alone is sent as a prompt at every due time',
+    'while the session is idle, the text is sent as a prompt at every due time',
     async ($, on) => {
       const session = await startWithHourlyReminder($, on)
       await session.clock.advance(HOUR - 1)
@@ -261,9 +263,7 @@ describe('a reminder sent every given time', () => {
       await startTurn($)
       await session.clock.advance(HOUR)
 
-      expect(await notesOfToolResult($)).toEqual([
-        `${noteOf(CHECK_CI)}\n\n${noteOf(UPDATE_SPEC)}`,
-      ])
+      expect(await notesOfToolResult($)).toEqual([noteOf(CHECK_CI, UPDATE_SPEC)])
       expect(sentLinesOf(session)).toEqual(['Reminders: reminders 1 and 2 sent to Claude'])
     },
   )

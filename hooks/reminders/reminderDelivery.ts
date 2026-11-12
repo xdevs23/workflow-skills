@@ -12,7 +12,8 @@ import { PANE_TITLE } from './reminderTexts'
 
 // What a cadence module calls once the cadence of its reminders comes: it reads the reminders of
 // its kind that are switched on, and sends the note on those due through the channel of its event.
-// The note has the texts of the reminders alone, never their cadence or the other reminders.
+// The note has the texts of the reminders and a closing request to act on them, never their cadence
+// or the other reminders.
 
 /**
  * A reminder of a kind, switched on, with its settings as its kind read them, and the time it was
@@ -51,6 +52,12 @@ export function enabledRemindersOf<Settings, Field extends string>(
   })
 }
 
+/** The closing paragraph of every note, which asks the model to act on the reminders before it. */
+const ACT_ON_REMINDERS =
+  'Take every reminder from the user seriously and act on it. Never treat a reminder as noise. ' +
+  'When a reminder is ignored, the work it asks for goes undone, mistakes follow, and the user ' +
+  'gets extremely upset.'
+
 /** The note on the reminders `due`, which are sent at once, or undefined when none is due. */
 export function describeReminderNote(
   due: readonly Pick<Reminder, 'number' | 'text'>[],
@@ -61,9 +68,10 @@ export function describeReminderNote(
   const sorted = sortedByNumber(due)
   const numbers = AND_LIST.format(sorted.map(({ number }) => `${number}`))
   const named = sorted.length === 1 ? `reminder ${numbers}` : `reminders ${numbers}`
+  const reminders = sorted.map(({ text }) => `Reminder from the user: ${text}`)
 
   return {
-    text: sorted.map(({ text }) => `Reminder from the user: ${text}`).join('\n\n'),
+    text: [...reminders, ACT_ON_REMINDERS].join('\n\n'),
     line: `${PANE_TITLE}: ${named} sent to Claude`,
   }
 }

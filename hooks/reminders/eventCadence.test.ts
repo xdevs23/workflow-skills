@@ -1,6 +1,7 @@
 import { describe, expect } from 'claude-code/testing'
 import type { Engine } from 'claude-code/testing'
 
+import { textContainingInOrder } from '../orderedTextTestSupport'
 import { test } from '../testDeclaration'
 import type { Reminder } from '../../types'
 import {
@@ -61,6 +62,9 @@ const NOT_SENT_TOAST = new RegExp(
   'u',
 )
 
+/** The text sent after a compaction when READ_SPEC is due and START_BUILD is not. */
+const AFTER_COMPACTION_NOTE = textContainingInOrder([READ_SPEC], [START_BUILD])
+
 /** The transcript lines about the reminders, which the model does not read. */
 function reminderLinesOf(session: Session): string[] {
   return session.chatLines.filter(line => line.startsWith('Reminders: '))
@@ -78,7 +82,7 @@ describe('the reminders sent after a background task', () => {
       })
 
       expect((await notifyTaskEnded($)).context).toEqual([
-        `Reminder from the user: ${START_BUILD}\n\nReminder from the user: ${CHECK_CI}`,
+        textContainingInOrder([START_BUILD, CHECK_CI], [READ_SPEC]),
       ])
       expect(reminderLinesOf(session)).toEqual(['Reminders: reminders 1 and 3 sent to Claude'])
     },
@@ -110,7 +114,7 @@ describe('the reminders sent after a compaction', () => {
       const session = await startSession($, on, { stored: storedRemindersOf(BOTH_ON) })
       await startTurn($)
 
-      expect(await compact($)).toEqual([`Reminder from the user: ${READ_SPEC}`])
+      expect(await compact($)).toEqual([AFTER_COMPACTION_NOTE])
       await session.clock.settle()
       expect(promptsOfPlugin(session)).toEqual([])
       expect(reminderLinesOf(session)).toEqual([])
@@ -124,7 +128,7 @@ describe('the reminders sent after a compaction', () => {
 
       expect(await compact($)).toEqual([])
       await session.clock.settle()
-      expect(promptsOfPlugin(session)).toEqual([`Reminder from the user: ${READ_SPEC}`])
+      expect(promptsOfPlugin(session)).toEqual([AFTER_COMPACTION_NOTE])
       expect(reminderLinesOf(session)).toEqual([])
     },
   )
@@ -137,7 +141,7 @@ describe('the reminders sent after a compaction', () => {
       await compact($)
       await session.clock.settle()
 
-      expect(promptsOfPlugin(session)).toEqual([`Reminder from the user: ${READ_SPEC}`])
+      expect(promptsOfPlugin(session)).toEqual([AFTER_COMPACTION_NOTE])
       expect(session.toasts).toEqual([expect.stringMatching(NOT_SENT_TOAST)])
       expect(session.toasts[0]).toContain(': a stop hook is active.')
     },
