@@ -31,8 +31,14 @@ description: Visual design of screen or page
   width
 - Build layout for every width between phone and widest window, not only for widths checked. As
   window narrows, parts reflow or shrink. Never let them slide over text or control of other part
-- Layer picture and type in depth, so they overlap or cross. Never let label, number or caption
-  touch other text, line of chart or edge of shape, also once input of reader changes page
+- Lay out parts over whole window at every width. Never leave large empty area beside or below
+  parts that sit together in one corner of it
+- Place parts so that no gap remains that neighbouring part could fill. Never leave one part alone
+  in row or column of its own
+- Keep items that eye scans one after another close together, so eye travels short way from each
+  to next. Never stretch line of such items across whole wide window
+- Never let picture or object cover letter of text, also once reader moves it. Never let label,
+  number or caption touch other text, line of chart or edge of shape, also once input of reader changes page
 - Never let one part cover control, text or label of another part, also once input of reader
   changes page
 
@@ -40,7 +46,8 @@ description: Visual design of screen or page
 
 - Give each row of table one form: text, or one kind of mark. Never mix chips, bars and captions
   of different colours in one row
-- Set each level of text apart from next in several ways at once
+- Give each role of text own combination of size, weight and colour, in lists, sidebars and rows
+  too. Neighbouring roles differ in at least two of them
 - Show number, state, schedule or contrast as shape that reads faster than sentence, where one
   exists. Then cut sentence that says it again
 - Let each graphic answer one question at a glance. Split graphic that needs study to read
@@ -49,7 +56,8 @@ description: Visual design of screen or page
 - Draw icon, scale or mark in form taken from subject of screen. Form borrowed from other device
   or domain misleads
 - Never draw button as pill with fully rounded ends. Take shape of buttons from idea of page
-- Draw object in true proportions of real thing. Never stretch or thin it to fit row
+- Draw object and person in true proportions of real thing and human body. Never stretch or thin
+  it to fit row
 - Draw map with true geometry of place and clear order: labels free of collisions, one symbol for
   each kind of place, few labels
 - Leave out legend for marks whose form shows their meaning
@@ -58,7 +66,15 @@ description: Visual design of screen or page
 - Vary size and rhythm of parts, so neighbouring parts differ
 - Keep gap between separate parts wider than gap inside part
 - Align controls repeated in one column to common edges, at same width
-- Centre text of control on its height. Text of mixed sizes in one control shares one baseline
+- Start first control of each row at edge of label above it, in line with fields beside it. Never
+  indent row of controls, e.g. dates between arrows
+- Put heading of group of controls inside card of that group
+- Show each fact once per screen. Merge parts that show same fact in other form. Never repeat
+  same list of names in every part
+- Centre text of control on its height, and on its length where text stands alone in control.
+  Text of mixed sizes in one control shares one baseline
+- Set Latin text horizontally wherever reader needs to read it. Turn it only for label that
+  repeats what page already says
 - Give width to main content. Place side fact where it does not take width from
   main content
 - Keep few parts visible at once, one of them focal. Page with many competing parts looks busy
@@ -137,6 +153,10 @@ description: Visual design of screen or page
   where two surfaces blend
 - Finish every edge, control and empty state
 - Draw each control with one frame. Never draw second outline around or inside it
+- Run border along one side of part straight to its ends, clipped by rounded corner of part.
+  Never bend it round corner
+- Draw control floating over changing backdrop as frosted glass with subtle specular rim, in colour
+  that contrasts with whole page or that adapts to backdrop under it
 
 ## Colour and type
 
@@ -149,15 +169,33 @@ description: Visual design of screen or page
   system setting set only that property. Dark theme sets new values of semantic tokens and
   nothing else
 - Tune palette as one family: few related hues, even steps of lightness and chroma between them
+- Colour fields, cards and controls from palette of surface under them. Never set white or other
+  tone outside palette on tinted page
+- Set regions of app screen apart by clear step of lightness or hue, so each reads as its own at
+  first glance
 - Draw object set apart from page in hue of same family
 - Give large surface full chroma only when object or texture fills it. Keep other large
   surfaces calm
 - Give parts of page contrast in hue, surface or density, so page does not read as one tone
+- Keep colours of page in harmony: large areas in calm tones close in lightness and saturation,
+  strong colour only on small parts. Never set large saturated field hard against pale one
+- Leave room between text and edge of control, tab or card holding it
 - Give text at least 3:1 contrast from 32 px up, at least 4.5:1 below 32 px
+- Give text that only just reaches its contrast plain surface of its own behind it
+- Set reading text on clearly light or clearly dark surface. Never on mid-tone surface
+- Keep accent colour for actions, states and marks reader needs to find. Never spend it on lines
+  and rules
 - Measure contrast in every theme of screen, on every background under text
 - Choose faces for their character, from fonts that project has or user approved. Pair one display
   face with character with plain face for body
+- Choose face with strokes thick enough to read at its size on its surface. Never set text that
+  reader must read in face with hairline strokes
 - Give numbers in columns and lists fixed-width digits
+- Size control whose label changes while reader watches, e.g. percentage or counter, for its
+  widest label. Never let control change size with its value
+- Set text in monospace face only for code, text in backticks, or where fixed width tells items
+  apart. Set number in monospace only where misreading one digit as another is costly. Elsewhere
+  give plain face fixed-width digits and slashed zero
 - Set every value and every text read line by line in plain body face at reading size. Never in
   display face, outline, perspective or letterforms imitating device
 
@@ -165,6 +203,7 @@ description: Visual design of screen or page
 
 - Let motion show arrival, change or answer to pointer or touch
 - Let each motion settle and stop. Only indicator of work in progress runs on, until work ends
+- Animate only what changed. Never play motion again for content already on screen
 - Give screen one motion of its own, used at same moment in every part
 - Write base styles in finished state
 - Add motion only where `prefers-reduced-motion` allows it
@@ -179,6 +218,13 @@ description: Visual design of screen or page
   it, without holes, floating pieces or dark artefacts
 - Place 3D objects so that no two cut into each other. Objects stand apart or touch at surface,
   as real objects do
+- Shape each feature of 3D object as on real thing: sunk where real thing is cut or hollow, raised
+  where it is raised. Compare object with picture of real thing
+- Render 3D at pixel ratio of screen, with antialiasing. Blend edge of cut-out texture, e.g. leaf
+  or label, by its alpha. Look at edges zoomed in: never stair steps, specks or slivers
+- Light metal with soft, broad highlights. Draw brushed finish as fine streaks, never as hard
+  stripes
+- Render gem and glass with transparency, refraction and inner glint
 - Look at every 3D object at real size before returning page
 
 ## Speed

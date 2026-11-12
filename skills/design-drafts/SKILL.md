@@ -6,11 +6,12 @@ description: Draw several design drafts for user to choose from
 ## Before you draw
 
 - Draw as many drafts as user asks for. Three when user does not name a number
-- Read code of screen changed by drafts and of shell around it, e.g. taskbar or status bar: layout,
-  theme and its color values, fonts, icon set, resolution and density of target screen
-- Where screen does not have code yet, take resolution, fonts and shell from what user named. Ask
-  for resolution in question at end of message when user did not name one, and draw shell as plain
-  frame labeled as stand-in
+- Read code of screen changed by drafts: layout, theme and its color values, fonts, icon set,
+  resolution and density of target screen
+- Draw screen of app alone. Never draw status bar, taskbar, frame of device or other part of
+  operating system around it. Draw shell only where drafts change shell itself
+- Where screen does not have code yet, take resolution and fonts from what user named. Ask for
+  resolution in question at end of message when user did not name one
 - Keep drafts in folder of drafts in project cache defined by `workflow-skills:local-cache`
 - Write each page as standalone HTML file, all CSS inside it, as raw CSS or Tailwind classes
 - Draw draft of app screen in dark and light theme. Follow system setting
