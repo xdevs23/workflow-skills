@@ -14,6 +14,11 @@ const WRITING_TESTS = 'workflow-skills:writing-tests'
 const CHANGING_THE_BUILD = 'workflow-skills:changing-the-build'
 const PULL_REQUEST = 'workflow-skills:pull-request'
 const PR_COMMENT_REPLIES = 'workflow-skills:pr-comment-replies'
+const TODO_MD = 'workflow-skills:todo-md'
+const HYGIENE = 'workflow-skills:hygiene'
+const WORKFLOWS = 'workflow-skills:workflows'
+const VISUAL_DECISIONS = 'workflow-skills:visual-decisions'
+const DESIGN_DRAFTS = 'workflow-skills:design-drafts'
 
 const KOTLIN = 'skills/writing-code/languages/kotlin.md'
 const RUST = 'skills/writing-code/languages/rust.md'
@@ -33,11 +38,13 @@ function inProject(path: string): SeenToolCall {
   }
 }
 
-function bash(command: string): SeenToolCall {
-  return {
-    call: { tool: 'Bash', input: { command }, isReadOnly: false },
-    projectRoot: PROJECT_ROOT,
-  }
+function bash(command: string, isReadOnly = false): SeenToolCall {
+  return { call: { tool: 'Bash', input: { command }, isReadOnly }, projectRoot: PROJECT_ROOT }
+}
+
+/** A call to `tool` without arguments, made in the main conversation or by the agent `agentId`. */
+function calling(tool: string, agentId?: string): SeenToolCall {
+  return { call: { tool, input: {}, agentId, isReadOnly: false }, projectRoot: PROJECT_ROOT }
 }
 
 /** The skills and files named by the rows of the table that match `seen`, in table order. */
@@ -111,6 +118,36 @@ describe('rows for files of other skills', () => {
     expect(needsOf(inProject('tests/checkout.sh'))).toEqual({ skills: [WRITING_TESTS], files: [] })
   })
 
+  test('TODO.md at any depth needs todo-md beside writing-style', () => {
+    for (const path of ['TODO.md', 'app/TODO.md']) {
+      expect(needsOf(inProject(path))).toEqual({ skills: [WRITING_STYLE, TODO_MD], files: [] })
+    }
+  })
+
+  test('a name that only resembles TODO.md does not need todo-md', () => {
+    expect(needsOf(inProject('todo.md'))).toEqual({ skills: [WRITING_STYLE], files: [] })
+    expect(needsOf(inProject('TODO.md.orig'))).toEqual(NOTHING)
+  })
+
+  test('an HTML file in a folder named specs or drafts needs the skill for that folder', () => {
+    const cases: readonly (readonly [path: string, skill: string])[] = [
+      ['specs/plan.html', VISUAL_DECISIONS],
+      ['.cache/specs/plan/index.html', VISUAL_DECISIONS],
+      ['drafts/home.html', DESIGN_DRAFTS],
+      ['web/drafts/home/index.html', DESIGN_DRAFTS],
+    ]
+    for (const [path, skill] of cases) {
+      expect(needsOf(inProject(path))).toEqual({ skills: [skill], files: [] })
+    }
+  })
+
+  test('an HTML file outside those folders, or another file inside them, needs nothing', () => {
+    const paths = ['web/index.html', 'specs/plan.json', 'drafts/notes.txt', 'specs-old/plan.html']
+    for (const path of paths) {
+      expect(needsOf(inProject(path))).toEqual(NOTHING)
+    }
+  })
+
   test('a build file needs changing-the-build', () => {
     for (const path of ['web/package.json', 'core/Cargo.toml', 'build.gradle', 'Dockerfile']) {
       expect(needsOf(inProject(path))).toEqual({ skills: [CHANGING_THE_BUILD], files: [] })
@@ -133,6 +170,8 @@ describe('rows for shell commands', () => {
       'git commit --amend --no-edit',
       'git add app/src/Profile.kt',
       'cd app && git   commit -F msg.txt',
+      'git -C app commit -m "fix badge"',
+      'git -c core.quotepath=off add app',
     ]
     for (const command of commands) {
       expect(needsOf(bash(command))).toEqual({
@@ -142,10 +181,36 @@ describe('rows for shell commands', () => {
     }
   })
 
+  test('git push needs hygiene, also with options of git before the subcommand', () => {
+    const commands = [
+      'git push origin main',
+      'git -C app push',
+      'git -c a=b push',
+      'git --no-pager push',
+      'git --git-dir=app/.git -C app push',
+      'cd app && git push --force',
+    ]
+    for (const command of commands) {
+      expect(needsOf(bash(command))).toEqual({ skills: [HYGIENE], files: [] })
+    }
+  })
+
   test('other git commands need nothing', () => {
-    for (const command of ['git rebase main', 'git merge feature', 'git commit-tree HEAD^{tree}']) {
+    const commands = [
+      'git rebase main',
+      'git merge feature',
+      'git commit-tree HEAD^{tree}',
+      'git push-to-checkout',
+      'git -C app push-to-checkout',
+      'git -C app log',
+    ]
+    for (const command of commands) {
       expect(needsOf(bash(command))).toEqual(NOTHING)
     }
+  })
+
+  test('a read-only command with the words of a row needs nothing', () => {
+    expect(needsOf(bash('git log --grep "git push"', true))).toEqual(NOTHING)
   })
 
   test('creating or editing a pull request needs pull-request', () => {
@@ -162,6 +227,20 @@ describe('rows for shell commands', () => {
   })
 })
 
+describe('rows for calls to a tool', () => {
+  test('Workflow and Agent need workflows in the main conversation', () => {
+    for (const tool of ['Workflow', 'Agent']) {
+      expect(needsOf(calling(tool))).toEqual({ skills: [WORKFLOWS], files: [] })
+    }
+  })
+
+  test('Workflow and Agent called by a subagent need nothing', () => {
+    for (const tool of ['Workflow', 'Agent']) {
+      expect(needsOf(calling(tool, 'agent-1'))).toEqual(NOTHING)
+    }
+  })
+})
+
 describe('tools the rows do not read', () => {
   test('a tool that does not write the file or run the command needs nothing', () => {
     const read: SeenToolCall = {
@@ -174,5 +253,9 @@ describe('tools the rows do not read', () => {
     }
 
     expect(needsOf(read)).toEqual(NOTHING)
+  })
+
+  test('a TODO.md written by a shell command needs nothing, as only Edit and Write count', () => {
+    expect(needsOf(bash('echo "- check the build" >> TODO.md'))).toEqual(NOTHING)
   })
 })

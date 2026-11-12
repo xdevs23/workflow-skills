@@ -2,7 +2,6 @@ import type { EngineInterface, MatchedHook, Origin } from 'claude-code'
 
 import { isMadeByModel } from '../conversation'
 import type { EveryEvent } from '../everyEvent'
-import { AND_LIST } from '../listFormat'
 import { toolName } from '../names'
 import { isRecord } from '../pluginStore'
 import { readLoop } from './ledgerState'
@@ -11,6 +10,7 @@ import type { Load } from './loadKind'
 import { loadsMissingFrom } from './loadLedger'
 import type { ToolCall } from './matcher'
 import { loadsNeededBy } from './neededLoads'
+import { describeRefusal } from './refusalText'
 import { regExpLiteralOf } from '../regExpLiteral'
 
 /** The matcher of the calls to the tools of this plugin, whose names share the prefix. */
@@ -84,8 +84,5 @@ function describeMissingLoads(missing: readonly Load[], pluginRoot: string): str
     ),
   )
 
-  return (
-    'This call did not run, since it needs rules that this conversation has not loaded: ' +
-    `${AND_LIST.format(steps)}, then retry this call.`
-  )
+  return describeRefusal(steps)
 }

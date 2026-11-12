@@ -12,6 +12,8 @@ import { regExpLiteralOf } from '../regExpLiteral'
 const WRITING_CODE = `${PLUGIN}:writing-code`
 const COMMIT_MESSAGES = `${PLUGIN}:commit-messages`
 const WRITING_STYLE = `${PLUGIN}:writing-style`
+const TODO_MD = `${PLUGIN}:todo-md`
+const WORKFLOWS = `${PLUGIN}:workflows`
 const KOTLIN_FILE = `${PROJECT_ROOT}/app/src/Profile.kt`
 
 /**
@@ -24,15 +26,11 @@ const KOTLIN_RULES = String.raw`(/\S+/skills/writing-code/languages/kotlin\.md)`
 const RAN = 'ran'
 
 /**
- * The denial that requires `steps`, a source of a regular expression, after the sentence by which
- * the engine names the plugin that denied the call.
+ * The denial that contains `steps`, sources of regular expressions, in this order. The words
+ * between the steps belong to the denial, and a test does not match them.
  */
-function denialRequiring(steps: string): RegExp {
-  const intro =
-    `denied by plugin ${PLUGIN}: ` +
-    'This call did not run, since it needs rules that this conversation has not loaded: '
-
-  return new RegExp(`${regExpLiteralOf(intro)}${steps}, then retry this call\\.$`, 'u')
+function denialNaming(...steps: readonly string[]): RegExp {
+  return new RegExp(steps.join('.*'), 'su')
 }
 
 const LOAD_WRITING_CODE = `load ${regExpLiteralOf(WRITING_CODE)} with the Skill tool`
@@ -40,7 +38,12 @@ const LOAD_WRITING_STYLE = `load ${regExpLiteralOf(WRITING_STYLE)} with the Skil
 const LOAD_COMMIT_SKILLS = `load ${regExpLiteralOf(COMMIT_MESSAGES)} and ${regExpLiteralOf(
   WRITING_STYLE,
 )} with the Skill tool`
-const LOAD_ALL_FOR_KOTLIN = denialRequiring(`${LOAD_WRITING_CODE} and read ${KOTLIN_RULES}`)
+const LOAD_TODO_SKILLS = `load ${regExpLiteralOf(WRITING_STYLE)} and ${regExpLiteralOf(
+  TODO_MD,
+)} with the Skill tool`
+const LOAD_TODO_MD = `load ${regExpLiteralOf(TODO_MD)} with the Skill tool`
+const LOAD_WORKFLOWS = `load ${regExpLiteralOf(WORKFLOWS)} with the Skill tool`
+const LOAD_ALL_FOR_KOTLIN = denialNaming(LOAD_WRITING_CODE, `read ${KOTLIN_RULES}`)
 
 /** Starts a session in which Edit and Bash run beneath the plugin. */
 function startSessionThatRuns($: Engine, on: On): Promise<LedgerSession> {
@@ -58,6 +61,10 @@ function editKotlinFile($: Engine, agentId?: string) {
     new_string: 'val badge = Badge.Member',
     ...(agentId === undefined ? {} : { agentId }),
   })
+}
+
+function editFile($: Engine, file_path: string) {
+  return $.tool.call({ tool: 'Edit', file_path, old_string: 'draft', new_string: 'final' })
 }
 
 /** Reads the file at the path in the first group of `denial`. */
@@ -103,7 +110,10 @@ describe('the denial of a call that needs a skill not loaded', () => {
     await requestModel($, ledger, 40_000)
     await callSkillTool($, WRITING_CODE)
 
-    expect((await editKotlinFile($)).text).toMatch(denialRequiring(`read ${KOTLIN_RULES}`))
+    const { text } = await editKotlinFile($)
+
+    expect(text).toMatch(denialNaming(`read ${KOTLIN_RULES}`))
+    expect(text).not.toContain(WRITING_CODE)
   })
 
   test('git commit runs once commit-messages and writing-style are loaded', async ($, on) => {
@@ -111,26 +121,37 @@ describe('the denial of a call that needs a skill not loaded', () => {
     await requestModel($, ledger, 40_000)
     const commit = () => $.tool.call({ tool: 'Bash', command: 'git commit -m x' })
 
-    expect((await commit()).text).toMatch(denialRequiring(LOAD_COMMIT_SKILLS))
+    expect((await commit()).text).toMatch(denialNaming(LOAD_COMMIT_SKILLS))
     await callSkillTool($, COMMIT_MESSAGES)
-    expect((await commit()).text).toMatch(denialRequiring(LOAD_WRITING_STYLE))
+    const { text } = await commit()
+    expect(text).toMatch(denialNaming(LOAD_WRITING_STYLE))
+    expect(text).not.toContain(COMMIT_MESSAGES)
     await callSkillTool($, WRITING_STYLE)
 
     expect((await commit()).result).toBe(RAN)
   })
 
+  test('an edit of TODO.md runs once writing-style and todo-md are loaded', async ($, on) => {
+    const ledger = await startSessionThatRuns($, on)
+    await requestModel($, ledger, 40_000)
+    const editTodo = () => editFile($, `${PROJECT_ROOT}/TODO.md`)
+
+    expect((await editTodo()).text).toMatch(denialNaming(LOAD_TODO_SKILLS))
+    await callSkillTool($, WRITING_STYLE)
+    const { text } = await editTodo()
+    expect(text).toMatch(denialNaming(LOAD_TODO_MD))
+    expect(text).not.toContain(WRITING_STYLE)
+    await callSkillTool($, TODO_MD)
+
+    expect((await editTodo()).result).toBe(RAN)
+  })
+
   test('a load made before the loop reported its size counts', async ($, on) => {
     const ledger = await startSessionThatRuns($, on)
     await requestModel($, ledger, null)
-    const editNotes = () =>
-      $.tool.call({
-        tool: 'Edit',
-        file_path: `${PROJECT_ROOT}/docs/setup.md`,
-        old_string: 'draft',
-        new_string: 'final',
-      })
+    const editNotes = () => editFile($, `${PROJECT_ROOT}/docs/setup.md`)
 
-    expect((await editNotes()).text).toMatch(denialRequiring(LOAD_WRITING_STYLE))
+    expect((await editNotes()).text).toMatch(denialNaming(LOAD_WRITING_STYLE))
     await callSkillTool($, WRITING_STYLE)
 
     expect((await editNotes()).result).toBe(RAN)
@@ -154,6 +175,28 @@ describe('the denial of a call that needs a skill not loaded', () => {
       })
 
       expect(checked.decision).toBe('allow')
+    }
+  })
+
+  test('a read-only Workflow or Agent call still needs workflows', async ($, on) => {
+    const ledger = await startSessionThatRuns($, on)
+    await requestModel($, ledger, 40_000)
+    const calls = [
+      { tool: 'Workflow', input: { name: 'review' } },
+      { tool: 'Agent', input: { description: 'Review the diff', prompt: 'Review the diff' } },
+    ]
+    const check = (call: (typeof calls)[number]) =>
+      $.tool.check({ ...call, tool_use_id: 'call-1', isReadOnly: true })
+    for (const call of calls) {
+      const denied = await check(call)
+
+      expect(denied.decision).toBe('deny')
+      expect(denied.reason).toMatch(denialNaming(LOAD_WORKFLOWS))
+    }
+
+    await callSkillTool($, WORKFLOWS)
+    for (const call of calls) {
+      expect((await check(call)).decision).toBe('allow')
     }
   })
 

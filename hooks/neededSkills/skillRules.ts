@@ -1,5 +1,6 @@
-import { ASK_TOOL, QUESTION_SKILL, skillName } from '../names'
+import { ASK_TOOL, QUESTION_SKILL, VISUAL_DECISIONS_SKILL, skillName } from '../names'
 import type { QualifiedSkill } from '../names'
+import { allOf } from './allOf'
 import { callsTool } from './callsTool'
 import { inMainConversation } from './inMainConversation'
 import type { Matcher } from './matcher'
@@ -17,6 +18,7 @@ export type SkillRule = {
 }
 
 const WRITING_CODE = skillName('writing-code')
+const WRITES_HTML = writesFile({ names: ['*.html'] })
 
 /** A row for files named by `names`, which need writing-code and the rules for `language`. */
 function codeIn(language: string, ...names: readonly string[]): SkillRule {
@@ -42,6 +44,7 @@ export const SKILL_RULES: readonly SkillRule[] = [
     files: [],
   },
   { when: writesFile({ names: ['*.md'] }), skills: [skillName('writing-style')], files: [] },
+  { when: writesFile({ names: ['TODO.md'] }), skills: [skillName('todo-md')], files: [] },
   {
     when: writesFile({
       names: ['strings.xml'],
@@ -63,6 +66,16 @@ export const SKILL_RULES: readonly SkillRule[] = [
     files: [],
   },
   {
+    when: allOf(WRITES_HTML, writesFile({ folders: ['specs'] })),
+    skills: [VISUAL_DECISIONS_SKILL],
+    files: [],
+  },
+  {
+    when: allOf(WRITES_HTML, writesFile({ folders: ['drafts'] })),
+    skills: [skillName('design-drafts')],
+    files: [],
+  },
+  {
     when: runsCommand('gh pr create', 'gh pr edit'),
     skills: [skillName('pull-request')],
     files: [],
@@ -72,5 +85,11 @@ export const SKILL_RULES: readonly SkillRule[] = [
     skills: [skillName('pr-comment-replies')],
     files: [],
   },
+  { when: runsCommand('git push'), skills: [skillName('hygiene')], files: [] },
   { when: inMainConversation(callsTool(ASK_TOOL)), skills: [QUESTION_SKILL], files: [] },
+  {
+    when: inMainConversation(callsTool('Workflow', 'Agent')),
+    skills: [skillName('workflows')],
+    files: [],
+  },
 ]

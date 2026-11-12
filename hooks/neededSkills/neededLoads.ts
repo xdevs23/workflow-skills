@@ -3,12 +3,9 @@ import type { Load } from './loadKind'
 import type { SeenToolCall } from './matcher'
 import { SKILL_RULES } from './skillRules'
 
-/**
- * The skills and files listed by every row of the rule table that matches `seen`, each once. A call
- * that its tool holds read-only, such as `grep -rn "git commit" skills`, matches no row.
- */
+/** The skills and files listed by every row of the rule table that matches `seen`, each once. */
 export function loadsNeededBy(seen: SeenToolCall): readonly Load[] {
-  const rows = seen.call.isReadOnly ? [] : SKILL_RULES.filter(rule => rule.when(seen))
+  const rows = SKILL_RULES.filter(rule => rule.when(seen))
   const skills = new Set(rows.flatMap(rule => rule.skills))
   const files = new Set(rows.flatMap(rule => rule.files))
 
