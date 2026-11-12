@@ -40,9 +40,9 @@ description: Draw page for user to look at: drafts, product decisions, plans and
   what it builds. In second, name every part shown on page or expected by reader that comes later
   or belongs to other unit, with number of its entry. Name each part in at most 3 words
 - Put legend under those lists, one marker per kind of mark used by page:
-  - After, in green, for part added by the change;
-  - Changed, in cyan, for part, e.g. file or component, that existed before and is changed by the
-    change;
+  - "After: added", in green, for part added by the change;
+  - "After: changed", in cyan, for part, e.g. file or component, that existed before and is changed
+    by the change;
   - earlier state, in red, for part left out by After;
   - dashed box, for file not edited by the change;
   - Updated, in purple, for part that changed after last reply from user;
