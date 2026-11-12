@@ -48,20 +48,23 @@ describe('the card of a reminder sent every given time', () => {
     expect(labelsBeside('2')).toEqual(['hours', 'minutes'])
   })
 
-  test('the label of the amount names the unit picked, as the dropdown writes more than one', () => {
-    const amountField = TIME_KIND.fields.find(field => field.kind === FieldKind.Text)
-    const unitField = TIME_KIND.fields.find(field => field.kind === FieldKind.Choice)
-    const units: readonly string[] = Object.values(TimeUnit)
-    if (amountField === undefined || unitField === undefined) {
-      throw new Error('The kind "every" has no field for the amount or the unit.')
-    }
-    const labelOfAmount = (unit: string) =>
-      labelOf(TIME_KIND.fields, { amount: '2', unit }, amountField).toLowerCase()
-    const labelOfUnit = (unit: string) =>
-      optionsOf(TIME_KIND.fields, { amount: '2', unit }, unitField).find(
-        option => option.value === unit,
-      )?.label
+  test(
+    'the label of the amount names the unit picked, as the dropdown writes more than one',
+    () => {
+      const amountField = TIME_KIND.fields.find(field => field.kind === FieldKind.Text)
+      const unitField = TIME_KIND.fields.find(field => field.kind === FieldKind.Choice)
+      const units: readonly string[] = Object.values(TimeUnit)
+      if (amountField === undefined || unitField === undefined) {
+        throw new Error('The kind "every" has no field for the amount or the unit.')
+      }
+      const labelOfAmount = (unit: string) =>
+        labelOf(TIME_KIND.fields, { amount: '2', unit }, amountField).toLowerCase()
+      const labelOfUnit = (unit: string) =>
+        optionsOf(TIME_KIND.fields, { amount: '2', unit }, unitField).find(
+          option => option.value === unit,
+        )?.label
 
-    expect(units.map(labelOfAmount)).toEqual(units.map(labelOfUnit))
-  })
+      expect(units.map(labelOfAmount)).toEqual(units.map(labelOfUnit))
+    },
+  )
 })

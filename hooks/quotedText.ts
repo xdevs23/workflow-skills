@@ -2,7 +2,8 @@
 export const LETTER_OR_DIGIT = String.raw`[\p{L}\p{N}]`
 
 /** \x60 is the backtick, which a template literal cannot hold unescaped. */
-const FENCED_CODE = String.raw`^[ \t]{0,3}(?<fence>\x60{3,}|~{3,})[^\n]*\n[\s\S]*?^[ \t]{0,3}\k<fence>`
+const FENCED_CODE =
+  String.raw`^[ \t]{0,3}(?<fence>\x60{3,}|~{3,})[^\n]*\n[\s\S]*?^[ \t]{0,3}\k<fence>`
 const INLINE_CODE = String.raw`\x60[^\x60\n]+\x60`
 /** A mark right after a letter or digit, such as the inch mark in 12", opens no quote. */
 const STRAIGHT_QUOTE = String.raw`(?<!${LETTER_OR_DIGIT})"[^"\n]+"(?!${LETTER_OR_DIGIT})`

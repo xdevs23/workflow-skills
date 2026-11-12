@@ -5,7 +5,9 @@ import type { RenderElement, RenderNode } from 'claude-code'
 // whole tree and hand over the children of an element untyped, so they cannot say which element
 // holds a card, what is drawn beside it, and what is drawn inside it.
 
-/** A card, the Box keyed by it, and the element that holds it, by which it is drawn beside others. */
+/**
+ * A card, the Box keyed by it, and the element that holds it, by which it is drawn beside others.
+ */
 type CardInTree = { card: RenderElement; holder: RenderElement }
 
 /** The elements and strings drawn directly in `element`. */

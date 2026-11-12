@@ -82,7 +82,9 @@ function withoutOpening(text: string | undefined): string | undefined {
   return text?.split('\n\n').slice(1).join('\n\n')
 }
 
-/** The goals are listed out of number order, so a test catches output that keeps the input order. */
+/**
+ * The goals are listed out of number order, so a test catches output that keeps the input order.
+ */
 const THREE_GOALS: Board = { goals: [NIGHTLY_BUILD, INVOICE_EXPORT, HELP_PAGES] }
 
 const ALL_CLEARED: Board = { goals: THREE_GOALS.goals.map(cleared) }
@@ -218,7 +220,10 @@ describe('the changes to the board since the model saw it', () => {
   })
 
   test('shows a goal edited since with its new text and the done mark removed by the edit', () => {
-    const edited = { ...unmarkedBy({ removedBy: MarkRemover.User }, HELP_PAGES), text: 'Translate the help' }
+    const edited = {
+      ...unmarkedBy({ removedBy: MarkRemover.User }, HELP_PAGES),
+      text: 'Translate the help',
+    }
     const seen = { goals: [NIGHTLY_BUILD, INVOICE_EXPORT, markedDone(HELP_PAGES)] }
     const now = { goals: [NIGHTLY_BUILD, INVOICE_EXPORT, edited] }
 

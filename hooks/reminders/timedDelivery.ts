@@ -145,7 +145,8 @@ async function sendAtDueTime($: EngineInterface): Promise<void> {
 
 /**
  * Marks every due time of `reminders` up to now as handled when one of them is due, and returns
- * the reminders due. One update does both, so that only one of several parallel sends includes them.
+ * the reminders due. One update does both, so that only one of several parallel sends includes
+ * them.
  */
 async function takeDueReminders(
   $: EngineInterface,

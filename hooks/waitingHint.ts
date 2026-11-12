@@ -8,7 +8,11 @@ const SENTENCE = String.raw`(?:[^.!?\n]|[.!?](?=\S)|\n(?![\s\-*•]|\d+[.)]))*`
 /** Text up to the end of the clause, which also ends at a comma, a semicolon, a colon or a dash. */
 const CLAUSE = String.raw`(?:[^.!?\n,;:—–]|[.!?](?=\S))*`
 const MESSAGE = String.raw`(?:messages?|repl(?:y|ies)|turns?|posts?)`
-const EARLIER_MESSAGE = String.raw`(?:\bmy\s+(?:previous|earlier|prior|last|other)\s+${MESSAGE}|\bmy\s+${MESSAGE}\s+(?:before|above)|\b${MESSAGE}\s+(?:above|before\s+the\s+last)|\b(?:two|three|[2-9])\s+${MESSAGE}\s+ago)\b`
+const EARLIER_MESSAGE =
+  String.raw`(?:\bmy\s+(?:previous|earlier|prior|last|other)\s+${MESSAGE}|` +
+  String.raw`\bmy\s+${MESSAGE}\s+(?:before|above)|` +
+  String.raw`\b${MESSAGE}\s+(?:above|before\s+the\s+last)|` +
+  String.raw`\b(?:two|three|[2-9])\s+${MESSAGE}\s+ago)\b`
 const ASKED = String.raw`\b(?:questions?|asked)\b`
 const OPEN_WORD = String.raw`(?:open|unanswered|pending)`
 const OPEN_STATE = String.raw`(?:${OPEN_WORD}|outstanding|unresolved|there|in\s+my|above)\b`
@@ -20,7 +24,8 @@ const ITEM_NUMBER = String.raw`(?:\s+${NUMBERS}|\s*\(${NUMBERS}\))`
 /** An item named after a pull request or an issue, whose state is not an open question. */
 const NOT_AFTER_TRACKER = String.raw`(?<!\b(?:PRs?|pull\s+requests?|issues?)\b[^.!?\n]{0,40})`
 /** What is left to the user besides a question, such as a decision or point 2. */
-const OPEN_ITEM = String.raw`\b(?:decisions?|answers?|approvals?|choices?|points?|items?)${ITEM_NUMBER}?`
+const OPEN_ITEM =
+  String.raw`\b(?:decisions?|answers?|approvals?|choices?|points?|items?)${ITEM_NUMBER}?`
 
 const phrase = (source: string): RegExp => new RegExp(source, 'i')
 
@@ -28,22 +33,37 @@ const phrase = (source: string): RegExp => new RegExp(source, 'i')
 export const WAITING_HINT: HintKind = {
   phrases: [
     phrase(
-      String.raw`${NOT_AFTER_TRACKER}${OPEN_ITEM}(?:\s+(?:on|about|of|for|from)\b${CLAUSE})?\s+(?:is|are|remains?|stays?)\s+still\s+${OPEN_WORD}\b`,
+      String.raw`${NOT_AFTER_TRACKER}${OPEN_ITEM}(?:\s+(?:on|about|of|for|from)\b${CLAUSE})?` +
+        String.raw`\s+(?:is|are|remains?|stays?)\s+still\s+${OPEN_WORD}\b`,
     ),
     phrase(String.raw`\bstill\s+${OPEN_WORD}\s*:`),
-    phrase(String.raw`\b${OPEN_WORD}\s+from\s+(?:(?:earlier|before)${AT_CLAUSE_END}|${EARLIER_MESSAGE})`),
+    phrase(
+      String.raw`\b${OPEN_WORD}\s+from\s+(?:(?:earlier|before)${AT_CLAUSE_END}|${EARLIER_MESSAGE})`,
+    ),
     /\bstill\s+waiting\b/i,
     /\b(?:waiting|waits)\s+(?:for|on)\s+you(?:r)?\b/i,
     /\bawait(?:s|ing)?\s+your\b/i,
     phrase(String.raw`\byour\s+answer\s+on\s+${SENTENCE}\s+is\s+still\b`),
     /(?<!\b(?:blocks?|holds?|stops?|pauses?)\b[^.!?\n]{0,40})\b(?:once|until)\s+you\s+answer\b/i,
-    /\byou\s+(?:(?:have\s+not|haven['’]t)\s+(?:yet\s+)?answered|(?:did\s+not|didn['’]t)\s+(?:yet\s+)?answer)\b/i,
+    phrase(
+      String.raw`\byou\s+(?:(?:have\s+not|haven['’]t)\s+(?:yet\s+)?answered|` +
+        String.raw`(?:did\s+not|didn['’]t)\s+(?:yet\s+)?answer)\b`,
+    ),
     /\byou\s+have\s+yet\s+to\s+answer\b/i,
     /\bonce\s+you(?:['’]ve|\s+have)\s+answered\b/i,
     /\bneeds\s+your\s+(?:answer|approval|go)\b/i,
-    phrase(String.raw`\bstill\s+(?:have|has)\s+(?:${COUNT}\s+)?(?:more\s+)?(?:open\s+questions?\b|questions?\b${CLAUSE}\bfor\s+you\b)`),
-    phrase(String.raw`\bquestions?\b${CLAUSE}(?:\s+(?:is|are|remains?|stays?)|['’](?:s|re))\s+(?:still\s+)?${OPEN_STATE}`),
-    phrase(String.raw`\bquestions?\b${CLAUSE}\b(?:still\s+(?:stands?|applies|needs?)|(?:has|have|is|are)\s+not\s+(?:yet\s+)?(?:been\s+)?answered)\b`),
+    phrase(
+      String.raw`\bstill\s+(?:have|has)\s+(?:${COUNT}\s+)?(?:more\s+)?` +
+        String.raw`(?:open\s+questions?\b|questions?\b${CLAUSE}\bfor\s+you\b)`,
+    ),
+    phrase(
+      String.raw`\bquestions?\b${CLAUSE}(?:\s+(?:is|are|remains?|stays?)|['’](?:s|re))` +
+        String.raw`\s+(?:still\s+)?${OPEN_STATE}`,
+    ),
+    phrase(
+      String.raw`\bquestions?\b${CLAUSE}\b(?:still\s+(?:stands?|applies|needs?)|` +
+        String.raw`(?:has|have|is|are)\s+not\s+(?:yet\s+)?(?:been\s+)?answered)\b`,
+    ),
     phrase(String.raw`${ASKED}${SENTENCE}${EARLIER_MESSAGE}`),
     phrase(String.raw`${EARLIER_MESSAGE}${SENTENCE}${ASKED}`),
     /\bmy\s+(?:earlier|previous|last|other)\s+questions?\b/i,

@@ -45,10 +45,14 @@ export type RemindersNotRead = { outcome: Outcome.Failed } & Omit<FailedStoreCal
  * The outcomes of a change of a reminder in the store. A change that reached the store has the
  * reminders as they are after it, read once at its start, with the records it wrote.
  */
-export type ReminderChange = ((Changed | Unchanged | RemovedRefused) & { read: ReadReminders }) | Failed
+export type ReminderChange =
+  | ((Changed | Unchanged | RemovedRefused) & { read: ReadReminders })
+  | Failed
 
 /** The records a change writes for a reminder, or why it writes none. */
-type RecordsToWrite = { outcome: Outcome.Changed; records: readonly ReminderRecord[] } | RemovedRefused
+type RecordsToWrite =
+  | { outcome: Outcome.Changed; records: readonly ReminderRecord[] }
+  | RemovedRefused
 
 export function loadReminders(
   $: StoreEngine,

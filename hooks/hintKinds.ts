@@ -36,7 +36,8 @@ export const PHRASE_KINDS: readonly HintKind[] = [
  * kind that matches, or else every phrase kind that matches, in the order of `PHRASE_KINDS`. */
 export function kindsWithPhraseIn(message: string): HintKind[] {
   const said = withoutQuotedText(message)
-  const hasPhraseInSaid = (kind: HintKind): boolean => kind.phrases.some(phrase => phrase.test(said))
+  const hasPhraseInSaid = (kind: HintKind): boolean =>
+    kind.phrases.some(phrase => phrase.test(said))
   const wholeMessageKind = WHOLE_MESSAGE_KINDS.find(hasPhraseInSaid)
 
   return wholeMessageKind === undefined ? PHRASE_KINDS.filter(hasPhraseInSaid) : [wholeMessageKind]

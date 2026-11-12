@@ -85,8 +85,8 @@ export async function handleStoreFailure<T>(
 }
 
 /**
- * Runs `work`, and shows a failure of the store in a toast, after writing it to the debug log. Every
- * other error is passed on.
+ * Runs `work`, and shows a failure of the store in a toast, after writing it to the debug log.
+ * Every other error is passed on.
  */
 export function toastStoreFailure($: EngineInterface, work: () => Promise<void>): Promise<void> {
   return handleStoreFailure($, work, message => $.ui.toast(message))
@@ -140,7 +140,11 @@ async function readRecords<T>(
   const stored = await Promise.all(
     keys
       .filter(key => key.startsWith(prefix))
-      .map(async key => ({ key, id: idOf(key.slice(prefix.length)), value: await readStoreValue($, key) })),
+      .map(async key => ({
+        key,
+        id: idOf(key.slice(prefix.length)),
+        value: await readStoreValue($, key),
+      })),
   )
   const records = new Map<string, T>()
   for (const { key, id, value } of stored) {
@@ -162,7 +166,12 @@ function readQuestionRecordKey(key: string): QuestionRecordKey | undefined {
 
   return separator === -1
     ? undefined
-    : { key, kind, owner: ownerAndRest.slice(0, separator), rest: ownerAndRest.slice(separator + 1) }
+    : {
+        key,
+        kind,
+        owner: ownerAndRest.slice(0, separator),
+        rest: ownerAndRest.slice(separator + 1),
+      }
 }
 
 /** The id of the question in the rest of a key, which an answer key follows with its own id. */
@@ -316,7 +325,10 @@ export async function saveDelivery(
     ),
   )
 
-  return answered.map(question => ({ ...question, answer: { ...question.answer, isDelivered: true } }))
+  return answered.map(question => ({
+    ...question,
+    answer: { ...question.answer, isDelivered: true },
+  }))
 }
 
 /**
@@ -347,7 +359,9 @@ export async function deleteOldRecords(
   const idle = new Set(
     [...newest].filter(([, madeAt]) => madeAt < questionsMadeBefore).map(([owner]) => owner),
   )
-  await Promise.all(made.filter(({ owner }) => idle.has(owner)).map(({ key }) => deleteRecord($, key)))
+  await Promise.all(
+    made.filter(({ owner }) => idle.has(owner)).map(({ key }) => deleteRecord($, key)),
+  )
 }
 
 function readStoreKeys($: EngineInterface): Promise<string[]> {

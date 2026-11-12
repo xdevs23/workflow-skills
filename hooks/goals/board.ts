@@ -209,7 +209,8 @@ export function isNumberTaken(goal: Goal, board: Board): boolean {
 
 /**
  * The board without the goals whose number is taken. Such a goal was added at the same moment as
- * the goal holding its number, and the change that added it is still giving it the next free number.
+ * the goal holding its number, and the change that added it is still giving it the next free
+ * number.
  */
 export function settledBoardOf(board: Board): Board {
   return { goals: board.goals.filter(goal => !isNumberTaken(goal, board)) }

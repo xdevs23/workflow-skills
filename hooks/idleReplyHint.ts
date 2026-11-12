@@ -2,10 +2,14 @@ import type { HintKind } from './hintKind'
 import { CHECK_FOR_OPEN_WORK, OPTIMIZE_IDLE_TIME } from './openWork'
 
 /** A reply made only of "all is well", such as "All clear", "Everything’s fine" or "All set". */
-const ALL_IS_WELL = String.raw`(?:everything|all)(?:['’]s|\s+is)?\s+(?:clear|fine|good|healthy|quiet|ok(?:ay)?|well|set)|fine`
+const ALL_IS_WELL =
+  String.raw`(?:everything|all)(?:['’]s|\s+is)?\s+` +
+  String.raw`(?:clear|fine|good|healthy|quiet|ok(?:ay)?|well|set)|fine`
 
 /** A reply made only of "nothing is there", such as "Nothing new" or "No change". */
-const NOTHING_THERE = String.raw`nothing\s+(?:(?:left\s+)?to\s+(?:do|report)|new|(?:has\s+)?changed|pending|open)|no\s+(?:changes?|news)`
+const NOTHING_THERE =
+  String.raw`nothing\s+(?:(?:left\s+)?to\s+(?:do|report)|new|(?:has\s+)?changed|pending|open)|` +
+  String.raw`no\s+(?:changes?|news)`
 
 /** A reply made only of the waiting itself, such as "Standing by". */
 const STANDING_BY = String.raw`idle|standing\s+by`
@@ -24,7 +28,8 @@ const END_MARK = String.raw`[.!]|\.{3}|…`
 const BETWEEN_REPLIES = String.raw`\s*(?:${END_MARK}|[,;—–-])\s*(?:and\s+)?|\s+(?:and\s+)?`
 
 /** A whole message made of one or more idle replies, such as "No change. Nothing to do." */
-const IDLE_MESSAGE = String.raw`^\s*${IDLE_REPLY}(?:(?:${BETWEEN_REPLIES})${IDLE_REPLY})*(?:\s*(?:${END_MARK}))?\s*$`
+const IDLE_MESSAGE =
+  String.raw`^\s*${IDLE_REPLY}(?:(?:${BETWEEN_REPLIES})${IDLE_REPLY})*(?:\s*(?:${END_MARK}))?\s*$`
 
 /** The hint after a message made only of idle replies, which shows that the session did not look
  * for work. */

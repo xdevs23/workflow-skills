@@ -94,8 +94,8 @@ export async function setGoalInPane(
 }
 
 /**
- * Records that a blank text was refused for the goal with the id `goalId`, while the goal is edited.
- * The field is drawn empty under the warning.
+ * Records that a blank text was refused for the goal with the id `goalId`, while the goal is
+ * edited. The field is drawn empty under the warning.
  */
 export async function refuseBlankText($: EngineInterface, goalId: string): Promise<void> {
   await updateEditedGoal($, goalId, edited => ({ ...edited, drawn: '', isBlankTextRefused: true }))

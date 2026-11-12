@@ -395,7 +395,9 @@ describe('attaching a TODO entry', () => {
   test('attaching to a cleared goal returns that the goal is not open', () => {
     const cleared = boardOf(clearGoal(THREE_GOALS, 2, 400))
 
-    expect(attachTodo(cleared, 2, { number: '45', title: 'Reuse one emulator boot' }, 500)).toEqual({
+    expect(
+      attachTodo(cleared, 2, { number: '45', title: 'Reuse one emulator boot' }, 500),
+    ).toEqual({
       outcome: Outcome.Refused,
       refusal: Refusal.GoalNotOpen,
       goal: 2,

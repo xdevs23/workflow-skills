@@ -38,7 +38,9 @@ function amountFormatOf(unit: 'minute' | 'hour'): Intl.NumberFormat {
   return new Intl.NumberFormat('en', { style: 'unit', unit, unitDisplay: 'long' })
 }
 
-/** The option of `unit` in the dropdown beside the amount typed as `typed`, such as "1" and "hour". */
+/**
+ * The option of `unit` in the dropdown beside the amount typed as `typed`, such as "1" and "hour".
+ */
 function unitOptionOf(unit: TimeUnit, typed: string): SelectOption {
   const words = UNITS[unit].amount.formatToParts(Number(typed)).filter(part => part.type === 'unit')
 

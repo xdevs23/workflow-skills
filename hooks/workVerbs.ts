@@ -47,7 +47,11 @@ const WORK_VERBS: readonly WorkVerb[] = [
     notFollowedBy: [followedBy('up on', 'up where', 'between', 'from', 'option', 'one')],
   },
   { base: 'cherry-pick', ing: 'cherry-picking' },
-  { base: 'start', ing: 'starting', notFollowedBy: [followedBy('to', 'with the summary', 'with a summary')] },
+  {
+    base: 'start',
+    ing: 'starting',
+    notFollowedBy: [followedBy('to', 'with the summary', 'with a summary')],
+  },
   {
     base: 'stop',
     ing: 'stopping',

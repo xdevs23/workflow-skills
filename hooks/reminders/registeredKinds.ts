@@ -14,10 +14,10 @@ export const CADENCE_KINDS: CadenceKinds = [
 ]
 
 /**
- * Hands `reminders`, every reminder of the session `sessionId`, to each kind that follows them, each
- * time the core reads them into the state: at the start of the session, at /reminders and after
- * every change in the pane. The engine passes `$` only to a function named at the call, so each
- * kind is called by the name of its function.
+ * Hands `reminders`, every reminder of the session `sessionId`, to each kind that follows them,
+ * each time the core reads them into the state: at the start of the session, at /reminders and
+ * after every change in the pane. The engine passes `$` only to a function named at the call, so
+ * each kind is called by the name of its function.
  */
 export async function followReminders(
   $: EngineInterface,

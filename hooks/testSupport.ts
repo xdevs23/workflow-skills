@@ -414,7 +414,11 @@ export async function switchSession(
   session: Session,
   switched: { id: string; reason: 'resume' | 'clear' },
 ) {
-  await $.session.end({ reason: switched.reason, sessionId: session.id, resume: { id: session.id } })
+  await $.session.end({
+    reason: switched.reason,
+    sessionId: session.id,
+    resume: { id: session.id },
+  })
   session.id = switched.id
   session.stateHolder += 1
   await $.classic.SessionStart({ source: switched.reason, session_id: switched.id })

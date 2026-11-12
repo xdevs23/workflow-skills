@@ -55,8 +55,11 @@ function notifyTaskEnded($: Engine) {
 }
 
 /** The toast for the reminders after a compaction left unsent, with any reason. */
-const NOT_SENT_TOAST =
-  /^The reminders set to come after a compaction could not be sent to Claude: .+\. Open \/reminders and send their texts to Claude in a prompt\.$/u
+const NOT_SENT_TOAST = new RegExp(
+  String.raw`^The reminders set to come after a compaction could not be sent to Claude: .+\. ` +
+    String.raw`Open /reminders and send their texts to Claude in a prompt\.$`,
+  'u',
+)
 
 /** The transcript lines about the reminders, which the model does not read. */
 function reminderLinesOf(session: Session): string[] {

@@ -39,7 +39,9 @@ const FULL_STORE = 'the store is over 4 MiB'
 const PHRASE = 'tests pass'
 const SAYS_TESTS_PASS: Cadence = { kind: PHRASE_KIND.id, values: { phrases: [PHRASE] } }
 
-/** The labels of the fields that add a phrase, drawn under a card of the kind "when Claude says". */
+/**
+ * The labels of the fields that add a phrase, drawn under a card of the kind "when Claude says".
+ */
 const PHRASE_FIELD_LABELS = PHRASE_KIND.fields.filter(isListField).map(field => field.label)
 
 /**
@@ -212,7 +214,9 @@ async function removePhraseButtonOf(
   return buttons.find(button => button.props.label === describeRemoveItem(phrase))
 }
 
-/** The records of storedReminders, with reminder 1 on `phrases`, as an earlier version stored them. */
+/**
+ * The records of storedReminders, with reminder 1 on `phrases`, as an earlier version stored them.
+ */
 function storedWithPhrasesOfReminder1(phrases: string): Map<string, unknown> {
   const reminder1 = reminderRecordOf(FIRST_SESSION, {
     id: 'mark-goal',
@@ -537,10 +541,11 @@ describe('the Reminders pane', () => {
     },
   )
 
-  // The pane keeps its focus as a position among its fields and buttons, and the row of a new phrase
-  // is drawn at the position of the phrase field, so the next phrase typed went into the prompt. The
-  // kit keeps no focus ring and does not pass a move of the focus to the hooks of a test, so the
-  // test reads that the Enter asks for a move, after the field is drawn anew under a new key.
+  // The pane keeps its focus as a position among its fields and buttons, and the row of a new
+  // phrase is drawn at the position of the phrase field, so the next phrase typed went into the
+  // prompt. The kit keeps no focus ring and does not pass a move of the focus to the hooks of a
+  // test, so the test reads that the Enter asks for a move, after the field is drawn anew under a
+  // new key.
   test(
     'Enter in the phrase field draws an empty phrase field under a new key and moves the focus',
     async ($, on) => {

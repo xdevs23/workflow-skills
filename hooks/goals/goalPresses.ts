@@ -132,7 +132,9 @@ export async function startEditing(
   })
 }
 
-/** Saves `text`, the whole text of the field for `goal` at the Enter pressed in it, as Done does. */
+/**
+ * Saves `text`, the whole text of the field for `goal` at the Enter pressed in it, as Done does.
+ */
 export async function submitEdit(
   $: EngineInterface,
   sessionId: string,
@@ -218,11 +220,11 @@ export async function startUnmarking(
 }
 
 /**
- * Removes the done mark `shown` from the goal, as removed by the user with the reason in `given`, if
- * any, and draws the goal without the field for the reason once the mark is removed or no longer
- * shown. A mark removed or replaced since the pane drew it is not touched, and a toast shows the
- * mark that was shown. A blank reason removes the mark without one, and a failed save shows the
- * field again with the entered reason.
+ * Removes the done mark `shown` from the goal, as removed by the user with the reason in `given`,
+ * if any, and draws the goal without the field for the reason once the mark is removed or no
+ * longer shown. A mark removed or replaced since the pane drew it is not touched, and a toast
+ * shows the mark that was shown. A blank reason removes the mark without one, and a failed save
+ * shows the field again with the entered reason.
  */
 export async function unmarkOnScreen(
   $: EngineInterface,

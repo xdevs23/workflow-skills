@@ -190,22 +190,27 @@ describe('a cadence kind plugged into the core', () => {
 
     expect(readSettings(WORDS_KIND, { words: 'ship' })).toEqual(misshapen)
     expect(readSettings(WORD_KIND, { word: ['deploy'] })).toEqual(misshapen)
-    expect(listKind(WORD_KIND, registerNothing).describe({ word: ['deploy'] })).toBe(WORD_KIND.label)
-  })
-
-  test('the values stored by an earlier version are read and drawn as the kind upgrades them', () => {
-    const listed = listKind(WORDS_KIND_STORED_AS_TEXT, registerNothing)
-
-    expect(readSettings(WORDS_KIND_STORED_AS_TEXT, { words: 'ship|deploy' })).toEqual([
-      'ship',
-      'deploy',
-    ])
-    expect(listed.readValues({ words: 'ship|deploy' })).toEqual({ words: ['ship', 'deploy'] })
-    expect(listed.problemOf({ words: 'ship' })).toEqual(
-      new CadenceProblem(UNREADABLE_WORDS_PROBLEM),
+    expect(listKind(WORD_KIND, registerNothing).describe({ word: ['deploy'] })).toBe(
+      WORD_KIND.label,
     )
-    expect(listed.describe({ words: 'ship' })).toBe(WORDS_KIND.label)
   })
+
+  test(
+    'the values stored by an earlier version are read and drawn as the kind upgrades them',
+    () => {
+      const listed = listKind(WORDS_KIND_STORED_AS_TEXT, registerNothing)
+
+      expect(readSettings(WORDS_KIND_STORED_AS_TEXT, { words: 'ship|deploy' })).toEqual([
+        'ship',
+        'deploy',
+      ])
+      expect(listed.readValues({ words: 'ship|deploy' })).toEqual({ words: ['ship', 'deploy'] })
+      expect(listed.problemOf({ words: 'ship' })).toEqual(
+        new CadenceProblem(UNREADABLE_WORDS_PROBLEM),
+      )
+      expect(listed.describe({ words: 'ship' })).toBe(WORDS_KIND.label)
+    },
+  )
 
   test('an item is added without the white space around it, and a blank one is not', () => {
     const added = addItem(WORDS_FIELD, { words: ['ship'] }, ' deploy ')
@@ -255,7 +260,8 @@ describe('a cadence kind plugged into the core', () => {
     ])
 
     expect(describeReminderNote(due)).toEqual({
-      text: 'Reminder from the user: Start a build.\n\nReminder from the user: Read the spec again.',
+      text:
+        'Reminder from the user: Start a build.\n\nReminder from the user: Read the spec again.',
       line: 'Reminders: reminders 1 and 3 sent to Claude',
     })
     expect(describeReminderNote(due.slice(0, 1))?.line).toBe('Reminders: reminder 1 sent to Claude')

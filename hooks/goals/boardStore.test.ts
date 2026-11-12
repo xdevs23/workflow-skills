@@ -116,7 +116,13 @@ describe('the board of a session in the store', () => {
     const fullApp = await addFullApp(store.$)
     const exportFix = goalOf(await saveNewGoal(store.$, SCOPE, 'Fix the export timeout', 200))
     await saveAttachedTodo(store.$, SCOPE, 2, { number: '42', title: 'Release v3.2.0' }, 210)
-    await saveAttachedTodo(store.$, SCOPE, 2, { number: '41', title: 'Login keeps the session' }, 220)
+    await saveAttachedTodo(
+      store.$,
+      SCOPE,
+      2,
+      { number: '41', title: 'Login keeps the session' },
+      220,
+    )
     await saveDetachedTodo(store.$, SCOPE, 2, '42')
     const cleared = await saveClearedGoal(store.$, SCOPE, 2, 300)
 
@@ -155,9 +161,11 @@ describe('changes made at the same moment', () => {
   test('goals added at the same moment get different numbers', async ($, on) => {
     const store = startStore(on)
     await Promise.all(
-      ['Write the migration guide', 'Fix the export timeout', 'Speed up the nightly build'].map(text =>
-        saveNewGoal(store.$, SCOPE, text, 100),
-      ),
+      [
+        'Write the migration guide',
+        'Fix the export timeout',
+        'Speed up the nightly build',
+      ].map(text => saveNewGoal(store.$, SCOPE, text, 100)),
     )
     const numbers = boardOf(await loadBoard(store.$, SCOPE)).goals.map(goal => goal.number)
 
@@ -189,7 +197,11 @@ describe('changes made at the same moment', () => {
     async ($, on) => {
       const store = startStore(on)
       const fullApp = await addFullApp(store.$)
-      const other = todoRecordOf(SCOPE, fullApp, { number: '42', title: 'Release', attachedAt: 150 })
+      const other = todoRecordOf(SCOPE, fullApp, {
+        number: '42',
+        title: 'Release',
+        attachedAt: 150,
+      })
       store.fake.beforeNextWrite = () => store.fake.store.set(other.key, other.value)
       await saveAttachedTodo(store.$, SCOPE, 1, { number: '45', title: 'One emulator boot' }, 200)
 

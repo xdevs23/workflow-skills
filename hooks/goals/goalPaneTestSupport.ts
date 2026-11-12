@@ -61,9 +61,9 @@ const GOAL_RECORD_PREFIX = recordPrefixOf(RecordKind.Goal)
  * The error of the test kit for each `$.ui.focus` call made by a plugin. The kit fails that call
  * also with a `ui.focus` hook of the test or of an inline plugin in place, where the engine returns
  * a deny for a move it does not make. The pane moves the focus to the new field after every goal
- * added by the pane, to the field of a goal after a press of its Edit, and with a goal whose row has
- * the focus after a change of the board moved that row, so such an entry, press or pick rejects
- * with this error in a test.
+ * added by the pane, to the field of a goal after a press of its Edit, and with a goal whose row
+ * has the focus after a change of the board moved that row, so such an entry, press or pick
+ * rejects with this error in a test.
  */
 export const NO_FOCUS_IN_KIT = 'no implementation for ui.focus'
 
@@ -112,7 +112,9 @@ export function clearElsewhere(session: Session, goal: Goal): void {
   session.store.set(clearance.key, clearance.value)
 }
 
-/** Stores the done mark DONE_MARK on `goal`, as the model in another process of the session does. */
+/**
+ * Stores the done mark DONE_MARK on `goal`, as the model in another process of the session does.
+ */
 export function markElsewhere(session: Session, goal: Goal): void {
   const mark = doneMarkRecordOf(sessionScope(FIRST_SESSION), { ...goal, doneMark: DONE_MARK })
   session.store.set(mark.key, mark.value)

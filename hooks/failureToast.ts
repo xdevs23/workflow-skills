@@ -9,7 +9,9 @@ export function showFailure(
   $.ui.toast(text)
 }
 
-/** Shows each failure described by `texts` as `showFailure` does, and returns the result of `press`. */
+/**
+ * Shows each failure described by `texts` as `showFailure` does, and returns the result of `press`.
+ */
 export function showFailuresOfPress(
   $: { ui: Pick<EngineInterface['ui'], 'log' | 'toast'> },
   press: Pick<UiPressArgument, 'element'>,

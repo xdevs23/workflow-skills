@@ -157,12 +157,15 @@ describe('the card of a reminder sent every given time', () => {
     },
   )
 
-  test('the due times follow the time the reminder was added, strictly after the given time', () => {
-    expect(firstDueTimeAfter(NOW, HOUR, NOW - HOUR)).toBe(NOW + HOUR)
-    expect(firstDueTimeAfter(NOW, HOUR, NOW)).toBe(NOW + HOUR)
-    expect(firstDueTimeAfter(NOW, HOUR, NOW + HOUR)).toBe(NOW + 2 * HOUR)
-    expect(firstDueTimeAfter(NOW, HOUR, NOW + 2.5 * HOUR)).toBe(NOW + 3 * HOUR)
-  })
+  test(
+    'the due times follow the time the reminder was added, strictly after the given time',
+    () => {
+      expect(firstDueTimeAfter(NOW, HOUR, NOW - HOUR)).toBe(NOW + HOUR)
+      expect(firstDueTimeAfter(NOW, HOUR, NOW)).toBe(NOW + HOUR)
+      expect(firstDueTimeAfter(NOW, HOUR, NOW + HOUR)).toBe(NOW + 2 * HOUR)
+      expect(firstDueTimeAfter(NOW, HOUR, NOW + 2.5 * HOUR)).toBe(NOW + 3 * HOUR)
+    },
+  )
 })
 
 describe('a reminder sent every given time', () => {

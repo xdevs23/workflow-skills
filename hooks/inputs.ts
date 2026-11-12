@@ -48,9 +48,13 @@ export enum AskOutcome {
 
 type FixedAskProblem = AskOutcome.QuestionInvalid | AskOutcome.ChoicesInvalid
 
-export type AskFailure = { outcome: FixedAskProblem } | { outcome: AskOutcome.Refused; refusal: Refusal }
+export type AskFailure =
+  | { outcome: FixedAskProblem }
+  | { outcome: AskOutcome.Refused; refusal: Refusal }
 
-export type AskInput = { outcome: AskOutcome.Valid; question: string; choices: readonly string[] } | AskFailure
+export type AskInput =
+  | { outcome: AskOutcome.Valid; question: string; choices: readonly string[] }
+  | AskFailure
 
 const ASK_PROBLEMS: Record<FixedAskProblem, string> = {
   [AskOutcome.QuestionInvalid]: `Give the question as ${QUESTION_RULE}.`,

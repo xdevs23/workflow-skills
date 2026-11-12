@@ -724,22 +724,31 @@ describe('the end of a turn on a message with a hint phrase', () => {
     expect(reasonsIn(stopped.block)).toEqual([WAITING_HINT.text])
   })
 
-  test('the first end on a message closing on a choice left to the user is blocked', async ($, on) => {
-    stopBeneath(on)
-    const message = 'Track both repositories, or switch the kernel check off. Which way?'
+  test(
+    'the first end on a message closing on a choice left to the user is blocked',
+    async ($, on) => {
+      stopBeneath(on)
+      const message = 'Track both repositories, or switch the kernel check off. Which way?'
 
-    expect(reasonsIn((await stopTurn($, { message })).block)).toEqual([hintOf(HANDED_DECISION).text])
-  })
+      expect(reasonsIn((await stopTurn($, { message })).block)).toEqual([
+        hintOf(HANDED_DECISION).text,
+      ])
+    },
+  )
 
-  test('the first end on a message with a cost label is blocked with the cost hint', async ($, on) => {
-    stopBeneath(on)
-    const message = `The intent layer covers both paths.\n- What it costs: one more module.\n${WAITING}`
+  test(
+    'the first end on a message with a cost label is blocked with the cost hint',
+    async ($, on) => {
+      stopBeneath(on)
+      const message =
+        `The intent layer covers both paths.\n- What it costs: one more module.\n${WAITING}`
 
-    expect(reasonsIn((await stopTurn($, { message })).block)).toEqual([
-      hintOf(COST_FRAMING).text,
-      WAITING_HINT.text,
-    ])
-  })
+      expect(reasonsIn((await stopTurn($, { message })).block)).toEqual([
+        hintOf(COST_FRAMING).text,
+        WAITING_HINT.text,
+      ])
+    },
+  )
 
   test('the first end on a blocked message is blocked with the blocked hint', async ($, on) => {
     stopBeneath(on)
@@ -749,7 +758,8 @@ describe('the end of a turn on a message with a hint phrase', () => {
   })
 
   test(
-    'the first end on a message that reports that nothing needs action is blocked with the nothing needs action hint',
+    'the first end on a message that reports that nothing needs action is blocked with the ' +
+      'nothing needs action hint',
     async ($, on) => {
       stopBeneath(on)
       const message = 'Nothing needs action.'
@@ -769,8 +779,8 @@ describe('the end of a turn on a message with a hint phrase', () => {
 
   for (const message of ['Nothing to do.', 'No change.']) {
     test(
-      `the first end on ${JSON.stringify(message)}, which a phrase of the blocked hint matches too, ` +
-        'is blocked with the idle reply hint alone',
+      `the first end on ${JSON.stringify(message)}, which a phrase of the blocked hint ` +
+        'matches too, is blocked with the idle reply hint alone',
       async ($, on) => {
         stopBeneath(on)
 
@@ -790,7 +800,8 @@ describe('the end of a turn on a message with a hint phrase', () => {
   )
 
   test(
-    'a message with phrases of several kinds is blocked with the hint of each, in the order of the kinds',
+    'a message with phrases of several kinds is blocked with the hint of each, in the order of ' +
+      'the kinds',
     async ($, on) => {
       stopBeneath(on)
       const stopped = await stopTurn($, {

@@ -184,7 +184,8 @@ type DrawnRow =
 /**
  * How the row of `goal` is drawn, for `row`, the goal pressed in the pane when it is this goal. A
  * surface without input fields draws a goal edited or unmarked on another surface with its buttons.
- * A goal whose done mark was removed or replaced since Unmark was pressed is drawn with its buttons.
+ * A goal whose done mark was removed or replaced since Unmark was pressed is drawn with its
+ * buttons.
  */
 function drawnRowOf(
   goal: Goal,
@@ -538,8 +539,8 @@ function drawClearQuestion(elements: GoalElements, goal: Goal, buttons: readonly
 }
 
 /**
- * `buttons` side by side at the end of a row, each in a box that never shrinks, so a narrow row does
- * not break its label.
+ * `buttons` side by side at the end of a row, each in a box that never shrinks, so a narrow row
+ * does not break its label.
  */
 function drawButtonRow(elements: GoalElements, buttons: readonly KeyedButton[]) {
   const { Box } = elements

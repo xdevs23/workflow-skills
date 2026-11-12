@@ -221,7 +221,11 @@ describe('the open goals after a compaction', () => {
 
       expect(session.toasts).toEqual([
         expect.stringMatching(
-          /^The open goals could not be sent to Claude: .+\. Ask Claude to list the goals to send them now\.$/u,
+          new RegExp(
+            String.raw`^The open goals could not be sent to Claude: .+\. ` +
+              String.raw`Ask Claude to list the goals to send them now\.$`,
+            'u',
+          ),
         ),
       ])
       expect(await notesOfToolResult($)).toEqual([withSentence('The user cleared Goal 2.')])

@@ -324,7 +324,9 @@ describe('asking without waiting', () => {
         session.store.set(answerKey, { text: 'sqlite', answeredAt: 1000 })
 
       expect((await $.tool.call({ tool: WITHDRAW_TOOL, number: 1 })).deny).toBeDefined()
-      expect(await listQuestions($)).toMatch(/Answered questions:\n#1: Which database\?\nAnswer: sqlite/)
+      expect(await listQuestions($)).toMatch(
+        /Answered questions:\n#1: Which database\?\nAnswer: sqlite/,
+      )
     },
   )
 
@@ -384,16 +386,19 @@ describe('asking without waiting', () => {
     expect(session.chatLines).toEqual([])
   })
 
-  test('a question that ends on a choice left to the user is refused and not stored', async ($, on) => {
-    const session = await startSession($, on)
-    const question = 'Track both repositories, or switch the kernel check off. Which way?'
+  test(
+    'a question that ends on a choice left to the user is refused and not stored',
+    async ($, on) => {
+      const session = await startSession($, on)
+      const question = 'Track both repositories, or switch the kernel check off. Which way?'
 
-    expect((await $.tool.call({ tool: ASK_TOOL, question })).deny).toBe(
-      askProblemOf({ outcome: AskOutcome.Refused, refusal: HANDED_DECISION }),
-    )
-    expect(questionCountOf(session)).toBe(0)
-    expect(session.chatLines).toEqual([])
-  })
+      expect((await $.tool.call({ tool: ASK_TOOL, question })).deny).toBe(
+        askProblemOf({ outcome: AskOutcome.Refused, refusal: HANDED_DECISION }),
+      )
+      expect(questionCountOf(session)).toBe(0)
+      expect(session.chatLines).toEqual([])
+    },
+  )
 
   test('a question that labels a decision as a cost is refused and not stored', async ($, on) => {
     const session = await startSession($, on)

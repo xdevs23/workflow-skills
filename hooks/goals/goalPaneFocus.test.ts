@@ -27,10 +27,10 @@ import type { GoalsPane } from './goalPaneTestSupport'
 
 // Claude Code sets the focus of a pane to a position, so after a goal moved under the focus, the
 // focus was on the dropdown of another goal, which opened its list, and the next pick went to that
-// goal. The kit does not move the focus itself, and fails each move of the focus asked by the plugin
-// before any hook of the test sees it. So the tests read the key of a move from the record of the
-// followed goal, which the plugin writes before it asks for the move and the pane reads while it
-// draws, and check the element drawn under that key.
+// goal. The kit does not move the focus itself, and fails each move of the focus asked by the
+// plugin before any hook of the test sees it. So the tests read the key of a move from the record
+// of the followed goal, which the plugin writes before it asks for the move and the pane reads
+// while it draws, and check the element drawn under that key.
 
 const SCOPE = sessionScope(FIRST_SESSION)
 
@@ -66,7 +66,10 @@ type FocusRecord = { keyId: string | undefined }
  */
 function hasMoveKeyId(value: unknown): value is Required<Pick<FollowedGoal, 'keyId'>> {
   return (
-    typeof value === 'object' && value !== null && 'keyId' in value && typeof value.keyId === 'string'
+    typeof value === 'object' &&
+    value !== null &&
+    'keyId' in value &&
+    typeof value.keyId === 'string'
   )
 }
 
@@ -347,25 +350,25 @@ describe('the focus of the Goals pane follows the goal whose row has the focus',
     ])
   })
 
-  test('a change that leaves the row of the followed goal in its place does not ask for a move', async (
-    $,
-    on,
-  ) => {
-    const { focus } = await startWithPane($, on, storedBoard())
-    const pane = await mountGoalsPane($, 'terminal')
-    await focusInPane($, rowElementKeyOf(MIGRATION_GUIDE, PaneElement.Priority))
-    await pickPriority(pane, MIGRATION_GUIDE, '0')
+  test(
+    'a change that leaves the row of the followed goal in its place does not ask for a move',
+    async ($, on) => {
+      const { focus } = await startWithPane($, on, storedBoard())
+      const pane = await mountGoalsPane($, 'terminal')
+      await focusInPane($, rowElementKeyOf(MIGRATION_GUIDE, PaneElement.Priority))
+      await pickPriority(pane, MIGRATION_GUIDE, '0')
 
-    expect(await drawnMoveKeyIdOf(pane, focus)).toBeUndefined()
-    expect(await buttonsOf(pane)).toEqual([
-      buttonOf(MIGRATION_GUIDE, PaneElement.Edit, 'Edit'),
-      buttonOf(MIGRATION_GUIDE, PaneElement.Clear, 'Clear'),
-      buttonOf(MIGRATION_GUIDE, PaneElement.Nudge, 'Nudge'),
-      buttonOf(ROTATION_CRASH, PaneElement.Edit, 'Edit'),
-      buttonOf(ROTATION_CRASH, PaneElement.Clear, 'Clear'),
-      buttonOf(ROTATION_CRASH, PaneElement.Nudge, 'Nudge'),
-    ])
-  })
+      expect(await drawnMoveKeyIdOf(pane, focus)).toBeUndefined()
+      expect(await buttonsOf(pane)).toEqual([
+        buttonOf(MIGRATION_GUIDE, PaneElement.Edit, 'Edit'),
+        buttonOf(MIGRATION_GUIDE, PaneElement.Clear, 'Clear'),
+        buttonOf(MIGRATION_GUIDE, PaneElement.Nudge, 'Nudge'),
+        buttonOf(ROTATION_CRASH, PaneElement.Edit, 'Edit'),
+        buttonOf(ROTATION_CRASH, PaneElement.Clear, 'Clear'),
+        buttonOf(ROTATION_CRASH, PaneElement.Nudge, 'Nudge'),
+      ])
+    },
+  )
 
   test(
     'a goal marked done by the model while another goal is edited leaves the typed text in the ' +
@@ -424,18 +427,18 @@ describe('the focus of the Goals pane follows the goal whose row has the focus',
     },
   )
 
-  test('a goal changed once the focus is on the field that adds a goal does not ask for a move', async (
-    $,
-    on,
-  ) => {
-    const { focus } = await startWithPane($, on, storedBoard())
-    const pane = await mountGoalsPane($, 'terminal')
-    await focusInPane($, rowElementKeyOf(ROTATION_CRASH, PaneElement.Priority))
-    await focusInPane($, newGoalFieldKeyOf(4))
-    await pickPriority(pane, ROTATION_CRASH, '0')
+  test(
+    'a goal changed once the focus is on the field that adds a goal does not ask for a move',
+    async ($, on) => {
+      const { focus } = await startWithPane($, on, storedBoard())
+      const pane = await mountGoalsPane($, 'terminal')
+      await focusInPane($, rowElementKeyOf(ROTATION_CRASH, PaneElement.Priority))
+      await focusInPane($, newGoalFieldKeyOf(4))
+      await pickPriority(pane, ROTATION_CRASH, '0')
 
-    expect(await drawnMoveKeyIdOf(pane, focus)).toBeUndefined()
-  })
+      expect(await drawnMoveKeyIdOf(pane, focus)).toBeUndefined()
+    },
+  )
 
   test('a goal cleared while its row has the focus does not ask for a move', async ($, on) => {
     const { focus } = await startWithPane($, on, storedBoard())
@@ -452,15 +455,15 @@ describe('the focus of the Goals pane follows the goal whose row has the focus',
     ])
   })
 
-  test('a goal changed while the Goals pane does not have the keyboard does not ask for a move', async (
-    $,
-    on,
-  ) => {
-    const { focus } = await startWithPane($, on, storedBoard(), false)
-    const pane = await mountGoalsPane($, 'terminal')
-    await focusInPane($, rowElementKeyOf(ROTATION_CRASH, PaneElement.Priority))
-    await pickPriority(pane, ROTATION_CRASH, '0')
+  test(
+    'a goal changed while the Goals pane does not have the keyboard does not ask for a move',
+    async ($, on) => {
+      const { focus } = await startWithPane($, on, storedBoard(), false)
+      const pane = await mountGoalsPane($, 'terminal')
+      await focusInPane($, rowElementKeyOf(ROTATION_CRASH, PaneElement.Priority))
+      await pickPriority(pane, ROTATION_CRASH, '0')
 
-    expect(await drawnMoveKeyIdOf(pane, focus)).toBeUndefined()
-  })
+      expect(await drawnMoveKeyIdOf(pane, focus)).toBeUndefined()
+    },
+  )
 })

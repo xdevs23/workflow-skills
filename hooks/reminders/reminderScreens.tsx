@@ -98,7 +98,9 @@ type FieldsInput = ResolveInput<'Pane', SurfaceWithFields>
  */
 type DrawnPane = PaneContext & { now: number; nextSends: NextSends; savingId: string | null }
 
-/** The reminders of the session read again from the store, and the Reminders pane opened on them. */
+/**
+ * The reminders of the session read again from the store, and the Reminders pane opened on them.
+ */
 type PaneOnFreshReminders = { loaded: ReadReminders | Failed; opened: UiOpenResult }
 
 /**

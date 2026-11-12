@@ -83,7 +83,10 @@ export async function compactWithNotes(
   }
 }
 
-/** Takes the note of every source. When one source fails, the notes taken by the others are put back. */
+/**
+ * Takes the note of every source. When one source fails, the notes taken by the others are put
+ * back.
+ */
 export async function takeNotes(sources: readonly CompactionNoteSource[]): Promise<TakenNote[]> {
   const results = await Promise.allSettled(
     sources.map(async (source): Promise<TakenNote[]> => {

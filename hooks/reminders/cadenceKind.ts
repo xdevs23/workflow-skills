@@ -29,7 +29,9 @@ export enum FieldKind {
 }
 
 /** A value field in the card of a reminder, whose value is stored under `key`. */
-export type CardField<Field extends string = string> = SingleValueField<Field> | ListCardField<Field>
+export type CardField<Field extends string = string> =
+  | SingleValueField<Field>
+  | ListCardField<Field>
 
 /** A list field, whose items are stored under `key`. */
 export type ListCardField<Field extends string = string> = {
@@ -150,7 +152,9 @@ export class CadenceProblem {
   }
 }
 
-/** A kind of cadence, an entry in the kind dropdown of a card, with the keys `Field` of its fields. */
+/**
+ * A kind of cadence, an entry in the kind dropdown of a card, with the keys `Field` of its fields.
+ */
 export type CadenceKind<Settings, Field extends string = string> = {
   /** The name under which the reminders of the kind are stored, never shown and never changed. */
   id: string
