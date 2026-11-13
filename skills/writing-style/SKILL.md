@@ -87,8 +87,11 @@ write
 - Say what is there or what happens, instead of listing what is absent with `no` and noun
 - Where absence itself is point, write it as sentence with verb, e.g. "The reviewer does not see
   notes." instead of "The reviewer sees no notes"
-- Name thing with noun for thing, never with verb turned into noun. Write "nine requests" in
-  place of "nine reads", and "list of orders" in place of "one listing"
+- Name thing with noun for thing, never with verb turned into noun, with or without "the" or "a"
+  before it. Write "nine requests" in place of "nine reads", "list of orders" in place of "one
+  listing", "Questions before climbing?" in place of "Questions before the climb", "Book tuner" in
+  place of "Ask for a tuning", "append result in scope of bus" in place of "run the success append
+  in a scope of the bus"
 - Never define term by repeating it, as in "`count`, the count of the range" or "a ranking ranks"
 - Where noun is object of clause after it, put verb after noun as participle: "the file read by
   importer", never "the file that the importer reads", "the file the importer reads" or "the file,

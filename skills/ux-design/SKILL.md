@@ -48,6 +48,8 @@ description: Behavior of screen for user, such as input, place of parts, saving,
 - Put every action on one object into one bar next to that object
 - Offer every view and action on data that users of apps of same kind expect: switch between views
   of different range, create by hand, edit, move, delete
+- Show picture beside each item that reader picks by look, e.g. dish, drink or product, so reader
+  finds it at a glance. Never list such items as text alone
 - Show at once only parts and controls needed by main task of screen. Keep every other view and
   action one step away, on item or part on which it acts, opened when reader asks for it
 - Allow every change of item that can happen in reality, in every state of item. Block change only

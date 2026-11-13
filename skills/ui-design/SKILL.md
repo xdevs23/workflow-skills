@@ -113,9 +113,14 @@ description: Visual design of screen or page
   "no" with noun
 - Write short sentences: one statement each, subject before verb. Split sentence with more than
   one condition
+- Never join two statements with ", so" or ", and". Write two sentences
 - Make headline short title for what section offers. Never write headline as sentence that tells
   story, and never put detail into it. Put detail into content under headline
 - Read every headline alone. Rewrite headline that does not tell stranger what section offers
+- Write headline, button and link without "the" or "a" before its noun, e.g. "Keeper's house",
+  "Hear note A". Keep article only where line breaks without it
+- End headline on word that carries its meaning. Never end it on single letter, note name or
+  abbreviation, e.g. "Three strings of one A"
 - Put sentence under headline only when reader needs it to act. Sentence next to headline or next
   to other sentence says something that belongs with it
 - Replace sentence that adds nothing with picture, control, number or nothing
@@ -169,8 +174,8 @@ description: Visual design of screen or page
   system setting set only that property. Dark theme sets new values of semantic tokens and
   nothing else
 - Tune palette as one family: few related hues, even steps of lightness and chroma between them
-- Colour fields, cards and controls from palette of surface under them. Never set white or other
-  tone outside palette on tinted page
+- Colour fields, cards and controls from palette of surface under them, e.g. navy card on navy
+  section. Never set white, brown or other tone outside palette of that surface on tinted page
 - Set regions of app screen apart by clear step of lightness or hue, so each reads as its own at
   first glance
 - Draw object set apart from page in hue of same family
@@ -188,6 +193,8 @@ description: Visual design of screen or page
 - Measure contrast in every theme of screen, on every background under text
 - Choose faces for their character, from fonts that project has or user approved. Pair one display
   face with character with plain face for body
+- Choose face that reads finished and calm on screen of its product. Never set app text in casual,
+  handwritten or quirky style of face, e.g. casual axis of Recursive
 - Choose face with strokes thick enough to read at its size on its surface. Never set text that
   reader must read in face with hairline strokes
 - Give numbers in columns and lists fixed-width digits
@@ -229,6 +236,9 @@ description: Visual design of screen or page
 
 ## Speed
 
+- Play sound through one audio context made once. Build each sound once and reuse it. Cap voices
+  playing at once, and fade out oldest voice when new one starts, so sound stays clean while reader
+  sweeps over many keys
 - Keep page smooth on ordinary laptop and phone. Draw 3D only while it is visible, at resolution
   and frame rate that machine holds, and stop drawing scene that does not change
 - Show rendered object on every load. Load page several times before returning. Where rendering

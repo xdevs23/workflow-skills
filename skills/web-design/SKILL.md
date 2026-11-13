@@ -48,6 +48,7 @@ description: Design of web page, its layout, header, navigation and scenes
   - fine measuring marks over scene: hairline grid, crosshairs, thin frame around title
   - collection of items shown as objects set in space for reader to pick up
 - Run key scenes edge to edge. Keep reading text in narrow column beside visual
+- Keep links, panels and forms off 3D scene. Give each place of its own beside or below scene
 - Make page read as one whole: one palette, one style of drawing, one set of faces in every
   section
 - Give every section composition of its own. Change lightness or surface between sections,
