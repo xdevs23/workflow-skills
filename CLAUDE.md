@@ -62,3 +62,10 @@ without a clear reach. Never write a bare "should have", which can mean that a t
 or that it still has to be added. Relate two nouns with `of` or `by`. "Run the linter on every file
 edited by the change, and never commit a file rejected by the linter" becomes "Run linter on every
 file edited by change. Never commit file rejected by linter."
+
+## No tests
+
+**This repository has no tests, and none are added.** This rule overrides
+`workflow-skills:writing-tests` and every step in other skills that writes, runs or asks for tests.
+A change to the hooks module is checked with `nix run .#check`, the type check and the lint, and by
+operating the changed behavior in a live session.
