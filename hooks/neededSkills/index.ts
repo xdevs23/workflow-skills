@@ -1,7 +1,13 @@
 import type { On } from 'claude-code'
 
 import { EVERY_EVENT } from '../everyEvent'
-import { forgetEndedAgent, measureContext, recordCommandLoad, recordLoad } from './ledgerHooks'
+import {
+  forgetCompactedLoads,
+  forgetEndedAgent,
+  measureContext,
+  recordCommandLoad,
+  recordLoad,
+} from './ledgerHooks'
 import { PLUGIN_TOOLS, denyCheckedCallUntilLoaded, denyPluginToolUntilLoaded } from './refusal'
 
 /**
@@ -15,4 +21,5 @@ export function registerNeededSkills(on: On): void {
   on('tool.call', PLUGIN_TOOLS, denyPluginToolUntilLoaded)
   on('tool.check', EVERY_EVENT, denyCheckedCallUntilLoaded)
   on('turn.complete', EVERY_EVENT, forgetEndedAgent)
+  on('session.compact', EVERY_EVENT, forgetCompactedLoads)
 }

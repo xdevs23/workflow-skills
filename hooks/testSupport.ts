@@ -215,6 +215,8 @@ export async function startSession(
   on('fs.stat', ($, e) => denyMissingFile(e.path))
   on('agent.list', () => ({ value: session.agents }))
   on('turn.step', async function* (_, e) {
+    yield { kind: 'text', index: 0, text: '' }
+
     return {
       turnId: e.turnId,
       index: e.index,
@@ -380,18 +382,30 @@ export function callSkillTool($: Engine, skill: string, agentId?: string) {
   return $.tool.call({ tool: 'Skill', skill, ...(agentId === undefined ? {} : { agentId }) })
 }
 
-/**
- * Sends a model request of the loop of `agentId`, or of the main conversation, which reports the
- * context size of the session.
- */
-export async function sendModelRequest($: Engine, agentId?: string) {
+/** A model request sent by a test: its loop, the messages it carries, and what runs meanwhile. */
+export type ModelRequest = {
+  /** The agent whose loop sends the request; the main conversation when left out. */
+  agentId?: string
+  messageCount?: number
+  /** Runs after the first piece of the response arrived and before the rest is read, as a tool
+   * call that the engine runs while the response streams. */
+  whileStreaming?: () => Promise<unknown>
+}
+
+/** Sends the model request `request`, which reports the context size of the session. */
+export async function sendModelRequest(
+  $: Engine,
+  { agentId, messageCount = 1, whileStreaming }: ModelRequest = {},
+) {
   const stream = $.turn.step({
     turnId: TURN,
     index: 0,
     model: 'claude-opus-5-5',
-    messageCount: 1,
+    messageCount,
     ...(agentId === undefined ? {} : { agentId }),
   })
+  await stream.next()
+  await whileStreaming?.()
   while ((await stream.next()).done !== true) {
     // The response is read to its end, as the engine reads it.
   }

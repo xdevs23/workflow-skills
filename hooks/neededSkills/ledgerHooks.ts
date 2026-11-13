@@ -1,10 +1,11 @@
 import type { AgentStatus, EngineInterface, MatchedHook, ModelUsage } from 'claude-code'
 
+import { REPLACES_CONVERSATION } from '../compactionTrigger'
 import { isMadeByModel } from '../conversation'
 import type { EveryEvent } from '../everyEvent'
 import { changeLoop, forgetAgent } from './ledgerState'
 import { LoadKind } from './loadKind'
-import { withLoad, withMeasure } from './loadLedger'
+import { NEW_LOOP, withLoad, withMeasure } from './loadLedger'
 import type { LoopLedger } from './loadLedger'
 import { loadMadeBy, neededSkillNamed } from './loadOfCall'
 
@@ -52,6 +53,23 @@ export const recordCommandLoad: MatchedHook<'prompt.submit', EveryEvent> = async
   }
 
   return submitted
+}
+
+/**
+ * Empties the ledger of the loop whose conversation a compaction replaced, since the summary keeps
+ * the text of no load, also of a load still waiting for a reported size.
+ */
+export const forgetCompactedLoads: MatchedHook<'session.compact', EveryEvent> = async (
+  $,
+  e,
+  next,
+) => {
+  const compacted = await next(e)
+  if (compacted.skip === undefined && REPLACES_CONVERSATION[e.trigger]) {
+    await changeLedgerOf($, e, () => NEW_LOOP)
+  }
+
+  return compacted
 }
 
 // The engine raises no end of an agent beyond the end of a turn. A subagent and a workflow agent

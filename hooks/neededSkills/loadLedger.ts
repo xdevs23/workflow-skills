@@ -15,17 +15,18 @@ export type LoopMeasure = {
   model: string
 }
 
-/** A load with the context size of the loop at the model request that made it, in tokens. */
+/** A load with the context size reported by the first model request of the loop after it. */
 export type RecordedLoad = Load & { contextTokens: number }
 
 /**
- * The ledger of one loop: the main conversation, a subagent or a workflow agent. Until a model
- * request of the loop reported a size, the loads made are recorded as pending, and get the size
- * reported next.
+ * The ledger of one loop: the main conversation, a subagent or a workflow agent. A load is recorded
+ * as pending until the next model request of the loop reports a size, and gets that size. The
+ * engine runs a tool call while the request that made it still streams, before that request
+ * reports a size, so the size reported last before a load can come from before a compaction.
  */
 export type LoopLedger =
   | { measure: null; pendingLoads: readonly Load[] }
-  | { measure: LoopMeasure; loads: readonly RecordedLoad[] }
+  | { measure: LoopMeasure; loads: readonly RecordedLoad[]; pendingLoads: readonly Load[] }
 
 export const NEW_LOOP: LoopLedger = { measure: null, pendingLoads: [] }
 
@@ -40,12 +41,14 @@ function withoutLoad<Made extends Load>(loads: readonly Made[], load: Load): Mad
 
 /** `loop` after a model request of it reported `measure`. */
 export function withMeasure(loop: LoopLedger, measure: LoopMeasure): LoopLedger {
+  const carriedOver =
+    loop.measure === null ? [] : loadsCarriedOver(loop.measure, loop.loads, measure)
+  const stamped = loop.pendingLoads.map(load => ({ ...load, contextTokens: measure.contextTokens }))
+
   return {
     measure,
-    loads:
-      loop.measure === null
-        ? loop.pendingLoads.map(load => ({ ...load, contextTokens: measure.contextTokens }))
-        : loadsCarriedOver(loop.measure, loop.loads, measure),
+    loads: [...carriedOver, ...stamped],
+    pendingLoads: [],
   }
 }
 
@@ -71,17 +74,16 @@ function loadsCarriedOver(
   return loads.map(load => ({ ...load, contextTokens: load.contextTokens + shift }))
 }
 
-/** `loop` with `load` made at its current context size, in place of an earlier load of the same. */
+/**
+ * `loop` with `load` pending, in place of an earlier load of the same, so a load is either recorded
+ * or pending, never both.
+ */
 export function withLoad(loop: LoopLedger, load: Load): LoopLedger {
-  const { measure } = loop
-  if (measure === null) {
-    return { measure, pendingLoads: [...withoutLoad(loop.pendingLoads, load), load] }
-  }
+  const pendingLoads = [...withoutLoad(loop.pendingLoads, load), load]
 
-  return {
-    measure,
-    loads: [...withoutLoad(loop.loads, load), { ...load, contextTokens: measure.contextTokens }],
-  }
+  return loop.measure === null
+    ? { measure: null, pendingLoads }
+    : { measure: loop.measure, loads: withoutLoad(loop.loads, load), pendingLoads }
 }
 
 /** The loads of `needed` that `loop` does not count. */
@@ -100,5 +102,10 @@ export function countedLoadsOf(loop: LoopLedger): readonly Load[] {
 
   return measure === null
     ? loop.pendingLoads
-    : loop.loads.filter(load => measure.contextTokens - load.contextTokens <= MAX_TOKENS_AFTER_LOAD)
+    : [
+        ...loop.loads.filter(
+          load => measure.contextTokens - load.contextTokens <= MAX_TOKENS_AFTER_LOAD,
+        ),
+        ...loop.pendingLoads,
+      ]
 }

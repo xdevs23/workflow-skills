@@ -4,7 +4,7 @@ import type { AgentInfo } from 'claude-code'
 
 import { PLUGIN } from '../names'
 import { test } from '../testDeclaration'
-import { SUBAGENT, TURN, callSkillTool } from '../testSupport'
+import { SUBAGENT, TURN, callSkillTool, compact } from '../testSupport'
 import { requestModel, startLedgerSession } from './ledgerTestSupport'
 import type { LedgerSession } from './ledgerTestSupport'
 import { countedLoadsOf } from './loadLedger'
@@ -36,7 +36,7 @@ describe('the ledger of each loop', () => {
     const ledger = await startLedgerSession($, on)
     await requestModel($, ledger, 40_000)
     await callSkillTool($, WRITING_CODE)
-    await requestModel($, ledger, 30_000, SUBAGENT)
+    await requestModel($, ledger, 30_000, { agentId: SUBAGENT })
     await callSkillTool($, COMMIT_MESSAGES, SUBAGENT)
 
     expect(countedOf(ledger)).toEqual([WRITING_CODE])
@@ -71,9 +71,48 @@ describe('the ledger of each loop', () => {
     expect(countedOf(ledger)).toEqual([])
   })
 
+  test('a load made while its request streams counts from the size that request reports', async (
+    $,
+    on,
+  ) => {
+    const ledger = await startLedgerSession($, on)
+    await requestModel($, ledger, 40_000, { messageCount: 10 })
+    await requestModel($, ledger, 50_000, {
+      messageCount: 12,
+      whileStreaming: () => callSkillTool($, WRITING_CODE),
+    })
+    await requestModel($, ledger, 150_000, { messageCount: 14 })
+
+    expect(countedOf(ledger)).toEqual([WRITING_CODE])
+  })
+
+  test('a load made while the first request after a rewind streams counts', async ($, on) => {
+    const ledger = await startLedgerSession($, on)
+    await requestModel($, ledger, 455_000, { messageCount: 900 })
+    await requestModel($, ledger, 97_000, {
+      messageCount: 12,
+      whileStreaming: () => callSkillTool($, WRITING_CODE),
+    })
+    await requestModel($, ledger, 114_000, { messageCount: 14 })
+
+    expect(countedOf(ledger)).toEqual([WRITING_CODE])
+  })
+
+  test('a compaction drops every load, also one waiting for a reported size', async ($, on) => {
+    const ledger = await startLedgerSession($, on)
+    await requestModel($, ledger, 40_000)
+    await callSkillTool($, WRITING_CODE)
+    await requestModel($, ledger, 45_000)
+    await callSkillTool($, COMMIT_MESSAGES)
+    await compact($)
+    await requestModel($, ledger, 20_000)
+
+    expect(countedOf(ledger)).toEqual([])
+  })
+
   test('the end of an agent run removes its ledger', async ($, on) => {
     const ledger = await startLedgerSession($, on)
-    await requestModel($, ledger, 30_000, SUBAGENT)
+    await requestModel($, ledger, 30_000, { agentId: SUBAGENT })
     await callSkillTool($, WRITING_CODE, SUBAGENT)
     await endAgentTurn($)
 
@@ -90,7 +129,7 @@ describe('the ledger of each loop', () => {
       status: 'idle',
     }
     ledger.session.agents.push(teammate)
-    await requestModel($, ledger, 30_000, SUBAGENT)
+    await requestModel($, ledger, 30_000, { agentId: SUBAGENT })
     await callSkillTool($, WRITING_CODE, SUBAGENT)
     await endAgentTurn($)
     expect(countedOf(ledger, SUBAGENT)).toEqual([WRITING_CODE])

@@ -95,7 +95,7 @@ describe('the denial of a call that needs a skill not loaded', () => {
     const { text } = await editKotlinFile($)
     await callSkillTool($, WRITING_CODE)
     await readFileListed($, text?.match(LOAD_ALL_FOR_KOTLIN))
-    await requestModel($, ledger, 30_000, SUBAGENT)
+    await requestModel($, ledger, 30_000, { agentId: SUBAGENT })
     const denied = await editKotlinFile($, SUBAGENT)
 
     expect(denied.text).toMatch(LOAD_ALL_FOR_KOTLIN)

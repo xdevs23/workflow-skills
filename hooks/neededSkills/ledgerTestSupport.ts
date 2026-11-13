@@ -3,7 +3,7 @@ import type { On } from 'claude-code'
 
 import { PLUGIN } from '../names'
 import { sendModelRequest, startSession } from '../testSupport'
-import type { Session } from '../testSupport'
+import type { ModelRequest, Session } from '../testSupport'
 import type { SessionLoadLedgers } from '../../types'
 
 // The session without a load of the question skill, shared by the tests for the ledger and for
@@ -18,7 +18,7 @@ export type LedgerSession = {
 export async function startLedgerSession($: Engine, on: On): Promise<LedgerSession> {
   const written: LedgerSession['written'] = { ledgers: null }
   on('state.set', { plugin: PLUGIN, key: 'loadLedgers' }, ($, e, next) => {
-    written.ledgers = e.value
+    written.ledgers = e.value.value
 
     return next(e)
   })
@@ -26,16 +26,13 @@ export async function startLedgerSession($: Engine, on: On): Promise<LedgerSessi
   return { session: await startSession($, on, { loadsQuestionSkill: false }), written }
 }
 
-/**
- * Sends a request of the loop of `agentId`, or of the main conversation, at `contextTokens`, or
- * without usage for null.
- */
+/** Sends the model request `request` at `contextTokens`, or without usage for null. */
 export async function requestModel(
   $: Engine,
   { session }: LedgerSession,
   contextTokens: number | null,
-  agentId?: string,
+  request: ModelRequest = {},
 ) {
   session.contextTokens = contextTokens
-  await sendModelRequest($, agentId)
+  await sendModelRequest($, request)
 }

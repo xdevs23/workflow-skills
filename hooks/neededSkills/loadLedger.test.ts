@@ -22,9 +22,9 @@ function measured(contextTokens: number, messageCount = 10, model = MODEL): Loop
   return { contextTokens, messageCount, model }
 }
 
-/** A loop whose model request reported `contextTokens`, then loaded `loads`. */
+/** A loop that loaded `loads`, then had its model request report `contextTokens`. */
 function loopLoadedAt(contextTokens: number, ...loads: Load[]): LoopLedger {
-  return loads.reduce(withLoad, withMeasure(NEW_LOOP, measured(contextTokens)))
+  return withMeasure(loads.reduce(withLoad, NEW_LOOP), measured(contextTokens))
 }
 
 function countedNamesOf(loop: LoopLedger): string[] {
@@ -71,6 +71,27 @@ describe('the ledger of a loop', () => {
       WRITING_CODE.name,
     ])
     expect(countedNamesOf(withMeasure(switched, measured(90_001, 12, SONNET)))).toEqual([])
+  })
+
+  test('a load counts from the time it is made, before a request reports a size', () => {
+    const grown = withMeasure(loopLoadedAt(30_000, WRITING_CODE), measured(200_000))
+    expect(countedNamesOf(grown)).toEqual([])
+
+    expect(countedNamesOf(withLoad(grown, WRITING_CODE))).toEqual([WRITING_CODE.name])
+  })
+
+  // The engine runs a tool call while the request that made it streams, so the size reported last
+  // before the load comes from the request before it, here the last one before a rewind.
+  test('a load made by the first request after a rewind counts, an earlier one does not', () => {
+    const beforeRewind = withMeasure(loopLoadedAt(400_000, KOTLIN), measured(455_000, 900))
+    expect(countedNamesOf(beforeRewind)).toEqual([KOTLIN.name])
+    const loadedWhileStreaming = withLoad(beforeRewind, WRITING_CODE)
+    const rewound = withMeasure(loadedWhileStreaming, measured(97_000, 12))
+
+    expect(countedNamesOf(rewound)).toEqual([WRITING_CODE.name])
+    expect(countedNamesOf(withMeasure(rewound, measured(114_000, 14)))).toEqual([
+      WRITING_CODE.name,
+    ])
   })
 
   test('a load made before any reported size counts, from the size reported next', () => {

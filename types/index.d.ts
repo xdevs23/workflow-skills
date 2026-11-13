@@ -392,7 +392,7 @@ declare module 'claude-code' {
       /** How far the due times of the timed reminders of the session are handled. */
       timedRemindersHandled: TimedRemindersHandled | null
       /** The ledgers of the loops of the session; null before any loop made a load or a request. */
-      loadLedgers: SessionLoadLedgers | null
+      loadLedgers: Shaped<SessionLoadLedgers | null>
       /** The copy of TODO.md of the session; null before its main conversation read the file. */
       todoCopy: TodoCopy | null
     }

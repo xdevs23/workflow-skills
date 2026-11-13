@@ -4,9 +4,9 @@ import type {
   Next,
   SessionCompactInput,
   SessionCompactResult,
-  SessionCompactTrigger,
 } from 'claude-code'
 
+import { REPLACES_CONVERSATION } from './compactionTrigger'
 import { isMainConversation } from './conversation'
 import { showFailure } from './failureToast'
 import { PromptOutcome, submitToSessionOrRestore } from './sendToModel'
@@ -30,17 +30,6 @@ export type CompactionNoteSource = {
 
 /** A note taken from `source`. */
 type TakenNote = { source: CompactionNoteSource; note: CompactionNote }
-
-/**
- * Whether a compaction by each trigger puts its summary in place of the conversation. A
- * `precompute` computes a summary ahead of time and changes nothing.
- */
-const REPLACES_CONVERSATION: Record<SessionCompactTrigger, boolean> = {
-  manual: true,
-  auto: true,
-  plugin: true,
-  precompute: false,
-}
 
 /**
  * Runs the compaction `e`, and sends the notes of `sources` to the main conversation once the
