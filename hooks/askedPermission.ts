@@ -1,5 +1,5 @@
-import { QUESTION_MARKS, QUESTION_MARK_AT_END } from './lineMarks'
-import { NO_LETTER_AFTER, NO_LETTER_BEFORE } from './quotedText'
+import { closingQuestionPattern } from './closingQuestion'
+import { QUESTION_MARKS } from './lineMarks'
 import { DECIDED_WORK_REMEDY } from './refusal'
 import type { Refusal } from './refusal'
 import { runWithoutWorkNeedingApproval } from './workNeedingApproval'
@@ -31,12 +31,9 @@ const ORDERED_WORK_VERBS = [
  * as "Should I start that rewrite?". A question about a push or a deletion passes.
  */
 export const ASKED_PERMISSION: Refusal = {
-  pattern: new RegExp(
-    String.raw`${NO_LETTER_BEFORE}(?:${PERMISSION_ASKERS})\s+(?:${ORDERED_WORK_VERBS})` +
-      NO_LETTER_AFTER +
-      runWithoutWorkNeedingApproval(String.raw`${QUESTION_MARKS}\n`) +
-      QUESTION_MARK_AT_END,
-    'iu',
+  pattern: closingQuestionPattern(
+    String.raw`(?:${PERMISSION_ASKERS})\s+(?:${ORDERED_WORK_VERBS})`,
+    runWithoutWorkNeedingApproval(String.raw`${QUESTION_MARKS}\n`),
   ),
   reason:
     'It ends on a question that asks the user for permission to do work. ' + DECIDED_WORK_REMEDY,

@@ -1,3 +1,4 @@
+import { ASKED_APPROVAL } from './askedApproval'
 import { ASKED_PERMISSION } from './askedPermission'
 import { COST_FRAMING } from './costFraming'
 import { HANDED_CALL } from './handedCall'
@@ -9,6 +10,7 @@ import type { Refusal } from './refusal'
 export const REFUSALS: readonly Refusal[] = [
   HANDED_DECISION,
   ASKED_PERMISSION,
+  ASKED_APPROVAL,
   HANDED_CALL,
   COST_FRAMING,
 ]

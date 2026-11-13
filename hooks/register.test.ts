@@ -12,6 +12,7 @@ import {
   WITHDRAW,
   WITHDRAW_TOOL,
 } from './names'
+import { ASKED_APPROVAL } from './askedApproval'
 import { COST_FRAMING } from './costFraming'
 import { HANDED_DECISION } from './handedDecision'
 import { AskOutcome, askProblemOf } from './inputs'
@@ -399,6 +400,16 @@ describe('asking without waiting', () => {
       expect(session.chatLines).toEqual([])
     },
   )
+
+  test('a question that asks for approval of a draft is refused and not stored', async ($, on) => {
+    const session = await startSession($, on)
+    const question = 'Can you approve the export limit draft at .cache/specs/export-limit.html?'
+
+    expect((await $.tool.call({ tool: ASK_TOOL, question })).deny).toBe(
+      askProblemOf({ outcome: AskOutcome.Refused, refusal: ASKED_APPROVAL }),
+    )
+    expect(questionCountOf(session)).toBe(0)
+  })
 
   test('a question that labels a decision as a cost is refused and not stored', async ($, on) => {
     const session = await startSession($, on)
