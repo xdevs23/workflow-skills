@@ -247,4 +247,5 @@ description: Visual design of screen or page
 ## Before returning
 
 - Look at whole page at real size, part by part, in browser viewport of 1920×960 and of phone at
-  390×844. Fix covered controls and text, frames drawn twice, parts cut at edge and broken objects
+  390×844. Fix covered controls and text, frames drawn twice, parts cut at edge, broken objects and
+  label off centre in button wider than label

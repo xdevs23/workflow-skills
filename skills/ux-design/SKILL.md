@@ -86,4 +86,5 @@ description: Behavior of screen for user, such as input, place of parts, saving,
 - Make interactive object behave as object imitated by it, for every input it takes. Before showing
   page, try each input in browser and compare result with real object
 - Make every control work by keyboard, with touch target of at least 44 px and accessible name
+- Close menu or dropdown on press of control that opened it
 - Leave scrolling, zoom, trackpad, touch and keyboard native
