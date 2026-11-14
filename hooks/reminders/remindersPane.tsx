@@ -120,6 +120,7 @@ function drawRemindersPane(
           </Button>
         </Box>
       )}
+      {view.notice !== undefined && <Text dimColor>{view.notice}</Text>}
     </Box>
   )
 }

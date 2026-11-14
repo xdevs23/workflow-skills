@@ -78,8 +78,10 @@ export function storedRemindersPane(
   return {
     read: () => read($, remindersPane),
     update: change => update($, remindersPane, change),
-    readTyped: () => read($, remindersPaneTyped),
-    updateTyped: change => update($, remindersPaneTyped, change),
+    typed: {
+      read: () => read($, remindersPaneTyped),
+      update: change => update($, remindersPaneTyped, change),
+    },
   }
 }
 

@@ -72,7 +72,8 @@ function drawButton(
     kind: ControlKind.Button,
     autoFocus: autoFocus === true,
     onKey: event => {
-      if (keyNameOf(event) === KeyName.Return) {
+      const name = keyNameOf(event)
+      if (name === KeyName.Return || name === KeyName.Space) {
         return onPress()
       }
     },

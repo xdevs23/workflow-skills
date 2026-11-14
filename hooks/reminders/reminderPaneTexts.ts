@@ -1,3 +1,5 @@
+import { DAY_AND_TIME } from '../dayAndTime'
+
 // The texts of the Reminders pane, drawn by its surface module and by the hooks module.
 
 export const PANE_TITLE = 'Reminders'
@@ -28,13 +30,6 @@ export const FIELDS_IN_TERMINAL_ONLY =
   `Add and edit reminders in the ${PANE_TITLE} pane in a terminal.`
 
 const TIME_OF_DAY = new Intl.DateTimeFormat('en', {
-  hour: '2-digit',
-  minute: '2-digit',
-  hourCycle: 'h23',
-})
-const DAY_AND_TIME = new Intl.DateTimeFormat('en', {
-  month: 'short',
-  day: 'numeric',
   hour: '2-digit',
   minute: '2-digit',
   hourCycle: 'h23',

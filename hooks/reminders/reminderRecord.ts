@@ -1,10 +1,10 @@
 import type { Cadence, CadenceValue, Reminder } from '../../types'
-import { RecordKind, isRecord, recordPrefixOf } from '../pluginStore'
+import { RecordKind, isRecord, keyPartAfter, readStrings, recordPrefixOf } from '../pluginStore'
 import { isPositiveInteger } from '../positiveInteger'
 import type { StoredEntry } from '../pluginStore'
 
 // The version of the records written by this code. A record of a higher version was written by a
-// newer plugin, whose fields this code can misread, so it is unreadable and left as it is.
+// newer plugin with fields this code can misread, so it is unreadable and left as it is.
 const RECORD_VERSION = 1
 
 /** The kind of scope named in the keys of the reminders after the kind of record. */
@@ -51,6 +51,11 @@ export type ReadRecords = { reminders: Reminder[]; unreadableKeys: string[] }
  */
 export function remindersPrefixOf(sessionId: string): string {
   return recordPrefixOf(RecordKind.Reminder, SESSION_SCOPE, sessionId)
+}
+
+/** The id of the session whose reminders have the record under `key`, when it is such a record. */
+export function sessionOfReminderKey(key: string): string | undefined {
+  return keyPartAfter(recordPrefixOf(RecordKind.Reminder, SESSION_SCOPE), key)
 }
 
 /** The record that adds a reminder. Its key is the first of the reminder set in the store. */
@@ -281,10 +286,5 @@ export function parseCadence(value: unknown): Cadence | undefined {
 }
 
 function parseCadenceValue(value: unknown): CadenceValue | undefined {
-  if (!Array.isArray(value)) {
-    return typeof value === 'string' ? value : undefined
-  }
-  const items = value.filter(item => typeof item === 'string')
-
-  return items.length === value.length ? items : undefined
+  return typeof value === 'string' ? value : readStrings(value)
 }

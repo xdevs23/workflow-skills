@@ -1,15 +1,17 @@
 import type { AttachedTodo, Board, Goal } from '../../types'
 import {
   StoreCall,
-  callStore,
+  deleteRecord,
   describeRefusedRead,
   describeRefusedWrite,
   describeUnreadableRecord,
+  readEntriesIn,
   readEntriesUnder,
   returningStoreFailure,
-  writeRetryingWhileLocked,
+  writeRecord,
 } from '../pluginStore'
 import type { StoreEngine } from '../pluginStore'
+import { importedIdsOf } from '../importedId'
 import {
   Outcome,
   addGoal,
@@ -21,6 +23,7 @@ import {
   markGoalDone,
   nextGoalNumberOf,
   openGoalsByIdOf,
+  openGoalsOf,
   removeDoneMark,
   setGoalDependency,
   setGoalPriority,
@@ -61,6 +64,8 @@ import {
 import type { BoardRecord } from './boardRecord'
 import { boardPrefixOf } from './boardScope'
 import type { BoardScope } from './boardScope'
+import { importedGoalsOf } from './goalImport'
+import type { ImportedGoal } from './goalImport'
 import type { Priority } from './priority'
 
 // The store does not offer compare-and-set. Changes made at once by several processes do not
@@ -77,6 +82,12 @@ export enum StoreFailure {
   Unreadable = 'unreadable',
   NotSaved = 'not-saved',
 }
+
+/** The goals imported into a board, as they were stored. */
+export type GoalsImported = { outcome: Outcome.Changed; imported: readonly ImportedGoal[] }
+
+/** An import into the board `into` of the open goals with the ids `picked` of the board `from`. */
+export type GoalImport = { into: BoardScope; from: Board; picked: ReadonlySet<string> }
 
 export type Failed = { outcome: Outcome.Failed } & (
   | { failure: StoreFailure.NotRead; key: string; cause: Error }
@@ -98,6 +109,18 @@ export function loadBoard($: StoreEngine, scope: BoardScope): Promise<Read | Fai
   }))
 }
 
+/** Reads the board of the scope from the records under the keys of `keys`, listed before. */
+export function loadBoardIn(
+  $: StoreEngine,
+  scope: BoardScope,
+  keys: readonly string[],
+): Promise<Read | Failed> {
+  return returningFailure(async () => ({
+    outcome: Outcome.Read,
+    board: settledBoardOf(readBoard(scope, await readEntriesIn($, boardPrefixOf(scope), keys))),
+  }))
+}
+
 /**
  * Stores a new goal under a number that is free on the board, refused as addGoal refuses it. The
  * store does not offer compare-and-set, so the number is checked after the write: of two goals
@@ -116,6 +139,43 @@ export function saveNewGoal(
     const added = addGoal(board, { id: crypto.randomUUID(), text }, addedAt, expectedNumber)
 
     return added.outcome === Outcome.Changed ? saveUnderFreeNumber($, scope, added.goal) : added
+  })
+}
+
+/**
+ * Stores the goals of `goalImport` made by importedGoalsOf under the ids given by importedIdsOf,
+ * each with its priority and dependency right after it, and then gives every goal whose number was
+ * taken meanwhile a free number, as saveNewGoal does. A dependency is stored by the id of the goal
+ * depended on, so it still points at that goal when the goal is stored under another number. Goals
+ * stored by an import that failed are found on the board by the next import of the same goals,
+ * which stores only the rest.
+ */
+export function saveImportedGoals(
+  $: StoreEngine,
+  { into, from, picked }: GoalImport,
+  importedAt: number,
+): Promise<GoalsImported | Failed> {
+  return returningFailure(async () => {
+    const newIds = await importedIdsOf(
+      into.id,
+      openGoalsOf(from).map(goal => goal.id),
+    )
+    const target = await readStoredBoard($, into)
+    const imported = importedGoalsOf(from, { pickedIds: picked, newIds }, target, importedAt)
+    for (const { goal } of imported) {
+      await writeRecord($, goalRecordOf(into, goal))
+      await Promise.all(settingRecordsOf(into, goal).map(record => writeRecord($, record)))
+    }
+    const { storedAs } = await settleNumbers(
+      $,
+      into,
+      imported.map(({ goal }) => goal),
+    )
+
+    return {
+      outcome: Outcome.Changed,
+      imported: imported.map(each => ({ ...each, goal: storedAs(each.goal) })),
+    }
   })
 }
 
@@ -245,11 +305,7 @@ export function saveDetachedTodo(
     $,
     scope,
     board => detachTodo(board, goalNumber, todoNumber),
-    goal => {
-      const key = todoKeyOf(scope, goal, todoNumber)
-
-      return writeToStore($, key, () => $.store.delete(key))
-    },
+    goal => deleteRecord($, todoKeyOf(scope, goal, todoNumber)),
   )
 }
 
@@ -292,15 +348,59 @@ async function saveUnderFreeNumber(
   scope: BoardScope,
   added: Goal,
 ): Promise<Changed> {
-  let goal = added
-  for (;;) {
-    await writeRecord($, goalRecordOf(scope, goal))
-    const board = await readStoredBoard($, scope)
-    if (!isNumberTaken(goal, board)) {
-      return { outcome: Outcome.Changed, board: settledBoardOf(board), goal, unmarked: [] }
+  await writeRecord($, goalRecordOf(scope, added))
+  const { board, storedAs } = await settleNumbers($, scope, [added])
+
+  return { outcome: Outcome.Changed, board, goal: storedAs(added), unmarked: [] }
+}
+
+/**
+ * Reads the board after the goals `written` were stored, and stores each of them whose number a
+ * goal listed before it took under the next free numbers, until none is taken. Returns the settled
+ * board, and each goal of `written` as it is stored.
+ */
+async function settleNumbers(
+  $: StoreEngine,
+  scope: BoardScope,
+  written: readonly Goal[],
+): Promise<{ board: Board; storedAs: (goal: Goal) => Goal }> {
+  const board = await readStoredBoard($, scope)
+  const firstFree = nextGoalNumberOf(board)
+  const renumbered = written
+    .filter(goal => isNumberTaken(goal, board))
+    .map((goal, index) => ({ ...goal, number: firstFree + index }))
+  if (renumbered.length === 0) {
+    const numbers = new Map(written.map(goal => [goal.id, goal.number]))
+
+    return {
+      board: settledBoardOf(board),
+      storedAs: goal => ({ ...goal, number: numbers.get(goal.id) ?? goal.number }),
     }
-    goal = { ...goal, number: nextGoalNumberOf(board) }
   }
+  for (const goal of renumbered) {
+    await writeRecord($, goalRecordOf(scope, goal))
+  }
+  const byId = new Map(renumbered.map(goal => [goal.id, goal]))
+
+  return settleNumbers(
+    $,
+    scope,
+    written.map(goal => byId.get(goal.id) ?? goal),
+  )
+}
+
+/** The records of the priority and the dependency set on `goal`. */
+function settingRecordsOf(scope: BoardScope, goal: Goal): BoardRecord[] {
+  const { prioritySetting, dependencySetting } = goal
+
+  return [
+    ...(prioritySetting === undefined
+      ? []
+      : [priorityRecordOf(scope, { ...goal, prioritySetting })]),
+    ...(dependencySetting === undefined
+      ? []
+      : [dependencyRecordOf(scope, { ...goal, dependencySetting })]),
+  ]
 }
 
 async function readSettledBoard($: StoreEngine, scope: BoardScope): Promise<Board> {
@@ -317,14 +417,6 @@ async function writeMarkRemovals(
   unmarked: readonly UnmarkedGoal[],
 ): Promise<void> {
   await Promise.all(unmarked.map(goal => writeRecord($, markRemovalRecordOf(scope, goal))))
-}
-
-function writeRecord($: StoreEngine, record: BoardRecord): Promise<void> {
-  return writeToStore($, record.key, () => $.store.set(record.key, record.value))
-}
-
-function writeToStore($: StoreEngine, key: string, write: () => Promise<void>): Promise<void> {
-  return callStore(StoreCall.Write, key, () => writeRetryingWhileLocked($, key, write))
 }
 
 /** Runs `work`, and returns the failure of the store or of a stored record that stopped it. */

@@ -26,12 +26,17 @@ export type PaneGoal = {
 
 /**
  * The board drawn by the Goals pane: while it is read, the reason it could not be read, or its open
- * goals by priority with the number the next goal gets.
+ * goals by priority with the number the next goal gets, and the text drawn under the goals.
  */
 export type GoalsPaneView =
   | { board: BoardShown.Loading }
   | { board: BoardShown.NotRead; failure: string }
-  | { board: BoardShown.Read; goals: readonly PaneGoal[]; nextNumber: number }
+  | {
+      board: BoardShown.Read
+      goals: readonly PaneGoal[]
+      nextNumber: number
+      notice?: string
+    }
 
 export enum GoalPaneActionKind {
   Add = 'add',

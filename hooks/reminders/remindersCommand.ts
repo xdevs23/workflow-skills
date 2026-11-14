@@ -8,19 +8,16 @@ import type {
 } from 'claude-code'
 
 import { registerCommandShowingRejection } from '../commandRegistration'
+import { replyWithFailures } from '../failureToast'
 import { replyToFailedHook } from '../hookFailure'
-import { describePaneNotOpened } from '../paneOpening'
 import type { SWITCHING_SOURCES } from '../sessionSources'
 import { loadRemindersShowingFailure } from './reminderActions'
 import { REMINDERS_COMMAND } from './reminderNames'
-import { PANE_TITLE } from './reminderPaneTexts'
-import { Outcome } from './reminders'
-import { openRemindersPane } from './reminderScreens'
+import { describeRemindersPaneFailures, openRemindersPane } from './reminderScreens'
 import { readRemindersInState } from './reminderState'
 import {
   REMINDERS_DESCRIPTION,
   REMINDERS_SUBJECT,
-  describeNotRead,
   describeNotRegistered,
 } from './reminderTexts'
 
@@ -61,22 +58,11 @@ export const readRemindersOfSwitchedSession: MatchedHook<
 export const runRemindersCommand: MatchedHook<
   'command.run',
   { command: typeof REMINDERS_COMMAND }
-> = async $ => {
-  const { loaded, opened } = await openRemindersPane($)
-  const texts = [
-    ...(opened.isPlaced
-      ? []
-      : [describePaneNotOpened(PANE_TITLE, opened.reason, { command: REMINDERS_COMMAND })]),
-    ...(loaded.outcome === Outcome.Failed ? [describeNotRead(loaded)] : []),
-  ]
-  if (texts.length === 0) {
-    return {}
-  }
-  const text = texts.join('\n')
-  $.ui.log(text, { to: 'debug' })
-
-  return { text }
-}
+> = async $ =>
+  replyWithFailures(
+    $,
+    describeRemindersPaneFailures(await openRemindersPane($), { command: REMINDERS_COMMAND }),
+  )
 
 /** Returns the reply to /reminders when its hook failed, with the reason. */
 export function replyWithRemindersHookFailure(

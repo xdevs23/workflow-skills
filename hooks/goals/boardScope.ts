@@ -1,4 +1,4 @@
-import { RecordKind, recordPrefixOf } from '../pluginStore'
+import { RecordKind, keyPartAfter, recordPrefixOf } from '../pluginStore'
 
 /** The kinds of board. A board for a project would be one more kind. */
 export enum ScopeKind {
@@ -18,4 +18,9 @@ export function sessionScope(sessionId: string): BoardScope {
  */
 export function boardPrefixOf(scope: BoardScope): string {
   return recordPrefixOf(RecordKind.Goal, scope.kind, scope.id)
+}
+
+/** The id of the session whose board has the record under `key`, when it is such a record. */
+export function sessionOfBoardKey(key: string): string | undefined {
+  return keyPartAfter(recordPrefixOf(RecordKind.Goal, ScopeKind.Session), key)
 }

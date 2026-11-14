@@ -5,8 +5,14 @@ import { followReminders } from './registeredKinds'
 import { Outcome } from './reminders'
 import type { CheckedDraft } from './reminders'
 import { setLoadedReminders } from './reminderState'
-import { loadReminders, saveDraft, saveRemoval, saveSwitch } from './reminderStore'
-import type { Failed, ReadReminders, ReminderChange } from './reminderStore'
+import {
+  loadReminders,
+  saveDraft,
+  saveImportedReminders,
+  saveRemoval,
+  saveSwitch,
+} from './reminderStore'
+import type { Failed, ReadReminders, ReminderChange, RemindersImported } from './reminderStore'
 import { describeNotRead } from './reminderTexts'
 
 // After every change of a reminder, the state gets the reminders as the change left them in the
@@ -66,6 +72,30 @@ export async function removeReminderOfSession(
   const removed = await saveRemoval($, sessionId, reminderId, await $.clock.now())
 
   return loadAfterChange($, sessionId, removed)
+}
+
+/**
+ * Imports the reminders with the ids `picked` of the session `from` into the session `into` as new
+ * reminders, as saveImportedReminders stores them. The reminders of `from` are left as they are. A
+ * failed import may have stored some of the reminders, so they are read into the state again.
+ */
+export async function importRemindersIntoSession(
+  $: EngineInterface,
+  { into, from, picked }: { into: string; from: string; picked: ReadonlySet<string> },
+): Promise<RemindersImported | Failed> {
+  const source = await loadReminders($, from)
+  if (source.outcome === Outcome.Failed) {
+    return source
+  }
+  const reminderImport = { into, from: source.reminders, picked }
+  const imported = await saveImportedReminders($, reminderImport, await $.clock.now())
+  await putIntoState(
+    $,
+    into,
+    imported.outcome === Outcome.Failed ? await loadReminders($, into) : imported.read,
+  )
+
+  return imported
 }
 
 /**

@@ -15,6 +15,7 @@ export enum RecordKind {
   Delivery = 'deliveries',
   Goal = 'goals',
   Reminder = 'reminders',
+  Session = 'sessions',
 }
 
 const KEY_SEPARATOR = ':'
@@ -26,6 +27,11 @@ export function recordKeyOf(kind: RecordKind, ...parts: readonly string[]): stri
 /** The start of every key of the kind `kind` that begins with `parts`. */
 export function recordPrefixOf(kind: RecordKind, ...parts: readonly string[]): string {
   return `${recordKeyOf(kind, ...parts)}${KEY_SEPARATOR}`
+}
+
+/** The part of `key` that follows `prefix`, up to the next separator, when `key` starts with it. */
+export function keyPartAfter(prefix: string, key: string): string | undefined {
+  return key.startsWith(prefix) ? key.slice(prefix.length).split(KEY_SEPARATOR)[0] : undefined
 }
 
 /**
@@ -101,12 +107,31 @@ export async function returningStoreFailure<T, Failed>(
   }
 }
 
+/** The start shared by every key, which a failed list of every key names. */
+const EVERY_KEY_PREFIX = ''
+
+/** Every key of the store, in the order the keys were first set, through callStore. */
+export function listKeys($: StoreEngine): Promise<string[]> {
+  return callStore(StoreCall.List, EVERY_KEY_PREFIX, () => $.store.keys())
+}
+
 /**
  * Reads every record of the store whose key starts with `prefix`, in the order the keys were first
  * set, through callStore. A record deleted after the keys were listed is left out.
  */
 export async function readEntriesUnder($: StoreEngine, prefix: string): Promise<StoredEntry[]> {
-  const keys = await callStore(StoreCall.List, prefix, () => $.store.keys())
+  return readEntriesIn($, prefix, await callStore(StoreCall.List, prefix, () => $.store.keys()))
+}
+
+/**
+ * Reads the records of the store under the keys of `keys` that start with `prefix`, in their order
+ * in `keys`, through callStore. A record deleted after the keys were listed is left out.
+ */
+export async function readEntriesIn(
+  $: StoreEngine,
+  prefix: string,
+  keys: readonly string[],
+): Promise<StoredEntry[]> {
   const entries = await Promise.all(
     keys
       .filter(key => key.startsWith(prefix))
@@ -203,6 +228,26 @@ export async function writeRetryingWhileLocked(
   }
 }
 
+/** Runs the change `write` to the key `key` as writeRetryingWhileLocked does, through callStore. */
+export function writeToStore(
+  $: StoreWaiter,
+  key: string,
+  write: () => Promise<void>,
+): Promise<void> {
+  return callStore(StoreCall.Write, key, () => writeRetryingWhileLocked($, key, write))
+}
+
+/** A record written to the store: its key, and its value as the store saves it. */
+export type StoreRecord = { key: string; value: unknown }
+
+export function writeRecord($: StoreEngine, record: StoreRecord): Promise<void> {
+  return writeToStore($, record.key, () => $.store.set(record.key, record.value))
+}
+
+export function deleteRecord($: StoreEngine, key: string): Promise<void> {
+  return writeToStore($, key, () => $.store.delete(key))
+}
+
 /**
  * A random wait after the try numbered `tries`, up to a limit that doubles with each try until it
  * reaches the longest wait, so processes that collided do not try again at the same moment.
@@ -213,4 +258,14 @@ function retryWaitAfter(tries: number): number {
 
 export function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
+}
+
+/** `value` as a list of strings, or undefined for anything else, such as a list with a number. */
+export function readStrings(value: unknown): string[] | undefined {
+  if (!Array.isArray(value)) {
+    return undefined
+  }
+  const strings = value.filter(item => typeof item === 'string')
+
+  return strings.length === value.length ? strings : undefined
 }

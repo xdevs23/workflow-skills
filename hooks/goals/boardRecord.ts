@@ -12,7 +12,7 @@ import { boardPrefixOf } from './boardScope'
 import type { BoardScope } from './boardScope'
 
 // The version of the records written by this code. A record of a higher version was written by a
-// newer plugin, whose fields this code can misread, so it is unreadable and left as it is.
+// newer plugin with fields this code can misread, so it is unreadable and left as it is.
 const RECORD_VERSION = 1
 
 /** The parts of a goal, each stored under a key of its own, so that a change writes one key. */

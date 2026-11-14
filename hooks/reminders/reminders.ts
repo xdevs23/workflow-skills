@@ -55,6 +55,32 @@ export function nextNumberOf(reminders: readonly Reminder[]): number {
 }
 
 /**
+ * The reminders of `source` with the ids `pickedIds` that are not removed, added to `existing` at
+ * `importedAt` under the next numbers. Each new reminder has the text, the cadence and the switch
+ * of its source reminder, and the id given to it by `newIds`, which has the new id of every shown
+ * reminder of `source`, so a reminder imported once is found in `existing` and not imported again.
+ */
+export function importedRemindersOf(
+  source: readonly Reminder[],
+  { pickedIds, newIds }: { pickedIds: ReadonlySet<string>; newIds: ReadonlyMap<string, string> },
+  existing: readonly Reminder[],
+  importedAt: number,
+): Reminder[] {
+  const existingIds = new Set(existing.map(reminder => reminder.id))
+  const firstNumber = nextNumberOf(existing)
+
+  return shownRemindersOf(source)
+    .flatMap(({ id: sourceId, text, cadence, isEnabled }) => {
+      const id = newIds.get(sourceId)
+
+      return pickedIds.has(sourceId) && id !== undefined && !existingIds.has(id)
+        ? [{ id, text, cadence, isEnabled }]
+        : []
+    })
+    .map((reminder, index) => ({ ...reminder, number: firstNumber + index, addedAt: importedAt }))
+}
+
+/**
  * The card `draft` checked against `kinds`: a text that is not blank, and a cadence of a kind of
  * `kinds` that reads its values, with the text typed for the next item of each list added to it.
  */

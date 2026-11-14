@@ -9,6 +9,7 @@ import type {
 } from 'claude-code'
 
 import type { CardInPane } from '../../types'
+import { setPaneNotice } from '../paneNotice'
 import {
   answerFailedPanePost,
   answerPanePost,
@@ -16,6 +17,8 @@ import {
   recordModuleFault,
   storeOpenedPane,
 } from '../paneWorker'
+import { describePaneNotOpened } from '../paneOpening'
+import type { PaneOpener } from '../paneOpening'
 import type { PaneSite } from '../paneWorker'
 import { loadRemindersIntoState } from './reminderActions'
 import { REMINDERS_PANE, REMINDERS_PANE_MODULE, REMINDERS_PANE_SITE } from './reminderNames'
@@ -28,10 +31,11 @@ import { readReminderPaneAction } from './reminderPaneReader'
 import { PANE_TITLE } from './reminderPaneTexts'
 import { readRemindersPaneView } from './reminderPaneView'
 import { FAILED_REMINDER_SAVE, saveReminderPaneAction } from './reminderPresses'
+import { Outcome } from './reminders'
 import { REMINDERS_PANE_MACHINE } from './remindersPane'
 import { storedRemindersPane } from './reminderState'
 import type { Failed, ReadReminders } from './reminderStore'
-import { REMINDERS_PANE_SUBJECT } from './reminderTexts'
+import { REMINDERS_PANE_SUBJECT, describeNotRead } from './reminderTexts'
 
 type RemindersPaneSite = typeof REMINDERS_PANE_SITE
 
@@ -42,15 +46,34 @@ type PaneOnFreshReminders = { loaded: ReadReminders | Failed; opened: UiOpenResu
 
 /**
  * Reads the reminders of the session again into the state, and opens the Reminders pane, which
- * shows them. The pane opens without a pressed card where the hooks module draws it, as a surface
- * module does, and tries its surface module again on every surface.
+ * shows them with `notice` under them. The pane opens without a pressed card where the hooks module
+ * draws it, as a surface module does, and tries its surface module again on every surface.
  */
-export async function openRemindersPane($: EngineInterface): Promise<PaneOnFreshReminders> {
+export async function openRemindersPane(
+  $: EngineInterface,
+  notice?: string,
+): Promise<PaneOnFreshReminders> {
+  const sessionId = await $.session.id()
   await storeOpenedPane(storedRemindersPane($))
-  const loaded = await loadRemindersIntoState($, await $.session.id())
+  await setPaneNotice($, sessionId, REMINDERS_PANE, notice)
+  const loaded = await loadRemindersIntoState($, sessionId)
   const opened = await $.ui.open({ id: REMINDERS_PANE, title: PANE_TITLE, focus: true })
 
   return { loaded, opened }
+}
+
+/**
+ * The texts of what failed when `opener` opened the Reminders pane on `fresh`: the pane that did
+ * not open, and the reminders that could not be read.
+ */
+export function describeRemindersPaneFailures(
+  { loaded, opened }: PaneOnFreshReminders,
+  opener: PaneOpener,
+): string[] {
+  return [
+    ...(opened.isPlaced ? [] : [describePaneNotOpened(PANE_TITLE, opened.reason, opener)]),
+    ...(loaded.outcome === Outcome.Failed ? [describeNotRead(loaded)] : []),
+  ]
 }
 
 function remindersPaneOf(

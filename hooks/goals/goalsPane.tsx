@@ -24,8 +24,8 @@ import {
   REASON_PLACEHOLDER,
   UNMARK_SUBMIT_LABEL,
   describeClearQuestion,
-  describeDependencyBadge,
   describeDoneMarkForPerson,
+  describeGoalBadges,
   describeNotRead,
   describeSaveRunning,
   nameGoal,
@@ -36,7 +36,6 @@ import { ButtonPlace, rowButtonsOf } from './goalRowButtons'
 import type { RowButton } from './goalRowButtons'
 import { RowMode, editActionOf, editFieldKeyOfRow, isInMode, settleRow } from './goalRowState'
 import type { GoalInMode, GoalsPaneControls } from './goalRowState'
-import { describePriority } from './priority'
 import { describeEntry } from './todoEntry'
 
 // The Goals pane, drawn on the drawing thread. A press, the typed text, the question to clear a
@@ -79,6 +78,7 @@ function drawGoalsPane(
           ) : (
             <Text dimColor>{FIELDS_IN_TERMINAL_ONLY}</Text>
           )}
+          {view.notice !== undefined && <Text dimColor>{view.notice}</Text>}
         </Box>
       )
     }
@@ -145,17 +145,6 @@ function buttonsAt({ Button }: PaneElements, { goal, buttons }: GoalRow, place: 
 }
 
 /**
- * The badges before the text of `goal` where its pickers are not drawn: its priority, and the goal
- * depended on by it.
- */
-function badgesOf({ priority, dependsOn }: PaneGoal): string[] {
-  return [
-    ...(priority === undefined ? [] : [describePriority(priority)]),
-    ...(dependsOn === undefined ? [] : [describeDependencyBadge({ number: dependsOn })]),
-  ]
-}
-
-/**
  * Draws the row of one of the open goals `open`: its number, its text with its badges, its
  * pickers, its done mark, the question to clear it, its TODO entries and the buttons of the mode
  * the row is in, and under the row the field that edits its text, in place of the text, with the
@@ -179,7 +168,12 @@ function drawGoal(surface: PaneSurface, row: GoalRow, open: OpenGoals) {
       <Text bold color="claude">{`${goal.number}`}</Text>
       <Box flexDirection="column" flexGrow={1} flexShrink={1}>
         {drawn?.mode !== RowMode.Editing &&
-          drawGoalText(surface.elements, goal, hasPickers ? [] : badgesOf(goal), !isPressable)}
+          drawGoalText(
+            surface.elements,
+            goal,
+            hasPickers ? [] : describeGoalBadges(goal),
+            !isPressable,
+          )}
         {hasPickers && drawGoalPickers(surface.elements, row.pane, goal, open)}
         {goal.doneMark !== undefined &&
           drawDoneMark(

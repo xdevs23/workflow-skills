@@ -14,7 +14,8 @@ export enum RemindersShown {
 /**
  * What the Reminders pane draws: while the reminders are read, the reason they could not be read,
  * or the reminders of the session with a text for each stored record that could not be read, the
- * next send times put by the cadence kinds, and the time the pane is drawn at.
+ * next send times put by the cadence kinds, the time the pane is drawn at, and the text drawn under
+ * the reminders.
  */
 export type RemindersPaneView =
   | { shown: RemindersShown.Loading }
@@ -25,6 +26,7 @@ export type RemindersPaneView =
       unreadable: readonly string[]
       nextSends: NextSends
       now: number
+      notice?: string
     }
 
 export enum ReminderPaneActionKind {

@@ -32,10 +32,11 @@ import {
   saveEditedGoal,
   saveGoalDependency,
   saveGoalPriority,
+  saveImportedGoals,
   saveNewGoal,
   saveRemovedDoneMark,
 } from './boardStore'
-import type { Failed } from './boardStore'
+import type { Failed, GoalsImported } from './boardStore'
 import { describeNotRead } from './goalPaneTexts'
 import { recordBoardSeenAtStart, setLoadedBoard } from './goalState'
 import type { Priority } from './priority'
@@ -105,6 +106,28 @@ export async function addGoalToSession(
   }
 
   return added
+}
+
+/**
+ * Imports the open goals with the ids `picked` of the session `from` into the board of the session
+ * `into` as new goals, as saveImportedGoals stores them. The goals of `from` are left as they are.
+ * A failed import may have stored some of the goals, so the board is read into the state again.
+ */
+export async function importGoalsIntoSession(
+  $: EngineInterface,
+  { into, from, picked }: { into: string; from: string; picked: ReadonlySet<string> },
+): Promise<GoalsImported | Failed> {
+  const source = await loadBoard($, sessionScope(from))
+  if (source.outcome !== Outcome.Read) {
+    return source
+  }
+  const goalImport = { into: sessionScope(into), from: source.board, picked }
+  const imported = await saveImportedGoals($, goalImport, await $.clock.now())
+  if (imported.outcome === Outcome.Failed) {
+    await loadBoardIntoState($, into)
+  }
+
+  return imported
 }
 
 /** Clears the goal numbered `number` on the board of the session `sessionId`. */

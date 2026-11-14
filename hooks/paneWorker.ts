@@ -77,19 +77,24 @@ export const NEW_PANE_RECORD: PaneRecord<never, never, never> = {
  */
 export type TypedInWorker = { sessionId: string; texts: TypedTexts }
 
+/** The texts typed into a pane drawn by the hooks module: as read, and how a change is written. */
+type StoredTyped = {
+  read: () => Promise<TypedInWorker | null>
+  update: (
+    change: (typed: TypedInWorker | null) => TypedInWorker | null,
+  ) => Promise<TypedInWorker | null>
+}
+
 /**
- * The record of a pane in the state of the plugin, and the texts typed into it where the hooks
- * module draws it: as read, and how a change is written.
+ * The record of a pane in the state of the plugin: as read, and how a change is written, with the
+ * texts typed into it where the hooks module draws it, for a pane that draws text fields.
  */
 export type StoredPane<Local, Action, Result> = {
   read: () => Promise<PaneRecord<Local, Action, Result>>
   update: (
     change: (record: PaneRecord<Local, Action, Result>) => PaneRecord<Local, Action, Result>,
   ) => Promise<PaneRecord<Local, Action, Result>>
-  readTyped: () => Promise<TypedInWorker | null>
-  updateTyped: (
-    change: (typed: TypedInWorker | null) => TypedInWorker | null,
-  ) => Promise<TypedInWorker | null>
+  typed?: StoredTyped
 }
 
 /**
@@ -218,7 +223,7 @@ export async function storeOpenedPane<Local, Action, Result>(
     saves: record.saves.filter(save => !save.isEndedByPane),
     faulted: [],
   }))
-  await stored.updateTyped(() => null)
+  await stored.typed?.update(() => null)
 }
 
 async function panePropsOf<View, Local, Action, Result>(
@@ -399,7 +404,7 @@ function drawPaneInWorker<View, Local, Action, Result>(
     typed?.sessionId === props.sessionId ? typed.texts : {}
   const act = async (press: PanePress<Local, Action>) => {
     const actionId = crypto.randomUUID()
-    const typed = typedTexts(await site.stored.readTyped())
+    const typed = typedTexts((await site.stored.typed?.read()) ?? null)
     await site.stored.update(current => ({
       ...current,
       inWorker: {
@@ -410,7 +415,7 @@ function drawPaneInWorker<View, Local, Action, Result>(
     await runQueueInWorker(site, drawnOn, settledOf)
   }
   const type = async (field: string, text: string) => {
-    await site.stored.updateTyped(current => ({
+    await site.stored.typed?.update(current => ({
       sessionId: props.sessionId,
       texts: { ...typedTexts(current), [field]: text },
     }))

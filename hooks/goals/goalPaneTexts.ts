@@ -1,5 +1,7 @@
 import type { DoneMark, Goal } from '../../types'
 import { GoalPaneActionKind } from './goalPaneMessages'
+import { describePriority } from './priority'
+import type { Priority } from './priority'
 
 // The texts of the Goals pane, drawn by its surface module and by the hooks module.
 
@@ -56,6 +58,20 @@ export function describeClearQuestion(goal: Pick<Goal, 'number'>): string {
 /** The badge before the text of a goal depending on `dependsOn`, on a surface without pickers. */
 export function describeDependencyBadge(dependsOn: Pick<Goal, 'number'>): string {
   return `after ${nameGoal(dependsOn.number)}`
+}
+
+/** The badges before the text of an open goal: its priority, and the goal depended on by it. */
+export function describeGoalBadges({
+  priority,
+  dependsOn,
+}: {
+  priority?: Priority
+  dependsOn?: number
+}): string[] {
+  return [
+    ...(priority === undefined ? [] : [describePriority(priority)]),
+    ...(dependsOn === undefined ? [] : [describeDependencyBadge({ number: dependsOn })]),
+  ]
 }
 
 /** The done mark of a goal as the person reads it, with the evidence given by Claude. */

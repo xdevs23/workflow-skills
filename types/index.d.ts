@@ -1,10 +1,17 @@
 import type { Outcome, Read } from '../hooks/goals/board'
 import type { MarkRemovalAsked } from '../hooks/goals/doneMark'
+import type {
+  ImportAction,
+  ImportInPane,
+  ImportResult,
+  ImportableSessions,
+} from '../hooks/imports/importPaneMessages'
 import type { IdlePhase } from '../hooks/goals/goalIdleReminder'
 import type { GoalPaneAction, GoalSaveResult } from '../hooks/goals/goalPaneMessages'
 import type { RowMode } from '../hooks/goals/goalRowState'
 import type { Priority } from '../hooks/goals/priority'
 import type { LoopLedger } from '../hooks/neededSkills/loadLedger'
+import type { PaneNotices } from '../hooks/paneNotice'
 import type { PaneRecord, TypedInWorker } from '../hooks/paneWorker'
 import type { FieldFocus } from '../hooks/reminders/cardFocus'
 import type { CardMode } from '../hooks/reminders/reminderCardState'
@@ -286,6 +293,12 @@ export type RemindersPaneRecord = PaneRecord<
   ReminderSaveResult
 >
 
+/** The sessions of the project read for the import panes by the session `sessionId`. */
+export type ImportableSessionsInState = { sessionId: string } & ImportableSessions
+
+/** What the hooks module stores of an import pane: its presses, saves and failed modules. */
+export type ImportPaneRecord = PaneRecord<ImportInPane | null, ImportAction, ImportResult>
+
 /**
  * How far the due times of the reminders sent every given time are handled in a session: by the id
  * of each such reminder switched on, the time up to which its due times were sent to the model or
@@ -362,8 +375,8 @@ declare module 'claude-code' {
       sessionBoard: SessionBoard | null
       /**
        * The Goals pane as the hooks module stores it: the state of its presses where the hooks
-       * module draws it, the results of its saves by action id, and the surfaces whose surface
-       * module failed.
+       * module draws it, the results of the actions saved, by action id, and the surfaces where
+       * the surface module failed.
        */
       goalsPane: Shaped<GoalsPaneRecord>
       /**
@@ -389,8 +402,8 @@ declare module 'claude-code' {
       sessionReminders: SessionReminders | null
       /**
        * The Reminders pane as the hooks module stores it: the state of its presses where the hooks
-       * module draws it, the results of its saves by action id, and the surfaces whose surface
-       * module failed.
+       * module draws it, the results of the actions saved, by action id, and the surfaces where
+       * the surface module failed.
        */
       remindersPane: Shaped<RemindersPaneRecord>
       /**
@@ -406,6 +419,29 @@ declare module 'claude-code' {
       loadLedgers: Shaped<SessionLoadLedgers | null>
       /** The copy of TODO.md of the session; null before its main conversation read the file. */
       todoCopy: TodoCopy | null
+      /**
+       * The sessions of the project as an import pane last read them, with the id of the session
+       * that read them; null before an import pane opened.
+       */
+      importableSessions: ImportableSessionsInState | null
+      /**
+       * The import panes as the hooks module stores them: the state of their presses where the
+       * hooks module draws them, the results of the actions saved, by action id, and the surfaces
+       * where the surface module failed.
+       */
+      goalsImportPane: Shaped<ImportPaneRecord>
+      remindersImportPane: Shaped<ImportPaneRecord>
+      /**
+       * The text drawn under each pane that has one, set when the pane opened; null before a pane
+       * opened with one.
+       */
+      paneNotices: PaneNotices | null
+      /**
+       * The session that recorded its start in this process and waits for its first prompt; null
+       * once the prompt was recorded, and in a session resumed or begun before sessions recorded
+       * their start.
+       */
+      firstPromptAwaited: { sessionId: string } | null
     }
   }
 }

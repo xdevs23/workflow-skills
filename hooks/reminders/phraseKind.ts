@@ -1,4 +1,5 @@
 import type { Cadence } from '../../types'
+import { readStrings } from '../pluginStore'
 import { NO_LETTER_AFTER, NO_LETTER_BEFORE } from '../quotedText'
 import { CadenceProblem, FieldKind, listKind } from './cadenceKind'
 import type { CadenceKind, ListedKind } from './cadenceKind'
@@ -78,12 +79,7 @@ function phrasesOfQuotedText(typed: string): readonly string[] | CadenceProblem 
     }
     throw error
   }
-  if (!Array.isArray(listed)) {
-    return UNREADABLE_PHRASES_PROBLEM
-  }
-  const phrases = listed.filter(phrase => typeof phrase === 'string')
-
-  return phrases.length === listed.length ? phrases : UNREADABLE_PHRASES_PROBLEM
+  return readStrings(listed) ?? UNREADABLE_PHRASES_PROBLEM
 }
 
 /** Matches `phrase` as whole words in any case, with any white space between its words. */

@@ -1,6 +1,8 @@
 import type { EngineInterface } from 'claude-code'
 
+import { readPaneNotice } from '../paneNotice'
 import { describeUnreadableRecord } from '../pluginStore'
+import { REMINDERS_PANE } from './reminderNames'
 import { RemindersShown } from './reminderPaneMessages'
 import type { RemindersPaneView } from './reminderPaneMessages'
 import { Outcome } from './reminders'
@@ -9,10 +11,11 @@ import { describeNotRead } from './reminderTexts'
 
 /** The reminders of the session as the Reminders pane draws them. */
 export async function readRemindersPaneView($: EngineInterface): Promise<RemindersPaneView> {
-  const [inState, nextSends, now] = await Promise.all([
+  const [inState, nextSends, now, notice] = await Promise.all([
     readRemindersInState($),
     readNextSends($),
     $.clock.now(),
+    readPaneNotice($, REMINDERS_PANE),
   ])
   if (inState === null) {
     return { shown: RemindersShown.Loading }
@@ -28,5 +31,6 @@ export async function readRemindersPaneView($: EngineInterface): Promise<Reminde
     unreadable: unreadableKeys.map(describeUnreadableRecord),
     nextSends,
     now,
+    ...(notice === undefined ? {} : { notice }),
   }
 }

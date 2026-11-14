@@ -5,6 +5,7 @@ import { EVERY_EVENT } from './everyEvent'
 import { registerGoals } from './goals'
 import { openGoalsAfterCompaction } from './goals/goalReminderHooks'
 import { blockStopOnHintPhrase } from './hints'
+import { registerImports } from './imports'
 import { ANSWER_COMMAND, ASK_TOOL, LIST_TOOL, PANE, WITHDRAW_TOOL } from './names'
 import { registerNeededSkills } from './neededSkills'
 import { createPromptFooter, registerPromptFooter } from './promptFooter'
@@ -27,9 +28,12 @@ import { registerReminders } from './reminders'
 import { remindersAfterCompaction } from './reminders/eventCadence'
 import { registerRulesBanner } from './rulesBanner'
 import { registerSelfCheck } from './selfCheck'
+import { registerSessionRecords } from './sessions'
 import { registerTodoClauseNotes } from './todoClauseNotes'
 
 export const register: Register = on => {
+  // Registered before every other hook of this plugin on a prompt, so it reads the prompt as typed.
+  registerSessionRecords(on)
   on('session.start', { isInteractive: true }, startQuestions)
   on('classic.SessionStart', readQuestionsOfStartedSession)
   // The engine passes `$` only to a function named at the call, so each note sent after a
@@ -59,6 +63,7 @@ export const register: Register = on => {
   registerPromptFooter(on, footer)
   registerGoals(on, footer)
   registerReminders(on, footer)
+  registerImports(on)
   registerSelfCheck(on)
   registerTodoClauseNotes(on)
   registerRulesBanner(on)

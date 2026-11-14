@@ -1,11 +1,6 @@
 import type { Reminder } from '../../types'
-import {
-  StoreCall,
-  callStore,
-  readEntriesUnder,
-  returningStoreFailure,
-  writeRetryingWhileLocked,
-} from '../pluginStore'
+import { importedIdsOf } from '../importedId'
+import { readEntriesIn, readEntriesUnder, returningStoreFailure, writeRecord } from '../pluginStore'
 import type { FailedStoreCall, StoreEngine, StoredEntry } from '../pluginStore'
 import {
   cadenceRecordOf,
@@ -17,7 +12,15 @@ import {
   textRecordOf,
 } from './reminderRecord'
 import type { ReminderRecord } from './reminderRecord'
-import { Outcome, Refusal, isRemoved, isSameCadence, nextNumberOf } from './reminders'
+import {
+  Outcome,
+  Refusal,
+  importedRemindersOf,
+  isRemoved,
+  isSameCadence,
+  nextNumberOf,
+  shownRemindersOf,
+} from './reminders'
 import type { Changed, CheckedDraft, RemovedRefused, Unchanged } from './reminders'
 
 // The store does not offer compare-and-set. Every change writes only the records of the parts it
@@ -49,6 +52,22 @@ export type ReminderChange =
   | ((Changed | Unchanged | RemovedRefused) & { read: ReadReminders })
   | Failed
 
+/** The reminders after a change that wrote its records, or found none to write. */
+type WrittenChange = (Changed | Unchanged) & { read: ReadReminders }
+
+/** The reminders after an import, with the reminders it stored. */
+export type RemindersImported = WrittenChange & { imported: readonly Reminder[] }
+
+/**
+ * An import into the session `into` of the reminders with the ids `picked` among the reminders
+ * `from` of another session.
+ */
+export type ReminderImport = {
+  into: string
+  from: readonly Reminder[]
+  picked: ReadonlySet<string>
+}
+
 /** The records a change writes for a reminder, or why it writes none. */
 type RecordsToWrite =
   | { outcome: Outcome.Changed; records: readonly ReminderRecord[] }
@@ -60,6 +79,17 @@ export function loadReminders(
 ): Promise<ReadReminders | Failed> {
   return returningFailure(async () =>
     readOf(sessionId, await readEntriesUnder($, remindersPrefixOf(sessionId))),
+  )
+}
+
+/** Reads the reminders of the session from the records under the keys of `keys`, listed before. */
+export function loadRemindersIn(
+  $: StoreEngine,
+  sessionId: string,
+  keys: readonly string[],
+): Promise<ReadReminders | Failed> {
+  return returningFailure(async () =>
+    readOf(sessionId, await readEntriesIn($, remindersPrefixOf(sessionId), keys)),
   )
 }
 
@@ -130,6 +160,33 @@ export function saveRemoval(
   )
 }
 
+/**
+ * Stores the reminders of `reminderImport` made by importedRemindersOf under the ids given by
+ * importedIdsOf, each with its switch right after it. Reminders stored by an import that failed
+ * are found by the next import of the same reminders, which stores only the rest.
+ */
+export function saveImportedReminders(
+  $: StoreEngine,
+  { into, from, picked }: ReminderImport,
+  importedAt: number,
+): Promise<RemindersImported | Failed> {
+  return returningFailure(async () => {
+    const newIds = await importedIdsOf(
+      into,
+      shownRemindersOf(from).map(reminder => reminder.id),
+    )
+    const entries = await readEntriesUnder($, remindersPrefixOf(into))
+    const existing = readOf(into, entries).reminders
+    const imported = importedRemindersOf(from, { pickedIds: picked, newIds }, existing, importedAt)
+    const records = imported.flatMap(reminder => [
+      reminderRecordOf(into, reminder),
+      ...(reminder.isEnabled ? [enabledRecordOf(into, reminder.id, true, importedAt)] : []),
+    ])
+
+    return { ...(await writeRecords($, into, entries, records)), imported }
+  })
+}
+
 const REMOVED: RemovedRefused = { outcome: Outcome.Refused, refusal: Refusal.Removed }
 
 function writing(records: readonly ReminderRecord[]): RecordsToWrite {
@@ -157,18 +214,29 @@ function changeReminder(
     if (change.outcome === Outcome.Refused) {
       return { ...change, read: readOf(sessionId, entries) }
     }
-    const { records } = change
-    for (const record of records) {
-      await callStore(StoreCall.Write, record.key, () =>
-        writeRetryingWhileLocked($, record.key, () => $.store.set(record.key, record.value)),
-      )
-    }
-    const read = readOf(sessionId, withRecords(entries, records))
 
-    return records.length === 0
-      ? { outcome: Outcome.Unchanged, read }
-      : { outcome: Outcome.Changed, read }
+    return writeRecords($, sessionId, entries, change.records)
   })
+}
+
+/**
+ * Writes `records` in their order, and returns the reminders of the session `sessionId` as the
+ * store has them after it writes them, made from `entries`, read before it, and the records.
+ */
+async function writeRecords(
+  $: StoreEngine,
+  sessionId: string,
+  entries: readonly StoredEntry[],
+  records: readonly ReminderRecord[],
+): Promise<WrittenChange> {
+  for (const record of records) {
+    await writeRecord($, record)
+  }
+  const read = readOf(sessionId, withRecords(entries, records))
+
+  return records.length === 0
+    ? { outcome: Outcome.Unchanged, read }
+    : { outcome: Outcome.Changed, read }
 }
 
 function readOf(sessionId: string, entries: readonly StoredEntry[]): ReadReminders {

@@ -9,6 +9,7 @@ import type {
 } from 'claude-code'
 
 import type { GoalInPane, UnreadBoard } from '../../types'
+import { setPaneNotice } from '../paneNotice'
 import {
   answerFailedPanePost,
   answerPanePost,
@@ -16,13 +17,16 @@ import {
   recordModuleFault,
   storeOpenedPane,
 } from '../paneWorker'
+import { describePaneNotOpened } from '../paneOpening'
+import type { PaneOpener } from '../paneOpening'
 import type { PaneSite } from '../paneWorker'
+import { Outcome } from './board'
 import type { Read } from './board'
 import { loadBoardIntoState } from './goalActions'
 import { GOALS_PANE, GOALS_PANE_MODULE, GOALS_PANE_SITE } from './goalNames'
 import type { GoalPaneAction, GoalSaveResult, GoalsPaneView } from './goalPaneMessages'
 import { readGoalPaneAction } from './goalPaneReader'
-import { PANE_TITLE } from './goalPaneTexts'
+import { PANE_TITLE, describeNotRead } from './goalPaneTexts'
 import { readGoalsPaneView } from './goalPaneView'
 import { FAILED_GOAL_SAVE, saveGoalPaneAction } from './goalPresses'
 import { GOALS_PANE_MACHINE } from './goalsPane'
@@ -35,17 +39,35 @@ type GoalsPaneSite = typeof GOALS_PANE_SITE
 type PaneOnFreshBoard = { loaded: Read | UnreadBoard; opened: UiOpenResult }
 
 /**
- * Reads the board of the session again into the state, and opens the Goals pane, which shows it.
- * The pane opens without a pressed goal where the hooks module draws it, as a surface module does,
- * and tries its surface module again on every surface.
+ * Reads the board of the session again into the state, and opens the Goals pane, which shows it
+ * with `notice` under the goals. The pane opens without a pressed goal where the hooks module draws
+ * it, as a surface module does, and tries its surface module again on every surface.
  */
-export async function openGoalsPaneOnFreshBoard($: EngineInterface): Promise<PaneOnFreshBoard> {
+export async function openGoalsPaneOnFreshBoard(
+  $: EngineInterface,
+  notice?: string,
+): Promise<PaneOnFreshBoard> {
   const sessionId = await $.session.id()
   await storeOpenedPane(storedGoalsPane($))
+  await setPaneNotice($, sessionId, GOALS_PANE, notice)
   const loaded = await loadBoardIntoState($, sessionId)
   const opened = await $.ui.open({ id: GOALS_PANE, title: PANE_TITLE, focus: true })
 
   return { loaded, opened }
+}
+
+/**
+ * The texts of what failed when `opener` opened the Goals pane on `fresh`: the pane that did not
+ * open, and the board that could not be read.
+ */
+export function describeGoalsPaneFailures(
+  { loaded, opened }: PaneOnFreshBoard,
+  opener: PaneOpener,
+): string[] {
+  return [
+    ...(opened.isPlaced ? [] : [describePaneNotOpened(PANE_TITLE, opened.reason, opener)]),
+    ...(loaded.outcome === Outcome.Failed ? [describeNotRead(loaded.failure)] : []),
+  ]
 }
 
 function goalsPaneOf(

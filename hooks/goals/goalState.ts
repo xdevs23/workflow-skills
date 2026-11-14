@@ -68,8 +68,10 @@ export function storedGoalsPane(
   return {
     read: () => read($, goalsPane),
     update: change => update($, goalsPane, change),
-    readTyped: () => read($, goalsPaneTyped),
-    updateTyped: change => update($, goalsPaneTyped, change),
+    typed: {
+      read: () => read($, goalsPaneTyped),
+      update: change => update($, goalsPaneTyped, change),
+    },
   }
 }
 
