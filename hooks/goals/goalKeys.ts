@@ -4,7 +4,8 @@ import type { Goal } from '../../types'
 
 /**
  * The pickers, buttons and fields of the Goals pane. Each key is made of the name of the element
- * and the number of its goal, the next number of the board for the field that adds a goal.
+ * and the number of its goal. The field that adds a goal is keyed by its name alone, so Enter in
+ * it before the hooks module drew the pane again after the last Enter still adds the next goal.
  */
 export enum PaneElement {
   NewGoal = 'new-goal',
@@ -49,13 +50,4 @@ export function fieldKeyOf(
   fieldId: string,
 ): string {
   return `${field}-${goal.number}-${fieldId}`
-}
-
-/**
- * The key of the field that adds the goal numbered `number`, the next number of the board. A goal
- * added from anywhere changes the key, so the pane draws an empty field, while a failed add leaves
- * the typed text in the field.
- */
-export function newGoalFieldKeyOf(number: number): string {
-  return `${PaneElement.NewGoal}-${number}`
 }

@@ -10,7 +10,7 @@ import type {
   UnreadBoard,
   WaitingNudges,
 } from '../../types'
-import { NEW_PANE_RECORD } from '../paneWorker'
+import { NEW_PANE_RECORD, PANE_RECORD_SHAPE } from '../paneWorker'
 import type { StoredPane } from '../paneWorker'
 import {
   keepReadOverFailure,
@@ -28,7 +28,7 @@ import type { GoalPaneAction, GoalSaveResult } from './goalPaneMessages'
 // state reference of the goals is written in this file with its plugin and key as literals.
 const sessionBoard = atom({ plugin: 'workflow-skills', key: 'sessionBoard' } as const, null)
 const goalsPane = atom({ plugin: 'workflow-skills', key: 'goalsPane' } as const, NEW_PANE_RECORD, {
-  shape: 'saves-by-action-id',
+  shape: PANE_RECORD_SHAPE,
 })
 const goalsPaneTyped = atom({ plugin: 'workflow-skills', key: 'goalsPaneTyped' } as const, null)
 const seenBoard = atom({ plugin: 'workflow-skills', key: 'seenBoard' } as const, null)

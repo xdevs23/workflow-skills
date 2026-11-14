@@ -1,9 +1,18 @@
 import type { Cadence, CardDraft, CardInPane, CardWarning, Reminder } from '../../types'
+import type { TypedTexts } from '../paneFields'
 import type { PaneControls } from '../paneModule'
-import { CadenceProblem, addItem, defaultCadenceOf, kindOf, removeItem } from './cadenceKind'
-import type { CadenceKinds, ListCardField } from './cadenceKind'
+import {
+  CadenceProblem,
+  FieldKind,
+  addItem,
+  defaultCadenceOf,
+  kindOf,
+  removeItem,
+} from './cadenceKind'
+import type { CadenceKinds, CardField, ListCardField } from './cadenceKind'
 import { CardFocus } from './cardFocus'
 import type { FieldFocus } from './cardFocus'
+import { textFieldKeyOf, valueFieldKeyOf } from './reminderKeys'
 import { ReminderPaneActionKind, ReminderSaveOutcome } from './reminderPaneMessages'
 import type { ReminderPaneAction, ReminderSaveResult } from './reminderPaneMessages'
 
@@ -26,13 +35,14 @@ export type RemindersPaneControls = PaneControls<CardInPane | null, ReminderPane
 
 /**
  * A card being edited, as the pane draws it: the number drawn on it, its reminder, the ids of its
- * opening and of its fields, and what its fields were drawn with. What was typed into it is in the
- * state alone, as a press can arrive before the pane has drawn the last typing.
+ * opening, of its text field and of its value fields, and what its fields were drawn with. The
+ * texts typed into its fields are recorded by the hooks module, and a save of the card reads them.
  */
 export type EditedCard = {
   number: number
   reminderId: string
   openingId: string
+  textFieldId: string
   fieldsId: string
   opened: CardDraft
 }
@@ -107,6 +117,7 @@ function openedCardOf(reminderId: string, opened: CardDraft): EditingCard {
     reminderId,
     mode: CardMode.Editing,
     openingId: crypto.randomUUID(),
+    textFieldId: crypto.randomUUID(),
     fieldsId: crypto.randomUUID(),
     opened,
     draft: opened,
@@ -115,16 +126,18 @@ function openedCardOf(reminderId: string, opened: CardDraft): EditingCard {
 }
 
 /**
- * `card` with what `change` makes of what was typed into it, while the card of `reminderId` is
- * edited. A warning on the card was for what was typed before, so the change removes it.
+ * `card` with what `change` makes of what was picked in it and added to it, and the focus on
+ * `focus`, while the card of `reminderId` is edited. A warning on the card was for what was picked
+ * before, so the change removes it.
  */
 function changedDraft(
   card: CardInPane | null,
   reminderId: string,
   change: (draft: CardDraft) => CardDraft,
+  focus?: FieldFocus,
 ): CardInPane | null {
   return isCardInMode(card, reminderId, CardMode.Editing)
-    ? { ...withoutWarning(card), draft: change(card.draft) }
+    ? { ...withoutWarning(card), draft: change(card.draft), focus: focus ?? card.focus }
     : card
 }
 
@@ -137,16 +150,15 @@ function withoutWarning(card: EditingCard): EditingCard {
 }
 
 /**
- * `card` with its fields drawn anew, under new keys, with what `change` makes of what was typed
- * into it, and the focus on `focus`, while the card of `reminderId` is edited. The kind dropdown
- * draws under the same key, so the focus is still on it. A `change` that returns the draft it got
- * leaves the card as it is.
+ * `card` with its value fields drawn anew, under new keys, with what `change` makes of what was
+ * picked in it, while the card of `reminderId` is edited. The kind dropdown and the text field
+ * draw under the same keys, so the focus is still on the dropdown and the typed text stays in the
+ * field. A `change` that returns the draft it got leaves the card as it is.
  */
 function reopenedCard(
   card: CardInPane | null,
   reminderId: string,
   change: (draft: CardDraft) => CardDraft,
-  focus?: FieldFocus,
 ): CardInPane | null {
   if (!isCardInMode(card, reminderId, CardMode.Editing)) {
     return card
@@ -155,22 +167,27 @@ function reopenedCard(
   if (changed === card.draft) {
     return card
   }
-  return {
-    ...withoutWarning(card),
-    fieldsId: crypto.randomUUID(),
-    opened: changed,
-    draft: changed,
-    focus: focus ?? card.focus,
-  }
+  return { ...withoutWarning(card), fieldsId: crypto.randomUUID(), opened: changed, draft: changed }
 }
 
 /**
- * `card` with its text field and value fields drawn anew with what was typed into them, while the
- * card of `reminderId` is edited.
+ * `card` with its text field and value fields drawn anew, under new keys, with `draft`, while the
+ * card of `reminderId` is edited. A warning on the card was for what was drawn before, so the card
+ * is drawn without it.
  */
-function redrawnCard(card: CardInPane | null, reminderId: string): CardInPane | null {
+function redrawnCard(
+  card: CardInPane | null,
+  reminderId: string,
+  draft: CardDraft,
+): CardInPane | null {
   return isCardInMode(card, reminderId, CardMode.Editing)
-    ? { ...card, fieldsId: crypto.randomUUID(), opened: card.draft }
+    ? {
+        ...withoutWarning(card),
+        textFieldId: crypto.randomUUID(),
+        fieldsId: crypto.randomUUID(),
+        opened: draft,
+        draft,
+      }
     : card
 }
 
@@ -183,16 +200,40 @@ function warnedCard(
   return isCardInMode(card, reminderId, CardMode.Editing) ? { ...card, warning } : card
 }
 
-export function typedText(
-  card: CardInPane | null,
-  reminderId: string,
-  text: string,
-): CardInPane | null {
-  return changedDraft(card, reminderId, draft => ({ ...draft, text }))
+/**
+ * `card` with the texts `typed` into its fields, as drawn for the fields `fields` of its kind: its
+ * text, the values of its text fields, and the texts typed for the next items of its lists.
+ */
+export function typedCardOf(
+  card: EditingCard,
+  typed: TypedTexts,
+  fields: readonly CardField[],
+): EditingCard {
+  const { textFieldId, fieldsId, draft } = card
+  const typedInto = (kind: FieldKind) =>
+    Object.fromEntries(
+      fields.flatMap((field): [string, string][] => {
+        const text = field.kind === kind ? typed[valueFieldKeyOf(fieldsId, field.key)] : undefined
+
+        return text === undefined ? [] : [[field.key, text]]
+      }),
+    )
+
+  return {
+    ...card,
+    draft: {
+      text: typed[textFieldKeyOf(textFieldId)] ?? draft.text,
+      cadence: {
+        ...draft.cadence,
+        values: { ...draft.cadence.values, ...typedInto(FieldKind.Text) },
+      },
+      nextItems: { ...draft.nextItems, ...typedInto(FieldKind.List) },
+    },
+  }
 }
 
-/** `card` with the value `value` in the field with the key `key` of its cadence. */
-export function typedValue(
+/** `card` with the value `value` picked in the field with the key `key` of its cadence. */
+export function pickedValue(
   card: CardInPane | null,
   reminderId: string,
   { key, value }: { key: string; value: string },
@@ -204,24 +245,10 @@ export function typedValue(
 }
 
 /**
- * `card` with `typed` as the text typed into the field that adds an item to the list field `key`.
- */
-export function typedNextItem(
-  card: CardInPane | null,
-  reminderId: string,
-  { key, typed }: { key: string; typed: string },
-): CardInPane | null {
-  return changedDraft(card, reminderId, draft => ({
-    ...draft,
-    nextItems: { ...draft.nextItems, [key]: typed },
-  }))
-}
-
-/**
- * `card` with its fields drawn anew with the cadence of the kind with the id `kindId`, every field
- * at its default, and the text typed so far, unless the card has that kind. The fields of the kind
- * are new, so none shows what was typed into a field of the kind before. An id the pane does not
- * have changes nothing.
+ * `card` with its value fields drawn anew with the cadence of the kind with the id `kindId`, every
+ * field at its default, unless the card has that kind. The value fields of the kind are new, so
+ * none shows what was typed into a field of the kind before. An id the pane does not have changes
+ * nothing.
  */
 export function pickedKind(
   kinds: CadenceKinds,
@@ -241,9 +268,8 @@ export function pickedKind(
 
 /**
  * `card` with `typed`, the whole text of the field that adds an item at the Enter pressed in it,
- * added to the list field `field`, and the focus on the empty field that adds the next item. The
- * pane records its focus as a position among the fields and buttons it draws, and the row of the
- * new item is drawn at the position of that field. So the fields are drawn anew under new keys.
+ * added to the list field `field`, and the focus on the field that adds the next item. The fields
+ * keep their keys, so Enter in that field before the pane is drawn again adds the next item.
  */
 export function addedItem(
   card: CardInPane | null,
@@ -251,7 +277,7 @@ export function addedItem(
   field: ListCardField,
   typed: string,
 ): CardInPane | null {
-  return reopenedCard(
+  return changedDraft(
     card,
     reminderId,
     draft => ({
@@ -309,9 +335,9 @@ export function settleCard(
 ): CardInPane | null {
   switch (action.kind) {
     case ReminderPaneActionKind.Save:
-      return settledSave(card, action.reminderId, result)
+      return settledSave(card, action, result)
     case ReminderPaneActionKind.SaveAndSwitch:
-      return settledSaveAndSwitch(card, action.reminderId, result)
+      return settledSaveAndSwitch(card, action, result)
     case ReminderPaneActionKind.Switch:
       return card
     case ReminderPaneActionKind.Remove:
@@ -322,13 +348,14 @@ export function settleCard(
 }
 
 /**
- * `card` once the save of the card of `reminderId` ended as `result`: drawn without its fields once
- * the store has it, and with its fields anew otherwise, as the engine empties the field an Enter
- * was pressed in. A refused card shows its warning, and a card of a reminder removed since closes.
+ * `card` once the save of `draft` for the card of `reminderId` ended as `result`: drawn without its
+ * fields once the store has it, and with its fields anew with `draft` otherwise, as the engine
+ * empties the field an Enter was pressed in. A refused card shows its warning, and a card of a
+ * reminder removed since closes.
  */
 function settledSave(
   card: CardInPane | null,
-  reminderId: string,
+  { reminderId, draft }: SaveAction,
   result: ReminderSaveResult,
 ): CardInPane | null {
   switch (result.outcome) {
@@ -337,31 +364,32 @@ function settledSave(
     case ReminderSaveOutcome.Removed:
       return endedCard(card, reminderId, CardMode.Editing)
     case ReminderSaveOutcome.CardRefused:
-      return redrawnCard(warnedCard(card, reminderId, result.warning), reminderId)
+      return warnedCard(redrawnCard(card, reminderId, draft), reminderId, result.warning)
     case ReminderSaveOutcome.Failed:
-      return redrawnCard(card, reminderId)
+      return redrawnCard(card, reminderId, draft)
   }
 }
 
 /**
- * `card` once the save and the switch of the card of `reminderId` ended as `result`. A saved card
- * is still drawn with its fields, on the cadence saved, so the text typed for the next item of a
- * list shows as an item.
+ * `card` once the save of `draft` and the switch for the card of `reminderId` ended as `result`.
+ * The pane does not draw the fields of a card while it is saved, so a card left open is drawn with
+ * its fields anew with `draft`: a saved card on the cadence saved, so the text typed for the next
+ * item of a list shows as an item.
  */
 function settledSaveAndSwitch(
   card: CardInPane | null,
-  reminderId: string,
+  { reminderId, draft }: SaveAndSwitchAction,
   result: ReminderSaveResult,
 ): CardInPane | null {
   switch (result.outcome) {
     case ReminderSaveOutcome.CardSaved:
-      return reopenedCard(card, reminderId, draft => draftOf(draft.text, result.cadence))
+      return redrawnCard(card, reminderId, draftOf(draft.text, result.cadence))
     case ReminderSaveOutcome.CardRefused:
-      return warnedCard(card, reminderId, result.warning)
+      return warnedCard(redrawnCard(card, reminderId, draft), reminderId, result.warning)
     case ReminderSaveOutcome.Removed:
       return endedCard(card, reminderId, CardMode.Editing)
     case ReminderSaveOutcome.Saved:
     case ReminderSaveOutcome.Failed:
-      return card
+      return redrawnCard(card, reminderId, draft)
   }
 }

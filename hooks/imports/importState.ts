@@ -1,7 +1,7 @@
 import { atom, read, update } from 'claude-code'
 import type { EngineInterface } from 'claude-code'
 
-import { NEW_PANE_RECORD } from '../paneWorker'
+import { NEW_PANE_RECORD, PANE_RECORD_SHAPE } from '../paneWorker'
 import type { StoredPane } from '../paneWorker'
 import { ofRunningSession, updateOfSession } from '../sessionBoundState'
 import { ImportKind } from './importPaneMessages'
@@ -21,12 +21,12 @@ const importableSessions = atom(
 const goalsImportPane = atom(
   { plugin: 'workflow-skills', key: 'goalsImportPane' } as const,
   NEW_PANE_RECORD,
-  { shape: 'saves-by-action-id' },
+  { shape: PANE_RECORD_SHAPE },
 )
 const remindersImportPane = atom(
   { plugin: 'workflow-skills', key: 'remindersImportPane' } as const,
   NEW_PANE_RECORD,
-  { shape: 'saves-by-action-id' },
+  { shape: PANE_RECORD_SHAPE },
 )
 
 /**

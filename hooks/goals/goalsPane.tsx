@@ -6,8 +6,8 @@ import type { FieldUnderCard } from '../cardFields'
 import { paneModuleOf } from '../paneModule'
 import type { PaneElements } from '../paneElements'
 import type { PaneMachine, PaneSurface } from '../paneModule'
-import { DONE_LABEL } from '../paneTexts'
-import { PaneElement, fieldKeyOf, newGoalFieldKeyOf, rowElementKeyOf } from './goalKeys'
+import { DONE_LABEL, TEXT_LABEL, nameField } from '../paneTexts'
+import { PaneElement, fieldKeyOf, rowElementKeyOf } from './goalKeys'
 import { BoardShown, GoalPaneActionKind } from './goalPaneMessages'
 import type {
   GoalPaneAction,
@@ -20,7 +20,9 @@ import {
   BLANK_TEXT_WARNING,
   BOARD_LOADING,
   FIELDS_IN_TERMINAL_ONLY,
+  NEW_GOAL_LABEL,
   NEW_GOAL_PLACEHOLDER,
+  REASON_LABEL,
   REASON_PLACEHOLDER,
   UNMARK_SUBMIT_LABEL,
   describeClearQuestion,
@@ -38,10 +40,10 @@ import { RowMode, editActionOf, editFieldKeyOfRow, isInMode, settleRow } from '.
 import type { GoalInMode, GoalsPaneControls } from './goalRowState'
 import { describeEntry } from './todoEntry'
 
-// The Goals pane, drawn on the drawing thread. A press, the typed text, the question to clear a
-// goal and the field of a goal change the state of this module at once. Each save goes on the
-// queue, and the row it changes is drawn dim with what runs, without its controls, until its
-// result arrives. The other rows can still be pressed, and their saves go on the queue.
+// The Goals pane, drawn on the drawing thread. A press, the question to clear a goal and the field
+// of a goal change the state of this module at once. Each save goes on the queue, and the row it
+// changes is drawn dim with what runs, without its controls, until its result arrives. The other
+// rows can still be pressed, and their saves go on the queue.
 
 /** The saves on the queue that add goals, and the saves that change the goal of a row. */
 type QueuedSaves = { adds: readonly GoalPaneAction[]; onRows: readonly GoalPaneAction[] }
@@ -325,11 +327,10 @@ function goalTextFieldOf(
 
   return {
     key,
-    label: nameGoal(goal),
+    label: nameField({ item: nameGoal(goal), part: TEXT_LABEL }),
     value: drawn,
     submitLabel: DONE_LABEL.toLowerCase(),
     autoFocus: true,
-    onInput: typed => pane.type(key, typed),
     onSubmit: text =>
       pane.act(local =>
         isInMode(local, goal, RowMode.Editing)
@@ -351,7 +352,7 @@ function reasonFieldOf(
 
   return {
     key: fieldKeyOf({ number: goal }, PaneElement.UnmarkReason, fieldId),
-    label: nameGoal(goal),
+    label: nameField({ item: nameGoal(goal), part: REASON_LABEL }),
     placeholder: REASON_PLACEHOLDER,
     submitLabel: UNMARK_SUBMIT_LABEL,
     autoFocus: true,
@@ -380,7 +381,8 @@ function drawNewGoalField(
   return (
     <Box flexDirection="column">
       <TextInput
-        key={newGoalFieldKeyOf(number)}
+        key={PaneElement.NewGoal}
+        label={NEW_GOAL_LABEL}
         placeholder={NEW_GOAL_PLACEHOLDER}
         submitLabel={ADD_LABEL}
         autoFocus

@@ -2,7 +2,7 @@ import { atom, read, update } from 'claude-code'
 import type { EngineInterface } from 'claude-code'
 
 import type { CardInPane, Reminder, ReminderNextSends, SessionReminders } from '../../types'
-import { NEW_PANE_RECORD } from '../paneWorker'
+import { NEW_PANE_RECORD, PANE_RECORD_SHAPE } from '../paneWorker'
 import type { StoredPane } from '../paneWorker'
 import { keepReadOverFailure, ofRunningSession, updateOfSession } from '../sessionBoundState'
 import type { ReminderPaneAction, ReminderSaveResult } from './reminderPaneMessages'
@@ -18,7 +18,7 @@ const sessionReminders = atom(
 const remindersPane = atom(
   { plugin: 'workflow-skills', key: 'remindersPane' } as const,
   NEW_PANE_RECORD,
-  { shape: 'saves-by-action-id' },
+  { shape: PANE_RECORD_SHAPE },
 )
 const remindersPaneTyped = atom(
   { plugin: 'workflow-skills', key: 'remindersPaneTyped' } as const,

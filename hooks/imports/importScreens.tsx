@@ -39,17 +39,17 @@ type PaneOnFreshSessions = { loaded: ImportableSessions; opened: UiOpenResult }
 
 /**
  * Reads the sessions of the project again into the state, and opens the import pane of `kind`,
- * which lists them. The pane opens on the list of sessions where the hooks module draws it, as a
- * surface module does, and tries its surface module again on every surface.
+ * which lists them. A pane not open yet opens on the list of sessions where the hooks module draws
+ * it, as a surface module does, and tries its surface module again on every surface.
  */
 export async function openImportPane(
   $: EngineInterface,
   kind: ImportKind,
 ): Promise<PaneOnFreshSessions> {
-  await storeOpenedPane(storedImportPane($, kind))
+  const { pane, title } = IMPORT_NAMES[kind]
+  await storeOpenedPane($, { paneId: pane, stored: storedImportPane($, kind) })
   const loaded = await loadImportableSessions($)
   await setImportableSessions($, await $.session.id(), loaded)
-  const { pane, title } = IMPORT_NAMES[kind]
   const opened = await $.ui.open({ id: pane, title, focus: true })
 
   return { loaded, opened }

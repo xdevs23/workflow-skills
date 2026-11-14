@@ -85,10 +85,8 @@ export function rowButtonsOf(
           props: {
             label: DONE_LABEL,
             onPress: () =>
-              pane.act((local, typed) =>
-                isInMode(local, number, RowMode.Editing)
-                  ? { save: editActionOf(local, typed) }
-                  : {},
+              pane.saveTyped((local, typed) =>
+                isInMode(local, number, RowMode.Editing) ? editActionOf(local, typed) : undefined,
               ),
           },
         },
@@ -102,7 +100,7 @@ export function rowButtonsOf(
         ...(drawsFields
           ? [
               rowButtonOf(PaneElement.Edit, EDIT_LABEL, () =>
-                pane.act(() => ({ local: editedRowOf(goal) })),
+                pane.act(() => ({ local: editedRowOf(goal), opensField: true })),
               ),
             ]
           : []),
@@ -148,7 +146,7 @@ function unmarkButtonOf(
       onPress: () =>
         pane.act(() =>
           drawsFields
-            ? { local: unmarkingRowOf(goal, shown) }
+            ? { local: unmarkingRowOf(goal, shown), opensField: true }
             : { save: { kind: GoalPaneActionKind.Unmark, goal, shown } },
         ),
     },

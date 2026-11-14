@@ -38,10 +38,11 @@ import {
 } from './reminderPaneTexts'
 import { nextNumberOf, shownRemindersOf } from './reminders'
 
-// The Reminders pane, drawn on the drawing thread. A press, the typed text, the picked kind and the
-// question to remove a reminder change the state of this module at once. Each save goes on the
-// queue, and the card it changes is drawn dim with what runs, without its controls, until its
-// result arrives. The other cards can still be pressed, and their saves go on the queue.
+// The Reminders pane, drawn on the drawing thread. A press, the picked kind and the question to
+// remove a reminder change the state of this module at once, and the hooks module records the
+// typed text. Each save goes on the queue, and the card it changes is drawn dim with what runs,
+// without its controls, until its result arrives. The other cards can still be pressed, and their
+// saves go on the queue.
 
 /**
  * Draws the cards of the reminders. Only a surface with input fields edits and adds reminders, so
@@ -88,7 +89,7 @@ function drawRemindersPane(
       {shown.map(reminder => {
         const { id, number, isEnabled } = reminder
         if (savingIds.has(id)) {
-          return drawSavingCard(context, number, edited?.reminderId === id ? edited : reminder)
+          return drawSavingCard(context, number, savedTextOf(pane.saves, id) ?? reminder.text)
         }
         if (edited?.reminderId === id && drawsFields) {
           return drawEditedCard(context, edited, drawnCardOf(number, edited), {
@@ -103,7 +104,11 @@ function drawRemindersPane(
       {!drawsFields ? (
         <Text dimColor>{FIELDS_IN_TERMINAL_ONLY}</Text>
       ) : added !== undefined && savingIds.has(added.reminderId) ? (
-        drawSavingCard(context, nextNumber, added)
+        drawSavingCard(
+          context,
+          nextNumber,
+          savedTextOf(pane.saves, added.reminderId) ?? added.draft.text,
+        )
       ) : added !== undefined ? (
         drawEditedCard(context, added, drawnCardOf(nextNumber, added), {
           isEnabled: false,
@@ -114,7 +119,9 @@ function drawRemindersPane(
           <Button
             key="add-reminder"
             label={ADD_LABEL}
-            onPress={() => pane.act(() => ({ local: addedCardOf(context.kinds) }))}
+            onPress={() =>
+              pane.act(() => ({ local: addedCardOf(context.kinds), opensField: true }))
+            }
           >
             <Text color="claude">{ADD_LABEL}</Text>
           </Button>
@@ -126,19 +133,22 @@ function drawRemindersPane(
 }
 /** The card numbered `number` as `edited`, the card edited in the pane, has it. */
 function drawnCardOf(number: number, edited: EditingCard): EditedCard {
-  const { reminderId, openingId, fieldsId, opened } = edited
+  const { reminderId, openingId, textFieldId, fieldsId, opened } = edited
 
-  return { number, reminderId, openingId, fieldsId, opened }
+  return { number, reminderId, openingId, textFieldId, fieldsId, opened }
+}
+
+/** The text saved by the last save of the reminder `reminderId` among `saves` that saves a text. */
+function savedTextOf(saves: readonly ReminderPaneAction[], reminderId: string): string | undefined {
+  return saves
+    .flatMap(save => (save.reminderId === reminderId && 'draft' in save ? [save.draft.text] : []))
+    .at(-1)
 }
 /**
- * The card numbered `number` while a save of its reminder is on the queue: dim, with the text of
- * `shown`, the reminder or the card typed, and what runs, without its controls.
+ * The card numbered `number` while a save of its reminder is on the queue: dim, with `text`, and
+ * what runs, without its controls.
  */
-function drawSavingCard(
-  { elements }: DrawnPane,
-  number: number,
-  shown: Reminder | EditingCard,
-) {
+function drawSavingCard({ elements }: DrawnPane, number: number, text: string) {
   const { Box, Text } = elements
 
   return (
@@ -152,7 +162,7 @@ function drawSavingCard(
       <Text bold color="claude">{`${number}`}</Text>
       <Box flexDirection="column" flexGrow={1} flexShrink={1}>
         <Text bold dimColor>
-          {'draft' in shown ? shown.draft.text : shown.text}
+          {text}
         </Text>
         <Text dimColor>{SAVING}</Text>
       </Box>
@@ -223,7 +233,7 @@ function drawCard(
                 label={EDIT_LABEL}
                 dimColor
                 onPress={() =>
-                  pane.act(() => ({ local: editedCardOf(kinds, reminder) }))
+                  pane.act(() => ({ local: editedCardOf(kinds, reminder), opensField: true }))
                 }
               />
             )}

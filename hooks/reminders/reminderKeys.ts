@@ -1,9 +1,9 @@
 // The keys of the fields of an edited card in the Reminders pane, new for each opening of the card
 // or each time its fields are drawn anew.
 
-/** The key of the text field of a card with the fields `fieldsId`. */
-export function textFieldKeyOf(fieldsId: string): string {
-  return `text-${fieldsId}`
+/** The key of the text field of a card with the text field `textFieldId`. */
+export function textFieldKeyOf(textFieldId: string): string {
+  return `text-${textFieldId}`
 }
 
 /** The key of the kind dropdown of the opening `openingId` of a card. */

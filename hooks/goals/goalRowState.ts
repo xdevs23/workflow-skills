@@ -1,5 +1,6 @@
 import type { DoneMark, GoalInPane } from '../../types'
-import type { PaneControls, TypedTexts } from '../paneModule'
+import type { TypedTexts } from '../paneFields'
+import type { PaneControls } from '../paneModule'
 import { PaneElement, fieldKeyOf } from './goalKeys'
 import { GoalPaneActionKind, GoalSaveOutcome } from './goalPaneMessages'
 import type { GoalPaneAction, GoalSaveResult, PaneGoal } from './goalPaneMessages'

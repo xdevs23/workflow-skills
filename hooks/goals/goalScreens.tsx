@@ -40,15 +40,15 @@ type PaneOnFreshBoard = { loaded: Read | UnreadBoard; opened: UiOpenResult }
 
 /**
  * Reads the board of the session again into the state, and opens the Goals pane, which shows it
- * with `notice` under the goals. The pane opens without a pressed goal where the hooks module draws
- * it, as a surface module does, and tries its surface module again on every surface.
+ * with `notice` under the goals. A pane not open yet opens without a pressed goal where the hooks
+ * module draws it, as a surface module does, and tries its surface module again on every surface.
  */
 export async function openGoalsPaneOnFreshBoard(
   $: EngineInterface,
   notice?: string,
 ): Promise<PaneOnFreshBoard> {
   const sessionId = await $.session.id()
-  await storeOpenedPane(storedGoalsPane($))
+  await storeOpenedPane($, { paneId: GOALS_PANE, stored: storedGoalsPane($) })
   await setPaneNotice($, sessionId, GOALS_PANE, notice)
   const loaded = await loadBoardIntoState($, sessionId)
   const opened = await $.ui.open({ id: GOALS_PANE, title: PANE_TITLE, focus: true })

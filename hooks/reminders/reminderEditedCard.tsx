@@ -4,8 +4,9 @@ import type { CardDraft, CardInPane, CardWarning } from '../../types'
 import { drawCardWithFields } from '../cardFields'
 import type { FieldUnderCard } from '../cardFields'
 import type { PaneButtonProps, PaneElements } from '../paneElements'
-import type { PaneStep } from '../paneModule'
-import { DONE_LABEL } from '../paneTexts'
+import { savedOnEnter } from '../paneModule'
+import type { TypedSave } from '../paneModule'
+import { DONE_LABEL, TEXT_LABEL, nameField } from '../paneTexts'
 import {
   FieldKind,
   FieldPlace,
@@ -23,10 +24,10 @@ import {
   endedCard,
   isCardInMode,
   pickedKind,
+  pickedValue,
   saveActionOf,
   saveAndSwitchActionOf,
-  typedText,
-  typedValue,
+  typedCardOf,
 } from './reminderCardState'
 import type { EditedCard, EditingCard, RemindersPaneControls } from './reminderCardState'
 import { kindDropdownKeyOf, textFieldKeyOf, valueFieldKeyOf } from './reminderKeys'
@@ -38,9 +39,9 @@ import {
   OFF_LABEL,
   ON_LABEL,
   REMOVE_LABEL,
-  TEXT_LABEL,
   TEXT_PLACEHOLDER,
   UNKNOWN_CADENCE,
+  nameReminder,
 } from './reminderPaneTexts'
 import { Refusal } from './reminders'
 import type { NextSends } from './reminderState'
@@ -61,18 +62,20 @@ export type DrawnPane = {
 }
 
 /**
- * The press that saves the card `card` with the save `actionOf` makes of it, once `typed` is what
- * the press changed in the state of the pane, while that card is edited.
+ * The save that `actionOf` makes of the card `card` with the texts typed into its fields, drawn
+ * for the fields `fields` of its kind, while that card is edited.
  */
-function saveStepOf(
-  typed: CardInPane | null,
+function typedSaveOf(
   card: EditedCard,
+  fields: readonly CardField[],
   actionOf: (edited: EditingCard) => ReminderPaneAction,
-): PaneStep<CardInPane | null, ReminderPaneAction> {
-  return isCardInMode(typed, card.reminderId, CardMode.Editing)
-    ? { local: typed, save: actionOf(typed) }
-    : {}
+): TypedSave<CardInPane | null, ReminderPaneAction> {
+  return (local, typed) =>
+    isCardInMode(local, card.reminderId, CardMode.Editing)
+      ? actionOf(typedCardOf(local, typed, fields))
+      : undefined
 }
+
 /** Shows the yes and the keep of a removal in place of the buttons of the card. */
 export function askToRemove({ pane }: DrawnPane, reminderId: string) {
   return pane.act(() => ({ local: { reminderId, mode: CardMode.WaitingForYes } }))
@@ -83,9 +86,10 @@ export function askToRemove({ pane }: DrawnPane, reminderId: string) {
  * text and the values of its cadence are typed into. The warning from the last save is drawn after
  * the fields it is about, or in the card for the kind of the cadence. Remove on a card not stored
  * yet drops the card. Every field is drawn with what its fields were last drawn anew with, and the
- * engine stores what is typed and picked after that: a value drawn anew after every change would
- * replace the typing that arrived meanwhile. The labels of the fields and of the options, and the
- * items of a list, follow what is typed into `edited`, which also marks the field with the focus.
+ * engine shows what is typed and picked after that: a value drawn anew after every change would
+ * replace the typing that arrived meanwhile. Done, the switch and Enter save the texts typed into
+ * the fields by then. The labels of the fields and of the options, and the items of a list, follow
+ * what was picked and added in `edited`, which also marks the field with the focus.
  */
 export function drawEditedCard(
   context: DrawnPane,
@@ -95,11 +99,12 @@ export function drawEditedCard(
 ) {
   const { pane, elements, kinds } = context
   const { Box, Button, Text } = elements
-  const { number, reminderId, fieldsId, opened } = card
-  const { draft: typed, warning, focus } = edited
+  const { number, reminderId, textFieldId, opened } = card
+  const { draft, warning, focus } = edited
   const fields = kindOf(kinds, opened.cadence.kind)?.fields ?? []
   const labelColumns = labelColumnsOf(kinds)
-  const values = { card, typed, fields }
+  const save = typedSaveOf(card, fields, saved => saveActionOf(saved, number))
+  const values = { card, draft, fields, save }
   const warnings = warningsOf(warning)
   const box = (
     <Box
@@ -122,21 +127,15 @@ export function drawEditedCard(
         )}
         {fields
           .filter(isListField)
-          .flatMap(field => drawListItems(pane, elements, { card, typed, field }))}
+          .flatMap(field => drawListItems(pane, elements, { card, draft, field }))}
         {warnings.inCard !== undefined && <Text color="warning">{warnings.inCard}</Text>}
         <Box justifyContent="flex-end" flexWrap="wrap">
           {drawSwitch(elements, number, isEnabled, () =>
-            pane.act(local =>
-              saveStepOf(local, card, saved => saveAndSwitchActionOf(saved, number, !isEnabled)),
+            pane.saveTyped(
+              typedSaveOf(card, fields, saved => saveAndSwitchActionOf(saved, number, !isEnabled)),
             ),
           )}
-          <Button
-            key={`done-${number}`}
-            label={DONE_LABEL}
-            onPress={() =>
-              pane.act(local => saveStepOf(local, card, saved => saveActionOf(saved, number)))
-            }
-          />
+          <Button key={`done-${number}`} label={DONE_LABEL} onPress={() => pane.saveTyped(save)} />
           <Button
             key={`remove-${number}`}
             label={REMOVE_LABEL}
@@ -152,18 +151,15 @@ export function drawEditedCard(
     </Box>
   )
 
+  const textFieldKey = textFieldKeyOf(textFieldId)
   const textField: FieldUnderCard = {
-    key: textFieldKeyOf(fieldsId),
-    label: TEXT_LABEL,
+    key: textFieldKey,
+    label: nameField({ item: nameReminder(number), part: TEXT_LABEL }),
     value: opened.text,
     placeholder: TEXT_PLACEHOLDER,
     ...(focus.field === CardFocus.Text ? { autoFocus: true } : {}),
     submitLabel: DONE_LABEL.toLowerCase(),
-    onInput: text => pane.act(local => ({ local: typedText(local, reminderId, text) })),
-    onSubmit: text =>
-      pane.act(local =>
-        saveStepOf(typedText(local, reminderId, text), card, saved => saveActionOf(saved, number)),
-      ),
+    onSubmit: text => pane.saveTyped(savedOnEnter(save, textFieldKey, text)),
   }
 
   return drawCardWithFields(elements, box, [
@@ -193,8 +189,16 @@ function drawKindDropdown({ pane, elements, kinds }: DrawnPane, card: EditedCard
   )
 }
 
-/** A card being edited, with the values `typed` into it and the fields `fields` of its kind. */
-type CardValues = { card: EditedCard; typed: CardDraft; fields: readonly CardField[] }
+/**
+ * A card being edited, with what was picked and added in it as `draft`, the fields `fields` of its
+ * kind, and the save of the card that Enter in a field runs.
+ */
+type CardValues = {
+  card: EditedCard
+  draft: CardDraft
+  fields: readonly CardField[]
+  save: TypedSave<CardInPane | null, ReminderPaneAction>
+}
 
 /**
  * The field under the card of `values` where the value of `field` is typed. The field that adds
@@ -202,37 +206,36 @@ type CardValues = { card: EditedCard; typed: CardDraft; fields: readonly CardFie
  */
 function fieldUnderCardOf(
   { pane }: DrawnPane,
-  { card, typed, fields }: CardValues,
+  { card, draft, fields, save }: CardValues,
   field: TextField | ListCardField,
   { hasFocus }: { hasFocus: boolean },
 ): FieldUnderCard {
-  const { number, reminderId, fieldsId, opened } = card
+  const { number, fieldsId, opened } = card
   switch (field.kind) {
-    case FieldKind.Text:
+    case FieldKind.Text: {
+      const key = valueFieldKeyOf(fieldsId, field.key)
+
       return {
-        key: valueFieldKeyOf(fieldsId, field.key),
-        label: labelOf(fields, typed.cadence.values, field),
+        key,
+        label: nameField({
+          item: nameReminder(number),
+          part: labelOf(fields, draft.cadence.values, field),
+        }),
         value: valueOfField(fields, opened.cadence.values, field),
         ...(field.placeholder === undefined ? {} : { placeholder: field.placeholder }),
         submitLabel: DONE_LABEL.toLowerCase(),
-        onInput: value =>
-          pane.act(local => ({ local: typedValue(local, reminderId, { key: field.key, value }) })),
-        onSubmit: value =>
-          pane.act(local =>
-            saveStepOf(typedValue(local, reminderId, { key: field.key, value }), card, saved =>
-              saveActionOf(saved, number),
-            ),
-          ),
+        onSubmit: value => pane.saveTyped(savedOnEnter(save, key, value)),
       }
+    }
     case FieldKind.List:
       return nextItemFieldOf(pane, { card, field, hasFocus })
   }
 }
 
-/** The dropdown `field` of `card`, with its options as the values `typed` label them. */
+/** The dropdown `field` of `card`, with its options as the values of `draft` label them. */
 function drawDropdown(
   { pane, elements }: DrawnPane,
-  { card, typed, fields }: CardValues,
+  { card, draft, fields }: CardValues,
   field: ChoiceField,
 ) {
   const { Dropdown } = elements
@@ -241,10 +244,10 @@ function drawDropdown(
   return (
     <Dropdown
       key={valueFieldKeyOf(fieldsId, field.key)}
-      options={optionsOf(fields, typed.cadence.values, field)}
+      options={optionsOf(fields, draft.cadence.values, field)}
       value={valueOfField(fields, opened.cadence.values, field)}
       onSelect={value =>
-        pane.act(local => ({ local: typedValue(local, reminderId, { key: field.key, value }) }))
+        pane.act(local => ({ local: pickedValue(local, reminderId, { key: field.key, value }) }))
       }
     />
   )

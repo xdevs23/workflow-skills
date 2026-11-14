@@ -10,7 +10,6 @@ export const YES_REMOVE_LABEL = 'Yes, remove'
 export const KEEP_LABEL = 'Keep'
 export const ON_LABEL = '● On'
 export const OFF_LABEL = '○ Off'
-export const TEXT_LABEL = 'Text'
 export const CADENCE_LABEL = 'Cadence'
 export const TEXT_PLACEHOLDER = 'What Claude should do'
 /** What Enter does in the field that adds an item to a list, drawn beside the field. */

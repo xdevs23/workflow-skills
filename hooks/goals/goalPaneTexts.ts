@@ -7,6 +7,7 @@ import type { Priority } from './priority'
 // The texts of the Goals pane, drawn by its surface module and by the hooks module.
 
 export const PANE_TITLE = 'Goals'
+export const NEW_GOAL_LABEL = 'New goal'
 export const NEW_GOAL_PLACEHOLDER = 'Add a goal'
 export const ADD_LABEL = 'add'
 export const EDIT_LABEL = 'Edit'
@@ -15,6 +16,7 @@ export const BLANK_TEXT_WARNING = `A goal needs a text. Type one, or press ${CAN
 export const UNMARK_LABEL = 'Unmark'
 /** The word beside the field for the reason, for what Enter does there. */
 export const UNMARK_SUBMIT_LABEL = 'unmark'
+export const REASON_LABEL = 'Reason'
 export const REASON_PLACEHOLDER = 'Reason (optional)'
 export const NUDGE_LABEL = 'Nudge'
 export const CLEAR_LABEL = 'Clear'

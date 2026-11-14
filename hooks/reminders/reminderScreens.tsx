@@ -46,15 +46,16 @@ type PaneOnFreshReminders = { loaded: ReadReminders | Failed; opened: UiOpenResu
 
 /**
  * Reads the reminders of the session again into the state, and opens the Reminders pane, which
- * shows them with `notice` under them. The pane opens without a pressed card where the hooks module
- * draws it, as a surface module does, and tries its surface module again on every surface.
+ * shows them with `notice` under them. A pane not open yet opens without a pressed card where the
+ * hooks module draws it, as a surface module does, and tries its surface module again on every
+ * surface.
  */
 export async function openRemindersPane(
   $: EngineInterface,
   notice?: string,
 ): Promise<PaneOnFreshReminders> {
   const sessionId = await $.session.id()
-  await storeOpenedPane(storedRemindersPane($))
+  await storeOpenedPane($, { paneId: REMINDERS_PANE, stored: storedRemindersPane($) })
   await setPaneNotice($, sessionId, REMINDERS_PANE, notice)
   const loaded = await loadRemindersIntoState($, sessionId)
   const opened = await $.ui.open({ id: REMINDERS_PANE, title: PANE_TITLE, focus: true })

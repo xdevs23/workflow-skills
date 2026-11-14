@@ -1,4 +1,4 @@
-import type { ClientKeyEvent, ClientPointerEvent } from 'claude-code'
+import type { ClientKeyEvent } from 'claude-code'
 
 import { KeyName, keyNameOf } from './surfaceKeys'
 
@@ -8,7 +8,6 @@ import { KeyName, keyNameOf } from './surfaceKeys'
 /** The kinds of the controls that a pane module draws. */
 export enum ControlKind {
   Button = 'button',
-  TextInput = 'text-input',
   Dropdown = 'dropdown',
 }
 
@@ -17,7 +16,7 @@ export enum ControlKind {
  * marked in its open list, null while the list is closed.
  */
 export type ControlFocus = { key: string; index: number } & (
-  | { kind: ControlKind.Button | ControlKind.TextInput }
+  | { kind: ControlKind.Button }
   | { kind: ControlKind.Dropdown; marked: string | null }
 )
 
@@ -35,15 +34,13 @@ export function shownValueOf(entered: EnteredValue | undefined, drawn: string): 
 /** The keyboard of a pane drawn by its surface module. */
 export type PaneKeyboard = {
   /**
-   * Whether the keys went to the pane since it opened: the surface sent the module a key, or a
-   * click outside the Buttons of the pane. The pane draws its focus only from then on.
+   * Whether the surface sent a key to the module since it opened. The surface sends keys after a
+   * click on the region of the module, and the pane draws its focus only from then on.
    */
   hasKeys: boolean
   focus: ControlFocus | null
   /** The keys of the controls drawn with autoFocus in the last drawing. */
   autoFocusDrawn: readonly string[]
-  /** The text typed into each text input, by the key of the text input. */
-  typed: Readonly<Record<string, EnteredValue>>
   /**
    * The option picked in each dropdown of the last drawing, by the key of the dropdown. A dropdown
    * drawn again after a drawing without it shows the value the pane draws it with.
@@ -55,7 +52,6 @@ export const NEW_KEYBOARD: PaneKeyboard = {
   hasKeys: false,
   focus: null,
   autoFocusDrawn: [],
-  typed: {},
   picked: {},
 }
 
@@ -78,8 +74,8 @@ export type TabStop = {
 
 /**
  * The place in `tabOrder` of the control with the focus. Where that control is no longer drawn,
- * the focus moves to the first control with autoFocus drawn since, such as a text input opened by
- * a press, and to none where no such control was drawn.
+ * the focus moves to the first control with autoFocus drawn since, such as the Keep of a question
+ * opened by a press, and to none when such a control was not drawn.
  */
 function focusedIndexOf(
   tabOrder: readonly TabStop[],
@@ -177,23 +173,6 @@ export function keyboardAfterDrawing(
     : { ...focused, autoFocusDrawn, picked: Object.fromEntries(picksDrawn) }
 }
 
-/** `keyboard` with the keys in the pane, the same `keyboard` where they already are. */
-function withKeys(keyboard: PaneKeyboard): PaneKeyboard {
-  return keyboard.hasKeys ? keyboard : { ...keyboard, hasKeys: true }
-}
-
-/**
- * Sets `hasKeys` once `event` is a left click on the pane. The surface sends pointer
- * events only for clicks outside Buttons, and such a click sends every later key to the pane
- * (Claude Code 2.1.321, checked live in the terminal on 2026-11-14). The focus does not move,
- * since the event does not tell which part of the pane was clicked.
- */
-export function sendPointerToPane(store: KeyboardStore, event: ClientPointerEvent): void {
-  if (event.type === 'down' && event.button === 'left') {
-    store.update(withKeys)
-  }
-}
-
 /**
  * Sends `event` to the control with the focus in `tabOrder`. Tab and Shift+Tab move the focus to
  * the next and to the previous control.
@@ -203,7 +182,7 @@ export function sendKeyToFocusedControl(
   store: KeyboardStore,
   event: ClientKeyEvent,
 ): Promise<void> | void {
-  store.update(withKeys)
+  store.update(keyboard => (keyboard.hasKeys ? keyboard : { ...keyboard, hasKeys: true }))
   const index = focusedIndexOf(tabOrder, store.read())
   if (keyNameOf(event) === KeyName.Tab) {
     const tabbed = tabbedIndexOf(tabOrder.length, index, event.shift === true)

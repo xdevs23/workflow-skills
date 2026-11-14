@@ -164,7 +164,7 @@ export type RowInPane =
 /** The goal numbered `goal` pressed in the Goals pane, with what the pane does with it. */
 export type GoalInPane = { goal: number } & RowInPane
 
-/** What the hooks module stores of the Goals pane: its presses, saves and failed modules. */
+/** What the hooks module stores of the Goals pane. */
 export type GoalsPaneRecord = PaneRecord<GoalInPane | null, GoalPaneAction, GoalSaveResult>
 
 /** The board of a session as its model last saw it, which the notes on the changes compare with. */
@@ -271,14 +271,22 @@ export type CardInPane = { reminderId: string } & (
        */
       openingId: string
       /**
-       * New for each opening of the card and each time its fields are drawn anew, the key of its
-       * text field and value fields: a field drawn again under an earlier key would show the value
-       * the engine stored for it, such as the empty text after an Enter.
+       * New for each opening of the card and each time it is drawn anew after a save, the key of
+       * its text field. A pick of a kind keeps it, so the text typed into the field stays there.
+       */
+      textFieldId: string
+      /**
+       * New for each opening of the card, each pick of a kind and each time it is drawn anew after
+       * a save, the key of its value fields: a field drawn again under an earlier key would show
+       * the value the engine stored for it, such as the empty text after an Enter.
        */
       fieldsId: string
       /** The text and the cadence the fields of the card were last drawn anew with. */
       opened: CardDraft
-      /** What was typed into the card and picked in it since it opened. */
+      /**
+       * What was picked in the card and added to its lists since it opened. The texts typed into
+       * its fields are recorded by the hooks module, and a save of the card reads them.
+       */
       draft: CardDraft
       warning?: CardWarning
       focus: FieldFocus
@@ -286,7 +294,7 @@ export type CardInPane = { reminderId: string } & (
   | { mode: CardMode.WaitingForYes }
 )
 
-/** What the hooks module stores of the Reminders pane: its presses, saves and failed modules. */
+/** What the hooks module stores of the Reminders pane. */
 export type RemindersPaneRecord = PaneRecord<
   CardInPane | null,
   ReminderPaneAction,
@@ -296,7 +304,7 @@ export type RemindersPaneRecord = PaneRecord<
 /** The sessions of the project read for the import panes by the session `sessionId`. */
 export type ImportableSessionsInState = { sessionId: string } & ImportableSessions
 
-/** What the hooks module stores of an import pane: its presses, saves and failed modules. */
+/** What the hooks module stores of an import pane. */
 export type ImportPaneRecord = PaneRecord<ImportInPane | null, ImportAction, ImportResult>
 
 /**
@@ -373,15 +381,11 @@ declare module 'claude-code' {
        * may outlive a switch to another session; null before any session read it.
        */
       sessionBoard: SessionBoard | null
-      /**
-       * The Goals pane as the hooks module stores it: the state of its presses where the hooks
-       * module draws it, the results of the actions saved, by action id, and the surfaces where
-       * the surface module failed.
-       */
+      /** The Goals pane as the hooks module stores it. */
       goalsPane: Shaped<GoalsPaneRecord>
       /**
-       * The texts typed into the fields of the Goals pane where the hooks module draws it; null
-       * before the first text typed after the pane opened.
+       * The texts typed into the text fields of the Goals pane, as the hooks module records them;
+       * null before the first text typed after the pane opened.
        */
       goalsPaneTyped: TypedInWorker | null
       /** The board seen by the model of the session; null before the board is first read. */
@@ -400,15 +404,11 @@ declare module 'claude-code' {
        * before any session read them.
        */
       sessionReminders: SessionReminders | null
-      /**
-       * The Reminders pane as the hooks module stores it: the state of its presses where the hooks
-       * module draws it, the results of the actions saved, by action id, and the surfaces where
-       * the surface module failed.
-       */
+      /** The Reminders pane as the hooks module stores it. */
       remindersPane: Shaped<RemindersPaneRecord>
       /**
-       * The texts typed into the fields of the Reminders pane where the hooks module draws it; null
-       * before the first text typed after the pane opened.
+       * The texts typed into the text fields of the Reminders pane, as the hooks module records
+       * them; null before the first text typed after the pane opened.
        */
       remindersPaneTyped: TypedInWorker | null
       /** When the reminders of the session are next sent, as their cadence kinds put it. */
@@ -424,11 +424,7 @@ declare module 'claude-code' {
        * that read them; null before an import pane opened.
        */
       importableSessions: ImportableSessionsInState | null
-      /**
-       * The import panes as the hooks module stores them: the state of their presses where the
-       * hooks module draws them, the results of the actions saved, by action id, and the surfaces
-       * where the surface module failed.
-       */
+      /** The import panes as the hooks module stores them. */
       goalsImportPane: Shaped<ImportPaneRecord>
       remindersImportPane: Shaped<ImportPaneRecord>
       /**

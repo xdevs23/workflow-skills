@@ -8,22 +8,23 @@ import type {
 } from 'claude-code'
 
 // The elements a pane draws with. Its buttons, text inputs and dropdowns are drawn by the surface
-// where the hooks module draws the pane, and by clientControls.tsx in its surface module.
+// where the hooks module draws the pane. In its surface module, its buttons and dropdowns are drawn
+// by clientControls.tsx, and its text inputs by the hooks module under the module (paneFields.tsx).
 
 /** A button of a pane. Every press calls its `onPress`. */
 export type PaneButtonProps = Omit<ButtonProps, 'key' | 'onPress' | 'hotkey'> &
   ElementChildren & { key: string; onPress: () => Promise<void> | void }
 
 /**
- * A text field of a pane, drawn with `value` until something is typed into it. Each change of its
- * text runs `onInput`, and Enter runs `onSubmit` with the text.
+ * A text field of a pane, drawn with `value` until something is typed into it. The hooks module
+ * records the text typed into it, which a press reads with `saveTyped`, and Enter runs `onSubmit`
+ * with the text.
  */
 export type TextInputProps = Pick<
   InputProps,
   'key' | 'label' | 'placeholder' | 'value' | 'autoFocus'
 > & {
   submitLabel: string
-  onInput?: (value: string) => Promise<void> | void
   onSubmit: (value: string) => Promise<void> | void
 }
 
