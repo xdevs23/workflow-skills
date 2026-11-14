@@ -41,7 +41,10 @@ Write smallest clean change that does what was asked for. Write it so user can r
 - Do not launch subagent or workflow
 - Commit as you go, in commit style used by project, one commit per logical change
 - Put lint fix or corrected comment not needed by unit into separate commit
+- Spend most of your time writing code, not running commands
 - Run only small, narrow test or check of this unit that takes a few seconds
+- Set timeout of every test and check command to 60 seconds, e.g. `timeout` of Bash tool set to
+  60000
 - Refuse every other test run, check and build, also when prompt asks for it: full suite, full
   check, full build, tests of whole module or app, repeated runs of slow or flaky test. Name each
   refused run in your return
