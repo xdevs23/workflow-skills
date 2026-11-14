@@ -3,16 +3,15 @@ import type { EngineInterface } from 'claude-code'
 
 import type {
   Board,
-  FollowedGoal,
   GoalInPane,
   IdleStretch,
-  RowInPane,
   SeenBoard,
   SessionBoard,
-  TypedGoalText,
   UnreadBoard,
   WaitingNudges,
 } from '../../types'
+import { NEW_PANE_RECORD } from '../paneWorker'
+import type { StoredPane } from '../paneWorker'
 import {
   keepReadOverFailure,
   ofRunningSession,
@@ -20,17 +19,18 @@ import {
   updateOfSession,
 } from '../sessionBoundState'
 import { Outcome } from './board'
-import type { GoalEdit, Read } from './board'
+import type { Read } from './board'
 import { boardWithChangesTakenBack } from './boardChanges'
 import { combinedBoardOf } from './boardMerge'
+import type { GoalPaneAction, GoalSaveResult } from './goalPaneMessages'
 
 // The engine lists the state a module reads and writes from the source of the module, so every
 // state reference of the goals is written in this file with its plugin and key as literals.
 const sessionBoard = atom({ plugin: 'workflow-skills', key: 'sessionBoard' } as const, null)
-const goalInPane = atom({ plugin: 'workflow-skills', key: 'goalInPane' } as const, null)
-const typedGoalText = atom({ plugin: 'workflow-skills', key: 'typedGoalText' } as const, null)
-const followedGoal = atom({ plugin: 'workflow-skills', key: 'followedGoal' } as const, null)
-const isSavingGoal = atom({ plugin: 'workflow-skills', key: 'isSavingGoal' } as const, false)
+const goalsPane = atom({ plugin: 'workflow-skills', key: 'goalsPane' } as const, NEW_PANE_RECORD, {
+  shape: 'saves-by-action-id',
+})
+const goalsPaneTyped = atom({ plugin: 'workflow-skills', key: 'goalsPaneTyped' } as const, null)
 const seenBoard = atom({ plugin: 'workflow-skills', key: 'seenBoard' } as const, null)
 const idleStretch = atom({ plugin: 'workflow-skills', key: 'idleStretch' } as const, null)
 const waitingNudges = atom({ plugin: 'workflow-skills', key: 'waitingNudges' } as const, null)
@@ -61,170 +61,16 @@ export async function setLoadedBoard(
   )
 }
 
-/** What the Goals pane does with a pressed goal. */
-export enum RowMode {
-  WaitingForYes = 'waiting-for-yes',
-  Editing = 'editing',
-  Unmarking = 'unmarking',
-}
-
-/**
- * The goal of the running session in the yes, edit or unmark row mode in the Goals pane, if any.
- */
-export async function readGoalInPane($: EngineInterface): Promise<GoalInPane | null> {
-  return ofRunningSession($, await read($, goalInPane))
-}
-
-/**
- * Puts the goal with the id `goalId` of the session `sessionId` into the row `row` of the Goals
- * pane, in place of any goal there before, so only one goal at a time has a row mode in the pane.
- */
-export async function setGoalInPane(
+/** The Goals pane as the hooks module stores it. */
+export function storedGoalsPane(
   $: EngineInterface,
-  sessionId: string,
-  goalId: string,
-  row: RowInPane,
-): Promise<void> {
-  await updateOfSession(
-    $,
-    sessionId,
-    () => ({ sessionId, goalId, ...row }),
-    changeInState => update($, goalInPane, changeInState),
-  )
-}
-
-/**
- * Records that a blank text was refused for the goal with the id `goalId`, while the goal is
- * edited. The field is drawn empty under the warning.
- */
-export async function refuseBlankText($: EngineInterface, goalId: string): Promise<void> {
-  await updateEditedGoal($, goalId, edited => ({ ...edited, drawn: '', isBlankTextRefused: true }))
-}
-
-/**
- * Draws the field for the goal with the id `goalId` anew with the text of `edit`, for an edit
- * started from the text `edit.editedFrom`, under the new field id `fieldId`, while the goal is
- * edited. The engine empties a field once its Enter was handled, so the field gets a new key.
- */
-export async function redrawEditField(
-  $: EngineInterface,
-  goalId: string,
-  { text, editedFrom }: GoalEdit,
-  fieldId: string,
-): Promise<void> {
-  await updateEditedGoal($, goalId, edited => ({
-    ...edited,
-    fieldId,
-    drawn: text,
-    editedFrom,
-    isBlankTextRefused: false,
-  }))
-}
-
-/**
- * Replaces the goal with the id `goalId` in the Goals pane with the value that `change` returns,
- * while the goal is edited.
- */
-async function updateEditedGoal(
-  $: EngineInterface,
-  goalId: string,
-  change: (edited: GoalInMode<RowMode.Editing>) => GoalInPane,
-): Promise<void> {
-  await update($, goalInPane, inState =>
-    isGoalInMode(inState, goalId, RowMode.Editing) ? change(inState) : inState,
-  )
-}
-
-/**
- * Ends the mode `mode` of the goal with the id `goalId` in the Goals pane, while the goal is still
- * in that mode.
- */
-export async function dropGoalInPane(
-  $: EngineInterface,
-  goalId: string,
-  mode: RowMode,
-): Promise<void> {
-  await update($, goalInPane, inState => (isGoalInMode(inState, goalId, mode) ? null : inState))
-}
-
-/** A goal in the Goals pane in the row mode `Mode`. */
-type GoalInMode<Mode extends RowMode> = Extract<GoalInPane, { mode: Mode }>
-
-/** Whether `inState` is the goal with the id `goalId` in the row mode `mode`. */
-function isGoalInMode<Mode extends RowMode>(
-  inState: GoalInPane | null,
-  goalId: string,
-  mode: Mode,
-): inState is GoalInMode<Mode> {
-  return inState?.goalId === goalId && inState.mode === mode
-}
-
-/**
- * Sets `text` as the text typed into the field for the goal with the id `goalId` of the session
- * `sessionId`.
- */
-export async function recordTypedText(
-  $: EngineInterface,
-  sessionId: string,
-  goalId: string,
-  text: string,
-): Promise<void> {
-  await updateOfSession<TypedGoalText>(
-    $,
-    sessionId,
-    () => ({ sessionId, goalId, text }),
-    changeInState => update($, typedGoalText, changeInState),
-  )
-}
-
-/**
- * The text typed into the field for the goal with the id `goalId`, and the text of the goal at the
- * start of the edit, while the goal is edited in the Goals pane.
- */
-export async function readEdit($: EngineInterface, goalId: string): Promise<GoalEdit | undefined> {
-  const [inPane, typed] = await Promise.all([readGoalInPane($), read($, typedGoalText)])
-
-  return isGoalInMode(inPane, goalId, RowMode.Editing) && typed?.goalId === goalId
-    ? { text: typed.text, editedFrom: inPane.editedFrom }
-    : undefined
-}
-
-/** The goal of the running session whose row in the Goals pane has the focus, if any. */
-export async function readFollowedGoal($: EngineInterface): Promise<FollowedGoal | null> {
-  return ofRunningSession($, await read($, followedGoal))
-}
-
-/**
- * Records `followed` as the goal of the session `sessionId` whose row in the Goals pane has the
- * focus. Null records that the focus is outside every goal row.
- */
-export async function setFollowedGoal(
-  $: EngineInterface,
-  sessionId: string,
-  followed: Omit<FollowedGoal, 'sessionId'> | null,
-): Promise<void> {
-  await updateOfSession<FollowedGoal>(
-    $,
-    sessionId,
-    () => (followed === null ? null : { sessionId, ...followed }),
-    changeInState => update($, followedGoal, changeInState),
-  )
-}
-
-/** Marks a save of the Goals pane as running, and returns false when one was running already. */
-export async function startSaving($: EngineInterface): Promise<boolean> {
-  let isStarted = false
-  await update($, isSavingGoal, isSaving => {
-    isStarted = !isSaving
-
-    return true
-  })
-
-  return isStarted
-}
-
-export async function endSaving($: EngineInterface): Promise<void> {
-  await update($, isSavingGoal, () => false)
+): StoredPane<GoalInPane | null, GoalPaneAction, GoalSaveResult> {
+  return {
+    read: () => read($, goalsPane),
+    update: change => update($, goalsPane, change),
+    readTyped: () => read($, goalsPaneTyped),
+    updateTyped: change => update($, goalsPaneTyped, change),
+  }
 }
 
 /**

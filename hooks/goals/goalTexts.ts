@@ -5,51 +5,23 @@ import { DONE_LABEL } from '../paneTexts'
 import type { LoopRefused, TextChangedRefused } from './board'
 import { describeStoreFailure } from './boardStore'
 import type { Failed } from './boardStore'
-import { PaneElement } from './goalKeys'
-import type { FocusedElement } from './goalKeys'
 import { GOALS_COMMAND } from './goalNames'
+import { PANE_TITLE, nameGoal } from './goalPaneTexts'
 
 // The texts of the goals read by the person at the prompt.
 
-export const PANE_TITLE = 'Goals'
 /** The label of the button in the prompt footer that opens the Goals pane, named as the pane. */
 export const GOALS_BUTTON_LABEL = PANE_TITLE
-export const NEW_GOAL_PLACEHOLDER = 'Add a goal'
-export const ADD_LABEL = 'add'
-export const EDIT_LABEL = 'Edit'
-export const CANCEL_LABEL = 'Cancel'
-export const BLANK_TEXT_WARNING = `A goal needs a text. Type one, or press ${CANCEL_LABEL}.`
-export const UNMARK_LABEL = 'Unmark'
-/** The word beside the field for the reason, for what Enter does there. */
-export const UNMARK_SUBMIT_LABEL = 'unmark'
-export const REASON_PLACEHOLDER = 'Reason (optional)'
-export const NUDGE_LABEL = 'Nudge'
-export const CLEAR_LABEL = 'Clear'
-export const YES_CLEAR_LABEL = 'Yes, clear'
-export const KEEP_LABEL = 'Keep'
-export const PRIORITY_LABEL = 'Priority'
-export const DEPENDENCY_LABEL = 'After'
-/** What a picker shows for a goal without its setting, and the choice that removes the setting. */
-export const NO_CHOICE_LABEL = '–'
-export const BOARD_LOADING = 'Reading the goals of this session…'
-/** The line in place of the field that adds a goal, on a surface without input fields. */
-export const FIELDS_IN_TERMINAL_ONLY = `Add and edit goals in the ${PANE_TITLE} pane in a terminal.`
 
 export const GOALS_DESCRIPTION = `Open the goals of this session in the ${PANE_TITLE} pane`
 
-/** The goals as written in the texts about a failed hook of /goals, which saves nothing. */
+/** The goals as written in the texts about a failed hook of /goals. */
 export const GOALS_SUBJECT: HookSubject = { name: 'goals' }
 
-/**
- * The name of goal `number` in every text, such as "Goal 2". A hash sign before a number names an
- * entry of TODO.md.
- */
-export function nameGoal(number: number): string {
-  return `Goal ${number}`
-}
-
-export function describeClearQuestion(goal: Goal): string {
-  return `Clear ${nameGoal(goal.number)}?`
+/** The goals as written in the texts about a failed hook that saves a change made in the pane. */
+export const GOALS_PANE_SUBJECT: HookSubject = {
+  name: 'goals',
+  checkBeforeRetry: `Check the goals in the ${PANE_TITLE} pane before you try again.`,
 }
 
 export function describeNotRegistered(reason: string): string {
@@ -62,16 +34,6 @@ export function describeNotRegistered(reason: string): string {
 /** The goal as one line: its number, then its text. */
 export function describeGoal(goal: Goal): string {
   return `${nameGoal(goal.number)}: ${goal.text}`
-}
-
-/** The badge before the text of a goal depending on `dependsOn`, on a surface without pickers. */
-export function describeDependencyBadge(dependsOn: Goal): string {
-  return `after ${nameGoal(dependsOn.number)}`
-}
-
-/** The done mark of a goal as the person reads it, with the evidence given by Claude. */
-export function describeDoneMarkForPerson(mark: DoneMark): string {
-  return `Marked done by Claude: ${mark.evidence}`
 }
 
 /** What a press of Nudge shows while the nudge for `goal` waits for the current turn to end. */
@@ -108,7 +70,7 @@ export function describeEditedElsewhere(refused: TextChangedRefused): string {
 }
 
 /** What a press of Unmark shows for a done mark removed or replaced since the pane drew it. */
-export function describeMarkNoLongerShown(goal: Goal, shown: DoneMark): string {
+export function describeMarkNoLongerShown(goal: Pick<Goal, 'number'>, shown: DoneMark): string {
   return `${nameGoal(goal.number)} is no longer marked done with ${shown.evidence}.`
 }
 
@@ -145,29 +107,4 @@ export function describeDependencyLoop(refused: LoopRefused): string {
 
 export function describeNotCleared(failed: Failed): string {
   return `The goal was not cleared. ${describeStoreFailure(failed)}`
-}
-
-/**
- * An element of the Goals pane the plugin moves the focus to, with the number of its goal, or the
- * number of the goal added by the field that adds a goal.
- */
-export type FocusTarget = { element: FocusedElement; number: number }
-
-const FOCUS_TARGET_DESCRIPTIONS: Record<FocusedElement, (goal: string) => string> = {
-  [PaneElement.NewGoal]: goal => `the field that adds ${goal}`,
-  [PaneElement.GoalText]: goal => `the field that edits ${goal}`,
-  [PaneElement.UnmarkReason]: goal => `the field for the reason to unmark ${goal}`,
-  [PaneElement.FirstButton]: goal => `the first button of ${goal}`,
-}
-
-/** The line in the debug log when the engine returns a deny for moving the focus to `target`. */
-export function describeFocusNotMoved(denial: string, { element, number }: FocusTarget): string {
-  const described = FOCUS_TARGET_DESCRIPTIONS[element](nameGoal(number))
-
-  return `The focus did not move to ${described}: ${denial}`
-}
-
-/** The text for a board that could not be read, with the reason and the next step of the store. */
-export function describeNotRead(storeFailure: string): string {
-  return `The goals of this session could not be read. ${storeFailure}`
 }

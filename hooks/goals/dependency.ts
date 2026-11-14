@@ -30,18 +30,37 @@ export function unfinishedDependencyOf(open: OpenGoals, goal: Goal): Goal | unde
  * `candidate` is `goal`, or depends on it directly or through other open goals.
  */
 export function closesLoop(open: OpenGoals, goal: Goal, candidate: Goal): boolean {
+  const dependedOf = (id: string) => {
+    const depending = open.get(id)
+
+    return depending === undefined ? undefined : dependedGoalOf(open, depending)?.id
+  }
+
+  return closesLoopAmong(dependedOf, goal.id, candidate.id)
+}
+
+/**
+ * Whether a dependency of the goal `goal` on the goal `candidate` closes a loop, where `dependedOf`
+ * gives the goal that each goal depends on: whether `candidate` is `goal`, or depends on it
+ * directly or through other goals.
+ */
+export function closesLoopAmong<Id>(
+  dependedOf: (goal: Id) => Id | undefined,
+  goal: Id,
+  candidate: Id,
+): boolean {
   // Two processes can store a loop that does not pass `goal`, so the walk stops at a goal it has
   // already visited.
-  const visited = new Set<string>()
+  const visited = new Set<Id>()
   for (
-    let current: Goal | undefined = candidate;
-    current !== undefined && !visited.has(current.id);
-    current = dependedGoalOf(open, current)
+    let current: Id | undefined = candidate;
+    current !== undefined && !visited.has(current);
+    current = dependedOf(current)
   ) {
-    if (current.id === goal.id) {
+    if (current === goal) {
       return true
     }
-    visited.add(current.id)
+    visited.add(current)
   }
 
   return false

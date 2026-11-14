@@ -1,7 +1,6 @@
 import type { Hook, On } from 'claude-code'
 
 import { EVERY_EVENT } from '../everyEvent'
-import { PLUGIN } from '../names'
 import type { PromptFooter } from '../promptFooter'
 import { SWITCHING_SOURCES } from '../sessionSources'
 import { loadBoardAtStart } from './goalActions'
@@ -10,21 +9,21 @@ import {
   ATTACH_TODO_TOOL,
   DETACH_TODO_TOOL,
   GOALS_COMMAND,
-  GOALS_PANE,
+  GOALS_PANE_SITE,
   LIST_GOALS_TOOL,
   MARK_GOAL_DONE_TOOL,
   UNMARK_GOAL_DONE_TOOL,
 } from './goalNames'
-import {
-  followGoalWithFocus,
-  recordFollowedGoal,
-  stopFollowingOnClose,
-} from './goalFocus'
 import { endIdleStretch, waitAfterTurn } from './goalIdleReminder'
 import { sendNudgesAfterTurn } from './goalNudge'
 import { addGoalChangesToToolResult, submitWithGoalChanges } from './goalReminderHooks'
 import { handleMarkGoalDoneCall, handleUnmarkGoalDoneCall } from './goalMarkTools'
-import { drawGoalsPane } from './goalScreens'
+import {
+  answerFailedGoalsPanePost,
+  answerGoalsPanePost,
+  drawGoalsPane,
+  fallBackFromGoalsPaneModule,
+} from './goalScreens'
 import { GOALS_BUTTON, openGoalsFromButton } from './goalsButton'
 import { readGoalsOfSwitchedSession, registerGoalsCommand } from './goalSession'
 import {
@@ -67,9 +66,8 @@ export function registerGoals(on: On, footer: PromptFooter): void {
   on('tool.call', { tool: UNMARK_GOAL_DONE_TOOL }, handleUnmarkGoalDoneCall).catch(
     denyGoalToolFailure,
   )
-  on('ui.render', { component: 'Pane', requestId: GOALS_PANE }, drawGoalsPane)
-  on('ui.focus', { component: 'Pane', requestId: GOALS_PANE }, recordFollowedGoal)
-  on('ui.close', { id: GOALS_PANE }, stopFollowingOnClose)
-  on('state.set', { plugin: PLUGIN, key: 'sessionBoard' }, followGoalWithFocus)
+  on('ui.render', GOALS_PANE_SITE, drawGoalsPane)
+  on('ui.message', GOALS_PANE_SITE, answerGoalsPanePost).catch(answerFailedGoalsPanePost)
+  on('ui.fault', GOALS_PANE_SITE, fallBackFromGoalsPaneModule)
   on('ui.press', footer.place(GOALS_BUTTON), openGoalsFromButton)
 }

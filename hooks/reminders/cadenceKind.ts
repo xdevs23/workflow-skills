@@ -1,13 +1,14 @@
-import type { On, SelectOption } from 'claude-code'
+import type { SelectOption } from 'claude-code'
 
 import type { Cadence, CadenceValue } from '../../types'
-import { MISSHAPEN_VALUES } from './reminderTexts'
+import { MISSHAPEN_VALUES } from './reminderPaneTexts'
 
 // The contract by which a cadence module plugs into the reminders. A module defines its kinds as
-// CadenceKind values, and exports them through listKind with the function that registers its
-// hooks. registeredKinds.ts lists the kinds, and registerReminders calls each of those functions
-// by its name: the engine loads a module only when `on` is passed to a function named at the top
-// of a file or imported, so a call through the list of kinds would not load.
+// CadenceKind values in a file without hooks, which the surface module of the Reminders pane can
+// load, and exports them through listKind. cadenceKinds.ts lists the kinds, and registeredKinds.ts
+// names the function that registers the hooks of each. registerReminders calls each of those
+// functions by its name: the engine loads a module only when `on` is passed to a function named at
+// the top of a file or imported, so a call through the list of kinds would not load.
 // The core stores the values typed into the fields of a kind and checks only that each has the
 // shape of its field. Only the kind reads them.
 // A kind that sends at times known ahead follows the reminders read into the state through a
@@ -190,8 +191,6 @@ export type ListedKind = {
   problemOf: (values: Cadence['values']) => CadenceProblem | undefined
   /** The cadence line of a card on the values `values`. */
   describe: (values: Cadence['values']) => string
-  /** Registers the hooks that send the reminders of the kind. */
-  register: (on: On) => void
 }
 
 /** The cadence kinds of the kind dropdown of a card, in its order. A card starts on the first. */
@@ -202,10 +201,9 @@ export function kindOf(kinds: CadenceKinds, id: string): ListedKind | undefined 
   return kinds.find(kind => kind.id === id)
 }
 
-/** `kind` as the core lists it, with `register`, the function that registers its hooks. */
+/** `kind` as the core lists it. */
 export function listKind<Settings, Field extends string>(
   kind: CadenceKind<Settings, Field>,
-  register: (on: On) => void,
 ): ListedKind {
   const { id, label, fields, describe } = kind
 
@@ -230,7 +228,6 @@ export function listKind<Settings, Field extends string>(
         ? describeFields(kind, values)
         : describe(read)
     },
-    register,
   }
 }
 

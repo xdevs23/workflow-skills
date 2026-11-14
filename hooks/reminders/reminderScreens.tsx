@@ -1,102 +1,39 @@
 import type {
-  ElementTable,
+  Caught,
   EngineInterface,
+  Frozen,
   MatchedHook,
-  RenderElement,
-  ResolveInput,
+  UiMessageArgument,
+  UiMessageResult,
   UiOpenResult,
 } from 'claude-code'
 
-import type { Cadence, CardDraft, CardInPane, CardWarning, Reminder } from '../../types'
-import { drawCardWithFields } from '../cardFields'
-import type { FieldUnderCard } from '../cardFields'
-import { sortedByNumber } from '../numbered'
-import { DONE_LABEL } from '../paneTexts'
-import { describeUnreadableRecord } from '../pluginStore'
-import { drawsFields } from '../surfaces'
-import type { SurfaceWithFields } from '../surfaces'
+import type { CardInPane } from '../../types'
 import {
-  FieldKind,
-  FieldPlace,
-  fieldsPlacedAt,
-  isListField,
-  kindOf,
-  labelOf,
-  optionsOf,
-  valueOfField,
-} from './cadenceKind'
-import type { CadenceKinds, CardField, ChoiceField, ListCardField, TextField } from './cadenceKind'
+  answerFailedPanePost,
+  answerPanePost,
+  drawPane,
+  recordModuleFault,
+  storeOpenedPane,
+} from '../paneWorker'
+import type { PaneSite } from '../paneWorker'
 import { loadRemindersIntoState } from './reminderActions'
-import { drawListItems, nextItemFieldOf } from './reminderListField'
-import { REMINDERS_PANE } from './reminderNames'
-import {
-  askToRemove,
-  finishCard,
-  kindDropdownKeyOf,
-  pickKind,
-  removeOnScreen,
-  startAdding,
-  startEditing,
-  submitText,
-  submitValue,
-  switchCard,
-  switchOnScreen,
-  textFieldKeyOf,
-  typeText,
-  typeValue,
-  valueFieldKeyOf,
-} from './reminderPresses'
-import type { EditedCard, PaneContext } from './reminderPresses'
-import { Outcome, Refusal, nextNumberOf, shownRemindersOf } from './reminders'
-import {
-  CardMode,
-  dropCard,
-  readCardInState,
-  readNextSends,
-  readRemindersInState,
-  readSavingReminder,
-} from './reminderState'
-import type { NextSends } from './reminderState'
+import { REMINDERS_PANE, REMINDERS_PANE_MODULE, REMINDERS_PANE_SITE } from './reminderNames'
+import type {
+  ReminderPaneAction,
+  ReminderSaveResult,
+  RemindersPaneView,
+} from './reminderPaneMessages'
+import { readReminderPaneAction } from './reminderPaneReader'
+import { PANE_TITLE } from './reminderPaneTexts'
+import { readRemindersPaneView } from './reminderPaneView'
+import { FAILED_REMINDER_SAVE, saveReminderPaneAction } from './reminderPresses'
+import { REMINDERS_PANE_MACHINE } from './remindersPane'
+import { storedRemindersPane } from './reminderState'
 import type { Failed, ReadReminders } from './reminderStore'
-import {
-  ADD_LABEL,
-  BLANK_TEXT_WARNING,
-  CADENCE_LABEL,
-  EDIT_LABEL,
-  FIELDS_IN_TERMINAL_ONLY,
-  KEEP_LABEL,
-  OFF_LABEL,
-  ON_LABEL,
-  PANE_TITLE,
-  REMINDERS_LOADING,
-  REMOVE_LABEL,
-  SAVING,
-  TEXT_LABEL,
-  TEXT_PLACEHOLDER,
-  UNKNOWN_CADENCE,
-  YES_REMOVE_LABEL,
-  describeNextSend,
-  describeNotRead,
-  describeRemoveQuestion,
-} from './reminderTexts'
+import { REMINDERS_PANE_SUBJECT } from './reminderTexts'
 
-/** The elements every surface draws, which the cards use. */
-type CardElements = Pick<ElementTable, 'Box' | 'Button' | 'Text'>
-
-type DrawPane = MatchedHook<'ui.render', { component: 'Pane'; requestId: typeof REMINDERS_PANE }>
-
-/** The card edited in the pane, as the state has it. */
-type EditingCard = Extract<CardInPane, { mode: CardMode.Editing }>
-
-/** The surface of a pane with input fields, which the cards are edited on. */
-type FieldsInput = ResolveInput<'Pane', SurfaceWithFields>
-
-/**
- * What the cards of the pane share as it is drawn: what the presses share, the time the pane is
- * drawn at, the next send times put by the cadence kinds, and the id of the reminder whose save
- * runs, if one runs.
- */
-type DrawnPane = PaneContext & { now: number; nextSends: NextSends; savingId: string | null }
+type RemindersPaneSite = typeof REMINDERS_PANE_SITE
 
 /**
  * The reminders of the session read again from the store, and the Reminders pane opened on them.
@@ -105,427 +42,61 @@ type PaneOnFreshReminders = { loaded: ReadReminders | Failed; opened: UiOpenResu
 
 /**
  * Reads the reminders of the session again into the state, and opens the Reminders pane, which
- * shows them.
+ * shows them. The pane opens without a pressed card where the hooks module draws it, as a surface
+ * module does, and tries its surface module again on every surface.
  */
 export async function openRemindersPane($: EngineInterface): Promise<PaneOnFreshReminders> {
+  await storeOpenedPane(storedRemindersPane($))
   const loaded = await loadRemindersIntoState($, await $.session.id())
   const opened = await $.ui.open({ id: REMINDERS_PANE, title: PANE_TITLE, focus: true })
 
   return { loaded, opened }
 }
 
-/**
- * Draws the cards of the reminders, with the kinds `kinds` in the kind dropdown. Only a surface
- * with input fields edits and adds reminders, so the other surfaces draw each card with its switch
- * and its Remove.
- */
-export async function drawRemindersPane(
-  kinds: CadenceKinds,
+function remindersPaneOf(
   $: EngineInterface,
-  e: Parameters<DrawPane>[1],
-): Promise<Awaited<ReturnType<DrawPane>>> {
-  const [inState, card, savingId, nextSends, now] = await Promise.all([
-    readRemindersInState($),
-    readCardInState($),
-    readSavingReminder($),
-    readNextSends($),
-    $.clock.now(),
-  ])
-  const elements = $.ui.resolve(e)
-  const { Box, Button, Text } = elements
-  if (inState === null) {
-    return <Text dimColor>{REMINDERS_LOADING}</Text>
+): PaneSite<RemindersPaneView, CardInPane | null, ReminderPaneAction, ReminderSaveResult> {
+  return {
+    title: PANE_TITLE,
+    machine: REMINDERS_PANE_MACHINE,
+    readView: () => readRemindersPaneView($),
+    readAction: readReminderPaneAction,
+    save: action => saveReminderPaneAction($, action),
+    failed: FAILED_REMINDER_SAVE,
+    subject: REMINDERS_PANE_SUBJECT,
+    stored: storedRemindersPane($),
   }
-  if (inState.outcome === Outcome.Failed) {
-    return <Text color="warning">{describeNotRead(inState)}</Text>
-  }
-  const { sessionId, reminders, unreadableKeys } = inState
-  const context = { kinds, sessionId, now, nextSends, savingId }
-  const shown = sortedByNumber(shownRemindersOf(reminders))
-  const nextNumber = nextNumberOf(reminders)
-  const edited = card?.mode === CardMode.Editing ? card : undefined
-  const added =
-    edited !== undefined && !reminders.some(each => each.id === edited.reminderId)
-      ? edited
-      : undefined
-
-  return (
-    <Box flexDirection="column">
-      {unreadableKeys.map(key => (
-        <Text key={`unreadable-${key}`} color="warning">
-          {describeUnreadableRecord(key)}
-        </Text>
-      ))}
-      {shown.map(reminder => {
-        const { id, number, isEnabled } = reminder
-        if (edited?.reminderId === id && drawsFields(e)) {
-          return drawEditedCard($, e, context, editedCardOf(number, edited), {
-            isEnabled,
-            isStored: true,
-            warning: edited.warning,
-            typed: edited.draft,
-          })
-        }
-        const isWaitingForYes = card?.mode === CardMode.WaitingForYes && card.reminderId === id
-
-        return drawCard($, elements, context, reminder, {
-          isWaitingForYes,
-          canEdit: drawsFields(e),
-        })
-      })}
-      {!drawsFields(e) ? (
-        <Text dimColor>{FIELDS_IN_TERMINAL_ONLY}</Text>
-      ) : added !== undefined ? (
-        drawEditedCard($, e, context, editedCardOf(nextNumber, added), {
-          isEnabled: false,
-          isStored: false,
-          warning: added.warning,
-          typed: added.draft,
-        })
-      ) : (
-        <Box>
-          <Button
-            key="add-reminder"
-            label={ADD_LABEL}
-            onPress={() => startAdding($, context, nextNumber)}
-          >
-            <Text color="claude">{ADD_LABEL}</Text>
-          </Button>
-        </Box>
-      )}
-    </Box>
-  )
-}
-
-/** The card numbered `number` as `edited`, the card edited in the pane, has it. */
-function editedCardOf(number: number, edited: EditingCard): EditedCard {
-  const { reminderId, openingId, fieldsId, opened } = edited
-
-  return { number, reminderId, openingId, fieldsId, opened }
 }
 
 /**
- * The card of `reminder` with its text, its cadence and its buttons: the switch, Edit where the
- * surface edits cards, and Remove, or the question to remove the reminder in their place.
+ * Draws the Reminders pane as a surface module where the surface draws one, so its presses do not
+ * wait for the worker. Elsewhere the hooks module draws it.
  */
-function drawCard(
+export const drawRemindersPane: MatchedHook<'ui.render', RemindersPaneSite> = ($, e) =>
+  drawPane($, e, remindersPaneOf($), (Client, props) => (
+    <Client key={REMINDERS_PANE_MODULE} module="./remindersPane.tsx" props={props} width="100%" />
+  ))
+
+/** Runs the saves posted by the surface module of the Reminders pane, and returns its props. */
+export const answerRemindersPanePost: MatchedHook<'ui.message', RemindersPaneSite> = ($, e) =>
+  answerPanePost($, e, remindersPaneOf($))
+
+/** Shows the failure of the hook that ran saves of the Reminders pane, and returns its props. */
+export function answerFailedRemindersPanePost(
   $: EngineInterface,
-  elements: CardElements,
-  context: DrawnPane,
-  reminder: Reminder,
-  { isWaitingForYes, canEdit }: { isWaitingForYes: boolean; canEdit: boolean },
-) {
-  const { nextSends, savingId } = context
-  const { Box, Button, Text } = elements
-  const { id, number, isEnabled, cadence } = reminder
-  const card = { number, reminderId: id }
-
-  return (
-    <Box
-      key={`reminder-${number}`}
-      borderStyle="round"
-      borderColor={isWaitingForYes ? 'warning' : 'subtle'}
-      paddingX={1}
-      columnGap={1}
-    >
-      <Text bold color="claude">{`${number}`}</Text>
-      <Box flexDirection="column" flexGrow={1} flexShrink={1}>
-        <Text bold>{reminder.text}</Text>
-        {drawCadence(elements, context, cadence, nextSends[cadence.kind]?.[id])}
-        {savingId === id && <Text dimColor>{SAVING}</Text>}
-        {isWaitingForYes ? (
-          <Box columnGap={1} flexWrap="wrap">
-            <Text color="warning">{describeRemoveQuestion(number)}</Text>
-            <Button
-              key={`confirm-remove-${number}`}
-              label={YES_REMOVE_LABEL}
-              variant="primary"
-              onPress={() => removeOnScreen($, context, card)}
-            />
-            <Button
-              key={`keep-${number}`}
-              label={KEEP_LABEL}
-              onPress={() => dropCard($, id, CardMode.WaitingForYes)}
-            />
-          </Box>
-        ) : (
-          <Box justifyContent="flex-end" flexWrap="wrap">
-            {drawSwitch(elements, number, isEnabled, () =>
-              switchOnScreen($, context, card, !isEnabled),
-            )}
-            {canEdit && (
-              <Button
-                key={`edit-${number}`}
-                label={EDIT_LABEL}
-                dimColor
-                onPress={() => startEditing($, context, reminder)}
-              />
-            )}
-            <Button
-              key={`remove-${number}`}
-              label={REMOVE_LABEL}
-              dimColor
-              onPress={() => askToRemove($, context, id)}
-            />
-          </Box>
-        )}
-      </Box>
-    </Box>
-  )
+  e: Frozen<UiMessageArgument>,
+  next: Caught,
+): Promise<UiMessageResult> {
+  return answerFailedPanePost($, e, next, remindersPaneOf($))
 }
 
-/**
- * The cadence line of a card, with the next time the reminder is sent, `nextSendAt`, when it is
- * known, and the problem with its values below it. A kind missing from `kinds` is drawn as unknown.
- */
-function drawCadence(
-  { Box, Text }: CardElements,
-  { kinds, now }: DrawnPane,
-  cadence: Cadence,
-  nextSendAt: number | undefined,
-) {
-  const kind = kindOf(kinds, cadence.kind)
-  if (kind === undefined) {
-    return <Text color="warning">{UNKNOWN_CADENCE}</Text>
-  }
-  const problem = kind.problemOf(cadence.values)
+/** Draws the Reminders pane by the hooks module on a surface where its surface module failed. */
+export const fallBackFromRemindersPaneModule: MatchedHook<'ui.fault', RemindersPaneSite> = async (
+  $,
+  e,
+  next,
+) => {
+  await recordModuleFault($, remindersPaneOf($), e)
 
-  return (
-    <Box flexDirection="column">
-      <Box columnGap={1} flexWrap="wrap">
-        <Text color="suggestion">{kind.describe(cadence.values)}</Text>
-        {nextSendAt !== undefined && <Text dimColor>{describeNextSend(nextSendAt, now)}</Text>}
-      </Box>
-      {problem !== undefined && <Text color="warning">{problem.text}</Text>}
-    </Box>
-  )
-}
-
-/**
- * The card `card` with its cadence and its switch, Done and Remove, and under it the fields its
- * text and the values of its cadence are typed into. The warning from the last save is drawn after
- * the fields it is about, or in the card for the kind of the cadence. Remove on a card not stored
- * yet drops the card. Every field is drawn with what its fields were last drawn anew with, and the
- * engine stores what is typed and picked after that: a value drawn anew after every change would
- * replace the typing that arrived meanwhile. The labels of the fields and of the options, and the
- * items of a list, follow what is `typed`.
- */
-function drawEditedCard(
-  $: EngineInterface,
-  e: FieldsInput,
-  context: DrawnPane,
-  card: EditedCard,
-  shown: {
-    isEnabled: boolean
-    isStored: boolean
-    warning: CardWarning | undefined
-    typed: CardDraft
-  },
-) {
-  const elements = $.ui.resolve(e)
-  const { Box, Button, Text } = elements
-  const { kinds, savingId } = context
-  const { number, reminderId, fieldsId, opened } = card
-  const { isEnabled, isStored, warning, typed } = shown
-  const fields = kindOf(kinds, opened.cadence.kind)?.fields ?? []
-  const labelColumns = labelColumnsOf(kinds)
-  const values = { card, typed, fields }
-  const warnings = warningsOf(warning)
-  const box = (
-    <Box
-      key={`reminder-${number}`}
-      borderStyle="round"
-      borderColor={warning === undefined ? 'suggestion' : 'warning'}
-      paddingX={1}
-      columnGap={1}
-    >
-      <Text bold color="claude">{`${number}`}</Text>
-      <Box flexDirection="column" flexGrow={1} flexShrink={1}>
-        {drawFieldLine(elements, labelColumns, CADENCE_LABEL, [
-          drawKindDropdown($, e, context, card),
-          ...fieldsPlacedAt(fields, FieldPlace.BesideKindDropdown).map(({ field }) =>
-            drawDropdown($, e, values, field),
-          ),
-        ])}
-        {fieldsPlacedAt(fields, FieldPlace.LineInCard).map(({ field, label }) =>
-          drawFieldLine(elements, labelColumns, label, [drawDropdown($, e, values, field)]),
-        )}
-        {fields
-          .filter(isListField)
-          .flatMap(field => drawListItems($, elements, { card, typed, field }))}
-        {warnings.inCard !== undefined && <Text color="warning">{warnings.inCard}</Text>}
-        {savingId === reminderId && <Text dimColor>{SAVING}</Text>}
-        <Box justifyContent="flex-end" flexWrap="wrap">
-          {drawSwitch(elements, number, isEnabled, () =>
-            switchCard($, context, card, !isEnabled),
-          )}
-          <Button
-            key={`done-${number}`}
-            label={DONE_LABEL}
-            onPress={() => finishCard($, context, card)}
-          />
-          <Button
-            key={`remove-${number}`}
-            label={REMOVE_LABEL}
-            dimColor
-            onPress={() =>
-              isStored
-                ? askToRemove($, context, reminderId)
-                : dropCard($, reminderId, CardMode.Editing)
-            }
-          />
-        </Box>
-      </Box>
-    </Box>
-  )
-
-  const textField: FieldUnderCard = {
-    key: textFieldKeyOf(fieldsId),
-    label: TEXT_LABEL,
-    value: opened.text,
-    placeholder: TEXT_PLACEHOLDER,
-    submitLabel: DONE_LABEL.toLowerCase(),
-    onInput: text => typeText($, reminderId, text),
-    onSubmit: text => submitText($, context, card, text),
-  }
-
-  return drawCardWithFields(elements, box, [
-    { fields: [textField], warning: warnings.onText },
-    {
-      fields: fieldsPlacedAt(fields, FieldPlace.UnderCard).map(({ field }) =>
-        fieldUnderCardOf($, context, values, field),
-      ),
-      warning: warnings.onCadence,
-    },
-  ])
-}
-
-/** The dropdown of the cadence kinds, on the kind the card `card` opened with. */
-function drawKindDropdown($: EngineInterface, e: FieldsInput, pane: PaneContext, card: EditedCard) {
-  const { Select } = $.ui.resolve(e)
-
-  return (
-    <Select
-      key={kindDropdownKeyOf(card.openingId)}
-      options={pane.kinds.map(({ id, label }) => ({ value: id, label }))}
-      value={card.opened.cadence.kind}
-      onSelect={id => pickKind($, pane, card.reminderId, id)}
-    />
-  )
-}
-
-/** A card being edited, with the values `typed` into it and the fields `fields` of its kind. */
-type CardValues = { card: EditedCard; typed: CardDraft; fields: readonly CardField[] }
-
-/** The field under the card of `values` where the value of `field` is typed. */
-function fieldUnderCardOf(
-  $: EngineInterface,
-  pane: PaneContext,
-  { card, typed, fields }: CardValues,
-  field: TextField | ListCardField,
-): FieldUnderCard {
-  const { reminderId, fieldsId, opened } = card
-  switch (field.kind) {
-    case FieldKind.Text:
-      return {
-        key: valueFieldKeyOf(fieldsId, field.key),
-        label: labelOf(fields, typed.cadence.values, field),
-        value: valueOfField(fields, opened.cadence.values, field),
-        ...(field.placeholder === undefined ? {} : { placeholder: field.placeholder }),
-        submitLabel: DONE_LABEL.toLowerCase(),
-        onInput: typed => typeValue($, reminderId, field.key, typed),
-        onSubmit: typed => submitValue($, pane, card, { key: field.key, value: typed }),
-      }
-    case FieldKind.List:
-      return nextItemFieldOf($, { card, field })
-  }
-}
-
-/** The dropdown `field` of `card`, with its options as the values `typed` label them. */
-function drawDropdown(
-  $: EngineInterface,
-  e: FieldsInput,
-  { card, typed, fields }: CardValues,
-  field: ChoiceField,
-) {
-  const { Select } = $.ui.resolve(e)
-  const { reminderId, fieldsId, opened } = card
-
-  return (
-    <Select
-      key={valueFieldKeyOf(fieldsId, field.key)}
-      options={optionsOf(fields, typed.cadence.values, field)}
-      value={valueOfField(fields, opened.cadence.values, field)}
-      onSelect={picked => typeValue($, reminderId, field.key, picked)}
-    />
-  )
-}
-
-/** One line of an edited card: `label` in a column as wide as the widest label, then `parts`. */
-function drawFieldLine(
-  { Box, Text }: CardElements,
-  labelColumns: number,
-  label: string,
-  parts: readonly RenderElement[],
-) {
-  return (
-    <Box columnGap={1}>
-      <Box width={labelColumns} flexShrink={0}>
-        <Text dimColor>{label}</Text>
-      </Box>
-      {parts}
-    </Box>
-  )
-}
-
-/** The switch of the card numbered `number`, which `onPress` turns to the other state. */
-function drawSwitch(
-  { Button, Text }: CardElements,
-  number: number,
-  isEnabled: boolean,
-  onPress: () => Promise<void>,
-) {
-  const key = `switch-${number}`
-
-  return isEnabled ? (
-    <Button key={key} label={ON_LABEL} onPress={onPress}>
-      <Text color="success">{ON_LABEL}</Text>
-    </Button>
-  ) : (
-    <Button key={key} label={OFF_LABEL} dimColor onPress={onPress} />
-  )
-}
-
-/**
- * The columns of the widest label in an edited card, with every dropdown of `kinds` drawn on a line
- * of its own after its label.
- */
-function labelColumnsOf(kinds: CadenceKinds): number {
-  const labels = [
-    CADENCE_LABEL,
-    ...kinds.flatMap(kind =>
-      fieldsPlacedAt(kind.fields, FieldPlace.LineInCard).map(({ label }) => label),
-    ),
-  ]
-
-  return Math.max(...labels.map(label => [...label].length))
-}
-
-/**
- * The text of a warning on an edited card, drawn by the part of the card it is about: after the
- * text field, after the fields of the cadence, or in the card for the kind of the cadence.
- */
-type WarningsOfCard = { onText?: string; onCadence?: string; inCard?: string }
-
-function warningsOf(warning: CardWarning | undefined): WarningsOfCard {
-  switch (warning?.refusal) {
-    case undefined:
-      return {}
-    case Refusal.BlankText:
-      return { onText: BLANK_TEXT_WARNING }
-    case Refusal.CadenceProblem:
-      return { onCadence: warning.problem }
-    case Refusal.UnknownCadence:
-      return { inCard: UNKNOWN_CADENCE }
-  }
+  return next(e)
 }

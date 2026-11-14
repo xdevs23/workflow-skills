@@ -36,8 +36,8 @@ import {
   saveRemovedDoneMark,
 } from './boardStore'
 import type { Failed } from './boardStore'
+import { describeNotRead } from './goalPaneTexts'
 import { recordBoardSeenAtStart, setLoadedBoard } from './goalState'
-import { describeNotRead } from './goalTexts'
 import type { Priority } from './priority'
 import type { TodoEntry } from './todoEntry'
 

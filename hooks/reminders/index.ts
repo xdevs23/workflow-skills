@@ -5,9 +5,13 @@ import type { PromptFooter } from '../promptFooter'
 import { SWITCHING_SOURCES } from '../sessionSources'
 import { registerEventCadences } from './eventCadence'
 import { registerPhraseCadence } from './phraseCadence'
-import { CADENCE_KINDS } from './registeredKinds'
-import { REMINDERS_COMMAND, REMINDERS_PANE } from './reminderNames'
-import { drawRemindersPane } from './reminderScreens'
+import { REMINDERS_COMMAND, REMINDERS_PANE_SITE } from './reminderNames'
+import {
+  answerFailedRemindersPanePost,
+  answerRemindersPanePost,
+  drawRemindersPane,
+  fallBackFromRemindersPaneModule,
+} from './reminderScreens'
 import {
   readRemindersOfSwitchedSession,
   replyWithRemindersHookFailure,
@@ -25,9 +29,9 @@ const startRemindersOfSession: Hook<'session.start'> = async ($, e, next) => {
 }
 
 /**
- * Registers the hooks of the reminders, with the kinds of registeredKinds.ts in the kind dropdown
- * of a card, and places the Reminders button on the prompt footer `footer`. The hooks of each
- * cadence kind come first, so they run around the requests for the reminders here.
+ * Registers the hooks of the reminders, and places the Reminders button on the prompt footer
+ * `footer`. The hooks of each cadence kind come first, so they run around the requests for the
+ * reminders here.
  */
 export function registerReminders(on: On, footer: PromptFooter): void {
   registerPhraseCadence(on)
@@ -38,8 +42,10 @@ export function registerReminders(on: On, footer: PromptFooter): void {
   on('command.run', { command: REMINDERS_COMMAND }, runRemindersCommand).catch(
     replyWithRemindersHookFailure,
   )
-  on('ui.render', { component: 'Pane', requestId: REMINDERS_PANE }, ($, e) =>
-    drawRemindersPane(CADENCE_KINDS, $, e),
+  on('ui.render', REMINDERS_PANE_SITE, drawRemindersPane)
+  on('ui.message', REMINDERS_PANE_SITE, answerRemindersPanePost).catch(
+    answerFailedRemindersPanePost,
   )
+  on('ui.fault', REMINDERS_PANE_SITE, fallBackFromRemindersPaneModule)
   on('ui.press', footer.place(REMINDERS_BUTTON), openRemindersFromButton)
 }

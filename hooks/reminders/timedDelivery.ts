@@ -9,8 +9,6 @@ import { ofSession, updateOfSession } from '../sessionBoundState'
 import { SWITCHING_SOURCES } from '../sessionSources'
 import { readIsTurnRunning } from '../sessionState'
 import { firstDueTimeAfter, runAfter, waitAgainAfterTurn } from '../timedWork'
-import { listKind } from './cadenceKind'
-import type { ListedKind } from './cadenceKind'
 import { describeReminderNote, enabledRemindersOf, readEnabledReminders } from './reminderDelivery'
 import type { ReminderOfKind } from './reminderDelivery'
 import { setNextSends } from './reminderState'
@@ -46,9 +44,6 @@ let wait: Timer | undefined = undefined
 
 /** The due times handled by a send: the reminders sent, and the handled times before and at it. */
 type TakenReminders = { due: TimedReminder[]; before: TimedRemindersHandled; at: number }
-
-/** The kind "every" for the kind dropdown. */
-export const TIME_CADENCE: ListedKind = listKind(TIME_KIND, registerTimeCadence)
 
 /** Registers the hooks that send the reminders of the kind "every" when they are due. */
 export function registerTimeCadence(on: On): void {

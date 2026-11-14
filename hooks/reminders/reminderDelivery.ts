@@ -6,9 +6,9 @@ import { sortedByNumber } from '../numbered'
 import type { TextWithLine } from '../sendToModel'
 import { CadenceProblem, readSettings } from './cadenceKind'
 import type { CadenceKind } from './cadenceKind'
+import { PANE_TITLE } from './reminderPaneTexts'
 import { Outcome, isRemoved } from './reminders'
 import { readRemindersInState } from './reminderState'
-import { PANE_TITLE } from './reminderTexts'
 
 // What a cadence module calls once the cadence of its reminders comes: it reads the reminders of
 // its kind that are switched on, and sends the note on those due through the channel of its event.

@@ -4,8 +4,9 @@ import { showFailuresOfPress } from '../failureToast'
 import { describePaneNotOpened } from '../paneOpening'
 import type { FooterButton } from '../promptFooter'
 import { Outcome } from './board'
+import { PANE_TITLE, describeNotRead } from './goalPaneTexts'
 import { openGoalsPaneOnFreshBoard } from './goalScreens'
-import { GOALS_BUTTON_LABEL, PANE_TITLE, describeNotRead } from './goalTexts'
+import { GOALS_BUTTON_LABEL } from './goalTexts'
 
 /**
  * Reads the board of the session again and opens the Goals pane on it. The engine opens at most one

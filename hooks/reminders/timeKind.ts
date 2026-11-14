@@ -1,7 +1,7 @@
 import type { SelectOption } from 'claude-code'
 
-import { CadenceProblem, FieldKind } from './cadenceKind'
-import type { CadenceKind } from './cadenceKind'
+import { CadenceProblem, FieldKind, listKind } from './cadenceKind'
+import type { CadenceKind, ListedKind } from './cadenceKind'
 
 // The cadence kind "every", which sends a reminder every given number of minutes or hours: the
 // fields of its card, how their values are read, and its cadence line.
@@ -94,6 +94,9 @@ export const TIME_KIND: CadenceKind<TimeSettings, 'amount' | 'unit'> = {
   },
   describe: ({ amount, unit }) => `${EVERY} ${UNITS[unit].amount.format(amount)}`,
 }
+
+/** The kind "every" for the kind dropdown. */
+export const TIME_CADENCE: ListedKind = listKind(TIME_KIND)
 
 /** The time between two due times of a reminder with `settings`, in milliseconds. */
 export function intervalOf({ amount, unit }: TimeSettings): number {

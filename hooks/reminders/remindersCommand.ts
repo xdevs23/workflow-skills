@@ -13,11 +13,11 @@ import { describePaneNotOpened } from '../paneOpening'
 import type { SWITCHING_SOURCES } from '../sessionSources'
 import { loadRemindersShowingFailure } from './reminderActions'
 import { REMINDERS_COMMAND } from './reminderNames'
+import { PANE_TITLE } from './reminderPaneTexts'
 import { Outcome } from './reminders'
 import { openRemindersPane } from './reminderScreens'
 import { readRemindersInState } from './reminderState'
 import {
-  PANE_TITLE,
   REMINDERS_DESCRIPTION,
   REMINDERS_SUBJECT,
   describeNotRead,

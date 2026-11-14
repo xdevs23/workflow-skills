@@ -1,12 +1,18 @@
 import type { Outcome, Read } from '../hooks/goals/board'
 import type { MarkRemovalAsked } from '../hooks/goals/doneMark'
 import type { IdlePhase } from '../hooks/goals/goalIdleReminder'
-import type { FollowedElement } from '../hooks/goals/goalKeys'
-import type { RowMode } from '../hooks/goals/goalState'
+import type { GoalPaneAction, GoalSaveResult } from '../hooks/goals/goalPaneMessages'
+import type { RowMode } from '../hooks/goals/goalRowState'
 import type { Priority } from '../hooks/goals/priority'
 import type { LoopLedger } from '../hooks/neededSkills/loadLedger'
+import type { PaneRecord, TypedInWorker } from '../hooks/paneWorker'
+import type { FieldFocus } from '../hooks/reminders/cardFocus'
+import type { CardMode } from '../hooks/reminders/reminderCardState'
+import type {
+  ReminderPaneAction,
+  ReminderSaveResult,
+} from '../hooks/reminders/reminderPaneMessages'
 import type { ReadReminders, RemindersNotRead } from '../hooks/reminders/reminderStore'
-import type { CardMode } from '../hooks/reminders/reminderState'
 import type { Refusal as ReminderRefusal } from '../hooks/reminders/reminders'
 
 /** What the user wrote in reply to a question. */
@@ -123,7 +129,10 @@ export type RowInPane =
        * as the empty text after an Enter.
        */
       fieldId: string
-      /** The text drawn into the field when the field was last drawn anew. */
+      /**
+       * The text drawn into the field when the field was last drawn anew. The text typed since is
+       * among the texts typed into the pane, under the key of the field.
+       */
       drawn: string
       /**
        * The text of the goal at the start of the edit: the text when Edit was pressed, or the text
@@ -138,25 +147,18 @@ export type RowInPane =
       mode: RowMode.Unmarking
       /** The done mark shown when Unmark was pressed. Only this mark is removed with the reason. */
       shown: DoneMark
+      /**
+       * New for each press of Unmark, the key of the field for the reason, so the field does not
+       * show a reason typed before an earlier Cancel.
+       */
+      fieldId: string
     }
 
-/** The goal of a session pressed in the Goals pane, with what the pane does with it. */
-export type GoalInPane = { sessionId: string; goalId: string } & RowInPane
+/** The goal numbered `goal` pressed in the Goals pane, with what the pane does with it. */
+export type GoalInPane = { goal: number } & RowInPane
 
-/**
- * The goal of a session whose row in the Goals pane has the focus, followed by the focus when the
- * row moves: the element of the row the focus is on, and `keyId`, the key id of the element moved
- * to by the focus, new to each move.
- */
-export type FollowedGoal = {
-  sessionId: string
-  goalId: string
-  element: FollowedElement
-  keyId?: string
-}
-
-/** The text typed into the field for the goal with the id `goalId`, edited in the Goals pane. */
-export type TypedGoalText = { sessionId: string; goalId: string; text: string }
+/** What the hooks module stores of the Goals pane: its presses, saves and failed modules. */
+export type GoalsPaneRecord = PaneRecord<GoalInPane | null, GoalPaneAction, GoalSaveResult>
 
 /** The board of a session as its model last saw it, which the notes on the changes compare with. */
 export type SeenBoard = {
@@ -272,12 +274,17 @@ export type CardInPane = { reminderId: string } & (
       /** What was typed into the card and picked in it since it opened. */
       draft: CardDraft
       warning?: CardWarning
+      focus: FieldFocus
     }
   | { mode: CardMode.WaitingForYes }
 )
 
-/** The card of a session pressed in the Reminders pane. */
-export type ReminderCard = { sessionId: string } & CardInPane
+/** What the hooks module stores of the Reminders pane: its presses, saves and failed modules. */
+export type RemindersPaneRecord = PaneRecord<
+  CardInPane | null,
+  ReminderPaneAction,
+  ReminderSaveResult
+>
 
 /**
  * How far the due times of the reminders sent every given time are handled in a session: by the id
@@ -353,20 +360,17 @@ declare module 'claude-code' {
        * may outlive a switch to another session; null before any session read it.
        */
       sessionBoard: SessionBoard | null
-      /** The one goal of the Goals pane in the yes, edit or unmark row mode, if any. */
-      goalInPane: GoalInPane | null
       /**
-       * The text typed into the field for the goal edited in the Goals pane. The pane does not
-       * read it while drawn, so a change of the text does not draw the pane again.
+       * The Goals pane as the hooks module stores it: the state of its presses where the hooks
+       * module draws it, the results of its saves by action id, and the surfaces whose surface
+       * module failed.
        */
-      typedGoalText: TypedGoalText | null
+      goalsPane: Shaped<GoalsPaneRecord>
       /**
-       * The goal whose row in the Goals pane has the focus; null while the focus is outside every
-       * goal row.
+       * The texts typed into the fields of the Goals pane where the hooks module draws it; null
+       * before the first text typed after the pane opened.
        */
-      followedGoal: FollowedGoal | null
-      /** True while the Goals pane saves an added, an edited or a cleared goal. */
-      isSavingGoal: boolean
+      goalsPaneTyped: TypedInWorker | null
       /** The board seen by the model of the session; null before the board is first read. */
       seenBoard: SeenBoard | null
       /**
@@ -383,10 +387,17 @@ declare module 'claude-code' {
        * before any session read them.
        */
       sessionReminders: SessionReminders | null
-      /** The one card of the Reminders pane being edited or waiting for a yes, if any. */
-      reminderCard: Shaped<ReminderCard | null>
-      /** The id of the reminder whose save in the Reminders pane runs, if one runs. */
-      savingReminder: string | null
+      /**
+       * The Reminders pane as the hooks module stores it: the state of its presses where the hooks
+       * module draws it, the results of its saves by action id, and the surfaces whose surface
+       * module failed.
+       */
+      remindersPane: Shaped<RemindersPaneRecord>
+      /**
+       * The texts typed into the fields of the Reminders pane where the hooks module draws it; null
+       * before the first text typed after the pane opened.
+       */
+      remindersPaneTyped: TypedInWorker | null
       /** When the reminders of the session are next sent, as their cadence kinds put it. */
       reminderNextSends: ReminderNextSends | null
       /** How far the due times of the timed reminders of the session are handled. */

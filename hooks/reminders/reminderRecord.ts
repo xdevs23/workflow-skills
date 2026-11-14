@@ -261,8 +261,11 @@ const PARSERS: Record<RecordPart, (value: Record<string, unknown>) => StoredReco
       : undefined,
 }
 
-/** Reads a stored cadence: the id of the kind, and a text or a list of texts for each value. */
-function parseCadence(value: unknown): Cadence | undefined {
+/**
+ * Reads a cadence, stored or posted by the Reminders pane: the id of the kind, and a text or a list
+ * of texts for each value.
+ */
+export function parseCadence(value: unknown): Cadence | undefined {
   if (!isRecord(value) || typeof value.kind !== 'string' || !isRecord(value.values)) {
     return undefined
   }

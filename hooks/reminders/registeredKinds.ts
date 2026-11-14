@@ -1,17 +1,23 @@
-import type { EngineInterface } from 'claude-code'
+import type { EngineInterface, On } from 'claude-code'
 
 import type { Reminder } from '../../types'
-import type { CadenceKinds } from './cadenceKind'
-import { EVENT_CADENCES } from './eventCadence'
-import { PHRASE_CADENCE } from './phraseCadence'
-import { TIME_CADENCE, followTimedReminders } from './timedDelivery'
+import { registerEventCadences } from './eventCadence'
+import { AFTER_BACKGROUND_TASK, AFTER_COMPACTION } from './eventKinds'
+import { registerPhraseCadence } from './phraseCadence'
+import { PHRASE_KIND } from './phraseKind'
+import { TIME_KIND } from './timeKind'
+import { followTimedReminders, registerTimeCadence } from './timedDelivery'
 
-/** The cadence kinds of the reminders, in the order of the kind dropdown of a card. */
-export const CADENCE_KINDS: CadenceKinds = [
-  PHRASE_CADENCE,
-  TIME_CADENCE,
-  ...EVENT_CADENCES,
-]
+/**
+ * The function that registers the hooks sending the reminders of each cadence kind, by the id of
+ * the kind. registerReminders calls each by its name.
+ */
+export const KIND_REGISTRATIONS: Readonly<Record<string, (on: On) => void>> = {
+  [PHRASE_KIND.id]: registerPhraseCadence,
+  [TIME_KIND.id]: registerTimeCadence,
+  [AFTER_BACKGROUND_TASK.id]: registerEventCadences,
+  [AFTER_COMPACTION.id]: registerEventCadences,
+}
 
 /**
  * Hands `reminders`, every reminder of the session `sessionId`, to each kind that follows them,

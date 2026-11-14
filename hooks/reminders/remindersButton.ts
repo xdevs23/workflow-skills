@@ -3,9 +3,10 @@ import type { Hook } from 'claude-code'
 import { showFailuresOfPress } from '../failureToast'
 import { describePaneNotOpened } from '../paneOpening'
 import type { FooterButton } from '../promptFooter'
+import { PANE_TITLE } from './reminderPaneTexts'
 import { Outcome } from './reminders'
 import { openRemindersPane } from './reminderScreens'
-import { PANE_TITLE, REMINDERS_BUTTON_LABEL, describeNotRead } from './reminderTexts'
+import { REMINDERS_BUTTON_LABEL, describeNotRead } from './reminderTexts'
 
 /**
  * Reads the reminders of the session again and opens the Reminders pane on them, as /reminders

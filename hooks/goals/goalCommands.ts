@@ -12,8 +12,9 @@ import { describePaneNotOpened } from '../paneOpening'
 import { Outcome } from './board'
 import { describeOpenGoals } from './goalListTexts'
 import { GOALS_COMMAND } from './goalNames'
+import { PANE_TITLE, describeNotRead } from './goalPaneTexts'
 import { openGoalsPaneOnFreshBoard } from './goalScreens'
-import { GOALS_SUBJECT, PANE_TITLE, describeNotRead } from './goalTexts'
+import { GOALS_SUBJECT } from './goalTexts'
 
 /** Opens the Goals pane for /goals, whatever arguments follow it. */
 export const runGoalsCommand: MatchedHook<

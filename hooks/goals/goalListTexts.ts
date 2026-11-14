@@ -2,7 +2,7 @@ import type { Board, Goal } from '../../types'
 import { openGoalsByIdOf, openGoalsByPriorityOf } from './board'
 import { unfinishedDependencyOf } from './dependency'
 import { doneMarkOf } from './doneMark'
-import { describeDoneMarkForPerson, nameGoal } from './goalTexts'
+import { describeDoneMarkForPerson, nameGoal } from './goalPaneTexts'
 import { describePriority, priorityOf } from './priority'
 import { describeEntry } from './todoEntry'
 
