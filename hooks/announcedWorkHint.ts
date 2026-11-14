@@ -1,7 +1,7 @@
 import type { HintKind } from './hintKind'
 import { EMPHASIS, HEADING_MARK, LIST_MARK } from './lineMarks'
 import { phrase } from './phrase'
-import { WORK_GERUND, WORK_VERB } from './workVerbs'
+import { SAYING_WITHOUT_WORK, WORK_GERUND, WORK_VERB } from './workVerbs'
 
 /** The start of a sentence or clause: the start of a line past any list mark or heading mark, or
  * the place after a stop, colon, semicolon, comma, dash or "and", in both cases past any
@@ -16,12 +16,24 @@ const NEXT_LEAD = String.raw`(?:(?:up|the|my|our)[ \t]+)?${NEXT}`
 const NOT_WORK_NEXT = String.raw`${EMPHASIS}\s+(?:up\s+to|your|yours|not)\b`
 const PLAN_LEAD = String.raw`(?:then|${NEXT_LEAD}|after\s+that|afterwards|first|finally)`
 const WILL = String.raw`(?:['’]ll|\s+will|(?:['’](?:m|re)|\s+(?:am|are))\s+(?:going|about)\s+to)`
-/** A plan said after a condition, as in "if you want, I'll rebase", waits on that condition. */
+/** A plan said after a condition, as in "if you want, I'll rebase", waits on that condition. It
+ * looks back from the end of the plan's start, so it runs only where a plan starts. */
 const NOT_AFTER_CONDITION =
   String.raw`(?<!\b(?:if|once|when|whenever|unless|as\s+soon\s+as)\b[^.!?\n]*)`
+
+/** The source of an expression for the start of a plan up to its verb, past any emphasis: what
+ * leads it, "I" or "we", then the form of "will". */
+function planStart(lead: string, will: string): string {
+  return String.raw`${lead}(?:I|we)${will}${NOT_AFTER_CONDITION}\s+${EMPHASIS}`
+}
+
 /** A plan said after a lead word, as in "then I'll rebase", or without one, as in "I'll rebase". */
-const PLAN_WITH_LEAD = String.raw`${SENTENCE_START}${PLAN_LEAD},?\s+(?:I|we)${WILL}?`
-const PLAN_WITHOUT_LEAD = String.raw`\b(?:I|we)${WILL}`
+const PLAN_WITH_LEAD = planStart(String.raw`${SENTENCE_START}${PLAN_LEAD},?\s+`, `${WILL}?`)
+const PLAN_WITHOUT_LEAD = planStart(String.raw`\b`, WILL)
+/** A plan said after "next" is work for after the turn, so any verb names work, as in "Next I'll
+ * resolve API#33". The other leads also order steps told in the message itself, as in "first
+ * I'll explain", so they need a work verb. */
+const NEXT_PLAN = planStart(String.raw`${SENTENCE_START}${NEXT_LEAD},?\s+`, WILL)
 const I_AM_OR_WE_ARE = String.raw`\b(?:I(?:['’]m|\s+am)|we(?:['’]re|\s+are))`
 const SELF_NOW =
   String.raw`${I_AM_OR_WE_ARE}\s+(?:(?:now|currently|still|also|meanwhile|already)\s+)?`
@@ -37,10 +49,8 @@ export const ANNOUNCED_WORK_HINT: HintKind = {
       String.raw`${SENTENCE_START}${NEXT_LEAD}\s+(?:is|are|comes)\b(?!${NOT_WORK_NEXT})`,
       'im',
     ),
-    new RegExp(
-      String.raw`${NOT_AFTER_CONDITION}(?:${PLAN_WITH_LEAD}|${PLAN_WITHOUT_LEAD})\s+${WORK_VERB}`,
-      'im',
-    ),
+    new RegExp(String.raw`(?:${PLAN_WITH_LEAD}|${PLAN_WITHOUT_LEAD})${WORK_VERB}`, 'im'),
+    new RegExp(String.raw`${NEXT_PLAN}(?!${SAYING_WITHOUT_WORK})[a-z]`, 'im'),
     /\b(?:now\s+I['’]ll|I['’]ll\s+now)\b/i,
     /\bwhat\s+(?:I|we)(?:['’]m|\s+am|['’]re|\s+are|['’]ll|\s+will)\s+(?:doing|do)\s+next\b/i,
     phrase(

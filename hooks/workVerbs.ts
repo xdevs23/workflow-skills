@@ -28,6 +28,7 @@ const WORK_VERBS: readonly WorkVerb[] = [
   { base: 'find out', ing: 'finding out' },
   { base: 'try', ing: 'trying', notFollowedBy: [followedBy('to keep', 'to be')] },
   { base: 'fix', ing: 'fixing' },
+  { base: 'resolve', ing: 'resolving' },
   { base: 'write', ing: 'writing' },
   { base: 'draft', ing: 'drafting' },
   { base: 'implement', ing: 'implementing' },
@@ -114,3 +115,26 @@ function anyWorkVerb(formOf: (verb: WorkVerb) => string): string {
 export const WORK_VERB = anyWorkVerb(verb => verb.base)
 /** A work verb in the form said after "I'm". */
 export const WORK_GERUND = anyWorkVerb(verb => verb.ing)
+
+/** Sources of expressions for what follows "I'll" in a saying that waits on someone else or
+ * promises them a message. */
+const WAITING_SAYINGS: readonly string[] = [
+  String.raw`need\b(?!\s+to\b)`,
+  ...[
+    'wait', 'be waiting', 'ask you', 'let you know', 'leave it', 'leave this', 'hand it over',
+    'hand this over', 'want your', 'update you', 'get back to you',
+  ].map(saying => String.raw`${spaced(saying)}\b`),
+]
+
+/** Sources of expressions for a work verb followed by words that make it a saying, such as "check
+ * back" or "stop here". */
+const WORK_VERB_SAYINGS = WORK_VERBS.flatMap(({ base, notFollowedBy = [] }) =>
+  notFollowedBy.map(after => String.raw`${spaced(base)}\b${after}`),
+)
+
+/** What follows "I'll" in a saying that names no work, such as "stop here", "need your answer" or
+ * "need to wait". */
+export const SAYING_WITHOUT_WORK = String.raw`(?:(?:need|have)\s+to\s+)?(?:${[
+  ...WAITING_SAYINGS,
+  ...WORK_VERB_SAYINGS,
+].join('|')})`
