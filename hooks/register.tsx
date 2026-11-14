@@ -25,6 +25,7 @@ import {
 import { drawQuestionBand, drawQuestionPane } from './questionScreens'
 import { registerReminders } from './reminders'
 import { remindersAfterCompaction } from './reminders/eventCadence'
+import { registerRulesBanner } from './rulesBanner'
 import { registerSelfCheck } from './selfCheck'
 import { registerTodoClauseNotes } from './todoClauseNotes'
 
@@ -60,4 +61,5 @@ export const register: Register = on => {
   registerReminders(on, footer)
   registerSelfCheck(on)
   registerTodoClauseNotes(on)
+  registerRulesBanner(on)
 }
