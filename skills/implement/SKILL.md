@@ -45,10 +45,10 @@ description: Implement change to code, from first talk with user until user revi
 - Where tree has too many repositories to copy, such as ROM tree of thousand repositories, let
   implementer work in that tree
 - Hand every implementer: paths to full notes and approved drafts of its part and of units above
-  it, part of change built by it when you split work, and commands of project that build, check and
-  test that part alone within seconds, where project has them. Never reword notes for it
-- Never ask implementer or fixer to run full suite, full check, full build or any test or check
-  that takes more than a few seconds
+  it, and part of change built by it when you split work. Never reword notes for it
+- Let implementer and fixer focus on writing code. Never write into their prompt that they should
+  test or check anything. Template of `workflow-skills:implementer` already sets which checks they
+  run
 - Word part of work handed to implementer by what rule or request behind it is for, such as "a
   value sent by the server and unknown to this build becomes an explicit unknown value where it
   arrives". Never word it as check to make pass, such as "make the lint pass"
