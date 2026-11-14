@@ -5,7 +5,7 @@ import { NO_LETTER_AFTER, NO_LETTER_BEFORE } from './quotedText'
 export const SENTENCE_START =
   String.raw`(?<=(?:^|[\n.!:${QUESTION_MARKS}])\s*${LIST_MARK}${EMPHASIS})`
 
-/** A run of characters that stays inside one sentence and stops before its question mark. */
+/** A run of characters inside one sentence, ending before its question mark. */
 export const RUN_WITHIN_SENTENCE = String.raw`(?:(?![.!](?:\s|$))[^${QUESTION_MARKS}\n])*`
 
 /**
