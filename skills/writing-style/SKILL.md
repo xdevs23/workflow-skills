@@ -39,6 +39,44 @@ write
 > Large exports start downloading before the database has returned every row. The server reads
 > rows as the download sends them, so a large result set does not have to fit in memory.
 
+## Answers
+
+- Answer question in terms of asker first. Give mechanism last, only where asker needs it
+- Give whole picture in first answer: what thing is, how comparable case does it, constraint,
+  choice made and why. Never leave asker to pull it out over several questions
+- Answer short follow-up in one or two sentences, with reason asker can check
+
+Asked "Why does the export need a separate worker now?", instead of
+
+> The export ran CPU-bound serialization on the event loop shared by the request handlers, so
+> `runExclusive` in `server/loop.ts` blocked them until it returned.
+
+write
+
+> A large export used to freeze the site for every visitor for up to a minute. Exports now run on
+> a separate worker and other pages load in the meantime.
+
+Asked "Why does the mobile app need a change in the shared PDF library?", instead of
+
+> The library declares no API level, so the build refuses to link it into an app built against
+> the public SDK.
+
+write
+
+> The mobile app makes PDFs with this library, just like the web app. The web app puts a copy of
+> the library in its repo, which we do not do here. Our build only lets an app use a library that
+> has an API level set. This one was missing it, so I set it to the level the mobile app builds
+> against.
+
+Asked "Why is it set to `latest` and not 37?", instead of
+
+> A fixed `core_37` would need a frozen API surface in `prebuilts/sdk`, which stops at 36, while
+> `core_current` resolves to the API level of this tree.
+
+write
+
+> Only API level 36 has a prebuilt SDK so far. In this tree, `latest` already means 37.
+
 ## Plain language
 
 - Write simple language everywhere. Do not use filler jargon and mannered speech
