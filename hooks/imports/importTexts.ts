@@ -1,8 +1,10 @@
 import { describeFailedStoreCall } from '../pluginStore'
 import type { FailedStoreCall } from '../pluginStore'
+import { HistoryOutcome } from '../sessions/promptHistory'
+import type { PromptHistoryRead } from '../sessions/promptHistory'
 import { IMPORT_NAMES } from './importNames'
 import type { ImportKind } from './importPaneMessages'
-import { describeSession } from './importPaneTexts'
+import { FOLDER_UNKNOWN, describeSession } from './importPaneTexts'
 import type { NamedSession } from './importPaneTexts'
 
 // The texts of the imports shown to the user at the prompt.
@@ -28,7 +30,30 @@ export function describeSessionRecordsNotDeleted(failed: FailedStoreCall): strin
 export function describeStartNotRead(key: string): string {
   return (
     `The start record under the key ${key} is not in the shape this plugin writes, so its ` +
-    'session is listed under Folder unknown.'
+    `session is listed under ${FOLDER_UNKNOWN}.`
+  )
+}
+
+/**
+ * The text for the debug log on the prompt history of Claude Code, when it could not be read or has
+ * lines that could not be read. Undefined for a history read in full.
+ */
+export function describePromptHistoryNotRead(read: PromptHistoryRead): string | undefined {
+  if (read.outcome === HistoryOutcome.Read) {
+    return read.unreadableLines === 0
+      ? undefined
+      : `${read.unreadableLines} lines of the prompt history of Claude Code contain the id of a ` +
+          'session without a start record, but are not in the shape this plugin reads, so they ' +
+          'are left out.'
+  }
+  const cause =
+    read.outcome === HistoryOutcome.NoConfigFolder
+      ? 'neither CLAUDE_CONFIG_DIR nor HOME is set'
+      : `${read.path} could not be read: ${read.error}`
+
+  return (
+    `The prompt history of Claude Code could not be read, since ${cause}. Sessions without a ` +
+    `start record are listed under ${FOLDER_UNKNOWN}.`
   )
 }
 

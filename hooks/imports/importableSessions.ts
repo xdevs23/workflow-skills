@@ -7,12 +7,11 @@ import { describeStoreFailure, loadBoardIn } from '../goals/boardStore'
 import { shownSettingsOf } from '../goals/goalPaneView'
 import { sortedByNumber } from '../numbered'
 import { describeFailedStoreCall, listKeys, returningStoreFailure } from '../pluginStore'
-import type { StoreEngine } from '../pluginStore'
 import { sessionOfReminderKey } from '../reminders/reminderRecord'
 import { Outcome as ReminderOutcome, shownRemindersOf } from '../reminders/reminders'
 import { loadRemindersIn } from '../reminders/reminderStore'
-import { StartOutcome, readSessionStart } from '../sessions/sessionStore'
-import type { RecordedStart, StartRead } from '../sessions/sessionStore'
+import { readSessionStarts } from '../sessions/sessionStarts'
+import type { RecordedStart } from '../sessions/sessionStore'
 import { ImportKind, SessionsShown } from './importPaneMessages'
 import type {
   GoalRow,
@@ -22,6 +21,7 @@ import type {
 } from './importPaneMessages'
 import { uniqueIdLengthOf } from './importPaneTexts'
 import {
+  describePromptHistoryNotRead,
   describeSessionNotRead,
   describeSessionsNotListed,
   describeStartNotRead,
@@ -43,10 +43,11 @@ type ReadSession =
 
 /**
  * Reads the sessions of the project other than the running one from the store, with their open
- * goals and their reminders. A session is of the project when its start record has the folder of
- * the running session, or when it has no start record that this code reads, such as a session
- * begun before sessions recorded their start. The newest session comes first, and the sessions
- * without a start record come last, in the order the store set their first keys.
+ * goals and their reminders. A session belongs to the project when its start, recorded by it or
+ * found in the prompt history of Claude Code, has the same folder as the running session, or when
+ * it does not have a start that this code reads, such as a session begun before sessions recorded
+ * their start and missing from that history. The newest session comes first, and the sessions
+ * without a start record come last, in the order of their first keys set in the store.
  */
 export async function loadImportableSessions($: EngineInterface): Promise<ImportableSessions> {
   const [root, sessionId] = await Promise.all([$.session.root(), $.session.id()])
@@ -74,23 +75,27 @@ export async function loadImportableSessions($: EngineInterface): Promise<Import
 
 /**
  * The sessions other than `sessionId` with goals or reminders in the store, from one list of the
- * keys of the store, with the keys of their records and their start. A start record that cannot be
- * read goes to the debug log, and its session is listed as one without a start record.
+ * keys of the store, with the keys of their records and their start. A start record or a history
+ * that cannot be read goes to the debug log, and the sessions it concerns are listed as ones
+ * without a start record.
  */
 async function listStoredSessions($: EngineInterface, sessionId: string): Promise<StoredSession[]> {
   const bySession = keysBySession(await listKeys($))
   bySession.delete(sessionId)
+  const { starts, unreadableKeys, history } = await readSessionStarts($, [...bySession.keys()])
+  for (const key of unreadableKeys) {
+    $.ui.log(describeStartNotRead(key), { to: 'debug' })
+  }
+  const historyNotRead = describePromptHistoryNotRead(history)
+  if (historyNotRead !== undefined) {
+    $.ui.log(historyNotRead, { to: 'debug' })
+  }
 
-  return Promise.all(
-    [...bySession].map(async ([other, keys]) => {
-      const started = await readSessionStart($, other)
-      logUnreadableStart($, started)
+  return [...bySession].map(([other, keys]) => {
+    const start = starts.get(other)
 
-      return started.outcome === StartOutcome.Read
-        ? { sessionId: other, keys, start: started.start }
-        : { sessionId: other, keys }
-    }),
-  )
+    return start === undefined ? { sessionId: other, keys } : { sessionId: other, keys, start }
+  })
 }
 
 /** The keys of the goals and the reminders of each session among `keys`, in their order. */
@@ -107,12 +112,6 @@ function keysBySession(keys: readonly string[]): Map<string, string[]> {
   }
 
   return bySession
-}
-
-function logUnreadableStart($: StoreEngine, started: StartRead): void {
-  if (started.outcome === StartOutcome.Unreadable) {
-    $.ui.log(describeStartNotRead(started.key), { to: 'debug' })
-  }
 }
 
 function compareNewestFirst(first: StoredSession, second: StoredSession): number {

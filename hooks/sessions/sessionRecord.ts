@@ -51,11 +51,29 @@ export function parseFirstPrompt(value: unknown): string | undefined {
     : undefined
 }
 
+// The prompt history of Claude Code does not record whether a prompt ran a command. A prompt in it
+// whose first word is a slash and a name without another slash runs one, so a prompt that begins
+// with a path such as /tmp/build.log counts as a prompt.
+const SLASH_COMMAND = /^\/[^\s/]+(?:\s|$)/u
+
 /**
- * The first prompt of a session as its record has it: `prompt` on one line, with each run of white
- * space made one space, cut to its first characters. Counted in code points, so a cut never splits
- * a character.
+ * The first prompt of a session as its record has it, from a prompt typed in it: `text` on one
+ * line, with each run of white space made one space, cut to its first characters. Undefined for a
+ * prompt that runs a command or contains only white space, since neither tells sessions apart.
+ * Counted in code points, so a cut never splits a character.
  */
-export function firstPromptOf(prompt: string): string {
-  return [...prompt.replace(/\s+/gu, ' ').trim()].slice(0, FIRST_PROMPT_MAX_LENGTH).join('')
+export function firstPromptOf(prompt: { text: string; runsCommand: boolean }): string | undefined {
+  if (prompt.runsCommand) {
+    return undefined
+  }
+  const firstPrompt = [...prompt.text.replace(/\s+/gu, ' ').trim()]
+    .slice(0, FIRST_PROMPT_MAX_LENGTH)
+    .join('')
+
+  return firstPrompt === '' ? undefined : firstPrompt
+}
+
+/** Whether `text`, a prompt read from the prompt history of Claude Code, runs a slash command. */
+export function isSlashCommandText(text: string): boolean {
+  return SLASH_COMMAND.test(text)
 }

@@ -28,27 +28,24 @@ const recordSessionStart: MatchedHook<
   return next(e)
 }
 
-// A slash command is not a prompt that tells sessions apart, so the first prompt is the first text
-// typed that runs no command.
 const recordFirstPrompt: MatchedHook<'prompt.submit', EveryEvent> = async ($, e, next) => {
-  if (isTypedByUser(e.origin) && e.command === undefined) {
-    await saveFirstPromptOnce($, e.text)
+  const firstPrompt = isTypedByUser(e.origin)
+    ? firstPromptOf({ text: e.text, runsCommand: e.command !== undefined })
+    : undefined
+  if (firstPrompt !== undefined) {
+    await saveFirstPromptOnce($, firstPrompt)
   }
 
   return next(e)
 }
 
 /**
- * Records `prompt` as the first prompt of the running session, unless the session recorded one
- * already or did not record its start in this process. A prompt of white space alone is not one.
+ * Records `firstPrompt` as the first prompt of the running session, unless the session recorded
+ * one already or did not record its start in this process.
  */
-async function saveFirstPromptOnce($: EngineInterface, prompt: string): Promise<void> {
+async function saveFirstPromptOnce($: EngineInterface, firstPrompt: string): Promise<void> {
   const sessionId = await $.session.id()
   if (!(await isFirstPromptAwaited($, sessionId))) {
-    return
-  }
-  const firstPrompt = firstPromptOf(prompt)
-  if (firstPrompt === '') {
     return
   }
   await stopAwaitingFirstPrompt($)

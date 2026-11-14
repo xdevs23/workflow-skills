@@ -42,8 +42,9 @@ export type RowsOfKinds = {
 }
 
 /**
- * A session of the project as read for the import panes, with its start unless it has no start
- * record that this code reads, and the goals and the reminders that can be imported from it.
+ * A session in the project as read for the import panes, with its start unless neither its start
+ * record nor the prompt history of Claude Code contains one that this code reads, and the goals and
+ * the reminders that can be imported from it.
  */
 export type ListedSession = { sessionId: string; start?: RecordedStart; rows: RowsOfKinds }
 
