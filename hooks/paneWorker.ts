@@ -5,8 +5,8 @@ import type {
   EngineInterface,
   Frozen,
   RenderElement,
+  RenderInput,
   RenderSurface,
-  ResolveInput,
   UiMessageArgument,
   UiMessageResult,
 } from 'claude-code'
@@ -23,10 +23,17 @@ import {
   withSubmit,
 } from './paneFieldArea'
 import type { FieldsAt, ModuleFields } from './paneFieldArea'
+import { drawCollectingFields } from './paneFields'
 import type { TypedTexts } from './paneFields'
-import { settledState, stateOfSession, stepOfSave, steppedState } from './paneModule'
+import {
+  focusAskOf,
+  paneControlsOf,
+  settledState,
+  stateOfSession,
+  stepOfSave,
+  steppedState,
+} from './paneModule'
 import type {
-  PaneAnswer,
   PaneMachine,
   PanePost,
   PanePress,
@@ -38,7 +45,10 @@ import type {
 } from './paneModule'
 import { paneElementsOf } from './paneElements'
 import type { PaneElements } from './paneElements'
-import { describeFocusNotMoved, describeModuleFault, describeUnreadablePost } from './paneTexts'
+import { focusField } from './paneFocus'
+import { answersOf, runSaves, withSavesEnded } from './paneSaves'
+import type { RecordedSave } from './paneSaves'
+import { describeModuleFault, describeUnreadablePost } from './paneTexts'
 import { isRecord, readStrings } from './pluginStore'
 import { drawsClient, drawsFields } from './surfaces'
 import { UnreadablePost } from './unreadablePost'
@@ -50,19 +60,6 @@ import { UnreadablePost } from './unreadablePost'
 // draws no surface module, such as the mobile app, and a surface where the module failed get the
 // pane drawn by the hooks module, with the state of the presses in the state of the plugin. Their
 // presses wait for the worker, as every press drawn by the hooks module does.
-
-/**
- * A save of a pane run by the hooks module: the id given to it by the pane, the surface it was made
- * on, the id of the hook run that runs it, and its result, null while it runs. Once the pane leaves
- * a save with a result out of its queue, the pane has ended the save.
- */
-export type RecordedSave<Result> = {
-  actionId: string
-  surface: RenderSurface
-  runId: string
-  result: Result | null
-  isEndedByPane: boolean
-}
 
 /** What the hooks module stores of a pane, which its drawing reads. */
 export type PaneRecord<Local, Action, Result> = {
@@ -83,7 +80,7 @@ export type PaneRecord<Local, Action, Result> = {
  * The tag the stored pane records are kept under. A change of PaneRecord changes the tag, so a
  * record written by another version of the plugin reads as absent.
  */
-export const PANE_RECORD_SHAPE = 'saves-and-numbered-field-events'
+export const PANE_RECORD_SHAPE = 'saves-numbered-field-events-and-focus-asks'
 
 export const NEW_PANE_RECORD: PaneRecord<never, never, never> = {
   inWorker: null,
@@ -148,7 +145,7 @@ export type ClientOfPane<View, Result> = (
  */
 export async function drawPane<View, Local, Action, Result>(
   $: EngineInterface,
-  e: ResolveInput<'Pane'>,
+  e: RenderInput<'Pane'>,
   site: PaneSite<View, Local, Action, Result>,
   drawClient: ClientOfPane<View, Result>,
 ): Promise<RenderElement> {
@@ -183,7 +180,11 @@ export async function drawPane<View, Local, Action, Result>(
     site,
     props,
     { elements: { ...paneElementsOf(elements), TextInput }, drawsFields: drawsFields(e) },
-    { record, surface: e.surface },
+    {
+      record,
+      surface: e.surface,
+      focus: field => focusField($, { title: site.title, requestId: e.requestId, field }),
+    },
   )
 }
 
@@ -287,30 +288,6 @@ export async function answerFailedPanePost<View, Local, Action, Result>(
 }
 
 /**
- * Gives the keyboard to the text field `field` of the pane `title`, drawn as `requestId`, and
- * writes why to the debug log where it did not move. A press on a Button of a surface module
- * leaves the keyboard where it was, so a pane without it asks for it as it does when it opens.
- * The surface refuses that while the prompt has text or a dialog has the keyboard.
- */
-async function focusField(
-  $: EngineInterface,
-  { title, requestId, field }: { title: string; requestId: string; field: string },
-): Promise<void> {
-  if (!(await $.ui.panes()).some(({ id, isFocused }) => id === requestId && isFocused)) {
-    const opened = await $.ui.open({ id: requestId, title, focus: true })
-    if (!opened.isPlaced) {
-      $.ui.log(describeFocusNotMoved(title, opened.reason), { to: 'debug' })
-
-      return
-    }
-  }
-  const focused = await $.ui.focus({ requestId, key: field })
-  if (focused.deny !== undefined) {
-    $.ui.log(describeFocusNotMoved(title, focused.deny), { to: 'debug' })
-  }
-}
-
-/**
  * Records that the surface module of the pane of `site` failed on `surface` for `reason`, and draws
  * the pane again, by the hooks module there until the pane is opened again.
  */
@@ -331,14 +308,17 @@ export async function recordModuleFault<View, Local, Action, Result>(
 /**
  * Stores the pane of `stored` as it opens under the id `paneId`: without a pressed row or card,
  * texts typed, failed modules and text fields of a module, with the saves not ended by the pane and
- * still awaited by a pane open since. The record of a pane open already is left as it is, since
- * opening it again only retitles it, and its surface modules still draw from the state they have.
+ * still awaited by a pane open since. For a pane open already, only the list of failed modules in
+ * its record is emptied, so each module is tried again. Opening it again only retitles it, and its
+ * surface modules still draw from the state they have.
  */
 export async function storeOpenedPane<Local, Action, Result>(
   $: EngineInterface,
   { paneId, stored }: { paneId: string; stored: StoredPane<Local, Action, Result> },
 ): Promise<void> {
   if ((await $.ui.panes()).some(({ id }) => id === paneId)) {
+    await stored.update(record => ({ ...record, faulted: [] }))
+
     return
   }
   await stored.update(record => ({
@@ -360,119 +340,6 @@ async function panePropsOf<View, Local, Action, Result>(
   const fieldEvents = moduleFieldsAt(record.moduleFields, { surface, sessionId })?.events ?? []
 
   return { sessionId, view, answers: answersOf(record, surface), fieldEvents }
-}
-
-/** The results of the saves made on `surface` that the pane did not end yet. */
-function answersOf<Local, Action, Result>(
-  record: PaneRecord<Local, Action, Result>,
-  surface: RenderSurface,
-): PaneAnswer<Result>[] {
-  return record.saves.flatMap(save =>
-    save.surface === surface && save.result !== null && !save.isEndedByPane
-      ? [{ actionId: save.actionId, result: save.result }]
-      : [],
-  )
-}
-
-/** `record` with each save made on `surface` that has a result and is not in `waiting` ended. */
-function withSavesEnded<Local, Action, Result>(
-  record: PaneRecord<Local, Action, Result>,
-  surface: RenderSurface,
-  waiting: readonly PaneSave<Action>[],
-): PaneRecord<Local, Action, Result> {
-  const waitingIds = new Set(waiting.map(({ actionId }) => actionId))
-
-  return {
-    ...record,
-    saves: record.saves.map(save =>
-      save.surface === surface && save.result !== null && !waitingIds.has(save.actionId)
-        ? { ...save, isEndedByPane: true }
-        : save,
-    ),
-  }
-}
-
-/** Whether a hook run may run a save, by its record. */
-enum SaveClaim {
-  /** The save was not run, and the hook run now runs it. */
-  Claimed = 'claimed',
-  /** Another hook run runs the save. */
-  Running = 'running',
-  Answered = 'answered',
-}
-
-/**
- * Runs each save of `saves` that has not run, in order, and records its result, also the failed
- * result of a save that throws. Stops at a save that another hook run runs: the pane posts the
- * saves after it again once its result arrived. Returns whether it ran a save.
- */
-async function runSaves<View, Local, Action, Result>(
-  site: PaneSite<View, Local, Action, Result>,
-  surface: RenderSurface,
-  saves: readonly PaneSave<Action>[],
-): Promise<boolean> {
-  const runId = crypto.randomUUID()
-  let hasRun = false
-  for (const { actionId, action } of saves) {
-    switch (await claimSave(site.stored, { actionId, surface, runId })) {
-      case SaveClaim.Running:
-        return hasRun
-      case SaveClaim.Answered:
-        continue
-      case SaveClaim.Claimed:
-        break
-    }
-    hasRun = true
-    let result = site.failed
-    try {
-      result = await site.save(action)
-    } finally {
-      await site.stored.update(record => withResult(record, actionId, result))
-    }
-  }
-
-  return hasRun
-}
-
-/** Records the save `actionId` as run by `runId`, unless it has a record, and tells the claim. */
-async function claimSave<Local, Action, Result>(
-  stored: StoredPane<Local, Action, Result>,
-  { actionId, surface, runId }: { actionId: string; surface: RenderSurface; runId: string },
-): Promise<SaveClaim> {
-  const record = await stored.update(current =>
-    current.saves.some(save => save.actionId === actionId)
-      ? current
-      : {
-          ...current,
-          saves: [
-            ...current.saves,
-            { actionId, surface, runId, result: null, isEndedByPane: false },
-          ],
-        },
-  )
-  const claimed = record.saves.find(save => save.actionId === actionId)
-  if (claimed === undefined || claimed.result !== null) {
-    return SaveClaim.Answered
-  }
-
-  return claimed.runId === runId ? SaveClaim.Claimed : SaveClaim.Running
-}
-
-/**
- * `record` with `result` as the result of the save `actionId`, while it runs. A save recorded as
- * failed by the failure of its hook keeps that result.
- */
-function withResult<Local, Action, Result>(
-  record: PaneRecord<Local, Action, Result>,
-  actionId: string,
-  result: Result,
-): PaneRecord<Local, Action, Result> {
-  return {
-    ...record,
-    saves: record.saves.map(save =>
-      save.actionId === actionId && save.result === null ? { ...save, result } : save,
-    ),
-  }
 }
 
 /**
@@ -523,21 +390,26 @@ function readPanePost<Action>(
   return { sessionId: data.sessionId, saves, fields, waitingPresses, appliedFieldEvent, focus }
 }
 
-/** Where the hooks module draws a pane: the record of the pane, and the surface drawn on. */
+/**
+ * Where the hooks module draws a pane: the record of the pane, the surface drawn on, and how the
+ * keyboard is given to the text field keyed `field` of the drawing.
+ */
 type DrawnInWorker<Local, Action, Result> = {
   record: PaneRecord<Local, Action, Result>
   surface: RenderSurface
+  focus: (field: string) => Promise<void>
 }
 
 /**
  * Draws the pane of `site` from the hooks module, with the state of its presses in its record, and
- * runs the saves queued by each press.
+ * runs the saves queued by each press. A press that opens a text field gives the keyboard to the
+ * field drawn with autoFocus after it, as the surface module of the pane does.
  */
 function drawPaneInWorker<View, Local, Action, Result>(
   site: PaneSite<View, Local, Action, Result>,
   props: PaneProps<View, Result>,
   surface: PaneSurface,
-  { record, surface: drawnOn }: DrawnInWorker<Local, Action, Result>,
+  { record, surface: drawnOn, focus }: DrawnInWorker<Local, Action, Result>,
 ): RenderElement {
   const settledOf = (current: PaneRecord<Local, Action, Result>) =>
     settledState(
@@ -545,23 +417,38 @@ function drawPaneInWorker<View, Local, Action, Result>(
       stateOfSession(site.machine.initial, current.inWorker, props.sessionId),
       answersOf(current, drawnOn),
     )
-  const state = settledOf(record)
+  const drawState = (state: PaneState<Local, Action>, elements: PaneElements) =>
+    site.machine.draw(props.view, controlsOf(state), { ...surface, elements })
+  // The field to be given the keyboard is known only from a drawing of the state after the press.
+  const focusAskedField = async (state: PaneState<Local, Action>) => {
+    const { fields } = drawCollectingFields(surface.elements, elements =>
+      drawState(state, elements),
+    )
+    const ask = focusAskOf(state, fields)
+    if (ask !== null) {
+      await focus(ask.field)
+    }
+  }
   const act = async (press: PanePress<Local, Action>) => {
     const actionId = crypto.randomUUID()
-    await site.stored.update(current => {
+    const { inWorker } = await site.stored.update(current => {
       const settled = settledOf(current)
 
       return { ...current, inWorker: steppedState(settled, press(settled.local), actionId) }
     })
+    if (inWorker?.focusAsk === actionId) {
+      await focusAskedField(inWorker)
+    }
     await runQueueInWorker(site, drawnOn, settledOf)
   }
   const saveTyped = async (save: TypedSave<Local, Action>) => {
     const typed = typedTextsIn(await site.stored.typed?.read(), props.sessionId)
     await act(local => stepOfSave(save(local, typed)))
   }
-  const saves = state.queue.map(({ action }) => action)
+  const controlsOf = (state: PaneState<Local, Action>) =>
+    paneControlsOf(state, state.queue.map(({ action }) => action), { act, saveTyped })
 
-  return site.machine.draw(props.view, { local: state.local, saves, act, saveTyped }, surface)
+  return drawState(settledOf(record), surface.elements)
 }
 
 /**

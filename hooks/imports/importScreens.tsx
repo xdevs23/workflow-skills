@@ -3,7 +3,7 @@ import type {
   EngineInterface,
   Frozen,
   RenderElement,
-  ResolveInput,
+  RenderInput,
   UiFaultInput,
   UiMessageArgument,
   UiMessageResult,
@@ -77,7 +77,7 @@ function importPaneOf(
  */
 export function drawImportPane(
   $: EngineInterface,
-  e: ResolveInput<'Pane'>,
+  e: RenderInput<'Pane'>,
   kind: ImportKind,
 ): Promise<RenderElement> {
   return drawPane($, e, importPaneOf($, kind), (Client, props) => (

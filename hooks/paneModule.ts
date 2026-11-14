@@ -56,13 +56,15 @@ export type PaneProps<View, Result> = {
 }
 
 /**
- * The state of a pane in the session `sessionId`: the state of its presses, and its saves not
- * answered yet, in order.
+ * The state of a pane in the session `sessionId`: the state of its presses, its saves not answered
+ * yet, in order, and the id of its last ask for the keyboard, made as it starts and by each press
+ * that opens a text field.
  */
 export type PaneState<Local, Action> = {
   sessionId: string
   local: Local
   queue: readonly PaneSave<Action>[]
+  focusAsk: string
 }
 
 /**
@@ -85,6 +87,10 @@ export type PaneControls<Local, Action> = {
   local: Local
   /** The saves not answered yet, in order: the first runs, and the others wait for it. */
   saves: readonly Action[]
+} & PanePresses<Local, Action>
+
+/** What a press in the drawing of a pane calls. */
+export type PanePresses<Local, Action> = {
   /** Applies the step that `press` computes from the state of the pane as it is at the press. */
   act: (press: PanePress<Local, Action>) => Promise<void> | void
   /**
@@ -92,6 +98,15 @@ export type PaneControls<Local, Action> = {
    * into its fields by then.
    */
   saveTyped: (save: TypedSave<Local, Action>) => Promise<void> | void
+}
+
+/** The controls of a pane drawn in `state` with the saves `saves`, pressed through `presses`. */
+export function paneControlsOf<Local, Action>(
+  state: PaneState<Local, Action>,
+  saves: readonly Action[],
+  presses: PanePresses<Local, Action>,
+): PaneControls<Local, Action> {
+  return { local: state.local, saves, ...presses }
 }
 
 /** The elements a pane draws with, and whether the surface draws its input fields. */
@@ -113,17 +128,23 @@ export type PaneMachine<View, Local, Action, Result> = {
 
 /**
  * `state` in the session `sessionId`. A pane drawn in another session starts over from `initial`,
- * since the presses and saves there are for goals and reminders of that session.
+ * since the presses and saves there are for goals and reminders of that session, and asks for the
+ * keyboard for its first text field with autoFocus.
  */
 export function stateOfSession<Local, Action>(
   initial: Local,
   state: PaneState<Local, Action> | null | undefined,
   sessionId: string,
 ): PaneState<Local, Action> {
-  return state?.sessionId === sessionId ? state : { sessionId, local: initial, queue: [] }
+  return state?.sessionId === sessionId
+    ? state
+    : { sessionId, local: initial, queue: [], focusAsk: crypto.randomUUID() }
 }
 
-/** `state` after `step`, with the save it puts on the queue under `actionId`, if any. */
+/**
+ * `state` after `step`, with the save it puts on the queue under `actionId`, if any, and with
+ * `actionId` as its ask for the keyboard where `step` opens a text field.
+ */
 export function steppedState<Local, Action>(
   state: PaneState<Local, Action>,
   step: PaneStep<Local, Action>,
@@ -134,6 +155,7 @@ export function steppedState<Local, Action>(
     local: 'local' in step ? step.local : state.local,
     queue:
       step.save === undefined ? state.queue : [...state.queue, { actionId, action: step.save }],
+    focusAsk: step.opensField === true ? actionId : state.focusAsk,
   }
 }
 
@@ -184,21 +206,19 @@ type WaitingPress<Local, Action> = {
 /**
  * The state of a pane in its surface module: the state of its presses, its keyboard, its presses
  * waiting for the typed texts, in order, the number of the last field event applied by it, null
- * before the first, the id of its last ask for the keyboard, and its last post, null before the
- * first.
+ * before the first, and its last post, null before the first.
  */
 export type ModuleState<Local, Action> = {
   pane: PaneState<Local, Action>
   keyboard: PaneKeyboard
   waiting: readonly WaitingPress<Local, Action>[]
   appliedFieldEvent: number | null
-  focusAsk: string
   posted: PanePost<Action> | null
 }
 
 /**
  * `state` in the session `sessionId`. A module that starts, or draws the pane of another session,
- * starts over from `initial` and asks for the keyboard for its first text field with autoFocus.
+ * starts over from `initial`.
  */
 function moduleStateOfSession<Local, Action>(
   initial: Local,
@@ -212,7 +232,6 @@ function moduleStateOfSession<Local, Action>(
         keyboard: state?.keyboard ?? NEW_KEYBOARD,
         waiting: [],
         appliedFieldEvent: null,
-        focusAsk: crypto.randomUUID(),
         posted: null,
       }
 }
@@ -232,20 +251,31 @@ function shownSavesOf<Local, Action>(state: ModuleState<Local, Action>): readonl
   ]
 }
 
+/**
+ * The text field of the drawing of `state` with the text fields `fields` that gets the keyboard:
+ * the first drawn with autoFocus, asked for under the last ask of `state`.
+ */
+export function focusAskOf<Local, Action>(
+  state: PaneState<Local, Action>,
+  fields: readonly DrawnField[],
+): FocusAsk | null {
+  const focused = fields.find(({ shown }) => shown.autoFocus === true)
+
+  return focused === undefined ? null : { askId: state.focusAsk, field: focused.shown.key }
+}
+
 /** What the module of a pane posts from `state` and the text fields `fields` of its drawing. */
 function postOf<Local, Action>(
   state: ModuleState<Local, Action>,
   fields: readonly DrawnField[],
 ): PanePost<Action> {
-  const focused = fields.find(({ shown }) => shown.autoFocus === true)
-
   return {
     sessionId: state.pane.sessionId,
     saves: state.pane.queue,
     fields: fields.map(({ shown }) => shown),
     waitingPresses: state.waiting.map(({ pressId }) => pressId),
     appliedFieldEvent: state.appliedFieldEvent,
-    focus: focused === undefined ? null : { askId: state.focusAsk, field: focused.shown.key },
+    focus: focusAskOf(state.pane, fields),
   }
 }
 
@@ -292,17 +322,10 @@ export function paneModuleOf<
       },
     }
     const apply = (step: PaneStep<Local, Action>, actionId: string) =>
-      store({
-        ...latest,
-        pane: steppedState(latest.pane, step, actionId),
-        focusAsk: step.opensField === true ? crypto.randomUUID() : latest.focusAsk,
-      })
-    const drawWith = (
-      act: PaneControls<Local, Action>['act'],
-      saveTyped: PaneControls<Local, Action>['saveTyped'],
-    ) => {
+      store({ ...latest, pane: steppedState(latest.pane, step, actionId) })
+    const drawWith = (presses: PanePresses<Local, Action>) => {
       const { elements, tabOrder } = drawnControlsOf(surface.elements, keyboardStore)
-      const pane = { local: latest.pane.local, saves: shownSavesOf(latest), act, saveTyped }
+      const pane = paneControlsOf(latest.pane, shownSavesOf(latest), presses)
       // The module draws its dropdowns from Button and Text, and the hooks module draws its text
       // fields, on every surface.
       const { drawn, fields } = drawCollectingFields(elements, all =>
@@ -313,10 +336,10 @@ export function paneModuleOf<
     }
     const submit = (event: Extract<FieldEvent, { kind: FieldEventKind.Submit }>) => {
       // Each Enter puts one save on the queue at most, so the id of the event names it.
-      const { fields } = drawWith(
-        press => apply(press(latest.pane.local), event.eventId),
-        save => apply(stepOfSave(save(latest.pane.local, event.typed)), event.eventId),
-      )
+      const { fields } = drawWith({
+        act: press => apply(press(latest.pane.local), event.eventId),
+        saveTyped: save => apply(stepOfSave(save(latest.pane.local, event.typed)), event.eventId),
+      })
       fields.find(({ shown }) => shown.key === event.field)?.onSubmit(event.text)
     }
     const runWaitingPress = ({ eventId, typed }: FieldEvent) => {
@@ -340,9 +363,9 @@ export function paneModuleOf<
       }
       store({ ...latest, appliedFieldEvent: event.number })
     }
-    const { drawn, fields, tabOrder } = drawWith(
-      press => apply(press(latest.pane.local), crypto.randomUUID()),
-      save =>
+    const { drawn, fields, tabOrder } = drawWith({
+      act: press => apply(press(latest.pane.local), crypto.randomUUID()),
+      saveTyped: save =>
         store({
           ...latest,
           waiting: [
@@ -350,7 +373,7 @@ export function paneModuleOf<
             { pressId: crypto.randomUUID(), local: latest.pane.local, save },
           ],
         }),
-    )
+    })
     const keyboard = keyboardAfterDrawing(tabOrder, latest.keyboard)
     if (keyboard !== latest.keyboard) {
       store({ ...latest, keyboard })
