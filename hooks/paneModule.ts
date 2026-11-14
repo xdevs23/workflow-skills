@@ -1,7 +1,12 @@
 import type { ClientModule, JsonValue, RenderElement } from 'claude-code'
 
 import { drawnControlsOf } from './clientControls'
-import { NEW_KEYBOARD, keyboardAfterDrawing, sendKeyToFocusedControl } from './paneKeyboard'
+import {
+  NEW_KEYBOARD,
+  keyboardAfterDrawing,
+  sendKeyToFocusedControl,
+  sendPointerToPane,
+} from './paneKeyboard'
 import type { KeyboardStore, PaneKeyboard } from './paneKeyboard'
 import type { PaneElements } from './paneElements'
 
@@ -202,6 +207,7 @@ export function paneModuleOf<
     // The listener set by the next call replaces this one, so the function returned to clear it is
     // not needed.
     surface.onKey(event => sendKeyToFocusedControl(tabOrder, keyboardStore, event))
+    surface.onPointer(event => sendPointerToPane(keyboardStore, event))
 
     return drawn
   }

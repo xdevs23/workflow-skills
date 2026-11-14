@@ -1,4 +1,4 @@
-import type { ClientKeyEvent } from 'claude-code'
+import type { ClientKeyEvent, ClientPointerEvent } from 'claude-code'
 
 import { KeyName, keyNameOf } from './surfaceKeys'
 
@@ -35,8 +35,8 @@ export function shownValueOf(entered: EnteredValue | undefined, drawn: string): 
 /** The keyboard of a pane drawn by its surface module. */
 export type PaneKeyboard = {
   /**
-   * Whether the surface sent a key to the module since it opened. The surface sends keys after a
-   * click on the region of the module, and the pane draws its focus only from then on.
+   * Whether the keys went to the pane since it opened: the surface sent the module a key, or a
+   * click outside the Buttons of the pane. The pane draws its focus only from then on.
    */
   hasKeys: boolean
   focus: ControlFocus | null
@@ -177,6 +177,23 @@ export function keyboardAfterDrawing(
     : { ...focused, autoFocusDrawn, picked: Object.fromEntries(picksDrawn) }
 }
 
+/** `keyboard` with the keys in the pane, the same `keyboard` where they already are. */
+function withKeys(keyboard: PaneKeyboard): PaneKeyboard {
+  return keyboard.hasKeys ? keyboard : { ...keyboard, hasKeys: true }
+}
+
+/**
+ * Sets `hasKeys` once `event` is a left click on the pane. The surface sends pointer
+ * events only for clicks outside Buttons, and such a click sends every later key to the pane
+ * (Claude Code 2.1.321, checked live in the terminal on 2026-11-14). The focus does not move,
+ * since the event does not tell which part of the pane was clicked.
+ */
+export function sendPointerToPane(store: KeyboardStore, event: ClientPointerEvent): void {
+  if (event.type === 'down' && event.button === 'left') {
+    store.update(withKeys)
+  }
+}
+
 /**
  * Sends `event` to the control with the focus in `tabOrder`. Tab and Shift+Tab move the focus to
  * the next and to the previous control.
@@ -186,7 +203,7 @@ export function sendKeyToFocusedControl(
   store: KeyboardStore,
   event: ClientKeyEvent,
 ): Promise<void> | void {
-  store.update(keyboard => (keyboard.hasKeys ? keyboard : { ...keyboard, hasKeys: true }))
+  store.update(withKeys)
   const index = focusedIndexOf(tabOrder, store.read())
   if (keyNameOf(event) === KeyName.Tab) {
     const tabbed = tabbedIndexOf(tabOrder.length, index, event.shift === true)

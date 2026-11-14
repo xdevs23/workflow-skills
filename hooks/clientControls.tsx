@@ -10,7 +10,8 @@ import { KeyName, keyNameOf } from './surfaceKeys'
 
 // Claude Code 2.1.321, checked live in the terminal on 2026-11-13: inside the region of a surface
 // module, the surface never sends a key to Input or Select, and Buttons are not in the Tab order.
-// After a click on the region, every key but Escape is sent to the onKey listener of the module.
+// After a click on the region outside its Buttons, every key but Escape is sent to the onKey
+// listener of the module. A click on a Button runs the Button and leaves the keys where they were.
 // So the module draws its text inputs and dropdowns from Buttons and Text. Escape sends the keys
 // to the prompt again without telling the module, so the module still draws its focus after it.
 // The desktop surface draws these controls too, and was not checked live. Remove this file and
@@ -24,8 +25,14 @@ type ControlContext = {
   /** The keyboard as the pane is drawn. */
   drawnWith: PaneKeyboard
   /** Adds `stop` to the end of the Tab order. */
-  joinTabOrder: (stop: TabStop) => { isFocused: boolean; focusOn: () => void }
+  joinTabOrder: (stop: TabStop) => JoinedControl
 }
+
+/**
+ * A control in the Tab order: whether the focus is on it, whether it is drawn as focused, which
+ * needs the keys in the pane too, and how a press moves the focus onto it.
+ */
+type JoinedControl = { hasFocus: boolean; isFocused: boolean; focusOn: () => void }
 
 /**
  * The elements of a pane drawn by its surface module from the elements of `surface`, with the
@@ -47,7 +54,9 @@ export function drawnControlsOf(
       tabOrder.push(stop)
       const focusOn = () => store.update(keyboard => withFocusAt(keyboard, tabOrder, index))
 
-      return { isFocused: drawnWith.hasKeys && drawnWith.focus?.key === stop.key, focusOn }
+      const hasFocus = drawnWith.focus?.key === stop.key
+
+      return { hasFocus, isFocused: drawnWith.hasKeys && hasFocus, focusOn }
     },
   }
 
@@ -111,10 +120,10 @@ function inTerminalBrackets(content: RenderChildren): RenderChildren {
 
 function drawTextInput(context: ControlContext, input: TextInputProps) {
   const { key, label, placeholder, submitLabel } = input
-  const { Text } = context.elements
+  const { Box, Text } = context.elements
   const drawn = input.value ?? ''
   const textOf = (keyboard: PaneKeyboard) => shownValueOf(keyboard.typed[key], drawn)
-  const { isFocused, focusOn } = context.joinTabOrder({
+  const { hasFocus, isFocused, focusOn } = context.joinTabOrder({
     key,
     kind: ControlKind.TextInput,
     autoFocus: input.autoFocus === true,
@@ -135,16 +144,22 @@ function drawTextInput(context: ControlContext, input: TextInputProps) {
     },
   })
   const text = textOf(context.drawnWith)
+  const shownText =
+    text === '' && placeholder !== undefined
+      ? <Text dimColor>{placeholder}</Text>
+      : <Text>{text}</Text>
+  if (!hasFocus) {
+    return drawPlainControl(context, { key, label, onPress: focusOn }, [shownText])
+  }
 
-  return drawPlainControl(
-    context,
-    { key, label, labelColor: isFocused ? 'suggestion' : 'subtle', onPress: focusOn },
-    [
-      text === '' && placeholder !== undefined
-        ? <Text dimColor>{placeholder}</Text>
-        : <Text>{text}</Text>,
-      ...(isFocused ? [<Text dimColor>{`  ${describeEnterHint(submitLabel)}`}</Text>] : []),
-    ],
+  // The field with the focus is drawn without a Button, so a click on it sends the keys to the
+  // pane.
+  return (
+    <Box key={key}>
+      {label !== undefined && drawLabel(context, label, isFocused ? 'suggestion' : 'subtle')}
+      {shownText}
+      {isFocused && <Text dimColor>{`  ${describeEnterHint(submitLabel)}`}</Text>}
+    </Box>
   )
 }
 
@@ -215,7 +230,6 @@ function drawDropdown(context: ControlContext, dropdown: DropdownProps) {
     {
       key,
       label,
-      labelColor: 'subtle',
       onPress: () => {
         focusOn()
         context.store.update(keyboard => {
@@ -280,20 +294,26 @@ function optionKeyOf({ dropdownKey, value }: { dropdownKey: string; value: strin
   return `${dropdownKey}-${value}`
 }
 
-/** A plain Button keyed `key` that draws `label`, where given, in `labelColor` before `body`. */
+/** A plain Button keyed `key` that draws `label`, where given, before `body`. */
 function drawPlainControl(
-  { elements: { Button, Text } }: ControlContext,
-  { key, label, labelColor, onPress }: {
-    key: string
-    label: string | undefined
-    labelColor: 'suggestion' | 'subtle'
-    onPress: () => void
-  },
+  context: ControlContext,
+  { key, label, onPress }: { key: string; label: string | undefined; onPress: () => void },
   body: readonly RenderElement[],
 ) {
+  const { Button } = context.elements
+
   return (
     <Button key={key} plain {...(label === undefined ? {} : { label })} onPress={onPress}>
-      {[...(label === undefined ? [] : [<Text color={labelColor}>{`${label} `}</Text>]), ...body]}
+      {[...(label === undefined ? [] : [drawLabel(context, label, 'subtle')]), ...body]}
     </Button>
   )
+}
+
+/** The label of a control in `color`, with the space that parts it from the control. */
+function drawLabel(
+  { elements: { Text } }: ControlContext,
+  label: string,
+  color: 'suggestion' | 'subtle',
+) {
+  return <Text color={color}>{`${label} `}</Text>
 }
