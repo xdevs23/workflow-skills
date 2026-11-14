@@ -6,7 +6,7 @@ import type { SWITCHING_SOURCES } from '../sessionSources'
 import { loadBoardAtStart } from './goalActions'
 import { GOALS_COMMAND } from './goalNames'
 import { readBoardInState } from './goalState'
-import { GOALS_DESCRIPTION, describeNotRegistered } from './goalTexts'
+import { GOALS_ARGUMENT_HINT, GOALS_DESCRIPTION, describeNotRegistered } from './goalTexts'
 
 /**
  * Registers /goals for the session. A rejection by the engine is shown in a toast, and the session
@@ -15,7 +15,12 @@ import { GOALS_DESCRIPTION, describeNotRegistered } from './goalTexts'
 export async function registerGoalsCommand($: CommandRegistrar): Promise<void> {
   await registerCommandShowingRejection(
     $,
-    { name: GOALS_COMMAND, description: GOALS_DESCRIPTION, immediate: true },
+    {
+      name: GOALS_COMMAND,
+      description: GOALS_DESCRIPTION,
+      argumentHint: GOALS_ARGUMENT_HINT,
+      immediate: true,
+    },
     describeNotRegistered,
   )
 }

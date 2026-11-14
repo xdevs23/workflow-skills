@@ -1,4 +1,5 @@
 import type { DoneMark, Goal } from '../../types'
+import { GOALS_COMMAND } from './goalNames'
 import { GoalPaneActionKind } from './goalPaneMessages'
 import { describePriority } from './priority'
 import type { Priority } from './priority'
@@ -24,8 +25,11 @@ export const DEPENDENCY_LABEL = 'After'
 /** What a picker shows for a goal without its setting, and the choice that removes the setting. */
 export const NO_CHOICE_LABEL = '–'
 export const BOARD_LOADING = 'Reading the goals of this session…'
+/** How to add a goal without the Goals pane. */
+export const ADD_BY_COMMAND = `Add a goal with /${GOALS_COMMAND} followed by its text.`
 /** The line in place of the field that adds a goal, on a surface without input fields. */
-export const FIELDS_IN_TERMINAL_ONLY = `Add and edit goals in the ${PANE_TITLE} pane in a terminal.`
+export const FIELDS_IN_TERMINAL_ONLY =
+  `${ADD_BY_COMMAND} Edit goals in the ${PANE_TITLE} pane in a terminal.`
 
 /**
  * The name of goal `number` in every text, such as "Goal 2". A hash sign before a number names an
