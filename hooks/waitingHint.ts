@@ -53,7 +53,7 @@ export const WAITING_HINT: HintKind = {
     phrase(String.raw`\byou\s+(?:${HAVE_NOT_ANSWERED}|${DID_NOT_ANSWER})\b`),
     /\byou\s+have\s+yet\s+to\s+answer\b/i,
     /\bonce\s+you(?:['’]ve|\s+have)\s+answered\b/i,
-    /\bneeds\s+your\s+(?:answer|approval|go)\b/i,
+    /\bneeds?\s+your\s+(?:answer|approval|go|pick|choice|decision|call|ok(?:ay)?)\b/i,
     phrase(
       String.raw`\bstill\s+(?:have|has)\s+(?:${COUNT}\s+)?(?:more\s+)?` +
         String.raw`(?:open\s+questions?\b|questions?\b${CLAUSE}\bfor\s+you\b)`,
