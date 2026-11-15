@@ -2,6 +2,7 @@ import { AT_CLAUSE_END } from './clauses'
 import type { HintKind } from './hintKind'
 import { phrase } from './phrase'
 import { COUNT } from './quantityWords'
+import { HAND_OVER_UNANSWERED } from './unansweredQuestions'
 
 /** Text up to the end of the sentence: a stop counts only before a space, and a line break only
  * before a blank line, an indented line or a list item. */
@@ -34,6 +35,10 @@ const DID_NOT_ANSWER = String.raw`(?:did\s+not|didn['’]t)\s+(?:yet\s+)?answer`
 const STILL_STANDS = String.raw`still\s+(?:stands?|applies|needs?)`
 const IS_NOT_YET_ANSWERED = String.raw`(?:has|have|is|are)\s+not\s+(?:yet\s+)?(?:been\s+)?answered`
 
+/** A wait for the user. After "on", the words name a case of waiting, as in "ends on waiting for
+ * you", and say nothing about the message itself. */
+export const WAITING_FOR_YOU = /(?<!\bon\s+)\b(?:waiting|waits)\s+(?:for|on)\s+you(?:r)?\b/i
+
 /** The hint after a message that waits for an answer from the user. */
 export const WAITING_HINT: HintKind = {
   phrases: [
@@ -46,7 +51,7 @@ export const WAITING_HINT: HintKind = {
       String.raw`\b${OPEN_WORD}\s+from\s+(?:(?:earlier|before)${AT_CLAUSE_END}|${EARLIER_MESSAGE})`,
     ),
     /\bstill\s+waiting\b/i,
-    /\b(?:waiting|waits)\s+(?:for|on)\s+you(?:r)?\b/i,
+    WAITING_FOR_YOU,
     /\bawait(?:s|ing)?\s+your\b/i,
     phrase(String.raw`\byour\s+answer\s+on\s+${SENTENCE}\s+is\s+still\b`),
     /(?<!\b(?:blocks?|holds?|stops?|pauses?)\b[^.!?\n]{0,40})\b(?:once|until)\s+you\s+answer\b/i,
@@ -73,6 +78,6 @@ export const WAITING_HINT: HintKind = {
     "If you're waiting for an answer from the user, ensure you have first researched whether the " +
     'question is already answered by rules, instructions or older transcripts. Read around the ' +
     'context you find and do not trust markdown files in the project that paraphrase or take out ' +
-    'of context what the user has said. Open the draft page of every question that has one for ' +
-    'the user. Do not repeat open questions, and pick up independent work in the meantime.',
+    `of context what the user has said. ${HAND_OVER_UNANSWERED} Do not repeat open questions, ` +
+    'and pick up independent work in the meantime.',
 }

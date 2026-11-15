@@ -63,7 +63,8 @@ settings.
    report
 9. Report product findings separately from harness failures. Product finding: defect in product,
    shown by scene. Harness failure: scene that could not run or could not check what it declares.
-   Ask for product decision when required outcome is still open
+   Hand product decision to user as `workflow-skills:question` describes when required outcome is
+   still open
 
 - Accept difference as artifact only after inspecting it and capturing both states again, and only
   when it does not appear again or clearly comes from how browser renders page

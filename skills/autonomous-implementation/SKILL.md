@@ -82,9 +82,9 @@ description: Implement change autonomously, only when user has asked for it, for
 
 ## Questions to the user
 
-- Ask each question as section `Questions to the user` of `workflow-skills:todo-md` describes. Go
-  on with decision made by subagents until answer arrives
-- Write each question into run file as well
+- Hand each question to user as `workflow-skills:question` describes. Go on with decision made by
+  subagents until answer arrives
+- Write each question into run file as well, with path of draft page of each decision
 
 ## Reviews
 

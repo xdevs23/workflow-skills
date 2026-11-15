@@ -1,6 +1,7 @@
 import type { HintKind } from './hintKind'
 import { phrase } from './phrase'
 import { COUNT } from './quantityWords'
+import { HAND_OVER_UNANSWERED } from './unansweredQuestions'
 
 const FURTHER = String.raw`(?:more|other|another|further|follow-?up)`
 const LATER = String.raw`(?:after\s+(?:that|this)|afterwards|later|next|to\s+follow|coming)`
@@ -22,6 +23,6 @@ export const HELD_QUESTION_HINT: HintKind = {
   ],
   text:
     'Your message announces a question in place of asking it. Never announce a question. Run ' +
-    'each question you hold back through workflow-skills:question now, act on the answer the ' +
-    'subagent finds, and ask the user only what it cannot answer, one question to a message.',
+    'each question you hold back through workflow-skills:question now, and act on the answer the ' +
+    `subagent finds. ${HAND_OVER_UNANSWERED}`,
 }

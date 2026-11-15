@@ -17,4 +17,7 @@ tools: Read, Grep, Glob, Bash
 - Transcript or notes out of reach means choice is unchecked
 - Check whether rules, instructions or engineering judgment answer question. Report answer with
   file and line of rule or reason of judgment, or "no answer"
+- Label each "no answer" as decision or fact. Decision: choice between options of what to build,
+  change or do. Fact: something outside project and session known only to user, such as path on
+  machine of user or name of account
 - Check whether work needs answer. Report what cannot go on without it, or "answer not needed"

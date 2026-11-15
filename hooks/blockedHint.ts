@@ -1,5 +1,6 @@
 import type { HintKind } from './hintKind'
 import { CHECK_FOR_OPEN_WORK } from './openWork'
+import { WAITING_FOR_YOU } from './waitingHint'
 
 /** The hint after a message that reports work as blocked or idle. */
 export const BLOCKED_HINT: HintKind = {
@@ -16,7 +17,7 @@ export const BLOCKED_HINT: HintKind = {
     /\bnothing\s+new\s+came\s+in\b/i,
     /\beverything\s+left\s+is\s+blocked\b/i,
     /\beverything\s+left\s+waits\s+on\s+you(?:r)?\b/i,
-    /\bwaiting\s+(?:for|on)\s+you(?:r)?\b/i,
+    WAITING_FOR_YOU,
     /\bnext\s+time\s+you(?:['’]re|\s+are)\s+(?:here|back|around)\b/i,
     /\b(?:once|when)\s+you(?:['’]re|\s+are)\s+back\b/i,
     /\bwhat(?:['’]s|\s+is)\s+left\s+for\s+you\b(?![\s:,—–-]*(?:nothing|none)\b)/i,

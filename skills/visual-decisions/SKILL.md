@@ -10,6 +10,8 @@ description: Draw page for user to look at: drafts, product decisions, plans and
 - Draw page when change sets what someone sees or does, scope of product or which data is kept
 - Draw page for substantial plan or design, and for explanation of complex code path, problem or
   trade-off. Open it for user instead of writing it into chat
+- Draw page for decision handed to user by `workflow-skills:question`. In "What this draft builds",
+  name entry of `TODO.md` waiting on decision
 
 ## Before you draw
 
