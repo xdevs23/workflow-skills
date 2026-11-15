@@ -16,4 +16,7 @@ Review change for separation of concerns only.
   a model, its queries and its HTTP handlers, also when each part is a separate file inside it. Name
   existing layer for each part
 - Report change to one concern that needs edits scattered across unrelated units
+- Report temporal decomposition: modules cut by order in which code runs, e.g. load, validate,
+  transform, save, each repeating same shape of data and its rules. Name module that should own that
+  knowledge
 - Rank findings by how much each tangle will cost future changes

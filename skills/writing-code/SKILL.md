@@ -38,6 +38,8 @@ description: Write or change code in any language, including types, comments, na
   that function wherever result needed. Applies with one caller too
 - Treat file past about 500 lines as candidate for splitting
 - Make implementation types internal or private. Make public only what consumer calls
+- Make import of internals from outside module fail build. Where language cannot hide internals,
+  add import-boundary check to build. Tests of module count as inside it
 - Name arguments of call that passes several values of same type
 - Document in unsafe or foreign-interface function the contract to be kept by every caller
 - Make code pass formatter and linter configuration of tree into which it goes, or of upstream
@@ -85,6 +87,8 @@ description: Write or change code in any language, including types, comments, na
 - Reuse utilities, patterns, dependencies and code paths of project. Prior art in codebase
   determines how new piece behaves
 - Never add carve-out where existing path already covers case
+- Keep one list of same items. Derive every other list from it. Where list cannot be derived, make
+  build fail when lists disagree
 - Keep branches small and few. Replace growing conditional with indirection, abstraction or
   structure that makes the case impossible instead of handled
 - Never write parser by hand for established format

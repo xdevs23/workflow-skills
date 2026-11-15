@@ -30,6 +30,10 @@ description: Design or plan shape of change or system: modules, layers, interfac
 - Connect two subsystems that must communicate through one named bridge, so neither contains details
   of the other
 - Keep contracts tiny: one or two required members, rest optional or derived
+- Hide much behavior behind small interface. Caller finishes one operation with one call. Options of
+  module never expose its internal steps
+- Never mistake deep chain of calls for deep module. Chain of calls spreads one operation across
+  many layers. Deep module puts it behind one interface
 - Discover interface from inside out, from what implementing code does and needs, one piece at a
   time
 - Refactor wrong foundation. Delete machinery compensating for it
@@ -46,6 +50,9 @@ description: Design or plan shape of change or system: modules, layers, interfac
   bundling several layers is not a layer of its own, also when each layer is separate file inside
   it
 - Give each component one job. Put check into component responsible for what it checks
+- Cut modules by knowledge owned by each, never by order in which code runs, e.g. load, validate,
+  transform, save. Code running at different times belongs to one module when it protects same
+  decisions
 - Boundary, e.g. endpoint or command handler, only passes what caller asked for on to code
   containing the business logic
 - Let shell or adapter only package the application
