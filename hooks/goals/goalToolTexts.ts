@@ -1,5 +1,6 @@
 import type { Board, DoneMark, Goal } from '../../types'
 import type { HookSubject } from '../hookFailure'
+import { LOOK_UP_TERMS_AND_RULES } from '../lookUpTermsAndRules'
 import { sortedByNumber } from '../numbered'
 import {
   MAX_EVIDENCE_LENGTH,
@@ -99,12 +100,14 @@ const GOALS_NOT_EXHAUSTIVE =
   'The goals are not exhaustive. Requests from the conversation, entries in TODO.md and rules ' +
   'still apply. Continue working on tasks where you left off and keep working towards the goals.'
 
+const NOTES_ON_OPEN_GOALS = [GOALS_NOT_EXHAUSTIVE, LOOK_UP_TERMS_AND_RULES]
+
 /**
- * `text` followed by `GOALS_NOT_EXHAUSTIVE` while `board` has an open goal. Without one, the
- * sentence would tell the model to keep working towards goals that the user cleared.
+ * `text` followed by `NOTES_ON_OPEN_GOALS` while `board` has an open goal. Without one, the model
+ * would read the notes as a request to keep working towards goals that the user cleared.
  */
-export function withGoalsNotExhaustive(board: Board, text: string): string {
-  return openGoalsOf(board).length === 0 ? text : `${text}\n\n${GOALS_NOT_EXHAUSTIVE}`
+export function withNotesOnOpenGoals(board: Board, text: string): string {
+  return openGoalsOf(board).length === 0 ? text : [text, ...NOTES_ON_OPEN_GOALS].join('\n\n')
 }
 
 /** Who reads the goals: the main conversation, whose model sets the done marks, or a subagent. */

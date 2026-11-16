@@ -2,6 +2,7 @@ import type { EngineInterface } from 'claude-code'
 
 import type { Reminder } from '../../types'
 import { AND_LIST } from '../listFormat'
+import { LOOK_UP_TERMS_AND_RULES } from '../lookUpTermsAndRules'
 import { sortedByNumber } from '../numbered'
 import type { TextWithLine } from '../sendToModel'
 import { CadenceProblem, readSettings } from './cadenceKind'
@@ -12,8 +13,8 @@ import { readRemindersInState } from './reminderState'
 
 // What a cadence module calls once the cadence of its reminders comes: it reads the reminders of
 // its kind that are switched on, and sends the note on those due through the channel of its event.
-// The note has the texts of the reminders and a closing request to act on them, never their cadence
-// or the other reminders.
+// The note has the texts of the reminders, a request to look up the terms and rules named in them,
+// and a closing request to act on them, never their cadence or the other reminders.
 
 /**
  * A reminder of a kind, switched on, with its settings as its kind read them, and the time it was
@@ -71,7 +72,7 @@ export function describeReminderNote(
   const reminders = sorted.map(({ text }) => `Reminder from the user: ${text}`)
 
   return {
-    text: [...reminders, ACT_ON_REMINDERS].join('\n\n'),
+    text: [...reminders, LOOK_UP_TERMS_AND_RULES, ACT_ON_REMINDERS].join('\n\n'),
     line: `${PANE_TITLE}: ${named} sent to Claude`,
   }
 }

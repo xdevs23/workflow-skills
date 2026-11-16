@@ -14,11 +14,11 @@ import {
 } from './goalReminders'
 import { exchangeSeenBoard, readBoardInState, readSeenBoard, restoreSeenBoard } from './goalState'
 import { GOAL_TOOLS } from './goalTools'
-import { withGoalsNotExhaustive } from './goalToolTexts'
+import { withNotesOnOpenGoals } from './goalToolTexts'
 
 /**
  * The changes from the board `before` the model saw to the board `after`. `note` is `text` ended by
- * `withGoalsNotExhaustive`.
+ * `withNotesOnOpenGoals`.
  */
 type GoalChanges = TextWithLine & { note: string; before: Board | null; after: Board }
 
@@ -50,8 +50,8 @@ async function takeOpenGoals($: EngineInterface): Promise<CompactionNote | undef
 }
 
 // The note is taken once the tool ran, so no hook beneath can drop it, and nothing is restored. The
-// result of a goal tool ends with the sentence that the goals are not exhaustive, so the note to it
-// goes without the sentence.
+// result returned by a goal tool ends with the notes on open goals, so the note to it goes without
+// them.
 export const addGoalChangesToToolResult: MatchedHook<'tool.call', EveryEvent> = ($, e, next) =>
   callToolWithNote(e, next, async () => {
     const changes = await takeGoalChanges($, await $.session.id())
@@ -108,5 +108,5 @@ async function takeGoalChanges(
 
   return sent === undefined
     ? undefined
-    : { ...sent, note: withGoalsNotExhaustive(board, sent.text), before, after: board }
+    : { ...sent, note: withNotesOnOpenGoals(board, sent.text), before, after: board }
 }

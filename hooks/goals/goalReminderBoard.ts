@@ -7,7 +7,7 @@ import { Outcome } from './board'
 import { readBoardOfSession } from './goalActions'
 import { describeOpenGoalsSent, describeReminderNotRead } from './goalReminders'
 import { exchangeSeenBoard } from './goalState'
-import { withGoalsNotExhaustive } from './goalToolTexts'
+import { withNotesOnOpenGoals } from './goalToolTexts'
 
 /**
  * The text that lists the open goals to the model with its transcript line, unless there was
@@ -35,7 +35,7 @@ export async function readBoardToRemind(
 /**
  * Records `board` as seen by the model running the session `sessionId`, and returns the open goals
  * on it as `describeOpenGoalsSent` writes them with `describeList`, ended by
- * `withGoalsNotExhaustive`.
+ * `withNotesOnOpenGoals`.
  */
 export async function listOpenGoals(
   $: EngineInterface,
@@ -49,5 +49,5 @@ export async function listOpenGoals(
     return { sent, seenBefore }
   }
 
-  return { sent: { ...sent, text: withGoalsNotExhaustive(board, sent.text) }, seenBefore }
+  return { sent: { ...sent, text: withNotesOnOpenGoals(board, sent.text) }, seenBefore }
 }

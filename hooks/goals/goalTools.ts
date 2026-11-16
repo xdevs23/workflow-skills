@@ -51,7 +51,7 @@ import {
   describeDetached,
   describeGoals,
   describeRefusal,
-  withGoalsNotExhaustive,
+  withNotesOnOpenGoals,
 } from './goalToolTexts'
 import { readEntryHeading, readEntryNumber } from './todoEntry'
 import type { TodoEntry } from './todoEntry'
@@ -122,8 +122,8 @@ export async function registerGoalTools($: EngineInterface): Promise<void> {
 }
 
 // A subagent reads the goals too, so it can check its work against them. It works on a task of its
-// own, so only the main conversation is told that the goals are not exhaustive, and a subagent
-// reads the done marks as set by the main conversation.
+// own, so only the main conversation gets the notes on open goals. A subagent reads the done marks
+// as set by the main conversation.
 export const listGoals: MatchedHook<'tool.call', { tool: typeof LIST_GOALS_TOOL }> = async (
   $,
   e,
@@ -137,7 +137,7 @@ export const listGoals: MatchedHook<'tool.call', { tool: typeof LIST_GOALS_TOOL 
   }
   const listed = describeGoals(read.board, GoalsReader.MainConversation)
 
-  return { result: withGoalsNotExhaustive(read.board, listed) }
+  return { result: withNotesOnOpenGoals(read.board, listed) }
 }
 
 export const attachTodo: MatchedHook<'tool.call', { tool: typeof ATTACH_TODO_TOOL }> = ($, e) =>
@@ -180,7 +180,7 @@ export async function changeGoalByTool<Input>(
   switch (changed.outcome) {
     case Outcome.Changed:
     case Outcome.Unchanged:
-      return { result: withGoalsNotExhaustive(changed.board, tool.describeDone(read.input)) }
+      return { result: withNotesOnOpenGoals(changed.board, tool.describeDone(read.input)) }
     case Outcome.Refused:
       return { deny: describeRefusal(changed) }
     case Outcome.Failed:
