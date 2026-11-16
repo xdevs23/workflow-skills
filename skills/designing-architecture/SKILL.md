@@ -56,6 +56,9 @@ description: Design or plan shape of change or system: modules, layers, interfac
 - Boundary, e.g. endpoint or command handler, only passes what caller asked for on to code
   containing the business logic
 - Let shell or adapter only package the application
+- Write decisions of business logic as pure functions of values handed in: same input gives same
+  output, without side effects. Let entity owning state apply result, only where data read is
+  unchanged, e.g. in one transaction or by version check. Keep I/O at edges
 - Let each entity own its state and lifecycle. Never build god object, bag of loose state or
   global mutable state behind lock
 - Prefer asking another entity through its contract over reading its stored state directly
@@ -94,6 +97,10 @@ description: Design or plan shape of change or system: modules, layers, interfac
 - Make work demand-driven with backpressure. Fetch, read or compute something only when next stage
   can take it
 - Add queue, buffer or cache only where design includes it together with its purpose
+- Design data structures first. Before building, trace each main way code reads and writes data
+  through proposed structure. Structure that serves traced read or write only once map or index is
+  added later is wrong. Put map or index needed by trace into structure from start. Cache stays
+  optimization under rules above
 - Make work idempotent at stated granularity, checked against durable state
 - Derive ids sent to another system from durable positions, e.g. id of stored row or offset in log
   from which the work came
