@@ -23,16 +23,11 @@ export function registerPhraseCadence(on: On): void {
  * does not send the reminder again.
  */
 const sendRemindersOnPhrase: MatchedHook<'classic.Stop', EveryEvent> = ($, e, next) =>
-  stopWithNote(e, next, async message => {
+  stopWithNote($, e, next, async message => {
     const said = withoutQuotedText(message)
     const due = (await readEnabledReminders($, PHRASE_KIND)).filter(({ settings }) =>
       settings.phrases.some(phrase => phrase.test(said)),
     )
-    const note = describeReminderNote(due)
-    if (note === undefined) {
-      return undefined
-    }
-    $.ui.log(note.line)
 
-    return note.text
+    return describeReminderNote(due)
   })

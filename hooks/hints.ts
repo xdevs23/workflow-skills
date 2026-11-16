@@ -1,19 +1,30 @@
 import type { Hook } from 'claude-code'
 
+import type { HintKind } from './hintKind'
 import { kindsWithPhraseIn } from './hintKinds'
 import { stopWithNote } from './sendToModel'
+import type { TextWithLine } from './sendToModel'
 
 /** Ends the hints. The user reads only the message, where an answer to a hint reads as nonsense. */
 const HINT_CLOSING = 'Act on this reminder without mentioning the reminder in your message.'
 
 /**
- * Sends the main conversation back to work once when its turn would end on a message with a phrase
- * of a kind of hint outside quoted text, with the texts of those kinds and a closing sentence as
- * the reason, as stopWithNote does.
+ * The note on the hints of `kinds` with the closing sentence, or undefined without a kind. The
+ * terminal draws a line of the transcript without its line breaks, so the line joins the paragraphs
+ * with spaces.
  */
-export const blockStopOnHintPhrase: Hook<'classic.Stop'> = (_$, e, next) =>
-  stopWithNote(e, next, message => {
-    const texts = kindsWithPhraseIn(message).map(kind => kind.text)
+function describeHintNote(kinds: readonly HintKind[]): TextWithLine | undefined {
+  if (kinds.length === 0) {
+    return undefined
+  }
+  const paragraphs = [...kinds.map(kind => kind.text), HINT_CLOSING]
 
-    return texts.length === 0 ? undefined : [...texts, HINT_CLOSING].join('\n\n')
-  })
+  return { text: paragraphs.join('\n\n'), line: `Hint sent to Claude: ${paragraphs.join(' ')}` }
+}
+
+/**
+ * Sends the main conversation back to work once when its turn would end on a message with a phrase
+ * of a kind of hint outside quoted text, with the note on those kinds, as stopWithNote does.
+ */
+export const blockStopOnHintPhrase: Hook<'classic.Stop'> = ($, e, next) =>
+  stopWithNote($, e, next, message => describeHintNote(kindsWithPhraseIn(message)))

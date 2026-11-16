@@ -54,16 +54,18 @@ export async function callToolWithNote(
 
 /**
  * Runs the end of the turn `e`, and blocks it with the note made by `takeNote` from the last
- * message as the reason, so the main conversation goes back to work with the note. A block asked
- * by a hook beneath comes first in the reason. Only the first end of a turn is blocked: the engine
- * marks the next end of that turn as one that follows a block, and that end passes, so a turn that
- * finds nothing more to do can end. `takeNote` runs only for the first end of a turn of the main
+ * message as the reason, so the main conversation goes back to work with the note. The engine does
+ * not show the reason, so the line of the note goes to the transcript. A block asked by a hook
+ * beneath comes first in the reason. Only the first end of a turn is blocked: the engine marks the
+ * next end of that turn as one that follows a block, and that end passes, so a turn that finds
+ * nothing more to do can end. `takeNote` runs only for the first end of a turn of the main
  * conversation, on a message, where no hook beneath stopped the session.
  */
 export async function stopWithNote(
+  $: EngineInterface,
   e: Frozen<Args<'classic.Stop'>>,
   next: Next<'classic.Stop'>,
-  takeNote: (message: string) => Promise<string | undefined> | string | undefined,
+  takeNote: (message: string) => Promise<TextWithLine | undefined> | TextWithLine | undefined,
 ): Promise<ClassicResultOf['classic.Stop']> {
   const stopped = await next(e)
   const message = e.last_assistant_message
@@ -80,7 +82,8 @@ export async function stopWithNote(
   if (note === undefined) {
     return stopped
   }
-  const reasons = stopped.block === undefined ? [note] : [stopped.block, note]
+  $.ui.log(note.line)
+  const reasons = stopped.block === undefined ? [note.text] : [stopped.block, note.text]
 
   return { ...stopped, block: reasons.join('\n\n') }
 }
