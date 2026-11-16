@@ -45,6 +45,7 @@ write
 - Give whole picture in first answer: what thing is, how comparable case does it, constraint,
   choice made and why. Never leave asker to pull it out over several questions
 - Answer short follow-up in one or two sentences, with reason asker can check
+- End answer to question on answer, without offer of work
 
 Asked "Why does the export need a separate worker now?", instead of
 

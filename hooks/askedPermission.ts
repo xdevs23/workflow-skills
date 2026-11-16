@@ -1,7 +1,7 @@
 import { closingQuestionPattern } from './closingQuestion'
 import { QUESTION_MARKS } from './lineMarks'
-import { DECIDED_WORK_REMEDY } from './refusal'
 import type { Refusal } from './refusal'
+import { HAND_OVER_UNANSWERED } from './unansweredQuestions'
 import { runWithoutWorkNeedingApproval } from './workNeedingApproval'
 
 const PERMISSION_ASKERS = [
@@ -36,5 +36,8 @@ export const ASKED_PERMISSION: Refusal = {
     runWithoutWorkNeedingApproval(String.raw`${QUESTION_MARKS}\n`),
   ),
   reason:
-    'It ends on a question that asks the user for permission to do work. ' + DECIDED_WORK_REMEDY,
+    'It ends on a question that asks the user for permission to do work. If the user only asked ' +
+    'a question, delete the offer and end on the answer. If the user asked for this work or a ' +
+    'rule orders it, do it now, and say in your message what you chose. ' +
+    HAND_OVER_UNANSWERED,
 }
