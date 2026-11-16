@@ -4,9 +4,9 @@ import { describeFocusNotMoved } from './paneTexts'
 
 /**
  * Gives the keyboard to the text field `field` of the pane `title`, drawn as `requestId`, and
- * writes why to the debug log where it did not move. A press leaves the keyboard where it was, so
- * a pane without it, such as after a press on a Button of a surface module, asks for it as it does
- * when it opens. The surface refuses that while the prompt has text or a dialog has the keyboard.
+ * writes why to the debug log where it did not move. A pane without the keyboard asks for it as it
+ * does when it opens. The surface refuses that while the prompt has text or a dialog has the
+ * keyboard.
  */
 export async function focusField(
   $: EngineInterface,

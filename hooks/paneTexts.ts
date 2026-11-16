@@ -29,7 +29,8 @@ export function describeUnreadablePost(title: string, problem: string): string {
 
 /**
  * The label of the text field of a pane for `part` of `item`, such as "Goal 3 · Text". Where the
- * surface module draws the pane, its text fields are drawn together under it, away from their card.
+ * surface module draws the pane, the hooks module draws its text fields together above it, away
+ * from the cards of the items they label.
  */
 export function nameField({ item, part }: { item: string; part: string }): string {
   return `${item} · ${part}`

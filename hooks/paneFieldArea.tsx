@@ -6,14 +6,14 @@ import type { FocusAsk, PanePost } from './paneModule'
 import { isRecord } from './pluginStore'
 import { UnreadablePost } from './unreadablePost'
 
-// The text fields drawn by the hooks module as Input under the surface module of a pane, and the
+// The text fields drawn by the hooks module as Input above the surface module of a pane, and the
 // field events sent to the module about them (paneFields.tsx).
 
 /** Where the surface module of a pane draws: the surface, and the session the pane was drawn in. */
 export type FieldsAt = { surface: RenderSurface; sessionId: string }
 
 /**
- * The text fields drawn under the surface module of a pane at a place, as the module last posted
+ * The text fields drawn above the surface module of a pane at a place, as the module last posted
  * them there, the field events not yet applied by the module, in order, how many events were
  * recorded there, which numbers the next one, and the id of the last ask for the keyboard handled
  * there, null before the first.
@@ -112,14 +112,21 @@ export function withSubmit(
   return withModuleFields(all, withEvents(shownFieldsAt(all, at), [event]))
 }
 
-/** What the text fields drawn under a surface module run: on a change of a text, and on Enter. */
+/** What the text fields drawn above a surface module run: on a change of a text, and on Enter. */
 export type FieldHandlers = {
   type: (field: string, text: string) => Promise<void>
   submit: (field: string, text: string) => Promise<void>
 }
 
-/** `client`, the surface module of a pane, with `fields` under it as Input. */
-export function drawFieldsUnder(
+/**
+ * `client`, the surface module of a pane, with `fields` above it as Input. Claude Code 2.1.325,
+ * checked live in the terminal on 2026-11-16: a click on a Button of the module leaves the keyboard
+ * in the field that has it, and the pane scrolls that field into view whenever the field moves.
+ * Above the module, a press that changes the height of the module does not move the fields. A press
+ * that opens or closes a field moves the module by the height of that field. The desktop surface
+ * draws these fields too, and was not checked live.
+ */
+export function drawFieldsAbove(
   { Box, Input }: Pick<ClientElements, 'Box' | 'Input'>,
   client: RenderElement,
   fields: readonly PaneField[],
@@ -127,7 +134,6 @@ export function drawFieldsUnder(
 ): RenderElement {
   return (
     <Box flexDirection="column">
-      {client}
       {fields.map(field => (
         <Input
           {...field}
@@ -135,6 +141,7 @@ export function drawFieldsUnder(
           onSubmit={text => submit(field.key, text)}
         />
       ))}
+      {client}
     </Box>
   )
 }

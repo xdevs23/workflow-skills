@@ -9,7 +9,7 @@ import type {
 
 // The elements a pane draws with. Its buttons, text inputs and dropdowns are drawn by the surface
 // where the hooks module draws the pane. In its surface module, its buttons and dropdowns are drawn
-// by clientControls.tsx, and its text inputs by the hooks module under the module (paneFields.tsx).
+// by clientControls.tsx, and its text inputs by the hooks module above the module (paneFields.tsx).
 
 /** A button of a pane. Every press calls its `onPress`. */
 export type PaneButtonProps = Omit<ButtonProps, 'key' | 'onPress' | 'hotkey'> &

@@ -15,7 +15,7 @@ import { showFailure } from './failureToast'
 import { describeHookFailure } from './hookFailure'
 import type { HookSubject } from './hookFailure'
 import {
-  drawFieldsUnder,
+  drawFieldsAbove,
   moduleFieldsAt,
   readFocusAsk,
   readPostedFields,
@@ -23,10 +23,8 @@ import {
   withSubmit,
 } from './paneFieldArea'
 import type { FieldsAt, ModuleFields } from './paneFieldArea'
-import { drawCollectingFields } from './paneFields'
 import type { TypedTexts } from './paneFields'
 import {
-  focusAskOf,
   paneControlsOf,
   settledState,
   stateOfSession,
@@ -55,7 +53,7 @@ import { UnreadablePost } from './unreadablePost'
 
 // The side of a pane in the hooks module. It runs the saves posted by the surface module of the
 // pane, and records the result of each by its action id before it answers, so every drawing of the
-// pane sends the results to the module. It draws the text fields posted by the module under it,
+// pane sends the results to the module. It draws the text fields posted by the module above it,
 // records the text typed into them, and records the field events for the module. A surface that
 // draws no surface module, such as the mobile app, and a surface where the module failed get the
 // pane drawn by the hooks module, with the state of the presses in the state of the plugin. Their
@@ -72,7 +70,7 @@ export type PaneRecord<Local, Action, Result> = {
   saves: readonly RecordedSave<Result>[]
   /** The surfaces whose surface module failed since the pane opened. */
   faulted: readonly RenderSurface[]
-  /** The text fields drawn under the surface module since the pane opened, where it posted them. */
+  /** The text fields drawn above the surface module since the pane opened, where it posted them. */
   moduleFields: readonly ModuleFields[]
 }
 
@@ -90,7 +88,7 @@ export const NEW_PANE_RECORD: PaneRecord<never, never, never> = {
 }
 
 /**
- * The texts typed into the text fields of a pane drawn by the hooks module, under its surface
+ * The texts typed into the text fields of a pane drawn by the hooks module, above its surface
  * module or in its drawing by the hooks module, in the session `sessionId`. The drawing does not
  * read them, so a typed character does not draw the pane again.
  */
@@ -140,7 +138,7 @@ export type ClientOfPane<View, Result> = (
 
 /**
  * Draws the pane of `site` on the surface of `e`: in its surface module, drawn by `drawClient`,
- * with the text fields posted by the module under it, where the surface draws one and the module
+ * with the text fields posted by the module above it, where the surface draws one and the module
  * did not fail there since the pane opened, and by the hooks module elsewhere.
  */
 export async function drawPane<View, Local, Action, Result>(
@@ -158,7 +156,7 @@ export async function drawPane<View, Local, Action, Result>(
     const at = { surface: e.surface, sessionId: props.sessionId }
     const fields = moduleFieldsAt(record.moduleFields, at)?.posted ?? []
 
-    return drawFieldsUnder(elements, drawClient(elements.Client, props), fields, {
+    return drawFieldsAbove(elements, drawClient(elements.Client, props), fields, {
       type,
       submit: (field, text) => recordSubmit(site.stored, at, { field, text }),
     })
@@ -180,11 +178,7 @@ export async function drawPane<View, Local, Action, Result>(
     site,
     props,
     { elements: { ...paneElementsOf(elements), TextInput }, drawsFields: drawsFields(e) },
-    {
-      record,
-      surface: e.surface,
-      focus: field => focusField($, { title: site.title, requestId: e.requestId, field }),
-    },
+    { record, surface: e.surface },
   )
 }
 
@@ -205,7 +199,7 @@ async function typeIntoField<Local, Action, Result>(
 }
 
 /**
- * Records Enter in the text field `field` drawn at `at` under the surface module of the pane of
+ * Records Enter in the text field `field` drawn at `at` above the surface module of the pane of
  * `stored`, with its whole text `text` and the texts typed into the other fields, for the module.
  * The surface empties a field after Enter, so the text typed into it is recorded as empty.
  */
@@ -390,26 +384,21 @@ function readPanePost<Action>(
   return { sessionId: data.sessionId, saves, fields, waitingPresses, appliedFieldEvent, focus }
 }
 
-/**
- * Where the hooks module draws a pane: the record of the pane, the surface drawn on, and how the
- * keyboard is given to the text field keyed `field` of the drawing.
- */
+/** Where the hooks module draws a pane: the record of the pane, and the surface drawn on. */
 type DrawnInWorker<Local, Action, Result> = {
   record: PaneRecord<Local, Action, Result>
   surface: RenderSurface
-  focus: (field: string) => Promise<void>
 }
 
 /**
  * Draws the pane of `site` from the hooks module, with the state of its presses in its record, and
- * runs the saves queued by each press. A press that opens a text field gives the keyboard to the
- * field drawn with autoFocus after it, as the surface module of the pane does.
+ * runs the saves queued by each press.
  */
 function drawPaneInWorker<View, Local, Action, Result>(
   site: PaneSite<View, Local, Action, Result>,
   props: PaneProps<View, Result>,
   surface: PaneSurface,
-  { record, surface: drawnOn, focus }: DrawnInWorker<Local, Action, Result>,
+  { record, surface: drawnOn }: DrawnInWorker<Local, Action, Result>,
 ): RenderElement {
   const settledOf = (current: PaneRecord<Local, Action, Result>) =>
     settledState(
@@ -417,28 +406,13 @@ function drawPaneInWorker<View, Local, Action, Result>(
       stateOfSession(site.machine.initial, current.inWorker, props.sessionId),
       answersOf(current, drawnOn),
     )
-  const drawState = (state: PaneState<Local, Action>, elements: PaneElements) =>
-    site.machine.draw(props.view, controlsOf(state), { ...surface, elements })
-  // The field to be given the keyboard is known only from a drawing of the state after the press.
-  const focusAskedField = async (state: PaneState<Local, Action>) => {
-    const { fields } = drawCollectingFields(surface.elements, elements =>
-      drawState(state, elements),
-    )
-    const ask = focusAskOf(state, fields)
-    if (ask !== null) {
-      await focus(ask.field)
-    }
-  }
   const act = async (press: PanePress<Local, Action>) => {
     const actionId = crypto.randomUUID()
-    const { inWorker } = await site.stored.update(current => {
+    await site.stored.update(current => {
       const settled = settledOf(current)
 
       return { ...current, inWorker: steppedState(settled, press(settled.local), actionId) }
     })
-    if (inWorker?.focusAsk === actionId) {
-      await focusAskedField(inWorker)
-    }
     await runQueueInWorker(site, drawnOn, settledOf)
   }
   const saveTyped = async (save: TypedSave<Local, Action>) => {
@@ -448,7 +422,7 @@ function drawPaneInWorker<View, Local, Action, Result>(
   const controlsOf = (state: PaneState<Local, Action>) =>
     paneControlsOf(state, state.queue.map(({ action }) => action), { act, saveTyped })
 
-  return drawState(settledOf(record), surface.elements)
+  return site.machine.draw(props.view, controlsOf(settledOf(record)), surface)
 }
 
 /**

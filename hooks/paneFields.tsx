@@ -6,7 +6,7 @@ import type { PaneElements, TextInputProps } from './paneElements'
 // gets a key, while an Input drawn by the hooks module next to a Client has a caret, a bracketed
 // paste goes into it, its text can be selected, and it still gets typing after a click on a Button
 // of the Client. So the surface module of a pane draws no text field. It posts the text fields of
-// its drawing, and the hooks module draws them as Input under the module. The hooks module records
+// its drawing, and the hooks module draws them as Input above the module. The hooks module records
 // the text typed into each field without drawing the pane again, and sends the module each Enter
 // and the texts typed by the time of each press that saves them, as field events.
 

@@ -100,7 +100,7 @@ export function rowButtonsOf(
         ...(drawsFields
           ? [
               rowButtonOf(PaneElement.Edit, EDIT_LABEL, () =>
-                pane.act(() => ({ local: editedRowOf(goal), opensField: true })),
+                pane.act(() => ({ local: editedRowOf(goal) })),
               ),
             ]
           : []),
@@ -146,7 +146,7 @@ function unmarkButtonOf(
       onPress: () =>
         pane.act(() =>
           drawsFields
-            ? { local: unmarkingRowOf(goal, shown), opensField: true }
+            ? { local: unmarkingRowOf(goal, shown) }
             : { save: { kind: GoalPaneActionKind.Unmark, goal, shown } },
         ),
     },

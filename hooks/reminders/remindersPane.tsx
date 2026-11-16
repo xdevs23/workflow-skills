@@ -119,9 +119,7 @@ function drawRemindersPane(
           <Button
             key="add-reminder"
             label={ADD_LABEL}
-            onPress={() =>
-              pane.act(() => ({ local: addedCardOf(context.kinds), opensField: true }))
-            }
+            onPress={() => pane.act(() => ({ local: addedCardOf(context.kinds) }))}
           >
             <Text color="claude">{ADD_LABEL}</Text>
           </Button>
@@ -232,9 +230,7 @@ function drawCard(
                 key={`edit-${number}`}
                 label={EDIT_LABEL}
                 dimColor
-                onPress={() =>
-                  pane.act(() => ({ local: editedCardOf(kinds, reminder), opensField: true }))
-                }
+                onPress={() => pane.act(() => ({ local: editedCardOf(kinds, reminder) }))}
               />
             )}
             <Button

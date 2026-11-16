@@ -12,7 +12,7 @@ import { KeyName, keyNameOf } from './surfaceKeys'
 // After a click on the region outside its Buttons, every key but Escape is sent to the onKey
 // listener of the module. A click on a Button runs the Button and leaves the keys where they were.
 // So the module draws its dropdowns from Buttons and Text, and its text inputs are drawn by the
-// hooks module under it (paneFields.tsx). Escape sends the keys to the prompt again without
+// hooks module above it (paneFields.tsx). Escape sends the keys to the prompt again without
 // telling the module, so the module still draws its focus after it. The desktop surface draws
 // these controls too, and was not checked live. Remove this file and paneKeyboard.ts once Claude
 // Code sends keys to Select inside a Client and puts its Buttons in the Tab order.

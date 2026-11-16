@@ -30,7 +30,8 @@ export type FocusAsk = { askId: string; field: string }
  * What a pane module posts: the session in which its saves were made, every save of its queue not
  * answered yet, in order, the text fields drawn by it, in order, the ids of its presses waiting
  * for the typed texts, the number of the last field event applied by it, null before the first,
- * and the text field to be given the keyboard, null where it draws none with autoFocus.
+ * and the text field to be given the keyboard, null where it draws none with autoFocus or after its
+ * first press.
  */
 export type PanePost<Action> = {
   sessionId: string
@@ -57,21 +58,18 @@ export type PaneProps<View, Result> = {
 
 /**
  * The state of a pane in the session `sessionId`: the state of its presses, its saves not answered
- * yet, in order, and the id of its last ask for the keyboard, made as it starts and by each press
- * that opens a text field.
+ * yet, in order, and the id of its ask for the keyboard, made as it starts, null after its first
+ * press. A press leaves the keyboard where it is, since the pane scrolls to the field that gets it.
  */
 export type PaneState<Local, Action> = {
   sessionId: string
   local: Local
   queue: readonly PaneSave<Action>[]
-  focusAsk: string
+  focusAsk: string | null
 }
 
-/**
- * What a press does: the next state of the presses, the save it puts on the queue, if any, and
- * whether it opens a text field, which then gets the keyboard.
- */
-export type PaneStep<Local, Action> = { local?: Local; save?: Action; opensField?: true }
+/** What a press does: the next state of the presses, and the save it puts on the queue, if any. */
+export type PaneStep<Local, Action> = { local?: Local; save?: Action }
 
 /** A press: the step it computes from the state of the presses as it is. */
 export type PanePress<Local, Action> = (local: Local) => PaneStep<Local, Action>
@@ -141,10 +139,7 @@ export function stateOfSession<Local, Action>(
     : { sessionId, local: initial, queue: [], focusAsk: crypto.randomUUID() }
 }
 
-/**
- * `state` after `step`, with the save it puts on the queue under `actionId`, if any, and with
- * `actionId` as its ask for the keyboard where `step` opens a text field.
- */
+/** `state` after `step`, with the save it puts on the queue under `actionId`, if any. */
 export function steppedState<Local, Action>(
   state: PaneState<Local, Action>,
   step: PaneStep<Local, Action>,
@@ -155,7 +150,7 @@ export function steppedState<Local, Action>(
     local: 'local' in step ? step.local : state.local,
     queue:
       step.save === undefined ? state.queue : [...state.queue, { actionId, action: step.save }],
-    focusAsk: step.opensField === true ? actionId : state.focusAsk,
+    focusAsk: null,
   }
 }
 
@@ -253,15 +248,17 @@ function shownSavesOf<Local, Action>(state: ModuleState<Local, Action>): readonl
 
 /**
  * The text field of the drawing of `state` with the text fields `fields` that gets the keyboard:
- * the first drawn with autoFocus, asked for under the last ask of `state`.
+ * the first drawn with autoFocus, asked for under the ask of `state`, none after its first press.
  */
-export function focusAskOf<Local, Action>(
+function focusAskOf<Local, Action>(
   state: PaneState<Local, Action>,
   fields: readonly DrawnField[],
 ): FocusAsk | null {
   const focused = fields.find(({ shown }) => shown.autoFocus === true)
 
-  return focused === undefined ? null : { askId: state.focusAsk, field: focused.shown.key }
+  return focused === undefined || state.focusAsk === null
+    ? null
+    : { askId: state.focusAsk, field: focused.shown.key }
 }
 
 /** What the module of a pane posts from `state` and the text fields `fields` of its drawing. */

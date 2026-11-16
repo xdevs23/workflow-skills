@@ -72,13 +72,13 @@ function drawGoalsPane(
 
       return (
         <Box flexDirection="column">
-          {view.goals.map(goal =>
-            drawGoal(surface, goalRowOf(pane, goal, onRows, surface.drawsFields), open),
-          )}
           {surface.drawsFields ? (
             drawNewGoalField(surface.elements, pane, view.nextNumber, adds)
           ) : (
             <Text dimColor>{FIELDS_IN_TERMINAL_ONLY}</Text>
+          )}
+          {view.goals.map(goal =>
+            drawGoal(surface, goalRowOf(pane, goal, onRows, surface.drawsFields), open),
           )}
           {view.notice !== undefined && <Text dimColor>{view.notice}</Text>}
         </Box>
