@@ -80,19 +80,21 @@ write
 
 ## Plain language
 
-- Write simple language everywhere. Do not use filler jargon and mannered speech. Write literal
-  phrase where one exists, e.g. "a parameter to vary" for "a dial to turn". Never write:
+- Write simple language everywhere. Do not use filler jargon and mannered speech
+- Keep out of every text except replies to user in chat:
+  - figurative phrase where literal one exists, e.g. "a dial to turn" for "a parameter to vary"
   - aphorism, e.g. "wire it or delete it"
   - fragment written for effect
   - figurative verb, e.g. "rides along" or "stands on"
   - stock framing phrase, e.g. "needless to say" or "at the end of the day"
+  - pleasantry
 - Apply plain language most strictly in message to person:
   - Leave out words about how work was organized, e.g. stage names, reviewer names, session
     narration
   - Choose words by what reader needs to understand on first reading. Plain wording does not
     require explanation of every technical term or omission of precise technical name
-- When talking to user directly, use standard devspeak, one to two simple sentences. A simple
-  "Yes" or "Nope, we'll do that when X is done."
+- When talking to user directly, use standard devspeak, e.g. "Yes" or "Nope, we'll do that when
+  X is done."
 
 ## Sentence shape
 
@@ -170,7 +172,7 @@ write
 - Avoid roundabout constructions, e.g. serves as, acts as, plays a role in
 - Replace superficial gerund clause, e.g. ending that stresses how important something is, with
   real sentence
-- Avoid pleasantries, hedging filler and generic conclusion that restates what was already said
+- Avoid hedging filler and generic conclusion that restates what was already said
 - Name file, number or cause where concrete mechanism fits, in place of impressionistic wording.
   "SQL you can read" becomes "`.toSQL()` returns the exact string sent to the database", "types
   that follow your schema" becomes "a column rename fails the build"
