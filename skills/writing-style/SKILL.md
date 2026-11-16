@@ -79,7 +79,12 @@ write
 
 ## Plain language
 
-- Write simple language everywhere. Do not use filler jargon and mannered speech
+- Write simple language everywhere. Do not use filler jargon and mannered speech. Write literal
+  phrase where one exists, e.g. "a parameter to vary" for "a dial to turn". Never write:
+  - aphorism, e.g. "wire it or delete it"
+  - fragment written for effect
+  - figurative verb, e.g. "rides along" or "stands on"
+  - stock framing phrase, e.g. "needless to say" or "at the end of the day"
 - Apply plain language most strictly in message to person:
   - Leave out words about how work was organized, e.g. stage names, reviewer names, session
     narration
@@ -109,8 +114,9 @@ write
 - Keep compound already in use outside text as name for real thing, e.g. "content security
   policy"
 - Join two main clauses with `, and`, `, so`, `, but` or `, or` only when they are one thought.
-  Write two sentences otherwise. "The report goes out by mail, so a page that fails is skipped"
-  joins two thoughts. Write "The report goes out by mail. A page that fails is skipped."
+  Write two sentences otherwise. "The report goes out by mail, so the mailer skips a page that
+  fails" joins two thoughts. Write "The report goes out by mail. The mailer skips a page that
+  fails."
 - Delete second clause that adds nothing to first. In "The script stops at the first failure, and
   nothing after it runs", second clause only repeats obvious consequence of first
 - Give code, file, value or tool verb for what happens to it or what it does: is, has, contains,
@@ -131,10 +137,9 @@ write
   place of "Ask for a tuning", "append result in scope of bus" in place of "run the success append
   in a scope of the bus"
 - Never define term by repeating it, as in "`count`, the count of the range" or "a ranking ranks"
-- Where noun is object of clause after it, put verb after noun as participle: "the file read by
-  importer", never "the file that the importer reads", "the file the importer reads" or "the file,
-  which the importer reads". Keep `that` where noun itself does what verb says, as in "the request
-  that fails"
+- Write active voice. Where clause has form of be or get plus past participle, name actor: "queries
+  are validated" becomes "the compiler validates queries". Keep passive only where actor is unknown
+  or does not matter
 - Of two wordings that follow these rules and carry same facts, write shorter one
 
 | Instead of | Write |
@@ -143,7 +148,6 @@ write
 | the store's orders | the orders in the store |
 | the upload's token | the token needed by the upload |
 | the importer's file | the file read by the importer |
-| the tables, which only a debugger reads | the tables read only by debuggers |
 | the fetch plan | the list of pages to fetch |
 | the check has no rules of its own | the check applies the rules handed to it |
 | no request goes out | the page sends the request once the form is complete |
@@ -159,15 +163,22 @@ write
 
   > The Reports tab on the store page sends six requests when the page has finished loading.
   > Each of those requests loads every order placed in that store again before it sums the monetary order values.
-  > The report pages can load the orders only once if we change how the queries are written
+  > The report pages can load the orders only once if we change how we write the queries
 
 - Avoid cycling one idea through synonyms across consecutive sentences
 - Avoid roundabout constructions, e.g. serves as, acts as, plays a role in
 - Replace superficial gerund clause, e.g. ending that stresses how important something is, with
   real sentence
 - Avoid pleasantries, hedging filler and generic conclusion that restates what was already said
-- Name file, number or cause where concrete mechanism fits, in place of impressionistic wording
-- Use strong verb where one exists, in place of weak verb propped up by adverb
+- Name file, number or cause where concrete mechanism fits, in place of impressionistic wording.
+  "SQL you can read" becomes "`.toSQL()` returns the exact string sent to the database", "types
+  that follow your schema" becomes "a column rename fails the build"
+- Cut sentence without fact: one that cannot be restated as instruction, fact or number, or claim
+  about project that could appear unchanged in documents of another project
+- Use strong verb where one exists, in place of weak verb propped up by adverb. Write measured
+  difference in place of adverb of degree: "significantly improves load time" becomes "cuts load
+  time from 3.1 s to 1.2 s". Where nothing was measured, cut adverb. Never write number that was not
+  measured
 - Avoid "X, not Y" shape
 
 ## Words to avoid
@@ -175,7 +186,8 @@ write
 Avoid these words in code, comments, documents, commit messages and chat alike, as whole words in
 any casing: rather than (as a phrase), worth, twist, caveat, seat, lane, leg, drive, doctrine,
 ruling, gate, landed, cold, belt-and-suspenders, load-bearing, guessing, ground, wrinkle, guard,
-pin, owner, masthead, flagging.
+pin, owner, masthead, flagging, utilize, leverage, facilitate, numerous, in the event that (as a
+phrase).
 
 - Use plain replacement by default
 - Keep listed word only where situation justifies it
@@ -192,6 +204,10 @@ pin, owner, masthead, flagging.
 | load-bearing | important, crucial |
 | owner, for the person who uses this machine | user |
 | masthead | page header |
+| utilize, leverage | use |
+| facilitate | help |
+| numerous | many |
+| in the event that | if |
 
 - Write actual thing in place of pin, which needs different word in each case: locked to revision,
   asserted exactly by test, or written into spec. Document inside repository or prompt for agent
