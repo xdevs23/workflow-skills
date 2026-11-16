@@ -29,7 +29,7 @@ export type TextInputProps = Pick<
 }
 
 /** A dropdown of a pane, drawn on `value`, which a pick runs `onSelect` with. */
-export type DropdownProps = Pick<SelectProps, 'key' | 'label' | 'options' | 'autoFocus'> & {
+export type DropdownProps = Pick<SelectProps, 'key' | 'label' | 'options'> & {
   value: string
   onSelect: (value: string) => Promise<void> | void
 }

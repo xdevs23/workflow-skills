@@ -178,8 +178,7 @@ function drawRows<Row extends PaneRow>(
 }
 
 /**
- * The button that imports the rows `picked` of `fromSessionId`, while one is ticked, and Back,
- * made in the order drawn, since a control joins the Tab order when it is made.
+ * The button that imports the rows `picked` of `fromSessionId`, while one is ticked, and Back.
  */
 function drawButtons(
   { elements, pane, kind }: DrawnPane,

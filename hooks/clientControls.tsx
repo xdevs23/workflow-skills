@@ -1,54 +1,43 @@
-import type { ClientElements, RenderChildren, RenderElement } from 'claude-code'
+import type { ClientElements, RenderElement } from 'claude-code'
 
-import { ControlKind, markedIn, shownValueOf, withFocusAt, withMarked } from './paneKeyboard'
-import type { KeyboardStore, PaneKeyboard, TabStop } from './paneKeyboard'
+import { shownValueOf, withListToggled, withListsClosed } from './paneDropdowns'
+import type { DropdownStore, PaneDropdowns } from './paneDropdowns'
 import { paneElementsOf } from './paneElements'
 import type { DropdownProps, PaneButtonProps, PaneElements } from './paneElements'
 import { DROPDOWN_CLOSED_MARK, DROPDOWN_OPEN_MARK } from './paneTexts'
-import { KeyName, keyNameOf } from './surfaceKeys'
 
 // Claude Code 2.1.321, checked live in the terminal on 2026-11-13: inside the region of a surface
-// module, the surface never sends a key to Input or Select, and Buttons are not in the Tab order.
-// After a click on the region outside its Buttons, every key but Escape is sent to the onKey
-// listener of the module. A click on a Button runs the Button and leaves the keys where they were.
-// So the module draws its dropdowns from Buttons and Text, and its text inputs are drawn by the
-// hooks module above it (paneFields.tsx). Escape sends the keys to the prompt again without
-// telling the module, so the module still draws its focus after it. The desktop surface draws
-// these controls too, and was not checked live. Remove this file and paneKeyboard.ts once Claude
-// Code sends keys to Select inside a Client and puts its Buttons in the Tab order.
+// module, the surface never sends a key to Input or Select. So the module draws its dropdowns from
+// Buttons and Text, and its text inputs are drawn by the hooks module above it (paneFields.tsx).
+// Claude Code 2.1.325, checked live in the terminal on 2026-11-16: in the region of a module with a
+// key listener, a drag over text selects nothing, and a press on a Button runs the Button. Without
+// a key listener, the same drag selects the text. So the module does not set a key listener. The
+// checks ran in the terminal only, and the desktop surface draws these controls too. Remove this
+// file and paneDropdowns.ts once Claude Code draws Select inside a Client.
 
-/** What a control drawn by a pane module draws with, and how it joins the Tab order. */
+/** What a control drawn by a pane module draws with. */
 type ControlContext = {
   elements: ClientElements
-  store: KeyboardStore
-  /** The keyboard as the pane is drawn. */
-  drawnWith: PaneKeyboard
-  /** Adds `stop` to the end of the Tab order. */
-  joinTabOrder: (stop: TabStop) => { isFocused: boolean; focusOn: () => void }
+  store: DropdownStore
+  /** The dropdowns as the pane is drawn. */
+  drawnWith: PaneDropdowns
+  /** The keys of the dropdowns drawn so far, to which each dropdown adds its own. */
+  dropdownsDrawn: string[]
 }
 
 /**
  * The elements of a pane drawn by its surface module from the elements of `surface`, with the
- * controls drawn by the module, and the Tab order of those controls. A control joins the Tab order
- * when the pane calls it, so a pane calls its controls in the order it draws them.
+ * controls drawn by the module, and the keys of the dropdowns drawn once the pane is drawn.
  */
 export function drawnControlsOf(
   surface: ClientElements,
-  store: KeyboardStore,
-): { elements: PaneElements; tabOrder: readonly TabStop[] } {
-  const drawnWith = store.read()
-  const tabOrder: TabStop[] = []
+  store: DropdownStore,
+): { elements: PaneElements; dropdownsDrawn: readonly string[] } {
   const context: ControlContext = {
     elements: surface,
     store,
-    drawnWith,
-    joinTabOrder: stop => {
-      const index = tabOrder.length
-      tabOrder.push(stop)
-      const focusOn = () => store.update(keyboard => withFocusAt(keyboard, tabOrder, index))
-
-      return { isFocused: drawnWith.hasKeys && drawnWith.focus?.key === stop.key, focusOn }
-    },
+    drawnWith: store.read(),
+    dropdownsDrawn: [],
   }
 
   return {
@@ -57,142 +46,59 @@ export function drawnControlsOf(
       Button: button => drawButton(context, button),
       Dropdown: dropdown => drawDropdown(context, dropdown),
     },
-    tabOrder,
+    dropdownsDrawn: context.dropdownsDrawn,
   }
 }
 
-function drawButton(
-  context: ControlContext,
-  { onPress, children, autoFocus, ...props }: PaneButtonProps,
-) {
-  const { Button, Text } = context.elements
-  const { isFocused, focusOn } = context.joinTabOrder({
-    key: props.key,
-    kind: ControlKind.Button,
-    autoFocus: autoFocus === true,
-    onKey: event => {
-      const name = keyNameOf(event)
-      if (name === KeyName.Return || name === KeyName.Space) {
-        return onPress()
-      }
-    },
-  })
+function drawButton({ elements: { Button }, store }: ControlContext, button: PaneButtonProps) {
+  const { onPress, children, ...props } = button
+  // Only the hooks module draws a pane Button with its autoFocus (paneWorker.ts).
+  delete props.autoFocus
   const press = () => {
-    focusOn()
+    store.update(withListsClosed)
     return onPress()
   }
 
   return (
-    <Button {...props} {...(isFocused ? { plain: true } : {})} onPress={press}>
-      {isFocused ? <Text inverse>{focusedLabelOf(props, children)}</Text> : children}
+    <Button {...props} onPress={press}>
+      {children}
     </Button>
   )
 }
 
-/**
- * What a focused Button draws in inverse: its children, or its label where it has none, in the
- * brackets the terminal draws around a Button that is not plain. The focused Button is drawn
- * plain, so its width does not change.
- */
-function focusedLabelOf(
-  { label, plain }: Omit<PaneButtonProps, 'onPress'>,
-  children: RenderChildren,
-): RenderChildren {
-  const content = drawsNothing(children) ? label : children
-
-  return plain === true ? content : inTerminalBrackets(content)
-}
-
-/** `content` in the brackets the terminal draws around a Button (`ButtonProps`, 2.1.321). */
-function inTerminalBrackets(content: RenderChildren): RenderChildren {
-  return ['[ ', content, ' ]']
-}
-
 function drawDropdown(context: ControlContext, dropdown: DropdownProps) {
   const { key, label, options, value } = dropdown
-  const { Box, Button, Text } = context.elements
-  const shownOf = (keyboard: PaneKeyboard) => shownValueOf(keyboard.picked[key], value)
-  const openedAt = (keyboard: PaneKeyboard) => {
-    const shown = shownOf(keyboard)
-
-    return options.some(option => option.value === shown) ? shown : options[0]?.value
-  }
-  // The list can be marked on an option that a later drawing no longer offers.
+  const {
+    elements: { Box, Button, Text },
+    store,
+    drawnWith,
+  } = context
+  context.dropdownsDrawn.push(key)
   const pick = (picked: string) => {
-    const shown = shownOf(context.store.read())
-    const isOffered = options.some(option => option.value === picked)
-    context.store.update(keyboard => {
-      const closed = withMarked(keyboard, key, null)
-
-      return isOffered
-        ? { ...closed, picked: { ...closed.picked, [key]: { value: picked, drawnOver: value } } }
-        : closed
-    })
-    if (isOffered && picked !== shown) {
+    const shown = shownValueOf(store.read().picked[key], value)
+    store.update(dropdowns => ({
+      openDropdown: null,
+      picked: { ...dropdowns.picked, [key]: { value: picked, drawnOver: value } },
+    }))
+    if (picked !== shown) {
       return dropdown.onSelect(picked)
     }
   }
-  const mark = (marked: string | undefined) => {
-    if (marked !== undefined) {
-      context.store.update(keyboard => withMarked(keyboard, key, marked))
-    }
-  }
-  const optionNextTo = (marked: string, step: number) => {
-    const at = options.findIndex(option => option.value === marked) + step
-
-    return options[Math.min(Math.max(at, 0), options.length - 1)]?.value
-  }
-  const { isFocused, focusOn } = context.joinTabOrder({
-    key,
-    kind: ControlKind.Dropdown,
-    autoFocus: dropdown.autoFocus === true,
-    onKey: event => {
-      const marked = markedIn(context.store.read(), key)
-      const name = keyNameOf(event)
-      if (marked === null) {
-        if (name === KeyName.Return || name === KeyName.Up || name === KeyName.Down) {
-          mark(openedAt(context.store.read()))
-        }
-        return
-      }
-      switch (name) {
-        case KeyName.Return:
-          return pick(marked)
-        case KeyName.Up:
-          mark(optionNextTo(marked, -1))
-          return
-        case KeyName.Down:
-          mark(optionNextTo(marked, 1))
-          return
-      }
-    },
-  })
-  const marked = markedIn(context.drawnWith, key)
-  const shownValue = shownOf(context.drawnWith)
+  const isOpen = drawnWith.openDropdown === key
+  const shownValue = shownValueOf(drawnWith.picked[key], value)
   const shown = options.find(option => option.value === shownValue)
   const head = drawPlainControl(
     context,
-    {
-      key,
-      label,
-      onPress: () => {
-        focusOn()
-        context.store.update(keyboard => {
-          const isOpen = markedIn(keyboard, key) !== null
-
-          return withMarked(keyboard, key, isOpen ? null : (openedAt(keyboard) ?? null))
-        })
-      },
-    },
+    { key, label, onPress: () => store.update(dropdowns => withListToggled(dropdowns, key)) },
     [
-      <Text inverse={isFocused}>
+      <Text>
         {` ${shown === undefined ? '' : optionTextOf(shown)} ${
-          marked === null ? DROPDOWN_CLOSED_MARK : DROPDOWN_OPEN_MARK
+          isOpen ? DROPDOWN_OPEN_MARK : DROPDOWN_CLOSED_MARK
         } `}
       </Text>,
     ],
   )
-  if (marked === null) {
+  if (!isOpen) {
     return head
   }
 
@@ -206,27 +112,11 @@ function drawDropdown(context: ControlContext, dropdown: DropdownProps) {
           label={optionTextOf(option)}
           onPress={() => pick(option.value)}
         >
-          <Text inverse={option.value === marked} bold={option.value === shownValue}>
-            {`  ${optionTextOf(option)}`}
-          </Text>
+          <Text bold={option.value === shownValue}>{`  ${optionTextOf(option)}`}</Text>
         </Button>
       ))}
     </Box>
   )
-}
-
-/** Whether `children` draws nothing, such as the empty list JSX passes a tag without children. */
-function drawsNothing(children: RenderChildren): boolean {
-  return isChildList(children)
-    ? children.every(drawsNothing)
-    : children === undefined ||
-        children === null ||
-        typeof children === 'boolean' ||
-        children === ''
-}
-
-function isChildList(children: RenderChildren): children is readonly RenderChildren[] {
-  return Array.isArray(children)
 }
 
 /** The text that shows `option` of a dropdown: its label, or its value where it has none. */

@@ -1,8 +1,8 @@
 import type { ClientModule, JsonValue, RenderElement } from 'claude-code'
 
 import { drawnControlsOf } from './clientControls'
-import { NEW_KEYBOARD, keyboardAfterDrawing, sendKeyToFocusedControl } from './paneKeyboard'
-import type { KeyboardStore, PaneKeyboard } from './paneKeyboard'
+import { NEW_DROPDOWNS, dropdownsAfterDrawing } from './paneDropdowns'
+import type { DropdownStore, PaneDropdowns } from './paneDropdowns'
 import type { PaneElements } from './paneElements'
 import { FieldEventKind, drawCollectingFields, eventsAfter } from './paneFields'
 import type { DrawnField, FieldEvent, PaneField, TypedTexts } from './paneFields'
@@ -199,13 +199,13 @@ type WaitingPress<Local, Action> = {
 }
 
 /**
- * The state of a pane in its surface module: the state of its presses, its keyboard, its presses
+ * The state of a pane in its surface module: the state of its presses, its dropdowns, its presses
  * waiting for the typed texts, in order, the number of the last field event applied by it, null
  * before the first, and its last post, null before the first.
  */
 export type ModuleState<Local, Action> = {
   pane: PaneState<Local, Action>
-  keyboard: PaneKeyboard
+  dropdowns: PaneDropdowns
   waiting: readonly WaitingPress<Local, Action>[]
   appliedFieldEvent: number | null
   posted: PanePost<Action> | null
@@ -224,7 +224,7 @@ function moduleStateOfSession<Local, Action>(
     ? state
     : {
         pane: stateOfSession(initial, null, sessionId),
-        keyboard: state?.keyboard ?? NEW_KEYBOARD,
+        dropdowns: state?.dropdowns ?? NEW_DROPDOWNS,
         waiting: [],
         appliedFieldEvent: null,
         posted: null,
@@ -282,7 +282,7 @@ function isPosted<Action>(post: PanePost<Action>, posted: PanePost<Action> | nul
 }
 
 /**
- * The surface module that draws `machine`, with the state of the presses and of the keyboard
+ * The surface module that draws `machine`, with the state of the presses and of the dropdowns
  * stored on the drawing thread. It applies the field events of its props before its drawing, each
  * in a drawing of its own, so an event runs on what the events before it changed. A save made by
  * an event gets the id of the event, so an event run again after the module started over is saved
@@ -309,19 +309,19 @@ export function paneModuleOf<
     if (latest !== surface.state || settled !== latest.pane) {
       store({ ...latest, pane: settled })
     }
-    const keyboardStore: KeyboardStore = {
-      read: () => latest.keyboard,
+    const dropdownStore: DropdownStore = {
+      read: () => latest.dropdowns,
       update: change => {
-        const keyboard = change(latest.keyboard)
-        if (keyboard !== latest.keyboard) {
-          store({ ...latest, keyboard })
+        const dropdowns = change(latest.dropdowns)
+        if (dropdowns !== latest.dropdowns) {
+          store({ ...latest, dropdowns })
         }
       },
     }
     const apply = (step: PaneStep<Local, Action>, actionId: string) =>
       store({ ...latest, pane: steppedState(latest.pane, step, actionId) })
     const drawWith = (presses: PanePresses<Local, Action>) => {
-      const { elements, tabOrder } = drawnControlsOf(surface.elements, keyboardStore)
+      const { elements, dropdownsDrawn } = drawnControlsOf(surface.elements, dropdownStore)
       const pane = paneControlsOf(latest.pane, shownSavesOf(latest), presses)
       // The module draws its dropdowns from Button and Text, and the hooks module draws its text
       // fields, on every surface.
@@ -329,7 +329,7 @@ export function paneModuleOf<
         machine.draw(props.view, pane, { elements: all, drawsFields: true }),
       )
 
-      return { drawn, fields, tabOrder }
+      return { drawn, fields, dropdownsDrawn }
     }
     const submit = (event: Extract<FieldEvent, { kind: FieldEventKind.Submit }>) => {
       // Each Enter puts one save on the queue at most, so the id of the event names it.
@@ -360,7 +360,7 @@ export function paneModuleOf<
       }
       store({ ...latest, appliedFieldEvent: event.number })
     }
-    const { drawn, fields, tabOrder } = drawWith({
+    const { drawn, fields, dropdownsDrawn } = drawWith({
       act: press => apply(press(latest.pane.local), crypto.randomUUID()),
       saveTyped: save =>
         store({
@@ -371,18 +371,15 @@ export function paneModuleOf<
           ],
         }),
     })
-    const keyboard = keyboardAfterDrawing(tabOrder, latest.keyboard)
-    if (keyboard !== latest.keyboard) {
-      store({ ...latest, keyboard })
+    const dropdowns = dropdownsAfterDrawing(dropdownsDrawn, latest.dropdowns)
+    if (dropdowns !== latest.dropdowns) {
+      store({ ...latest, dropdowns })
     }
     const post = postOf(latest, fields)
     if (!isPosted(post, latest.posted)) {
       surface.post(post)
       store({ ...latest, posted: post })
     }
-    // The listener set by the next call replaces this one, so the function returned to clear it is
-    // not needed.
-    surface.onKey(event => sendKeyToFocusedControl(tabOrder, keyboardStore, event))
 
     return drawn
   }
