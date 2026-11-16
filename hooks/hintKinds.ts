@@ -1,5 +1,6 @@
 import { ANNOUNCED_WORK_HINT } from './announcedWorkHint'
 import { BLOCKED_HINT } from './blockedHint'
+import { BUILD_WAIT_HINT } from './buildWaitHint'
 import { HELD_QUESTION_HINT } from './heldQuestionHint'
 import type { HintKind } from './hintKind'
 import { IDLE_REPLY_HINT } from './idleReplyHint'
@@ -30,6 +31,7 @@ export const PHRASE_KINDS: readonly HintKind[] = [
   BLOCKED_HINT,
   NOTHING_NEEDS_ACTION_HINT,
   ANNOUNCED_WORK_HINT,
+  BUILD_WAIT_HINT,
 ]
 
 /** The kinds of hint with a phrase in the message outside quoted text: the first whole-message
