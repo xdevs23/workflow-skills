@@ -13,8 +13,9 @@ import {
   NO_ROAST,
   SENDING_ROAST_NOTICE,
   SEND_LABEL,
-  WRITING_ROAST_NOTICE,
+  describeOutputTokens,
   describeRoastNotWritten,
+  describeWriting,
   describeWritingAgain,
 } from './roastTexts'
 
@@ -24,12 +25,12 @@ export const drawRoastPane: MatchedHook<'ui.render', typeof ROAST_PANE_SITE> = a
   if (inState === null) {
     return <Text dimColor>{NO_ROAST}</Text>
   }
-  const { roast, ...run } = inState
+  const { roast, secondsWriting, ...run } = inState
   switch (roast.shown) {
     case RoastShown.Writing:
-      return <Text dimColor>{WRITING_ROAST_NOTICE}</Text>
+      return <Text dimColor>{describeWriting(secondsWriting)}</Text>
     case RoastShown.WritingAgain:
-      return <Text dimColor>{describeWritingAgain(roast)}</Text>
+      return <Text dimColor>{describeWritingAgain(roast, secondsWriting)}</Text>
     case RoastShown.NotWritten:
       return <Text color="warning">{describeRoastNotWritten(roast.failure)}</Text>
     case RoastShown.Written:
@@ -39,7 +40,10 @@ export const drawRoastPane: MatchedHook<'ui.render', typeof ROAST_PANE_SITE> = a
   }
 }
 
-/** Draws the roast, with a Send button that has the keyboard, and after it the comment field. */
+/**
+ * Draws the roast, with a Send button that has the keyboard and the count of tokens generated
+ * beside it, and after it the comment field.
+ */
 function drawWrittenRoast(
   $: EngineInterface,
   e: ResolveInput<'Pane'>,
@@ -51,7 +55,7 @@ function drawWrittenRoast(
   return (
     <Box flexDirection="column" rowGap={1}>
       <Text>{roast.text}</Text>
-      <Box>
+      <Box columnGap={2}>
         <Button
           key={SEND_KEY}
           label={SEND_LABEL}
@@ -59,6 +63,7 @@ function drawWrittenRoast(
           autoFocus
           onPress={() => sendRoast($, run)}
         />
+        <Text dimColor>{describeOutputTokens(roast.outputTokens)}</Text>
       </Box>
       {drawsFields(e) && drawCommentField($, e, run, roast.comment)}
     </Box>

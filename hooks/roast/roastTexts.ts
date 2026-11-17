@@ -1,9 +1,8 @@
-import type { ModelApiError } from 'claude-code'
-
 import type { HookSubject } from '../hookFailure'
 import { RoastNotWrittenCause } from './roastFailure'
 import type { LastingApiError, RoastFailure } from './roastFailure'
 import { ROAST_COMMAND } from './roastNames'
+import type { RoastProgressOf, RoastShown } from './roastState'
 
 export const PANE_TITLE = 'Roast'
 
@@ -14,8 +13,6 @@ export const ROAST_DESCRIPTION =
   'roast to Claude'
 
 export const ROAST_SUBJECT: HookSubject = { name: 'roast' }
-
-export const WRITING_ROAST_NOTICE = 'Writing the roast about this session.'
 
 export const NO_ROAST = `Run /${ROAST_COMMAND} to roast this session.`
 
@@ -75,14 +72,31 @@ export function describeRoastNotWritten(failure: RoastFailure): string {
   }
 }
 
-/** The notice for a roast written again after the try `failedTries` failed with `error`. */
+/** The notice for a roast written for `secondsWriting` so far. */
+export function describeWriting(secondsWriting: number): string {
+  return `Writing the roast about this session. ${secondsWriting}s`
+}
+
+/**
+ * The notice for a roast written for `secondsWriting` so far, and again after the try `failedTries`
+ * failed with `error`.
+ */
 export function describeWritingAgain(
-  { failedTries, error }: { failedTries: number; error: ModelApiError },
+  { failedTries, error }: RoastProgressOf<RoastShown.WritingAgain>,
+  secondsWriting: number,
 ): string {
   return (
     `Writing the roast about this session, try ${failedTries + 1}. The try before failed with ` +
-    `the API error ${error}.`
+    `the API error ${error}. ${secondsWriting}s`
   )
+}
+
+export function describeOutputTokens(outputTokens: number): string {
+  return `Tokens generated: ${outputTokens}`
+}
+
+export function describeSecondsNotShown(message: string): string {
+  return `The ${PANE_TITLE} pane could not show the seconds spent writing the roast: ${message}.`
 }
 
 /** The reply to /roast while Claude Code does not draw the Roast pane yet, for `reason`. */

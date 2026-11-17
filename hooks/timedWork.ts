@@ -35,6 +35,33 @@ export function runAfter(
 }
 
 /**
+ * Runs `work` every `milliseconds` until it returns false or fails, and returns the timer that
+ * stops it. The run that fails is shown as `runAfter` shows it.
+ */
+export function runEvery(
+  $: EngineInterface,
+  milliseconds: number,
+  work: () => Promise<boolean>,
+  describeFailure: (message: string) => string,
+): Timer {
+  const timer = $.clock.every(milliseconds, () => {
+    work().then(
+      runsAgain => {
+        if (!runsAgain) {
+          timer.cancel()
+        }
+      },
+      (error: unknown) => {
+        timer.cancel()
+        showFailure($, describeFailure(messageOf(error)))
+      },
+    )
+  })
+
+  return timer
+}
+
+/**
  * Runs `work` at once in a separate timer, so the hook that starts it does not wait for it. A
  * prompt submitted by the plugin starts its turn once the session is idle, and the submit resolves
  * only then. Nothing cancels the work, so the timer is not returned. A failure of `work` is shown
