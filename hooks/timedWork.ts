@@ -58,18 +58,15 @@ export function firstDueTimeAfter(from: number, interval: number, after: number)
   return from + periods * interval
 }
 
-/**
- * Runs the end of the turn `e`, and then `wait` when the turn was one of the main conversation, so
- * a due time that passed during the turn is waited for again once the turn ended.
- */
-export async function waitAgainAfterTurn(
+/** Runs the end of the turn `e`, and then `work` when the turn was one of the main conversation. */
+export async function runAfterMainTurn(
   e: Frozen<TurnCompleteInput>,
   next: Next<'turn.complete'>,
-  wait: () => Promise<void>,
+  work: () => Promise<void>,
 ): Promise<TurnCompleteResult> {
   const completed = await next(e)
   if (isMainConversation(e)) {
-    await wait()
+    await work()
   }
 
   return completed

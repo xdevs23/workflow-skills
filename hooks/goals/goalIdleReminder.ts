@@ -4,7 +4,7 @@ import type { Board, IdleStretch } from '../../types'
 import { isMainConversation } from '../conversation'
 import type { EveryEvent } from '../everyEvent'
 import { submitToSessionOrRestore } from '../sendToModel'
-import { runAfter, waitAgainAfterTurn } from '../timedWork'
+import { runAfter, runAfterMainTurn } from '../timedWork'
 import { openGoalsOf } from './board'
 import { listOpenGoals, readBoardToRemind } from './goalReminderBoard'
 import { describeOpenGoalsAfterIdle, describeOpenGoalsNotSent } from './goalReminders'
@@ -42,7 +42,7 @@ export const endIdleStretch: MatchedHook<'turn.start', EveryEvent> = async ($, e
 }
 
 export const waitAfterTurn: MatchedHook<'turn.complete', EveryEvent> = ($, e, next) =>
-  waitAgainAfterTurn(e, next, () => startIdleStretch($))
+  runAfterMainTurn(e, next, () => startIdleStretch($))
 
 /** Starts the idle minutes after a turn, unless the turn was started by the open goals sent. */
 async function startIdleStretch($: EngineInterface): Promise<void> {

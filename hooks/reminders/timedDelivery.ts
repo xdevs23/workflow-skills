@@ -8,7 +8,7 @@ import { callToolWithNote, submitToSessionOrRestore } from '../sendToModel'
 import { ofSession, updateOfSession } from '../sessionBoundState'
 import { SWITCHING_SOURCES } from '../sessionSources'
 import { readIsTurnRunning } from '../sessionState'
-import { firstDueTimeAfter, runAfter, waitAgainAfterTurn } from '../timedWork'
+import { firstDueTimeAfter, runAfter, runAfterMainTurn } from '../timedWork'
 import { describeReminderNote, enabledRemindersOf, readEnabledReminders } from './reminderDelivery'
 import type { ReminderOfKind } from './reminderDelivery'
 import { setNextSends } from './reminderState'
@@ -87,7 +87,7 @@ const addDueRemindersToToolResult: MatchedHook<'tool.call', EveryEvent> = ($, e,
 
 // A due time that passed during the turn and went with no tool result is sent once the turn ended.
 const watchAfterTurn: MatchedHook<'turn.complete', EveryEvent> = ($, e, next) =>
-  waitAgainAfterTurn(e, next, () => watchRunningSession($))
+  runAfterMainTurn(e, next, () => watchRunningSession($))
 
 async function watchRunningSession($: EngineInterface): Promise<void> {
   await watchReminders($, await $.session.id(), await readEnabledReminders($, TIME_KIND))

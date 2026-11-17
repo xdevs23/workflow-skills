@@ -5,7 +5,7 @@ import type { EveryEvent } from '../everyEvent'
 import { showFailure } from '../failureToast'
 import { PromptOutcome, submitToSession } from '../sendToModel'
 import { readIsTurnRunning } from '../sessionState'
-import { runDetached, waitAgainAfterTurn } from '../timedWork'
+import { runDetached, runAfterMainTurn } from '../timedWork'
 import { openGoalsByIdOf } from './board'
 import type { OpenGoals } from './dependency'
 import { doneMarkOf } from './doneMark'
@@ -49,7 +49,7 @@ export async function nudgeOpenGoal(
 }
 
 export const sendNudgesAfterTurn: MatchedHook<'turn.complete', EveryEvent> = ($, e, next) =>
-  waitAgainAfterTurn(e, next, async () => sendWaitingNudges($, await $.session.id()))
+  runAfterMainTurn(e, next, async () => sendWaitingNudges($, await $.session.id()))
 
 function withPressed(nudges: WaitingNudges, pressed: NudgedGoal): WaitingNudges {
   const listed = [...nudges.waiting, ...(nudges.sending?.goals ?? [])]

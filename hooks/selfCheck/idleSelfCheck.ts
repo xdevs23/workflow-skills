@@ -5,7 +5,7 @@ import type { EveryEvent } from '../everyEvent'
 import { isTypedByUser } from '../promptOrigin'
 import { submitToSessionOrRestore, submitWithNoteOrRestore } from '../sendToModel'
 import { readIsTurnRunning } from '../sessionState'
-import { runAfter, waitAgainAfterTurn } from '../timedWork'
+import { runAfter, runAfterMainTurn } from '../timedWork'
 import {
   readSelfCheckSchedule,
   restoreDueTime,
@@ -84,7 +84,7 @@ export const submitWithSelfCheck: MatchedHook<'prompt.submit', EveryEvent> = asy
 
 // A due time that passed during the turn is sent once the turn ended.
 export const waitForDueTimeAfterTurn: MatchedHook<'turn.complete', EveryEvent> = ($, e, next) =>
-  waitAgainAfterTurn(e, next, () => waitForStoredDueTime($))
+  runAfterMainTurn(e, next, () => waitForStoredDueTime($))
 
 /** Waits for the due time in the self-check schedule of the running session, if it has one. */
 async function waitForStoredDueTime($: EngineInterface): Promise<void> {
