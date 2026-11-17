@@ -9,12 +9,14 @@ import type {
 
 import { registerCommandShowingRejection } from '../commandRegistration'
 import { replyToFailedHook } from '../hookFailure'
+import { isTypedByUser } from '../promptOrigin'
 import { runDetached } from '../timedWork'
 import { openRoastPane, startRoast, writeRoast } from './roastActions'
 import { RoastNotWrittenCause } from './roastFailure'
 import { ROAST_COMMAND, ROAST_PANE_CLOSED_BY_USER } from './roastNames'
 import { dropRoast } from './roastState'
 import {
+  ROAST_ARGUMENT_HINT,
   ROAST_DESCRIPTION,
   ROAST_LOST_WITHOUT_COMMAND,
   ROAST_SUBJECT,
@@ -29,7 +31,12 @@ export const registerRoastCommand: MatchedHook<'session.start', { isInteractive:
 ) => {
   await registerCommandShowingRejection(
     $,
-    { name: ROAST_COMMAND, description: ROAST_DESCRIPTION, immediate: true },
+    {
+      name: ROAST_COMMAND,
+      description: ROAST_DESCRIPTION,
+      argumentHint: ROAST_ARGUMENT_HINT,
+      immediate: true,
+    },
     ROAST_LOST_WITHOUT_COMMAND,
   )
 
@@ -38,15 +45,17 @@ export const registerRoastCommand: MatchedHook<'session.start', { isInteractive:
 
 /**
  * Opens the Roast pane, and has a fork made from the main conversation write the roast into it
- * without waiting for the fork. Replies only while Claude Code does not draw the pane.
+ * without waiting for the fork. Text typed by the user after /roast goes into the roast as one of
+ * its points. Replies only while Claude Code does not draw the pane.
  */
 export const runRoastCommand: MatchedHook<
   'command.run',
   { command: typeof ROAST_COMMAND }
-> = async $ => {
+> = async ($, e) => {
+  const finding = isTypedByUser(e.origin) ? e.args.trim() : ''
   const run = await startRoast($)
   const opened = await openRoastPane($)
-  runDetached($, () => writeRoast($, run), message =>
+  runDetached($, () => writeRoast($, run, finding), message =>
     describeRoastNotWritten({ cause: RoastNotWrittenCause.Thrown, message }),
   )
 

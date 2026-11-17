@@ -23,7 +23,8 @@ Then run a skill, such as `/workflow-skills:implement`.
   `/reminders-import` brings reminders of an earlier session of the project into this one
 - **Questions**: Claude asks and keeps working; answer in the pane or with `/answer`
 - **Roast**: `/roast` writes where Claude disregarded the rules it was given or the facts in its
-  context, and sends it to Claude as your message, with your comment if you add one
+  context, and sends it to Claude as your message, with your comment if you add one.
+  `/roast <point>` puts a point you found yourself into the roast
 
 ## License
 

@@ -10,7 +10,7 @@ import { runDetached } from '../timedWork'
 import { RoastNotWrittenCause, isPassingApiError } from './roastFailure'
 import type { RoastFailure } from './roastFailure'
 import { ROAST_PANE, SEND_KEY } from './roastNames'
-import { ROAST_PROMPT } from './roastPromptTexts'
+import { writeRoastPrompt } from './roastPromptTexts'
 import { RoastShown, markRoastSent, setRoastOfRun, setRoastWriting } from './roastState'
 import type { RoastProgress, RoastRun, WrittenRoast } from './roastState'
 import { PANE_TITLE, ROAST_TO_OTHER_SESSION, describeRoastNotSent } from './roastTexts'
@@ -32,21 +32,26 @@ export function openRoastPane($: EngineInterface): Promise<UiOpenResult> {
 }
 
 /**
- * Asks a fork made from the main conversation for the roast of `run`, and shows what came of it in
- * the Roast pane. Asks again after an error of the API that passes, until a fork writes the roast,
- * fails for good, or the state dropped `run`. A failure thrown on the way shows in the pane too.
+ * Asks a fork made from the main conversation for the roast of `run`, with `finding` as one of
+ * its points unless it is empty, and shows the result in the Roast pane. Asks again after an error
+ * of the API that passes, until a fork writes the roast, fails for good, or the state dropped
+ * `run`. A failure thrown on the way shows in the pane too.
  */
-export async function writeRoast($: EngineInterface, run: RoastRun): Promise<void> {
-  await forkUntilDone($, run).catch(async (error: unknown) => {
+export async function writeRoast(
+  $: EngineInterface,
+  run: RoastRun,
+  finding: string,
+): Promise<void> {
+  await forkUntilDone($, run, writeRoastPrompt(finding)).catch(async (error: unknown) => {
     const message = messageOf(error)
     await setRoastOfRun($, run, notWritten({ cause: RoastNotWrittenCause.Thrown, message }))
     throw error
   })
 }
 
-async function forkUntilDone($: EngineInterface, run: RoastRun): Promise<void> {
+async function forkUntilDone($: EngineInterface, run: RoastRun, prompt: string): Promise<void> {
   for (let tries = 1; ; tries += 1) {
-    const roast = readForkReply(await $.model.fork({ prompt: ROAST_PROMPT }), tries)
+    const roast = readForkReply(await $.model.fork({ prompt }), tries)
     if (!(await setRoastOfRun($, run, roast))) {
       return
     }
