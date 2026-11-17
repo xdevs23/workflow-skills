@@ -246,7 +246,7 @@ export async function answerPanePost<View, Local, Action, Result>(
     }))
     const { focus } = post
     if (focus !== null && focus.askId !== moduleFieldsAt(shown.moduleFields, at)?.focused) {
-      await focusField($, { title: site.title, requestId: e.requestId, field: focus.field })
+      await focusField($, { title: site.title, requestId: e.requestId, key: focus.field })
     }
     await runSaves(site, e.surface, post.saves)
   }

@@ -17,9 +17,12 @@ export function describeModuleFault(title: string, surface: string, reason: stri
   )
 }
 
-/** The line in the debug log for a text field of the pane `title` not given the keyboard. */
-export function describeFocusNotMoved(title: string, denial: string): string {
-  return `The keyboard did not move to a text field of the ${title} pane: ${denial}.`
+/** The line in the debug log for the element `key` of the pane `title` not given the keyboard. */
+export function describeFocusNotMoved(
+  { title, key }: { title: string; key: string },
+  denial: string,
+): string {
+  return `The keyboard did not move to ${key} in the ${title} pane: ${denial}.`
 }
 
 /** The failure of a post by the surface module of the pane `title` that has `problem`. */
