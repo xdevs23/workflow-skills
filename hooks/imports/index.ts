@@ -15,7 +15,7 @@ import {
   openImportPane,
 } from './importScreens'
 import { IMPORT_TARGETS } from './importPresses'
-import { describeNotRegistered } from './importTexts'
+import { IMPORT_LOST_WITHOUT_COMMAND } from './importTexts'
 import { deleteRecordsOfSessionWithoutImports } from './sessionEnd'
 
 /**
@@ -30,7 +30,7 @@ async function registerImportCommands($: EngineInterface): Promise<void> {
       return registerCommandShowingRejection(
         $,
         { name: command, description, immediate: true },
-        reason => describeNotRegistered(command, reason),
+        IMPORT_LOST_WITHOUT_COMMAND,
       )
     }),
   )

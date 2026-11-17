@@ -9,12 +9,7 @@ import type { NamedSession } from './importPaneTexts'
 
 // The texts of the imports shown to the user at the prompt.
 
-export function describeNotRegistered(command: string, reason: string): string {
-  return (
-    `/${command} could not be registered, so it cannot import from earlier sessions: ${reason}. ` +
-    'The debug log has this too.'
-  )
-}
+export const IMPORT_LOST_WITHOUT_COMMAND = 'This session cannot import from earlier sessions.'
 
 export function describeSessionsNotListed(failed: FailedStoreCall): string {
   return `The sessions of this project could not be listed. ${describeFailedStoreCall(failed)}`

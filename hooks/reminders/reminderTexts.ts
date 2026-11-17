@@ -1,7 +1,6 @@
 import type { HookSubject } from '../hookFailure'
 import { describeFailedStoreCall } from '../pluginStore'
 import type { FailedStoreCall } from '../pluginStore'
-import { REMINDERS_COMMAND } from './reminderNames'
 import { PANE_TITLE, nameReminder } from './reminderPaneTexts'
 import type { RemindersNotRead } from './reminderStore'
 
@@ -27,13 +26,8 @@ export function describeRemovedMeanwhile(number: number): string {
   return `${nameReminder(number)} was removed.`
 }
 
-export function describeNotRegistered(reason: string): string {
-  return (
-    `/${REMINDERS_COMMAND} could not be registered, so the reminders of this session cannot be ` +
-    `opened or changed: ${reason}. If another plugin uses the name /${REMINDERS_COMMAND}, turn ` +
-    'that plugin off and start a new session. The debug log has this too.'
-  )
-}
+export const REMINDERS_LOST_WITHOUT_COMMAND =
+  'The reminders of this session cannot be opened or changed.'
 
 /** The text for reminders that could not be read, with the reason and the next step. */
 export function describeNotRead(failed: RemindersNotRead): string {

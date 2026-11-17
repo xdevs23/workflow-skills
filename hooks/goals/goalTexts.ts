@@ -39,12 +39,7 @@ export const GOALS_PANE_SUBJECT: HookSubject = {
   checkBeforeRetry: `Check the goals in the ${PANE_TITLE} pane before you try again.`,
 }
 
-export function describeNotRegistered(reason: string): string {
-  return (
-    `/${GOALS_COMMAND} could not be registered, so the goals of this session cannot be opened ` +
-    `or changed: ${reason}. The debug log has this too.`
-  )
-}
+export const GOALS_LOST_WITHOUT_COMMAND = 'The goals of this session cannot be opened or changed.'
 
 /** The goal as one line: its number, then its text. */
 export function describeGoal(goal: Goal): string {

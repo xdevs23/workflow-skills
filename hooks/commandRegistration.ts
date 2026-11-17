@@ -1,5 +1,6 @@
 import type { CommandSpec, EngineInterface } from 'claude-code'
 
+import { describeNotRegistered } from './commandTexts'
 import { isErrorWithText } from './errorMessage'
 import { showFailure } from './failureToast'
 
@@ -16,19 +17,23 @@ export type CommandRegistrar = {
 }
 
 /**
- * Registers `command` for the session. A rejection by the engine, such as the refusal of a name
- * used by a built-in command, is shown in a toast with the text written by `describeNotRegistered`
- * from its message, and the session start goes on. Rejects with every other error.
+ * Registers `command` for the session. When the engine rejects it, for example because a built-in
+ * command uses its name, a toast shows the message of the engine and `lostWithoutCommand`, the
+ * sentence on what the user cannot do without the command. The session start goes on. Rejects with
+ * every other error.
  */
 export async function registerCommandShowingRejection(
   $: CommandRegistrar,
   command: CommandSpec,
-  describeNotRegistered: (reason: string) => string,
+  lostWithoutCommand: string,
 ): Promise<void> {
   await $.command.register(command).catch((error: unknown) => {
     if (!isErrorWithText(error, COMMAND_REGISTER_CALL)) {
       throw error
     }
-    showFailure($, describeNotRegistered(error.message))
+    showFailure(
+      $,
+      describeNotRegistered({ command: command.name, lostWithoutCommand, reason: error.message }),
+    )
   })
 }

@@ -31,13 +31,7 @@ export const ROAST_TO_OTHER_SESSION =
   'The roast was not sent: another session runs by now, and the roast was written for the one ' +
   `before. Run /${ROAST_COMMAND} in this session.`
 
-export function describeNotRegistered(reason: string): string {
-  return (
-    `/${ROAST_COMMAND} could not be registered, so this session cannot be roasted: ${reason}. ` +
-    `If another plugin uses the name /${ROAST_COMMAND}, turn that plugin off and start a new ` +
-    'session. The debug log has this too.'
-  )
-}
+export const ROAST_LOST_WITHOUT_COMMAND = 'This session cannot be roasted.'
 
 const RUN_AGAIN = `/${ROAST_COMMAND} again`
 

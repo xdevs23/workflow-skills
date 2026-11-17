@@ -16,8 +16,8 @@ import { ROAST_COMMAND, ROAST_PANE_CLOSED_BY_USER } from './roastNames'
 import { dropRoast } from './roastState'
 import {
   ROAST_DESCRIPTION,
+  ROAST_LOST_WITHOUT_COMMAND,
   ROAST_SUBJECT,
-  describeNotRegistered,
   describeRoastNotWritten,
   describeRoastPaneWaiting,
 } from './roastTexts'
@@ -30,7 +30,7 @@ export const registerRoastCommand: MatchedHook<'session.start', { isInteractive:
   await registerCommandShowingRejection(
     $,
     { name: ROAST_COMMAND, description: ROAST_DESCRIPTION, immediate: true },
-    describeNotRegistered,
+    ROAST_LOST_WITHOUT_COMMAND,
   )
 
   return next(e)

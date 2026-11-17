@@ -17,8 +17,8 @@ import { describeRemindersPaneFailures, openRemindersPane } from './reminderScre
 import { readRemindersInState } from './reminderState'
 import {
   REMINDERS_DESCRIPTION,
+  REMINDERS_LOST_WITHOUT_COMMAND,
   REMINDERS_SUBJECT,
-  describeNotRegistered,
 } from './reminderTexts'
 
 /**
@@ -31,7 +31,7 @@ export async function startReminders($: EngineInterface): Promise<void> {
     registerCommandShowingRejection(
       $,
       { name: REMINDERS_COMMAND, description: REMINDERS_DESCRIPTION, immediate: true },
-      describeNotRegistered,
+      REMINDERS_LOST_WITHOUT_COMMAND,
     ),
     loadRemindersShowingFailure($, sessionId),
   ])
