@@ -149,7 +149,7 @@ export function submitToSessionOrRestore(
 }
 
 /** Runs `send`, and runs `restore` when `send` failed or `isSent` is false for its result. */
-async function sendOrRestore<T>(
+export async function sendOrRestore<T>(
   send: () => Promise<T>,
   isSent: (sent: T) => boolean,
   restore: () => Promise<void>,

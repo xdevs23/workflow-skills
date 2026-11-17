@@ -27,6 +27,7 @@ import { drawQuestionBand, drawQuestionPane } from './questionScreens'
 import { registerReminders } from './reminders'
 import { remindersAfterCompaction } from './reminders/eventCadence'
 import { registerRoast } from './roast'
+import { registerRoastDelivery } from './roast/roastDelivery'
 import { registerRulesBanner } from './rulesBanner'
 import { registerSelfCheck } from './selfCheck'
 import { registerSessionRecords } from './sessions'
@@ -45,6 +46,11 @@ export const register: Register = on => {
       remindersAfterCompaction($),
     ]),
   )
+  // Registered before the end of a turn of the questions, which marks the turn as over, so the
+  // roasts left at the end of a turn are taken after that mark, and a roast sent later finds no
+  // turn running. Registered before the tools of this plugin, so their results also contain the
+  // roasts.
+  registerRoastDelivery(on)
   // Registered before the tools of this plugin, so their results also contain the answers.
   on('tool.call', EVERY_EVENT, addAnswersToToolResult)
   // Registered before the tools of this plugin, so it denies a call before the tool runs.

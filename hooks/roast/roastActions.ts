@@ -1,19 +1,16 @@
 import type { EngineInterface, ModelForkResult, UiOpenResult } from 'claude-code'
 
 import { messageOf } from '../errorMessage'
-import { showFailure } from '../failureToast'
 import { moveKeyboardTo } from '../paneFocus'
 import { randomWaitAfter } from '../retryWait'
 import type { RetryWaits } from '../retryWait'
-import { PromptOutcome, submitToSessionOrRestore } from '../sendToModel'
-import { runDetached } from '../timedWork'
 import { RoastNotWrittenCause, isPassingApiError } from './roastFailure'
 import type { RoastFailure } from './roastFailure'
 import { ROAST_PANE, SEND_KEY } from './roastNames'
 import { writeRoastPrompt } from './roastPromptTexts'
-import { RoastShown, markRoastSent, setRoastOfRun, setRoastWriting } from './roastState'
-import type { RoastProgress, RoastRun, WrittenRoast } from './roastState'
-import { PANE_TITLE, ROAST_TO_OTHER_SESSION, describeRoastNotSent } from './roastTexts'
+import { RoastShown, setRoastOfRun, setRoastWriting } from './roastState'
+import type { RoastProgress, RoastRun } from './roastState'
+import { PANE_TITLE } from './roastTexts'
 
 // The user watches the Roast pane while the fork runs again, so the wait before the next try grows
 // from two seconds up to half a minute and goes no longer.
@@ -96,62 +93,4 @@ function readForkReply(reply: ModelForkResult, tries: number): RoastProgress {
 
 function notWritten(failure: RoastFailure): RoastProgress {
   return { shown: RoastShown.NotWritten, failure }
-}
-
-/**
- * Sends the roast of `run`, with the comment typed beside it, as a message of the user once, and
- * closes the Roast pane without waiting for the session, which receives it once its turn has ended.
- * Where the session does not receive it, the roast and the comment go back into the pane.
- */
-export async function sendRoast($: EngineInterface, run: RoastRun): Promise<void> {
-  const written = await markRoastSent($, run)
-  if (written === null) {
-    return
-  }
-  const restore = () => restoreRoast($, run, written)
-  await $.ui.close({ id: ROAST_PANE }).then(
-    () => runDetached($, () => submitRoast($, run, written, restore), describeRoastNotSent),
-    async (error: unknown) => {
-      await restore()
-      showFailure($, describeRoastNotSent(messageOf(error)))
-    },
-  )
-}
-
-async function submitRoast(
-  $: EngineInterface,
-  run: RoastRun,
-  written: WrittenRoast,
-  restore: () => Promise<void>,
-): Promise<void> {
-  const text = composeMessage(written)
-  const submitted = await submitToSessionOrRestore(
-    $,
-    run.sessionId,
-    { text, asUser: true },
-    restore,
-  )
-  switch (submitted.outcome) {
-    case PromptOutcome.Entered:
-      return
-    case PromptOutcome.OtherSession:
-      return showFailure($, ROAST_TO_OTHER_SESSION)
-    case PromptOutcome.Dropped:
-      return showFailure($, describeRoastNotSent(submitted.reason))
-  }
-}
-
-/** The message of the user: their comment, if they typed one, and the roast after it. */
-function composeMessage({ comment, text }: WrittenRoast): string {
-  return [comment.trim(), text].filter(part => part !== '').join('\n\n')
-}
-
-/** Puts `written` back into the state for `run`, and opens the Roast pane on it. */
-async function restoreRoast(
-  $: EngineInterface,
-  run: RoastRun,
-  written: WrittenRoast,
-): Promise<void> {
-  await setRoastOfRun($, run, written)
-  await openRoastPane($)
 }

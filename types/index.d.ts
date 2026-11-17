@@ -21,7 +21,7 @@ import type {
 } from '../hooks/reminders/reminderPaneMessages'
 import type { ReadReminders, RemindersNotRead } from '../hooks/reminders/reminderStore'
 import type { Refusal as ReminderRefusal } from '../hooks/reminders/reminders'
-import type { SessionRoast } from '../hooks/roast/roastState'
+import type { PendingRoast, SessionRoast } from '../hooks/roast/roastState'
 
 /** What the user wrote in reply to a question. */
 export type Answer = {
@@ -441,6 +441,8 @@ declare module 'claude-code' {
       firstPromptAwaited: { sessionId: string } | null
       /** The roast shown in the Roast pane; null before /roast first ran. */
       sessionRoast: SessionRoast | null
+      /** The roasts sent from the Roast pane that have not gone to the model yet. */
+      pendingRoasts: readonly PendingRoast[]
     }
   }
 }

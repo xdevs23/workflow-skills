@@ -34,9 +34,19 @@ export type RoastRun = { sessionId: string; runId: string }
 /** The roast shown in the Roast pane, with the run of /roast that asked for it. */
 export type SessionRoast = RoastRun & { roast: RoastProgress }
 
-// The engine lists the state read and written by a module from the source of the module, so the
-// state reference for the roast is written in this file with its plugin and key as literals.
+/** A roast that the user sent from the Roast pane and that has not gone to the model yet. */
+export type PendingRoast = { run: RoastRun; written: WrittenRoast }
+
+/** The pending roasts taken from the state, split by the session they were written for. */
+export type TakenRoasts = {
+  ofRunningSession: PendingRoast[]
+  ofOtherSessions: PendingRoast[]
+}
+
+// The engine lists the state read and written by a module from the source of the module, so this
+// file writes the state references of the roast with their plugin and key as literals.
 const sessionRoast = atom({ plugin: 'workflow-skills', key: 'sessionRoast' } as const, null)
+const pendingRoasts = atom({ plugin: 'workflow-skills', key: 'pendingRoasts' } as const, [])
 
 /** The roast about the running session, which a drawing of the Roast pane subscribes to. */
 export async function readRoastInState($: EngineInterface): Promise<SessionRoast | null> {
@@ -101,6 +111,33 @@ export async function markRoastSent(
  */
 export async function dropRoast($: EngineInterface): Promise<void> {
   await updateRoast($, await $.session.id(), () => null)
+}
+
+export async function addPendingRoast($: EngineInterface, roast: PendingRoast): Promise<void> {
+  await update($, pendingRoasts, inState => [...inState, roast])
+}
+
+/**
+ * Removes every pending roast from the state in one update, so only one of several parallel takes
+ * returns a roast, and returns them split by session.
+ */
+export async function takeAllPendingRoasts($: EngineInterface): Promise<TakenRoasts> {
+  let taken: TakenRoasts = { ofRunningSession: [], ofOtherSessions: [] }
+  if ((await read($, pendingRoasts)).length === 0) {
+    return taken
+  }
+  const sessionId = await $.session.id()
+  const isOfRunningSession = (roast: PendingRoast) => roast.run.sessionId === sessionId
+  await update($, pendingRoasts, inState => {
+    taken = {
+      ofRunningSession: inState.filter(isOfRunningSession),
+      ofOtherSessions: inState.filter(roast => !isOfRunningSession(roast)),
+    }
+
+    return []
+  })
+
+  return taken
 }
 
 function updateRoast(

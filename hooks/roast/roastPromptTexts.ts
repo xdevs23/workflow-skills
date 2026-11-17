@@ -10,6 +10,17 @@ const ROAST_PROMPT =
   'roast alone, with nothing before or after it.'
 
 /**
+ * The note with a tool result that sends the model `message`, a roast that the user sent while the
+ * turn ran, with their comment before it.
+ */
+export function describeRoastNote(message: string): string {
+  return (
+    'While you worked, the user sent you the following roast about your work as their own ' +
+    `message. Read it before you go on:\n\n${message}`
+  )
+}
+
+/**
  * The message that asks a fork made from the main conversation for the roast, with `finding`, the
  * point typed by the user after the command, unless it is empty.
  */
