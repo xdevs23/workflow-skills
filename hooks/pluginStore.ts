@@ -1,6 +1,8 @@
 import type { EngineInterface } from 'claude-code'
 
 import { isErrorWithText } from './errorMessage'
+import { randomWaitAfter } from './retryWait'
+import type { RetryWaits } from './retryWait'
 
 /**
  * The kinds of record in the store used by the plugin. Every record is stored under the key
@@ -190,8 +192,7 @@ export const LOCK_REFUSAL = 'Lock file is already being held'
 
 // A write is awaited by a pane or a tool call in front of a person, so the wait before the next try
 // grows from a short first wait up to one second and goes no longer.
-const FIRST_RETRY_WAIT_MS = 50
-const LONGEST_RETRY_WAIT_MS = 1000
+const STORE_RETRY_WAITS: RetryWaits = { firstMs: 50, longestMs: 1000 }
 
 /** The calls on the engine made by a write to the store besides the write: the wait and the log. */
 export type StoreWaiter = {
@@ -224,7 +225,7 @@ export async function writeRetryingWhileLocked(
       const message = `The write to the key ${key} failed at try ${tries}: ${error.message}.`
       $.ui.log(`${message} Writing again.`, { to: 'debug' })
     }
-    await $.clock.sleep(retryWaitAfter(tries))
+    await $.clock.sleep(randomWaitAfter(tries, STORE_RETRY_WAITS))
   }
 }
 
@@ -246,14 +247,6 @@ export function writeRecord($: StoreEngine, record: StoreRecord): Promise<void> 
 
 export function deleteRecord($: StoreEngine, key: string): Promise<void> {
   return writeToStore($, key, () => $.store.delete(key))
-}
-
-/**
- * A random wait after the try numbered `tries`, up to a limit that doubles with each try until it
- * reaches the longest wait, so processes that collided do not try again at the same moment.
- */
-function retryWaitAfter(tries: number): number {
-  return Math.random() * Math.min(LONGEST_RETRY_WAIT_MS, FIRST_RETRY_WAIT_MS * 2 ** (tries - 1))
 }
 
 export function isRecord(value: unknown): value is Record<string, unknown> {
