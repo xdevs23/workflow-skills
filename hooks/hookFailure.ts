@@ -1,5 +1,7 @@
 import type { CommandRunResult, EngineInterface, HookFailure, ToolCallResult } from 'claude-code'
 
+import { DEBUG_LOG_NOTE } from './failureToast'
+
 /** What the hooks of one feature work on, as written in the texts about a failed hook of it. */
 export type HookSubject = {
   /** The noun for what the hooks work on, such as "questions" or "goals board". */
@@ -70,7 +72,7 @@ function writeToDebugLog($: EngineInterface, text: string): string {
 function describeFailedUse(subject: HookSubject, reason: string | undefined): string {
   return [
     `The ${subject.name} could not be used: ${reason ?? 'the hook failed without a reason'}`,
-    `The debug log has this too. Until the cause is fixed, go on without the ${subject.name}.`,
+    `${DEBUG_LOG_NOTE} Until the cause is fixed, go on without the ${subject.name}.`,
   ].join('\n')
 }
 
@@ -82,15 +84,14 @@ function describeUnfinishedUse(subject: HookSubject, lastFailure: string | undef
   const unfinished = `The ${subject.name} did not finish in time`
   const failureLines =
     lastFailure === undefined ? [] : [`The last failure before that: ${lastFailure}`]
-  const debugLog = 'The debug log has this too.'
 
   return (
     subject.checkBeforeRetry === undefined
-      ? [`${unfinished}.`, ...failureLines, debugLog]
+      ? [`${unfinished}.`, ...failureLines, DEBUG_LOG_NOTE]
       : [
           `${unfinished}, so whether the change was saved is unknown.`,
           ...failureLines,
-          `${subject.checkBeforeRetry} ${debugLog}`,
+          `${subject.checkBeforeRetry} ${DEBUG_LOG_NOTE}`,
         ]
   ).join('\n')
 }

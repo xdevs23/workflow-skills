@@ -8,6 +8,9 @@ import type {
 import { returningStoreFailure } from './pluginStore'
 import type { FailedStoreCall } from './pluginStore'
 
+/** The closing sentence of a text that goes to the debug log as well as to the user. */
+export const DEBUG_LOG_NOTE = 'The debug log has this too.'
+
 /** Writes the failure described by `text` to the debug log, and shows it in a toast. */
 export function showFailure(
   $: { ui: Pick<EngineInterface['ui'], 'log' | 'toast'> },
