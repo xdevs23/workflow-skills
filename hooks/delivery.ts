@@ -1,7 +1,7 @@
 import type { EngineInterface } from 'claude-code'
 
 import type { Question } from '../types'
-import { AfterStoppedTurn, submitWhileNoTurnRuns } from './heldTexts'
+import { submitWhileSessionAcceptsPrompts } from './heldTexts'
 import type { HeldTextSource } from './heldTexts'
 import { describeAnswers } from './modelText'
 import { undeliveredAnswersOf } from './questions'
@@ -85,7 +85,7 @@ export async function recordAnswerAndDeliver(
   const { answered, questions } = await saveAnswer($, sessionId, which, answer)
   await setQuestionsInState($, sessionId, questions)
   if (answered !== undefined) {
-    submitWhileNoTurnRuns($, answersSource($))
+    submitWhileSessionAcceptsPrompts($, answersSource($))
   }
 
   return answered !== undefined
@@ -97,7 +97,6 @@ export function answersSource($: EngineInterface): HeldTextSource {
     takeNote: () => takeAnswersNote($),
     submit: () => submitAnswers($),
     describeNotSent: describeAnswersNotSent,
-    afterStoppedTurn: AfterStoppedTurn.WaitForPrompt,
   }
 }
 

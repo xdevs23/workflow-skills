@@ -9,14 +9,27 @@ const ROAST_PROMPT =
   'no praise, no softening. You have no tools for this reply, so answer straight away with the ' +
   'roast alone, with nothing before or after it.'
 
+/** Where the note of a roast goes to the model. */
+export enum RoastNotePlace {
+  /** With a tool result, for a roast that the user sent while the turn ran. */
+  ToolResult = 'tool result',
+  /** Beside a prompt typed by the user, for a roast that the user sent before that prompt. */
+  Prompt = 'prompt',
+}
+
+const ROAST_SENT_AT: Record<RoastNotePlace, string> = {
+  [RoastNotePlace.ToolResult]: 'They sent it while you worked.',
+  [RoastNotePlace.Prompt]: 'They sent it before this message.',
+}
+
 /**
- * The note with a tool result that sends the model `message`, a roast that the user sent while the
- * turn ran, with their comment before it.
+ * The note at `place` that sends the model `message`: a roast that the user sent, with the comment
+ * that the user typed before it.
  */
-export function describeRoastNote(message: string): string {
+export function describeRoastNote(place: RoastNotePlace, message: string): string {
   return (
-    'While you worked, the user sent you the following roast about your work as their own ' +
-    `message. Read it before you go on:\n\n${message}`
+    'The user sent you the following roast about your work as their own message. ' +
+    `${ROAST_SENT_AT[place]} Read it before you go on:\n\n${message}`
   )
 }
 

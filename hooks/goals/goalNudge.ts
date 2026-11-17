@@ -4,7 +4,7 @@ import type { Goal, NudgeSend, NudgedGoal, NudgedGoals, WaitingNudges } from '..
 import type { EveryEvent } from '../everyEvent'
 import { showFailure } from '../failureToast'
 import { PromptOutcome, submitToSession } from '../sendToModel'
-import { readIsTurnRunning } from '../sessionState'
+import { readSessionAcceptsPluginPrompts } from '../sessionState'
 import { runDetached, runAfterMainTurn } from '../timedWork'
 import { openGoalsByIdOf } from './board'
 import type { OpenGoals } from './dependency'
@@ -23,7 +23,8 @@ import { describeAlreadyMarkedDone, describeNudgeNotSent, describeNudgeWaiting }
 
 /**
  * Adds the open goal `goal` to the waiting nudges of the session `sessionId`, and sends them at
- * once while neither a turn nor a send runs. Otherwise a toast shows that the nudge waits.
+ * once while no send runs and the session accepts prompts submitted by the plugin. Otherwise a
+ * toast shows that the nudge waits.
  */
 export async function nudgeOpenGoal(
   $: EngineInterface,
@@ -41,15 +42,20 @@ export async function nudgeOpenGoal(
   if (nudges === null) {
     return
   }
-  if (nudges.sending !== null || (await readIsTurnRunning($))) {
+  if (nudges.sending !== null || !(await readSessionAcceptsPluginPrompts($))) {
     $.ui.toast(describeNudgeWaiting(goal))
     return
   }
   await sendWaitingNudges($, sessionId)
 }
 
+// After a turn stopped by the user, the goals wait for the end of the next turn.
 export const sendNudgesAfterTurn: MatchedHook<'turn.complete', EveryEvent> = ($, e, next) =>
-  runAfterMainTurn(e, next, async () => sendWaitingNudges($, await $.session.id()))
+  runAfterMainTurn(e, next, async () => {
+    if (await readSessionAcceptsPluginPrompts($)) {
+      await sendWaitingNudges($, await $.session.id())
+    }
+  })
 
 function withPressed(nudges: WaitingNudges, pressed: NudgedGoal): WaitingNudges {
   const listed = [...nudges.waiting, ...(nudges.sending?.goals ?? [])]
@@ -104,7 +110,7 @@ async function submitSend($: EngineInterface, sessionId: string, send: NudgeSend
     const nudges = await updateWaitingNudges($, sessionId, current =>
       current?.sending?.sendId === send.sendId ? withoutSend(current) : current,
     )
-    if (!hasEntered && nudges !== null && !(await readIsTurnRunning($))) {
+    if (!hasEntered && nudges !== null && (await readSessionAcceptsPluginPrompts($))) {
       await sendWaitingNudges($, sessionId)
     }
   }

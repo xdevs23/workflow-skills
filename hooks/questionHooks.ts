@@ -55,7 +55,7 @@ import {
   WITHDRAW_TOOL,
 } from './names'
 import { sortedByNumber } from './numbered'
-import { isTypedByUser } from './promptOrigin'
+import { isMessageTypedByUser } from './promptOrigin'
 import { Withdrawal, openQuestionsOf } from './questions'
 import { awaitingSessionOf, sessionForUse } from './questionSession'
 import {
@@ -190,7 +190,7 @@ export async function submitWithAnswers(
   e: Frozen<PromptSubmitInput>,
   next: Next<'prompt.submit'>,
 ): Promise<PromptSubmitResult> {
-  if (e.command !== undefined || !isTypedByUser(e.origin) || !hasPersonAtPrompt()) {
+  if (!isMessageTypedByUser(e) || !hasPersonAtPrompt()) {
     return next(e)
   }
 

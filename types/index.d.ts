@@ -22,6 +22,7 @@ import type {
 import type { ReadReminders, RemindersNotRead } from '../hooks/reminders/reminderStore'
 import type { Refusal as ReminderRefusal } from '../hooks/reminders/reminders'
 import type { PendingRoast, SessionRoast } from '../hooks/roast/roastState'
+import type { ActivityOfSession } from '../hooks/sessionState'
 
 /** What the user wrote in reply to a question. */
 export type Answer = {
@@ -365,10 +366,12 @@ declare module 'claude-code' {
   interface PluginState {
     'workflow-skills': {
       /**
-       * True while a turn of the main conversation runs. Answers are delivered differently
-       * during a turn than while idle.
+       * The activity of the main conversation of the session whose turn last started or ended,
+       * since the state may outlive a switch to another session by /clear or /resume; null before
+       * the first turn. The plugin delivers held texts differently during a turn, after a turn
+       * stopped by the user, and while idle.
        */
-      isTurnRunning: boolean
+      sessionActivity: ActivityOfSession | null
       /**
        * The questions of the session that last read or wrote them, with the id of that session,
        * since the state may outlive a switch to another session by /clear or /resume; null before

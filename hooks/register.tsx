@@ -5,7 +5,7 @@ import { answersSource } from './delivery'
 import { EVERY_EVENT } from './everyEvent'
 import { registerGoals } from './goals'
 import { openGoalsAfterCompaction } from './goals/goalReminderHooks'
-import { callToolWithHeldTexts, completeTurnWithHeldTexts } from './heldTexts'
+import { callToolWithHeldTexts, completeTurnWithHeldTexts, submitWithHeldTexts } from './heldTexts'
 import type { HeldTextSource } from './heldTexts'
 import { blockStopOnHintPhrase } from './hints'
 import { registerImports } from './imports'
@@ -57,6 +57,9 @@ export const register: Register = on => {
   on('tool.call', { tool: LIST_TOOL }, listQuestions).catch(denyHookFailure)
   on('tool.call', { tool: WITHDRAW_TOOL }, withdrawQuestion).catch(denyHookFailure)
   on('prompt.submit', EVERY_EVENT, submitWithAnswers)
+  // Answers go beside a prompt through submitWithAnswers, which marks them as read only once the
+  // prompt entered with them.
+  on('prompt.submit', EVERY_EVENT, ($, e, next) => submitWithHeldTexts(e, next, [roastsSource($)]))
   on('turn.start', EVERY_EVENT, markTurnRunning)
   on('turn.complete', EVERY_EVENT, ($, e, next) =>
     completeTurnWithHeldTexts($, e, next, heldTextSourcesOf($)),

@@ -9,7 +9,10 @@ import { isSessionRunning, ofRunningSession } from './sessionBoundState'
 // The engine lists the state a module reads and writes from the source of the module, so every
 // state reference of the questions is written in this file with its plugin and key as literals,
 // and the other modules read and write that state through the functions below.
-const isTurnRunning = atom({ plugin: 'workflow-skills', key: 'isTurnRunning' } as const, false)
+const sessionActivity = atom(
+  { plugin: 'workflow-skills', key: 'sessionActivity' } as const,
+  null,
+)
 const sessionQuestions = atom(
   { plugin: 'workflow-skills', key: 'sessionQuestions' } as const,
   null,
@@ -113,12 +116,43 @@ export async function updateQuestions(
   )
 }
 
-export function readIsTurnRunning($: EngineInterface): Promise<boolean> {
-  return read($, isTurnRunning)
+/** What the main conversation of a session does, as set by the start and the end of its turns. */
+export enum SessionActivity {
+  Idle = 'idle',
+  TurnRunning = 'turn running',
+  /**
+   * The user stopped the last turn. The session drops a prompt submitted by a plugin until the
+   * user sends input, which starts the next turn.
+   */
+  StoppedByUser = 'stopped by user',
 }
 
-export async function setTurnRunning($: EngineInterface, isRunning: boolean): Promise<void> {
-  await update($, isTurnRunning, () => isRunning)
+const ACCEPTS_PLUGIN_PROMPTS: Record<SessionActivity, boolean> = {
+  [SessionActivity.Idle]: true,
+  [SessionActivity.TurnRunning]: false,
+  [SessionActivity.StoppedByUser]: false,
+}
+
+/** The activity of the main conversation of the session with the id `sessionId`. */
+export type ActivityOfSession = { sessionId: string; activity: SessionActivity }
+
+async function readSessionActivity($: EngineInterface): Promise<SessionActivity> {
+  const recorded = await ofRunningSession($, await read($, sessionActivity))
+
+  return recorded?.activity ?? SessionActivity.Idle
+}
+
+/** Whether the running session accepts a prompt submitted by the plugin, or drops it. */
+export async function readSessionAcceptsPluginPrompts($: EngineInterface): Promise<boolean> {
+  return ACCEPTS_PLUGIN_PROMPTS[await readSessionActivity($)]
+}
+
+export async function setSessionActivity(
+  $: EngineInterface,
+  activity: SessionActivity,
+): Promise<void> {
+  const sessionId = await $.session.id()
+  await update($, sessionActivity, () => ({ sessionId, activity }))
 }
 
 /**

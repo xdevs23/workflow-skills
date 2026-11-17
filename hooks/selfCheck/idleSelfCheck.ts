@@ -4,7 +4,7 @@ import type { SelfCheckSchedule } from '../../types'
 import type { EveryEvent } from '../everyEvent'
 import { isTypedByUser } from '../promptOrigin'
 import { submitToSessionOrRestore, submitWithNoteOrRestore } from '../sendToModel'
-import { readIsTurnRunning } from '../sessionState'
+import { readSessionAcceptsPluginPrompts } from '../sessionState'
 import { runAfter, runAfterMainTurn } from '../timedWork'
 import {
   readSelfCheckSchedule,
@@ -108,11 +108,11 @@ async function waitForDueTime($: EngineInterface, schedule: SelfCheckSchedule): 
 }
 
 /**
- * Sends the self-check as a prompt that starts a turn, once it is due and while no turn runs. The
- * end of a running turn waits for the due time again.
+ * Sends the self-check as a prompt that starts a turn, once it is due and while the session accepts
+ * prompts submitted by the plugin. The end of the next turn waits for the due time again.
  */
 async function sendAtDueTime($: EngineInterface, sessionId: string): Promise<void> {
-  if (await readIsTurnRunning($)) {
+  if (!(await readSessionAcceptsPluginPrompts($))) {
     return
   }
   const taken = await takeSelfCheck($, sessionId)

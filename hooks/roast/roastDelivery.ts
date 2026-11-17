@@ -2,13 +2,13 @@ import type { EngineInterface } from 'claude-code'
 
 import { messageOf } from '../errorMessage'
 import { showFailure } from '../failureToast'
-import { AfterStoppedTurn, submitWhileNoTurnRuns } from '../heldTexts'
-import type { HeldTextSource } from '../heldTexts'
+import { submitWhileSessionAcceptsPrompts } from '../heldTexts'
+import type { HeldTextSource, PromptNoteSource, TakenNote } from '../heldTexts'
 import { PromptOutcome, submitToSessionOrRestore } from '../sendToModel'
 import { runDetached } from '../timedWork'
 import { openRoastPane } from './roastActions'
 import { ROAST_PANE } from './roastNames'
-import { describeRoastNote } from './roastPromptTexts'
+import { RoastNotePlace, describeRoastNote } from './roastPromptTexts'
 import {
   addPendingRoast,
   markRoastSent,
@@ -19,21 +19,20 @@ import type { PendingRoast, RoastRun, WrittenRoast } from './roastState'
 import { ROAST_TO_OTHER_SESSION, describeRoastNotSent } from './roastTexts'
 
 /** The roasts sent by the user, as a source of texts sent to the model. */
-export function roastsSource($: EngineInterface): HeldTextSource {
+export function roastsSource($: EngineInterface): HeldTextSource & PromptNoteSource {
   return {
     takeNote: () => takeRoastsNote($),
+    takeNoteBesidePrompt: () => takeRoastsBesidePrompt($),
     submit: () => submitPendingRoasts($),
     describeNotSent: describeRoastNotSent,
-    afterStoppedTurn: AfterStoppedTurn.Submit,
   }
 }
 
 /**
  * Sends the roast written for `run`, with the comment typed beside it, as a message of the user
- * once, and closes the Roast pane without waiting for the session. During a turn of the main
- * conversation the roast goes with the next tool result, and otherwise as a prompt. Where the pane
- * does not close, the roast does not go into the state, or the prompt does not enter, the roast and
- * the comment go back into the pane.
+ * once, and closes the Roast pane without waiting for the session. The roast goes to the model as
+ * `submitWhileSessionAcceptsPrompts` describes. Where the pane does not close, the roast does not
+ * go into the state, or the prompt does not enter, the roast and the comment go back into the pane.
  */
 export async function sendRoast($: EngineInterface, run: RoastRun): Promise<void> {
   const written = await markRoastSent($, run)
@@ -45,7 +44,7 @@ export async function sendRoast($: EngineInterface, run: RoastRun): Promise<void
     .close({ id: ROAST_PANE })
     .then(() => addPendingRoast($, roast))
     .then(
-      () => submitWhileNoTurnRuns($, roastsSource($)),
+      () => submitWhileSessionAcceptsPrompts($, roastsSource($)),
       async (error: unknown) => {
         await restoreRoast($, roast)
         showFailure($, describeRoastNotSent(messageOf(error)))
@@ -56,9 +55,31 @@ export async function sendRoast($: EngineInterface, run: RoastRun): Promise<void
 async function takeRoastsNote($: EngineInterface): Promise<string | undefined> {
   const taken = await takeRoastsOfRunningSession($)
 
+  return taken.length === 0 ? undefined : describeRoasts(taken, RoastNotePlace.ToolResult)
+}
+
+/**
+ * Removes the pending roasts of the running session, and returns their note beside a prompt typed
+ * by the user, with the function that puts them back into the Roast pane.
+ */
+async function takeRoastsBesidePrompt($: EngineInterface): Promise<TakenNote | undefined> {
+  const taken = await takeRoastsOfRunningSession($)
+
   return taken.length === 0
     ? undefined
-    : taken.map(roast => describeRoastNote(composeMessage(roast.written))).join('\n\n')
+    : {
+      note: describeRoasts(taken, RoastNotePlace.Prompt),
+      restore: async () => {
+        for (const roast of taken) {
+          await restoreRoast($, roast)
+        }
+      },
+    }
+}
+
+/** The note at `place` that sends the model every roast of `roasts`. */
+function describeRoasts(roasts: readonly PendingRoast[], place: RoastNotePlace): string {
+  return roasts.map(roast => describeRoastNote(place, composeMessage(roast.written))).join('\n\n')
 }
 
 /** Submits every pending roast written for the running session as a prompt, without waiting. */
