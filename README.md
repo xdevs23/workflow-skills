@@ -22,6 +22,8 @@ Then run a skill, such as `/workflow-skills:implement`.
 - **Reminders**: `/reminders` sends Claude a text on a schedule or after an event;
   `/reminders-import` brings reminders of an earlier session of the project into this one
 - **Questions**: Claude asks and keeps working; answer in the pane or with `/answer`
+- **Roast**: `/roast` writes where Claude disregarded the rules it was given or the facts in its
+  context, and sends it to Claude as your message, with your comment if you add one
 
 ## License
 
