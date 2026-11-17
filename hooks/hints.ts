@@ -2,6 +2,7 @@ import type { Hook } from 'claude-code'
 
 import type { HintKind } from './hintKind'
 import { kindsWithPhraseIn } from './hintKinds'
+import { writeHintTextsWithEachStepOnce } from './hintText'
 import { stopWithNote } from './sendToModel'
 import type { TextWithLine } from './sendToModel'
 
@@ -17,7 +18,10 @@ function describeHintNote(kinds: readonly HintKind[]): TextWithLine | undefined 
   if (kinds.length === 0) {
     return undefined
   }
-  const paragraphs = [...kinds.map(kind => kind.text), HINT_CLOSING]
+  const paragraphs = [
+    ...writeHintTextsWithEachStepOnce(kinds.map(kind => kind.text)),
+    HINT_CLOSING,
+  ]
 
   return { text: paragraphs.join('\n\n'), line: `Hint sent to Claude: ${paragraphs.join(' ')}` }
 }

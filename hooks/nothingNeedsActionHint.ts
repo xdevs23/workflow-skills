@@ -38,7 +38,9 @@ export const NOTHING_NEEDS_ACTION_HINT: HintKind = {
     ),
     /\bnothing\s+(?:to\s+act\s+on|actionable)\b/i,
   ],
-  text:
-    'Your message reports that nothing needs action. Check that claim first. ' +
-    `${CHECK_FOR_OPEN_WORK} ${OPTIMIZE_IDLE_TIME}`,
+  text: [
+    'Your message reports that nothing needs action. Check that claim first.',
+    CHECK_FOR_OPEN_WORK,
+    OPTIMIZE_IDLE_TIME,
+  ],
 }

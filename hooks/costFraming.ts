@@ -9,8 +9,9 @@ export const COST_FRAMING: Refusal = {
     String.raw`^[ \t]*${LIST_MARK}${EMPHASIS}${COST_WORDS}${EMPHASIS}[ \t]*:`,
     'im',
   ),
-  reason:
+  reason: [
     'It labels a decision as a cost. A good engineering decision and proper architecture are ' +
-    'never a cost: the cost comes from the wrong design that now has to change. Look at the ' +
-    'option again, choose the right design and build it, and do not present it as a cost.',
+      'never a cost: the cost comes from the wrong design that now has to change. Look at the ' +
+      'option again, choose the right design and build it, and do not present it as a cost.',
+  ],
 }

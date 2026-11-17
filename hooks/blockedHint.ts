@@ -22,7 +22,9 @@ export const BLOCKED_HINT: HintKind = {
     /\b(?:once|when)\s+you(?:['’]re|\s+are)\s+back\b/i,
     /\bwhat(?:['’]s|\s+is)\s+left\s+for\s+you\b(?![\s:,—–-]*(?:nothing|none)\b)/i,
   ],
-  text:
-    `${CHECK_FOR_OPEN_WORK} If nothing is startable, try splitting up the blocked units into ` +
-    "smaller sub-units and start the ones that don't depend on the blocker.",
+  text: [
+    CHECK_FOR_OPEN_WORK,
+    'If nothing is startable, try splitting up the blocked units into smaller sub-units and ' +
+      "start the ones that don't depend on the blocker.",
+  ],
 }

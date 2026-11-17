@@ -35,9 +35,10 @@ export const ASKED_PERMISSION: Refusal = {
     String.raw`(?:${PERMISSION_ASKERS})\s+(?:${ORDERED_WORK_VERBS})`,
     runWithoutWorkNeedingApproval(String.raw`${QUESTION_MARKS}\n`),
   ),
-  reason:
+  reason: [
     'It ends on a question that asks the user for permission to do work. If the user only asked ' +
-    'a question, delete the offer and end on the answer. If the user asked for this work or a ' +
-    'rule orders it, do it now, and say in your message what you chose. ' +
+      'a question, delete the offer and end on the answer. If the user asked for this work or a ' +
+      'rule orders it, do it now, and say in your message what you chose.',
     HAND_OVER_UNANSWERED,
+  ],
 }

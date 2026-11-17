@@ -1,3 +1,4 @@
+import { writeHintText } from './hintText'
 import { ANSWER_COMMAND } from './names'
 import { isPositiveInteger } from './positiveInteger'
 import type { Refusal } from './refusal'
@@ -64,7 +65,7 @@ const ASK_PROBLEMS: Record<FixedAskProblem, string> = {
 /** What the model is told when its input to the asking tool breaks a rule. */
 export function askProblemOf(failure: AskFailure): string {
   return failure.outcome === AskOutcome.Refused
-    ? `The question is refused. ${failure.refusal.reason}`
+    ? `The question is refused. ${writeHintText(failure.refusal.reason)}`
     : ASK_PROBLEMS[failure.outcome]
 }
 

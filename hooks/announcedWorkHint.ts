@@ -59,9 +59,10 @@ export const ANNOUNCED_WORK_HINT: HintKind = {
     phrase(String.raw`${SELF_NOW}${WORK_GERUND}`),
     phrase(String.raw`\blet\s+me\s+${WORK_VERB}`),
   ],
-  text:
+  text: [
     'Your message announces work as next or as underway, and your turn is ending. If no running ' +
-    'task, workflow or agent does that work, start it now, in this turn. If one does, say in ' +
-    'your message which one does it. If the work cannot start, remove the claim and say what it ' +
-    'waits on.',
+      'task, workflow or agent does that work, start it now, in this turn. If one does, say in ' +
+      'your message which one does it. If the work cannot start, remove the claim and say what ' +
+      'it waits on.',
+  ],
 }

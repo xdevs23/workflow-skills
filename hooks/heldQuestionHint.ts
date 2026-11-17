@@ -21,8 +21,10 @@ export const HELD_QUESTION_HINT: HintKind = {
         String.raw`(?:${NEXT_QUESTION}|${ANOTHER_QUESTION}|the\s+rest|${FURTHER}\s+questions?)\b`,
     ),
   ],
-  text:
+  text: [
     'Your message announces a question in place of asking it. Never announce a question. Run ' +
-    'each question you hold back through workflow-skills:question now, and act on the answer the ' +
-    `subagent finds. ${HAND_OVER_UNANSWERED}`,
+      'each question you hold back through workflow-skills:question now, and act on the answer ' +
+      'the subagent finds.',
+    HAND_OVER_UNANSWERED,
+  ],
 }

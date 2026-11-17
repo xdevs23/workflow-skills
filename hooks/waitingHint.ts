@@ -74,10 +74,12 @@ export const WAITING_HINT: HintKind = {
     /\bmy\s+questions?\s+(?:above|from\s+(?:before|earlier))\b/i,
     /\bquestions?\s+(?:I|we)\s+(?:asked|put|posted|raised)\b/i,
   ],
-  text:
+  text: [
     "If you're waiting for an answer from the user, ensure you have first researched whether the " +
-    'question is already answered by rules, instructions or older transcripts. Read around the ' +
-    'context you find and do not trust markdown files in the project that paraphrase or take out ' +
-    `of context what the user has said. ${HAND_OVER_UNANSWERED} Do not repeat open questions, ` +
-    'and pick up independent work in the meantime.',
+      'question is already answered by rules, instructions or older transcripts. Read around the ' +
+      'context you find and do not trust markdown files in the project that paraphrase or take ' +
+      'out of context what the user has said.',
+    HAND_OVER_UNANSWERED,
+    'Do not repeat open questions, and pick up independent work in the meantime.',
+  ],
 }

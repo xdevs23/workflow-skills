@@ -36,8 +36,10 @@ export const ASKED_APPROVAL: Refusal = {
     `${SENTENCE_START}(?:${APPROVAL_QUESTION_OPENINGS})`,
     RUN_WITHIN_SENTENCE,
   ),
-  reason:
+  reason: [
     'It ends on a question that asks the user to approve or review work. Open the draft page or ' +
-    'name the work in the message, and leave it waiting for the user, who looks at it when there ' +
-    'is time and says what should be different. Go on with work that does not depend on it.',
+      'name the work in the message, and leave it waiting for the user, who looks at it when ' +
+      'there is time and says what should be different. Go on with work that does not depend on ' +
+      'it.',
+  ],
 }

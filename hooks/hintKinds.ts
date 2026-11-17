@@ -3,6 +3,7 @@ import { BLOCKED_HINT } from './blockedHint'
 import { BUILD_WAIT_HINT } from './buildWaitHint'
 import { HELD_QUESTION_HINT } from './heldQuestionHint'
 import type { HintKind } from './hintKind'
+import type { SharedStep } from './hintText'
 import { IDLE_REPLY_HINT } from './idleReplyHint'
 import { NOTHING_NEEDS_ACTION_HINT } from './nothingNeedsActionHint'
 import { withoutQuotedText } from './quotedText'
@@ -10,9 +11,11 @@ import type { Refusal } from './refusal'
 import { REFUSALS } from './refusals'
 import { WAITING_HINT } from './waitingHint'
 
+const MESSAGE_NOT_VALID: SharedStep = { text: 'Your message is not valid.' }
+
 /** The hint that blocks the end of a turn on a message with the shape of the refusal. */
 export function hintOf(refusal: Refusal): HintKind {
-  return { phrases: [refusal.pattern], text: `Your message is not valid. ${refusal.reason}` }
+  return { phrases: [refusal.pattern], text: [MESSAGE_NOT_VALID, ...refusal.reason] }
 }
 
 /**

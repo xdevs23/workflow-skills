@@ -36,7 +36,11 @@ const IDLE_MESSAGE =
  * for work. */
 export const IDLE_REPLY_HINT: HintKind = {
   phrases: [new RegExp(IDLE_MESSAGE, 'i')],
-  text:
-    `Looks like you're idling. ${CHECK_FOR_OPEN_WORK} Work toward the open goals. Check whether ` +
-    `the user gave an instruction for idle time, and follow it. ${OPTIMIZE_IDLE_TIME}`,
+  text: [
+    "Looks like you're idling.",
+    CHECK_FOR_OPEN_WORK,
+    'Work toward the open goals. Check whether the user gave an instruction for idle time, and ' +
+      'follow it.',
+    OPTIMIZE_IDLE_TIME,
+  ],
 }
