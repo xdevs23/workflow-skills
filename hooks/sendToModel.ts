@@ -22,6 +22,14 @@ export type TextWithLine = { text: string; line: string }
 /** The result of a delivery, and whether the model received what was handed to it. */
 export type Delivery<T> = { result: T; isAccepted: boolean }
 
+/** A feature that sends a note to the main conversation. */
+export type NoteSource<Note> = {
+  /** Takes the note to send, or returns undefined when there is nothing to send. */
+  takeNote: () => Promise<Note | undefined>
+  /** The toast for the note left unsent, with the reason given by the engine or the failure. */
+  describeNotSent: (reason: string) => string
+}
+
 /** What became of a prompt that the plugin submitted to a session. */
 export enum PromptOutcome {
   Entered = 'entered',

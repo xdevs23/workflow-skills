@@ -10,6 +10,7 @@ import { REPLACES_CONVERSATION } from './compactionTrigger'
 import { isMainConversation } from './conversation'
 import { showFailure } from './failureToast'
 import { PromptOutcome, submitToSessionOrRestore } from './sendToModel'
+import type { NoteSource } from './sendToModel'
 import { readIsTurnRunning } from './sessionState'
 import { runDetached } from './timedWork'
 
@@ -21,12 +22,7 @@ export type CompactionNote = {
 }
 
 /** A feature that sends a note to the main conversation after every compaction of it. */
-export type CompactionNoteSource = {
-  /** Takes the note to send, or returns undefined when there is nothing to send. */
-  takeNote: () => Promise<CompactionNote | undefined>
-  /** The toast for the note left unsent, with the reason given by the engine or the failure. */
-  describeNotSent: (reason: string) => string
-}
+export type CompactionNoteSource = NoteSource<CompactionNote>
 
 /** A note taken from `source`. */
 type TakenNote = { source: CompactionNoteSource; note: CompactionNote }

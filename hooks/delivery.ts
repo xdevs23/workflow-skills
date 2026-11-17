@@ -1,17 +1,23 @@
 import type { EngineInterface } from 'claude-code'
 
 import type { Question } from '../types'
+import { AfterStoppedTurn, submitWhileNoTurnRuns } from './heldTexts'
+import type { HeldTextSource } from './heldTexts'
 import { describeAnswers } from './modelText'
 import { undeliveredAnswersOf } from './questions'
 import type { AnsweredQuestion } from './questions'
-import { saveAnswer, saveDelivery, toastStoreFailure } from './questionStore'
+import { awaitingSessionOf } from './questionSession'
+import {
+  handleStoreFailure,
+  saveAnswer,
+  saveDelivery,
+  toastStoreFailure,
+} from './questionStore'
 import { PromptOutcome, submitToSession } from './sendToModel'
-import { runDetached } from './timedWork'
 import type { Delivery } from './sendToModel'
 import {
   claimAnswers,
   loadQuestionsFromStore,
-  readIsTurnRunning,
   releaseAnswers,
   setQuestionsInState,
   updateQuestions,
@@ -78,29 +84,62 @@ export async function recordAnswerAndDeliver(
   const answer = { text, answeredAt: await $.clock.now() }
   const { answered, questions } = await saveAnswer($, sessionId, which, answer)
   await setQuestionsInState($, sessionId, questions)
-  if (answered !== undefined && !(await readIsTurnRunning($))) {
-    deliverWhenIdle($, sessionId)
+  if (answered !== undefined) {
+    submitWhileNoTurnRuns($, answersSource($))
   }
 
   return answered !== undefined
 }
 
-/**
- * Sends the undelivered answers of the session to the model as a prompt in the name of the user,
- * and stores them as delivered once the prompt is accepted. The delivery takes only answers not
- * delivered yet, so a delivery started while another one runs sends no answer twice.
- */
-export function deliverWhenIdle($: EngineInterface, sessionId: string): void {
-  runDetached(
-    $,
-    () => deliverAsPrompt($, sessionId),
-    message =>
-      `The answers to your questions could not be sent to Claude: ${message}. ` +
-      'They are sent with your next prompt or the next tool result.',
+/** The answers to the questions of the session, as a source of texts sent to the model. */
+export function answersSource($: EngineInterface): HeldTextSource {
+  return {
+    takeNote: () => takeAnswersNote($),
+    submit: () => submitAnswers($),
+    describeNotSent: describeAnswersNotSent,
+    afterStoppedTurn: AfterStoppedTurn.WaitForPrompt,
+  }
+}
+
+/** The toast for answers left unsent for `reason`. */
+function describeAnswersNotSent(reason: string): string {
+  return (
+    `This plugin could not send your answers to Claude: ${reason}. ` +
+    'It sends them with your next prompt or the next tool result.'
   )
 }
 
-async function deliverAsPrompt($: EngineInterface, sessionId: string): Promise<void> {
+async function takeAnswersNote($: EngineInterface): Promise<string | undefined> {
+  const sessionId = await awaitingSessionOf($)
+  if (sessionId === null) {
+    return undefined
+  }
+
+  return handleStoreFailure(
+    $,
+    () =>
+      deliverAnswers($, sessionId, async answered => ({
+        result: answered.length === 0 ? undefined : describeAnswers(answered),
+        isAccepted: true,
+      })),
+    message => {
+      $.ui.toast(message)
+
+      return undefined
+    },
+  )
+}
+
+/**
+ * Sends the undelivered answers of the session awaiting answers to the model as a prompt in the
+ * name of the user, and stores them as delivered once the prompt is accepted. The delivery skips
+ * answers already delivered, so a delivery started while another one runs sends each answer once.
+ */
+async function submitAnswers($: EngineInterface): Promise<void> {
+  const sessionId = await awaitingSessionOf($)
+  if (sessionId === null) {
+    return
+  }
   await deliverAnswers($, sessionId, async answered => {
     if (answered.length === 0) {
       return { result: undefined, isAccepted: false }
@@ -108,10 +147,7 @@ async function deliverAsPrompt($: EngineInterface, sessionId: string): Promise<v
     const text = describeAnswers(answered)
     const submitted = await submitToSession($, sessionId, { text, asUser: true })
     if (submitted.outcome === PromptOutcome.Dropped) {
-      $.ui.toast(
-        `The answers to your questions were not sent to Claude: ${submitted.reason}. ` +
-          'They are sent with your next prompt or the next tool result.',
-      )
+      $.ui.toast(describeAnswersNotSent(submitted.reason))
     }
 
     return { result: undefined, isAccepted: submitted.outcome === PromptOutcome.Entered }

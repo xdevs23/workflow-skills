@@ -11,13 +11,11 @@ import type {
   PromptSubmitResult,
   ToolCallInput,
   ToolCallResult,
-  TurnCompleteInput,
-  TurnCompleteResult,
 } from 'claude-code'
 
 import { isMainConversation } from './conversation'
 import { draftRemindersFor } from './draftQuestion'
-import { deliverAnswers, deliverWhenIdle, recordAnswerAndDeliver } from './delivery'
+import { deliverAnswers, recordAnswerAndDeliver } from './delivery'
 import { denyFailedHook, replyToFailedHook } from './hookFailure'
 import {
   ANSWER_ARGUMENTS,
@@ -69,7 +67,7 @@ import {
   saveWithdrawal,
   toastStoreFailure,
 } from './questionStore'
-import { callToolWithNote, submitWithNote } from './sendToModel'
+import { submitWithNote } from './sendToModel'
 import {
   hasPersonAtPrompt,
   loadQuestionsFromStore,
@@ -77,7 +75,6 @@ import {
   recordPersonAtPrompt,
   recordReadAtStart,
   setQuestionsInState,
-  setTurnRunning,
   takeReadAtStart,
 } from './sessionState'
 
@@ -135,28 +132,6 @@ export const readQuestionsOfStartedSession: Hook<'classic.SessionStart'> = async
 
   return next(e)
 }
-
-export const addAnswersToToolResult: Hook<'tool.call'> = ($, e, next) =>
-  callToolWithNote(e, next, async () => {
-    const sessionId = await awaitingSessionOf($)
-    if (sessionId === null) {
-      return undefined
-    }
-
-    return handleStoreFailure(
-      $,
-      () =>
-        deliverAnswers($, sessionId, async answered => ({
-          result: answered.length === 0 ? undefined : describeAnswers(answered),
-          isAccepted: true,
-        })),
-      message => {
-        $.ui.toast(message)
-
-        return undefined
-      },
-    )
-  })
 
 export const askQuestion: MatchedHook<'tool.call', { tool: typeof ASK_TOOL }> = async ($, e) => {
   const sessionId = await sessionForUse($)
@@ -241,35 +216,6 @@ export async function submitWithAnswers(
       return next(e)
     },
   )
-}
-
-export const markTurnRunning: Hook<'turn.start'> = async ($, e, next) => {
-  if (isMainConversation(e)) {
-    await setTurnRunning($, true)
-  }
-
-  return next(e)
-}
-
-// An answer given while the turn ran and not read with a tool result goes out as a prompt. A
-// turn the user interrupted does not start a new one: the answers given during it go with the
-// next prompt of the user. It is a function declaration for the same reason as
-// `submitWithAnswers`.
-export async function completeQuestionTurn(
-  $: EngineInterface,
-  e: Frozen<TurnCompleteInput>,
-  next: Next<'turn.complete'>,
-): Promise<TurnCompleteResult> {
-  const completed = await next(e)
-  if (isMainConversation(e)) {
-    await setTurnRunning($, false)
-    const sessionId = e.isAborted ? null : await awaitingSessionOf($)
-    if (sessionId !== null) {
-      deliverWhenIdle($, sessionId)
-    }
-  }
-
-  return completed
 }
 
 export const runAnswerCommand: MatchedHook<
