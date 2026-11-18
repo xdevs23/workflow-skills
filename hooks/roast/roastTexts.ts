@@ -168,11 +168,16 @@ const IDLE_ROAST_RETRY_STEPS: Record<RoastRecovery, string> = {
   [RoastRecovery.NeedsPerson]: 'The idle roast waits again after your next message.',
 }
 
-/** The toast for an idle roast that was not written, with the next step. */
+/** The text for an idle roast that was not written, with the next step. */
 export function describeIdleRoastNotWritten(failure: RoastFailure): string {
   const retry = IDLE_ROAST_RETRY_STEPS[recoveryOf(failure)]
 
-  return `The idle roast was not written. ${describeNotWritten(failure, retry)} ${DEBUG_LOG_NOTE}`
+  return `The idle roast was not written. ${describeNotWritten(failure, retry)}`
+}
+
+/** The toast for an idle roast that was not written, which the debug log has too. */
+export function describeIdleRoastNotWrittenToast(failure: RoastFailure): string {
+  return `${describeIdleRoastNotWritten(failure)} ${DEBUG_LOG_NOTE}`
 }
 
 /** The toast for an idle roast that did not go to Claude for `reason` and waits again. */

@@ -23,6 +23,7 @@ import { RoastShown, RoastSource } from './roastState'
 import {
   IDLE_ROAST_FOUND_NO_BLOCKING_POINT,
   describeIdleRoastNotWritten,
+  describeIdleRoastNotWrittenToast,
   describeIdleRoastSwitchNotDeleted,
   describeIdleRoastSwitchNotRead,
 } from './roastTexts'
@@ -152,7 +153,7 @@ function waitForIdleRoast($: EngineInterface): void {
         endStretchIfNeedsPerson({ cause: RoastNotWrittenCause.Thrown, message: messageOf(error) })
         throw error
       }),
-    message => describeIdleRoastNotWritten({ cause: RoastNotWrittenCause.Thrown, message }),
+    message => describeIdleRoastNotWrittenToast({ cause: RoastNotWrittenCause.Thrown, message }),
   )
   idleWait = wait
 }
@@ -223,12 +224,21 @@ async function deliverIdleRoastReply(
 }
 
 /**
- * Shows `failure` of the idle roast. A failure that only a person can clear ends the stretch, so
- * the idle roast does not ask again before the next message typed by the user.
+ * Shows `failure` of the idle roast in a toast where only a person can clear it, and ends the
+ * stretch, so the idle roast does not ask again before the next message typed by the user. A
+ * failure that a new fork can get past goes to the debug log alone, and the end of the next turn
+ * waits again.
  */
 function showIdleRoastFailure($: EngineInterface, failure: RoastFailure): void {
   endStretchIfNeedsPerson(failure)
-  showFailure($, describeIdleRoastNotWritten(failure))
+  switch (recoveryOf(failure)) {
+    case RoastRecovery.AskAgain:
+      $.ui.log(describeIdleRoastNotWritten(failure), { to: 'debug' })
+      break
+    case RoastRecovery.NeedsPerson:
+      showFailure($, describeIdleRoastNotWrittenToast(failure))
+      break
+  }
 }
 
 function endStretchIfNeedsPerson(failure: RoastFailure): void {
