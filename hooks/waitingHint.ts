@@ -31,6 +31,10 @@ const OPEN_ITEM =
   String.raw`\b(?:decisions?|answers?|approvals?|choices?|points?|items?)${ITEM_NUMBER}?`
 
 const HAVE_NOT_ANSWERED = String.raw`(?:have\s+not|haven['’]t)\s+(?:yet\s+)?answered`
+/** A choice left to the user, as in "you haven't said yet whether", and never a default kept, as in
+ * "you haven't said otherwise". */
+const HAVE_NOT_SAID =
+  String.raw`(?:have\s+not|haven['’]t)\s+(?:yet\s+)?said(?:\s+yet)?\s+(?:whether|if|which|what|how)`
 const DID_NOT_ANSWER = String.raw`(?:did\s+not|didn['’]t)\s+(?:yet\s+)?answer`
 const STILL_STANDS = String.raw`still\s+(?:stands?|applies|needs?)`
 const IS_NOT_YET_ANSWERED = String.raw`(?:has|have|is|are)\s+not\s+(?:yet\s+)?(?:been\s+)?answered`
@@ -39,7 +43,7 @@ const IS_NOT_YET_ANSWERED = String.raw`(?:has|have|is|are)\s+not\s+(?:yet\s+)?(?
  * you", and say nothing about the message itself. */
 export const WAITING_FOR_YOU = /(?<!\bon\s+)\b(?:waiting|waits)\s+(?:for|on)\s+you(?:r)?\b/i
 
-/** The hint after a message that waits for an answer from the user. */
+/** The hint after a message that waits for an answer or an approval from the user. */
 export const WAITING_HINT: HintKind = {
   phrases: [
     phrase(
@@ -54,8 +58,19 @@ export const WAITING_HINT: HintKind = {
     WAITING_FOR_YOU,
     /\bawait(?:s|ing)?\s+your\b/i,
     phrase(String.raw`\byour\s+answer\s+on\s+${SENTENCE}\s+is\s+still\b`),
-    /(?<!\b(?:blocks?|holds?|stops?|pauses?)\b[^.!?\n]{0,40})\b(?:once|until)\s+you\s+answer\b/i,
-    phrase(String.raw`\byou\s+(?:${HAVE_NOT_ANSWERED}|${DID_NOT_ANSWER})\b`),
+    phrase(
+      String.raw`(?<!\b(?:blocks?|holds?|stops?|pauses?)\b[^.!?\n]{0,40}|\bonly\s+)` +
+        String.raw`\b(?:once|until|after)\s+you\s+(?:answer|approve|say\s+so)\b`,
+    ),
+    phrase(
+      String.raw`(?<!\bon\s+)\b(?:waiting\s+for\s+approval\b(?!\s+(?:from|by)\b)|` +
+        String.raw`pending\s+your\s+approval\b)`,
+    ),
+    phrase(
+      String.raw`(?<!\b(?:no|not|nothing|nobody)\b[^.!?\n]{0,40})` +
+        String.raw`\b(?:approvals?|decisions?|answers?)\b[^.!?\n]{0,40}\bon\s+your\s+side\b`,
+    ),
+    phrase(String.raw`\byou\s+(?:${HAVE_NOT_ANSWERED}|${HAVE_NOT_SAID}|${DID_NOT_ANSWER})\b`),
     /\byou\s+have\s+yet\s+to\s+answer\b/i,
     /\bonce\s+you(?:['’]ve|\s+have)\s+answered\b/i,
     /\bneeds?\s+your\s+(?:answer|approval|go|pick|choice|decision|call|ok(?:ay)?)\b/i,
