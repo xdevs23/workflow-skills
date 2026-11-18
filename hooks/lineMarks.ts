@@ -8,3 +8,9 @@ export const EMPHASIS = String.raw`(?:\*\*?|__?)?`
 export const QUESTION_MARKS = '?？'
 /** A question mark that ends the text, with any emphasis, marks or space after it. */
 export const QUESTION_MARK_AT_END = String.raw`[${QUESTION_MARKS}][${QUESTION_MARKS}!*_~\s]*$`
+
+/** The source of an expression for a line or bullet that opens on the words as its label, past
+ * any emphasis, with a colon after them. */
+export function labelledLine(words: string): string {
+  return String.raw`^[ \t]*${LIST_MARK}${EMPHASIS}${words}${EMPHASIS}[ \t]*:`
+}
