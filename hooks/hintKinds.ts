@@ -1,3 +1,4 @@
+import { ACCEPTED_GAP_HINT } from './acceptedGapHint'
 import { ANNOUNCED_WORK_HINT } from './announcedWorkHint'
 import { BLOCKED_HINT } from './blockedHint'
 import { BUILD_WAIT_HINT } from './buildWaitHint'
@@ -9,6 +10,7 @@ import { NOTHING_NEEDS_ACTION_HINT } from './nothingNeedsActionHint'
 import { withoutQuotedText } from './quotedText'
 import type { Refusal } from './refusal'
 import { REFUSALS } from './refusals'
+import { UNVERIFIED_WORK_HINT } from './unverifiedWorkHint'
 import { WAITING_HINT } from './waitingHint'
 
 const MESSAGE_NOT_VALID: SharedStep = { text: 'Your message is not valid.' }
@@ -35,6 +37,8 @@ export const PHRASE_KINDS: readonly HintKind[] = [
   NOTHING_NEEDS_ACTION_HINT,
   ANNOUNCED_WORK_HINT,
   BUILD_WAIT_HINT,
+  ACCEPTED_GAP_HINT,
+  UNVERIFIED_WORK_HINT,
 ]
 
 /** The kinds of hint with a phrase in the message outside quoted text: the first whole-message
