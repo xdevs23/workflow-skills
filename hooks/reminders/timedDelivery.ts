@@ -4,7 +4,13 @@ import type { EngineInterface, MatchedHook, On, Timer } from 'claude-code'
 import type { Reminder, TimedRemindersHandled } from '../../types'
 import { EVERY_EVENT } from '../everyEvent'
 import type { EveryEvent } from '../everyEvent'
-import { callToolWithNote, logSentLine, submitToSessionOrRestore } from '../sendToModel'
+import { showFailure } from '../failureToast'
+import {
+  PromptOutcome,
+  callToolWithNote,
+  logSentLine,
+  submitToSessionOrRestore,
+} from '../sendToModel'
 import { ofSession, updateOfSession } from '../sessionBoundState'
 import { SWITCHING_SOURCES } from '../sessionSources'
 import { readSessionAcceptsPluginPrompts } from '../sessionState'
@@ -134,9 +140,12 @@ async function sendAtDueTime($: EngineInterface): Promise<void> {
     return
   }
   // The prompt shows in the transcript itself, so the transcript line of the note is not shown.
-  await submitToSessionOrRestore($, sessionId, { text: note.text }, () =>
+  const submitted = await submitToSessionOrRestore($, sessionId, { text: note.text }, () =>
     restoreHandled($, sessionId, reminders, taken),
   )
+  if (submitted.outcome === PromptOutcome.Dropped) {
+    showFailure($, describeTimedRemindersFailed(submitted.reason))
+  }
 }
 
 /**

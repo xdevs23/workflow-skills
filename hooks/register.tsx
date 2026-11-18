@@ -32,7 +32,7 @@ import { registerRulesBanner } from './rulesBanner'
 import { registerSelfCheck } from './selfCheck'
 import { registerSessionRecords } from './sessions'
 import { registerTodoClauseNotes } from './todoClauseNotes'
-import { markTurnRunning } from './turnState'
+import { endStopOnTypedCommand, markTurnRunning } from './turnState'
 
 export const register: Register = on => {
   // Registered before every other hook of this plugin on a prompt, so it reads the prompt as typed.
@@ -63,6 +63,8 @@ export const register: Register = on => {
     submitWithHeldTexts($, e, next, [roastsSource($)]),
   )
   on('turn.start', EVERY_EVENT, markTurnRunning)
+  // Registered before the commands of this plugin, so each of them reads the stop as ended.
+  on('command.run', EVERY_EVENT, endStopOnTypedCommand)
   on('turn.complete', EVERY_EVENT, ($, e, next) =>
     completeTurnWithHeldTexts($, e, next, heldTextSourcesOf($)),
   )

@@ -122,7 +122,7 @@ export enum SessionActivity {
   TurnRunning = 'turn running',
   /**
    * The user stopped the last turn. The session drops a prompt submitted by a plugin until the
-   * user sends input, which starts the next turn.
+   * user sends a message or runs a slash command.
    */
   StoppedByUser = 'stopped by user',
 }
@@ -154,6 +154,16 @@ export async function setSessionActivity(
 ): Promise<void> {
   const sessionId = await $.session.id()
   await update($, sessionActivity, () => ({ sessionId, activity }))
+}
+
+/** Marks the running session as idle when the user stopped its last turn. */
+export async function endStopByUser($: EngineInterface): Promise<void> {
+  const sessionId = await $.session.id()
+  await update($, sessionActivity, inState =>
+    inState?.sessionId === sessionId && inState.activity === SessionActivity.StoppedByUser
+      ? { sessionId, activity: SessionActivity.Idle }
+      : inState,
+  )
 }
 
 /**

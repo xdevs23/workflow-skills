@@ -3,7 +3,12 @@ import type { EngineInterface, MatchedHook, Timer } from 'claude-code'
 import type { SelfCheckSchedule } from '../../types'
 import type { EveryEvent } from '../everyEvent'
 import { isTypedByUser } from '../promptOrigin'
-import { submitToSessionOrRestore, submitWithNoteAndLineOrRestore } from '../sendToModel'
+import { showFailure } from '../failureToast'
+import {
+  PromptOutcome,
+  submitToSessionOrRestore,
+  submitWithNoteAndLineOrRestore,
+} from '../sendToModel'
 import { readSessionAcceptsPluginPrompts } from '../sessionState'
 import { runAfter, runAfterMainTurn } from '../timedWork'
 import {
@@ -122,9 +127,12 @@ async function sendAtDueTime($: EngineInterface, sessionId: string): Promise<voi
     return
   }
   // The prompt shows in the transcript itself, so the transcript line is not shown.
-  await submitToSessionOrRestore($, sessionId, { text: SELF_CHECK_TEXT }, () =>
+  const submitted = await submitToSessionOrRestore($, sessionId, { text: SELF_CHECK_TEXT }, () =>
     restoreDueTime($, taken),
   )
+  if (submitted.outcome === PromptOutcome.Dropped) {
+    showFailure($, describeSelfCheckFailed(submitted.reason))
+  }
 }
 
 /**

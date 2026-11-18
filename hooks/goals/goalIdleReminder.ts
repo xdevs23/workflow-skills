@@ -3,7 +3,8 @@ import type { EngineInterface, MatchedHook } from 'claude-code'
 import type { Board, IdleStretch } from '../../types'
 import { isMainConversation } from '../conversation'
 import type { EveryEvent } from '../everyEvent'
-import { submitToSessionOrRestore } from '../sendToModel'
+import { showFailure } from '../failureToast'
+import { PromptOutcome, submitToSessionOrRestore } from '../sendToModel'
 import { MILLISECONDS_PER_MINUTE } from '../timeUnits'
 import { runAfter, runAfterMainTurn } from '../timedWork'
 import { openGoalsOf } from './board'
@@ -84,9 +85,15 @@ async function remindAfterIdle($: EngineInterface, waiting: IdleStretch): Promis
   // The prompt shows in the transcript itself, so the transcript line of `sent` is not shown.
   const { sent, seenBefore } = await listOpenGoals($, sessionId, board, describeOpenGoalsAfterIdle)
   const restore = () => waitAgain($, reminded, seenBefore, board)
-  await (sent === undefined
-    ? restore()
-    : submitToSessionOrRestore($, sessionId, { text: sent.text }, restore))
+  if (sent === undefined) {
+    await restore()
+
+    return
+  }
+  const submitted = await submitToSessionOrRestore($, sessionId, { text: sent.text }, restore)
+  if (submitted.outcome === PromptOutcome.Dropped) {
+    showFailure($, describeOpenGoalsNotSent(submitted.reason))
+  }
 }
 
 /**

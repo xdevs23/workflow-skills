@@ -7,7 +7,7 @@ import type { EveryEvent } from '../everyEvent'
 import { showFailure, showingStoreFailure } from '../failureToast'
 import { isMessageTypedByUser } from '../promptOrigin'
 import { SWITCHING_SOURCES } from '../sessionSources'
-import { SessionActivity, readSessionActivity } from '../sessionState'
+import { readSessionAcceptsPluginPrompts } from '../sessionState'
 import { MILLISECONDS_PER_SECOND } from '../timeUnits'
 import { runAfter, runAfterMainTurn } from '../timedWork'
 import { SwitchOutcome, deleteIdleRoastSwitch, readIdleRoastSwitch } from './idleRoastSwitch'
@@ -114,7 +114,7 @@ async function loadIdleRoastSwitch($: EngineInterface): Promise<void> {
 export async function setIdleRoastSwitch($: EngineInterface, isOn: boolean): Promise<void> {
   isSwitchedOn = isOn
   cancelIdleWait()
-  if ((await readSessionActivity($)) !== SessionActivity.TurnRunning) {
+  if (await readSessionAcceptsPluginPrompts($)) {
     waitForIdleRoast($)
   }
 }

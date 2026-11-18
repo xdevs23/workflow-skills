@@ -8,12 +8,26 @@ import type {
 } from 'claude-code'
 
 import { isMainConversation } from './conversation'
-import { SessionActivity, setSessionActivity } from './sessionState'
+import { isTypedByUser } from './promptOrigin'
+import { SessionActivity, endStopByUser, setSessionActivity } from './sessionState'
 import { runAfterMainTurn } from './timedWork'
 
 export const markTurnRunning: Hook<'turn.start'> = async ($, e, next) => {
   if (isMainConversation(e)) {
     await setSessionActivity($, SessionActivity.TurnRunning)
+  }
+
+  return next(e)
+}
+
+/**
+ * Ends the stop of a turn stopped by the user once the user runs a slash command, before the
+ * command runs. The session accepts prompts submitted by a plugin again from then on, and such a
+ * command starts no turn that would end the stop.
+ */
+export const endStopOnTypedCommand: Hook<'command.run'> = async ($, e, next) => {
+  if (isTypedByUser(e.origin)) {
+    await endStopByUser($)
   }
 
   return next(e)
