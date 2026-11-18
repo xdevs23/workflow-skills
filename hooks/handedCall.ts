@@ -18,5 +18,8 @@ export const HANDED_CALL: Refusal = {
       String.raw`[.!${QUESTION_MARKS}*_~\s]*$`,
     'iu',
   ),
-  reason: ['It ends on a sentence that leaves the decision to the user.', ...DECIDED_WORK_REMEDY],
+  reason: [
+    'Your text ends on a sentence that leaves the decision to the user.',
+    ...DECIDED_WORK_REMEDY,
+  ],
 }

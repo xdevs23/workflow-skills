@@ -26,7 +26,8 @@ import type { TodoEntry } from './todoEntry'
 export const LIST_GOALS_DESCRIPTION = [
   'Lists the goals set by the user on the goals board of this session: each open goal with its',
   'number, its priority if the user set one, the goal it depends on while that goal is not marked',
-  'as done, your done mark if it has one, and the TODO entries attached to it, then the goals',
+  'as done, your done mark if the open goal has one, and the TODO entries attached to the open',
+  'goal, then the goals',
   'cleared by the user. The open goals are listed by priority, P0 the most important and goals',
   'without a priority last. Only the user adds, edits, prioritizes and clears goals, and sets',
   'which goal depends on which. Goals of other sessions are not listed. The open goals are work',
@@ -37,7 +38,8 @@ export const LIST_GOALS_DESCRIPTION = [
 export const ATTACH_TODO_DESCRIPTION = [
   'Attaches a TODO entry to an open goal of the goals board of this session, to record that the',
   'goal needs that entry built. Give the number of the goal, and the entry with its number and',
-  'title as its heading in TODO.md shows it. An entry may be needed by several goals. Attached',
+  'title as its heading in TODO.md shows the entry. An entry may be needed by several goals.',
+  'Attached',
   'again under the same number, an entry gets the new text. You cannot add or clear a goal: only',
   'the user does.',
 ].join(' ')
@@ -63,8 +65,8 @@ export const MARK_GOAL_DONE_DESCRIPTION = [
 
 export const UNMARK_GOAL_DONE_DESCRIPTION = [
   'Removes your done mark from an open goal of the goals board of this session, once you find',
-  'that the goal needs more work. Give the number of the goal. Your marks on the goals that depend',
-  'on it are removed with it.',
+  'that the goal needs more work. Give the number of the goal. Also removes your marks on the',
+  'goals that depend on that goal.',
 ].join(' ')
 
 /** The goals board, as written in the texts about a failed hook of a goal tool. */
@@ -135,7 +137,7 @@ export function describeDetached(goal: number, todoNumber: string): string {
 }
 
 export function describeMarkedDone(goal: number): string {
-  return `Marked ${nameGoal(goal)} as done. It is open until the user clears it.`
+  return `Marked ${nameGoal(goal)} as done. The goal is open until the user clears it.`
 }
 
 export function describeMarkRemovedForModel(goal: number): string {
@@ -155,12 +157,13 @@ export function describeRefusal(refused: ChangeRefused | MarkRefused | UnmarkRef
     case Refusal.NotTodoNumber:
       return (
         `${describeTodoNumber(refused.todo)} is not the number of an entry in TODO.md, which ` +
-        'has numbers such as #12 or #12.3. Give the entry as its heading in TODO.md shows it.'
+        'has numbers such as #12 or #12.3. Give the entry as its heading in TODO.md shows the ' +
+        'entry.'
       )
     case Refusal.BlankTitle:
       return (
         'Give the TODO entry with its title after its number, as its heading in TODO.md shows ' +
-        'it.'
+        'the entry.'
       )
     case Refusal.BlankEvidence:
       return EVIDENCE_BLANK

@@ -63,7 +63,8 @@ function todoChangeSchema(todoDescription: string) {
 }
 
 export const ATTACH_TODO_SCHEMA = todoChangeSchema(
-  'The TODO entry with its number and title on one line, as its heading in TODO.md shows it.',
+  'The TODO entry with its number and title on one line, as its heading in TODO.md shows the ' +
+  'entry.',
 )
 
 export const DETACH_TODO_SCHEMA = todoChangeSchema(
@@ -102,18 +103,18 @@ const TOO_LONG_PROBLEM = `Give the TODO entry in at most ${MAX_TODO_LENGTH} char
 /** What the model is told when its TODO entry for the attaching tool breaks a rule. */
 export const ATTACH_PROBLEMS: Record<TodoProblem, string> = {
   [TodoProblem.TodoBlank]:
-    'The TODO entry is blank. Give it with its number and title, as its heading in TODO.md ' +
-    'shows it.',
+    'The TODO entry is blank. Give the entry with its number and title, as its heading in ' +
+    'TODO.md shows the entry.',
   [TodoProblem.TodoTooLong]: TOO_LONG_PROBLEM,
   [TodoProblem.TodoNotInForm]:
     'Give the TODO entry on one line in the form #<number> - <title>, as its heading in TODO.md ' +
-    'shows it.',
+    'shows the entry.',
 }
 
 /** What the model is told when its TODO entry for the detaching tool breaks a rule. */
 export const DETACH_PROBLEMS: Record<TodoProblem, string> = {
   [TodoProblem.TodoBlank]:
-    'The TODO entry is blank. Give it by its number, such as #12 or #12.3.',
+    'The TODO entry is blank. Give the entry by its number, such as #12 or #12.3.',
   [TodoProblem.TodoTooLong]: TOO_LONG_PROBLEM,
   [TodoProblem.TodoNotInForm]:
     'Give the TODO entry by its number alone, such as #12 or #12.3.',

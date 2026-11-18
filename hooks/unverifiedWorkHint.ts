@@ -24,7 +24,7 @@ export const UNVERIFIED_WORK_HINT: HintKind = {
     ),
   ],
   text: [
-    'Your message reports work as not checked, not verified or not tested. Check it now by ' +
-      'running the code path it changes, and report what you observed.',
+    'Your message reports work as not checked, not verified or not tested. Check that work now ' +
+      'by running the code path changed by the work, and report what you observed.',
   ],
 }

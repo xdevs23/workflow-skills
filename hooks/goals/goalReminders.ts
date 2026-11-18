@@ -133,11 +133,11 @@ const NUDGE_FOR_ONE_GOAL: NudgeTexts = {
     'The user has noticed that the following goal has not been marked as done for quite a ' +
     'while, and would like you to work on it and bring it to completion.',
   closing:
-    'Start working on it as soon as possible, without interrupting the current work. Either ' +
-    'finish the goal cleanly and properly, as the rules require, or mark it as done with ' +
+    'Start working on the goal as soon as possible, without interrupting the current work. ' +
+    'Either finish the goal cleanly and properly, as the rules require, or mark it as done with ' +
     `${MARK_GOAL_DONE_TOOL}, so the user can check the result. If the result of the goal is a ` +
-    'draft, open it now. The user will not tolerate more delays that you cannot seriously ' +
-    'explain and back with clear evidence of why you cannot complete the goal.',
+    'draft, open the draft now. The user will not tolerate more delays that you cannot ' +
+    'seriously explain and back with clear evidence of why you cannot complete the goal.',
 }
 
 const NUDGE_FOR_SEVERAL_GOALS: NudgeTexts = {
@@ -145,11 +145,11 @@ const NUDGE_FOR_SEVERAL_GOALS: NudgeTexts = {
     'The user has noticed that the following goals have not been marked as done for quite a ' +
     'while, and would like you to work on them and bring them to completion.',
   closing:
-    'Start working on them as soon as possible, without interrupting the current work. Either ' +
-    'finish each goal cleanly and properly, as the rules require, or mark it as done with ' +
-    `${MARK_GOAL_DONE_TOOL}, so the user can check the result. If the result of a goal is a ` +
-    'draft, open it now. The user will not tolerate more delays that you cannot seriously ' +
-    'explain and back with clear evidence of why you cannot complete them.',
+    'Start working on the goals as soon as possible, without interrupting the current work. ' +
+    'Either finish each goal cleanly and properly, as the rules require, or mark that goal as ' +
+    `done with ${MARK_GOAL_DONE_TOOL}, so the user can check the result. If the result of a goal ` +
+    'is a draft, open the draft now. The user will not tolerate more delays that you cannot ' +
+    'seriously explain and back with clear evidence of why you cannot complete the goals.',
 }
 
 /**

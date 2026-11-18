@@ -22,20 +22,23 @@ export const ASK_DESCRIPTION = [
   'when that skill lets the question through.',
   `Call ${LIST_TOOL} first, and never ask a question again that is open or answered there.`,
   'Write the question so the user can answer it days later without this conversation: name the',
-  'work it concerns and what each answer would change.',
+  'work the question concerns and what each answer would change.',
 ].join(' ')
 
 export const LIST_DESCRIPTION = [
   `Lists the questions this session put to the user with ${ASK_TOOL}: the open ones, the`,
   'answered ones with their answers, and the withdrawn ones. Questions of other sessions are not',
-  'listed. A session forked from another starts without the questions of that session, and their',
-  'answers do not reach it. Check it before you ask, so that each question is asked once.',
+  'listed. A session forked from another starts without the questions of that session, and the',
+  'forked session does not receive their answers. Check the list before you ask, so that each',
+  'question is asked once.',
 ].join(' ')
 
 export const WITHDRAW_DESCRIPTION = [
   `Takes back an open question that you asked with ${ASK_TOOL}, once the work no longer needs`,
-  'its answer, such as after a later decision made it moot. Give the number of the question.',
-  `The user no longer sees it among the open questions, and ${LIST_TOOL} lists it as withdrawn.`,
+  'its answer, such as after a later decision made the question moot. Give the number of the',
+  'question.',
+  'The user no longer sees the question among the open questions, and',
+  `${LIST_TOOL} lists the question as withdrawn.`,
 ].join(' ')
 
 /** The questions, as written in the texts about a failed hook of the questions. */
@@ -55,10 +58,11 @@ export function describeAsked(question: Question): string {
 /** What the model is told of the question numbered `number` it asked to withdraw. */
 export const WITHDRAWAL_TEXTS: Record<Withdrawal, (number: number) => string> = {
   [Withdrawal.Withdrawn]: number =>
-    `Question #${number} is withdrawn. The user no longer sees it among the open questions.`,
+    `Question #${number} is withdrawn. The user no longer sees the question among the open ` +
+    'questions.',
   [Withdrawal.NotOpen]: number =>
     `Question #${number} is not open: it is answered, withdrawn or was never asked. Call ` +
-    `${LIST_TOOL} to see where it stands.`,
+    `${LIST_TOOL} to see where the question stands.`,
 }
 
 /** The answers as the model reads them, each beside its question. */

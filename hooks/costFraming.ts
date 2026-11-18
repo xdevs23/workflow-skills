@@ -7,8 +7,9 @@ const COST_WORDS = String.raw`(?:what[ \t]+(?:it|that)[ \t]+costs|the[ \t]+cost|
 export const COST_FRAMING: Refusal = {
   pattern: new RegExp(labelledLine(COST_WORDS), 'im'),
   reason: [
-    'It labels a decision as a cost. A good engineering decision and proper architecture are ' +
-      'never a cost: the cost comes from the wrong design that now has to change. Look at the ' +
-      'option again, choose the right design and build it, and do not present it as a cost.',
+    'Your text labels a decision as a cost. A good engineering decision and proper architecture ' +
+      'are never a cost: the cost comes from the wrong design that now has to change. Look at ' +
+      'the option again, choose the right design and build that design. Do not present the ' +
+      'design as a cost.',
   ],
 }

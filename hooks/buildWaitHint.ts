@@ -4,7 +4,7 @@ import type { HintKind } from './hintKind'
 export const BUILD_WAIT_HINT: HintKind = {
   phrases: [/\bwaits\s+on\s+(?:a|the)\s+build\b/i],
   text: [
-    'Check whether the build is running and whether it makes sense and is permissible to ' +
-      'restart the build to include the new changes.',
+    'Check whether the build is running and whether restarting the build to include the new ' +
+      'changes makes sense and is permissible.',
   ],
 }

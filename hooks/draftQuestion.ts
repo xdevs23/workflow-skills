@@ -12,8 +12,8 @@ function draftReminderOf(number: number): string {
   return [
     `Question #${number} may ask about a draft. A draft of a change is opened for the user and`,
     `never asked about, as ${VISUAL_DECISIONS_SKILL} describes in its section Choices. If the`,
-    `question asks the user to approve or choose the shape shown in a draft, withdraw it now with`,
-    `${WITHDRAW_TOOL} and open the draft page for the user.`,
+    'question asks the user to approve or choose the shape shown in a draft, withdraw the',
+    `question now with ${WITHDRAW_TOOL} and open the draft page for the user.`,
   ].join(' ')
 }
 

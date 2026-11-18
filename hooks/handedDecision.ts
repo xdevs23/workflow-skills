@@ -11,7 +11,7 @@ export const HANDED_DECISION: Refusal = {
     'iu',
   ),
   reason: [
-    'It ends on a question that leaves the user to pick between options, in place of work.',
+    'Your text ends on a question that leaves the user to pick between options, in place of work.',
     ...DECIDED_WORK_REMEDY,
   ],
 }

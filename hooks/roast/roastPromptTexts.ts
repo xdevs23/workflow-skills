@@ -5,14 +5,15 @@ import type { IdleRoastReply, RoastReply } from './roastReply'
 /** The opening of the prompts for the roast and the idle roast. */
 const ROAST_OPENING =
   'From this message on, you are the roaster. The assistant in this conversation wrote the ' +
-  'earlier replies. Review its work so far and roast it. The user may send your roast to this ' +
-  'conversation as their own message, so write it to the assistant as "you". In the roast, talk ' +
-  'only to the assistant and never to the user.'
+  'earlier replies. Review the work of the assistant so far and roast that work. The user may ' +
+  'send your roast to this conversation as their own message, so write the roast to the ' +
+  'assistant as "you". In the roast, talk only to the assistant and never to the user.'
 
 const ROAST_POINT_PROOF =
   'For each point, quote the rule or the fact, and say what the assistant did instead and what ' +
   'that cost. Name only points the transcript proves. Leave out each point that an earlier roast ' +
-  'in this conversation already made, unless the assistant did it again after that roast.'
+  'in this conversation already made, unless the assistant repeated what that point names after ' +
+  'that roast.'
 
 const ROAST_BLUNTNESS = 'Be blunt: no praise, no softening.'
 
@@ -49,8 +50,8 @@ export const IDLE_ROAST_PROMPT =
   'the work.'
 
 const ROAST_SENT_AT: Record<HeldTextPlace, string> = {
-  [HeldTextPlace.ToolResult]: 'They sent it while you worked.',
-  [HeldTextPlace.BesidePrompt]: 'They sent it before this message.',
+  [HeldTextPlace.ToolResult]: 'They sent the roast while you worked.',
+  [HeldTextPlace.BesidePrompt]: 'They sent the roast before this message.',
 }
 
 /**
@@ -60,7 +61,7 @@ const ROAST_SENT_AT: Record<HeldTextPlace, string> = {
 export function describeRoastNote(place: HeldTextPlace, message: string): string {
   return (
     'The user sent you the following roast about your work as their own message. ' +
-    `${ROAST_SENT_AT[place]} Read it before you go on:\n\n${message}`
+    `${ROAST_SENT_AT[place]} Read the roast before you go on:\n\n${message}`
   )
 }
 
@@ -68,8 +69,8 @@ export function describeRoastNote(place: HeldTextPlace, message: string): string
 export function describeIdleRoastMessage(roast: string): string {
   return (
     'The user switched on the idle roast, which wrote the following roast about your work while ' +
-    'this conversation was idle. The user sends it to you as their own message. Read it before ' +
-    `you go on:\n\n${roast}`
+    'this conversation was idle. The user sends the roast to you as their own message. Read the ' +
+    `roast before you go on:\n\n${roast}`
   )
 }
 
@@ -99,13 +100,14 @@ export function writeRoastPrompt(finding: string): string {
 
   return (
     `${ROAST_POINTS}\n\nThe user typed a complaint after the command that asked you for this ` +
-    'roast. The user wrote it. The assistant did not. It is a complaint of the user about the ' +
-    'work of the assistant, and the user addresses it to you, the roaster. Do not answer it in ' +
-    'the roast. Use it only to write the roast to the assistant: take it into the roast as a ' +
-    'point, written to the assistant as "you", with the rule or the fact from the transcript ' +
-    `that it concerns.\n\n${JSON_REPLY} Where the transcript proves the complaint, reply with ` +
-    `${ROAST_REPLY_EXAMPLE}. ${ROAST_BLUNTNESS} Where the transcript shows the complaint to be ` +
-    'unjustified or invalid, or does not show what it claims, write no roast. Reply instead with ' +
+    'roast. The user wrote the complaint. The assistant did not. The complaint is about the work ' +
+    'of the assistant, and the user addresses the complaint to you, the roaster. Do not answer ' +
+    'the complaint in the roast. Use the complaint only to write the roast to the assistant: ' +
+    'take the complaint into the roast as a point, written to the assistant as "you", with the ' +
+    `rule or the fact from the transcript that the complaint concerns.\n\n${JSON_REPLY} Where ` +
+    `the transcript proves the complaint, reply with ${ROAST_REPLY_EXAMPLE}. ` +
+    `${ROAST_BLUNTNESS} Where the transcript shows the complaint to be unjustified or invalid, ` +
+    'or does not show what the complaint claims, write no roast. Reply instead with ' +
     `${REFUSED_REPLY_EXAMPLE}, with the reason written to the user: say that the claim is ` +
     'unfounded and why, and ask the user to clarify the complaint. In the reason, call the ' +
     'assistant "the assistant" and never "you", since the user did none of its work. Only the ' +

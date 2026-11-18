@@ -12,7 +12,8 @@ export const OPTIMIZE_IDLE_TIME: SharedStep = {
   text:
     'Only when nothing is left, use the time to make builds faster, the memory footprint ' +
     'smaller, iteration times shorter or workflows more efficient. Make the change in the code ' +
-    'itself: run work in parallel, drop work that is not needed, do it more efficiently or cache ' +
-    'it for the next run. Do not add services, daemons, hooks or other resident processes to the ' +
-    'operating system. Pick one and start it now, in this turn.',
+    'itself: run work in parallel, drop work that is not needed, do the needed work more ' +
+    'efficiently or cache the result of that work for the next run. Do not add services, ' +
+    'daemons, hooks or other resident processes to the operating system. Pick one such change ' +
+    'and start that change now, in this turn.',
 }

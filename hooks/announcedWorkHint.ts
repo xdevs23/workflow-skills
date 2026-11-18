@@ -61,8 +61,8 @@ export const ANNOUNCED_WORK_HINT: HintKind = {
   ],
   text: [
     'Your message announces work as next or as underway, and your turn is ending. If no running ' +
-      'task, workflow or agent does that work, start it now, in this turn. If one does, say in ' +
-      'your message which one does it. If the work cannot start, remove the claim and say what ' +
-      'it waits on.',
+      'task, workflow or agent does that work, start the work now, in this turn. If one does, ' +
+      'say in your message which one does the work. If the work cannot start, remove the claim ' +
+      'and say what the work waits on.',
   ],
 }

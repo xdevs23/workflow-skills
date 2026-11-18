@@ -18,8 +18,9 @@ const BOUNDARY_FRAMING = [
 export const ACCEPTED_GAP_HINT: HintKind = {
   phrases: [new RegExp(`${TRADE_OFF}|${BOUNDARY_FRAMING}`, 'imu')],
   text: [
-    'Your message names a trade-off or a boundary. Where it calls a gap in the work a trade-off ' +
-      'or a boundary, check whether the gap is real: read the code it concerns and run it. Fix ' +
-      'every gap that is real now. Do not label it as a cost and do not ask the user to handle it.',
+    'Your message names a trade-off or a boundary. Where your message calls a gap in the work ' +
+      'a trade-off or a boundary, check whether the gap is real: read the code the gap concerns ' +
+      'and run that code. Fix every gap that is real now. Do not label such a gap as a cost and ' +
+      'do not ask the user to handle such a gap.',
   ],
 }
