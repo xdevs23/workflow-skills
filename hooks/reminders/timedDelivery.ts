@@ -14,7 +14,7 @@ import {
 import { ofSession, updateOfSession } from '../sessionBoundState'
 import { SWITCHING_SOURCES } from '../sessionSources'
 import { readSessionAcceptsPluginPrompts } from '../sessionState'
-import { firstDueTimeAfter, runAfter, runAfterMainTurn } from '../timedWork'
+import { firstDueTimeAfter, runAfter, runDetached } from '../timedWork'
 import { describeReminderNote, enabledRemindersOf, readEnabledReminders } from './reminderDelivery'
 import type { ReminderOfKind } from './reminderDelivery'
 import { setNextSends } from './reminderState'
@@ -55,7 +55,6 @@ type TakenReminders = { due: TimedReminder[]; before: TimedRemindersHandled; at:
 export function registerTimeCadence(on: On): void {
   on('classic.SessionStart', { source: SWITCHING_SOURCES }, watchAfterSwitch)
   on('tool.call', EVERY_EVENT, addDueRemindersToToolResult)
-  on('turn.complete', EVERY_EVENT, watchAfterTurn)
 }
 
 /** Waits for the reminders switched on among `reminders`, read into the state by the core. */
@@ -91,9 +90,13 @@ const addDueRemindersToToolResult: MatchedHook<'tool.call', EveryEvent> = ($, e,
     return note?.text
   })
 
-// A due time that passed during the turn and went with no tool result is sent once the turn ended.
-const watchAfterTurn: MatchedHook<'turn.complete', EveryEvent> = ($, e, next) =>
-  runAfterMainTurn(e, next, () => watchRunningSession($))
+/**
+ * Waits again, without blocking the caller, for the due times of the reminders of the running
+ * session. A due time that passed during a turn and went with no tool result is sent at once.
+ */
+export function watchTimedReminders($: EngineInterface): void {
+  runDetached($, () => watchRunningSession($), describeTimedRemindersFailed)
+}
 
 async function watchRunningSession($: EngineInterface): Promise<void> {
   await watchReminders($, await $.session.id(), await readEnabledReminders($, TIME_KIND))
@@ -125,7 +128,8 @@ async function watchReminders(
 /**
  * Sends the reminders due as a prompt that starts a turn, while the session accepts prompts
  * submitted by the plugin. During a turn and after a turn stopped by the user they go with the next
- * tool result, and the end of the next turn waits again.
+ * tool result. The end of the next turn, or a slash command typed by the user after the stop,
+ * starts the wait again.
  */
 async function sendAtDueTime($: EngineInterface): Promise<void> {
   if (!(await readSessionAcceptsPluginPrompts($))) {

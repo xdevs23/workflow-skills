@@ -16,7 +16,7 @@ import type {
 import { isMainConversation } from './conversation'
 import { draftRemindersFor } from './draftQuestion'
 import { deliverAnswers, recordAnswerAndDeliver } from './delivery'
-import { HeldTextPlace } from './heldTexts'
+import { PendingTextPlace } from './pendingTexts'
 import { denyFailedHook, replyToFailedHook } from './hookFailure'
 import {
   ANSWER_ARGUMENTS,
@@ -212,7 +212,7 @@ export async function submitWithAnswers(
               $,
               e,
               next,
-              describeAnswersNote(HeldTextPlace.BesidePrompt, answered),
+              describeAnswersNote(PendingTextPlace.BesidePrompt, answered),
             ),
       )
     },

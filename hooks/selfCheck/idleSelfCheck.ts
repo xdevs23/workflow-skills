@@ -10,7 +10,7 @@ import {
   submitWithNoteAndLineOrRestore,
 } from '../sendToModel'
 import { readSessionAcceptsPluginPrompts } from '../sessionState'
-import { runAfter, runAfterMainTurn } from '../timedWork'
+import { runAfter, runDetached } from '../timedWork'
 import {
   readSelfCheckSchedule,
   restoreDueTime,
@@ -89,9 +89,13 @@ export const submitWithSelfCheck: MatchedHook<'prompt.submit', EveryEvent> = asy
   return delivery.result
 }
 
-// A due time that passed during the turn is sent once the turn ended.
-export const waitForDueTimeAfterTurn: MatchedHook<'turn.complete', EveryEvent> = ($, e, next) =>
-  runAfterMainTurn(e, next, () => waitForStoredDueTime($))
+/**
+ * Waits again, without blocking the caller, for the due time of the self-check of the running
+ * session. A due time that passed during a turn is sent at once.
+ */
+export function waitForSelfCheckDueTime($: EngineInterface): void {
+  runDetached($, () => waitForStoredDueTime($), describeSelfCheckFailed)
+}
 
 /** Waits for the due time in the self-check schedule of the running session, if it has one. */
 async function waitForStoredDueTime($: EngineInterface): Promise<void> {
@@ -116,7 +120,8 @@ async function waitForDueTime($: EngineInterface, schedule: SelfCheckSchedule): 
 
 /**
  * Sends the self-check as a prompt that starts a turn, once it is due and while the session accepts
- * prompts submitted by the plugin. The end of the next turn waits for the due time again.
+ * prompts submitted by the plugin. The end of the next turn, or a slash command typed by the user
+ * after a turn stopped by the user, starts the wait for the due time again.
  */
 async function sendAtDueTime($: EngineInterface, sessionId: string): Promise<void> {
   if (!(await readSessionAcceptsPluginPrompts($))) {

@@ -1,4 +1,4 @@
-import { HeldTextPlace } from '../heldTexts'
+import { PendingTextPlace } from '../pendingTexts'
 import { IdleRoastVerdict, RoastVerdict } from './roastReply'
 import type { IdleRoastReply, RoastReply } from './roastReply'
 
@@ -49,16 +49,16 @@ export const IDLE_ROAST_PROMPT =
   `${IDLE_ROAST_REPLY_EXAMPLE}, or with ${NO_BLOCKING_POINT_REPLY_EXAMPLE} if no point blocks ` +
   'the work.'
 
-const ROAST_SENT_AT: Record<HeldTextPlace, string> = {
-  [HeldTextPlace.ToolResult]: 'They sent the roast while you worked.',
-  [HeldTextPlace.BesidePrompt]: 'They sent the roast before this message.',
+const ROAST_SENT_AT: Record<PendingTextPlace, string> = {
+  [PendingTextPlace.ToolResult]: 'They sent the roast while you worked.',
+  [PendingTextPlace.BesidePrompt]: 'They sent the roast before this message.',
 }
 
 /**
  * The note at `place` that sends the model `message`: a roast that the user sent, with the comment
  * that the user typed before it.
  */
-export function describeRoastNote(place: HeldTextPlace, message: string): string {
+export function describeRoastNote(place: PendingTextPlace, message: string): string {
   return (
     'The user sent you the following roast about your work as their own message. ' +
     `${ROAST_SENT_AT[place]} Read the roast before you go on:\n\n${message}`

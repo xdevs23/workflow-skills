@@ -55,7 +55,8 @@ const NUDGE_WAITING_BY_ACTIVITY: Record<SessionActivity, (goalName: string) => s
   [SessionActivity.Idle]: describeNudgeWaitingForTurnEnd,
   [SessionActivity.TurnRunning]: describeNudgeWaitingForTurnEnd,
   [SessionActivity.StoppedByUser]: goalName =>
-    `The nudge for ${goalName} is sent to Claude once the turn started by your next message ends.`,
+    `The nudge for ${goalName} is sent to Claude once you type a slash command, or once the turn ` +
+    'started by your next message ends.',
 }
 
 /** The toast for the nudge for `goal` while it waits, in a session doing `activity`. */
@@ -79,6 +80,14 @@ export function describeNudgeNotSent(
   const named = AND_LIST.format(goals.map(goal => nameGoal(goal.number)))
 
   return `The nudge for ${named} was not sent to Claude: ${reason}.`
+}
+
+/** The toast for the waiting nudges left unsent once a stop by the user ended, with the reason. */
+export function describeWaitingNudgesNotSent(reason: string): string {
+  return (
+    `The waiting nudges were not sent to Claude: ${reason}. ` +
+    `Press Nudge again in the ${PANE_TITLE} pane.`
+  )
 }
 
 /** What a press in the Goals pane shows for a goal cleared since the pane drew it. */

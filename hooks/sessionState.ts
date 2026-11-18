@@ -161,14 +161,26 @@ export async function setSessionActivity(
   await update($, sessionActivity, () => ({ sessionId, activity }))
 }
 
-/** Marks the running session as idle when the user stopped its last turn. */
-export async function endStopByUser($: EngineInterface): Promise<void> {
+/**
+ * Marks the running session as doing `to` when it does `from`, and returns whether it did `from`.
+ * A session before its first turn is idle.
+ */
+export async function changeSessionActivity(
+  $: EngineInterface,
+  from: SessionActivity,
+  to: SessionActivity,
+): Promise<boolean> {
   const sessionId = await $.session.id()
-  await update($, sessionActivity, inState =>
-    inState?.sessionId === sessionId && inState.activity === SessionActivity.StoppedByUser
-      ? { sessionId, activity: SessionActivity.Idle }
-      : inState,
-  )
+  let didFrom = false
+  await update($, sessionActivity, inState => {
+    const activity =
+      inState?.sessionId === sessionId ? inState.activity : SessionActivity.Idle
+    didFrom = activity === from
+
+    return didFrom ? { sessionId, activity: to } : inState
+  })
+
+  return didFrom
 }
 
 /**

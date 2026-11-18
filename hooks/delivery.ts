@@ -1,8 +1,8 @@
 import type { EngineInterface } from 'claude-code'
 
 import type { Question } from '../types'
-import { HeldTextPlace, submitWhileSessionAcceptsPrompts } from './heldTexts'
-import type { HeldTextSource } from './heldTexts'
+import { PendingTextPlace, submitAddedText } from './pendingTexts'
+import type { PendingTextSource } from './pendingTexts'
 import { describeAnswers, describeAnswersNote } from './modelText'
 import { undeliveredAnswersOf } from './questions'
 import type { AnsweredQuestion } from './questions'
@@ -72,8 +72,8 @@ async function storeDelivery(
 
 /**
  * Stores the answer of the user to the open question of the session `sessionId` that `which`
- * selects, and returns whether such a question was open. An answer given while a turn does not run
- * is sent to the model as a prompt.
+ * selects, and returns whether such a question was open. The answer goes to the model as
+ * `submitAddedText` describes.
  */
 export async function recordAnswerAndDeliver(
   $: EngineInterface,
@@ -85,20 +85,24 @@ export async function recordAnswerAndDeliver(
   const { answered, questions } = await saveAnswer($, sessionId, which, answer)
   await setQuestionsInState($, sessionId, questions)
   if (answered !== undefined) {
-    submitWhileSessionAcceptsPrompts($, answersSource($))
+    submitAddedText($, answersSource($))
   }
 
   return answered !== undefined
 }
 
 /** The answers to the questions of the session, as a source of texts sent to the model. */
-export function answersSource($: EngineInterface): HeldTextSource {
+export function answersSource($: EngineInterface): PendingTextSource {
   return {
     takeNote: () => takeAnswersNote($),
     submit: () => submitAnswers($),
     describeNotSent: describeAnswersNotSent,
+    waitingAfterStopToast: ANSWERS_WAITING_AFTER_STOP,
   }
 }
+
+const ANSWERS_WAITING_AFTER_STOP =
+  'Your answer is sent to Claude once you type a slash command or send a message.'
 
 /** The toast for answers left unsent for `reason`. */
 function describeAnswersNotSent(reason: string): string {
@@ -121,7 +125,7 @@ async function takeAnswersNote($: EngineInterface): Promise<TextWithLine | undef
         result:
           answered.length === 0
             ? undefined
-            : describeAnswersNote(HeldTextPlace.ToolResult, answered),
+            : describeAnswersNote(PendingTextPlace.ToolResult, answered),
         isAccepted: true,
       })),
     message => {

@@ -17,11 +17,17 @@ import { readBoardToRemind } from './goalReminderBoard'
 import { describeNudge } from './goalReminders'
 import type { GoalsToNudge } from './goalReminders'
 import { readWaitingNudges, updateWaitingNudges } from './goalState'
-import { describeAlreadyMarkedDone, describeNudgeNotSent, describeNudgeWaiting } from './goalTexts'
+import {
+  describeAlreadyMarkedDone,
+  describeNudgeNotSent,
+  describeNudgeWaiting,
+  describeWaitingNudgesNotSent,
+} from './goalTexts'
 
 // A prompt submitted by the plugin while a turn runs enters only once the turn ends, with the text
 // written at the submit. A goal pressed while a turn or a send runs therefore waits. The end of the
-// turn sends every waiting goal in one prompt, built from the board at that moment. A send whose
+// turn, or a slash command typed by the user after a turn stopped by the user, sends every waiting
+// goal in one prompt, built from the board at that moment. A send whose
 // prompt did not enter starts no turn, so it sends the goals that waited meanwhile itself. A goal
 // pressed again while it waits or is sent is sent once.
 
@@ -54,20 +60,34 @@ export async function nudgeOpenGoal(
   await sendWaitingNudges($, sessionId)
 }
 
-// After a turn stopped by the user, the goals wait for the end of the next turn, and a toast for
-// each waiting goal says so.
-export const sendNudgesAfterTurn: MatchedHook<'turn.complete', EveryEvent> = ($, e, next) =>
+// After a turn stopped by the user, the goals wait for a slash command typed by the user or the end
+// of the turn started by the next message, and a toast for each waiting goal shows that.
+export const showNudgesWaitingAfterStop: MatchedHook<'turn.complete', EveryEvent> = ($, e, next) =>
   runAfterMainTurn(e, next, async () => {
-    const sessionId = await $.session.id()
     const activity = await readSessionActivity($)
     if (acceptsPluginPrompts(activity)) {
-      await sendWaitingNudges($, sessionId)
       return
     }
-    for (const goal of (await readWaitingNudges($, sessionId))?.waiting ?? []) {
+    for (const goal of (await readWaitingNudges($, await $.session.id()))?.waiting ?? []) {
       $.ui.toast(describeNudgeWaiting(goal, activity))
     }
   })
+
+/**
+ * Sends the waiting goals without waiting for the send, while the session accepts prompts
+ * submitted by the plugin.
+ */
+export function sendNudgesWhileSessionAcceptsPrompts($: EngineInterface): void {
+  runDetached(
+    $,
+    async () => {
+      if (await readSessionAcceptsPluginPrompts($)) {
+        await sendWaitingNudges($, await $.session.id())
+      }
+    },
+    describeWaitingNudgesNotSent,
+  )
+}
 
 function withPressed(nudges: WaitingNudges, pressed: NudgedGoal): WaitingNudges {
   const listed = [...nudges.waiting, ...(nudges.sending?.goals ?? [])]

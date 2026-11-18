@@ -368,7 +368,7 @@ declare module 'claude-code' {
       /**
        * The activity of the main conversation of the session whose turn last started or ended,
        * since the state may outlive a switch to another session by /clear or /resume; null before
-       * the first turn. The plugin delivers held texts differently during a turn, after a turn
+       * the first turn. The plugin delivers pending texts differently during a turn, after a turn
        * stopped by the user, and while idle.
        */
       sessionActivity: ActivityOfSession | null

@@ -6,7 +6,6 @@ import {
   submitWithSelfCheck,
   waitForDueTimeAfterLoad,
   waitForDueTimeAfterSwitch,
-  waitForDueTimeAfterTurn,
 } from './idleSelfCheck'
 
 /**
@@ -18,5 +17,4 @@ export function registerSelfCheck(on: On): void {
   on('classic.SessionStart', EVERY_EVENT, waitForDueTimeAfterSwitch)
   on('prompt.submit', EVERY_EVENT, startScheduleOnUserMessage)
   on('prompt.submit', EVERY_EVENT, submitWithSelfCheck)
-  on('turn.complete', EVERY_EVENT, waitForDueTimeAfterTurn)
 }

@@ -6,8 +6,6 @@ import type {
   PromptSubmitResult,
   ToolCallInput,
   ToolCallResult,
-  TurnCompleteInput,
-  TurnCompleteResult,
 } from 'claude-code'
 
 import { messageOf } from './errorMessage'
@@ -15,12 +13,16 @@ import { showFailure } from './failureToast'
 import { isMessageTypedByUser } from './promptOrigin'
 import { callToolWithNote, logSentLine, submitWithNoteAndLineOrRestore } from './sendToModel'
 import type { NoteSource, TextWithLine } from './sendToModel'
-import { readSessionAcceptsPluginPrompts } from './sessionState'
+import {
+  SessionActivity,
+  acceptsPluginPrompts,
+  readSessionAcceptsPluginPrompts,
+  readSessionActivity,
+} from './sessionState'
 import { runDetached } from './timedWork'
-import { completeMainTurn } from './turnState'
 
-/** Where the note of a held text goes to the model. */
-export enum HeldTextPlace {
+/** Where the note for a pending text goes to the model. */
+export enum PendingTextPlace {
   /** With a tool result, for a text that came while the turn ran. */
   ToolResult = 'tool result',
   /** Beside a prompt typed by the user, for a text that came before that prompt. */
@@ -38,9 +40,11 @@ export enum HeldTextPlace {
  * transcript once the note went to the model. A text submitted as a prompt shows in the chat as
  * that prompt.
  */
-export type HeldTextSource = NoteSource<TextWithLine> & {
+export type PendingTextSource = NoteSource<TextWithLine> & {
   /** Removes the texts waiting for the running session, and submits them as a prompt. */
   submit: () => Promise<void>
+  /** The toast for a text added after a turn stopped by the user, while the text waits. */
+  waitingAfterStopToast: string
 }
 
 /** The note of the texts taken from a feature, and the function that puts those texts back. */
@@ -56,11 +60,11 @@ export type PromptNoteSource = {
  * Runs the tool call `e`, and appends the texts of `sources` as `callToolWithNote` does. A source
  * that fails shows its toast, and the texts of the other sources go with the result.
  */
-export function callToolWithHeldTexts(
+export function callToolWithPendingTexts(
   $: EngineInterface,
   e: Frozen<ToolCallInput>,
   next: Next<'tool.call'>,
-  sources: readonly HeldTextSource[],
+  sources: readonly PendingTextSource[],
 ): Promise<ToolCallResult> {
   return callToolWithNote(e, next, async () => {
     const notes = await Promise.all(
@@ -85,7 +89,7 @@ export function callToolWithHeldTexts(
  * Submits the prompt `e` with the notes of `sources` beside it, when the user typed it as a
  * message. Where the prompt enters without the notes, the texts go back to their sources.
  */
-export async function submitWithHeldTexts(
+export async function submitWithPendingTexts(
   $: EngineInterface,
   e: Frozen<PromptSubmitInput>,
   next: Next<'prompt.submit'>,
@@ -113,41 +117,44 @@ export async function submitWithHeldTexts(
 }
 
 /**
- * Submits the waiting texts of `source` as a prompt without waiting for it, while no turn runs and
- * the session accepts prompts submitted by the plugin. During a turn the texts wait for the next
- * tool result or the end of the turn. After a turn stopped by the user they wait for the next
- * prompt of the user or the next tool result. When reading the state of the session or removing
- * the texts fails, the texts wait the same way.
+ * Submits the waiting texts of each of `sources` as a prompt without waiting for it, while no turn
+ * runs and the session accepts prompts submitted by the plugin. During a turn the texts wait for
+ * the next tool result or the end of the turn. After a turn stopped by the user they wait for the
+ * next prompt of the user, the next slash command typed by the user or the next tool result. When
+ * reading the state of the session or removing the texts fails, the texts wait the same way.
  */
-export function submitWhileSessionAcceptsPrompts(
+export function submitPendingTexts(
   $: EngineInterface,
-  source: HeldTextSource,
+  sources: readonly PendingTextSource[],
 ): void {
+  for (const source of sources) {
+    runDetached(
+      $,
+      async () => {
+        if (await readSessionAcceptsPluginPrompts($)) {
+          await source.submit()
+        }
+      },
+      source.describeNotSent,
+    )
+  }
+}
+
+/**
+ * Submits the texts of `source`, to which a text was just added, as `submitPendingTexts` does.
+ * After a turn stopped by the user, a toast shows that the text waits.
+ */
+export function submitAddedText($: EngineInterface, source: PendingTextSource): void {
   runDetached(
     $,
     async () => {
-      if (await readSessionAcceptsPluginPrompts($)) {
+      const activity = await readSessionActivity($)
+      if (acceptsPluginPrompts(activity)) {
         await source.submit()
+      } else if (activity === SessionActivity.StoppedByUser) {
+        $.ui.toast(source.waitingAfterStopToast)
       }
     },
     source.describeNotSent,
   )
-}
-
-/**
- * Runs the end of the turn `e` as `completeMainTurn` does, and then submits the texts of `sources`
- * still waiting as `submitWhileSessionAcceptsPrompts` does. A text added after the turn is marked
- * over is submitted at once, because the turn is over.
- */
-export function completeTurnWithHeldTexts(
-  $: EngineInterface,
-  e: Frozen<TurnCompleteInput>,
-  next: Next<'turn.complete'>,
-  sources: readonly HeldTextSource[],
-): Promise<TurnCompleteResult> {
-  return completeMainTurn($, e, next, async () => {
-    for (const source of sources) {
-      submitWhileSessionAcceptsPrompts($, source)
-    }
-  })
 }

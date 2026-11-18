@@ -1,4 +1,4 @@
-import { HeldTextPlace } from '../heldTexts'
+import { PendingTextPlace } from '../pendingTexts'
 import { JsonTextNotRead } from '../jsonText'
 import { DEBUG_LOG_NOTE } from '../failureToast'
 import type { HookSubject } from '../hookFailure'
@@ -32,13 +32,13 @@ export const ROAST_REFUSED_NOTICE =
   'The roaster refused this roast because it found your point unfounded, so you cannot send the ' +
   'roast.'
 
-const ROAST_SENT_LINE_OPENINGS: Record<HeldTextPlace, string> = {
-  [HeldTextPlace.ToolResult]: 'Roast sent to Claude with a tool result:',
-  [HeldTextPlace.BesidePrompt]: 'Roast sent to Claude beside your message:',
+const ROAST_SENT_LINE_OPENINGS: Record<PendingTextPlace, string> = {
+  [PendingTextPlace.ToolResult]: 'Roast sent to Claude with a tool result:',
+  [PendingTextPlace.BesidePrompt]: 'Roast sent to Claude beside your message:',
 }
 
 /** The line in the transcript that shows that `message`, a roast, went to Claude at `place`. */
-export function describeRoastSentLine(place: HeldTextPlace, message: string): string {
+export function describeRoastSentLine(place: PendingTextPlace, message: string): string {
   return `${ROAST_SENT_LINE_OPENINGS[place]}\n\n${message}`
 }
 
@@ -159,6 +159,9 @@ export function describeRoastNotSent(reason: string): string {
     'pane.'
   )
 }
+
+export const ROAST_WAITING_AFTER_STOP =
+  'The roast is sent to Claude once you type a slash command or send a message.'
 
 export const IDLE_ROAST_FOUND_NO_BLOCKING_POINT =
   'The idle roast found no point that blocks the work, so nothing went to Claude.'

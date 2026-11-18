@@ -2,8 +2,8 @@ import type { EngineInterface } from 'claude-code'
 
 import { messageOf } from '../errorMessage'
 import { showFailure } from '../failureToast'
-import { HeldTextPlace, submitWhileSessionAcceptsPrompts } from '../heldTexts'
-import type { HeldTextSource, PromptNoteSource, TakenNote } from '../heldTexts'
+import { PendingTextPlace, submitAddedText } from '../pendingTexts'
+import type { PendingTextSource, PromptNoteSource, TakenNote } from '../pendingTexts'
 import { PromptOutcome, submitToSessionOrRestore } from '../sendToModel'
 import type { TextWithLine } from '../sendToModel'
 import { runDetached } from '../timedWork'
@@ -20,6 +20,7 @@ import {
 import type { PendingRoast, RoastRun, WrittenRoast } from './roastState'
 import {
   ROAST_TO_OTHER_SESSION,
+  ROAST_WAITING_AFTER_STOP,
   describeIdleRoastFailed,
   describeRoastNotSent,
   describeRoastSentLine,
@@ -30,7 +31,7 @@ type PendingRoastDelivery = {
   /** The text of the prompt that the roast goes to the model in. */
   prompt: string
   /** The note at `place` that sends the model the roast, with the line that shows the roast. */
-  noteAt: (place: HeldTextPlace) => TextWithLine
+  noteAt: (place: PendingTextPlace) => TextWithLine
   /** Puts the roast back where it waits for the next try. */
   restore: () => Promise<void>
   /** The toast for the roast left unsent, with the reason. */
@@ -38,19 +39,20 @@ type PendingRoastDelivery = {
 }
 
 /** The roasts that have not gone to the model yet, as a source of texts sent to the model. */
-export function roastsSource($: EngineInterface): HeldTextSource & PromptNoteSource {
+export function roastsSource($: EngineInterface): PendingTextSource & PromptNoteSource {
   return {
     takeNote: () => takeRoastsNote($),
     takeNoteBesidePrompt: () => takeRoastsBesidePrompt($),
     submit: () => submitPendingRoasts($),
     describeNotSent: describeRoastNotSent,
+    waitingAfterStopToast: ROAST_WAITING_AFTER_STOP,
   }
 }
 
 /**
  * Sends the roast written for `run`, with the comment typed beside it, as a message of the user
  * once, and closes the Roast pane without waiting for the session. The roast goes to the model as
- * `submitWhileSessionAcceptsPrompts` describes. Where the pane does not close, the roast does not
+ * `submitAddedText` describes. Where the pane does not close, the roast does not
  * go into the state, or the prompt does not enter, the roast and the comment go back into the pane.
  */
 export async function sendRoast($: EngineInterface, run: RoastRun): Promise<void> {
@@ -70,18 +72,18 @@ export async function sendRoast($: EngineInterface, run: RoastRun): Promise<void
 }
 
 /**
- * Puts `roast` into the pending roasts, and sends it to the model once, as
- * `submitWhileSessionAcceptsPrompts` describes.
+ * Puts `roast` into the pending roasts, and sends it to the model once, as `submitAddedText`
+ * describes.
  */
 export async function deliverRoast($: EngineInterface, roast: PendingRoast): Promise<void> {
   await addPendingRoast($, roast)
-  submitWhileSessionAcceptsPrompts($, roastsSource($))
+  submitAddedText($, roastsSource($))
 }
 
 async function takeRoastsNote($: EngineInterface): Promise<TextWithLine | undefined> {
   const taken = await takeRoastsOfRunningSession($)
 
-  return taken.length === 0 ? undefined : describeRoasts($, taken, HeldTextPlace.ToolResult)
+  return taken.length === 0 ? undefined : describeRoasts($, taken, PendingTextPlace.ToolResult)
 }
 
 /**
@@ -94,7 +96,7 @@ async function takeRoastsBesidePrompt($: EngineInterface): Promise<TakenNote | u
   return taken.length === 0
     ? undefined
     : {
-      note: describeRoasts($, taken, HeldTextPlace.BesidePrompt),
+      note: describeRoasts($, taken, PendingTextPlace.BesidePrompt),
       restore: async () => {
         for (const roast of taken) {
           await deliveryOf($, roast).restore()
@@ -107,7 +109,7 @@ async function takeRoastsBesidePrompt($: EngineInterface): Promise<TakenNote | u
 function describeRoasts(
   $: EngineInterface,
   roasts: readonly PendingRoast[],
-  place: HeldTextPlace,
+  place: PendingTextPlace,
 ): TextWithLine {
   const notes = roasts.map(roast => deliveryOf($, roast).noteAt(place))
 

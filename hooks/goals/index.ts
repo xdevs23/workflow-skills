@@ -15,7 +15,7 @@ import {
   UNMARK_GOAL_DONE_TOOL,
 } from './goalNames'
 import { endIdleStretch, waitAfterTurn } from './goalIdleReminder'
-import { sendNudgesAfterTurn } from './goalNudge'
+import { showNudgesWaitingAfterStop } from './goalNudge'
 import { addGoalChangesToToolResult, submitWithGoalChanges } from './goalReminderHooks'
 import { handleMarkGoalDoneCall, handleUnmarkGoalDoneCall } from './goalMarkTools'
 import {
@@ -55,7 +55,7 @@ export function registerGoals(on: On, footer: PromptFooter): void {
   on('prompt.submit', EVERY_EVENT, submitWithGoalChanges)
   on('turn.start', EVERY_EVENT, endIdleStretch)
   on('turn.complete', EVERY_EVENT, waitAfterTurn)
-  on('turn.complete', EVERY_EVENT, sendNudgesAfterTurn)
+  on('turn.complete', EVERY_EVENT, showNudgesWaitingAfterStop)
   on('command.run', { command: GOALS_COMMAND }, runGoalsCommand).catch(replyWithGoalsHookFailure)
   on('tool.call', { tool: LIST_GOALS_TOOL }, listGoals).catch(denyGoalToolFailure)
   on('tool.call', { tool: ATTACH_TODO_TOOL }, attachTodo).catch(denyGoalToolFailure)

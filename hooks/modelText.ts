@@ -1,5 +1,5 @@
 import type { Question } from '../types'
-import { HeldTextPlace } from './heldTexts'
+import { PendingTextPlace } from './pendingTexts'
 import type { HookSubject } from './hookFailure'
 import { ASK_TOOL, LIST_TOOL, QUESTION_SKILL } from './names'
 import { sortedByNumber } from './numbered'
@@ -77,9 +77,9 @@ export function describeAnswers(answered: readonly AnsweredQuestion[]): string {
     .join('\n\n')
 }
 
-const ANSWERS_SENT_LINE_OPENINGS: Record<HeldTextPlace, string> = {
-  [HeldTextPlace.ToolResult]: 'Answers sent to Claude with a tool result:',
-  [HeldTextPlace.BesidePrompt]: 'Answers sent to Claude beside your message:',
+const ANSWERS_SENT_LINE_OPENINGS: Record<PendingTextPlace, string> = {
+  [PendingTextPlace.ToolResult]: 'Answers sent to Claude with a tool result:',
+  [PendingTextPlace.BesidePrompt]: 'Answers sent to Claude beside your message:',
 }
 
 /**
@@ -87,7 +87,7 @@ const ANSWERS_SENT_LINE_OPENINGS: Record<HeldTextPlace, string> = {
  * their answers in the transcript.
  */
 export function describeAnswersNote(
-  place: HeldTextPlace,
+  place: PendingTextPlace,
   answered: readonly AnsweredQuestion[],
 ): TextWithLine {
   return {
