@@ -1,5 +1,6 @@
 import { HeldTextPlace } from '../heldTexts'
-import { RoastVerdict } from './roastReply'
+import { IdleRoastVerdict, RoastVerdict } from './roastReply'
+import type { IdleRoastReply, RoastReply } from './roastReply'
 
 /** The opening of the prompts for the roast and the idle roast. */
 const ROAST_OPENING =
@@ -15,9 +16,9 @@ const ROAST_POINT_PROOF =
 
 const ROAST_BLUNTNESS = 'Be blunt: no praise, no softening.'
 
-const ROAST_TONE =
-  `${ROAST_BLUNTNESS} You have no tools for this reply, so answer straight away with the roast ` +
-  'alone, with nothing before or after it.'
+const JSON_REPLY =
+  'You have no tools for this reply, so answer straight away with one JSON object and nothing ' +
+  'before or after it, without a code fence.'
 
 /** The request for the points of the roast, without the reply where the transcript proves none. */
 const ROAST_POINTS =
@@ -25,26 +26,27 @@ const ROAST_POINTS =
   'facts in its context: an instruction or a decision of the user, a rule of an instruction file ' +
   `or a loaded skill, or a fact that a tool result or the user stated. ${ROAST_POINT_PROOF}`
 
-/** The whole reply of a fork asked for the idle roast that finds no point blocking the work. */
-const NO_BLOCKING_POINT = 'NO BLOCKING POINT'
+const IDLE_ROAST_REPLY_EXAMPLE = JSON.stringify({
+  verdict: IdleRoastVerdict.Roast,
+  roast: '<the roast>',
+} satisfies IdleRoastReply)
 
-/** The message that asks a fork made from the idle main conversation for the idle roast. */
+const NO_BLOCKING_POINT_REPLY_EXAMPLE = JSON.stringify({
+  verdict: IdleRoastVerdict.NoBlockingPoint,
+} satisfies IdleRoastReply)
+
+/**
+ * The message that asks a fork made from the idle main conversation for the idle roast. The fork
+ * replies with a JSON object, which readIdleRoastReply reads.
+ */
 export const IDLE_ROAST_PROMPT =
   `This conversation has been idle since the last reply of the assistant. ${ROAST_OPENING} ` +
   'Name only points that hold up the work, such as waiting for something the assistant could do ' +
   'itself, asking permission for work the user already ordered, reporting something false as ' +
   'done, or leaving a task half finished. Leave out minor points, such as a skill that was not ' +
-  `loaded again. ${ROAST_POINT_PROOF} If no point blocks the work, reply with ` +
-  `${NO_BLOCKING_POINT} alone. ${ROAST_TONE}`
-
-/**
- * Whether `reply`, the reply of a fork to IDLE_ROAST_PROMPT, says that no point blocks the work.
- * The fork may write NO_BLOCKING_POINT in any case, with punctuation or quotes, or beside a
- * sentence.
- */
-export function isNoBlockingPointReply(reply: string): boolean {
-  return reply.toUpperCase().includes(NO_BLOCKING_POINT)
-}
+  `loaded again. ${ROAST_POINT_PROOF} ${ROAST_BLUNTNESS} ${JSON_REPLY} Reply with ` +
+  `${IDLE_ROAST_REPLY_EXAMPLE}, or with ${NO_BLOCKING_POINT_REPLY_EXAMPLE} if no point blocks ` +
+  'the work.'
 
 const ROAST_SENT_AT: Record<HeldTextPlace, string> = {
   [HeldTextPlace.ToolResult]: 'They sent it while you worked.',
@@ -71,16 +73,15 @@ export function describeIdleRoastMessage(roast: string): string {
   )
 }
 
-const ROAST_REPLY_EXAMPLE = JSON.stringify({ verdict: RoastVerdict.Roast, roast: '<the roast>' })
+const ROAST_REPLY_EXAMPLE = JSON.stringify({
+  verdict: RoastVerdict.Roast,
+  roast: '<the roast>',
+} satisfies RoastReply)
 
 const REFUSED_REPLY_EXAMPLE = JSON.stringify({
   verdict: RoastVerdict.Refused,
   reason: '<the reason>',
-})
-
-const JSON_REPLY =
-  'You have no tools for this reply, so answer straight away with one JSON object and nothing ' +
-  'before or after it, without a code fence.'
+} satisfies RoastReply)
 
 const ROAST_PROMPT =
   `${ROAST_POINTS} If the transcript proves no point, write one sentence saying so as the roast. ` +
@@ -88,8 +89,8 @@ const ROAST_PROMPT =
 
 /**
  * The message that asks a fork made from the main conversation for the roast, with `finding`, the
- * complaint typed by the user after the command, unless it is empty. The fork replies with the
- * JSON object read by readRoastReply.
+ * complaint typed by the user after the command, unless it is empty. The fork replies with
+ * a JSON object, which readRoastReply reads.
  */
 export function writeRoastPrompt(finding: string): string {
   if (finding === '') {

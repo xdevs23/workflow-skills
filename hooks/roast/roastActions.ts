@@ -107,14 +107,19 @@ function readVerdict(roast: ForkedRoast): ForkedReply {
   if (roast.shown !== RoastShown.Written) {
     return roast
   }
-  const reply = readRoastReply(roast.text)
-  switch (reply?.verdict) {
-    case undefined:
-      return notWritten({ cause: RoastNotWrittenCause.UnreadableReply, reply: roast.text })
+  const read = readRoastReply(roast.text)
+  if (!read.isRead) {
+    return notWritten({
+      cause: RoastNotWrittenCause.UnreadableReply,
+      reason: read.reason,
+      reply: roast.text,
+    })
+  }
+  switch (read.model.verdict) {
     case RoastVerdict.Roast:
-      return { ...roast, text: reply.roast }
+      return { ...roast, text: read.model.roast }
     case RoastVerdict.Refused:
-      return { shown: RoastShown.Refused, reason: reply.reason }
+      return { shown: RoastShown.Refused, reason: read.model.reason }
   }
 }
 

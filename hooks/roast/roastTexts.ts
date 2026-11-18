@@ -1,4 +1,5 @@
 import { HeldTextPlace } from '../heldTexts'
+import { JsonTextNotRead } from '../jsonText'
 import type { HookSubject } from '../hookFailure'
 import { describeFailedStoreCall, describeUnreadableRecord } from '../pluginStore'
 import type { FailedStoreCall } from '../pluginStore'
@@ -70,6 +71,13 @@ const NEXT_STEP_AFTER_API_ERROR: Record<LastingApiError, string> = {
   unknown: `Run ${RUN_AGAIN}.`,
 }
 
+const UNREADABLE_REPLY_CAUSES: Record<JsonTextNotRead, string> = {
+  [JsonTextNotRead.NotJson]:
+    'The roast came back as text that is not JSON, so this plugin cannot read it.',
+  [JsonTextNotRead.OtherShape]:
+    'The roast came back as JSON of a shape that this plugin cannot read.',
+}
+
 /** The text for a run of /roast that ended without a roast, with the next step. */
 export function describeRoastNotWritten(failure: RoastFailure): string {
   switch (failure.cause) {
@@ -89,8 +97,8 @@ export function describeRoastNotWritten(failure: RoastFailure): string {
       return `The roast was cut off before it arrived. Run ${RUN_AGAIN}.`
     case RoastNotWrittenCause.UnreadableReply:
       return (
-        `The roast came back in a form that this plugin cannot read. Run ${RUN_AGAIN}. The ` +
-        `reply: ${failure.reply}`
+        `${UNREADABLE_REPLY_CAUSES[failure.reason]} Run ${RUN_AGAIN}. The reply: ` +
+        failure.reply
       )
     case RoastNotWrittenCause.Thrown:
       return `The roast could not be written: ${failure.message}. Run ${RUN_AGAIN}.`

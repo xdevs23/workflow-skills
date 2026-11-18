@@ -15,7 +15,8 @@ import type { ForkedRoast } from './roastActions'
 import { deliverRoast } from './roastDelivery'
 import { RoastNotWrittenCause } from './roastFailure'
 import { IDLE_WAIT_SECONDS } from './roastNames'
-import { IDLE_ROAST_PROMPT, isNoBlockingPointReply } from './roastPromptTexts'
+import { IDLE_ROAST_PROMPT } from './roastPromptTexts'
+import { IdleRoastVerdict, readIdleRoastReply } from './roastReply'
 import { RoastShown, RoastSource } from './roastState'
 import {
   IDLE_ROAST_FOUND_NO_BLOCKING_POINT,
@@ -168,9 +169,8 @@ async function roastAfterIdleWait($: EngineInterface, wait: Timer): Promise<void
 }
 
 /**
- * Sends `roast` to the session `sessionId` unless no point blocks the work, and ends the stretch
- * with it. A roast that was not written shows a toast and leaves the stretch open, so the end of
- * the next turn waits again.
+ * Hands the reply in `roast` to deliverIdleRoastReply. A roast that was not written shows a toast
+ * and leaves the stretch open, so the end of the next turn waits again.
  */
 async function useIdleRoast(
   $: EngineInterface,
@@ -179,17 +179,45 @@ async function useIdleRoast(
 ): Promise<void> {
   switch (roast.shown) {
     case RoastShown.Written:
-      isStretchRoasted = true
-      if (isNoBlockingPointReply(roast.text)) {
-        $.ui.log(IDLE_ROAST_FOUND_NO_BLOCKING_POINT, { to: 'debug' })
-      } else {
-        await deliverRoast($, { source: RoastSource.Idle, sessionId, text: roast.text })
-      }
+      await deliverIdleRoastReply($, sessionId, roast.text)
       break
     case RoastShown.NotWritten:
       showFailure($, describeIdleRoastNotWritten(roast.failure))
       break
     case RoastShown.WritingAgain:
+      break
+  }
+}
+
+/**
+ * Sends the roast in `reply` to the session `sessionId` unless no point blocks the work. Either
+ * verdict ends the stretch. A reply of another shape shows a toast and leaves the stretch open.
+ */
+async function deliverIdleRoastReply(
+  $: EngineInterface,
+  sessionId: string,
+  reply: string,
+): Promise<void> {
+  const read = readIdleRoastReply(reply)
+  if (!read.isRead) {
+    showFailure(
+      $,
+      describeIdleRoastNotWritten({
+        cause: RoastNotWrittenCause.UnreadableReply,
+        reason: read.reason,
+        reply,
+      }),
+    )
+
+    return
+  }
+  isStretchRoasted = true
+  switch (read.model.verdict) {
+    case IdleRoastVerdict.Roast:
+      await deliverRoast($, { source: RoastSource.Idle, sessionId, text: read.model.roast })
+      break
+    case IdleRoastVerdict.NoBlockingPoint:
+      $.ui.log(IDLE_ROAST_FOUND_NO_BLOCKING_POINT, { to: 'debug' })
       break
   }
 }

@@ -1,12 +1,14 @@
 import type { ModelApiError } from 'claude-code'
 
-/** Why a run of /roast ended without a roast. */
+import type { JsonTextNotRead } from '../jsonText'
+
+/** Why a fork asked for a roast, by /roast or by the idle roast, wrote no roast. */
 export enum RoastNotWrittenCause {
   NothingToFork = 'nothing to fork',
   ApiError = 'api error',
   EmptyReply = 'empty reply',
   Aborted = 'aborted',
-  /** The reply is not the JSON object asked for by the roast prompts. */
+  /** The reply is not the JSON object that the prompt asked for. */
   UnreadableReply = 'unreadable reply',
   Thrown = 'thrown',
 }
@@ -28,7 +30,7 @@ export function isPassingApiError(error: ModelApiError): error is PassingApiErro
   return PASSING_API_ERRORS.some(passing => passing === error)
 }
 
-/** Why a run of /roast ended without a roast, with the facts of the cause. */
+/** Why a fork asked for a roast wrote no roast, with the facts of the cause. */
 export type RoastFailure =
   | {
       cause:
@@ -37,5 +39,5 @@ export type RoastFailure =
         | RoastNotWrittenCause.Aborted
     }
   | { cause: RoastNotWrittenCause.ApiError; error: LastingApiError; status: number }
-  | { cause: RoastNotWrittenCause.UnreadableReply; reply: string }
+  | { cause: RoastNotWrittenCause.UnreadableReply; reason: JsonTextNotRead; reply: string }
   | { cause: RoastNotWrittenCause.Thrown; message: string }
