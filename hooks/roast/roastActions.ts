@@ -33,7 +33,7 @@ export async function startRoast($: EngineInterface): Promise<RoastRun> {
 }
 
 export function openRoastPane($: EngineInterface): Promise<UiOpenResult> {
-  return $.ui.open({ id: ROAST_PANE, title: PANE_TITLE, focus: true, closeOnEscape: true })
+  return $.ui.open({ id: ROAST_PANE, title: PANE_TITLE, focus: true })
 }
 
 /**
