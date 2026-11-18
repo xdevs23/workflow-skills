@@ -1,6 +1,7 @@
 import type { EngineInterface, MatchedHook, On, Timer } from 'claude-code'
 
 import { isMainConversation } from '../conversation'
+import { messageOf } from '../errorMessage'
 import { EVERY_EVENT } from '../everyEvent'
 import type { EveryEvent } from '../everyEvent'
 import { showFailure, showingStoreFailure } from '../failureToast'
@@ -13,7 +14,8 @@ import { SwitchOutcome, deleteIdleRoastSwitch, readIdleRoastSwitch } from './idl
 import { forkRoast } from './roastActions'
 import type { ForkedRoast } from './roastActions'
 import { deliverRoast } from './roastDelivery'
-import { RoastNotWrittenCause } from './roastFailure'
+import { RoastNotWrittenCause, RoastRecovery, recoveryOf } from './roastFailure'
+import type { RoastFailure } from './roastFailure'
 import { IDLE_WAIT_SECONDS } from './roastNames'
 import { IDLE_ROAST_PROMPT } from './roastPromptTexts'
 import { IdleRoastVerdict, readIdleRoastReply } from './roastReply'
@@ -145,7 +147,11 @@ function waitForIdleRoast($: EngineInterface): void {
   const wait: Timer = runAfter(
     $,
     IDLE_WAIT_SECONDS * MILLISECONDS_PER_SECOND,
-    () => roastAfterIdleWait($, wait),
+    () =>
+      roastAfterIdleWait($, wait).catch((error: unknown) => {
+        endStretchIfNeedsPerson({ cause: RoastNotWrittenCause.Thrown, message: messageOf(error) })
+        throw error
+      }),
     message => describeIdleRoastNotWritten({ cause: RoastNotWrittenCause.Thrown, message }),
   )
   idleWait = wait
@@ -168,10 +174,7 @@ async function roastAfterIdleWait($: EngineInterface, wait: Timer): Promise<void
   })
 }
 
-/**
- * Hands the reply in `roast` to deliverIdleRoastReply. A roast that was not written shows a toast
- * and leaves the stretch open, so the end of the next turn waits again.
- */
+/** Sends the reply in `roast` to deliverIdleRoastReply, or shows why no roast was written. */
 async function useIdleRoast(
   $: EngineInterface,
   sessionId: string,
@@ -182,7 +185,7 @@ async function useIdleRoast(
       await deliverIdleRoastReply($, sessionId, roast.text)
       break
     case RoastShown.NotWritten:
-      showFailure($, describeIdleRoastNotWritten(roast.failure))
+      showIdleRoastFailure($, roast.failure)
       break
     case RoastShown.WritingAgain:
       break
@@ -191,7 +194,7 @@ async function useIdleRoast(
 
 /**
  * Sends the roast in `reply` to the session `sessionId` unless no point blocks the work. Either
- * verdict ends the stretch. A reply of another shape shows a toast and leaves the stretch open.
+ * verdict ends the stretch once it was used.
  */
 async function deliverIdleRoastReply(
   $: EngineInterface,
@@ -200,18 +203,14 @@ async function deliverIdleRoastReply(
 ): Promise<void> {
   const read = readIdleRoastReply(reply)
   if (!read.isRead) {
-    showFailure(
-      $,
-      describeIdleRoastNotWritten({
-        cause: RoastNotWrittenCause.UnreadableReply,
-        reason: read.reason,
-        reply,
-      }),
-    )
+    showIdleRoastFailure($, {
+      cause: RoastNotWrittenCause.UnreadableReply,
+      reason: read.reason,
+      reply,
+    })
 
     return
   }
-  isStretchRoasted = true
   switch (read.model.verdict) {
     case IdleRoastVerdict.Roast:
       await deliverRoast($, { source: RoastSource.Idle, sessionId, text: read.model.roast })
@@ -219,5 +218,21 @@ async function deliverIdleRoastReply(
     case IdleRoastVerdict.NoBlockingPoint:
       $.ui.log(IDLE_ROAST_FOUND_NO_BLOCKING_POINT, { to: 'debug' })
       break
+  }
+  isStretchRoasted = true
+}
+
+/**
+ * Shows `failure` of the idle roast. A failure that only a person can clear ends the stretch, so
+ * the idle roast does not ask again before the next message typed by the user.
+ */
+function showIdleRoastFailure($: EngineInterface, failure: RoastFailure): void {
+  endStretchIfNeedsPerson(failure)
+  showFailure($, describeIdleRoastNotWritten(failure))
+}
+
+function endStretchIfNeedsPerson(failure: RoastFailure): void {
+  if (recoveryOf(failure) === RoastRecovery.NeedsPerson) {
+    isStretchRoasted = true
   }
 }

@@ -1,12 +1,13 @@
 import { HeldTextPlace } from '../heldTexts'
 import { JsonTextNotRead } from '../jsonText'
+import { DEBUG_LOG_NOTE } from '../failureToast'
 import type { HookSubject } from '../hookFailure'
 import { describeFailedStoreCall, describeUnreadableRecord } from '../pluginStore'
 import type { FailedStoreCall } from '../pluginStore'
 import { MILLISECONDS_PER_MINUTE, MILLISECONDS_PER_SECOND } from '../timeUnits'
 import { SwitchOutcome } from './idleRoastSwitch'
 import type { UnreadSwitch } from './idleRoastSwitch'
-import { RoastNotWrittenCause } from './roastFailure'
+import { RoastNotWrittenCause, RoastRecovery, recoveryOf } from './roastFailure'
 import type { LastingApiError, RoastFailure } from './roastFailure'
 import { IDLE_ROAST_COMMAND, IDLE_WAIT_SECONDS, IdleRoastWord, ROAST_COMMAND } from './roastNames'
 import type { RoastProgressOf, RoastShown } from './roastState'
@@ -53,22 +54,19 @@ export const ROAST_TO_OTHER_SESSION =
 
 export const ROAST_LOST_WITHOUT_COMMAND = 'This session cannot be roasted.'
 
-const RUN_AGAIN = `/${ROAST_COMMAND} again`
-
-/** The next step after an error of the API that does not clear on its own. */
-const NEXT_STEP_AFTER_API_ERROR: Record<LastingApiError, string> = {
-  authentication_failed: `Log in again with /login, then run ${RUN_AGAIN}.`,
+// Undefined where no step of a person clears the error.
+const FIX_FOR_API_ERROR: Record<LastingApiError, string | undefined> = {
+  authentication_failed: 'Log in again with /login.',
   oauth_org_not_allowed:
-    `Log in with /login to an account whose organization may use Claude Code, then run ` +
-    `${RUN_AGAIN}.`,
-  account_on_hold: `Resolve the hold on the account, then run ${RUN_AGAIN}.`,
-  verification_required: `Verify the account, then run ${RUN_AGAIN}.`,
-  billing_error: `Check the billing of the account, then run ${RUN_AGAIN}.`,
-  invalid_request: `Run /compact to shorten the conversation, then run ${RUN_AGAIN}.`,
-  model_not_found: `Pick another model with /model, then run ${RUN_AGAIN}.`,
-  max_output_tokens: `Run ${RUN_AGAIN}.`,
-  cloud_credential_error: `Renew the credentials for the cloud provider, then run ${RUN_AGAIN}.`,
-  unknown: `Run ${RUN_AGAIN}.`,
+    'Log in with /login to an account whose organization may use Claude Code.',
+  account_on_hold: 'Resolve the hold on the account.',
+  verification_required: 'Verify the account.',
+  billing_error: 'Check the billing of the account.',
+  invalid_request: 'Run /compact to shorten the conversation.',
+  model_not_found: 'Pick another model with /model.',
+  max_output_tokens: undefined,
+  cloud_credential_error: 'Renew the credentials for the cloud provider.',
+  unknown: undefined,
 }
 
 const UNREADABLE_REPLY_CAUSES: Record<JsonTextNotRead, string> = {
@@ -78,31 +76,46 @@ const UNREADABLE_REPLY_CAUSES: Record<JsonTextNotRead, string> = {
     'The roast came back as JSON of a shape that this plugin cannot read.',
 }
 
-/** The text for a run of /roast that ended without a roast, with the next step. */
-export function describeRoastNotWritten(failure: RoastFailure): string {
+/** The sentences that describe a roast that was not written, apart from the retry step. */
+type RoastFailureSentences = { cause: string; fix?: string | undefined; reply?: string }
+
+function describeRoastFailureParts(failure: RoastFailure): RoastFailureSentences {
   switch (failure.cause) {
     case RoastNotWrittenCause.NothingToFork:
-      return (
-        'A fork cannot write the roast before Claude has finished a request in this session. ' +
-        `Run ${RUN_AGAIN} once it has.`
-      )
+      return {
+        cause:
+          'A fork cannot write the roast before Claude has finished a request in this session.',
+        fix: 'Send Claude a message and wait until Claude replies.',
+      }
     case RoastNotWrittenCause.ApiError:
-      return (
-        `The roast could not be written: the API returned the error ${failure.error} (status ` +
-        `${failure.status}). ${NEXT_STEP_AFTER_API_ERROR[failure.error]}`
-      )
+      return {
+        cause:
+          `The roast could not be written: the API returned the error ${failure.error} (status ` +
+          `${failure.status}).`,
+        fix: FIX_FOR_API_ERROR[failure.error],
+      }
     case RoastNotWrittenCause.EmptyReply:
-      return `The roast came back without text. Run ${RUN_AGAIN}.`
+      return { cause: 'The roast came back without text.' }
     case RoastNotWrittenCause.Aborted:
-      return `The roast was cut off before it arrived. Run ${RUN_AGAIN}.`
+      return { cause: 'The roast was cut off before it arrived.' }
     case RoastNotWrittenCause.UnreadableReply:
-      return (
-        `${UNREADABLE_REPLY_CAUSES[failure.reason]} Run ${RUN_AGAIN}. The reply: ` +
-        failure.reply
-      )
+      return { cause: UNREADABLE_REPLY_CAUSES[failure.reason], reply: failure.reply }
     case RoastNotWrittenCause.Thrown:
-      return `The roast could not be written: ${failure.message}. Run ${RUN_AGAIN}.`
+      return { cause: `The roast could not be written: ${failure.message}.` }
   }
+}
+
+function describeNotWritten(failure: RoastFailure, retry: string): string {
+  const { cause, fix, reply } = describeRoastFailureParts(failure)
+
+  return [cause, fix, retry, reply === undefined ? undefined : `The reply: ${reply}`]
+    .filter(sentence => sentence !== undefined)
+    .join(' ')
+}
+
+/** The text for a run of /roast that ended without a roast, with the next step. */
+export function describeRoastNotWritten(failure: RoastFailure): string {
+  return describeNotWritten(failure, `Run /${ROAST_COMMAND} again.`)
 }
 
 /** The notice for a roast written for `secondsWriting` so far. */
@@ -150,9 +163,16 @@ export function describeRoastNotSent(reason: string): string {
 export const IDLE_ROAST_FOUND_NO_BLOCKING_POINT =
   'The idle roast found no point that blocks the work, so nothing went to Claude.'
 
+const IDLE_ROAST_RETRY_STEPS: Record<RoastRecovery, string> = {
+  [RoastRecovery.AskAgain]: 'The idle roast waits again once Claude ends its next turn.',
+  [RoastRecovery.NeedsPerson]: 'The idle roast waits again after your next message.',
+}
+
 /** The toast for an idle roast that was not written, with the next step. */
 export function describeIdleRoastNotWritten(failure: RoastFailure): string {
-  return `The idle roast was not written. ${describeRoastNotWritten(failure)}`
+  const retry = IDLE_ROAST_RETRY_STEPS[recoveryOf(failure)]
+
+  return `The idle roast was not written. ${describeNotWritten(failure, retry)} ${DEBUG_LOG_NOTE}`
 }
 
 /** The toast for an idle roast that did not go to Claude for `reason` and waits again. */
