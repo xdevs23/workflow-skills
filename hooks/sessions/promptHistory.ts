@@ -5,6 +5,7 @@ import type {
   ProcessSpawnResult,
 } from 'claude-code'
 
+import { readJsonText } from '../jsonText'
 import { isRecord } from '../pluginStore'
 import { firstPromptOf, isSlashCommandText } from './sessionRecord'
 import type { RecordedStart } from './sessionStore'
@@ -108,11 +109,11 @@ export async function readStartsFromPromptHistory(
         errorLines.push(line)
         continue
       }
-      const historyLine = parseHistoryLine(line)
-      if (historyLine === undefined) {
+      const read = readJsonText(line, toHistoryLine)
+      if (!read.isRead) {
         unreadableLines += 1
-      } else if (asked.has(historyLine.sessionId)) {
-        await addToStarts($, `${configFolder}/${PASTE_CACHE_FOLDER}`, starts, historyLine)
+      } else if (asked.has(read.model.sessionId)) {
+        await addToStarts($, `${configFolder}/${PASTE_CACHE_FOLDER}`, starts, read.model)
       }
     }
   } catch (error) {
@@ -233,19 +234,10 @@ async function pastedTextOf(
 }
 
 /**
- * A line of the prompt history, or undefined for a line of another shape, such as one written by
- * an older version.
+ * `value` as a line of the prompt history, or undefined for a value of another shape, such as a
+ * line written by an older version.
  */
-function parseHistoryLine(text: string): HistoryLine | undefined {
-  let value: unknown
-  try {
-    value = JSON.parse(text)
-  } catch (error) {
-    if (error instanceof SyntaxError) {
-      return undefined
-    }
-    throw error
-  }
+function toHistoryLine(value: unknown): HistoryLine | undefined {
   if (!isRecord(value)) {
     return undefined
   }

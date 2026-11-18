@@ -1,4 +1,5 @@
 import type { Cadence } from '../../types'
+import { readJsonText } from '../jsonText'
 import { readStrings } from '../pluginStore'
 import { NO_LETTER_AFTER, NO_LETTER_BEFORE } from '../quotedText'
 import { CadenceProblem, FieldKind, listKind } from './cadenceKind'
@@ -70,16 +71,9 @@ function upgradeQuotedPhrases(values: Cadence['values']): Cadence['values'] | Ca
  * double quotes as JSON writes them, with a comma between two.
  */
 function phrasesOfQuotedText(typed: string): readonly string[] | CadenceProblem {
-  let listed: unknown
-  try {
-    listed = JSON.parse(`[${typed}]`)
-  } catch (error) {
-    if (error instanceof SyntaxError) {
-      return UNREADABLE_PHRASES_PROBLEM
-    }
-    throw error
-  }
-  return readStrings(listed) ?? UNREADABLE_PHRASES_PROBLEM
+  const read = readJsonText(`[${typed}]`, readStrings)
+
+  return read.isRead ? read.model : UNREADABLE_PHRASES_PROBLEM
 }
 
 /** Matches `phrase` as whole words in any case, with any white space between its words. */
