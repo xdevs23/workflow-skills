@@ -26,6 +26,10 @@ export const SEND_LABEL = 'Send roast'
 
 export const SENDING_ROAST_NOTICE = 'Sending the roast to Claude.'
 
+export const ROAST_REFUSED_NOTICE =
+  'The roaster refused this roast because it found your point unfounded, so you cannot send the ' +
+  'roast.'
+
 const ROAST_SENT_LINE_OPENINGS: Record<HeldTextPlace, string> = {
   [HeldTextPlace.ToolResult]: 'Roast sent to Claude with a tool result:',
   [HeldTextPlace.BesidePrompt]: 'Roast sent to Claude beside your message:',
@@ -83,6 +87,11 @@ export function describeRoastNotWritten(failure: RoastFailure): string {
       return `The roast came back without text. Run ${RUN_AGAIN}.`
     case RoastNotWrittenCause.Aborted:
       return `The roast was cut off before it arrived. Run ${RUN_AGAIN}.`
+    case RoastNotWrittenCause.UnreadableReply:
+      return (
+        `The roast came back in a form that this plugin cannot read. Run ${RUN_AGAIN}. The ` +
+        `reply: ${failure.reply}`
+      )
     case RoastNotWrittenCause.Thrown:
       return `The roast could not be written: ${failure.message}. Run ${RUN_AGAIN}.`
   }

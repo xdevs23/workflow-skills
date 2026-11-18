@@ -11,6 +11,7 @@ import {
   COMMENT_PLACEHOLDER,
   COMMENT_SUBMIT_LABEL,
   NO_ROAST,
+  ROAST_REFUSED_NOTICE,
   SENDING_ROAST_NOTICE,
   SEND_LABEL,
   describeOutputTokens,
@@ -35,6 +36,8 @@ export const drawRoastPane: MatchedHook<'ui.render', typeof ROAST_PANE_SITE> = a
       return <Text color="warning">{describeRoastNotWritten(roast.failure)}</Text>
     case RoastShown.Written:
       return drawWrittenRoast($, e, run, roast)
+    case RoastShown.Refused:
+      return drawRefusedRoast($, e, roast.reason)
     case RoastShown.Sent:
       return <Text dimColor>{SENDING_ROAST_NOTICE}</Text>
   }
@@ -66,6 +69,22 @@ function drawWrittenRoast(
         <Text dimColor>{describeOutputTokens(roast.outputTokens)}</Text>
       </Box>
       {drawsFields(e) && drawCommentField($, e, run, roast.comment)}
+    </Box>
+  )
+}
+
+/** Draws the notice that you cannot send the roast, and after it `reason`, given by the fork. */
+function drawRefusedRoast(
+  $: EngineInterface,
+  e: ResolveInput<'Pane'>,
+  reason: string,
+): RenderElement {
+  const { Box, Text } = $.ui.resolve(e)
+
+  return (
+    <Box flexDirection="column" rowGap={1}>
+      <Text color="warning">{ROAST_REFUSED_NOTICE}</Text>
+      {reason !== '' && <Text>{reason}</Text>}
     </Box>
   )
 }

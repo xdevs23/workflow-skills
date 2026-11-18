@@ -45,8 +45,9 @@ export const registerRoastCommand: MatchedHook<'session.start', { isInteractive:
 
 /**
  * Opens the Roast pane, and has a fork made from the main conversation write the roast into it
- * without waiting for the fork. Text typed by the user after /roast goes into the roast as one of
- * its points. Replies only while Claude Code does not draw the pane.
+ * without waiting for the fork. Text typed by the user after /roast goes to the fork as a
+ * complaint, which the fork takes into the roast or refuses with a reason. Replies only while
+ * Claude Code does not draw the pane.
  */
 export const runRoastCommand: MatchedHook<
   'command.run',

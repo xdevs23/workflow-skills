@@ -6,6 +6,8 @@ export enum RoastNotWrittenCause {
   ApiError = 'api error',
   EmptyReply = 'empty reply',
   Aborted = 'aborted',
+  /** The reply is not the JSON object asked for by the roast prompts. */
+  UnreadableReply = 'unreadable reply',
   Thrown = 'thrown',
 }
 
@@ -35,4 +37,5 @@ export type RoastFailure =
         | RoastNotWrittenCause.Aborted
     }
   | { cause: RoastNotWrittenCause.ApiError; error: LastingApiError; status: number }
+  | { cause: RoastNotWrittenCause.UnreadableReply; reply: string }
   | { cause: RoastNotWrittenCause.Thrown; message: string }

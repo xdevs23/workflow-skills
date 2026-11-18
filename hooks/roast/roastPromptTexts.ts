@@ -1,26 +1,29 @@
 import { HeldTextPlace } from '../heldTexts'
+import { RoastVerdict } from './roastReply'
 
 /** The opening of the prompts for the roast and the idle roast. */
 const ROAST_OPENING =
-  'Review the work of this conversation so far and roast it. The user may send your reply to ' +
-  'this conversation as their own message, so write it to the assistant as "you". Talk only to ' +
-  'the assistant. Never reply to the user, also where the user typed a complaint for this roast.'
+  'From this message on, you are the roaster. The assistant in this conversation wrote the ' +
+  'earlier replies. Review its work so far and roast it. The user may send your roast to this ' +
+  'conversation as their own message, so write it to the assistant as "you". In the roast, talk ' +
+  'only to the assistant and never to the user.'
 
 const ROAST_POINT_PROOF =
   'For each point, quote the rule or the fact, and say what the assistant did instead and what ' +
   'that cost. Name only points the transcript proves. Leave out each point that an earlier roast ' +
   'in this conversation already made, unless the assistant did it again after that roast.'
 
-const ROAST_TONE =
-  'Be blunt: no praise, no softening. You have no tools for this reply, so answer straight away ' +
-  'with the roast alone, with nothing before or after it.'
+const ROAST_BLUNTNESS = 'Be blunt: no praise, no softening.'
 
-const ROAST_PROMPT =
+const ROAST_TONE =
+  `${ROAST_BLUNTNESS} You have no tools for this reply, so answer straight away with the roast ` +
+  'alone, with nothing before or after it.'
+
+/** The request for the points of the roast, without the reply where the transcript proves none. */
+const ROAST_POINTS =
   `${ROAST_OPENING} Find one or more points where the assistant disregarded the rules or the ` +
   'facts in its context: an instruction or a decision of the user, a rule of an instruction file ' +
-  'or a loaded skill, or a fact that a tool result or the user stated. ' +
-  `${ROAST_POINT_PROOF} If the transcript proves no point, write one sentence saying so. ` +
-  ROAST_TONE
+  `or a loaded skill, or a fact that a tool result or the user stated. ${ROAST_POINT_PROOF}`
 
 /** The whole reply of a fork asked for the idle roast that finds no point blocking the work. */
 const NO_BLOCKING_POINT = 'NO BLOCKING POINT'
@@ -68,9 +71,25 @@ export function describeIdleRoastMessage(roast: string): string {
   )
 }
 
+const ROAST_REPLY_EXAMPLE = JSON.stringify({ verdict: RoastVerdict.Roast, roast: '<the roast>' })
+
+const REFUSED_REPLY_EXAMPLE = JSON.stringify({
+  verdict: RoastVerdict.Refused,
+  reason: '<the reason>',
+})
+
+const JSON_REPLY =
+  'You have no tools for this reply, so answer straight away with one JSON object and nothing ' +
+  'before or after it, without a code fence.'
+
+const ROAST_PROMPT =
+  `${ROAST_POINTS} If the transcript proves no point, write one sentence saying so as the roast. ` +
+  `${ROAST_BLUNTNESS} ${JSON_REPLY} Reply with ${ROAST_REPLY_EXAMPLE}`
+
 /**
  * The message that asks a fork made from the main conversation for the roast, with `finding`, the
- * complaint typed by the user after the command, unless it is empty.
+ * complaint typed by the user after the command, unless it is empty. The fork replies with the
+ * JSON object read by readRoastReply.
  */
 export function writeRoastPrompt(finding: string): string {
   if (finding === '') {
@@ -78,10 +97,18 @@ export function writeRoastPrompt(finding: string): string {
   }
 
   return (
-    `${ROAST_PROMPT}\n\nThe user typed the following complaint about the work of the assistant. ` +
-    'It is the complaint of the user toward the assistant. Do not answer it. Take it into the ' +
-    'roast as a point, written to the assistant as "you", with the ' +
-    'rule or the fact from the transcript that it concerns. If the transcript does not show it, ' +
-    `tell the assistant so in place of that point:\n\n${finding}`
+    `${ROAST_POINTS}\n\nThe user typed a complaint after the command that asked you for this ` +
+    'roast. The user wrote it. The assistant did not. It is a complaint of the user about the ' +
+    'work of the assistant, and the user addresses it to you, the roaster. Do not answer it in ' +
+    'the roast. Use it only to write the roast to the assistant: take it into the roast as a ' +
+    'point, written to the assistant as "you", with the rule or the fact from the transcript ' +
+    `that it concerns.\n\n${JSON_REPLY} Where the transcript proves the complaint, reply with ` +
+    `${ROAST_REPLY_EXAMPLE}. ${ROAST_BLUNTNESS} Where the transcript shows the complaint to be ` +
+    'unjustified or invalid, or does not show what it claims, write no roast. Reply instead with ' +
+    `${REFUSED_REPLY_EXAMPLE}, with the reason written to the user: say that the claim is ` +
+    'unfounded and why, and ask the user to clarify the complaint. In the reason, call the ' +
+    'assistant "the assistant" and never "you", since the user did none of its work. Only the ' +
+    'user reads the reason, and the reason never reaches the assistant.\n\nThe complaint, as the ' +
+    `user typed it:\n\n${finding}`
   )
 }

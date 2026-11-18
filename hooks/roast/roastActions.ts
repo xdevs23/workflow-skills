@@ -10,6 +10,7 @@ import { RoastNotWrittenCause, isPassingApiError } from './roastFailure'
 import type { RoastFailure } from './roastFailure'
 import { ROAST_PANE, SEND_KEY } from './roastNames'
 import { writeRoastPrompt } from './roastPromptTexts'
+import { RoastVerdict, readRoastReply } from './roastReply'
 import { RoastShown, recordSecondsWriting, setRoastOfRun, setRoastWriting } from './roastState'
 import type { RoastProgressOf, RoastRun } from './roastState'
 import { PANE_TITLE, describeSecondsNotShown } from './roastTexts'
@@ -36,11 +37,12 @@ export function openRoastPane($: EngineInterface): Promise<UiOpenResult> {
 }
 
 /**
- * Asks a fork made from the main conversation for the roast of `run`, with `finding` as one of
- * its points unless it is empty, and shows the result in the Roast pane. Asks again after an error
- * of the API that passes, until a fork writes the roast, fails for good, or the state dropped
- * `run`. A failure thrown on the way shows in the pane too. Every second until then, the pane shows
- * the seconds since the first fork started.
+ * Asks a fork made from the main conversation for the roast of `run`, and shows the result in the
+ * Roast pane. A `finding` that is not empty goes to the fork as a complaint of the user, which the
+ * fork takes into the roast or refuses with a reason, and the pane then shows that reason. Asks
+ * again after an error of the API that passes, until a fork writes or refuses the roast, fails for
+ * good, or the state dropped `run`. A failure thrown on the way shows in the pane too. Every second
+ * until then, the pane shows the seconds since the first fork started.
  */
 export async function writeRoast(
   $: EngineInterface,
@@ -48,7 +50,7 @@ export async function writeRoast(
   finding: string,
 ): Promise<void> {
   await runCountingSeconds($, run, () =>
-    forkRoast($, writeRoastPrompt(finding), roast => showForkedRoast($, run, roast)),
+    forkRoast($, writeRoastPrompt(finding), roast => showForkedRoast($, run, readVerdict(roast))),
   ).catch(
     async (error: unknown) => {
       const message = messageOf(error)
@@ -97,11 +99,30 @@ export async function forkRoast(
   }
 }
 
+/** What a fork reply to a roast shows: the roast, the refusal of the roast, or a failure. */
+type ForkedReply = ForkedRoast | RoastProgressOf<RoastShown.Refused>
+
+/** `roast` with the verdict of the fork read from its reply, where the fork replied. */
+function readVerdict(roast: ForkedRoast): ForkedReply {
+  if (roast.shown !== RoastShown.Written) {
+    return roast
+  }
+  const reply = readRoastReply(roast.text)
+  switch (reply?.verdict) {
+    case undefined:
+      return notWritten({ cause: RoastNotWrittenCause.UnreadableReply, reply: roast.text })
+    case RoastVerdict.Roast:
+      return { ...roast, text: reply.roast }
+    case RoastVerdict.Refused:
+      return { shown: RoastShown.Refused, reason: reply.reason }
+  }
+}
+
 /** Shows `roast` in the Roast pane for `run`, and returns whether the state still has `run`. */
 async function showForkedRoast(
   $: EngineInterface,
   run: RoastRun,
-  roast: ForkedRoast,
+  roast: ForkedReply,
 ): Promise<boolean> {
   const isShown = await setRoastOfRun($, run, roast)
   if (isShown && roast.shown === RoastShown.Written) {
