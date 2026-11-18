@@ -4,6 +4,7 @@ import { messageOf } from '../errorMessage'
 import { moveKeyboardTo } from '../paneFocus'
 import { randomWaitAfter } from '../retryWait'
 import type { RetryWaits } from '../retryWait'
+import { MILLISECONDS_PER_SECOND } from '../timeUnits'
 import { runEvery } from '../timedWork'
 import { RoastNotWrittenCause, isPassingApiError } from './roastFailure'
 import type { RoastFailure } from './roastFailure'
@@ -16,8 +17,6 @@ import { PANE_TITLE, describeSecondsNotShown } from './roastTexts'
 // The user watches the Roast pane while the fork runs again, so the wait before the next try grows
 // from two seconds up to half a minute and goes no longer.
 const FORK_RETRY_WAITS: RetryWaits = { firstMs: 2000, longestMs: 30_000 }
-
-const MILLISECONDS_PER_SECOND = 1000
 
 /** Makes a run of /roast in the running session, and shows its roast as being written. */
 export async function startRoast($: EngineInterface): Promise<RoastRun> {

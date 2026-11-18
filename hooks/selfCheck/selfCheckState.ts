@@ -3,6 +3,7 @@ import type { EngineInterface } from 'claude-code'
 
 import type { SelfCheckSchedule } from '../../types'
 import { ofSession, updateOfSession } from '../sessionBoundState'
+import { MILLISECONDS_PER_HOUR } from '../timeUnits'
 import { firstDueTimeAfter } from '../timedWork'
 
 /**
@@ -10,8 +11,6 @@ import { firstDueTimeAfter } from '../timedWork'
  * delivered by it, and again after each further interval of that length: a product choice.
  */
 const CHECK_INTERVAL_HOURS = 4
-
-const MILLISECONDS_PER_HOUR = 3_600_000
 
 const CHECK_INTERVAL = CHECK_INTERVAL_HOURS * MILLISECONDS_PER_HOUR
 

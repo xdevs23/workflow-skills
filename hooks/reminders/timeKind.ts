@@ -1,5 +1,6 @@
 import type { SelectOption } from 'claude-code'
 
+import { MILLISECONDS_PER_HOUR, MILLISECONDS_PER_MINUTE } from '../timeUnits'
 import { CadenceProblem, FieldKind, listKind } from './cadenceKind'
 import type { CadenceKind, ListedKind } from './cadenceKind'
 
@@ -11,8 +12,6 @@ export enum TimeUnit {
   Minutes = 'minutes',
   Hours = 'hours',
 }
-
-const MILLISECONDS_PER_MINUTE = 60_000
 
 /**
  * A unit by its length, how the cadence line and the dropdown write an amount of it, and the label
@@ -27,7 +26,7 @@ const UNITS: Record<TimeUnit, UnitOfTime> = {
     amountLabel: 'Minutes',
   },
   [TimeUnit.Hours]: {
-    milliseconds: 60 * MILLISECONDS_PER_MINUTE,
+    milliseconds: MILLISECONDS_PER_HOUR,
     amount: amountFormatOf('hour'),
     amountLabel: 'Hours',
   },

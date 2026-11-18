@@ -4,6 +4,7 @@ import type { Board, IdleStretch } from '../../types'
 import { isMainConversation } from '../conversation'
 import type { EveryEvent } from '../everyEvent'
 import { submitToSessionOrRestore } from '../sendToModel'
+import { MILLISECONDS_PER_MINUTE } from '../timeUnits'
 import { runAfter, runAfterMainTurn } from '../timedWork'
 import { openGoalsOf } from './board'
 import { listOpenGoals, readBoardToRemind } from './goalReminderBoard'
@@ -14,8 +15,6 @@ import { readIdleStretch, restoreSeenBoard, updateIdleStretch } from './goalStat
  * How long the main conversation is idle before the open goals are sent again: a product choice.
  */
 const IDLE_MINUTES = 30
-
-const MILLISECONDS_PER_MINUTE = 60_000
 
 /** Where the main conversation of a session stands between two of its turns. */
 export enum IdlePhase {
