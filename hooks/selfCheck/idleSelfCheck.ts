@@ -57,9 +57,10 @@ export const startScheduleOnUserMessage: MatchedHook<'prompt.submit', EveryEvent
   return next(e)
 }
 
-// Every prompt not typed by the user, such as one from a timer, a scheduled task or a plugin,
-// contains the self-check once it is due. A command may run without the model, so it contains
-// nothing.
+// A prompt not typed by the user, such as one from a scheduled task or another plugin, contains the
+// self-check once it is due. Claude Code does not run the hooks of this plugin for a prompt that
+// this plugin submits, so a due self-check waits for the end of the turn of that prompt. A command
+// may run without the model, so it contains nothing.
 export const submitWithSelfCheck: MatchedHook<'prompt.submit', EveryEvent> = async (
   $,
   e,
