@@ -26,7 +26,9 @@ Then run a skill, such as `/workflow-skills:implement`.
   context, and sends it to Claude as your message, with your comment if you add one. During a
   turn, Claude reads it with the next tool result. After you stopped Claude, it reads the roast
   with your next message.
-  `/roast <point>` puts a point you found yourself into the roast
+  `/roast <point>` puts a point you found yourself into the roast. After `/idle-roast on`, Claude
+  gets a roast of what blocks the work once it has been idle for about five minutes. The switch
+  applies to this session only, and `/idle-roast off` switches it off
 
 ## License
 

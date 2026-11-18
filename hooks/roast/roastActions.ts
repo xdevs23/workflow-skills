@@ -11,12 +11,17 @@ import type { RoastFailure } from './roastFailure'
 import { ROAST_PANE, SEND_KEY } from './roastNames'
 import { writeRoastPrompt } from './roastPromptTexts'
 import { RoastShown, recordSecondsWriting, setRoastOfRun, setRoastWriting } from './roastState'
-import type { RoastProgress, RoastRun } from './roastState'
+import type { RoastProgressOf, RoastRun } from './roastState'
 import { PANE_TITLE, describeSecondsNotShown } from './roastTexts'
 
-// The user watches the Roast pane while the fork runs again, so the wait before the next try grows
-// from two seconds up to half a minute and goes no longer.
+// The user may watch the Roast pane while the fork runs again, so the wait before the next try
+// grows from two seconds up to half a minute and goes no longer.
 const FORK_RETRY_WAITS: RetryWaits = { firstMs: 2000, longestMs: 30_000 }
+
+/** The result of one fork asked for a roast. */
+export type ForkedRoast = RoastProgressOf<
+  RoastShown.Written | RoastShown.WritingAgain | RoastShown.NotWritten
+>
 
 /** Makes a run of /roast in the running session, and shows its roast as being written. */
 export async function startRoast($: EngineInterface): Promise<RoastRun> {
@@ -42,7 +47,9 @@ export async function writeRoast(
   run: RoastRun,
   finding: string,
 ): Promise<void> {
-  await runCountingSeconds($, run, () => forkUntilDone($, run, writeRoastPrompt(finding))).catch(
+  await runCountingSeconds($, run, () =>
+    forkRoast($, writeRoastPrompt(finding), roast => showForkedRoast($, run, roast)),
+  ).catch(
     async (error: unknown) => {
       const message = messageOf(error)
       await setRoastOfRun($, run, notWritten({ cause: RoastNotWrittenCause.Thrown, message }))
@@ -71,25 +78,42 @@ async function runCountingSeconds(
   await work().finally(() => ticks.cancel())
 }
 
-async function forkUntilDone($: EngineInterface, run: RoastRun, prompt: string): Promise<void> {
+/**
+ * Asks a fork made from the main conversation for a roast with `prompt`, and hands each result to
+ * `useResult`. Asks again after an error of the API that passes, until a fork writes the roast or
+ * fails for good, or `useResult` returns false.
+ */
+export async function forkRoast(
+  $: EngineInterface,
+  prompt: string,
+  useResult: (roast: ForkedRoast) => Promise<boolean>,
+): Promise<void> {
   for (let tries = 1; ; tries += 1) {
     const roast = readForkReply(await $.model.fork({ prompt }), tries)
-    if (!(await setRoastOfRun($, run, roast))) {
-      return
-    }
-    if (roast.shown === RoastShown.Written) {
-      // The pane had the keyboard while it showed the notice, so the Send button has it only now.
-      return moveKeyboardTo($, { title: PANE_TITLE, requestId: ROAST_PANE, key: SEND_KEY })
-    }
-    if (roast.shown === RoastShown.NotWritten) {
+    if (!(await useResult(roast)) || roast.shown !== RoastShown.WritingAgain) {
       return
     }
     await $.clock.sleep(randomWaitAfter(tries, FORK_RETRY_WAITS))
   }
 }
 
-/** What the fork reply `reply` to the try numbered `tries` shows in the Roast pane. */
-function readForkReply(reply: ModelForkResult, tries: number): RoastProgress {
+/** Shows `roast` in the Roast pane for `run`, and returns whether the state still has `run`. */
+async function showForkedRoast(
+  $: EngineInterface,
+  run: RoastRun,
+  roast: ForkedRoast,
+): Promise<boolean> {
+  const isShown = await setRoastOfRun($, run, roast)
+  if (isShown && roast.shown === RoastShown.Written) {
+    // The pane had the keyboard while it showed the notice, so the Send button has it only now.
+    await moveKeyboardTo($, { title: PANE_TITLE, requestId: ROAST_PANE, key: SEND_KEY })
+  }
+
+  return isShown
+}
+
+/** What the fork reply `reply` to the try numbered `tries` shows for the roast. */
+function readForkReply(reply: ModelForkResult, tries: number): ForkedRoast {
   if (reply.isAnswered) {
     const text = reply.text.trim()
 
@@ -116,6 +140,6 @@ function readForkReply(reply: ModelForkResult, tries: number): RoastProgress {
   }
 }
 
-function notWritten(failure: RoastFailure): RoastProgress {
+function notWritten(failure: RoastFailure): RoastProgressOf<RoastShown.NotWritten> {
   return { shown: RoastShown.NotWritten, failure }
 }

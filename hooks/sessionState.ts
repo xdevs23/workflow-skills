@@ -136,7 +136,8 @@ const ACCEPTS_PLUGIN_PROMPTS: Record<SessionActivity, boolean> = {
 /** The activity of the main conversation of the session with the id `sessionId`. */
 export type ActivityOfSession = { sessionId: string; activity: SessionActivity }
 
-async function readSessionActivity($: EngineInterface): Promise<SessionActivity> {
+/** The activity of the main conversation of the running session, idle before its first turn. */
+export async function readSessionActivity($: EngineInterface): Promise<SessionActivity> {
   const recorded = await ofRunningSession($, await read($, sessionActivity))
 
   return recorded?.activity ?? SessionActivity.Idle

@@ -18,6 +18,7 @@ export enum RecordKind {
   Goal = 'goals',
   Reminder = 'reminders',
   Session = 'sessions',
+  IdleRoast = 'idle-roast',
 }
 
 const KEY_SEPARATOR = ':'

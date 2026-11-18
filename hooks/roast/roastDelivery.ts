@@ -8,17 +8,30 @@ import { PromptOutcome, submitToSessionOrRestore } from '../sendToModel'
 import { runDetached } from '../timedWork'
 import { openRoastPane } from './roastActions'
 import { ROAST_PANE } from './roastNames'
-import { RoastNotePlace, describeRoastNote } from './roastPromptTexts'
+import { RoastNotePlace, describeIdleRoastMessage, describeRoastNote } from './roastPromptTexts'
 import {
+  RoastSource,
   addPendingRoast,
   markRoastSent,
   setRoastOfRun,
   takeAllPendingRoasts,
 } from './roastState'
 import type { PendingRoast, RoastRun, WrittenRoast } from './roastState'
-import { ROAST_TO_OTHER_SESSION, describeRoastNotSent } from './roastTexts'
+import { ROAST_TO_OTHER_SESSION, describeIdleRoastFailed, describeRoastNotSent } from './roastTexts'
 
-/** The roasts sent by the user, as a source of texts sent to the model. */
+/** How a pending roast goes to the model, and where it goes back to when it does not. */
+type PendingRoastDelivery = {
+  /** The text of the prompt that the roast goes to the model in. */
+  prompt: string
+  /** The note at `place` that sends the model the roast. */
+  noteAt: (place: RoastNotePlace) => string
+  /** Puts the roast back where it waits for the next try. */
+  restore: () => Promise<void>
+  /** The toast for the roast left unsent, with the reason. */
+  describeNotSent: (reason: string) => string
+}
+
+/** The roasts that have not gone to the model yet, as a source of texts sent to the model. */
 export function roastsSource($: EngineInterface): HeldTextSource & PromptNoteSource {
   return {
     takeNote: () => takeRoastsNote($),
@@ -39,28 +52,35 @@ export async function sendRoast($: EngineInterface, run: RoastRun): Promise<void
   if (written === null) {
     return
   }
-  const roast = { run, written }
+  const roast: PendingRoast = { ...run, source: RoastSource.Pane, written }
+  const { restore, describeNotSent } = deliveryOf($, roast)
   await $.ui
     .close({ id: ROAST_PANE })
-    .then(() => addPendingRoast($, roast))
-    .then(
-      () => submitWhileSessionAcceptsPrompts($, roastsSource($)),
-      async (error: unknown) => {
-        await restoreRoast($, roast)
-        showFailure($, describeRoastNotSent(messageOf(error)))
-      },
-    )
+    .then(() => deliverRoast($, roast))
+    .catch(async (error: unknown) => {
+      await restore()
+      showFailure($, describeNotSent(messageOf(error)))
+    })
+}
+
+/**
+ * Puts `roast` into the pending roasts, and sends it to the model once, as
+ * `submitWhileSessionAcceptsPrompts` describes.
+ */
+export async function deliverRoast($: EngineInterface, roast: PendingRoast): Promise<void> {
+  await addPendingRoast($, roast)
+  submitWhileSessionAcceptsPrompts($, roastsSource($))
 }
 
 async function takeRoastsNote($: EngineInterface): Promise<string | undefined> {
   const taken = await takeRoastsOfRunningSession($)
 
-  return taken.length === 0 ? undefined : describeRoasts(taken, RoastNotePlace.ToolResult)
+  return taken.length === 0 ? undefined : describeRoasts($, taken, RoastNotePlace.ToolResult)
 }
 
 /**
  * Removes the pending roasts of the running session, and returns their note beside a prompt typed
- * by the user, with the function that puts them back into the Roast pane.
+ * by the user, with the function that puts them back.
  */
 async function takeRoastsBesidePrompt($: EngineInterface): Promise<TakenNote | undefined> {
   const taken = await takeRoastsOfRunningSession($)
@@ -68,24 +88,28 @@ async function takeRoastsBesidePrompt($: EngineInterface): Promise<TakenNote | u
   return taken.length === 0
     ? undefined
     : {
-      note: describeRoasts(taken, RoastNotePlace.Prompt),
+      note: describeRoasts($, taken, RoastNotePlace.Prompt),
       restore: async () => {
         for (const roast of taken) {
-          await restoreRoast($, roast)
+          await deliveryOf($, roast).restore()
         }
       },
     }
 }
 
 /** The note at `place` that sends the model every roast of `roasts`. */
-function describeRoasts(roasts: readonly PendingRoast[], place: RoastNotePlace): string {
-  return roasts.map(roast => describeRoastNote(place, composeMessage(roast.written))).join('\n\n')
+function describeRoasts(
+  $: EngineInterface,
+  roasts: readonly PendingRoast[],
+  place: RoastNotePlace,
+): string {
+  return roasts.map(roast => deliveryOf($, roast).noteAt(place)).join('\n\n')
 }
 
 /** Submits every pending roast written for the running session as a prompt, without waiting. */
 async function submitPendingRoasts($: EngineInterface): Promise<void> {
   for (const roast of await takeRoastsOfRunningSession($)) {
-    runDetached($, () => submitRoast($, roast), describeRoastNotSent)
+    runDetached($, () => submitRoast($, roast), deliveryOf($, roast).describeNotSent)
   }
 }
 
@@ -103,24 +127,51 @@ async function takeRoastsOfRunningSession($: EngineInterface): Promise<PendingRo
 }
 
 async function submitRoast($: EngineInterface, roast: PendingRoast): Promise<void> {
+  const { prompt, restore, describeNotSent } = deliveryOf($, roast)
   const submitted = await submitToSessionOrRestore(
     $,
-    roast.run.sessionId,
-    { text: composeMessage(roast.written), asUser: true },
-    () => restoreRoast($, roast),
+    roast.sessionId,
+    { text: prompt, asUser: true },
+    restore,
   )
   if (submitted.outcome === PromptOutcome.Dropped) {
-    showFailure($, describeRoastNotSent(submitted.reason))
+    showFailure($, describeNotSent(submitted.reason))
+  }
+}
+
+/**
+ * The delivery of `roast`. A roast from the Roast pane goes back into the pane, and a roast written
+ * by the idle roast waits again for the next prompt or tool result.
+ */
+function deliveryOf($: EngineInterface, roast: PendingRoast): PendingRoastDelivery {
+  switch (roast.source) {
+    case RoastSource.Pane: {
+      const message = composeMessage(roast.written)
+
+      return {
+        prompt: message,
+        noteAt: place => describeRoastNote(place, message),
+        restore: async () => {
+          await setRoastOfRun($, roast, roast.written)
+          await openRoastPane($)
+        },
+        describeNotSent: describeRoastNotSent,
+      }
+    }
+    case RoastSource.Idle: {
+      const message = describeIdleRoastMessage(roast.text)
+
+      return {
+        prompt: message,
+        noteAt: () => message,
+        restore: () => addPendingRoast($, roast),
+        describeNotSent: describeIdleRoastFailed,
+      }
+    }
   }
 }
 
 /** The message of the user: their comment, if they typed one, and the roast after it. */
 function composeMessage({ comment, text }: WrittenRoast): string {
   return [comment.trim(), text].filter(part => part !== '').join('\n\n')
-}
-
-/** Puts the written roast of `roast` back into the state for its run, and opens the Roast pane. */
-async function restoreRoast($: EngineInterface, { run, written }: PendingRoast): Promise<void> {
-  await setRoastOfRun($, run, written)
-  await openRoastPane($)
 }

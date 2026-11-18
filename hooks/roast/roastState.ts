@@ -41,8 +41,21 @@ export type RoastRun = { sessionId: string; runId: string }
  */
 export type SessionRoast = RoastRun & { roast: RoastProgress; secondsWriting: number }
 
-/** A roast that the user sent from the Roast pane and that has not gone to the model yet. */
-export type PendingRoast = { run: RoastRun; written: WrittenRoast }
+/** Where a roast that has not gone to the model yet came from. */
+export enum RoastSource {
+  /** The user sent it from the Roast pane. */
+  Pane = 'pane',
+  /** A fork wrote it once the main conversation was idle, with the idle roast switched on. */
+  Idle = 'idle',
+}
+
+/**
+ * A roast that has not gone to the model yet: one sent by the user from the Roast pane, with its
+ * run of /roast, or one written by the idle roast for the session `sessionId`.
+ */
+export type PendingRoast =
+  | (RoastRun & { source: RoastSource.Pane; written: WrittenRoast })
+  | { source: RoastSource.Idle; sessionId: string; text: string }
 
 /** The pending roasts taken from the state, split by the session they were written for. */
 export type TakenRoasts = {
@@ -162,7 +175,7 @@ export async function takeAllPendingRoasts($: EngineInterface): Promise<TakenRoa
     return taken
   }
   const sessionId = await $.session.id()
-  const isOfRunningSession = (roast: PendingRoast) => roast.run.sessionId === sessionId
+  const isOfRunningSession = (roast: PendingRoast) => roast.sessionId === sessionId
   await update($, pendingRoasts, inState => {
     taken = {
       ofRunningSession: inState.filter(isOfRunningSession),

@@ -1,7 +1,12 @@
 import type { HookSubject } from '../hookFailure'
+import { describeFailedStoreCall, describeUnreadableRecord } from '../pluginStore'
+import type { FailedStoreCall } from '../pluginStore'
+import { MILLISECONDS_PER_MINUTE, MILLISECONDS_PER_SECOND } from '../timeUnits'
+import { SwitchOutcome } from './idleRoastSwitch'
+import type { UnreadSwitch } from './idleRoastSwitch'
 import { RoastNotWrittenCause } from './roastFailure'
 import type { LastingApiError, RoastFailure } from './roastFailure'
-import { ROAST_COMMAND } from './roastNames'
+import { IDLE_ROAST_COMMAND, IDLE_WAIT_SECONDS, IdleRoastWord, ROAST_COMMAND } from './roastNames'
 import type { RoastProgressOf, RoastShown } from './roastState'
 
 export const PANE_TITLE = 'Roast'
@@ -111,5 +116,84 @@ export function describeRoastNotSent(reason: string): string {
   return (
     `The roast was not sent to Claude: ${reason}. Press ${SEND_LABEL} again in the ${PANE_TITLE} ` +
     'pane.'
+  )
+}
+
+export const IDLE_ROAST_FOUND_NO_BLOCKING_POINT =
+  'The idle roast found no point that blocks the work, so nothing went to Claude.'
+
+/** The toast for an idle roast that was not written, with the next step. */
+export function describeIdleRoastNotWritten(failure: RoastFailure): string {
+  return `The idle roast was not written. ${describeRoastNotWritten(failure)}`
+}
+
+/** The toast for an idle roast that did not go to Claude for `reason` and waits again. */
+export function describeIdleRoastFailed(reason: string): string {
+  return (
+    `The idle roast was not sent to Claude: ${reason}. It goes to Claude with your next message, ` +
+    'or with the next tool result if a turn is running by then.'
+  )
+}
+
+/** The wait of IDLE_WAIT_SECONDS in whole minutes, as the texts write it. */
+const IDLE_WAIT_WORDS = `about ${Math.round(
+  (IDLE_WAIT_SECONDS * MILLISECONDS_PER_SECOND) / MILLISECONDS_PER_MINUTE,
+)} minutes`
+
+export const IDLE_ROAST_DESCRIPTION =
+  'Switch the idle roast of this session on or off, or show whether it is on. Once it is on, ' +
+  `Claude gets a roast of what blocks the work after it has been idle for ${IDLE_WAIT_WORDS}`
+
+export const IDLE_ROAST_ARGUMENT_HINT = `[${IdleRoastWord.On}|${IdleRoastWord.Off}]`
+
+export const IDLE_ROAST_SUBJECT: HookSubject = {
+  name: 'idle roast',
+  checkBeforeRetry:
+    `Run /${IDLE_ROAST_COMMAND} to see whether it was switched before you try again.`,
+}
+
+export const IDLE_ROAST_LOST_WITHOUT_COMMAND =
+  'The idle roast of this session cannot be switched on.'
+
+export const IDLE_ROAST_NOT_TYPED_BY_USER =
+  `The idle roast was not switched. Only /${IDLE_ROAST_COMMAND} typed by the user switches it.`
+
+/** The reply to /idle-roast while the idle roast of the session is on when `isOn`, or off. */
+export function describeIdleRoastSwitch(isOn: boolean): string {
+  return isOn
+    ? 'The idle roast is on for this session. Run ' +
+        `/${IDLE_ROAST_COMMAND} ${IdleRoastWord.Off} to switch it off.`
+    : 'The idle roast is off for this session. Run ' +
+        `/${IDLE_ROAST_COMMAND} ${IdleRoastWord.On} to switch it on.`
+}
+
+/** The reply to /idle-roast followed by `words`, which change nothing. */
+export function describeUnknownIdleRoastWords(words: string): string {
+  return (
+    `/${IDLE_ROAST_COMMAND} needs ${IdleRoastWord.On}, ${IdleRoastWord.Off} or nothing, so ` +
+    `"${words}" changes nothing.`
+  )
+}
+
+/** The text for the switch of this session that could not be read, with the reason in `read`. */
+export function describeIdleRoastSwitchNotRead(read: UnreadSwitch): string {
+  const reason =
+    read.outcome === SwitchOutcome.Unreadable
+      ? describeUnreadableRecord(read.key)
+      : describeFailedStoreCall(read.failed)
+
+  return `Whether the idle roast is on for this session is unknown. ${reason}`
+}
+
+/** The reply to /idle-roast whose change the store failed to save, with the failure `failed`. */
+export function describeIdleRoastNotSwitched(failed: FailedStoreCall): string {
+  return `The idle roast was not switched. ${describeFailedStoreCall(failed)}`
+}
+
+/** The toast for the switch of the ended session that the store failed to delete. */
+export function describeIdleRoastSwitchNotDeleted(failed: FailedStoreCall): string {
+  return (
+    'The idle roast switch of the ended session could not be deleted from the store. ' +
+    describeFailedStoreCall(failed)
   )
 }
