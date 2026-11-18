@@ -98,11 +98,16 @@ export function answersSource($: EngineInterface): PendingTextSource {
     submit: () => submitAnswers($),
     describeNotSent: describeAnswersNotSent,
     waitingAfterStopToast: ANSWERS_WAITING_AFTER_STOP,
+    describeWaitingForPane: describeAnswersWaitingForPane,
   }
 }
 
 const ANSWERS_WAITING_AFTER_STOP =
   'Your answer is sent to Claude once you type a slash command or send a message.'
+
+function describeAnswersWaitingForPane(paneTitle: string): string {
+  return `Your answer is sent to Claude once you close the ${paneTitle} pane or send a message.`
+}
 
 /** The toast for answers left unsent for `reason`. */
 function describeAnswersNotSent(reason: string): string {

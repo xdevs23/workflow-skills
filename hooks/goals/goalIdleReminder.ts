@@ -4,9 +4,10 @@ import type { Board, IdleStretch } from '../../types'
 import { isMainConversation } from '../conversation'
 import type { EveryEvent } from '../everyEvent'
 import { showFailure } from '../failureToast'
+import { readCanSubmitPluginPrompt } from '../promptWaits'
 import { PromptOutcome, submitToSessionOrRestore } from '../sendToModel'
 import { MILLISECONDS_PER_MINUTE } from '../timeUnits'
-import { runAfter, runAfterMainTurn } from '../timedWork'
+import { runAfter, runAfterMainTurn, runDetached } from '../timedWork'
 import { openGoalsOf } from './board'
 import { listOpenGoals, readBoardToRemind } from './goalReminderBoard'
 import { describeOpenGoalsAfterIdle, describeOpenGoalsNotSent } from './goalReminders'
@@ -23,6 +24,11 @@ export enum IdlePhase {
   Running = 'running',
   /** The idle minutes run after the last turn. */
   Waiting = 'waiting',
+  /**
+   * The idle minutes passed while the prompts submitted by the plugin waited, and the open goals
+   * are sent once they no longer wait.
+   */
+  Due = 'due',
   /**
    * The open goals were sent after the idle minutes, and the end of the turn started by them
    * starts no new idle minutes.
@@ -67,19 +73,48 @@ function waitForIdleMinutes($: EngineInterface, waiting: IdleStretch): void {
   )
 }
 
-/** Sends the open goals as a prompt that starts a turn, while the stretch `waiting` lasts. */
+/**
+ * Sends the open goals as a prompt that starts a turn, while the stretch `waiting` lasts. While the
+ * prompts submitted by the plugin wait, the stretch becomes due instead.
+ */
 async function remindAfterIdle($: EngineInterface, waiting: IdleStretch): Promise<void> {
-  const { sessionId } = waiting
-  if (!isSameStretch(await readIdleStretch($, sessionId), waiting)) {
+  if (!isSameStretch(await readIdleStretch($, waiting.sessionId), waiting)) {
     return
   }
+  if (await readCanSubmitPluginPrompt($)) {
+    await sendOpenGoals($, waiting)
+  } else {
+    await replaceStretch($, waiting, { ...waiting, phase: IdlePhase.Due })
+  }
+}
+
+/**
+ * Sends the open goals of the running session without waiting for the send, when its idle minutes
+ * passed while the prompts submitted by the plugin waited, and they no longer wait.
+ */
+export function sendDueIdleReminder($: EngineInterface): void {
+  runDetached(
+    $,
+    async () => {
+      const stretch = await readIdleStretch($, await $.session.id())
+      if (stretch?.phase === IdlePhase.Due && (await readCanSubmitPluginPrompt($))) {
+        await sendOpenGoals($, stretch)
+      }
+    },
+    describeOpenGoalsNotSent,
+  )
+}
+
+/** Sends the open goals as a prompt that starts a turn, while the stretch `current` lasts. */
+async function sendOpenGoals($: EngineInterface, current: IdleStretch): Promise<void> {
+  const { sessionId } = current
   const board = await readBoardToRemind($, sessionId)
   if (board === undefined || openGoalsOf(board).length === 0) {
     return
   }
-  const reminded: IdleStretch = { ...waiting, phase: IdlePhase.Reminded }
+  const reminded: IdleStretch = { ...current, phase: IdlePhase.Reminded }
   // A turn that started during the read ended the stretch.
-  if (!(await replaceStretch($, waiting, reminded))) {
+  if (!(await replaceStretch($, current, reminded))) {
     return
   }
   // The prompt shows in the transcript itself, so the transcript line of `sent` is not shown.

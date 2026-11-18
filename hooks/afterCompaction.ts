@@ -11,7 +11,7 @@ import { isMainConversation } from './conversation'
 import { showFailure } from './failureToast'
 import { PromptOutcome, submitToSessionOrRestore } from './sendToModel'
 import type { NoteSource } from './sendToModel'
-import { readSessionAcceptsPluginPrompts } from './sessionState'
+import { readCanSubmitPluginPrompt } from './promptWaits'
 import { runDetached } from './timedWork'
 
 /** A text read by the main conversation after a compaction. */
@@ -36,8 +36,9 @@ type TakenNote = { source: CompactionNoteSource; note: CompactionNote }
  * messages after the summary, so the message goes there. A compaction while no turn runs, such as
  * /compact or a compaction run on an idle session, is followed by no model call, so the message
  * goes as a prompt submitted by the plugin, which starts a turn. After a turn stopped by the user,
- * the session drops that prompt, so the message goes after the summary, and the model reads it with
- * the next prompt of the user.
+ * the session drops that prompt. While a pane that makes the prompts submitted by the plugin wait
+ * is drawn, that prompt would start a turn under the pane. In both cases the message goes after the
+ * summary, and the model reads it with the next prompt of the user.
  */
 export async function compactWithNotes(
   $: EngineInterface,
@@ -57,7 +58,7 @@ export async function compactWithNotes(
   if (taken.length === 0) {
     return compacted
   }
-  if (await readSessionAcceptsPluginPrompts($)) {
+  if (await readCanSubmitPluginPrompt($)) {
     const sessionId = await $.session.id()
     runDetached($, () => submitNotes($, sessionId, taken), reason => describeNotSent(taken, reason))
 

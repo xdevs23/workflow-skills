@@ -9,7 +9,7 @@ import {
   submitToSessionOrRestore,
   submitWithNoteAndLineOrRestore,
 } from '../sendToModel'
-import { readSessionAcceptsPluginPrompts } from '../sessionState'
+import { readCanSubmitPluginPrompt } from '../promptWaits'
 import { runAfter, runDetached } from '../timedWork'
 import {
   readSelfCheckSchedule,
@@ -119,12 +119,13 @@ async function waitForDueTime($: EngineInterface, schedule: SelfCheckSchedule): 
 }
 
 /**
- * Sends the self-check as a prompt that starts a turn, once it is due and while the session accepts
- * prompts submitted by the plugin. The end of the next turn, or a slash command typed by the user
- * after a turn stopped by the user, starts the wait for the due time again.
+ * Sends the self-check as a prompt that starts a turn, once it is due and while a prompt submitted
+ * by the plugin enters the session. The end of the next turn, a slash command typed by the user
+ * after a turn stopped by the user, or the close by the user of a pane that makes the prompts
+ * submitted by the plugin wait starts the wait for the due time again.
  */
 async function sendAtDueTime($: EngineInterface, sessionId: string): Promise<void> {
-  if (!(await readSessionAcceptsPluginPrompts($))) {
+  if (!(await readCanSubmitPluginPrompt($))) {
     return
   }
   const taken = await takeSelfCheck($, sessionId)

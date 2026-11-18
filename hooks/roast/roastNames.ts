@@ -1,3 +1,5 @@
+import { PANE_CLOSED_BY_USER } from '../paneClose'
+
 export const ROAST_COMMAND = 'roast'
 
 export const IDLE_ROAST_COMMAND = 'idle-roast'
@@ -33,4 +35,4 @@ export const ROAST_PANE_SITE = { component: 'Pane', requestId: ROAST_PANE } as c
 
 export const SEND_KEY = 'send-roast'
 
-export const ROAST_PANE_CLOSED_BY_USER = { id: ROAST_PANE, origin: { kind: 'person' } } as const
+export const ROAST_PANE_CLOSED_BY_USER = { id: ROAST_PANE, ...PANE_CLOSED_BY_USER } as const

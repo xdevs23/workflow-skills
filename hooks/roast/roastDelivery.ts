@@ -24,6 +24,7 @@ import {
   describeIdleRoastFailed,
   describeRoastNotSent,
   describeRoastSentLine,
+  describeRoastWaitingForPane,
 } from './roastTexts'
 
 /** How a pending roast goes to the model, and where it goes back to when it does not. */
@@ -46,6 +47,7 @@ export function roastsSource($: EngineInterface): PendingTextSource & PromptNote
     submit: () => submitPendingRoasts($),
     describeNotSent: describeRoastNotSent,
     waitingAfterStopToast: ROAST_WAITING_AFTER_STOP,
+    describeWaitingForPane: describeRoastWaitingForPane,
   }
 }
 

@@ -2,6 +2,7 @@ import type { DoneMark, Goal } from '../../types'
 import type { HookSubject } from '../hookFailure'
 import { AND_LIST } from '../listFormat'
 import { DONE_LABEL } from '../paneTexts'
+import type { PluginPromptSituation } from '../promptWaits'
 import { SessionActivity } from '../sessionState'
 import { Refusal } from './board'
 import type { AddRefused, LoopRefused, TextChangedRefused } from './board'
@@ -59,12 +60,16 @@ const NUDGE_WAITING_BY_ACTIVITY: Record<SessionActivity, (goalName: string) => s
     'started by your next message ends.',
 }
 
-/** The toast for the nudge for `goal` while it waits, in a session doing `activity`. */
+/** The toast for the nudge for `goal` while it waits in `situation`. */
 export function describeNudgeWaiting(
   goal: Pick<Goal, 'number'>,
-  activity: SessionActivity,
+  { activity, waitPane }: PluginPromptSituation,
 ): string {
-  return NUDGE_WAITING_BY_ACTIVITY[activity](nameGoal(goal.number))
+  const goalName = nameGoal(goal.number)
+
+  return waitPane === undefined
+    ? NUDGE_WAITING_BY_ACTIVITY[activity](goalName)
+    : `The nudge for ${goalName} is sent to Claude after the ${waitPane.title} pane closes.`
 }
 
 /** What a press of Nudge shows for a goal marked as done since the pane drew it. */

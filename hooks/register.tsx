@@ -4,6 +4,7 @@ import { compactWithNotes } from './afterCompaction'
 import { answersSource } from './delivery'
 import { EVERY_EVENT } from './everyEvent'
 import { registerGoals } from './goals'
+import { sendDueIdleReminder } from './goals/goalIdleReminder'
 import { sendNudgesWhileSessionAcceptsPrompts } from './goals/goalNudge'
 import { openGoalsAfterCompaction } from './goals/goalReminderHooks'
 import {
@@ -17,6 +18,8 @@ import { registerImports } from './imports'
 import { ANSWER_COMMAND, ASK_TOOL, LIST_TOOL, PANE, WITHDRAW_TOOL } from './names'
 import { registerNeededSkills } from './neededSkills'
 import { createPromptFooter, registerPromptFooter } from './promptFooter'
+import { PANE_CLOSED_BY_USER } from './paneClose'
+import { closePaneSendingWaitingPrompts } from './promptWaits'
 import {
   askQuestion,
   denyHookFailure,
@@ -83,6 +86,9 @@ export const register: Register = on => {
   on('turn.complete', EVERY_EVENT, ($, e, next) =>
     completeMainTurn($, e, next, () => sendTextsWaitingForSession($)),
   )
+  on('ui.close', PANE_CLOSED_BY_USER, ($, e, next) =>
+    closePaneSendingWaitingPrompts(e, next, () => sendTextsWaitingForSession($)),
+  )
   on('classic.Stop', blockStopOnHintPhrase)
   on('command.run', { command: ANSWER_COMMAND }, runAnswerCommand).catch(replyWithHookFailure)
   on('ui.render', { component: 'AbovePrompt' }, drawQuestionBand)
@@ -107,10 +113,12 @@ function pendingTextSourcesOf($: EngineInterface): PendingTextSource[] {
 
 // The engine passes `$` only to a function named at the call, so each feature whose texts wait for
 // the session to accept prompts submitted by the plugin is named here. The end of every turn of the
-// main conversation and a slash command typed after a turn stopped by the user call it.
+// main conversation, a slash command typed after a turn stopped by the user, and a pane closed by
+// the user that made the prompts submitted by the plugin wait call it.
 function sendTextsWaitingForSession($: EngineInterface): void {
   submitPendingTexts($, pendingTextSourcesOf($))
   sendNudgesWhileSessionAcceptsPrompts($)
+  sendDueIdleReminder($)
   watchTimedReminders($)
   waitForSelfCheckDueTime($)
 }

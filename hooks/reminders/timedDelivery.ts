@@ -13,7 +13,7 @@ import {
 } from '../sendToModel'
 import { ofSession, updateOfSession } from '../sessionBoundState'
 import { SWITCHING_SOURCES } from '../sessionSources'
-import { readSessionAcceptsPluginPrompts } from '../sessionState'
+import { readCanSubmitPluginPrompt } from '../promptWaits'
 import { firstDueTimeAfter, runAfter, runDetached } from '../timedWork'
 import { describeReminderNote, enabledRemindersOf, readEnabledReminders } from './reminderDelivery'
 import type { ReminderOfKind } from './reminderDelivery'
@@ -126,13 +126,14 @@ async function watchReminders(
 }
 
 /**
- * Sends the reminders due as a prompt that starts a turn, while the session accepts prompts
- * submitted by the plugin. During a turn and after a turn stopped by the user they go with the next
- * tool result. The end of the next turn, or a slash command typed by the user after the stop,
- * starts the wait again.
+ * Sends the reminders due as a prompt that starts a turn, while a prompt submitted by the plugin
+ * enters the session. During a turn and after a turn stopped by the user they go with the next
+ * tool result. The end of the next turn, a slash command typed by the user after the stop, or the
+ * close by the user of a pane that makes the prompts submitted by the plugin wait starts the wait
+ * again.
  */
 async function sendAtDueTime($: EngineInterface): Promise<void> {
-  if (!(await readSessionAcceptsPluginPrompts($))) {
+  if (!(await readCanSubmitPluginPrompt($))) {
     return
   }
   const sessionId = await $.session.id()

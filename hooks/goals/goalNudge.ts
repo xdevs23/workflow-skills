@@ -3,12 +3,13 @@ import type { EngineInterface, MatchedHook } from 'claude-code'
 import type { Goal, NudgeSend, NudgedGoal, NudgedGoals, WaitingNudges } from '../../types'
 import type { EveryEvent } from '../everyEvent'
 import { showFailure } from '../failureToast'
-import { PromptOutcome, isPromptEntered, submitToSession } from '../sendToModel'
 import {
-  acceptsPluginPrompts,
-  readSessionAcceptsPluginPrompts,
-  readSessionActivity,
-} from '../sessionState'
+  canSubmitPluginPrompt,
+  readCanSubmitPluginPrompt,
+  readPluginPromptSituation,
+} from '../promptWaits'
+import { PromptOutcome, isPromptEntered, submitToSession } from '../sendToModel'
+import { acceptsPluginPrompts } from '../sessionState'
 import { runDetached, runAfterMainTurn } from '../timedWork'
 import { openGoalsByIdOf } from './board'
 import type { OpenGoals } from './dependency'
@@ -25,15 +26,16 @@ import {
 } from './goalTexts'
 
 // A prompt submitted by the plugin while a turn runs enters only once the turn ends, with the text
-// written at the submit. A goal pressed while a turn or a send runs therefore waits. The end of the
-// turn, or a slash command typed by the user after a turn stopped by the user, sends every waiting
-// goal in one prompt, built from the board at that moment. A send whose
+// written at the submit. A goal pressed while a turn or a send runs, or while a pane that makes the
+// prompts submitted by the plugin wait is drawn, therefore waits. The end of the turn, a slash
+// command typed by the user after a turn stopped by the user, or the close of that pane by the user
+// sends every waiting goal in one prompt, built from the board at that moment. A send whose
 // prompt did not enter starts no turn, so it sends the goals that waited meanwhile itself. A goal
 // pressed again while it waits or is sent is sent once.
 
 /**
  * Adds the open goal `goal` to the waiting nudges of the session `sessionId`, and sends them at
- * once while no send runs and the session accepts prompts submitted by the plugin. Otherwise a
+ * once while no send runs and a prompt submitted by the plugin enters the session. Otherwise a
  * toast shows that the nudge waits.
  */
 export async function nudgeOpenGoal(
@@ -52,9 +54,9 @@ export async function nudgeOpenGoal(
   if (nudges === null) {
     return
   }
-  const activity = await readSessionActivity($)
-  if (nudges.sending !== null || !acceptsPluginPrompts(activity)) {
-    $.ui.toast(describeNudgeWaiting(goal, activity))
+  const situation = await readPluginPromptSituation($)
+  if (nudges.sending !== null || !canSubmitPluginPrompt(situation)) {
+    $.ui.toast(describeNudgeWaiting(goal, situation))
     return
   }
   await sendWaitingNudges($, sessionId)
@@ -64,12 +66,12 @@ export async function nudgeOpenGoal(
 // of the turn started by the next message, and a toast for each waiting goal shows that.
 export const showNudgesWaitingAfterStop: MatchedHook<'turn.complete', EveryEvent> = ($, e, next) =>
   runAfterMainTurn(e, next, async () => {
-    const activity = await readSessionActivity($)
-    if (acceptsPluginPrompts(activity)) {
+    const situation = await readPluginPromptSituation($)
+    if (acceptsPluginPrompts(situation.activity)) {
       return
     }
     for (const goal of (await readWaitingNudges($, await $.session.id()))?.waiting ?? []) {
-      $.ui.toast(describeNudgeWaiting(goal, activity))
+      $.ui.toast(describeNudgeWaiting(goal, situation))
     }
   })
 
@@ -81,7 +83,7 @@ export function sendNudgesWhileSessionAcceptsPrompts($: EngineInterface): void {
   runDetached(
     $,
     async () => {
-      if (await readSessionAcceptsPluginPrompts($)) {
+      if (await readCanSubmitPluginPrompt($)) {
         await sendWaitingNudges($, await $.session.id())
       }
     },
@@ -142,7 +144,7 @@ async function submitSend($: EngineInterface, sessionId: string, send: NudgeSend
     const nudges = await updateWaitingNudges($, sessionId, current =>
       current?.sending?.sendId === send.sendId ? withoutSend(current) : current,
     )
-    if (!hasEntered && nudges !== null && (await readSessionAcceptsPluginPrompts($))) {
+    if (!hasEntered && nudges !== null && (await readCanSubmitPluginPrompt($))) {
       await sendWaitingNudges($, sessionId)
     }
   }

@@ -14,11 +14,11 @@ import { isMessageTypedByUser } from './promptOrigin'
 import { callToolWithNote, logSentLine, submitWithNoteAndLineOrRestore } from './sendToModel'
 import type { NoteSource, TextWithLine } from './sendToModel'
 import {
-  SessionActivity,
-  acceptsPluginPrompts,
-  readSessionAcceptsPluginPrompts,
-  readSessionActivity,
-} from './sessionState'
+  canSubmitPluginPrompt,
+  readCanSubmitPluginPrompt,
+  readPluginPromptSituation,
+} from './promptWaits'
+import { SessionActivity } from './sessionState'
 import { runDetached } from './timedWork'
 
 /** Where the note for a pending text goes to the model. */
@@ -34,7 +34,7 @@ export enum PendingTextPlace {
 
 /**
  * A feature that sends its texts to the main conversation with the next tool result of a turn, or
- * as a prompt while the session accepts prompts submitted by the plugin. Its note contains every
+ * as a prompt while a prompt submitted by the plugin enters the session. Its note contains every
  * text waiting for the running session, and taking the note removes them. Only one of several
  * parallel calls returns a text, so the model reads it once. The line of the note goes to the
  * transcript once the note went to the model. A text submitted as a prompt shows in the chat as
@@ -45,6 +45,11 @@ export type PendingTextSource = NoteSource<TextWithLine> & {
   submit: () => Promise<void>
   /** The toast for a text added after a turn stopped by the user, while the text waits. */
   waitingAfterStopToast: string
+  /**
+   * The toast for a text added while no turn runs and the pane titled `paneTitle` makes the prompts
+   * submitted by the plugin wait.
+   */
+  describeWaitingForPane: (paneTitle: string) => string
 }
 
 /** The note of the texts taken from a feature, and the function that puts those texts back. */
@@ -117,10 +122,12 @@ export async function submitWithPendingTexts(
 }
 
 /**
- * Submits the waiting texts of each of `sources` as a prompt without waiting for it, while no turn
- * runs and the session accepts prompts submitted by the plugin. During a turn the texts wait for
- * the next tool result or the end of the turn. After a turn stopped by the user they wait for the
- * next prompt of the user, the next slash command typed by the user or the next tool result. When
+ * Submits the waiting texts of each of `sources` as a prompt without waiting for it, while a prompt
+ * submitted by the plugin enters the session. During a turn the texts wait for the next tool result
+ * or the end of the turn. After a turn stopped by the user they wait for the next prompt of the
+ * user, the next slash command typed by the user or the next tool result. While a pane that makes
+ * the prompts submitted by the plugin wait is drawn, they wait for the next prompt of the user or
+ * the close of that pane by the user. When
  * reading the state of the session or removing the texts fails, the texts wait the same way.
  */
 export function submitPendingTexts(
@@ -131,7 +138,7 @@ export function submitPendingTexts(
     runDetached(
       $,
       async () => {
-        if (await readSessionAcceptsPluginPrompts($)) {
+        if (await readCanSubmitPluginPrompt($)) {
           await source.submit()
         }
       },
@@ -142,17 +149,20 @@ export function submitPendingTexts(
 
 /**
  * Submits the texts of `source`, to which a text was just added, as `submitPendingTexts` does.
- * After a turn stopped by the user, a toast shows that the text waits.
+ * After a turn stopped by the user, or while no turn runs and a pane makes the prompts submitted by
+ * the plugin wait, a toast shows that the text waits.
  */
 export function submitAddedText($: EngineInterface, source: PendingTextSource): void {
   runDetached(
     $,
     async () => {
-      const activity = await readSessionActivity($)
-      if (acceptsPluginPrompts(activity)) {
+      const situation = await readPluginPromptSituation($)
+      if (canSubmitPluginPrompt(situation)) {
         await source.submit()
-      } else if (activity === SessionActivity.StoppedByUser) {
+      } else if (situation.activity === SessionActivity.StoppedByUser) {
         $.ui.toast(source.waitingAfterStopToast)
+      } else if (situation.activity === SessionActivity.Idle && situation.waitPane !== undefined) {
+        $.ui.toast(source.describeWaitingForPane(situation.waitPane.title))
       }
     },
     source.describeNotSent,

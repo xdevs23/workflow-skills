@@ -163,6 +163,10 @@ export function describeRoastNotSent(reason: string): string {
 export const ROAST_WAITING_AFTER_STOP =
   'The roast is sent to Claude once you type a slash command or send a message.'
 
+export function describeRoastWaitingForPane(paneTitle: string): string {
+  return `The roast is sent to Claude once you close the ${paneTitle} pane or send a message.`
+}
+
 export const IDLE_ROAST_FOUND_NO_BLOCKING_POINT =
   'The idle roast found no point that blocks the work, so nothing went to Claude.'
 
