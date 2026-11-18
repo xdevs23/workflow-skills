@@ -1,7 +1,8 @@
 /** The opening of the prompts for the roast and the idle roast. */
 const ROAST_OPENING =
   'Review the work of this conversation so far and roast it. The user may send your reply to ' +
-  'this conversation as their own message, so write it to the assistant as "you".'
+  'this conversation as their own message, so write it to the assistant as "you". Talk only to ' +
+  'the assistant. Never reply to the user, also where the user typed a complaint for this roast.'
 
 const ROAST_POINT_PROOF =
   'For each point, quote the rule or the fact, and say what the assistant did instead and what ' +
@@ -74,7 +75,7 @@ export function describeIdleRoastMessage(roast: string): string {
 
 /**
  * The message that asks a fork made from the main conversation for the roast, with `finding`, the
- * point typed by the user after the command, unless it is empty.
+ * complaint typed by the user after the command, unless it is empty.
  */
 export function writeRoastPrompt(finding: string): string {
   if (finding === '') {
@@ -82,8 +83,10 @@ export function writeRoastPrompt(finding: string): string {
   }
 
   return (
-    `${ROAST_PROMPT}\n\nThe user found the following point. Include it as a point of the roast, ` +
-    'in the same voice, with the rule or the fact from the transcript that it concerns. If the ' +
-    `transcript does not show it, say so in place of that point:\n\n${finding}`
+    `${ROAST_PROMPT}\n\nThe user typed the following complaint about the work of the assistant. ` +
+    'It is the complaint of the user toward the assistant. Do not answer it. Take it into the ' +
+    'roast as a point, written to the assistant as "you", with the ' +
+    'rule or the fact from the transcript that it concerns. If the transcript does not show it, ' +
+    `tell the assistant so in place of that point:\n\n${finding}`
   )
 }
