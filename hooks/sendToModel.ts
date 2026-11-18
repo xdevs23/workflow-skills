@@ -15,9 +15,15 @@ import { isMainConversation, isModelToolCall } from './conversation'
 
 /**
  * A text read by the model, and the line in the transcript that shows it was sent. The model does
- * not read the line.
+ * not read the line. Each paragraph of the line goes to rows of its own, as logSentLine writes it.
  */
 export type TextWithLine = { text: string; line: string }
+
+/** The characters of a row of the transcript that the terminal draws, as `$.ui.log` states. */
+const DRAWN_ROW_LENGTH = 2000
+
+/** A piece of a row that the terminal draws whole, counted in code points. */
+const DRAWN_ROW_PIECE = new RegExp(`[\\s\\S]{1,${DRAWN_ROW_LENGTH}}`, 'gu')
 
 /** The result of a delivery, and whether the model received what was handed to it. */
 export type Delivery<T> = { result: T; isAccepted: boolean }
@@ -90,10 +96,24 @@ export async function stopWithNote(
   if (note === undefined) {
     return stopped
   }
-  $.ui.log(note.line)
+  logSentLine($, note.line)
   const reasons = stopped.block === undefined ? [note.text] : [stopped.block, note.text]
 
   return { ...stopped, block: reasons.join('\n\n') }
+}
+
+/**
+ * Writes `line`, the line of a text sent to the model, to the transcript, each paragraph on rows of
+ * its own. The terminal draws a row without its line breaks and only up to DRAWN_ROW_LENGTH
+ * characters, so a paragraph has spaces in place of its line breaks, and a longer one goes on to
+ * the next row.
+ */
+export function logSentLine($: EngineInterface, line: string): void {
+  for (const paragraph of line.split(/\n\s*\n/u)) {
+    for (const piece of paragraph.replace(/\s*\n\s*/gu, ' ').match(DRAWN_ROW_PIECE) ?? []) {
+      $.ui.log(piece)
+    }
+  }
 }
 
 /** Submits the prompt `e` with `note` beside it, and tells whether the prompt entered with it. */
@@ -105,6 +125,24 @@ export async function submitWithNote(
   const entered = await next({ ...e, context: [...(e.context ?? []), note] })
 
   return { result: entered, isAccepted: entered.context?.includes(note) === true }
+}
+
+/**
+ * Submits the prompt `e` with the text of `note` beside it, writes the line of `note` once the
+ * prompt entered with it, and tells whether it did.
+ */
+export async function submitWithNoteAndLine(
+  $: EngineInterface,
+  e: Frozen<PromptSubmitInput>,
+  next: Next<'prompt.submit'>,
+  note: TextWithLine,
+): Promise<Delivery<PromptSubmitResult>> {
+  const delivery = await submitWithNote(e, next, note.text)
+  if (delivery.isAccepted) {
+    logSentLine($, note.line)
+  }
+
+  return delivery
 }
 
 /**

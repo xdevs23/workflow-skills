@@ -16,6 +16,7 @@ import type {
 import { isMainConversation } from './conversation'
 import { draftRemindersFor } from './draftQuestion'
 import { deliverAnswers, recordAnswerAndDeliver } from './delivery'
+import { HeldTextPlace } from './heldTexts'
 import { denyFailedHook, replyToFailedHook } from './hookFailure'
 import {
   ANSWER_ARGUMENTS,
@@ -38,7 +39,7 @@ import {
   QUESTIONS_SUBJECT,
   WITHDRAWAL_TEXTS,
   WITHDRAW_DESCRIPTION,
-  describeAnswers,
+  describeAnswersNote,
   describeAsked,
   describeOpenQuestion,
   describeQuestionInChat,
@@ -67,7 +68,7 @@ import {
   saveWithdrawal,
   toastStoreFailure,
 } from './questionStore'
-import { submitWithNote } from './sendToModel'
+import { submitWithNoteAndLine } from './sendToModel'
 import {
   hasPersonAtPrompt,
   loadQuestionsFromStore,
@@ -207,7 +208,12 @@ export async function submitWithAnswers(
       return deliverAnswers($, sessionId, async answered =>
         answered.length === 0
           ? { result: await next(e), isAccepted: false }
-          : submitWithNote(e, next, describeAnswers(answered)),
+          : submitWithNoteAndLine(
+              $,
+              e,
+              next,
+              describeAnswersNote(HeldTextPlace.BesidePrompt, answered),
+            ),
       )
     },
     message => {

@@ -59,7 +59,9 @@ export const register: Register = on => {
   on('prompt.submit', EVERY_EVENT, submitWithAnswers)
   // Answers go beside a prompt through submitWithAnswers, which marks them as read only once the
   // prompt entered with them.
-  on('prompt.submit', EVERY_EVENT, ($, e, next) => submitWithHeldTexts(e, next, [roastsSource($)]))
+  on('prompt.submit', EVERY_EVENT, ($, e, next) =>
+    submitWithHeldTexts($, e, next, [roastsSource($)]),
+  )
   on('turn.start', EVERY_EVENT, markTurnRunning)
   on('turn.complete', EVERY_EVENT, ($, e, next) =>
     completeTurnWithHeldTexts($, e, next, heldTextSourcesOf($)),

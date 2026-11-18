@@ -1,9 +1,11 @@
 import type { Question } from '../types'
+import { HeldTextPlace } from './heldTexts'
 import type { HookSubject } from './hookFailure'
 import { ASK_TOOL, LIST_TOOL, QUESTION_SKILL } from './names'
 import { sortedByNumber } from './numbered'
 import { Withdrawal, isAnswered, isWithdrawn, openQuestionsOf } from './questions'
 import type { AnsweredQuestion } from './questions'
+import type { TextWithLine } from './sendToModel'
 
 /** The reply of the answer command and the text of the pane while no question is open. */
 export const ALL_CLOSED = 'Every question of this session is answered or withdrawn.'
@@ -71,15 +73,34 @@ export function describeAnswers(answered: readonly AnsweredQuestion[]): string {
     .join('\n\n')
 }
 
+const ANSWERS_SENT_LINE_OPENINGS: Record<HeldTextPlace, string> = {
+  [HeldTextPlace.ToolResult]: 'Answers sent to Claude with a tool result:',
+  [HeldTextPlace.BesidePrompt]: 'Answers sent to Claude beside your message:',
+}
+
+/**
+ * The note that sends the model `answered` at `place`, with the line that shows the questions and
+ * their answers in the transcript.
+ */
+export function describeAnswersNote(
+  place: HeldTextPlace,
+  answered: readonly AnsweredQuestion[],
+): TextWithLine {
+  return {
+    text: describeAnswers(answered),
+    line: [ANSWERS_SENT_LINE_OPENINGS[place], ...answered.map(describeAnsweredQuestion)].join(
+      '\n\n',
+    ),
+  }
+}
+
 /** The open and the answered questions as the model reads them from the list tool. */
 export function describeQuestions(questions: readonly Question[]): string {
   if (questions.length === 0) {
     return 'You have not asked any question in this session.'
   }
   const sorted = sortedByNumber(questions)
-  const answered = sorted
-    .filter(isAnswered)
-    .map(question => `#${question.number}: ${question.text}\nAnswer: ${question.answer.text}`)
+  const answered = sorted.filter(isAnswered).map(describeAnsweredQuestion)
   const withdrawn = sorted
     .filter(isWithdrawn)
     .map(question => `#${question.number}: ${question.text}`)
@@ -89,6 +110,10 @@ export function describeQuestions(questions: readonly Question[]): string {
     ...describeSection('Answered questions:', answered),
     ...describeSection('Withdrawn questions:', withdrawn),
   ].join('\n\n')
+}
+
+function describeAnsweredQuestion(question: AnsweredQuestion): string {
+  return `#${question.number}: ${question.text}\nAnswer: ${question.answer.text}`
 }
 
 function describeSection(heading: string, lines: readonly string[]): string[] {

@@ -1,9 +1,9 @@
 import type { EngineInterface } from 'claude-code'
 
 import type { Question } from '../types'
-import { submitWhileSessionAcceptsPrompts } from './heldTexts'
+import { HeldTextPlace, submitWhileSessionAcceptsPrompts } from './heldTexts'
 import type { HeldTextSource } from './heldTexts'
-import { describeAnswers } from './modelText'
+import { describeAnswers, describeAnswersNote } from './modelText'
 import { undeliveredAnswersOf } from './questions'
 import type { AnsweredQuestion } from './questions'
 import { awaitingSessionOf } from './questionSession'
@@ -14,7 +14,7 @@ import {
   toastStoreFailure,
 } from './questionStore'
 import { PromptOutcome, submitToSession } from './sendToModel'
-import type { Delivery } from './sendToModel'
+import type { Delivery, TextWithLine } from './sendToModel'
 import {
   claimAnswers,
   loadQuestionsFromStore,
@@ -108,7 +108,7 @@ function describeAnswersNotSent(reason: string): string {
   )
 }
 
-async function takeAnswersNote($: EngineInterface): Promise<string | undefined> {
+async function takeAnswersNote($: EngineInterface): Promise<TextWithLine | undefined> {
   const sessionId = await awaitingSessionOf($)
   if (sessionId === null) {
     return undefined
@@ -118,7 +118,10 @@ async function takeAnswersNote($: EngineInterface): Promise<string | undefined> 
     $,
     () =>
       deliverAnswers($, sessionId, async answered => ({
-        result: answered.length === 0 ? undefined : describeAnswers(answered),
+        result:
+          answered.length === 0
+            ? undefined
+            : describeAnswersNote(HeldTextPlace.ToolResult, answered),
         isAccepted: true,
       })),
     message => {

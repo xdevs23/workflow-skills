@@ -1,3 +1,5 @@
+import { HeldTextPlace } from '../heldTexts'
+
 /** The opening of the prompts for the roast and the idle roast. */
 const ROAST_OPENING =
   'Review the work of this conversation so far and roast it. The user may send your reply to ' +
@@ -41,24 +43,16 @@ export function isNoBlockingPointReply(reply: string): boolean {
   return reply.toUpperCase().includes(NO_BLOCKING_POINT)
 }
 
-/** Where the note of a roast goes to the model. */
-export enum RoastNotePlace {
-  /** With a tool result, for a roast that the user sent while the turn ran. */
-  ToolResult = 'tool result',
-  /** Beside a prompt typed by the user, for a roast that the user sent before that prompt. */
-  Prompt = 'prompt',
-}
-
-const ROAST_SENT_AT: Record<RoastNotePlace, string> = {
-  [RoastNotePlace.ToolResult]: 'They sent it while you worked.',
-  [RoastNotePlace.Prompt]: 'They sent it before this message.',
+const ROAST_SENT_AT: Record<HeldTextPlace, string> = {
+  [HeldTextPlace.ToolResult]: 'They sent it while you worked.',
+  [HeldTextPlace.BesidePrompt]: 'They sent it before this message.',
 }
 
 /**
  * The note at `place` that sends the model `message`: a roast that the user sent, with the comment
  * that the user typed before it.
  */
-export function describeRoastNote(place: RoastNotePlace, message: string): string {
+export function describeRoastNote(place: HeldTextPlace, message: string): string {
   return (
     'The user sent you the following roast about your work as their own message. ' +
     `${ROAST_SENT_AT[place]} Read it before you go on:\n\n${message}`

@@ -9,21 +9,16 @@ import type { TextWithLine } from './sendToModel'
 /** Ends the hints. The user reads only the message, where an answer to a hint reads as nonsense. */
 const HINT_CLOSING = 'Act on this reminder without mentioning the reminder in your message.'
 
-/**
- * The note on the hints of `kinds` with the closing sentence, or undefined without a kind. The
- * terminal draws a line of the transcript without its line breaks, so the line joins the paragraphs
- * with spaces.
- */
+/** The note on the hints of `kinds` with the closing sentence, or undefined without a kind. */
 function describeHintNote(kinds: readonly HintKind[]): TextWithLine | undefined {
   if (kinds.length === 0) {
     return undefined
   }
-  const paragraphs = [
-    ...writeHintTextsWithEachStepOnce(kinds.map(kind => kind.text)),
-    HINT_CLOSING,
-  ]
+  const text = [...writeHintTextsWithEachStepOnce(kinds.map(kind => kind.text)), HINT_CLOSING].join(
+    '\n\n',
+  )
 
-  return { text: paragraphs.join('\n\n'), line: `Hint sent to Claude: ${paragraphs.join(' ')}` }
+  return { text, line: `Hint sent to Claude: ${text}` }
 }
 
 /**

@@ -1,3 +1,4 @@
+import { HeldTextPlace } from '../heldTexts'
 import type { HookSubject } from '../hookFailure'
 import { describeFailedStoreCall, describeUnreadableRecord } from '../pluginStore'
 import type { FailedStoreCall } from '../pluginStore'
@@ -24,6 +25,16 @@ export const NO_ROAST = `Run /${ROAST_COMMAND} to roast this session.`
 export const SEND_LABEL = 'Send roast'
 
 export const SENDING_ROAST_NOTICE = 'Sending the roast to Claude.'
+
+const ROAST_SENT_LINE_OPENINGS: Record<HeldTextPlace, string> = {
+  [HeldTextPlace.ToolResult]: 'Roast sent to Claude with a tool result:',
+  [HeldTextPlace.BesidePrompt]: 'Roast sent to Claude beside your message:',
+}
+
+/** The line in the transcript that shows that `message`, a roast, went to Claude at `place`. */
+export function describeRoastSentLine(place: HeldTextPlace, message: string): string {
+  return `${ROAST_SENT_LINE_OPENINGS[place]}\n\n${message}`
+}
 
 export const COMMENT_LABEL = 'Comment'
 

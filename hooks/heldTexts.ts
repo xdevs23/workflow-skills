@@ -13,11 +13,19 @@ import type {
 import { messageOf } from './errorMessage'
 import { showFailure } from './failureToast'
 import { isMessageTypedByUser } from './promptOrigin'
-import { callToolWithNote, submitWithNoteOrRestore } from './sendToModel'
-import type { NoteSource } from './sendToModel'
+import { callToolWithNote, logSentLine, submitWithNoteOrRestore } from './sendToModel'
+import type { NoteSource, TextWithLine } from './sendToModel'
 import { readSessionAcceptsPluginPrompts } from './sessionState'
 import { runDetached } from './timedWork'
 import { completeMainTurn } from './turnState'
+
+/** Where the note of a held text goes to the model. */
+export enum HeldTextPlace {
+  /** With a tool result, for a text that came while the turn ran. */
+  ToolResult = 'tool result',
+  /** Beside a prompt typed by the user, for a text that came before that prompt. */
+  BesidePrompt = 'beside prompt',
+}
 
 // The engine runs a prompt from a plugin only once the session is idle, so a text submitted as a
 // prompt during a long turn would reach the model only at the end of the turn.
@@ -26,15 +34,17 @@ import { completeMainTurn } from './turnState'
  * A feature that sends its texts to the main conversation with the next tool result of a turn, or
  * as a prompt while the session accepts prompts submitted by the plugin. Its note contains every
  * text waiting for the running session, and taking the note removes them. Only one of several
- * parallel calls returns a text, so the model reads it once.
+ * parallel calls returns a text, so the model reads it once. The line of the note goes to the
+ * transcript once the note went to the model. A text submitted as a prompt shows in the chat as
+ * that prompt.
  */
-export type HeldTextSource = NoteSource<string> & {
+export type HeldTextSource = NoteSource<TextWithLine> & {
   /** Removes the texts waiting for the running session, and submits them as a prompt. */
   submit: () => Promise<void>
 }
 
 /** The note of the texts taken from a feature, and the function that puts those texts back. */
-export type TakenNote = { note: string; restore: () => Promise<void> }
+export type TakenNote = { note: TextWithLine; restore: () => Promise<void> }
 
 /** A feature whose texts waiting for the running session go beside the next prompt of the user. */
 export type PromptNoteSource = {
@@ -63,8 +73,11 @@ export function callToolWithHeldTexts(
       ),
     )
     const taken = notes.filter(note => note !== undefined)
+    for (const note of taken) {
+      logSentLine($, note.line)
+    }
 
-    return taken.length === 0 ? undefined : taken.join('\n\n')
+    return taken.length === 0 ? undefined : taken.map(note => note.text).join('\n\n')
   })
 }
 
@@ -73,6 +86,7 @@ export function callToolWithHeldTexts(
  * message. Where the prompt enters without the notes, the texts go back to their sources.
  */
 export async function submitWithHeldTexts(
+  $: EngineInterface,
   e: Frozen<PromptSubmitInput>,
   next: Next<'prompt.submit'>,
   sources: readonly PromptNoteSource[],
@@ -85,12 +99,17 @@ export async function submitWithHeldTexts(
   if (taken.length === 0) {
     return next(e)
   }
-  const note = taken.map(each => each.note).join('\n\n')
+  const note = taken.map(each => each.note.text).join('\n\n')
   const delivery = await submitWithNoteOrRestore(e, next, note, async () => {
     for (const each of taken) {
       await each.restore()
     }
   })
+  if (delivery.isAccepted) {
+    for (const each of taken) {
+      logSentLine($, each.note.line)
+    }
+  }
 
   return delivery.result
 }
