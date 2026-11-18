@@ -172,6 +172,14 @@ export function updateIdleStretch(
   )
 }
 
+/** The waiting nudges of the session `sessionId`, if it has any. */
+export async function readWaitingNudges(
+  $: EngineInterface,
+  sessionId: string,
+): Promise<WaitingNudges | null> {
+  return ofSession(await read($, waitingNudges), sessionId)
+}
+
 /**
  * Replaces the waiting nudges of the session `sessionId` with what `change` makes of them, unless
  * another session runs by now, and returns the nudges of that session in the state after it.

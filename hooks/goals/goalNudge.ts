@@ -4,7 +4,11 @@ import type { Goal, NudgeSend, NudgedGoal, NudgedGoals, WaitingNudges } from '..
 import type { EveryEvent } from '../everyEvent'
 import { showFailure } from '../failureToast'
 import { PromptOutcome, isPromptEntered, submitToSession } from '../sendToModel'
-import { readSessionAcceptsPluginPrompts } from '../sessionState'
+import {
+  acceptsPluginPrompts,
+  readSessionAcceptsPluginPrompts,
+  readSessionActivity,
+} from '../sessionState'
 import { runDetached, runAfterMainTurn } from '../timedWork'
 import { openGoalsByIdOf } from './board'
 import type { OpenGoals } from './dependency'
@@ -12,7 +16,7 @@ import { doneMarkOf } from './doneMark'
 import { readBoardToRemind } from './goalReminderBoard'
 import { describeNudge } from './goalReminders'
 import type { GoalsToNudge } from './goalReminders'
-import { updateWaitingNudges } from './goalState'
+import { readWaitingNudges, updateWaitingNudges } from './goalState'
 import { describeAlreadyMarkedDone, describeNudgeNotSent, describeNudgeWaiting } from './goalTexts'
 
 // A prompt submitted by the plugin while a turn runs enters only once the turn ends, with the text
@@ -42,18 +46,26 @@ export async function nudgeOpenGoal(
   if (nudges === null) {
     return
   }
-  if (nudges.sending !== null || !(await readSessionAcceptsPluginPrompts($))) {
-    $.ui.toast(describeNudgeWaiting(goal))
+  const activity = await readSessionActivity($)
+  if (nudges.sending !== null || !acceptsPluginPrompts(activity)) {
+    $.ui.toast(describeNudgeWaiting(goal, activity))
     return
   }
   await sendWaitingNudges($, sessionId)
 }
 
-// After a turn stopped by the user, the goals wait for the end of the next turn.
+// After a turn stopped by the user, the goals wait for the end of the next turn, and a toast for
+// each waiting goal says so.
 export const sendNudgesAfterTurn: MatchedHook<'turn.complete', EveryEvent> = ($, e, next) =>
   runAfterMainTurn(e, next, async () => {
-    if (await readSessionAcceptsPluginPrompts($)) {
-      await sendWaitingNudges($, await $.session.id())
+    const sessionId = await $.session.id()
+    const activity = await readSessionActivity($)
+    if (acceptsPluginPrompts(activity)) {
+      await sendWaitingNudges($, sessionId)
+      return
+    }
+    for (const goal of (await readWaitingNudges($, sessionId))?.waiting ?? []) {
+      $.ui.toast(describeNudgeWaiting(goal, activity))
     }
   })
 

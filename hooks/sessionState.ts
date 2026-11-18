@@ -145,7 +145,12 @@ export async function readSessionActivity($: EngineInterface): Promise<SessionAc
 
 /** Whether the running session accepts a prompt submitted by the plugin, or drops it. */
 export async function readSessionAcceptsPluginPrompts($: EngineInterface): Promise<boolean> {
-  return ACCEPTS_PLUGIN_PROMPTS[await readSessionActivity($)]
+  return acceptsPluginPrompts(await readSessionActivity($))
+}
+
+/** Whether a session doing `activity` accepts a prompt submitted by the plugin, or drops it. */
+export function acceptsPluginPrompts(activity: SessionActivity): boolean {
+  return ACCEPTS_PLUGIN_PROMPTS[activity]
 }
 
 export async function setSessionActivity(

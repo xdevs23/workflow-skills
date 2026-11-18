@@ -2,6 +2,7 @@ import type { DoneMark, Goal } from '../../types'
 import type { HookSubject } from '../hookFailure'
 import { AND_LIST } from '../listFormat'
 import { DONE_LABEL } from '../paneTexts'
+import { SessionActivity } from '../sessionState'
 import { Refusal } from './board'
 import type { AddRefused, LoopRefused, TextChangedRefused } from './board'
 import { describeStoreFailure } from './boardStore'
@@ -46,9 +47,23 @@ export function describeGoal(goal: Goal): string {
   return `${nameGoal(goal.number)}: ${goal.text}`
 }
 
-/** What a press of Nudge shows while the nudge for `goal` waits for the current turn to end. */
-export function describeNudgeWaiting(goal: Pick<Goal, 'number'>): string {
-  return `The nudge for ${nameGoal(goal.number)} is sent to Claude once the current turn ends.`
+function describeNudgeWaitingForTurnEnd(goalName: string): string {
+  return `The nudge for ${goalName} is sent to Claude once the current turn ends.`
+}
+
+const NUDGE_WAITING_BY_ACTIVITY: Record<SessionActivity, (goalName: string) => string> = {
+  [SessionActivity.Idle]: describeNudgeWaitingForTurnEnd,
+  [SessionActivity.TurnRunning]: describeNudgeWaitingForTurnEnd,
+  [SessionActivity.StoppedByUser]: goalName =>
+    `The nudge for ${goalName} is sent to Claude once the turn started by your next message ends.`,
+}
+
+/** The toast for the nudge for `goal` while it waits, in a session doing `activity`. */
+export function describeNudgeWaiting(
+  goal: Pick<Goal, 'number'>,
+  activity: SessionActivity,
+): string {
+  return NUDGE_WAITING_BY_ACTIVITY[activity](nameGoal(goal.number))
 }
 
 /** What a press of Nudge shows for a goal marked as done since the pane drew it. */
