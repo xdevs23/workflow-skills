@@ -6,7 +6,8 @@ const ROAST_OPENING =
 
 const ROAST_POINT_PROOF =
   'For each point, quote the rule or the fact, and say what the assistant did instead and what ' +
-  'that cost. Name only points the transcript proves.'
+  'that cost. Name only points the transcript proves. Leave out each point that an earlier roast ' +
+  'in this conversation already made, unless the assistant did it again after that roast.'
 
 const ROAST_TONE =
   'Be blunt: no praise, no softening. You have no tools for this reply, so answer straight away ' +
