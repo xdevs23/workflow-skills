@@ -13,7 +13,7 @@ import {
   saveDelivery,
   toastStoreFailure,
 } from './questionStore'
-import { PromptOutcome, submitToSession } from './sendToModel'
+import { PromptOutcome, isPromptEntered, submitToSession } from './sendToModel'
 import type { Delivery, TextWithLine } from './sendToModel'
 import {
   claimAnswers,
@@ -152,6 +152,6 @@ async function submitAnswers($: EngineInterface): Promise<void> {
       $.ui.toast(describeAnswersNotSent(submitted.reason))
     }
 
-    return { result: undefined, isAccepted: submitted.outcome === PromptOutcome.Entered }
+    return { result: undefined, isAccepted: isPromptEntered(submitted) }
   })
 }

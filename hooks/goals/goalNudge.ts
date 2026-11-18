@@ -3,7 +3,7 @@ import type { EngineInterface, MatchedHook } from 'claude-code'
 import type { Goal, NudgeSend, NudgedGoal, NudgedGoals, WaitingNudges } from '../../types'
 import type { EveryEvent } from '../everyEvent'
 import { showFailure } from '../failureToast'
-import { PromptOutcome, submitToSession } from '../sendToModel'
+import { PromptOutcome, isPromptEntered, submitToSession } from '../sendToModel'
 import { readSessionAcceptsPluginPrompts } from '../sessionState'
 import { runDetached, runAfterMainTurn } from '../timedWork'
 import { openGoalsByIdOf } from './board'
@@ -143,7 +143,7 @@ async function submitNudgePrompt(
     showFailure($, describeNudgeNotSent(goals, submitted.reason))
   }
 
-  return submitted.outcome === PromptOutcome.Entered
+  return isPromptEntered(submitted)
 }
 
 /** The goals of `nudged` still open in `open` and not marked as done, or undefined for none. */

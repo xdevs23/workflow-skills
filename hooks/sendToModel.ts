@@ -182,6 +182,11 @@ export async function submitToSession(
     : { outcome: PromptOutcome.Dropped, reason: entered.drop }
 }
 
+/** Whether `submitted` entered its session. Only then did the prompt reach the model. */
+export function isPromptEntered({ outcome }: SubmittedPrompt): boolean {
+  return outcome === PromptOutcome.Entered
+}
+
 /**
  * Submits `prompt` as a prompt of the plugin to the session `sessionId`, runs `restore` when the
  * prompt did not enter or the submit failed, and returns what became of the prompt.
@@ -192,11 +197,7 @@ export function submitToSessionOrRestore(
   prompt: PromptSubmitArgs,
   restore: () => Promise<void>,
 ): Promise<SubmittedPrompt> {
-  return sendOrRestore(
-    () => submitToSession($, sessionId, prompt),
-    ({ outcome }) => outcome === PromptOutcome.Entered,
-    restore,
-  )
+  return sendOrRestore(() => submitToSession($, sessionId, prompt), isPromptEntered, restore)
 }
 
 /** Runs `send`, and runs `restore` when `send` failed or `isSent` is false for its result. */
