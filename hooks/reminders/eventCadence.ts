@@ -1,7 +1,7 @@
 import type { EngineInterface, MatchedHook, On } from 'claude-code'
 
 import type { CompactionNoteSource } from '../afterCompaction'
-import { submitWithNote } from '../sendToModel'
+import { submitWithNoteAndLine } from '../sendToModel'
 import { AFTER_BACKGROUND_TASK, AFTER_COMPACTION } from './eventKinds'
 import { describeReminderNote, readEnabledReminders } from './reminderDelivery'
 
@@ -19,10 +19,7 @@ const submitTaskNotificationWithReminders: MatchedHook<
   if (note === undefined) {
     return next(e)
   }
-  const delivery = await submitWithNote(e, next, note.text)
-  if (delivery.isAccepted) {
-    $.ui.log(note.line)
-  }
+  const delivery = await submitWithNoteAndLine($, e, next, note)
 
   return delivery.result
 }

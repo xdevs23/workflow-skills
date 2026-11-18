@@ -4,7 +4,7 @@ import type { EngineInterface, MatchedHook, On, Timer } from 'claude-code'
 import type { Reminder, TimedRemindersHandled } from '../../types'
 import { EVERY_EVENT } from '../everyEvent'
 import type { EveryEvent } from '../everyEvent'
-import { callToolWithNote, submitToSessionOrRestore } from '../sendToModel'
+import { callToolWithNote, logSentLine, submitToSessionOrRestore } from '../sendToModel'
 import { ofSession, updateOfSession } from '../sessionBoundState'
 import { SWITCHING_SOURCES } from '../sessionSources'
 import { readSessionAcceptsPluginPrompts } from '../sessionState'
@@ -79,7 +79,7 @@ const addDueRemindersToToolResult: MatchedHook<'tool.call', EveryEvent> = ($, e,
     const taken = await takeDueReminders($, sessionId, await readEnabledReminders($, TIME_KIND))
     const note = taken === undefined ? undefined : describeReminderNote(taken.due)
     if (note !== undefined) {
-      $.ui.log(note.line)
+      logSentLine($, note.line)
     }
 
     return note?.text

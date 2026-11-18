@@ -3,7 +3,7 @@ import type { EngineInterface, MatchedHook, Timer } from 'claude-code'
 import type { SelfCheckSchedule } from '../../types'
 import type { EveryEvent } from '../everyEvent'
 import { isTypedByUser } from '../promptOrigin'
-import { submitToSessionOrRestore, submitWithNoteOrRestore } from '../sendToModel'
+import { submitToSessionOrRestore, submitWithNoteAndLineOrRestore } from '../sendToModel'
 import { readSessionAcceptsPluginPrompts } from '../sessionState'
 import { runAfter, runAfterMainTurn } from '../timedWork'
 import {
@@ -72,12 +72,13 @@ export const submitWithSelfCheck: MatchedHook<'prompt.submit', EveryEvent> = asy
   if (taken === undefined) {
     return next(e)
   }
-  const delivery = await submitWithNoteOrRestore(e, next, SELF_CHECK_TEXT, () =>
-    restoreDueTime($, taken),
+  const delivery = await submitWithNoteAndLineOrRestore(
+    $,
+    e,
+    next,
+    { text: SELF_CHECK_TEXT, line: SENT_LINE },
+    () => restoreDueTime($, taken),
   )
-  if (delivery.isAccepted) {
-    $.ui.log(SENT_LINE)
-  }
 
   return delivery.result
 }

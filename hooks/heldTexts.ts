@@ -13,7 +13,7 @@ import type {
 import { messageOf } from './errorMessage'
 import { showFailure } from './failureToast'
 import { isMessageTypedByUser } from './promptOrigin'
-import { callToolWithNote, logSentLine, submitWithNoteOrRestore } from './sendToModel'
+import { callToolWithNote, logSentLine, submitWithNoteAndLineOrRestore } from './sendToModel'
 import type { NoteSource, TextWithLine } from './sendToModel'
 import { readSessionAcceptsPluginPrompts } from './sessionState'
 import { runDetached } from './timedWork'
@@ -99,17 +99,15 @@ export async function submitWithHeldTexts(
   if (taken.length === 0) {
     return next(e)
   }
-  const note = taken.map(each => each.note.text).join('\n\n')
-  const delivery = await submitWithNoteOrRestore(e, next, note, async () => {
+  const note: TextWithLine = {
+    text: taken.map(each => each.note.text).join('\n\n'),
+    line: taken.map(each => each.note.line).join('\n\n'),
+  }
+  const delivery = await submitWithNoteAndLineOrRestore($, e, next, note, async () => {
     for (const each of taken) {
       await each.restore()
     }
   })
-  if (delivery.isAccepted) {
-    for (const each of taken) {
-      logSentLine($, each.note.line)
-    }
-  }
 
   return delivery.result
 }

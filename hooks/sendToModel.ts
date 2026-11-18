@@ -117,7 +117,7 @@ export function logSentLine($: EngineInterface, line: string): void {
 }
 
 /** Submits the prompt `e` with `note` beside it, and tells whether the prompt entered with it. */
-export async function submitWithNote(
+async function submitWithNote(
   e: Frozen<PromptSubmitInput>,
   next: Next<'prompt.submit'>,
   note: string,
@@ -146,16 +146,21 @@ export async function submitWithNoteAndLine(
 }
 
 /**
- * Submits the prompt `e` with `note` beside it, and runs `restore` when the prompt entered without
- * the note or the submit failed.
+ * Submits the prompt `e` as `submitWithNoteAndLine` does, and runs `restore` when the prompt
+ * entered without the note or the submit failed.
  */
-export function submitWithNoteOrRestore(
+export function submitWithNoteAndLineOrRestore(
+  $: EngineInterface,
   e: Frozen<PromptSubmitInput>,
   next: Next<'prompt.submit'>,
-  note: string,
+  note: TextWithLine,
   restore: () => Promise<void>,
 ): Promise<Delivery<PromptSubmitResult>> {
-  return sendOrRestore(() => submitWithNote(e, next, note), ({ isAccepted }) => isAccepted, restore)
+  return sendOrRestore(
+    () => submitWithNoteAndLine($, e, next, note),
+    ({ isAccepted }) => isAccepted,
+    restore,
+  )
 }
 
 /**

@@ -3,7 +3,7 @@ import type { EngineInterface, MatchedHook } from 'claude-code'
 import type { Board } from '../../types'
 import type { CompactionNote, CompactionNoteSource } from '../afterCompaction'
 import type { EveryEvent } from '../everyEvent'
-import { callToolWithNote, submitWithNoteOrRestore } from '../sendToModel'
+import { callToolWithNote, logSentLine, submitWithNoteAndLineOrRestore } from '../sendToModel'
 import type { TextWithLine } from '../sendToModel'
 import { Outcome } from './board'
 import { listOpenGoals, readBoardToRemind } from './goalReminderBoard'
@@ -58,7 +58,7 @@ export const addGoalChangesToToolResult: MatchedHook<'tool.call', EveryEvent> = 
     if (changes === undefined) {
       return undefined
     }
-    $.ui.log(changes.line)
+    logSentLine($, changes.line)
 
     return GOAL_TOOLS.has(e.tool) ? changes.text : changes.note
   })
@@ -75,12 +75,13 @@ export const submitWithGoalChanges: MatchedHook<'prompt.submit', EveryEvent> = a
   if (changes === undefined) {
     return next(e)
   }
-  const delivery = await submitWithNoteOrRestore(e, next, changes.note, () =>
-    restoreSeenBoard($, sessionId, changes.before, changes.after),
+  const delivery = await submitWithNoteAndLineOrRestore(
+    $,
+    e,
+    next,
+    { text: changes.note, line: changes.line },
+    () => restoreSeenBoard($, sessionId, changes.before, changes.after),
   )
-  if (delivery.isAccepted) {
-    $.ui.log(changes.line)
-  }
 
   return delivery.result
 }
