@@ -7,6 +7,7 @@ import type { FailedStoreCall } from '../pluginStore'
 import { MILLISECONDS_PER_MINUTE, MILLISECONDS_PER_SECOND } from '../timeUnits'
 import { SwitchOutcome } from './idleRoastSwitch'
 import type { UnreadSwitch } from './idleRoastSwitch'
+import { ForkViewUnknown, ROW_LIMIT } from './messagesUnseenByFork'
 import { RoastNotWrittenCause, RoastRecovery, recoveryOf } from './roastFailure'
 import type { LastingApiError, RoastFailure } from './roastFailure'
 import { IDLE_ROAST_COMMAND, IDLE_WAIT_SECONDS, IdleRoastWord, ROAST_COMMAND } from './roastNames'
@@ -111,6 +112,25 @@ function describeNotWritten(failure: RoastFailure, retry: string): string {
   return [cause, fix, retry, reply === undefined ? undefined : `The reply: ${reply}`]
     .filter(sentence => sentence !== undefined)
     .join(' ')
+}
+
+const FORK_VIEW_UNKNOWN_CAUSES: Record<ForkViewUnknown, string> = {
+  [ForkViewUnknown.NotRecorded]:
+    'The main conversation has not had a step with a response since the session started or ' +
+    'since its last compaction.',
+  [ForkViewUnknown.TranscriptShortened]:
+    'The transcript is shorter than at the last step with a response, as after a rewind.',
+  [ForkViewUnknown.PastRowLimit]:
+    `The transcript has ${ROW_LIMIT} rows or more, and the engine returns only the newest ` +
+    `${ROW_LIMIT}.`,
+}
+
+/** The line in the debug log for a fork that got the prompt alone for `cause`. */
+export function describeForkViewUnknown(cause: ForkViewUnknown): string {
+  return (
+    'The fork that writes the roast got the prompt alone and may lack the newest messages of the ' +
+    `main conversation. ${FORK_VIEW_UNKNOWN_CAUSES[cause]}`
+  )
 }
 
 /** The text for a run of /roast that ended without a roast, with the next step. */

@@ -1,5 +1,6 @@
 import type { On } from 'claude-code'
 
+import { EVERY_EVENT } from '../everyEvent'
 import { registerPromptWaitPane } from '../promptWaits'
 import { registerIdleRoast } from './idleRoast'
 import {
@@ -7,6 +8,7 @@ import {
   replyWithIdleRoastHookFailure,
   runIdleRoastCommand,
 } from './idleRoastCommand'
+import { forgetForkViewOnCompaction, recordForkView } from './messagesUnseenByFork'
 import {
   dropRoastOnClose,
   registerRoastCommand,
@@ -24,7 +26,8 @@ import { drawRoastPane } from './roastScreens'
 
 /**
  * Registers /roast, which opens a pane with a roast about the main conversation to send to it, and
- * the idle roast with /idle-roast, which sets it for the running session.
+ * the idle roast with /idle-roast, which sets it for the running session. Also registers the hooks
+ * that set and forget what a fork that writes either roast sees of the main conversation.
  */
 export function registerRoast(on: On): void {
   registerPromptWaitPane(ROAST_PANE)
@@ -37,4 +40,6 @@ export function registerRoast(on: On): void {
     replyWithIdleRoastHookFailure,
   )
   registerIdleRoast(on)
+  on('turn.step', EVERY_EVENT, recordForkView)
+  on('session.compact', EVERY_EVENT, forgetForkViewOnCompaction)
 }

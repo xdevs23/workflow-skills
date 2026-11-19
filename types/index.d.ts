@@ -21,6 +21,7 @@ import type {
 } from '../hooks/reminders/reminderPaneMessages'
 import type { ReadReminders, RemindersNotRead } from '../hooks/reminders/reminderStore'
 import type { Refusal as ReminderRefusal } from '../hooks/reminders/reminders'
+import type { ForkView } from '../hooks/roast/messagesUnseenByFork'
 import type { PendingRoast, SessionRoast } from '../hooks/roast/roastState'
 import type { ActivityOfSession } from '../hooks/sessionState'
 
@@ -442,6 +443,11 @@ declare module 'claude-code' {
        * their start.
        */
       firstPromptAwaited: { sessionId: string } | null
+      /**
+       * What a fork made from the main conversation of the session sees of it; null before a step
+       * of the main conversation got a response.
+       */
+      forkView: ForkView | null
       /** The roast shown in the Roast pane; null before /roast first ran. */
       sessionRoast: SessionRoast | null
       /** The roasts sent from the Roast pane that have not gone to the model yet. */

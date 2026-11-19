@@ -1,4 +1,5 @@
 import { PendingTextPlace } from '../pendingTexts'
+import type { MessageAsRead } from './messagesUnseenByFork'
 import { IdleRoastVerdict, RoastVerdict } from './roastReply'
 import type { IdleRoastReply, RoastReply } from './roastReply'
 
@@ -83,6 +84,26 @@ const REFUSED_REPLY_EXAMPLE = JSON.stringify({
   verdict: RoastVerdict.Refused,
   reason: '<the reason>',
 } satisfies RoastReply)
+
+/**
+ * `prompt` for a fork that does not see `unseen`, the newest messages of the main conversation,
+ * with those messages before it. `prompt` alone where `unseen` is empty.
+ */
+export function writePromptAfterUnseenMessages(
+  prompt: string,
+  unseen: readonly MessageAsRead[],
+): string {
+  if (unseen.length === 0) {
+    return prompt
+  }
+
+  return (
+    'The transcript you see ends before the newest messages of this conversation. These ' +
+    'messages came after it, as a JSON array of messages with their text, their tool calls and ' +
+    'the text of each tool result. Read them as the end of the transcript, and judge the work of ' +
+    `the assistant up to the last of them:\n\n${JSON.stringify(unseen)}\n\n${prompt}`
+  )
+}
 
 const ROAST_PROMPT =
   `${ROAST_POINTS} If the transcript proves no point, write one sentence saying so as the roast. ` +

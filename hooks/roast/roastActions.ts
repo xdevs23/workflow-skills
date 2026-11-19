@@ -6,14 +6,15 @@ import { randomWaitAfter } from '../retryWait'
 import type { RetryWaits } from '../retryWait'
 import { MILLISECONDS_PER_SECOND } from '../timeUnits'
 import { runEvery } from '../timedWork'
+import { readMessagesUnseenByFork } from './messagesUnseenByFork'
 import { RoastNotWrittenCause, isPassingApiError } from './roastFailure'
 import type { RoastFailure } from './roastFailure'
 import { ROAST_PANE, SEND_KEY } from './roastNames'
-import { writeRoastPrompt } from './roastPromptTexts'
+import { writePromptAfterUnseenMessages, writeRoastPrompt } from './roastPromptTexts'
 import { RoastVerdict, readRoastReply } from './roastReply'
 import { RoastShown, recordSecondsWriting, setRoastOfRun, setRoastWriting } from './roastState'
 import type { RoastProgressOf, RoastRun } from './roastState'
-import { PANE_TITLE, describeSecondsNotShown } from './roastTexts'
+import { PANE_TITLE, describeForkViewUnknown, describeSecondsNotShown } from './roastTexts'
 
 // The user may watch the Roast pane while the fork runs again, so the wait before the next try
 // grows from two seconds up to half a minute and goes no longer.
@@ -82,7 +83,8 @@ async function runCountingSeconds(
 
 /**
  * Asks a fork made from the main conversation for a roast with `prompt`, and hands each result to
- * `useResult`. Asks again after an error of the API that passes, until a fork writes the roast or
+ * `useResult`. Each fork gets the messages of the main conversation that it does not see before
+ * `prompt`. Asks again after an error of the API that passes, until a fork writes the roast or
  * fails for good, or `useResult` returns false.
  */
 export async function forkRoast(
@@ -91,12 +93,28 @@ export async function forkRoast(
   useResult: (roast: ForkedRoast) => Promise<boolean>,
 ): Promise<void> {
   for (let tries = 1; ; tries += 1) {
-    const roast = readForkReply(await $.model.fork({ prompt }), tries)
+    const reply = await $.model.fork({ prompt: await writeForkPrompt($, prompt) })
+    const roast = readForkReply(reply, tries)
     if (!(await useResult(roast)) || roast.shown !== RoastShown.WritingAgain) {
       return
     }
     await $.clock.sleep(randomWaitAfter(tries, FORK_RETRY_WAITS))
   }
+}
+
+/**
+ * `prompt` for a fork, after the messages of the main conversation that the fork does not see.
+ * Where those messages are unknown, `prompt` alone, and the debug log gets the reason.
+ */
+async function writeForkPrompt($: EngineInterface, prompt: string): Promise<string> {
+  const unseen = await readMessagesUnseenByFork($)
+  if (!unseen.isKnown) {
+    $.ui.log(describeForkViewUnknown(unseen.cause), { to: 'debug' })
+
+    return prompt
+  }
+
+  return writePromptAfterUnseenMessages(prompt, unseen.messages)
 }
 
 /** What a fork reply to a roast shows: the roast, the refusal of the roast, or a failure. */
