@@ -137,6 +137,16 @@ description: Implement change to code, from first talk with user until user revi
   Merge each of them separately
 - Check working branch clean, read result, only then delete worktree, in separate command
 
+## Final verification
+
+- Stop only when work fully done, evidence shows change works and
+  `workflow-skills:final-verification` agent has run on that change
+- Run it after last edit of change. Prompt names change: TODO number, branch or worktree
+- Start it with Agent tool from main conversation, never in workflow. `roast_work` denies agent
+  started by workflow
+- Run counts only when its verdict line reports no open finding
+- Task that changed no file needs no run. Never make change only to give agent work
+
 ## User review
 
 - Send change to user through review system used by project. Open pull request by
