@@ -62,8 +62,7 @@ description: Decide where to put file not meant for repository, what to remove o
 
 - Never keep large file or anything needed later in system temporary directory. Treat whatever is
   there as lost
-- When something important is lost there, record violation by `workflow-skills:wall-of-shame`.
-  Recover what was lost without asking user
+- When something important is lost there, recover it without asking user
 
 ## Reading stages
 

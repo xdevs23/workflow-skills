@@ -91,4 +91,3 @@ description: Decide what may go into anything that leaves machine or goes to som
 - Follow `workflow-skills:todo-md` for todo record
 - Follow `workflow-skills:implement` for notes of user's words and draft that describes a change
 - Follow `workflow-skills:visual-verification` for captures and real samples of visual harness
-- Follow `workflow-skills:wall-of-shame` to record violation of these rules
