@@ -11,6 +11,11 @@ export type HookSubject = {
    * hooks that save nothing.
    */
   checkBeforeRetry?: string
+  /**
+   * The sentence that tells what to do about the failure. Absent where the reader goes on without
+   * what the hooks work on.
+   */
+  nextStep?: string
 }
 
 /** Denies the tool call whose hook failed, with the reason, which goes to the debug log too. */
@@ -57,7 +62,12 @@ export function describeHookFailure(subject: HookSubject, failure: HookFailure):
   return HOOK_FAILURE_TEXTS[failure.kind](subject, failure.message)
 }
 
-function logAndDescribe($: EngineInterface, subject: HookSubject, failure: HookFailure): string {
+/** Writes the text for the failed hook to the debug log, and returns it. */
+export function logAndDescribe(
+  $: EngineInterface,
+  subject: HookSubject,
+  failure: HookFailure,
+): string {
   return writeToDebugLog($, describeHookFailure(subject, failure))
 }
 
@@ -72,7 +82,9 @@ function writeToDebugLog($: EngineInterface, text: string): string {
 function describeFailedUse(subject: HookSubject, reason: string | undefined): string {
   return [
     `The ${subject.name} could not be used: ${reason ?? 'the hook failed without a reason'}`,
-    `${DEBUG_LOG_NOTE} Until the cause is fixed, go on without the ${subject.name}.`,
+    `${DEBUG_LOG_NOTE} ${
+      subject.nextStep ?? `Until the cause is fixed, go on without the ${subject.name}.`
+    }`,
   ].join('\n')
 }
 
@@ -84,8 +96,8 @@ function describeUnfinishedUse(subject: HookSubject, lastFailure: string | undef
   const unfinished = `The ${subject.name} did not finish in time`
   const failureLines =
     lastFailure === undefined ? [] : [`The last failure before that: ${lastFailure}`]
-
-  return (
+  const nextStepLines = subject.nextStep === undefined ? [] : [subject.nextStep]
+  const unfinishedLines =
     subject.checkBeforeRetry === undefined
       ? [`${unfinished}.`, ...failureLines, DEBUG_LOG_NOTE]
       : [
@@ -93,5 +105,6 @@ function describeUnfinishedUse(subject: HookSubject, lastFailure: string | undef
           ...failureLines,
           `${subject.checkBeforeRetry} ${DEBUG_LOG_NOTE}`,
         ]
-  ).join('\n')
+
+  return [...unfinishedLines, ...nextStepLines].join('\n')
 }
