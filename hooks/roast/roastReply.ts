@@ -26,12 +26,32 @@ export type IdleRoastReply =
   | { verdict: IdleRoastVerdict.Roast; roast: string }
   | { verdict: IdleRoastVerdict.NoBlockingPoint }
 
+/** The verdicts that the prompt of roast_work offers its fork. */
+export enum VerificationRoastVerdict {
+  Roast = 'roast',
+  /** The transcript proves no point in the work on the change, so the fork wrote no roast. */
+  NoPoint = 'no-point',
+}
+
+/** The JSON object that the prompt of roast_work asks its fork to reply with. */
+export type VerificationRoastReply =
+  | { verdict: VerificationRoastVerdict.Roast; roast: string }
+  | { verdict: VerificationRoastVerdict.NoPoint }
+
 export function readRoastReply(text: string): JsonTextRead<RoastReply> {
   return readJsonText(text, toRoastReply)
 }
 
 export function readIdleRoastReply(text: string): JsonTextRead<IdleRoastReply> {
-  return readJsonText(text, toIdleRoastReply)
+  return readJsonText(text, value =>
+    toRoastOrNoneReply(value, IdleRoastVerdict.Roast, IdleRoastVerdict.NoBlockingPoint),
+  )
+}
+
+export function readVerificationRoastReply(text: string): JsonTextRead<VerificationRoastReply> {
+  return readJsonText(text, value =>
+    toRoastOrNoneReply(value, VerificationRoastVerdict.Roast, VerificationRoastVerdict.NoPoint),
+  )
 }
 
 /** `value` as a reply to /roast, or undefined for a value of another shape or with empty text. */
@@ -51,17 +71,24 @@ function toRoastReply(value: unknown): RoastReply | undefined {
   return undefined
 }
 
-/** `value` as a reply to the idle roast, or undefined for a value of another shape. */
-function toIdleRoastReply(value: unknown): IdleRoastReply | undefined {
+/**
+ * `value` as a reply with the verdict `roastVerdict` and a roast, or with the verdict `noneVerdict`
+ * alone, or undefined for a value of another shape.
+ */
+function toRoastOrNoneReply<RoastVerdictOf extends string, NoneVerdictOf extends string>(
+  value: unknown,
+  roastVerdict: RoastVerdictOf,
+  noneVerdict: NoneVerdictOf,
+): { verdict: RoastVerdictOf; roast: string } | { verdict: NoneVerdictOf } | undefined {
   if (!isRecord(value)) {
     return undefined
   }
   const roast = readWrittenText(value.roast)
-  if (value.verdict === IdleRoastVerdict.Roast && roast !== undefined) {
-    return { verdict: value.verdict, roast }
+  if (value.verdict === roastVerdict && roast !== undefined) {
+    return { verdict: roastVerdict, roast }
   }
-  if (value.verdict === IdleRoastVerdict.NoBlockingPoint) {
-    return { verdict: value.verdict }
+  if (value.verdict === noneVerdict) {
+    return { verdict: noneVerdict }
   }
 
   return undefined

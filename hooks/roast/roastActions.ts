@@ -1,4 +1,4 @@
-import type { EngineInterface, ModelForkResult, UiOpenResult } from 'claude-code'
+import type { EngineInterface, ModelForkResult, Next, UiOpenResult } from 'claude-code'
 
 import { messageOf } from '../errorMessage'
 import { moveKeyboardTo } from '../paneFocus'
@@ -17,7 +17,8 @@ import type { RoastProgressOf, RoastRun } from './roastState'
 import { PANE_TITLE, describeForkViewUnknown, describeSecondsNotShown } from './roastTexts'
 
 // The user may watch the Roast pane while the fork runs again, so the wait before the next try
-// grows from two seconds up to half a minute and goes no longer.
+// grows from two seconds up to half a minute and goes no longer. Inside a hook, the budget of the
+// hook ends the waits sooner.
 const FORK_RETRY_WAITS: RetryWaits = { firstMs: 2000, longestMs: 30_000 }
 
 /** The result of one fork asked for a roast. */
@@ -93,13 +94,44 @@ export async function forkRoast(
   useResult: (roast: ForkedRoast) => Promise<boolean>,
 ): Promise<void> {
   for (let tries = 1; ; tries += 1) {
-    const reply = await $.model.fork({ prompt: await writeForkPrompt($, prompt) })
-    const roast = readForkReply(reply, tries)
+    const roast = await forkRoastOnce($, prompt, tries)
     if (!(await useResult(roast)) || roast.shown !== RoastShown.WritingAgain) {
       return
     }
     await $.clock.sleep(randomWaitAfter(tries, FORK_RETRY_WAITS))
   }
+}
+
+/**
+ * Asks forks for a roast with `prompt` as forkRoast does, inside the hook whose `next` is given,
+ * and returns the result of the last fork. A wait counts against the budget of the hook, so the
+ * hook waits for the next try only while the wait and a try as long as the last fit into what is
+ * left of that budget. An abort of the call of the hook ends the wait, so no fork starts after it.
+ */
+export async function forkRoastWithinHook(
+  $: EngineInterface,
+  prompt: string,
+  next: Pick<Next, 'signal' | 'budget'>,
+): Promise<ForkedRoast> {
+  for (let tries = 1; ; tries += 1) {
+    const remainingBeforeTry = next.budget.remainingMs
+    const roast = await forkRoastOnce($, prompt, tries)
+    const ownTimeOfTry = remainingBeforeTry - next.budget.remainingMs
+    const wait = randomWaitAfter(tries, FORK_RETRY_WAITS)
+    if (roast.shown !== RoastShown.WritingAgain || wait + ownTimeOfTry >= next.budget.remainingMs) {
+      return roast
+    }
+    await $.clock.sleep(wait, { signal: next.signal })
+  }
+}
+
+/** Asks one fork for a roast with `prompt`, as the try numbered `tries`. */
+async function forkRoastOnce(
+  $: EngineInterface,
+  prompt: string,
+  tries: number,
+): Promise<ForkedRoast> {
+  return readForkReply(await $.model.fork({ prompt: await writeForkPrompt($, prompt) }), tries)
 }
 
 /**

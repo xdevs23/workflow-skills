@@ -1,3 +1,4 @@
+import { toolName } from '../names'
 import { PANE_CLOSED_BY_USER } from '../paneClose'
 
 export const ROAST_COMMAND = 'roast'
@@ -36,3 +37,7 @@ export const ROAST_PANE_SITE = { component: 'Pane', requestId: ROAST_PANE } as c
 export const SEND_KEY = 'send-roast'
 
 export const ROAST_PANE_CLOSED_BY_USER = { id: ROAST_PANE, ...PANE_CLOSED_BY_USER } as const
+
+export const ROAST_WORK = 'roast_work'
+
+export const ROAST_WORK_TOOL = toolName(ROAST_WORK)

@@ -28,6 +28,9 @@ export const SKILL_TOOL = 'Skill'
 /** The built-in tool that starts a subagent. */
 export const AGENT_TOOL = 'Agent'
 
+/** The qualified name of the agent that verifies the final state of a change. */
+export const FINAL_VERIFICATION_AGENT = `${PLUGIN}:final-verification`
+
 /** The qualified name for the skill to load before a question is put to the user. */
 export const QUESTION_SKILL = skillName('question')
 

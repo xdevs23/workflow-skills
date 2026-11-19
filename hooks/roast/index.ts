@@ -23,11 +23,14 @@ import {
   ROAST_PANE_SITE,
 } from './roastNames'
 import { drawRoastPane } from './roastScreens'
+import { registerVerificationRoast } from './verificationRoast'
 
 /**
  * Registers /roast, which opens a pane with a roast about the main conversation to send to it, and
  * the idle roast with /idle-roast, which sets it for the running session. Also registers the hooks
- * that set and forget what a fork that writes either roast sees of the main conversation.
+ * that set and forget what a fork that writes either roast sees of the main conversation, and
+ * roast_work, which hands the final-verification agent a roast of the work on the change that agent
+ * verifies.
  */
 export function registerRoast(on: On): void {
   registerPromptWaitPane(ROAST_PANE)
@@ -40,6 +43,7 @@ export function registerRoast(on: On): void {
     replyWithIdleRoastHookFailure,
   )
   registerIdleRoast(on)
+  registerVerificationRoast(on)
   on('turn.step', EVERY_EVENT, recordForkView)
   on('session.compact', EVERY_EVENT, forgetForkViewOnCompaction)
 }

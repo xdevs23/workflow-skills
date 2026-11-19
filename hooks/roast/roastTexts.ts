@@ -10,7 +10,13 @@ import type { UnreadSwitch } from './idleRoastSwitch'
 import { ForkViewUnknown, ROW_LIMIT } from './messagesUnseenByFork'
 import { RoastNotWrittenCause, RoastRecovery, recoveryOf } from './roastFailure'
 import type { LastingApiError, RoastFailure } from './roastFailure'
-import { IDLE_ROAST_COMMAND, IDLE_WAIT_SECONDS, IdleRoastWord, ROAST_COMMAND } from './roastNames'
+import {
+  IDLE_ROAST_COMMAND,
+  IDLE_WAIT_SECONDS,
+  IdleRoastWord,
+  ROAST_COMMAND,
+  ROAST_WORK,
+} from './roastNames'
 import type { RoastProgressOf, RoastShown } from './roastState'
 
 export const PANE_TITLE = 'Roast'
@@ -22,6 +28,11 @@ export const ROAST_DESCRIPTION =
   'roast to Claude'
 
 export const ROAST_SUBJECT: HookSubject = { name: 'roast' }
+
+/** The step that roast_work gives the final-verification agent for a roast that was not written. */
+export const REPORT_AS_OPEN_FINDING = 'Report this as an open finding, with this error.'
+
+export const ROAST_WORK_SUBJECT: HookSubject = { name: 'roast', nextStep: REPORT_AS_OPEN_FINDING }
 
 export const NO_ROAST = `Run /${ROAST_COMMAND} to roast this session.`
 
@@ -78,7 +89,12 @@ const UNREADABLE_REPLY_CAUSES: Record<JsonTextNotRead, string> = {
 }
 
 /** The sentences that describe a roast that was not written, apart from the retry step. */
-type RoastFailureSentences = { cause: string; fix?: string | undefined; reply?: string }
+type RoastFailureSentences = {
+  cause: string
+  /** The step by which a person at the prompt clears the cause, where one does. */
+  fix?: string | undefined
+  reply?: string
+}
 
 function describeRoastFailureParts(failure: RoastFailure): RoastFailureSentences {
   switch (failure.cause) {
@@ -107,9 +123,17 @@ function describeRoastFailureParts(failure: RoastFailure): RoastFailureSentences
 }
 
 function describeNotWritten(failure: RoastFailure, retry: string): string {
-  const { cause, fix, reply } = describeRoastFailureParts(failure)
+  const sentences = describeRoastFailureParts(failure)
 
-  return [cause, fix, retry, reply === undefined ? undefined : `The reply: ${reply}`]
+  return joinNotWritten(sentences, [sentences.fix, retry])
+}
+
+/** The cause in `sentences`, then `steps`, then the reply in `sentences` where there is one. */
+function joinNotWritten(
+  { cause, reply }: RoastFailureSentences,
+  steps: readonly (string | undefined)[],
+): string {
+  return [cause, ...steps, reply === undefined ? undefined : `The reply: ${reply}`]
     .filter(sentence => sentence !== undefined)
     .join(' ')
 }
@@ -136,6 +160,28 @@ export function describeForkViewUnknown(cause: ForkViewUnknown): string {
 /** The text for a run of /roast that ended without a roast, with the next step. */
 export function describeRoastNotWritten(failure: RoastFailure): string {
   return describeNotWritten(failure, `Run /${ROAST_COMMAND} again.`)
+}
+
+/**
+ * The text that roast_work returns to the final-verification agent for a roast that was not
+ * written. It leaves out the fix, a step meant for a person at the prompt.
+ */
+export function describeVerificationRoastNotWritten(failure: RoastFailure): string {
+  return joinNotWritten(describeRoastFailureParts(failure), [REPORT_AS_OPEN_FINDING])
+}
+
+/**
+ * The text that roast_work returns to the final-verification agent when the budget of its hook
+ * ended the tries while the API error of the last try may still clear on its own.
+ */
+export function describeVerificationRoastDelayed({
+  failedTries,
+  error,
+}: RoastProgressOf<RoastShown.WritingAgain>): string {
+  return (
+    `The roast is not written yet: try ${failedTries} failed with the API error ${error}, which ` +
+    `may clear on its own. Call ${ROAST_WORK} again.`
+  )
 }
 
 /** The notice for a roast written for `secondsWriting` so far. */

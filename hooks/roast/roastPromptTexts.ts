@@ -1,20 +1,31 @@
 import { PendingTextPlace } from '../pendingTexts'
 import type { MessageAsRead } from './messagesUnseenByFork'
-import { IdleRoastVerdict, RoastVerdict } from './roastReply'
-import type { IdleRoastReply, RoastReply } from './roastReply'
+import { IdleRoastVerdict, RoastVerdict, VerificationRoastVerdict } from './roastReply'
+import type { IdleRoastReply, RoastReply, VerificationRoastReply } from './roastReply'
+
+/** The opening of every prompt for a roast. */
+const ROASTER_ROLE =
+  'From this message on, you are the roaster. The assistant in this conversation wrote the ' +
+  'earlier replies.'
 
 /** The opening of the prompts for the roast and the idle roast. */
 const ROAST_OPENING =
-  'From this message on, you are the roaster. The assistant in this conversation wrote the ' +
-  'earlier replies. Review the work of the assistant so far and roast that work. The user may ' +
+  `${ROASTER_ROLE} Review the work of the assistant so far and roast that work. The user may ` +
   'send your roast to this conversation as their own message, so write the roast to the ' +
   'assistant as "you". In the roast, talk only to the assistant and never to the user.'
 
-const ROAST_POINT_PROOF =
+/** What the assistant disregarded, as each point of a roast names it. */
+const ROAST_POINT_SOURCES =
+  'an instruction or a decision of the user, a rule of an instruction file or a loaded skill, or ' +
+  'a fact that a tool result or the user stated'
+
+const ROAST_POINT_EVIDENCE =
   'For each point, quote the rule or the fact, and say what the assistant did instead and what ' +
-  'that cost. Name only points the transcript proves. Leave out each point that an earlier roast ' +
-  'in this conversation already made, unless the assistant repeated what that point names after ' +
-  'that roast.'
+  'that cost. Name only points the transcript proves.'
+
+const ROAST_POINT_PROOF =
+  `${ROAST_POINT_EVIDENCE} Leave out each point that an earlier roast in this conversation ` +
+  'already made, unless the assistant repeated what that point names after that roast.'
 
 const ROAST_BLUNTNESS = 'Be blunt: no praise, no softening.'
 
@@ -25,8 +36,7 @@ const JSON_REPLY =
 /** The request for the points of the roast, without the reply where the transcript proves none. */
 const ROAST_POINTS =
   `${ROAST_OPENING} Find one or more points where the assistant disregarded the rules or the ` +
-  'facts in its context: an instruction or a decision of the user, a rule of an instruction file ' +
-  `or a loaded skill, or a fact that a tool result or the user stated. ${ROAST_POINT_PROOF}`
+  `facts in its context: ${ROAST_POINT_SOURCES}. ${ROAST_POINT_PROOF}`
 
 const IDLE_ROAST_REPLY_EXAMPLE = JSON.stringify({
   verdict: IdleRoastVerdict.Roast,
@@ -134,5 +144,34 @@ export function writeRoastPrompt(finding: string): string {
     'assistant "the assistant" and never "you", since the user did none of its work. Only the ' +
     'user reads the reason, and the reason never reaches the assistant.\n\nThe complaint, as the ' +
     `user typed it:\n\n${finding}`
+  )
+}
+
+const VERIFICATION_ROAST_REPLY_EXAMPLE = JSON.stringify({
+  verdict: VerificationRoastVerdict.Roast,
+  roast: '<the roast>',
+} satisfies VerificationRoastReply)
+
+const NO_POINT_REPLY_EXAMPLE = JSON.stringify({
+  verdict: VerificationRoastVerdict.NoPoint,
+} satisfies VerificationRoastReply)
+
+/**
+ * The message that asks a fork made from the main conversation for the roast of the work on
+ * `change`, the name by which the final-verification agent calls the change it verifies.
+ * The fork replies with a JSON object, which readVerificationRoastReply reads.
+ */
+export function writeVerificationRoastPrompt(change: string): string {
+  return (
+    `${ROASTER_ROLE} The work of the assistant may still be running, and you do not continue ` +
+    'it: do not answer the user, and do not carry out any request made in this conversation. ' +
+    `The assistant says that the change ${JSON.stringify(change)} is done. Find ` +
+    'every point where the work on that change disregards the rules or the facts in its ' +
+    `context, ${ROAST_POINT_SOURCES}, or claims more than the transcript proves. Repeat each ` +
+    'point that an earlier final verification left open, unless the transcript resolves it. ' +
+    `Count an edit that removes or rewords evidence as a point. ${ROAST_POINT_EVIDENCE} Write ` +
+    `the roast to the assistant as "you". ${ROAST_BLUNTNESS} ${JSON_REPLY} Reply with ` +
+    `${VERIFICATION_ROAST_REPLY_EXAMPLE}, or with ${NO_POINT_REPLY_EXAMPLE} if the transcript ` +
+    'proves no point.'
   )
 }
