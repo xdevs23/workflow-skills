@@ -24,13 +24,14 @@ import {
 } from './roastNames'
 import { drawRoastPane } from './roastScreens'
 import { registerVerificationRoast } from './verificationRoast'
+import { registerVerifierPromptLimit } from './verifierPromptLimit'
 
 /**
  * Registers /roast, which opens a pane with a roast about the main conversation to send to it, and
  * the idle roast with /idle-roast, which sets it for the running session. Also registers the hooks
- * that set and forget what a fork that writes either roast sees of the main conversation, and
+ * that set and forget what a fork that writes either roast sees of the main conversation,
  * roast_work, which hands the final-verification agent a roast of the work on the change that agent
- * verifies.
+ * verifies, and the hooks that limit every message to that agent to a short name of the change.
  */
 export function registerRoast(on: On): void {
   registerPromptWaitPane(ROAST_PANE)
@@ -44,6 +45,7 @@ export function registerRoast(on: On): void {
   )
   registerIdleRoast(on)
   registerVerificationRoast(on)
+  registerVerifierPromptLimit(on)
   on('turn.step', EVERY_EVENT, recordForkView)
   on('session.compact', EVERY_EVENT, forgetForkViewOnCompaction)
 }
