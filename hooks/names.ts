@@ -25,6 +25,9 @@ export const WITHDRAW_TOOL = toolName(WITHDRAW)
 /** The built-in tool that loads a skill into the context of its caller. */
 export const SKILL_TOOL = 'Skill'
 
+/** The built-in tool that starts a subagent. */
+export const AGENT_TOOL = 'Agent'
+
 /** The qualified name for the skill to load before a question is put to the user. */
 export const QUESTION_SKILL = skillName('question')
 
