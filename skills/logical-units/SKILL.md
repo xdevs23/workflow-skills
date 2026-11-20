@@ -4,6 +4,10 @@ description: Squashing or creating logical units as commits
 ---
 
 - One logical unit can be one unit of work, one feature, one bugfix, one topic, one story
+- Avoid commit too big to read through as one change
+- Avoid many commits for same thing, e.g. 20 commits of 20 lines each
+- One commit for whole unit with its sub-units is fine where it does not get too big. Split
+  where split makes sense
 - Create new commit message body, squash commits belonging to logical unit into that message
 - Do not squash commits from different authors unless explicitly authorized
 - If commit not make sense to squash, leave alone
