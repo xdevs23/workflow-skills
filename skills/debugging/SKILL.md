@@ -6,8 +6,8 @@ description: Find and fix cause of bug, failing build, check or test, or limit h
 - Fix defect in shared component inside that component. Never by giving each consumer a copy
 - At roadblock, stop. Hand decision to user as `workflow-skills:question` describes before adding
   any workaround or compatibility shim
-- Record work that replaces approved workaround as unit of work in `TODO.md`. Name in that entry
-  workaround and condition that ends it. Start that work right away. Remove workaround once
+- Record work that replaces approved workaround as unit of work in `TODO.md`. Name in title of that
+  unit workaround and condition that ends it. Start that work right away. Remove workaround once
   condition met
 - When something fails or hits limit, first ask whether design is right one, also for code that
   existed before your change

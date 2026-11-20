@@ -8,9 +8,6 @@ contributor or agent without history, reads that file first.
 
 # Purpose
 
-- Record in `TODO.md` every fact about how far project has progressed that is recorded nowhere
-  else. Do not use it for internal facts or for decisions that do not need to be recorded. You can
-  use notes from `workflow-skills:implement` to write down decisions of user for a unit
 - Use `TODO.md` as tracker of units of work, like an issue tracker would be used for
 - Write entry only for work asked for by user, work planned with user, and work being done
 - Do not write entry for task that changes nothing in project
@@ -20,10 +17,11 @@ contributor or agent without history, reads that file first.
 
 `TODO.md` is **gitignored and untracked**: working file on one machine, kept out of repository.
 
-- Delete entry for item from `TODO.md` once `VERIFIED`, or `PUSHED` in project that is not deployed.
-  Code represents **design** and **diff** is in git
-- Delete entry also when user says so, or when it is fix of older defect and fix is merged. Never
-  delete entry for any other reason
+- Delete entry for unit from `TODO.md` once unit meets every condition of section `Done` of
+  `workflow-skills:implement`, since code represents **design** and **diff** is in git
+- Check each condition yourself, from output and commits. Claim by agent that check passed is not
+  evidence
+- Delete entry also when user says so. Never delete entry for any other reason
 - Remove deleted entry from every `Builds on:` line that lists it
 - Read goals and entries attached to them with `mcp__workflow-skills__list_goals` when not in
   context. Goal is not satisfied yet until user clears it
@@ -34,7 +32,6 @@ contributor or agent without history, reads that file first.
 - Detach entry from every goal not satisfied yet that lists it, with
   `mcp__workflow-skills__detach_todo`, as `#<number>`, in same turn as deleting entry or as entry
   stops serving goal
-- Do not write goal number into entry
 - Name goal as `G<number>` or `Goal <number>`, e.g. `G10` or `Goal 10`, never as `#<number>`. `#`
   stands for entry of `TODO.md` only
 
@@ -46,10 +43,13 @@ contributor or agent without history, reads that file first.
 # Anatomy of an entry
 
 ```
-### #142 - Reaction emoji support - RECORDED
-<body: what it is, where it stands and what is owed>
+### #142 - Reaction emoji support - IN PROGRESS
+Builds on: #141
+Draft: .cache/specs/reaction-emoji.html
 ```
 
+- Write entry as heading, followed by `Builds on:` line and `Draft:` line where they apply. Write
+  nothing else into entry
 - Write every heading strictly in format `### #<number> - <title> - <STATE>`. Write nothing after
   state marker
 - **`### #<number> - <title>`**: number is id in tracker and never changes. Write in title what
@@ -60,13 +60,9 @@ contributor or agent without history, reads that file first.
 - **`- <STATE>`**: state marker, in uppercase, after separator dash used by format
 - **Date**: do not add date. Commit messages and time at which file was last changed already give
   date
-- **Body**: prose with what item is, where it stands, what is still to be done. Put run logs and
-  history of work into local storage defined by `workflow-skills:local-cache`, never into entry
-- **Origin pointer**: `<transcript>.jsonl:<line>:<promptId or uuid>`. Session transcript and line
-  with first message of conversation that raised item. Give every entry one. To find line, search
-  directory with session transcripts of project for promptId or uuid, or read given line directly
 - **`Builds on:`**: line with every entry that has to be built first. Write dependency between
   entries in this line and nowhere else
+- **`Draft:`**: path of draft of unit, relative to repository
 - When reporting on several entries, give glance by `workflow-skills:glance`. Show chains of
   `Builds on:` lines that concern them in message
 
@@ -87,17 +83,15 @@ contributor or agent without history, reads that file first.
 
   ```
   ### #383 - Profile avatars - IN PROGRESS
-  #### #383.1 - The profile page shows the avatar - BUILT
-  <body>
-  Origin: <pointer>
-  #### #383.2 - The avatar can be replaced - IN PROGRESS
+  Draft: .cache/specs/profile-avatars.html
+  #### #383.1 - The profile page shows the avatar - IN PROGRESS
+  Draft: .cache/specs/profile-avatars-383.1.html
+  #### #383.2 - The avatar can be replaced - QUEUED
   Builds on: #383.1
-  <body>
-  Origin: <pointer>
+  Draft: .cache/specs/profile-avatars-383.2.html
   #### #383.3 - A replaced avatar is resized to the sizes used on the page - QUEUED
   Builds on: #383.2
-  <body>
-  Origin: <pointer>
+  Draft: .cache/specs/profile-avatars-383.3.html
   ```
 
 - Record shared code needed by several sub-units, e.g. new extension point of core, as sub-unit of
@@ -125,9 +119,8 @@ contributor or agent without history, reads that file first.
 - Handle finding, also one about older code, as `workflow-skills:question` describes when fixing it
   needs decision by user
 - Record work that comes up during unit or is left over from it as sub-unit of entry for that
-  unit, never as new entry. Its origin pointer: message that asked for unit
-- Record work left over from unit whose entry was deleted as finished as new entry. Name finished
-  unit in its body
+  unit, never as new entry
+- Record work left over from unit whose entry was deleted as finished as new entry
 - Fix defect in older code outside unit, such as flaky test harness, as separate unit in parallel
   with unit
 - Start fix of older defect without asking user, as only unit started by you without user's word
@@ -136,8 +129,7 @@ contributor or agent without history, reads that file first.
 - Deliver fix of older defect on its own, through pull request or review of its own
 - Split fix of older defect that reaches several modules into sub-units, one per module, each
   delivered through pull request of its own
-- Record fix of older defect as `IN PROGRESS` entry while it runs. Its origin pointer: message that
-  asked for unit that found defect
+- Record fix of older defect as `IN PROGRESS` entry while it runs
 - Add fix of older defect to `Builds on:` line of unit when unit cannot work without it
 
 # Facts asked of the user
@@ -165,19 +157,18 @@ State is fixed enum: one of markers listed here, grouped by where item stands.
 
 **Waiting on a decision**
 
-- `NEEDS DECISION`: work cannot go on until decision made, fact answered or theory defined. Write
-  into entry, in plain terms, decision and its options, fact asked, or that theory is missing
+- `NEEDS DECISION`: work cannot go on until decision made, fact answered or theory defined
 - Before marking entry `NEEDS DECISION`, trace open point to user words as
   `workflow-skills:question` describes. Undo point made by session
 - **A decision still owed blocks only the item concerned by it.** Skip and mark item. Move work on
   to next one
 - Work on smallest change possible where answer from user does not change outcome
-- Hand decision or fact to user once, as `workflow-skills:question` describes. Write path of draft
-  page of decision into entry
+- Hand decision or fact to user once, as `workflow-skills:question` describes. Draw decision into
+  draft of unit
 
 **Ready to build**
 
-- `READY`: design agreed and written down, for example in notes of `workflow-skills:implement`
+- `READY`: design agreed with user, for example by approved draft
 - Mark sub-unit `READY` once everything needed by it is clear
 - `QUEUED`: unit can be built at any time, even if session is wiped and started fresh
 
@@ -185,43 +176,11 @@ Whether unit is ready to build follows from words of user alone.
 
 **Being built**
 
-- `IN PROGRESS`: under construction. Name workflow id if one is running, so later reader can find
-  transcript
-
-**Built and not yet live**
-
-- `BUILT`: code exists and is committed, but not confirmed deployed or pushed
-
-**Live**
-
-- `PUSHED`: pushed, but deployment not confirmed
-- `SHIPPED`: deployed to production, with commit and deployment receipt, if available
-- `VERIFIED`: observed working in production, backed by observation: log line, count, screenshot
-  reference. Reading code is not verification
+- `IN PROGRESS`: under construction, until entry deleted as section `Purpose` describes
 
 **Stopped**
 
-- `PARKED`: deliberately not being done. State why, so reason can be examined again instead of
-  derived again
-
-## Writing style
-
-- **Write for a reader who knows nothing of the context.** Reader who was not there must be able to
-  act on it without asking anything
-- **Write dates as absolute dates.** Never "today", "last week", "recently". Write `2026-08-08`.
-  Give timestamps `Z` with UTC when hour matters
-- **Use uppercase sparingly.** Uppercase marks state, hard constraint, or something that costs
-  money or data if missed. Uppercase everywhere reads as noise and hides parts that matter
-- **Remove what is no longer true.** When fact in entry turns out wrong or out of date, change or
-  delete it in place. Stale line misleads every reader who finds it by search and reads it without
-  rest of entry
-- **Accept a limitation only when an EXTERNAL system imposes it**, and give it official source,
-  date on which source was checked, and sign-off with model and session that wrote it. Work left out
-  of scope, choice made by project, shortcut or broken rule is never limitation. Presenting
-  shortfall as dated "decision" breaks same rule one step further
-- **Write plain language.** Leave out filler openers and compressed jargon. Write enumerations as
-  bullet lists, never as run-on sentences joined by dashes or semicolons. Do not use mannered
-  speech
+- `PARKED`: deliberately not being done
 
 ## What never goes in
 
@@ -229,8 +188,6 @@ Whether unit is ready to build follows from words of user alone.
   repository only
 - **Never write credentials of any kind, endpoints with secrets, or internal identifiers not needed
   to act**, even though file is local. They leak by being copied
-- **Never narrate the session**, such as "I then asked..." or "after the model replied...". Record
-  decision and its date. Leave out conversation that produced it
 
 ## When to write
 
@@ -238,13 +195,11 @@ Whether unit is ready to build follows from words of user alone.
   moments:
   - When `TODO.md` does not exist: record whatever work is currently in flight, or create empty
     file
-  - User asks for unit of work or approves one. Write it with its status marker and origin pointer
-  - State changes: something starts, finishes, gets committed, merged, pushed or deployed, gets
-    pull request opened or merged
-  - Decision is made, or new one becomes owed
-  - Something is deployed. Record commit, run, and what boot logs showed
+  - User asks for unit of work or approves one. Write it with its status marker
+  - State of unit changes, or entry of unit can be deleted
+  - Draft of unit is approved
   - Something is owed to whoever operates production: manual step, index to drop, backfill to run.
-    Easy to lose, expensive to forget
+    Write it as unit of its own, with step named in title. Easy to lose, expensive to forget
   - Item turns out already done, or wrongly described
 - Test whether update needed by asking: **if the session ended right now, would the next reader
   know what to do?** If not, file is stale
@@ -259,8 +214,8 @@ background tasks). Then check TODO.md for entries that are `IN PROGRESS` or `QUE
 - `QUEUED`: Start work right away, also while other work runs. Set it to `IN PROGRESS` after you
   launched work (code edits, workflows, commands)
 - `IN PROGRESS`: Check current progress on item. Resume work if not running. Keep working until
-  entry is `BUILT`
+  entry can be deleted. Change waiting on review by user, such as open pull request: handle
+  comments as `workflow-skills:implement` describes. Do not build it again. Never merge it
+  yourself to meet condition for deleting entry
 - `NEEDS DECISION`: Hand decision or fact to user as `workflow-skills:question` describes, unless
-  entry already names its draft page or fact was already asked
-- `BUILT`: Verify result, check its current state, update status if it has progressed
-- `SHIPPED`: Check current status. Update status if it has progressed
+  draft of unit shows decision, or question is still open in `mcp__workflow-skills__ask_question`
