@@ -14,6 +14,7 @@ import type {
   ToolCallResult,
 } from 'claude-code'
 
+import { registerCommandShowingRejection } from './commandRegistration'
 import { isMainConversation } from './conversation'
 import { draftRemindersFor } from './draftQuestion'
 import { deliverAnswers, recordAnswerAndDeliver } from './delivery'
@@ -61,6 +62,7 @@ import {
 import { sortedByNumber } from './numbered'
 import { isMessageTypedByUser } from './promptOrigin'
 import { Withdrawal, openQuestionsOf } from './questions'
+import { ANSWER_LOST_WITHOUT_COMMAND } from './questionTexts'
 import { awaitingSessionOf, sessionForUse } from './questionSession'
 import {
   SESSION_QUESTIONS_MAX_AGE_MS,
@@ -105,7 +107,7 @@ export const startQuestions: MatchedHook<'session.start', { isInteractive: true 
       inputSchema: WITHDRAW_SCHEMA,
       isDeferred: false,
     }),
-    $.command.register(ANSWER_SPEC),
+    registerCommandShowingRejection($, ANSWER_SPEC, ANSWER_LOST_WITHOUT_COMMAND),
   ])
   // The questions saved under the project before they belonged to a session are moved to their
   // session first, so the load finds them.
