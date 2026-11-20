@@ -26,7 +26,7 @@ export const denyPluginToolUntilLoaded: MatchedHook<'tool.call', typeof PLUGIN_T
   e,
   next,
 ) => {
-  const call = { tool: e.tool, input: e, agentId: e.agentId, isReadOnly: false }
+  const call = { tool: e.tool, input: undefined, agentId: e.agentId, isReadOnly: false }
   const missing = await readMissingLoads($, next.origin, call)
 
   return missing.length === 0 ? next(e) : { deny: describeMissingLoads(missing, $.plugin.root) }
@@ -44,7 +44,7 @@ export const denyCheckedCallUntilLoaded: MatchedHook<'tool.check', EveryEvent> =
 ) => {
   const call = {
     tool: e.tool,
-    input: isRecord(e.input) ? e.input : {},
+    input: isRecord(e.input) ? e.input : undefined,
     agentId: e.agentId,
     isReadOnly: e.isReadOnly === true,
   }

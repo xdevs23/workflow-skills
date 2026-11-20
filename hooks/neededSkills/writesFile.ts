@@ -1,4 +1,5 @@
-import type { Matcher, SeenToolCall, ToolCall } from './matcher'
+import { readTextArgument } from './matcher'
+import type { Matcher, SeenToolCall } from './matcher'
 import { regExpLiteralOf } from '../regExpLiteral'
 
 /** Patterns over the path of a file, each of which matches on its own. */
@@ -33,7 +34,7 @@ function writtenFileOf({
   call,
   projectRoot,
 }: SeenToolCall): { name: string; folders: readonly string[] } | undefined {
-  const path = writtenPathOf(call)
+  const path = readTextArgument(call, ['Edit', 'Write'], 'file_path')
   if (path === undefined) {
     return undefined
   }
@@ -41,17 +42,6 @@ function writtenFileOf({
   const folders = path.startsWith(inProject) ? path.slice(inProject.length).split('/') : []
 
   return { name: path.slice(path.lastIndexOf('/') + 1), folders: folders.slice(0, -1) }
-}
-
-/** The path of the file written by `call`, for a call to a tool that writes one. */
-function writtenPathOf({ tool, input: { file_path } }: ToolCall): string | undefined {
-  switch (tool) {
-    case 'Edit':
-    case 'Write':
-      return typeof file_path === 'string' ? file_path : undefined
-    default:
-      return undefined
-  }
 }
 
 /** The expression of a file name pattern, whose `*` stands for any run of characters. */

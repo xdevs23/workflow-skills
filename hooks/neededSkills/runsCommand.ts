@@ -1,3 +1,4 @@
+import { readTextArgument } from './matcher'
 import type { Matcher } from './matcher'
 import { regExpLiteralOf } from '../regExpLiteral'
 
@@ -17,13 +18,12 @@ const GIT_GLOBAL_OPTIONS = String.raw`(?:\s+(?:-[Cc]\s+\S+|--[\w-]+(?:=\S+)?))*`
 export function runsCommand(...commands: readonly string[]): Matcher {
   const expressions = commands.map(commandExpressionOf)
 
-  return ({ call: { tool, input, isReadOnly } }) => {
-    const { command } = input
+  return ({ call }) => {
+    const command = readTextArgument(call, ['Bash'], 'command')
 
     return (
-      tool === 'Bash' &&
-      !isReadOnly &&
-      typeof command === 'string' &&
+      command !== undefined &&
+      !call.isReadOnly &&
       expressions.some(expression => expression.test(command))
     )
   }
