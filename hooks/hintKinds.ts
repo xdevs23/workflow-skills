@@ -1,8 +1,14 @@
 import { ACCEPTED_GAP_HINT } from './acceptedGapHint'
 import { ANNOUNCED_WORK_HINT } from './announcedWorkHint'
+import { ASKED_APPROVAL } from './askedApproval'
+import { ASKED_PERMISSION } from './askedPermission'
 import { BLOCKED_HINT } from './blockedHint'
 import { BUILD_WAIT_HINT } from './buildWaitHint'
+import { COST_FRAMING } from './costFraming'
+import { HANDED_CALL } from './handedCall'
+import { HANDED_DECISION } from './handedDecision'
 import { HELD_QUESTION_HINT } from './heldQuestionHint'
+import { HintKindName } from './hintKind'
 import type { HintKind } from './hintKind'
 import type { SharedStep } from './hintText'
 import { IDLE_REPLY_HINT } from './idleReplyHint'
@@ -16,8 +22,30 @@ import { WAITING_HINT } from './waitingHint'
 const MESSAGE_NOT_VALID: SharedStep = { text: 'Your message is not valid.' }
 
 /** The hint that blocks the end of a turn on a message with the shape of the refusal. */
-export function hintOf(refusal: Refusal): HintKind {
-  return { phrases: [refusal.pattern], text: [MESSAGE_NOT_VALID, ...refusal.reason] }
+export function hintOf<Name extends HintKindName>(refusal: Refusal<Name>): HintKind<Name> {
+  return {
+    name: refusal.name,
+    phrases: [refusal.pattern],
+    text: [MESSAGE_NOT_VALID, ...refusal.reason],
+  }
+}
+
+/** Every hint kind by name, so a name without a kind or with two kinds fails the type check. */
+const HINT_KINDS: { readonly [Name in HintKindName]: HintKind<Name> } = {
+  [HintKindName.AcceptedGap]: ACCEPTED_GAP_HINT,
+  [HintKindName.AnnouncedWork]: ANNOUNCED_WORK_HINT,
+  [HintKindName.AskedApproval]: hintOf(ASKED_APPROVAL),
+  [HintKindName.AskedPermission]: hintOf(ASKED_PERMISSION),
+  [HintKindName.Blocked]: BLOCKED_HINT,
+  [HintKindName.BuildWait]: BUILD_WAIT_HINT,
+  [HintKindName.CostFraming]: hintOf(COST_FRAMING),
+  [HintKindName.HandedCall]: hintOf(HANDED_CALL),
+  [HintKindName.HandedDecision]: hintOf(HANDED_DECISION),
+  [HintKindName.HeldQuestion]: HELD_QUESTION_HINT,
+  [HintKindName.IdleReply]: IDLE_REPLY_HINT,
+  [HintKindName.NothingNeedsAction]: NOTHING_NEEDS_ACTION_HINT,
+  [HintKindName.UnverifiedWork]: UNVERIFIED_WORK_HINT,
+  [HintKindName.Waiting]: WAITING_HINT,
 }
 
 /**
@@ -25,20 +53,20 @@ export function hintOf(refusal: Refusal): HintKind {
  * message matched by one says nothing besides, so the first kind that matches gives its only hint,
  * even where a phrase of another kind stands in it.
  */
-export const WHOLE_MESSAGE_KINDS: readonly HintKind[] = [IDLE_REPLY_HINT]
+export const WHOLE_MESSAGE_KINDS: readonly HintKind[] = [HINT_KINDS[HintKindName.IdleReply]]
 
 /** The kinds of hint whose phrases can stand anywhere in a message, in the order in which their
  * texts go into the reason for a block. */
 export const PHRASE_KINDS: readonly HintKind[] = [
-  ...REFUSALS.map(hintOf),
-  WAITING_HINT,
-  HELD_QUESTION_HINT,
-  BLOCKED_HINT,
-  NOTHING_NEEDS_ACTION_HINT,
-  ANNOUNCED_WORK_HINT,
-  BUILD_WAIT_HINT,
-  ACCEPTED_GAP_HINT,
-  UNVERIFIED_WORK_HINT,
+  ...REFUSALS.map(({ name }) => HINT_KINDS[name]),
+  HINT_KINDS[HintKindName.Waiting],
+  HINT_KINDS[HintKindName.HeldQuestion],
+  HINT_KINDS[HintKindName.Blocked],
+  HINT_KINDS[HintKindName.NothingNeedsAction],
+  HINT_KINDS[HintKindName.AnnouncedWork],
+  HINT_KINDS[HintKindName.BuildWait],
+  HINT_KINDS[HintKindName.AcceptedGap],
+  HINT_KINDS[HintKindName.UnverifiedWork],
 ]
 
 /** The kinds of hint with a phrase in the message outside quoted text: the first whole-message

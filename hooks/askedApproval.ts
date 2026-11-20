@@ -1,4 +1,5 @@
 import { RUN_WITHIN_SENTENCE, SENTENCE_START, closingQuestionPattern } from './closingQuestion'
+import { HintKindName } from './hintKind'
 import type { Refusal } from './refusal'
 
 const WORDS_BEFORE_VERB = String.raw`(?:\s+(?:please|just|quickly|kindly|also|now)){0,2}`
@@ -31,7 +32,8 @@ const APPROVAL_QUESTION_OPENINGS = [
  * correct the draft at .cache/specs/plan.html?" or "Does the layout look right?", whatever the
  * work.
  */
-export const ASKED_APPROVAL: Refusal = {
+export const ASKED_APPROVAL: Refusal<HintKindName.AskedApproval> = {
+  name: HintKindName.AskedApproval,
   pattern: closingQuestionPattern(
     `${SENTENCE_START}(?:${APPROVAL_QUESTION_OPENINGS})`,
     RUN_WITHIN_SENTENCE,

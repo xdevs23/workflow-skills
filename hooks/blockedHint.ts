@@ -1,9 +1,11 @@
+import { HintKindName } from './hintKind'
 import type { HintKind } from './hintKind'
 import { CHECK_FOR_OPEN_WORK } from './openWork'
 import { WAITING_FOR_YOU } from './waitingHint'
 
 /** The hint after a message that reports work as blocked or idle. */
-export const BLOCKED_HINT: HintKind = {
+export const BLOCKED_HINT: HintKind<HintKindName.Blocked> = {
+  name: HintKindName.Blocked,
   phrases: [
     /\bstill\s+blocked\b/i,
     /\b(?:is|are|stays|remains)\s+blocked\s+on\b/i,

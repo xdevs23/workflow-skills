@@ -13,6 +13,11 @@ import {
   submitWithPendingTexts,
 } from './pendingTexts'
 import type { PendingTextSource } from './pendingTexts'
+import {
+  STOP_BLOCK_REASON,
+  forgetHintKindsSentInTurn,
+  markOfferedHintKindsSent,
+} from './hintState'
 import { blockStopOnHintPhrase } from './hints'
 import { registerImports } from './imports'
 import { ANSWER_COMMAND, ASK_TOOL, LIST_TOOL, PANE, WITHDRAW_TOOL } from './names'
@@ -89,6 +94,8 @@ export const register: Register = on => {
     closePaneSendingWaitingPrompts(e, next, () => sendTextsWaitingForSession($)),
   )
   on('classic.Stop', blockStopOnHintPhrase)
+  on('session.append', STOP_BLOCK_REASON, markOfferedHintKindsSent)
+  on('turn.complete', EVERY_EVENT, forgetHintKindsSentInTurn)
   on('command.run', { command: ANSWER_COMMAND }, runAnswerCommand).catch(replyWithHookFailure)
   on('ui.render', { component: 'AbovePrompt' }, drawQuestionBand)
   on('ui.render', { component: 'Pane', requestId: PANE }, drawQuestionPane)

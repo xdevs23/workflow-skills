@@ -1,3 +1,4 @@
+import { HintKindName } from './hintKind'
 import type { HintKind } from './hintKind'
 import { CHECK_FOR_OPEN_WORK, OPTIMIZE_IDLE_TIME } from './openWork'
 
@@ -34,7 +35,8 @@ const IDLE_MESSAGE =
 
 /** The hint after a message made only of idle replies, which shows that the session did not look
  * for work. */
-export const IDLE_REPLY_HINT: HintKind = {
+export const IDLE_REPLY_HINT: HintKind<HintKindName.IdleReply> = {
+  name: HintKindName.IdleReply,
   phrases: [new RegExp(IDLE_MESSAGE, 'i')],
   text: [
     "Looks like you're idling.",

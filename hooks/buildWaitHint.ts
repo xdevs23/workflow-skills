@@ -1,3 +1,4 @@
+import { HintKindName } from './hintKind'
 import type { HintKind } from './hintKind'
 import { phrase } from './phrase'
 
@@ -16,7 +17,8 @@ const WORK_THAT_WAITS =
   String.raw`(?:starts?|begins?|waits?|resumes?|continues?|follows?|I['’]ll\s+\w+|I\s+will\s+\w+)`
 
 /** The hint after a message that reports work as waiting on a build. */
-export const BUILD_WAIT_HINT: HintKind = {
+export const BUILD_WAIT_HINT: HintKind<HintKindName.BuildWait> = {
+  name: HintKindName.BuildWait,
   phrases: [
     phrase(String.raw`\b(?:waits?|waiting)\s+(?:on|for)\s+${BUILD}`),
     phrase(

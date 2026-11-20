@@ -1,3 +1,4 @@
+import { HintKindName } from './hintKind'
 import { QUESTION_MARKS } from './lineMarks'
 import { NO_LETTER_AFTER, NO_LETTER_BEFORE } from './quotedText'
 import { DECIDED_WORK_REMEDY } from './refusal'
@@ -10,7 +11,8 @@ const CALL_LEFT_TO_USER = String.raw`your\s+(?:call|decision)|up\s+to\s+you`
  * A closing sentence that leaves the decision to the user, such as "so this is your call". A call
  * about a push or a deletion passes.
  */
-export const HANDED_CALL: Refusal = {
+export const HANDED_CALL: Refusal<HintKindName.HandedCall> = {
+  name: HintKindName.HandedCall,
   pattern: new RegExp(
     String.raw`${NO_LETTER_BEFORE}(?:this|that|it)(?:['’]s|\s+is)\s+(?:${CALL_LEFT_TO_USER})` +
       NO_LETTER_AFTER +

@@ -1,3 +1,4 @@
+import { HintKindName } from './hintKind'
 import type { HintKind } from './hintKind'
 import { EMPHASIS, HEADING_MARK, LIST_MARK } from './lineMarks'
 import { phrase } from './phrase'
@@ -39,7 +40,8 @@ const SELF_NOW =
   String.raw`${I_AM_OR_WE_ARE}\s+(?:(?:now|currently|still|also|meanwhile|already)\s+)?`
 
 /** The hint after a message that announces work as next or as underway while the turn ends. */
-export const ANNOUNCED_WORK_HINT: HintKind = {
+export const ANNOUNCED_WORK_HINT: HintKind<HintKindName.AnnouncedWork> = {
+  name: HintKindName.AnnouncedWork,
   phrases: [
     new RegExp(
       String.raw`${SENTENCE_START}${NEXT_LABEL}${EMPHASIS}[ \t]*(?::|${EMPHASIS}[ \t]*$)`,

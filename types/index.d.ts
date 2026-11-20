@@ -10,6 +10,7 @@ import type { IdlePhase } from '../hooks/goals/goalIdleReminder'
 import type { GoalPaneAction, GoalSaveResult } from '../hooks/goals/goalPaneMessages'
 import type { RowMode } from '../hooks/goals/goalRowState'
 import type { Priority } from '../hooks/goals/priority'
+import type { HintKindName } from '../hooks/hintKind'
 import type { LoopLedger } from '../hooks/neededSkills/loadLedger'
 import type { PaneNotices } from '../hooks/paneNotice'
 import type { PaneRecord, TypedInWorker } from '../hooks/paneWorker'
@@ -331,6 +332,20 @@ export type ReminderNextSends = {
   byKind: Readonly<Record<string, Readonly<Record<string, number>>>>
 }
 
+/** The names of the hint kinds sent in the running turn of the main conversation of a session. */
+export type HintKindsSentInTurn = {
+  sessionId: string
+  names: readonly HintKindName[]
+  /** The hint note returned at the last end of the turn; null once the model received it. */
+  offered: HintNoteOffered | null
+}
+
+/** A hint note returned at an end of a turn, with the names of the hint kinds in it. */
+export type HintNoteOffered = {
+  names: readonly HintKindName[]
+  text: string
+}
+
 /** When the main conversation of a session is next told to check the work delivered by it. */
 export type SelfCheckSchedule = {
   sessionId: string
@@ -390,6 +405,11 @@ declare module 'claude-code' {
       idleStretch: IdleStretch | null
       /** The nudges of the session waiting to be sent to the model; null while none waits. */
       waitingNudges: WaitingNudges | null
+      /**
+       * The hint kinds sent in the running turn of the main conversation of the session; null
+       * before the first hint of the turn.
+       */
+      hintKindsSentInTurn: HintKindsSentInTurn | null
       /** When the session is next sent the self-check; null before the user typed in it. */
       selfCheckSchedule: SelfCheckSchedule | null
       /**

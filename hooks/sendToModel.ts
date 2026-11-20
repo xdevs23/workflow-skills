@@ -66,27 +66,45 @@ export async function callToolWithNote(
   return note === undefined ? ran : { ...ran, context: [...(ran.context ?? []), note] }
 }
 
+/** Makes the note for the end of a turn on `message`, or returns undefined without one. */
+type TakeStopNote = (
+  message: string,
+) => Promise<TextWithLine | undefined> | TextWithLine | undefined
+
 /**
- * Runs the end of the turn `e`, and blocks it with the note made by `takeNote` from the last
- * message as the reason, so the main conversation goes back to work with the note. The engine does
- * not show the reason, so the line of the note goes to the transcript. A block asked by a hook
- * beneath comes first in the reason. Only the first end of a turn is blocked: the engine marks the
- * next end of that turn as one that follows a block, and that end passes, so a turn that finds
- * nothing more to do can end. `takeNote` runs only for the first end of a turn of the main
- * conversation, on a message, where no hook beneath stopped the session.
+ * Runs the end of the turn `e` as stopWithNoteAlsoAfterBlock does, but only for the first end of a
+ * turn. The engine marks the next end of that turn as one that follows a blocked end, and for that
+ * end stopWithNote returns the result of the hooks beneath, so a turn that finds nothing more to do
+ * can end.
  */
-export async function stopWithNote(
+export function stopWithNote(
   $: EngineInterface,
   e: Frozen<Args<'classic.Stop'>>,
   next: Next<'classic.Stop'>,
-  takeNote: (message: string) => Promise<TextWithLine | undefined> | TextWithLine | undefined,
+  takeNote: TakeStopNote,
+): Promise<ClassicResultOf['classic.Stop']> {
+  return e.stop_hook_active ? next(e) : stopWithNoteAlsoAfterBlock($, e, next, takeNote)
+}
+
+/**
+ * Runs the end of the turn `e`, and returns a block for it with the note made by `takeNote` from
+ * the last message as the reason, so the main conversation goes back to work with the note. The
+ * engine does not show the reason, so the line of the note goes to the transcript. A block asked
+ * by a hook beneath comes first in the reason. Also an end that follows a blocked end gets a block
+ * whenever `takeNote` makes a note, so the turn ends only once `takeNote` returns undefined.
+ * `takeNote` runs only for an end of a turn of the main conversation, on a message, where no hook
+ * beneath stopped the session.
+ */
+export async function stopWithNoteAlsoAfterBlock(
+  $: EngineInterface,
+  e: Frozen<Args<'classic.Stop'>>,
+  next: Next<'classic.Stop'>,
+  takeNote: TakeStopNote,
 ): Promise<ClassicResultOf['classic.Stop']> {
   const stopped = await next(e)
   const message = e.last_assistant_message
-  const followsBlock = e.stop_hook_active
   if (
     message === undefined ||
-    followsBlock ||
     stopped.preventContinuation === true ||
     !isMainConversation({ agentId: e.agent_id })
   ) {

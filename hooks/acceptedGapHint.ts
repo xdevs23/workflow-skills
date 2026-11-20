@@ -1,3 +1,4 @@
+import { HintKindName } from './hintKind'
 import type { HintKind } from './hintKind'
 import { labelledLine } from './lineMarks'
 import { NO_LETTER_AFTER, NO_LETTER_BEFORE } from './quotedText'
@@ -15,7 +16,8 @@ const BOUNDARY_FRAMING = [
  * The hint after a message that names a trade-off, or declares a boundary on the work, such as
  * "There's one trade-off you might want to change", "Boundaries:" or "my narrowed boundary".
  */
-export const ACCEPTED_GAP_HINT: HintKind = {
+export const ACCEPTED_GAP_HINT: HintKind<HintKindName.AcceptedGap> = {
+  name: HintKindName.AcceptedGap,
   phrases: [new RegExp(`${TRADE_OFF}|${BOUNDARY_FRAMING}`, 'imu')],
   text: [
     'Your message names a trade-off or a boundary. Where your message calls a gap in the work ' +

@@ -1,8 +1,11 @@
+import type { HintKindName } from './hintKind'
 import type { HintText, SharedStep } from './hintText'
 import { HAND_OVER_UNANSWERED } from './unansweredQuestions'
 
 /** A shape of text refused at the end of a turn and in an asked question, with the reason why. */
-export type Refusal = {
+export type Refusal<Name extends HintKindName = HintKindName> = {
+  /** The name of the hint kind of the refusal. */
+  name: Name
   pattern: RegExp
   reason: HintText
 }

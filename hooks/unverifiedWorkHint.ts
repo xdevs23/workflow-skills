@@ -1,3 +1,4 @@
+import { HintKindName } from './hintKind'
 import type { HintKind } from './hintKind'
 import { EMPHASIS, LIST_MARK } from './lineMarks'
 import { phrase } from './phrase'
@@ -14,7 +15,8 @@ const HAVE = String.raw`(?:\s+have|['’]ve)`
  * first person, as in "I haven't verified the reload path", or as a sentence that opens on it, as
  * in "Not yet tested on hardware."
  */
-export const UNVERIFIED_WORK_HINT: HintKind = {
+export const UNVERIFIED_WORK_HINT: HintKind<HintKindName.UnverifiedWork> = {
+  name: HintKindName.UnverifiedWork,
   phrases: [
     phrase(String.raw`\b(?:I|we)(?:${HAVE}${NOT}|${HAVE}?\s+never)\s+(?:yet\s+)?${CHECKED}\b`),
     phrase(String.raw`\b(?:I|we)(?:\s+(?:did|could|can)${NOT}|\s+cannot)\s+${CHECK}\b`),

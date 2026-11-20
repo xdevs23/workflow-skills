@@ -1,4 +1,5 @@
 import { AT_CLAUSE_END } from './clauses'
+import { HintKindName } from './hintKind'
 import type { HintKind } from './hintKind'
 import { phrase } from './phrase'
 import { COUNT } from './quantityWords'
@@ -44,7 +45,8 @@ const IS_NOT_YET_ANSWERED = String.raw`(?:has|have|is|are)\s+not\s+(?:yet\s+)?(?
 export const WAITING_FOR_YOU = /(?<!\bon\s+)\b(?:waiting|waits)\s+(?:for|on)\s+you(?:r)?\b/i
 
 /** The hint after a message that waits for an answer or an approval from the user. */
-export const WAITING_HINT: HintKind = {
+export const WAITING_HINT: HintKind<HintKindName.Waiting> = {
+  name: HintKindName.Waiting,
   phrases: [
     phrase(
       String.raw`${NOT_AFTER_TRACKER}${OPEN_ITEM}(?:\s+(?:on|about|of|for|from)\b${CLAUSE})?` +

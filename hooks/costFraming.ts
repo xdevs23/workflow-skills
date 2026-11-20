@@ -1,10 +1,12 @@
+import { HintKindName } from './hintKind'
 import { labelledLine } from './lineMarks'
 import type { Refusal } from './refusal'
 
 const COST_WORDS = String.raw`(?:what[ \t]+(?:it|that)[ \t]+costs|the[ \t]+cost|cost)`
 
 /** A line or bullet labelled as the cost of an option, such as one that opens on "Cost:". */
-export const COST_FRAMING: Refusal = {
+export const COST_FRAMING: Refusal<HintKindName.CostFraming> = {
+  name: HintKindName.CostFraming,
   pattern: new RegExp(labelledLine(COST_WORDS), 'im'),
   reason: [
     'Your text labels a decision as a cost. A good engineering decision and proper architecture ' +

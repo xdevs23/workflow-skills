@@ -1,3 +1,4 @@
+import { HintKindName } from './hintKind'
 import type { HintKind } from './hintKind'
 import { phrase } from './phrase'
 import { COUNT } from './quantityWords'
@@ -9,7 +10,8 @@ const NEXT_QUESTION = String.raw`(?:the\s+)?(?:next|other|remaining)\s+(?:one|qu
 const ANOTHER_QUESTION = String.raw`another\s+(?:one|question)`
 
 /** The hint after a message that announces a question in place of asking it. */
-export const HELD_QUESTION_HINT: HintKind = {
+export const HELD_QUESTION_HINT: HintKind<HintKindName.HeldQuestion> = {
+  name: HintKindName.HeldQuestion,
   phrases: [
     phrase(
       String.raw`\b(?:I|we)(?:\s+(?:still\s+)?have|['’]ve\s+(?:still\s+)?got)\s+` +

@@ -1,3 +1,4 @@
+import { HintKindName } from './hintKind'
 import type { HintKind } from './hintKind'
 import { CHECK_FOR_OPEN_WORK, OPTIMIZE_IDLE_TIME } from './openWork'
 import { phrase } from './phrase'
@@ -18,7 +19,8 @@ const NEEDED_THING =
   String.raw`(?:(?:my|your|any|further|more)\s+)?(?:action|attention|doing|to\s+be\s+done)\b`
 
 /** The hint after a message that reports that nothing needs action. */
-export const NOTHING_NEEDS_ACTION_HINT: HintKind = {
+export const NOTHING_NEEDS_ACTION_HINT: HintKind<HintKindName.NothingNeedsAction> = {
+  name: HintKindName.NothingNeedsAction,
   phrases: [
     phrase(
       String.raw`\bnothing(?:\s+else)?\s+(?:needs|requires|calls\s+for)\s+` +

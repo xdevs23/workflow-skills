@@ -1,4 +1,5 @@
 import { closingQuestionPattern } from './closingQuestion'
+import { HintKindName } from './hintKind'
 import { QUESTION_MARKS } from './lineMarks'
 import type { Refusal } from './refusal'
 import { HAND_OVER_UNANSWERED } from './unansweredQuestions'
@@ -30,7 +31,8 @@ const ORDERED_WORK_VERBS = [
  * A closing question that asks the user for permission to start work the rules already order, such
  * as "Should I start that rewrite?". A question about a push or a deletion passes.
  */
-export const ASKED_PERMISSION: Refusal = {
+export const ASKED_PERMISSION: Refusal<HintKindName.AskedPermission> = {
+  name: HintKindName.AskedPermission,
   pattern: closingQuestionPattern(
     String.raw`(?:${PERMISSION_ASKERS})\s+(?:${ORDERED_WORK_VERBS})`,
     runWithoutWorkNeedingApproval(String.raw`${QUESTION_MARKS}\n`),
