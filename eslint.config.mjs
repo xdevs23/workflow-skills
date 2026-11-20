@@ -8,6 +8,24 @@ const RUN_AT_ONCE = {
   message: 'Run work at once with runDetached of timedWork.ts, which states why it is detached.',
 }
 
+const COMMAND_HOOK = "CallExpression[callee.name='on'][arguments.0.value='command.run']"
+
+const COMMAND_HOOK_REASON =
+  'In a probe on Claude Code 2.1.325, /roast entered the prompt history with one command.run ' +
+  'hook and not with the 8 hooks this plugin had then.'
+
+const SECOND_COMMAND_HOOK = {
+  selector: COMMAND_HOOK,
+  message:
+    'Return the command from the slash commands of its feature, which commandDispatch.ts runs. ' +
+    COMMAND_HOOK_REASON,
+}
+
+const COMMAND_HOOK_AFTER_THE_FIRST = {
+  selector: `ExpressionStatement:has(${COMMAND_HOOK}) ~ ExpressionStatement:has(${COMMAND_HOOK})`,
+  message: `Keep the one command.run hook of register.tsx. ${COMMAND_HOOK_REASON}`,
+}
+
 export default defineConfig({
   files: ['hooks/**/*.ts', 'hooks/**/*.tsx', 'types/**/*.ts'],
   languageOptions: {
@@ -50,6 +68,11 @@ export default defineConfig({
   },
 }, {
   files: ['hooks/**/*.ts', 'hooks/**/*.tsx'],
-  ignores: ['hooks/timedWork.ts'],
-  rules: { 'no-restricted-syntax': ['error', RUN_AT_ONCE] },
+  rules: { 'no-restricted-syntax': ['error', RUN_AT_ONCE, SECOND_COMMAND_HOOK] },
+}, {
+  files: ['hooks/timedWork.ts'],
+  rules: { 'no-restricted-syntax': ['error', SECOND_COMMAND_HOOK] },
+}, {
+  files: ['hooks/register.tsx'],
+  rules: { 'no-restricted-syntax': ['error', RUN_AT_ONCE, COMMAND_HOOK_AFTER_THE_FIRST] },
 })

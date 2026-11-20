@@ -1,15 +1,7 @@
-import type {
-  Caught,
-  CommandRunInput,
-  CommandRunResult,
-  EngineInterface,
-  Frozen,
-  MatchedHook,
-} from 'claude-code'
+import type { CommandRunInput, CommandRunResult, EngineInterface, Frozen } from 'claude-code'
 
-import { registerCommandShowingRejection } from '../commandRegistration'
 import { replyWithFailures } from '../failureToast'
-import { replyToFailedHook } from '../hookFailure'
+import { CommandRegistrar, type PluginCommand } from '../pluginCommand'
 import { returningStoreFailure } from '../pluginStore'
 import { isTypedByUser } from '../promptOrigin'
 import { setIdleRoastSwitch } from './idleRoast'
@@ -27,22 +19,21 @@ import {
   describeUnknownIdleRoastWords,
 } from './roastTexts'
 
-export const registerIdleRoastCommand: MatchedHook<
-  'session.start',
-  { isInteractive: true }
-> = async ($, e, next) => {
-  await registerCommandShowingRejection(
-    $,
-    {
+/** /idle-roast, which turns the idle roast of the session on or off. */
+export function idleRoastCommand($: EngineInterface): PluginCommand {
+  return {
+    spec: {
       name: IDLE_ROAST_COMMAND,
       description: IDLE_ROAST_DESCRIPTION,
       argumentHint: IDLE_ROAST_ARGUMENT_HINT,
       immediate: true,
     },
-    IDLE_ROAST_LOST_WITHOUT_COMMAND,
-  )
-
-  return next(e)
+    registeredBy: CommandRegistrar.CommandList,
+    lostWithoutCommand: IDLE_ROAST_LOST_WITHOUT_COMMAND,
+    isInteractiveOnly: true,
+    run: e => runIdleRoastCommand($, e),
+    subjectOf: () => IDLE_ROAST_SUBJECT,
+  }
 }
 
 /**
@@ -50,10 +41,10 @@ export const registerIdleRoastCommand: MatchedHook<
  * when the user typed the command, and replies with whether it is on. /idle-roast alone only
  * replies. A switch that could not be read is reported and left as it is.
  */
-export const runIdleRoastCommand: MatchedHook<
-  'command.run',
-  { command: typeof IDLE_ROAST_COMMAND }
-> = async ($, e) => {
+async function runIdleRoastCommand(
+  $: EngineInterface,
+  e: Frozen<CommandRunInput>,
+): Promise<CommandRunResult> {
   const sessionId = await $.session.id()
   const read = await readIdleRoastSwitch($, sessionId)
   if (read.outcome !== SwitchOutcome.Read) {
@@ -89,12 +80,4 @@ async function switchIdleRoast(
   await setIdleRoastSwitch($, isOn)
 
   return { text: describeIdleRoastSwitch(isOn) }
-}
-
-export function replyWithIdleRoastHookFailure(
-  $: EngineInterface,
-  _e: Frozen<CommandRunInput>,
-  next: Caught,
-): CommandRunResult {
-  return replyToFailedHook($, IDLE_ROAST_SUBJECT, next.error)
 }

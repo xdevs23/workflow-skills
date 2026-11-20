@@ -1,5 +1,4 @@
 import type {
-  Caught,
   CommandRunInput,
   CommandRunResult,
   EngineInterface,
@@ -7,8 +6,7 @@ import type {
   MatchedHook,
 } from 'claude-code'
 
-import { registerCommandShowingRejection } from '../commandRegistration'
-import { replyToFailedHook } from '../hookFailure'
+import { CommandRegistrar, type PluginCommand } from '../pluginCommand'
 import { isTypedByUser } from '../promptOrigin'
 import { runDetached } from '../timedWork'
 import { openRoastPane, startRoast, writeRoast } from './roastActions'
@@ -24,23 +22,21 @@ import {
   describeRoastPaneWaiting,
 } from './roastTexts'
 
-export const registerRoastCommand: MatchedHook<'session.start', { isInteractive: true }> = async (
-  $,
-  e,
-  next,
-) => {
-  await registerCommandShowingRejection(
-    $,
-    {
+/** /roast, which has a fork write a roast of the main conversation into the Roast pane. */
+export function roastCommand($: EngineInterface): PluginCommand {
+  return {
+    spec: {
       name: ROAST_COMMAND,
       description: ROAST_DESCRIPTION,
       argumentHint: ROAST_ARGUMENT_HINT,
       immediate: true,
     },
-    ROAST_LOST_WITHOUT_COMMAND,
-  )
-
-  return next(e)
+    registeredBy: CommandRegistrar.CommandList,
+    lostWithoutCommand: ROAST_LOST_WITHOUT_COMMAND,
+    isInteractiveOnly: true,
+    run: e => runRoastCommand($, e),
+    subjectOf: () => ROAST_SUBJECT,
+  }
 }
 
 /**
@@ -49,10 +45,10 @@ export const registerRoastCommand: MatchedHook<'session.start', { isInteractive:
  * complaint, which the fork takes into the roast or refuses with a reason. Replies only while
  * Claude Code does not draw the pane.
  */
-export const runRoastCommand: MatchedHook<
-  'command.run',
-  { command: typeof ROAST_COMMAND }
-> = async ($, e) => {
+async function runRoastCommand(
+  $: EngineInterface,
+  e: Frozen<CommandRunInput>,
+): Promise<CommandRunResult> {
   const finding = isTypedByUser(e.origin) ? e.args.trim() : ''
   const run = await startRoast($)
   const opened = await openRoastPane($)
@@ -75,12 +71,4 @@ export const dropRoastOnClose: MatchedHook<'ui.close', typeof ROAST_PANE_CLOSED_
   }
 
   return closed
-}
-
-export function replyWithRoastHookFailure(
-  $: EngineInterface,
-  _e: Frozen<CommandRunInput>,
-  next: Caught,
-): CommandRunResult {
-  return replyToFailedHook($, ROAST_SUBJECT, next.error)
 }

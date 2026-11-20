@@ -4,11 +4,9 @@ import { EVERY_EVENT } from '../everyEvent'
 import type { PromptFooter } from '../promptFooter'
 import { SWITCHING_SOURCES } from '../sessionSources'
 import { loadBoardAtStart } from './goalActions'
-import { replyWithGoalsHookFailure, runGoalsCommand } from './goalCommands'
 import {
   ATTACH_TODO_TOOL,
   DETACH_TODO_TOOL,
-  GOALS_COMMAND,
   GOALS_PANE_SITE,
   LIST_GOALS_TOOL,
   MARK_GOAL_DONE_TOOL,
@@ -25,7 +23,7 @@ import {
   fallBackFromGoalsPaneModule,
 } from './goalScreens'
 import { GOALS_BUTTON, openGoalsFromButton } from './goalsButton'
-import { readGoalsOfSwitchedSession, registerGoalsCommand } from './goalSession'
+import { readGoalsOfSwitchedSession } from './goalSession'
 import {
   attachTodo,
   denyGoalToolFailure,
@@ -37,11 +35,7 @@ import {
 /** Starts every part of the goals in a session, with or without a person at the prompt. */
 const startGoals: Hook<'session.start'> = async ($, e, next) => {
   const sessionId = await $.session.id()
-  await Promise.all([
-    registerGoalsCommand($),
-    registerGoalTools($),
-    loadBoardAtStart($, sessionId),
-  ])
+  await Promise.all([registerGoalTools($), loadBoardAtStart($, sessionId)])
 
   return next(e)
 }
@@ -56,7 +50,6 @@ export function registerGoals(on: On, footer: PromptFooter): void {
   on('turn.start', EVERY_EVENT, endIdleStretch)
   on('turn.complete', EVERY_EVENT, waitAfterTurn)
   on('turn.complete', EVERY_EVENT, showNudgesWaitingAfterStop)
-  on('command.run', { command: GOALS_COMMAND }, runGoalsCommand).catch(replyWithGoalsHookFailure)
   on('tool.call', { tool: LIST_GOALS_TOOL }, listGoals).catch(denyGoalToolFailure)
   on('tool.call', { tool: ATTACH_TODO_TOOL }, attachTodo).catch(denyGoalToolFailure)
   on('tool.call', { tool: DETACH_TODO_TOOL }, detachTodo).catch(denyGoalToolFailure)

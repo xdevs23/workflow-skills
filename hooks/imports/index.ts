@@ -1,10 +1,9 @@
 import type { CommandRunResult, EngineInterface, On } from 'claude-code'
 
-import { registerCommandShowingRejection } from '../commandRegistration'
 import { EVERY_EVENT } from '../everyEvent'
 import { replyWithFailures } from '../failureToast'
-import { replyToFailedHook } from '../hookFailure'
 import { describePaneNotOpened } from '../paneOpening'
+import { CommandRegistrar, type PluginCommand } from '../pluginCommand'
 import { IMPORT_NAMES, importPaneSiteOf } from './importNames'
 import { ImportKind, SessionsShown } from './importPaneMessages'
 import {
@@ -18,22 +17,20 @@ import { IMPORT_TARGETS } from './importPresses'
 import { IMPORT_LOST_WITHOUT_COMMAND } from './importTexts'
 import { deleteRecordsOfSessionWithoutImports } from './sessionEnd'
 
-/**
- * Registers /goals-import and /reminders-import for the session. A rejection by the engine is shown
- * in a toast, and the session start goes on.
- */
-async function registerImportCommands($: EngineInterface): Promise<void> {
-  await Promise.all(
-    Object.values(ImportKind).map(kind => {
-      const { command, description } = IMPORT_NAMES[kind]
-
-      return registerCommandShowingRejection(
-        $,
-        { name: command, description, immediate: true },
-        IMPORT_LOST_WITHOUT_COMMAND,
-      )
-    }),
-  )
+/** /goals-import and /reminders-import, which open the import pane of their kind. */
+export function importCommands($: EngineInterface): PluginCommand[] {
+  return Object.values(ImportKind).map(kind => ({
+    spec: {
+      name: IMPORT_NAMES[kind].command,
+      description: IMPORT_NAMES[kind].description,
+      immediate: true,
+    },
+    registeredBy: CommandRegistrar.CommandList,
+    lostWithoutCommand: IMPORT_LOST_WITHOUT_COMMAND,
+    isInteractiveOnly: false,
+    run: () => runImportCommand($, kind),
+    subjectOf: () => IMPORT_TARGETS[kind].subjects.command,
+  }))
 }
 
 /**
@@ -57,15 +54,10 @@ async function runImportCommand($: EngineInterface, kind: ImportKind): Promise<C
 }
 
 /**
- * Registers the commands and the panes that import goals and reminders of earlier sessions, and
- * the deletion of the records of a session that ends without goals and reminders.
+ * Registers the panes that import goals and reminders of earlier sessions, and the deletion of the
+ * records of a session that ends without goals and reminders.
  */
 export function registerImports(on: On): void {
-  on('session.start', EVERY_EVENT, async ($, e, next) => {
-    await registerImportCommands($)
-
-    return next(e)
-  })
   on('session.end', EVERY_EVENT, async ($, e, next) => {
     await deleteRecordsOfSessionWithoutImports($, e.sessionId)
 
@@ -73,10 +65,6 @@ export function registerImports(on: On): void {
   })
   for (const kind of Object.values(ImportKind)) {
     const site = importPaneSiteOf(kind)
-    const { subjects } = IMPORT_TARGETS[kind]
-    on('command.run', { command: IMPORT_NAMES[kind].command }, $ =>
-      runImportCommand($, kind),
-    ).catch(($, _e, next) => replyToFailedHook($, subjects.command, next.error))
     on('ui.render', site, ($, e) => drawImportPane($, e, kind))
     on('ui.message', site, ($, e) => answerImportPanePost($, e, kind)).catch(($, e, next) =>
       answerFailedImportPanePost($, e, next, kind),

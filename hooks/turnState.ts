@@ -9,7 +9,10 @@ import type {
   TurnCompleteResult,
 } from 'claude-code'
 
+import { describeStopNotEnded } from './commandTexts'
 import { isMainConversation } from './conversation'
+import { messageOf } from './errorMessage'
+import { showFailure } from './failureToast'
 import { isTypedByUser } from './promptOrigin'
 import { SessionActivity, changeSessionActivity, setSessionActivity } from './sessionState'
 import { runAfterMainTurn } from './timedWork'
@@ -46,28 +49,40 @@ export const markTypedPromptTurnRunning: Hook<'prompt.submit'> = async ($, e, ne
 }
 
 /**
- * Ends the stop of a turn stopped by the user once the user types a slash command, before the
- * command `e` runs. The session accepts prompts submitted by a plugin again from then on.
- * `sendTextsWaitingForSession` starts sending every text that waited, once the command ran or
- * failed, because a command such as /goals, /roast or /reminders starts no turn whose end would
- * send them.
+ * Ends the stop of a turn stopped by the user once the user types a slash command, before
+ * `runCommand` runs the command `e`. The session accepts prompts submitted by a plugin again from
+ * then on. `sendTextsWaitingForSession` starts sending every text that waited, once the command ran
+ * or failed, because a command such as /goals, /roast or /reminders does not start a turn whose end
+ * would send them.
  */
 export async function endStopOnTypedCommand(
   $: EngineInterface,
   e: Frozen<CommandRunInput>,
-  next: Next<'command.run'>,
   sendTextsWaitingForSession: () => void,
+  runCommand: () => Promise<CommandRunResult>,
 ): Promise<CommandRunResult> {
-  const hasEndedStop =
-    isTypedByUser(e.origin) &&
-    (await changeSessionActivity($, SessionActivity.StoppedByUser, SessionActivity.Idle))
+  const hasEndedStop = isTypedByUser(e.origin) && (await endStopShowingFailure($))
   try {
-    return await next(e)
+    return await runCommand()
   } finally {
     if (hasEndedStop) {
       sendTextsWaitingForSession()
     }
   }
+}
+
+/**
+ * Marks a session stopped by the user as idle, and returns whether it was stopped. A failure shows
+ * in a toast and returns false, so the typed command still runs.
+ */
+async function endStopShowingFailure($: EngineInterface): Promise<boolean> {
+  return changeSessionActivity($, SessionActivity.StoppedByUser, SessionActivity.Idle).catch(
+    (error: unknown) => {
+      showFailure($, describeStopNotEnded(messageOf(error)))
+
+      return false
+    },
+  )
 }
 
 /**

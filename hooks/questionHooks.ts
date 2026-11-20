@@ -2,6 +2,7 @@ import type {
   Caught,
   CommandRunInput,
   CommandRunResult,
+  CommandSpec,
   EngineInterface,
   Frozen,
   Hook,
@@ -17,7 +18,8 @@ import { isMainConversation } from './conversation'
 import { draftRemindersFor } from './draftQuestion'
 import { deliverAnswers, recordAnswerAndDeliver } from './delivery'
 import { PendingTextPlace } from './pendingTexts'
-import { denyFailedHook, replyToFailedHook } from './hookFailure'
+import { CommandRegistrar, type PluginCommand } from './pluginCommand'
+import { denyFailedHook } from './hookFailure'
 import {
   ANSWER_ARGUMENTS,
   ANSWER_USAGE_PROBLEM,
@@ -34,6 +36,7 @@ import {
 } from './inputs'
 import {
   ALL_CLOSED,
+  ANSWER_DESCRIPTION,
   ASK_DESCRIPTION,
   LIST_DESCRIPTION,
   QUESTIONS_SUBJECT,
@@ -80,7 +83,7 @@ import {
 } from './sessionState'
 
 // Registered for a session with a person at the prompt alone. In a -p run or the Agent SDK, the
-// plugin registers neither the tools nor the command and does not read any question, so every hook
+// plugin registers neither the tools nor /answer and does not read any question, so every hook
 // below passes its event on unchanged.
 export const startQuestions: MatchedHook<'session.start', { isInteractive: true }> = async (
   $,
@@ -102,12 +105,7 @@ export const startQuestions: MatchedHook<'session.start', { isInteractive: true 
       inputSchema: WITHDRAW_SCHEMA,
       isDeferred: false,
     }),
-    $.command.register({
-      name: ANSWER_COMMAND,
-      description: 'Answer a question Claude asked, or list the open ones',
-      argumentHint: ANSWER_ARGUMENTS,
-      immediate: true,
-    }),
+    $.command.register(ANSWER_SPEC),
   ])
   // The questions saved under the project before they belonged to a session are moved to their
   // session first, so the load finds them.
@@ -224,10 +222,27 @@ export async function submitWithAnswers(
   )
 }
 
-export const runAnswerCommand: MatchedHook<
-  'command.run',
-  { command: typeof ANSWER_COMMAND }
-> = async ($, e) => {
+const ANSWER_SPEC: CommandSpec = {
+  name: ANSWER_COMMAND,
+  description: ANSWER_DESCRIPTION,
+  argumentHint: ANSWER_ARGUMENTS,
+  immediate: true,
+}
+
+/** /answer, which answers a question of the session or lists the open ones. */
+export function answerCommand($: EngineInterface): PluginCommand {
+  return {
+    spec: ANSWER_SPEC,
+    registeredBy: CommandRegistrar.FeatureStart,
+    run: e => runAnswerCommand($, e),
+    subjectOf: () => QUESTIONS_SUBJECT,
+  }
+}
+
+async function runAnswerCommand(
+  $: EngineInterface,
+  e: Frozen<CommandRunInput>,
+): Promise<CommandRunResult> {
   const sessionId = await sessionForUse($)
   const request = readAnswerArguments(e.args)
   switch (request.request) {
@@ -261,15 +276,6 @@ export function denyHookFailure(
   next: Caught,
 ): ToolCallResult {
   return denyFailedHook($, QUESTIONS_SUBJECT, next.error)
-}
-
-/** Returns the reply to the answer command when its hook failed, with the reason. */
-export function replyWithHookFailure(
-  $: EngineInterface,
-  _e: Frozen<CommandRunInput>,
-  next: Caught,
-): CommandRunResult {
-  return replyToFailedHook($, QUESTIONS_SUBJECT, next.error)
 }
 
 /** Lists the open questions of the session for the answer command, and opens the pane. */

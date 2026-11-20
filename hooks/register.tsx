@@ -1,6 +1,11 @@
 import type { EngineInterface, Register } from 'claude-code'
 
 import { compactWithNotes } from './afterCompaction'
+import {
+  registerPluginCommands,
+  replyToFailedPluginCommand,
+  runPluginCommandOrNext,
+} from './commandDispatch'
 import { answersSource } from './delivery'
 import { EVERY_EVENT } from './everyEvent'
 import { registerGoals } from './goals'
@@ -20,7 +25,7 @@ import {
 } from './hintState'
 import { blockStopOnHintPhrase } from './hints'
 import { registerImports } from './imports'
-import { ANSWER_COMMAND, ASK_TOOL, LIST_TOOL, PANE, WITHDRAW_TOOL } from './names'
+import { ASK_TOOL, LIST_TOOL, PANE, WITHDRAW_TOOL } from './names'
 import { registerNeededSkills } from './neededSkills'
 import { createPromptFooter, registerPromptFooter } from './promptFooter'
 import { PANE_CLOSED_BY_USER } from './paneClose'
@@ -30,8 +35,6 @@ import {
   denyHookFailure,
   listQuestions,
   readQuestionsOfStartedSession,
-  replyWithHookFailure,
-  runAnswerCommand,
   startQuestions,
   submitWithAnswers,
   withdrawQuestion,
@@ -56,6 +59,7 @@ import {
 export const register: Register = on => {
   // Registered before every other hook of this plugin on a prompt, so it reads the prompt as typed.
   registerSessionRecords(on)
+  on('session.start', EVERY_EVENT, registerPluginCommands)
   on('session.start', { isInteractive: true }, startQuestions)
   on('classic.SessionStart', readQuestionsOfStartedSession)
   // The engine passes `$` only to a function named at the call, so each note sent after a
@@ -83,10 +87,16 @@ export const register: Register = on => {
   )
   on('prompt.submit', EVERY_EVENT, markTypedPromptTurnRunning)
   on('turn.start', EVERY_EVENT, markTurnRunning)
-  // Registered before the commands of this plugin, so each of them reads the stop as ended.
+  // The one hook of this plugin on a slash command, which runs every command of this plugin. It
+  // ends the stop first, so each of them reads the stop as ended.
   on('command.run', EVERY_EVENT, ($, e, next) =>
-    endStopOnTypedCommand($, e, next, () => sendTextsWaitingForSession($)),
-  )
+    endStopOnTypedCommand(
+      $,
+      e,
+      () => sendTextsWaitingForSession($),
+      () => runPluginCommandOrNext($, e, next),
+    ),
+  ).catch(replyToFailedPluginCommand)
   on('turn.complete', EVERY_EVENT, ($, e, next) =>
     completeMainTurn($, e, next, () => sendTextsWaitingForSession($)),
   )
@@ -96,7 +106,6 @@ export const register: Register = on => {
   on('classic.Stop', blockStopOnHintPhrase)
   on('session.append', STOP_BLOCK_REASON, markOfferedHintKindsSent)
   on('turn.complete', EVERY_EVENT, forgetHintKindsSentInTurn)
-  on('command.run', { command: ANSWER_COMMAND }, runAnswerCommand).catch(replyWithHookFailure)
   on('ui.render', { component: 'AbovePrompt' }, drawQuestionBand)
   on('ui.render', { component: 'Pane', requestId: PANE }, drawQuestionPane)
   // The footer draws the buttons in the order placed: Goals first, then Reminders.

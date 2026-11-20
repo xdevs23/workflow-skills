@@ -41,6 +41,8 @@ export const WITHDRAW_DESCRIPTION = [
   `${LIST_TOOL} lists the question as withdrawn.`,
 ].join(' ')
 
+export const ANSWER_DESCRIPTION = 'Answer a question Claude asked, or list the open ones'
+
 /** The questions, as written in the texts about a failed hook of the questions. */
 export const QUESTIONS_SUBJECT: HookSubject = {
   name: 'questions',

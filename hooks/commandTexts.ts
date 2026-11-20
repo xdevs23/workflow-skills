@@ -21,3 +21,14 @@ export function describeNotRegistered({
     `uses the name /${command}, turn that plugin off and start a new session. ${DEBUG_LOG_NOTE}`
   )
 }
+
+/**
+ * The text of the toast for a turn stopped by the user that could not be marked as over for
+ * `reason` when the user typed a slash command.
+ */
+export function describeStopNotEnded(reason: string): string {
+  return (
+    `The stopped turn could not be marked as over: ${reason}. Texts from this plugin that wait ` +
+    `for the stopped turn go to Claude once you send a message. ${DEBUG_LOG_NOTE}`
+  )
+}

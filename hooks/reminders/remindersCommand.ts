@@ -1,15 +1,7 @@
-import type {
-  Caught,
-  CommandRunInput,
-  CommandRunResult,
-  EngineInterface,
-  Frozen,
-  MatchedHook,
-} from 'claude-code'
+import type { CommandRunResult, EngineInterface, MatchedHook } from 'claude-code'
 
-import { registerCommandShowingRejection } from '../commandRegistration'
 import { replyWithFailures } from '../failureToast'
-import { replyToFailedHook } from '../hookFailure'
+import { CommandRegistrar, type PluginCommand } from '../pluginCommand'
 import type { SWITCHING_SOURCES } from '../sessionSources'
 import { loadRemindersShowingFailure } from './reminderActions'
 import { REMINDERS_COMMAND } from './reminderNames'
@@ -21,20 +13,9 @@ import {
   REMINDERS_SUBJECT,
 } from './reminderTexts'
 
-/**
- * Registers /reminders for the session, and reads the reminders of the session into the state. A
- * rejection of /reminders by the engine is shown in a toast, and the session start goes on.
- */
+/** Reads the reminders of the session into the state. */
 export async function startReminders($: EngineInterface): Promise<void> {
-  const sessionId = await $.session.id()
-  await Promise.all([
-    registerCommandShowingRejection(
-      $,
-      { name: REMINDERS_COMMAND, description: REMINDERS_DESCRIPTION, immediate: true },
-      REMINDERS_LOST_WITHOUT_COMMAND,
-    ),
-    loadRemindersShowingFailure($, sessionId),
-  ])
+  await loadRemindersShowingFailure($, await $.session.id())
 }
 
 // The session reads its reminders here unless the state already has them, including reminders that
@@ -51,24 +32,25 @@ export const readRemindersOfSwitchedSession: MatchedHook<
   return next(e)
 }
 
+/** /reminders, which opens the Reminders pane. */
+export function remindersCommand($: EngineInterface): PluginCommand {
+  return {
+    spec: { name: REMINDERS_COMMAND, description: REMINDERS_DESCRIPTION, immediate: true },
+    registeredBy: CommandRegistrar.CommandList,
+    lostWithoutCommand: REMINDERS_LOST_WITHOUT_COMMAND,
+    isInteractiveOnly: false,
+    run: () => runRemindersCommand($),
+    subjectOf: () => REMINDERS_SUBJECT,
+  }
+}
+
 /**
  * Reads the reminders of the session again and opens the Reminders pane, whatever arguments follow
  * /reminders. Replies only where the reminders could not be read or the pane could not open.
  */
-export const runRemindersCommand: MatchedHook<
-  'command.run',
-  { command: typeof REMINDERS_COMMAND }
-> = async $ =>
-  replyWithFailures(
+async function runRemindersCommand($: EngineInterface): Promise<CommandRunResult> {
+  return replyWithFailures(
     $,
     describeRemindersPaneFailures(await openRemindersPane($), { command: REMINDERS_COMMAND }),
   )
-
-/** Returns the reply to /reminders when its hook failed, with the reason. */
-export function replyWithRemindersHookFailure(
-  $: EngineInterface,
-  _e: Frozen<CommandRunInput>,
-  next: Caught,
-): CommandRunResult {
-  return replyToFailedHook($, REMINDERS_SUBJECT, next.error)
 }

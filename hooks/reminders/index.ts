@@ -5,19 +5,14 @@ import type { PromptFooter } from '../promptFooter'
 import { SWITCHING_SOURCES } from '../sessionSources'
 import { registerEventCadences } from './eventCadence'
 import { registerPhraseCadence } from './phraseCadence'
-import { REMINDERS_COMMAND, REMINDERS_PANE_SITE } from './reminderNames'
+import { REMINDERS_PANE_SITE } from './reminderNames'
 import {
   answerFailedRemindersPanePost,
   answerRemindersPanePost,
   drawRemindersPane,
   fallBackFromRemindersPaneModule,
 } from './reminderScreens'
-import {
-  readRemindersOfSwitchedSession,
-  replyWithRemindersHookFailure,
-  runRemindersCommand,
-  startReminders,
-} from './remindersCommand'
+import { readRemindersOfSwitchedSession, startReminders } from './remindersCommand'
 import { REMINDERS_BUTTON, openRemindersFromButton } from './remindersButton'
 import { registerTimeCadence } from './timedDelivery'
 
@@ -39,9 +34,6 @@ export function registerReminders(on: On, footer: PromptFooter): void {
   registerEventCadences(on)
   on('session.start', EVERY_EVENT, startRemindersOfSession)
   on('classic.SessionStart', { source: SWITCHING_SOURCES }, readRemindersOfSwitchedSession)
-  on('command.run', { command: REMINDERS_COMMAND }, runRemindersCommand).catch(
-    replyWithRemindersHookFailure,
-  )
   on('ui.render', REMINDERS_PANE_SITE, drawRemindersPane)
   on('ui.message', REMINDERS_PANE_SITE, answerRemindersPanePost).catch(
     answerFailedRemindersPanePost,

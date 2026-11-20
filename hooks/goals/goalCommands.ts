@@ -1,14 +1,7 @@
-import type {
-  Caught,
-  CommandRunInput,
-  CommandRunResult,
-  EngineInterface,
-  Frozen,
-  MatchedHook,
-} from 'claude-code'
+import type { CommandRunInput, CommandRunResult, EngineInterface, Frozen } from 'claude-code'
 
 import { replyWithFailures } from '../failureToast'
-import { replyToFailedHook } from '../hookFailure'
+import { CommandRegistrar, type PluginCommand } from '../pluginCommand'
 import { isTypedByUser } from '../promptOrigin'
 import { Outcome } from './board'
 import { addGoalToSession } from './goalActions'
@@ -18,6 +11,9 @@ import { GOALS_COMMAND } from './goalNames'
 import { describeGoalsPaneFailures, openGoalsPaneOnFreshBoard } from './goalScreens'
 import {
   GOALS_ADD_SUBJECT,
+  GOALS_ARGUMENT_HINT,
+  GOALS_DESCRIPTION,
+  GOALS_LOST_WITHOUT_COMMAND,
   GOALS_SUBJECT,
   GOAL_NOT_TYPED_BY_USER,
   describeAddRefused,
@@ -25,29 +21,37 @@ import {
   describeNotAdded,
 } from './goalTexts'
 
+/** /goals, which adds a goal, or opens the Goals pane for /goals alone. */
+export function goalsCommand($: EngineInterface): PluginCommand {
+  return {
+    spec: {
+      name: GOALS_COMMAND,
+      description: GOALS_DESCRIPTION,
+      argumentHint: GOALS_ARGUMENT_HINT,
+      immediate: true,
+    },
+    registeredBy: CommandRegistrar.CommandList,
+    lostWithoutCommand: GOALS_LOST_WITHOUT_COMMAND,
+    isInteractiveOnly: false,
+    run: e => runGoalsCommand($, e),
+    subjectOf: e => (goalTextOf(e) === '' ? GOALS_SUBJECT : GOALS_ADD_SUBJECT),
+  }
+}
+
 /**
  * Adds the text after /goals as a goal when the user typed the command, and opens the Goals pane
  * for /goals alone.
  */
-export const runGoalsCommand: MatchedHook<
-  'command.run',
-  { command: typeof GOALS_COMMAND }
-> = async ($, e) => {
+async function runGoalsCommand(
+  $: EngineInterface,
+  e: Frozen<CommandRunInput>,
+): Promise<CommandRunResult> {
   const text = goalTextOf(e)
   if (text === '') {
     return openFromCommand($)
   }
 
   return isTypedByUser(e.origin) ? addFromCommand($, text) : { text: GOAL_NOT_TYPED_BY_USER }
-}
-
-/** Returns the reply to /goals when its hook failed, with the reason. */
-export function replyWithGoalsHookFailure(
-  $: EngineInterface,
-  e: Frozen<CommandRunInput>,
-  next: Caught,
-): CommandRunResult {
-  return replyToFailedHook($, goalTextOf(e) === '' ? GOALS_SUBJECT : GOALS_ADD_SUBJECT, next.error)
 }
 
 /** The text of the goal typed after /goals, empty for /goals alone. */
