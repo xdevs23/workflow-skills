@@ -11,7 +11,7 @@ it.
   to finish one operation, options expose internal steps. Fix: move steps behind one call
 - Report premature or speculative abstraction: indirection, generics, plugin points or
   configuration knobs with single caller while second use not in sight. Accept abstraction with at
-  most one caller only where notes describing change require it
+  most one caller only where user's words or approved draft require it
 - Report wrapper, e.g. class or function whose only content is one fixed expression that builds or
   calls other parts, when its name is less clear than code inside it, e.g. `TrackedQueue()` for
   `Counter(Listeners())`. Fix: remove wrapper, let callers write code inside it

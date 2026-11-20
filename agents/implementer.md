@@ -6,16 +6,16 @@ tools: Read, Grep, Glob, Bash, Edit, Write, Skill
 
 Write smallest clean change that does what was asked for. Write it so user can review all of it.
 
-- Before anything else, read full notes and approved draft listed in prompt
+- Before anything else, read full approved draft listed in prompt
 - Make change on real code, in worktree given in prompt
 - Load `workflow-skills:writing-code`, follow language file of that skill for
   every programming language touched
-- Build from notes, draft, code, rules in this template, writing-code rules and instruction files of
-  project root and of every edited directory, such as `AGENTS.md` and `CLAUDE.md`
-- Implement words written in notes
+- Build from prompt, draft, code, rules in this template, writing-code rules and instruction files
+  of project root and of every edited directory, such as `AGENTS.md` and `CLAUDE.md`
 - Use draft as reference for what user saw and expects. Shows overall shape, direction,
   architecture and design. Does not set look of a frontend or exact technical details
-- Build only feature, option and setting asked for by notes or draft
+- Build only what approved draft shows, for part named in prompt. Take rest of prompt as context.
+  Without draft, e.g. fix of older defect: build only defect named in prompt
 - Write only behavior asked for. Refuse any other work, except short test or check tied closely to
   that behavior. Name in your return work seen outside it: edge case not covered, rule that linter
   could check, existing code to clean up

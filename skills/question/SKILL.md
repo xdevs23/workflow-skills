@@ -4,13 +4,14 @@ description: Asking user question or handing user decision
 ---
 
 - Start subagent with `workflow-skills:question-closer` agent type, ask question, have it answer from what it finds in project
-- Give subagent path of notes of user words, set by `workflow-skills:implement`, and path of
-  session transcript
+- Find user's words on unit in messages typed by user in every session transcript of project.
+  Search directory of transcripts for entry number, title and terms of unit
+- Give subagent that directory, with entry number, title and terms of unit
 - Decision made under explicit grant of `workflow-skills:autonomous-implementation` and logged in run file
   counts as user word
 - Choice drawn in draft and approved by user counts as user word
 - One choice reported as session decision: undo that decision, what was built on it and records of
-  it in notes, `TODO.md` and run file. Do not put such question to user
+  it in `TODO.md` and run file. Do not put such question to user
 - Choice traced to neither user words nor session decision, such as fact of project: answer from
   project as first bullet says
 - Choice reported as unchecked: get what was out of reach, run subagent again

@@ -3,21 +3,11 @@ name: implement
 description: Implement change to code, from first talk with user until user reviews code
 ---
 
-## Notes
-
-- Write every word said by user about change into Markdown file while you talk, by hand
-- Keep each sentence as user said it, with typos and grammar fixed. Never turn it into your own
-  words or terms
-- Update notes whenever user corrects or changes what they said. Remove what user no longer wants
-- Keep every rejection and every approval of user in notes with its date, also after draft
-  changes
-- Save notes as `<change>.md` in folder for private specs inside project cache, set by
-  `workflow-skills:local-cache`, because notes contain user's verbatim words
-
 ## Draft
 
+- Keep user's words in session. Write no file of notes
 - Write feature down first, as one entry in `TODO.md` as `workflow-skills:todo-md` describes
-- Once notes done and you already have enough to work with, draw draft for change as
+- Once user's words give you enough to work with, draw draft for change as
   `workflow-skills:visual-decisions` describes
 - Show on draft: UI/UX where there is one, how state is represented in backend, and modules
   into which feature is split, with what each module may know of others. Such as core that is
@@ -25,10 +15,10 @@ description: Implement change to code, from first talk with user until user revi
 - Once draft approved, add sub-units for its modules and for gaps under it as
   `workflow-skills:todo-md` describes, each with own draft. Move down until you have everything
   needed
-- Save draft of feature as `<change>.html` in same folder as notes. Draft of sub-unit as
-  `<change>-<sub-unit number>.html`
-- When user says what should be different, change notes. Update draft as
-  `workflow-skills:visual-decisions` describes
+- Save draft of feature as `<change>.html` in folder for private specs inside project cache, set by
+  `workflow-skills:local-cache`. Draft of sub-unit as `<change>-<sub-unit number>.html`
+- When user says what should be different, update draft as `workflow-skills:visual-decisions`
+  describes
 - Start building as soon as user says it can start
 
 ## Implementation
@@ -46,8 +36,8 @@ description: Implement change to code, from first talk with user until user revi
   tree at its worktree. Sync it without fetching
 - Where tree has too many repositories to copy, such as ROM tree of thousand repositories, let
   implementer work in that tree
-- Hand every implementer: paths to full notes and approved drafts of its part and of units above
-  it, and part of change built by it when you split work. Never reword notes for it
+- Hand every implementer: paths to approved drafts of its part and of units above it, and part of
+  change built by it when you split work
 - Let implementer and fixer focus on writing code. Never write into their prompt that they should
   test or check anything. Template of `workflow-skills:implementer` already sets which checks they
   run
@@ -69,12 +59,13 @@ description: Implement change to code, from first talk with user until user revi
 
 - Once all implementers done, start following reviewers in parallel on whole change. Tell them
   which repositories change is in, and at which commits it starts and ends
-- Start scope reviewer as `workflow-skills:reviewer-scope`. Hand it notes and approved draft. It
+- Start scope reviewer as `workflow-skills:reviewer-scope`. Hand it directory of session
+  transcripts and search terms as `workflow-skills:question` describes, and approved draft. It
   works without rules
 - Start prose reviewer as `workflow-skills:reviewer-prose`, on smallest model available, at medium
   effort
-- Start four more as `workflow-skills:reviewer-layer`. Hand each notes and skills given to that
-  layer by list below. Rules: `workflow-skills:designing-architecture`,
+- Start four more as `workflow-skills:reviewer-layer`. Hand each path of approved draft and skills
+  given to that layer by list below. Rules: `workflow-skills:designing-architecture`,
   `workflow-skills:writing-code` with file in its `languages` directory for each language in changed
   files, `workflow-skills:handling-errors`, `workflow-skills:writing-tests`,
   `workflow-skills:debugging`, `workflow-skills:building-screens`, `workflow-skills:ux-design`,

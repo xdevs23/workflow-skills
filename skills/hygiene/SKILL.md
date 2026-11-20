@@ -18,7 +18,8 @@ description: Decide what may go into anything that leaves machine or goes to som
 
 ## The user's words
 
-- Keep user's words verbatim only in untracked, ignored records, e.g. private spec or todo record
+- Keep user's words verbatim only in untracked, ignored records, e.g. memory file of
+  `workflow-skills:local-cache`
 - General instruction to commit everything: read it as excluding private records, private specs,
   prompts that contain private text, scratch files and todo record
 
@@ -89,5 +90,5 @@ description: Decide what may go into anything that leaves machine or goes to som
 
 - Follow `workflow-skills:local-cache` for project cache, local storage and what goes into each
 - Follow `workflow-skills:todo-md` for todo record
-- Follow `workflow-skills:implement` for notes of user's words and draft that describes a change
+- Follow `workflow-skills:implement` for draft that describes a change
 - Follow `workflow-skills:visual-verification` for captures and real samples of visual harness

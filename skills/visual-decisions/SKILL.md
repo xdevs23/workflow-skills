@@ -175,4 +175,4 @@ description: Draw page for user to look at: drafts, product decisions, plans and
 ## Images from the chat
 
 - Copy image pasted by user into chat into local storage defined by `workflow-skills:local-cache`.
-  Write path to image into notes described by `workflow-skills:implement`, so implementer finds it
+  Show it on draft of unit, with path of image on page

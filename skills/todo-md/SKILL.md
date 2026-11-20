@@ -124,8 +124,8 @@ Draft: .cache/specs/reaction-emoji.html
 - Fix defect in older code outside unit, such as flaky test harness, as separate unit in parallel
   with unit
 - Start fix of older defect without asking user, as only unit started by you without user's word
-- Build fix of older defect by `workflow-skills:implement`, with defect and its evidence in place of
-  notes and without draft, in worktree and on branch of its own
+- Build fix of older defect by `workflow-skills:implement`, with defect and evidence for it in
+  prompt and without draft, in worktree and on branch of its own
 - Deliver fix of older defect on its own, through pull request or review of its own
 - Split fix of older defect that reaches several modules into sub-units, one per module, each
   delivered through pull request of its own

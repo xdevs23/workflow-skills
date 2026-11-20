@@ -163,7 +163,7 @@ description: Design or plan shape of change or system: modules, layers, interfac
   editing that draft
 - Draw next draft from user's words and from every rejection so far
 - Before each new draft, read every rejection and every approval of user word for word from
-  notes described by `workflow-skills:implement`
+  user's words, found as `workflow-skills:question` describes
 - Name the one decision to which rejections keep returning, e.g. which module starts a service
 - List every place in code that could own that decision, each with words of user that exclude it
 - Take place excluded by no word of user as design. Where words of user exclude every place,

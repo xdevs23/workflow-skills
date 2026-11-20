@@ -1,6 +1,6 @@
 # Product text
 
-- Hand copy artifact, with notes, to `workflow-skills:implementer` agent started by
+- Hand copy artifact to `workflow-skills:implementer` agent started by
   `workflow-skills:implement`
 - How large the change is sets only how many writers run
 - Give even a single string an intent, writing system and named source line. It gets one writer
