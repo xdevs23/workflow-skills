@@ -1,4 +1,4 @@
-import { AGENT_TOOL, ASK_TOOL, QUESTION_SKILL, VISUAL_DECISIONS_SKILL, skillName } from '../names'
+import { ASK_TOOL, QUESTION_SKILL, VISUAL_DECISIONS_SKILL, skillName } from '../names'
 import type { QualifiedSkill } from '../names'
 import { allOf } from './allOf'
 import { callsTool } from './callsTool'
@@ -82,9 +82,4 @@ export const SKILL_RULES: readonly SkillRule[] = [
   },
   { when: runsCommand('git push'), skills: [skillName('hygiene')], files: [] },
   { when: inMainConversation(callsTool(ASK_TOOL)), skills: [QUESTION_SKILL], files: [] },
-  {
-    when: inMainConversation(callsTool('Workflow', AGENT_TOOL)),
-    skills: [skillName('workflows')],
-    files: [],
-  },
 ]
