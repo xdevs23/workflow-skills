@@ -1,5 +1,6 @@
-import type { AgentStatus, EngineInterface, MatchedHook, ModelUsage } from 'claude-code'
+import type { EngineInterface, MatchedHook, ModelUsage } from 'claude-code'
 
+import { hasAgentEnded } from '../agentEnd'
 import { REPLACES_CONVERSATION } from '../compactionTrigger'
 import { isMadeByModel } from '../conversation'
 import type { EveryEvent } from '../everyEvent'
@@ -72,27 +73,15 @@ export const forgetCompactedLoads: MatchedHook<'session.compact', EveryEvent> = 
   return compacted
 }
 
-// The engine raises no end of an agent beyond the end of a turn. A subagent and a workflow agent
-// end with their run, which is one turn, so a subagent continued by a message starts a new ledger.
-// A teammate runs many turns under one agent id, so the ledger of a teammate is deleted at the end
-// of a turn only when the list of agents contains the teammate as ended, or no longer contains it.
+// A subagent ends with its run, which is one turn, so a subagent continued by a message starts a
+// new ledger.
 export const forgetEndedAgent: MatchedHook<'turn.complete', EveryEvent> = async ($, e, next) => {
   const completed = await next(e)
-  if (e.agentId !== undefined && !(await isTeammateNotEnded($, e.agentId))) {
+  if (e.agentId !== undefined && (await hasAgentEnded($, e.agentId))) {
     await forgetAgent($, await $.session.id(), e.agentId)
   }
 
   return completed
-}
-
-/** The statuses of an agent whose loop takes no more turns. */
-const ENDED_STATUSES: ReadonlySet<AgentStatus> = new Set(['completed', 'failed', 'killed'])
-
-/** Whether the agent `agentId` is a teammate that has not ended, so it takes more turns. */
-async function isTeammateNotEnded($: EngineInterface, agentId: string): Promise<boolean> {
-  const agent = (await $.agent.list()).find(listed => listed.id === agentId)
-
-  return agent?.teammateId !== undefined && !ENDED_STATUSES.has(agent.status)
 }
 
 /** The size of the context sent with a model request, cached or not. */

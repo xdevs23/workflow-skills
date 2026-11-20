@@ -23,6 +23,7 @@ import type { ReadReminders, RemindersNotRead } from '../hooks/reminders/reminde
 import type { Refusal as ReminderRefusal } from '../hooks/reminders/reminders'
 import type { ForkView } from '../hooks/roast/messagesUnseenByFork'
 import type { PendingRoast, SessionRoast } from '../hooks/roast/roastState'
+import type { VerifierRetries } from '../hooks/roast/verifierRetryState'
 import type { ActivityOfSession } from '../hooks/sessionState'
 
 /** What the user wrote in reply to a question. */
@@ -437,6 +438,8 @@ declare module 'claude-code' {
       sessionRoast: SessionRoast | null
       /** The roasts sent from the Roast pane that have not gone to the model yet. */
       pendingRoasts: readonly PendingRoast[]
+      /** The retries owed by roast_work to final-verification agents; null before the first one. */
+      verifierRetries: VerifierRetries | null
     }
   }
 }

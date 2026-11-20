@@ -14,12 +14,24 @@ import { writePromptAfterUnseenMessages, writeRoastPrompt } from './roastPromptT
 import { RoastVerdict, readRoastReply } from './roastReply'
 import { RoastShown, recordSecondsWriting, setRoastOfRun, setRoastWriting } from './roastState'
 import type { RoastProgressOf, RoastRun } from './roastState'
-import { PANE_TITLE, describeForkViewUnknown, describeSecondsNotShown } from './roastTexts'
+import {
+  PANE_TITLE,
+  describeForkTryFailed,
+  describeForkViewUnknown,
+  describeSecondsNotShown,
+} from './roastTexts'
+import type { ForkRetry, OwedRetry } from './verifierRetryState'
 
 // The user may watch the Roast pane while the fork runs again, so the wait before the next try
-// grows from two seconds up to half a minute and goes no longer. Inside a hook, the budget of the
-// hook ends the waits sooner.
+// grows from two seconds up to half a minute and goes no longer. Inside a hook, each wait counts
+// against the budget left for the hook, and the part of a wait that does not fit into it goes to
+// the next call of the hook.
 const FORK_RETRY_WAITS: RetryWaits = { firstMs: 2000, longestMs: 30_000 }
+
+// A hook that cuts a wait short at its budget keeps the last second of the budget for its answer,
+// since a timer may fire late on a busy machine, and a hook that runs past its budget answers
+// through its failure handler.
+const BUDGET_KEPT_AFTER_WAIT_MS = 1000
 
 /** The result of one fork asked for a roast. */
 export type ForkedRoast = RoastProgressOf<
@@ -103,26 +115,63 @@ export async function forkRoast(
 }
 
 /**
+ * The result of the forks asked inside a hook: the roast from the last fork once the tries ended,
+ * or the retry still owed, once the budget left for the hook ended first.
+ */
+export type RoastWithinHook =
+  | { isTryOwed: false; roast: RoastProgressOf<RoastShown.Written | RoastShown.NotWritten> }
+  | ({ isTryOwed: true } & OwedRetry)
+
+/**
  * Asks forks for a roast with `prompt` as forkRoast does, inside the hook whose `next` is given,
- * and returns the result of the last fork. A wait counts against the budget of the hook, so the
- * hook waits for the next try only while the wait and a try as long as the last fit into what is
- * left of that budget. An abort of the call of the hook ends the wait, so no fork starts after it.
+ * going on from the tries of `owed`, which an earlier call left. Writes each failed try to the
+ * debug log, and hands the retry owed after it to `saveRetry`. The engine stops the budget of the
+ * hook while a fork runs, so only the waits count against it. A wait that does not fit into the
+ * budget left for the hook lasts as long as that budget allows, and the rest of it comes back as
+ * the retry still owed. An abort during the hook call ends the wait, so a fork starts only before
+ * it.
  */
 export async function forkRoastWithinHook(
   $: EngineInterface,
   prompt: string,
   next: Pick<Next, 'signal' | 'budget'>,
-): Promise<ForkedRoast> {
-  for (let tries = 1; ; tries += 1) {
-    const remainingBeforeTry = next.budget.remainingMs
-    const roast = await forkRoastOnce($, prompt, tries)
-    const ownTimeOfTry = remainingBeforeTry - next.budget.remainingMs
-    const wait = randomWaitAfter(tries, FORK_RETRY_WAITS)
-    if (roast.shown !== RoastShown.WritingAgain || wait + ownTimeOfTry >= next.budget.remainingMs) {
-      return roast
+  owed: ForkRetry | null,
+  saveRetry: (retry: ForkRetry) => Promise<void>,
+): Promise<RoastWithinHook> {
+  let retry = owed
+  for (;;) {
+    if (retry !== null) {
+      const waitMs = await sleepWithinBudget($, retry.nextTryAt, next)
+      if (waitMs > 0) {
+        return { isTryOwed: true, retry, waitMs }
+      }
     }
-    await $.clock.sleep(wait, { signal: next.signal })
+    const tries = (retry?.failedTries ?? 0) + 1
+    const roast = await forkRoastOnce($, prompt, tries)
+    if (roast.shown !== RoastShown.WritingAgain) {
+      return { isTryOwed: false, roast }
+    }
+    $.ui.log(describeForkTryFailed(roast), { to: 'debug' })
+    const nextTryAt = (await $.clock.now()) + randomWaitAfter(tries, FORK_RETRY_WAITS)
+    retry = { failedTries: tries, error: roast.error, nextTryAt }
+    await saveRetry(retry)
   }
+}
+
+/**
+ * Sleeps until `tryAt`, or until BUDGET_KEPT_AFTER_WAIT_MS are left of the budget of the hook whose
+ * `next` is given, whichever comes first, and returns the milliseconds still left before `tryAt`.
+ */
+async function sleepWithinBudget(
+  $: EngineInterface,
+  tryAt: number,
+  next: Pick<Next, 'signal' | 'budget'>,
+): Promise<number> {
+  const waitMs = tryAt - (await $.clock.now())
+  const sleepMs = Math.min(waitMs, next.budget.remainingMs - BUDGET_KEPT_AFTER_WAIT_MS)
+  await $.clock.sleep(Math.max(0, sleepMs), { signal: next.signal })
+
+  return tryAt - (await $.clock.now())
 }
 
 /** Asks one fork for a roast with `prompt`, as the try numbered `tries`. */

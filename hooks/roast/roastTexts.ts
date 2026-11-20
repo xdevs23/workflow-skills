@@ -18,6 +18,7 @@ import {
   ROAST_WORK,
 } from './roastNames'
 import type { RoastProgressOf, RoastShown } from './roastState'
+import type { OwedRetry } from './verifierRetryState'
 
 export const PANE_TITLE = 'Roast'
 
@@ -157,6 +158,17 @@ export function describeForkViewUnknown(cause: ForkViewUnknown): string {
   )
 }
 
+/** The line in the debug log for the try `failedTries` of a fork, which failed with `error`. */
+export function describeForkTryFailed({
+  failedTries,
+  error,
+}: RoastProgressOf<RoastShown.WritingAgain>): string {
+  return (
+    `Try ${failedTries} of the fork that writes the roast failed with the API error ${error}, ` +
+    'which may clear on its own.'
+  )
+}
+
 /** The text for a run of /roast that ended without a roast, with the next step. */
 export function describeRoastNotWritten(failure: RoastFailure): string {
   return describeNotWritten(failure, `Run /${ROAST_COMMAND} again.`)
@@ -171,16 +183,15 @@ export function describeVerificationRoastNotWritten(failure: RoastFailure): stri
 }
 
 /**
- * The text that roast_work returns to the final-verification agent when the budget of its hook
- * ended the tries while the API error of the last try may still clear on its own.
+ * The text that roast_work returns to the final-verification agent when its hook has used up its
+ * budget on the wait before the next try owed by `retry`, with `waitMs` still left.
  */
-export function describeVerificationRoastDelayed({
-  failedTries,
-  error,
-}: RoastProgressOf<RoastShown.WritingAgain>): string {
+export function describeVerificationRoastDelayed({ retry, waitMs }: OwedRetry): string {
+  const secondsLeft = Math.ceil(waitMs / MILLISECONDS_PER_SECOND)
+
   return (
-    `The roast is not written yet: try ${failedTries} failed with the API error ${error}, which ` +
-    `may clear on its own. Call ${ROAST_WORK} again.`
+    `The roast is not written yet: try ${retry.failedTries} failed with the API error ` +
+    `${retry.error}, which may clear on its own. Call ${ROAST_WORK} again in ${secondsLeft} s.`
   )
 }
 
