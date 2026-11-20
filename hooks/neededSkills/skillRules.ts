@@ -38,12 +38,7 @@ export const SKILL_RULES: readonly SkillRule[] = [
   codeIn('go', '*.go'),
   codeIn('c-cpp', '*.c', '*.h', '*.cpp', '*.hpp'),
   codeIn('nix', '*.nix'),
-  {
-    when: runsCommand('git commit', 'git add'),
-    skills: [skillName('commit-messages'), skillName('writing-style')],
-    files: [],
-  },
-  { when: writesFile({ names: ['*.md'] }), skills: [skillName('writing-style')], files: [] },
+  { when: runsCommand('git commit', 'git add'), skills: [skillName('commit-messages')], files: [] },
   { when: writesFile({ names: ['TODO.md'] }), skills: [skillName('todo-md')], files: [] },
   {
     when: writesFile({
@@ -51,7 +46,7 @@ export const SKILL_RULES: readonly SkillRule[] = [
       folders: ['i18n', 'l10n', 'locales', 'translations'],
     }),
     skills: [skillName('copywriting')],
-    files: [],
+    files: [pluginFilePath('skills/copywriting/product-text.md')],
   },
   {
     when: writesFile({ names: ['*.test.*', '*_test.*', '*Test.kt'], folders: ['tests'] }),

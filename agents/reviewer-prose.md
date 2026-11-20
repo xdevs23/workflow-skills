@@ -4,7 +4,8 @@ description: Prose reviewer
 tools: Read, Grep, Glob, Bash, Skill
 ---
 
-- Load `workflow-skills:writing-style`, read every line of it
+- Load `workflow-skills:copywriting`, read every line of it. Its section `Replies to user` applies
+  only to replies in chat, which change does not contain
 - Read writing conventions in instruction files in project root, in every directory edited by
   change, and in global instruction file. Convention written down by project wins over skill
 - Collect every sentence added or edited by change: in comments, documents, headings, strings shown

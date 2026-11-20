@@ -7,7 +7,7 @@ description: Write commit message
   never saw session
 - Never refer to thing known only inside session, by name or label given to it during work. Say
   what thing is, or leave it out
-- Follow `workflow-skills:writing-style` and `workflow-skills:hygiene` in subject and body alike
+- Follow `workflow-skills:copywriting` and `workflow-skills:hygiene` in subject and body alike
 
 ## Subject line
 

@@ -1,224 +1,212 @@
 ---
 name: copywriting
-description: Write user-facing text for product screens, marketing pages and translations. Not for logs or code comments
+description: Write text read by person: product screens, marketing pages, translations, replies to user, and text leaving chat, e.g. commit messages, documents, PR and issue text, comments in code
 ---
 
-## When to use it
+- Before writing text for product, e.g. product screen, marketing page or translation, read
+  `product-text.md` next to this file
 
-- Use it for **every increment that adds text read by people to a product.**
-- Hand copy artifact, with notes, to `workflow-skills:implementer` agent started by
-  `workflow-skills:implement`
-- Do NOT use it for internal text, e.g. logs, code comments, errors shown to developers. That text
-  is part of *codebase* and never appears in product
-- Size of change sets only how many writers run
-- Give even a single string an intent, writing system and named source line. It gets one writer
-  and the critic in place of full phase
+## Every text
 
-## The two-layer contract
+- Write for person who knows project but did not make change and did not follow work. Make main
+  point clear on first reading
+- Open with change, problem or question as behavior reader can observe. Name what changes for
+  user, caller or reviewer before naming modules and mechanisms
+- Name central fact directly. State drawback, risk or decision needed as plainly as benefit
+- State result before cause. Give mechanism only where reader needs it to understand result,
+  review change or act
+- Say what reader can do now, what behaves differently or what needs decision. Do not justify
+  change in place of explaining it
+- Keep concrete details that affect behavior, compatibility, risk or required action. Cut
+  inventory of classes, fields and branches that only paraphrases diff
+- Give each part of change own bullet or short section that answers one question. Open with effect
+  of that part, then add detail needed. Name result or behavior in heading, e.g. "Large exports
+  start at once", never "Implementation details". Never write wall of text
+- Give each detail once, whether as benefit, design explanation or conclusion
+- Use technical term known to reader where it is precise. Explain unfamiliar term in one short
+  phrase, e.g. "a cursor, a saved position in query results", then return to main point
+- Show behavior in example with concrete action and result, in place of abstract description of
+  data flow
+- Put text that needs action around that action: what reader must do, where and when. Leave
+  background that cannot change action out of instruction
+- Leave out preamble, passage on why thing matters, and how work was organized, e.g. stage names,
+  reviewer names, session narration
+- Name code by what it is: main branch, develop branch, production, merged code or unmerged work
+  on branch. Never call it today, now or current. Call shape not built yet After, or proposed
+  shape
+- Write paths, commands and identifiers in monospace
 
-- Write copy contract as two separate documents, intent catalog and writing system
+Instead of
 
-### Intent catalog: per increment, the WHAT
+> The export pipeline introduces a request-scoped cursor abstraction that incrementally
+> materializes result rows and coordinates backpressure between the query iterator and the
+> response writer.
 
-- Write one intent catalog per increment
-- Give every visible string a key and an intent stated at level of the goal, with these parts:
-  - **what the string must communicate**: the claim, phrasing left open;
-  - **where the reader is**: point reached by reader on meeting the string, and what reader needs
-    next;
-  - **the constraints**: interpolation parameters, casing rules and a **length limit**;
-  - **the shape of the data**: how lines break, where values are interpolated, which plural forms
-    exist;
-  - **whether the key is a copy key or invariant data.** Proper nouns, product names, numerals and
-    identifiers = invariant data, which is never rewritten or "translated". Every other key = copy
-    key;
-  - **the surface**: either product screen, where reader uses product, onboarding and error states
-    included, or marketing page, where reader decides whether to use product
-- For slot on product screen, write as intent what reader reads or does in that slot
-- **Never put example prose or imagery from the designer into an intent.** Intent prescribing
-  imagery turns writer into translator of a draft by someone else, where writer should write from
-  the goal
+write
 
-### Writing system: global, the HOW
+> Large exports start downloading before the database has returned every row. The server reads
+> rows as the download sends them, so a large result set does not have to fit in memory.
 
-- Write writing system as one document. Phrase every rule **positively, with a check that passes
-  or fails**
-- Give writing system a **shared layer** for every surface:
-  - Prefer nouns, verbs and numbers over adjectives
-  - Write in second person, active voice, present tense
-  - Make every button label complete the sentence "I want to ___"
-  - Use one name for each thing, everywhere
-  - Then cut, read text aloud, test it on a stranger
-- Give it a **product-screen layer**, every string in it a label, action or state for reader to act
-  on:
-  - Copy into layer, word for word, bullets in `workflow-skills:ux-design` with definition of
-    text that explains a product and rule for wording a state
-- Give it a **marketing-page layer**:
-  - Give each page one action
-  - Make headline name the **outcome for the reader**
-  - Test headline by putting competitor in place of product: when headline still fits unchanged, it
-    is empty
-  - Put proof for every claim within one screen of the claim
-  - Build text from words used by customers, quoted exactly
-  - Name objections openly instead of hoping nobody raises them
-- Give it a **generation layer**:
-  - Load SOURCE block before asking for a single word
-  - Specify construction of each sentence: every sentence has subject and finite verb, 8–22 words,
-    lengths alternate across slot
-  - Name punctuation to use: periods, commas, colons, question marks. Write change of direction in
-    one sentence with colon, or as two sentences
-  - Require **at least one concrete detail** in each section of marketing page: number, name or
-    observable detail taken from SOURCE
-  - Describe how each slot is built, with number of words allowed in it
-  - Do mechanical pass over punctuation **last**, by hand. Convert habitual em dashes, en dashes,
-    semicolons and the "not just X, it's Y" frame
+### Plain language
 
-## Specify the SENTENCE instead of the vibe
+- Write simple language, without filler jargon or mannered speech. Plain wording does not require
+  explanation of every technical term or omission of precise technical name
+- Keep out of every text except replies to user in chat:
+  - pleasantry and stock framing phrase, e.g. "needless to say" or "at the end of the day"
+  - figurative phrase where literal one exists: "a parameter to vary", never "a dial to turn".
+    Same for figurative verb, e.g. "rides along" or "stands on"
+  - aphorism, e.g. "wire it or delete it", and fragment written for effect
+- Write comma, colon or two sentences in place of em dash
+- Write verb in place of roundabout construction, e.g. serves as, acts as, plays a role in
+- Replace superficial gerund clause, e.g. ending that stresses how important something is, with
+  real sentence
+- Cut hedging filler and generic conclusion that restates what was said
+- Name file, number or cause in place of impressionistic wording. "SQL you can read" becomes
+  "`.toSQL()` returns the exact string sent to the database", "types that follow your schema"
+  becomes "a column rename fails the build"
+- Use strong verb in place of weak verb propped up by adverb. Write measured difference in place of
+  adverb of degree: "cuts load time from 3.1 s to 1.2 s", never "significantly improves load
+  time". Where nothing was measured, cut adverb. Never write number that was not measured
+- Cut sentence without fact: one that cannot be restated as instruction, fact or number, or claim
+  that could appear unchanged in documents of another project
+- Avoid "X, not Y" shape
 
-Writer can act on how a sentence is built, cannot act on a mood.
+### Words to avoid
 
-**Adjectives for texture in a prompt, e.g. "punchy", "snappy", "bold", "crisp", directly produce the
-three-fragment pattern, although they were meant to avoid it** ("Verified. Ready. Go."). Word for
-texture refers to nothing on which model can base a sentence, so model falls back on most marked
-surface pattern known to it.
+Avoid these words as whole words in any casing: rather than (as a phrase), worth, twist, caveat,
+seat, lane, leg, drive, doctrine, ruling, gate, landed, cold, belt-and-suspenders, load-bearing,
+guessing, ground, wrinkle, guard, pin, owner, masthead, flagging, utilize, leverage, facilitate,
+numerous, in the event that (as a phrase).
 
-- Specification makes pattern *structurally impossible*, where a ban would only discourage it
-- Same rule for length: **set the length limit for the whole SLOT, never per line.** Writer reads
-  character limit per line as "one fragment per line" and produces staccato pattern directly
-- Break line where sentence *wraps*, never where it *ends*
+- Use plain replacement by default
+- Keep listed word only where situation justifies it
+- Leave identifier that already contains listed word as it is
 
-## Voice and tone are INPUTS, never hardcoded
+| Instead of | Write |
+|---|---|
+| gate | check, or the name of the command |
+| drive | run, push forward |
+| cold | unbriefed, fresh-context |
+| landed | merged, committed |
+| guard | protection, check |
+| ground, grounded | based on, proven |
+| load-bearing | important, crucial |
+| owner, for the person who uses this machine | user |
+| masthead | page header |
+| utilize, leverage | use |
+| facilitate | help |
+| numerous | many |
+| in the event that | if |
 
-- Take voice and tone from three inputs supplied per project. Copy them VERBATIM into every copy
-  prompt:
-  1. **One sentence giving the speaker and the situation**, e.g. "a knowledgeable friend explaining
-     this across a table", never adjectives for texture. Speaker and situation can be checked,
-     "warm but professional" cannot
-  2. **2–3 admired samples**, so writer can match *spread of sentence lengths*. Writer does not
-     imitate them phrase for phrase
-  3. **A SOURCE block**: document with facts, every claim must trace back to it, line by line.
-     Claim without source line is left out. Writer names line used for each claim
+- Write actual thing in place of pin, which needs different word in each case: locked to revision,
+  asserted exactly by test, or written into spec. Document inside repository or prompt for agent
+  may keep pinned for locked dependency
+- Keep settle and settled as domain vocabulary inside repository. Avoid them in prose addressed to
+  person
+- Write `decided` in place of `ruled` and `ruling`
 
-## Required variants
+### Sentence shape
 
-- Have model produce **structurally distinct variants** for important strings: headline, hero,
-  primary call to action. Each variant comes with source line used for it
-- Standard set of five headline variants: outcome, question asked by reader, quote from a customer,
-  mechanism, number
-- Count variant as structurally distinct only when its construction differs. Same sentence in other
-  words does not count
-- Pick variant that ships yourself, by intent of slot, SOURCE and writing system
+- Keep subject, verb and object in usual order, subject close to its verb. Rewrite sentence that
+  needs second reading: "the values only the second migration of the payment schema adds" becomes
+  "only the second migration of the payment schema adds the values"
+- Use `'s`, `its`, `their` or an `of` that could become `'s` only for real ownership: person who
+  owns thing, e.g. Anna's book, or part that exists only inside whole, e.g. source code of the
+  database
+- For thing that exists apart from what it belongs to, say how two relate: "the library used by
+  the app", never "the app's library", "its library" or "the library of the app". Leave `of` that
+  could never become `'s` as it is, e.g. "each of those requests" or "instead of"
+- "The Reports tab of the store" still says that the store owns the tab, as "the store's Reports
+  tab" does
+- Do not stack nouns into compound made up for sentence, e.g. "fetch plan". Keep compound in use
+  outside text as name for real thing, e.g. "content security policy"
+- Join two main clauses with `, and`, `, so`, `, but` or `, or` only when they are one thought.
+  Write two sentences otherwise: "The report goes out by mail. The mailer skips a page that
+  fails"
+- Delete second clause that only repeats obvious consequence of first, e.g. "and nothing after it
+  runs" after "The script stops at the first failure"
+- Give code, file, value or tool verb for what happens to it or what it does: is, has, contains,
+  sets, uses, calls, returns, shows, sends, fails, expects, needs, skips, affects or changes. Never
+  give it human verb such as holds, keeps, stays, carries, reaches, answers, says, states,
+  refuses, decides, serves, names or touches. Write "takes" for receiving or handling only where
+  industry-standard, e.g. `take()` of a queue
+- Name thing with words known to reader and with noun for thing. Never invent label, e.g. "the
+  fast way" for lookup that finds the result in cache, or turn verb into noun, with or without
+  "the" or "a" before it: "nine requests", never "nine reads", and "Questions before climbing?",
+  never "Questions before the climb"
+- Never define term by repeating it, e.g. "`count`, the count of the range"
+- Say what is there or what happens, in place of listing what is absent with `no` and noun. Where
+  the absence is the point, write the sentence with a verb: "The reviewer does not see notes",
+  never "The reviewer sees no notes"
+- Write active voice. Where clause has form of be or get plus past participle, name actor: "the
+  compiler validates queries", never "queries are validated". Keep passive only where actor is
+  unknown or does not matter
+- Use one name for each thing, everywhere
+- Of two wordings that follow these rules and carry same facts, write shorter one
 
-## Multilingual (only if the product ships more than one locale)
+| Instead of | Write |
+|---|---|
+| the store's Reports tab | the Reports tab on the store page |
+| the store's orders | the orders in the store |
+| the upload's token | the token needed by the upload |
+| the importer's file | the file read by the importer |
+| the fetch plan | the list of pages to fetch |
+| the check has no rules of its own | the check applies the rules handed to it |
+| no request goes out | the page sends the request once the form is complete |
+| the service answers the totals | the service returns the totals |
+| the file holds the settings | the file contains the settings |
 
-- **Run all locales in ONE parallel phase, and let each agent write NATIVELY from the intent.**
-- Never translate from pivot language, and never from one locale into another. Approved string in
-  source language is only the version of intent written in *that language*. Translating from pivot
-  gives translated register to every other locale at once
-- **Check the syntax rules mechanically.** String libraries reserve meta-characters, e.g.
-  separators for plurals or context, delimiters for interpolation. One left unescaped can silently
-  cut rendered string short, without error anywhere. Ban them unescaped, grep for them in check
-- Check **key parity** too: every locale has exactly same set of keys. Missing key shows raw key
-  path to visitor
+Instead of passage such as
 
-## Verification: what makes this a workflow
+> A store's Reports tab fires six reads, and each one fetches the store's orders again for its
+> totals. One shared fetch needs a new query contract for the report pages.
 
-- Verify in three stages, in this order: tool, then two agents
+write
 
-1. **Mechanical check: a committed tool run with ONE COMMAND.** Reviewer does not do this check.
-   Tool RECOMPUTES everything from files: key parity across locales, length limits for slots,
-   syntax rules, grep for forbidden literals, check for leaked source language. Value identical to
-   the one in pivot language is suspect unless empty. Commit tool as script, put exact command for
-   it in every prompt. Tool runs without prompt template. **The tool never uses a self-report from a
-   writer as evidence.** Self-report only helps detect truncated or dishonest run
-2. **Source-verify reviewer** (`agentType:'workflow-skills:copy-source-verify'`): run it on a
-   **model strong on detail, never the smallest one**. Checks every factual claim against document
-   with facts *and* against live artifact. Checks register in every language, including languages
-   read by nobody on team. Standard example: wording suggesting temporary state where product
-   promises permanent one. Requires proof for every superlative. **Use what was observed, never
-   what was recalled:** fetch and transcribe wording of real artifacts, label such data "observed",
-   never let an agent cite an authority not checked by it
-3. **Critic with a fresh context** (`agentType:'workflow-skills:copy-critic'`): reviewer that never
-   saw the writing happen. Names source line for each sentence, lists every sentence without
-   subject and finite verb, counts markers of machine-written text. Audits, never rewrites
+> The Reports tab on the store page sends six requests when the page has finished loading.
+> Each of those requests loads every order placed in that store again before it sums the money on
+> each order. The report pages can load the orders only once if we change how we write the
+> queries.
 
-- Run **completeness pass** alongside stages 2 and 3, inside Verify. In it, ask one question
-  about whole list of work, once and explicitly: "which item is missing entirely?" Check of single
-  items cannot see an absent item by its structure, and missing item is worst kind of defect to
-  ship
+## Replies to user
 
-## The forbidden-literals manifest
+- Answer question in terms of asker first. Give mechanism last, only where asker needs it
+- Give whole picture in first answer: what thing is, how comparable case does it, constraint,
+  choice made and why. Never leave asker to pull it out over several questions
+- Answer short follow-up in one or two sentences, with reason asker can check
+- End answer to question on answer, without offer of work
+- Use standard devspeak, e.g. "Yes" or "Nope, we'll do that when X is done"
+- Never infer, comment on or judge habits, schedule or wellbeing of user. Never suggest sleep,
+  food, break or another change of behavior
+- Never take saved report or result returned by stage as only proof that user has not answered
 
-- When copy replaces placeholder prose from design draft, list **distinctive phrases** of draft as
-  explicit ban list for grep, all locales and calques included
-- Exempt generic words of interface, e.g. "Sign in", "Learn more"
-- Run manifest in mechanical check. "Do not copy the draft" can only be enforced by executable
-  check
+Asked "Why does the export need a separate worker now?", instead of
 
-## The shape
+> The export ran CPU-bound serialization on the event loop shared by the request handlers, so
+> `runExclusive` in `server/loop.ts` blocked them until it returned.
 
-Run copy phase as a `Workflow()` in four phases: **Intent → Write → Check → Verify.**
+write
 
-- **Intent**: write or decide intent catalog before any writer starts. Without intents stated as
-  goals, each writer invents separate standard, critic has nothing to check against
-- **Write**: fan out `agentType:'workflow-skills:copywriter'` with **one writer per area and
-  locale**. Area = page, screen or flow, or whole strings file when file is small. Writer edits
-  i18n strings file directly, fills every slot in its area in one sitting, returns what it changed.
-  Give each writer: line naming file of `workflow-skills:hygiene`, writing system VERBATIM, intents
-  for its area, voice inputs, SOURCE block
-- **Check**: run mechanical check, recomputed from files
-- **Verify**: run `workflow-skills:copy-source-verify` and `workflow-skills:copy-critic` in
-  parallel, plus completeness pass
+> A large export used to freeze the site for every visitor for up to a minute. Exports now run on
+> a separate worker and other pages load in the meantime.
 
-## Laws
+Asked "Why does the mobile app need a change in the shared PDF library?", instead of
 
-1. **Write the copy first, and let implementation use only finished strings.** Never commit
-   placeholder prose to tree
-2. **Create every key empty.** Let copy pass fill it. Placeholder text inside a key looks like
-   finished copy to everyone who comes across it later. Writer skips key, critic finds sentence to
-   audit, product ships with placeholder
-3. **Run every agent as `workflow-skills:workflows` describes.**
-4. **Show the user every slot reported by the copywriter for redesign**, with part of screen the
-   copywriter named. Completeness pass lists such slot as held, separately from slot never written.
-   Do not implement screen containing that slot until redesigned slot has copy
+> The library declares no API level, so the build refuses to link it into an app built against
+> the public SDK.
 
-## Agent prompt templates (verbatim base, append-only)
+write
 
-- Every agent spawned by this skill has fixed template in `agents/`: `agents/copywriter.md`,
-  `agents/copy-source-verify.md`, `agents/copy-critic.md`. Use body of that file **VERBATIM** as
-  start of agent prompt. Body contains **authoritative rules** for agent
-- Invoke each by qualified agent type: `agentType:'workflow-skills:copywriter'` /
-  `'workflow-skills:copy-source-verify'` / `'workflow-skills:copy-critic'`
-- Pass `agent()` **ONLY the context for the task, APPENDED** after that base: writing system, intent
-  for item, voice inputs, SOURCE block
-- Do NOT modify, reorder or paraphrase base rules inline
-- Open string appended for a copywriter with this line, `<plugin root>` = plugin directory
-  containing this skill:
+> The mobile app makes PDFs with this library, just like the web app. The web app puts a copy of
+> the library in the repo used by the web app, which we do not do here. Our build only lets an
+> app use a library that has an API level set. This one was missing it, so I set it to the level
+> the mobile app builds against.
 
-  ```text REQUIRED: before you write, read the file <plugin root>/skills/hygiene/SKILL.md with the
-  Read tool, and follow it in every comment, document, commit message and returned string.
-  ```
+Asked "Why is it set to `latest` and not 37?", instead of
 
-## What did NOT work (keep these)
+> A fixed `core_37` would need a frozen API surface in `prebuilts/sdk`, which stops at 36, while
+> `core_current` resolves to the API level of this tree.
 
-Each approach below was tried and produced worse copy.
+write
 
-- **Pivot translation**, writing one language and translating it outward. Gave translated register
-  to every other locale at once. Replaced by writing each locale natively from intent
-- **Character limits per line on headlines.** Shipped staccato pattern. Replaced by limit for whole
-  slot
-- **Adjectives for texture in prompts** ("punchy", "snappy", "bold"). Produced rhythm of fragments,
-  although they were meant to prevent it
-- **One agent grinding through a whole batch in one go**, writing N locales or N unrelated areas of
-  product. Quality dropped towards end. Missing items went unnoticed. Replaced by one agent per area
-  and locale, with completeness pass
-- **One agent per string, returning a value copied into the file by a script.** Whole context of a
-  writer goes into five-word label, dozens of times over. Worse than cost: slots of one screen stop
-  fitting together, because one writer never wrote them together, e.g. two slots repeat same noun,
-  or both deal with same question
-- **Intents containing imagery from the draft.** Writer then translated draft instead of writing
-  from goal
-- **Storing uppercase strings.** Casing belongs to presentation. Store regular case, apply uppercase
-  in CSS. Otherwise stored case is lost in every locale with different casing rules
-- **Placeholder copy in the tree.** Ends up on rendered production screens
-- **Style rules phrased as prohibitions** ("do not be salesy"). Model needs replacement named,
-  because name for bad habit teaches it nothing
+> Only API level 36 has a prebuilt SDK so far. In this tree, `latest` already means 37.

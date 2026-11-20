@@ -5,6 +5,7 @@ description: Open PR, and write or update its description
 
 - Load `workflow-skills:hygiene` first. Its rules apply to title, description and every picture
   attached to pull request
+- Write title and description by `workflow-skills:copywriting`
 
 ## The template
 

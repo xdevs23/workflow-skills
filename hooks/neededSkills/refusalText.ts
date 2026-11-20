@@ -2,7 +2,7 @@ import { AND_LIST } from '../listFormat'
 
 /**
  * The text that denies a call, read by the model. `steps` lists what the model must load first,
- * such as "load workflow-skills:writing-style with the Skill tool".
+ * such as "load workflow-skills:commit-messages with the Skill tool".
  */
 export function describeRefusal(steps: readonly string[]): string {
   return (

@@ -15,7 +15,8 @@ Then run a skill, such as `/workflow-skills:implement`.
 
 - **Software engineering**: changes built by agents in parallel, reviewed, tested and committed
 - **Design**: drafts of screens and web pages to pick from
-- **Copywriting**: product and marketing text, checked for style and facts
+- **Copywriting**: rules for plain wording in commit messages, documents and comments in code;
+  product and marketing text, checked for style and facts
 - **Goals**: `/goals` sets what Claude works toward until you clear it, and `/goals <text>` adds
   a goal without the pane; `/goals-import` brings open goals of an earlier session of the project
   into this one

@@ -37,7 +37,7 @@ the facts the instruction needs follow in the same bullet. Continuous prose stay
 that explain why, which a list would break apart.
 
 **A skill names another skill or an agent type by its qualified name**, such as
-`workflow-skills:writing-style` or `workflow-skills:implementer`, and its frontmatter description
+`workflow-skills:copywriting` or `workflow-skills:implementer`, and its frontmatter description
 contains only what the skill is for.
 `skills/babysit-pr/SKILL.md` is the example.
 
@@ -48,7 +48,7 @@ notes.** Articles, forms of "to be" and auxiliary verbs are dropped, a subject c
 context is left out, stops are short, and a fragment may stand as a sentence. Every instruction,
 condition, negation, quantity and order is kept, and headings, qualified names, tool names, paths,
 commands and code are copied verbatim. The frontmatter description of a skill or an agent template
-is written in the same register, with its meaning kept. `workflow-skills:writing-style` does not
+is written in the same register, with its meaning kept. `workflow-skills:copywriting` does not
 apply to these files. They follow this register alone.
 
 **Negations are written in full**, as "do not", "is not" and "cannot", never as a contraction.

@@ -96,7 +96,7 @@ description: Visual design of screen or page
 
 ## Text
 
-- Write every text on screen by `workflow-skills:copywriting` and `workflow-skills:writing-style`
+- Write every text on screen by `workflow-skills:copywriting`
 - Never put eyebrow: small line set apart above heading
 - Write text only for fact that reader needs to choose or act, and that number, label or picture
   does not show. Caption that describes picture next to it, legend for label that already says it,

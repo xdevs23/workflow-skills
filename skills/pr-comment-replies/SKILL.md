@@ -5,6 +5,7 @@ description: Write and post reply on PR or issue. Load before posting one
 
 - Follow user's rules for comments posted on user's behalf wherever they differ from this skill.
   Also on resolving threads
+- Write reply by `workflow-skills:copywriting`
 
 ## Header and placement
 
