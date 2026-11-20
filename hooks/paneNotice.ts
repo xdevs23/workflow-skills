@@ -1,6 +1,7 @@
 import { atom, read, update } from 'claude-code'
 import type { EngineInterface } from 'claude-code'
 
+import { withEntry } from './recordEntries'
 import { ofRunningSession, updateOfSession } from './sessionBoundState'
 
 // The engine lists the state a module reads and writes from the source of the module, so the state
@@ -31,14 +32,7 @@ export async function setPaneNotice(
   await updateOfSession<PaneNotices>(
     $,
     sessionId,
-    own => {
-      const others = Object.entries(own?.notices ?? {}).filter(([id]) => id !== paneId)
-
-      return {
-        sessionId,
-        notices: Object.fromEntries(notice === undefined ? others : [...others, [paneId, notice]]),
-      }
-    },
+    own => ({ sessionId, notices: withEntry(own?.notices, paneId, notice) }),
     changeInState => update($, paneNotices, changeInState),
   )
 }

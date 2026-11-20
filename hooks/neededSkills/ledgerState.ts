@@ -2,6 +2,7 @@ import { atom, read, update } from 'claude-code'
 import type { EngineInterface } from 'claude-code'
 
 import type { SessionLoadLedgers } from '../../types'
+import { withEntry } from '../recordEntries'
 import { ofSession, updateOfSession } from '../sessionBoundState'
 import { NEW_LOOP } from './loadLedger'
 import type { LoopLedger } from './loadLedger'
@@ -51,12 +52,7 @@ export async function forgetAgent(
   agentId: string,
 ): Promise<void> {
   await updateLoadLedgers($, sessionId, own =>
-    own === null
-      ? null
-      : {
-          ...own,
-          agents: Object.fromEntries(Object.entries(own.agents).filter(([id]) => id !== agentId)),
-        },
+    own === null ? null : { ...own, agents: withEntry(own.agents, agentId, undefined) },
   )
 }
 
