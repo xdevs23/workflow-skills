@@ -72,10 +72,10 @@ description: Draw page for user to look at: drafts, product decisions, plans and
 - Never draw stamp, torn paper, scribble or cartoon icon, as mark or as picture. Show refused or
   damaged state by color of legend and plain label
 - Write words on rest of page only as labels, titles, captions and marks. Never fill picture with
-  sentences, table of text or list of cases
+  sentences, table of text or list of cases, except diff of text marked Updated
 - Keep draft of change under 250 words of titles, labels, captions, bullets and badges, counted on
-  rendered page. Text shown by imitated screen or message does not count. Cut it to what decision
-  needs
+  rendered page. Text shown by imitated screen or message and diff of text marked Updated do not
+  count. Cut it to what decision needs
 - On drafts of sub-units of one feature, draw same thing with same picture and same sample values
 - Draw page in visual way, so user looking at it sees at first glance what end result is and
   how change feels
@@ -108,7 +108,8 @@ description: Draw page for user to look at: drafts, product decisions, plans and
   which part calls which, what passes between them, in each state. Label first and last box with
   real name of setting, service, file or hardware switch. Write under each box what it does in
   After, in at most 3 words
-- Never paste code, diff or test list into draft. Approval of draft would approve that code
+- Never paste code, diff or test list into draft, except diff of text marked Updated. Approval of
+  draft would approve that code
 - Show code only as short snippet of few lines that shows idea, under header with component and
   path. Go one layer up and abstract away internal details of code, so functions, variables and
   other declarations read like what it does in real world. Write in separate column beside each
@@ -135,8 +136,17 @@ description: Draw page for user to look at: drafts, product decisions, plans and
   changed
 - Mark every part that changed as Updated, with purple outline and `UPDATED` badge. Remove Updated
   marks of earlier rounds. Circle just thing changed by you instead of marking entire section that
-  already existed before. Can also use purple underline on added or changed text. May use
-  strikethrough `~~ ~~` when it helps understand a subtle change
+  already existed before
+- Show text changed in part marked Updated as unified diff from last round to this round: put each
+  changed line right under line it replaces, and highlight changed words
+- Before editing page in place, copy text of each part about to change into old file
+- Write text of this round into new file
+- Make diff with `diff-table`: run `python3 <plugin directory>/tools/diff-table.py <old file> <new
+  file> --title <name of part>` with Python 3.10 or later. Plugin directory: directory of installed
+  plugin under plugin cache, or this repository
+- Put printed HTML into part marked Updated
+- Put caption under each diff, naming red as last round and green as this round
+- When removing Updated mark of earlier round, replace its diff with plain text of this round
 - Write into line under title what changed after last reply from user, in place of text of earlier
   round
 - Update plain-words box and section titles whenever After changes
