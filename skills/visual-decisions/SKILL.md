@@ -128,6 +128,11 @@ description: Draw page for user to look at: drafts, product decisions, plans and
 
 - When user says what should be different, edit page in place by hand. Page drawn again from
   scratch hides the difference
+- Draw new page for draft whose shape user rejected, as `workflow-skills:designing-architecture`
+  describes
+- Save new page beside rejected page, with number of round added to its name
+- On new page, write into line under title which rejection page is for, in place of what
+  changed
 - Mark every part that changed as Updated, with purple outline and `UPDATED` badge. Remove Updated
   marks of earlier rounds. Circle just thing changed by you instead of marking entire section that
   already existed before. Can also use purple underline on added or changed text. May use

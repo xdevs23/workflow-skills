@@ -9,6 +9,8 @@ description: Implement change to code, from first talk with user until user revi
 - Keep each sentence as user said it, with typos and grammar fixed. Never turn it into your own
   words or terms
 - Update notes whenever user corrects or changes what they said. Remove what user no longer wants
+- Keep every rejection and every approval of user in notes with its date, also after draft
+  changes
 - Save notes as `<change>.md` in folder for private specs inside project cache, set by
   `workflow-skills:local-cache`, because notes contain user's verbatim words
 

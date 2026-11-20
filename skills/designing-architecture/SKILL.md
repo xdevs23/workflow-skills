@@ -157,6 +157,23 @@ description: Design or plan shape of change or system: modules, layers, interfac
 - Never let later planned item put requirement on current work. At most it shows what current
   architecture can leave room for
 
+## A rejected draft
+
+- When user rejects shape of draft, i.e. design as a whole beyond label or color, stop
+  editing that draft
+- Draw next draft from user's words and from every rejection so far
+- Before each new draft, read every rejection and every approval of user word for word from
+  notes described by `workflow-skills:implement`
+- Name the one decision to which rejections keep returning, e.g. which module starts a service
+- List every place in code that could own that decision, each with words of user that exclude it
+- Take place excluded by no word of user as design. Where words of user exclude every place,
+  look for place not listed yet
+- Where liked part seems to break earlier rejection, find what differs between the two
+- Quote on new draft each rejection next to choice made for it
+- Where choice goes against earlier rejection, write on draft that rejection and why it no
+  longer applies
+- Before adding mechanism, check whether call already in code does what change needs
+
 ## How the work is done
 
 - Look for patterns, prior art and documentation before proposing architecture
