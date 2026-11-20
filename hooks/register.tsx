@@ -41,7 +41,6 @@ import { registerRulesBanner } from './rulesBanner'
 import { registerSelfCheck } from './selfCheck'
 import { waitForSelfCheckDueTime } from './selfCheck/idleSelfCheck'
 import { registerSessionRecords } from './sessions'
-import { registerTodoClauseNotes } from './todoClauseNotes'
 import {
   completeMainTurn,
   endStopOnTypedCommand,
@@ -100,7 +99,6 @@ export const register: Register = on => {
   registerReminders(on, footer)
   registerImports(on)
   registerSelfCheck(on)
-  registerTodoClauseNotes(on)
   registerRulesBanner(on)
   registerRoast(on)
 }

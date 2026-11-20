@@ -350,19 +350,6 @@ export type SessionLoadLedgers = {
   agents: Readonly<Record<string, LoopLedger>>
 }
 
-/** TODO.md of the project: its text, with the size and modification time it had when read. */
-export type TodoFile = { size: number; mtimeMs: number; text: string }
-
-/**
- * TODO.md of the project as the main conversation of a session last left it. The notes on clauses
- * after ", and" compare the file with it.
- */
-export type TodoCopy = {
-  sessionId: string
-  /** Null while the project has no TODO.md. */
-  file: TodoFile | null
-}
-
 declare module 'claude-code' {
   interface PluginState {
     'workflow-skills': {
@@ -422,8 +409,6 @@ declare module 'claude-code' {
       timedRemindersHandled: TimedRemindersHandled | null
       /** The ledgers of the loops of the session; null before any loop made a load or a request. */
       loadLedgers: Shaped<SessionLoadLedgers | null>
-      /** The copy of TODO.md of the session; null before its main conversation read the file. */
-      todoCopy: TodoCopy | null
       /**
        * The sessions of the project as an import pane last read them, with the id of the session
        * that read them; null before an import pane opened.
