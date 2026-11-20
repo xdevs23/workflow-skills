@@ -132,7 +132,8 @@ description: Implement change to code, from first talk with user until user revi
 - Take each change through these steps, in this order:
   1. Build change on its branch with targeted checks and builds of parts changed by it. Never run
      full build at this step
-  2. Merge branch into working branch, unless project uses pull requests or other review system
+  2. Merge branch into working branch as soon as step 1 passes, unless project uses pull requests
+     or other review system
   3. Run full build, whole test suite and verification on branch that now contains change
 - Keep commits made by implementers and fixers separate until change merged
 - Rebase unpushed commits of unit branch into few logical units

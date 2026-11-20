@@ -63,6 +63,8 @@ description: Implement change autonomously, only when user has asked for it, for
 - Run every workflow in worktree
 - Run every workflow and agent as `workflow-skills:workflows` describes
 - Commit work of each milestone in commit style
+- In project without pull requests or other review system, merge worktree of finished milestone
+  into working branch as soon as milestone done
 - Run builds of each milestone yourself, as section on builds in `workflow-skills:implement`
   describes. Where project needs targeted commands, let subagents design them, log decision in run
   file, and build them in first milestone that needs them
