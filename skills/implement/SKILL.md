@@ -37,10 +37,7 @@ description: Implement change to code, from first talk with user until user revi
 - Where tree has too many repositories to copy, such as ROM tree of thousand repositories, let
   implementer work in that tree
 - Hand every implementer: paths to approved drafts of its part and of units above it, and part of
-  change built by it when you split work
-- Let implementer and fixer focus on writing code. Never write into their prompt that they should
-  test or check anything. Template of `workflow-skills:implementer` already sets which checks they
-  run
+  change built by it when you split work. Add in your own words whatever else helps it
 - Word part of work handed to implementer by what rule or request behind it is for, such as "a
   value sent by the server and unknown to this build becomes an explicit unknown value where it
   arrives". Never word it as check to make pass, such as "make the lint pass"
@@ -49,8 +46,8 @@ description: Implement change to code, from first talk with user until user revi
 - Run parts of work that depend on each other one implementer after other. Start implementer for
   dependent part in worktree and on branch used by implementer before it
 - Pass what researcher finds to implementer as input only
-- Write prompt for agent in compressed register of skills: task, paths, inputs. Never repeat rule
-  of skill loaded by agent
+- Write prompt for agent other than implementer in compressed register of skills: task, paths,
+  inputs. Never repeat rule of skill loaded by agent
 - Never give implementer number or any other limit on change size. Only limits: rules in
   `workflow-skills:implementer`
 - Prior art is not a reason to reject review finding
