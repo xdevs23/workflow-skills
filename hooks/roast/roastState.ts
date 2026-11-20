@@ -33,16 +33,29 @@ export type RoastProgressOf<S extends RoastShown> = Extract<RoastProgress, { sho
 export type WrittenRoast = RoastProgressOf<RoastShown.Written>
 
 /**
+ * Which fork writes the roast asked for by a run of /roast: the first, or the second one made after
+ * the first refused the roast.
+ */
+export enum RoastAttempt {
+  First = 'first',
+  Second = 'second',
+}
+
+/**
  * A run of /roast in the session `sessionId`, by the id `runId` made for it. The state drops a
  * roast that arrives after a later run or a switch to another session.
  */
 export type RoastRun = { sessionId: string; runId: string }
 
 /**
- * The roast shown in the Roast pane, with the run of /roast that asked for it, and the whole
- * seconds counted since the first fork for it started.
+ * The roast shown in the Roast pane, with the run of /roast that asked for it, the whole seconds
+ * since the first fork for it started, and the attempt that writes it.
  */
-export type SessionRoast = RoastRun & { roast: RoastProgress; secondsWriting: number }
+export type SessionRoast = RoastRun & {
+  roast: RoastProgress
+  secondsWriting: number
+  attempt: RoastAttempt
+}
 
 /** Where a roast that has not gone to the model yet came from. */
 export enum RoastSource {
@@ -82,7 +95,22 @@ export async function setRoastWriting($: EngineInterface, run: RoastRun): Promis
     ...run,
     roast: { shown: RoastShown.Writing },
     secondsWriting: 0,
+    attempt: RoastAttempt.First,
   }))
+}
+
+/**
+ * Shows the roast of `run` as being written by the second attempt, and returns whether the state
+ * still has `run`.
+ */
+export async function recordSecondAttempt($: EngineInterface, run: RoastRun): Promise<boolean> {
+  const inState = await updateRoast($, run.sessionId, own =>
+    own?.runId === run.runId
+      ? { ...own, roast: { shown: RoastShown.Writing }, attempt: RoastAttempt.Second }
+      : own,
+  )
+
+  return inState?.runId === run.runId
 }
 
 /**

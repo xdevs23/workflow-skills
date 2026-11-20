@@ -200,6 +200,9 @@ export function describeWriting(secondsWriting: number): string {
   return `Writing the roast about this session. ${secondsWriting}s`
 }
 
+/** The label shown before the notice that the roast is being written by the second attempt. */
+export const SECOND_ATTEMPT_LABEL = 'Second attempt.'
+
 /**
  * The notice for a roast written for `secondsWriting` so far, and again after the try `failedTries`
  * failed with `error`.

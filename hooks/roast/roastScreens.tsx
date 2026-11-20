@@ -4,7 +4,7 @@ import { drawsFields } from '../surfaces'
 import type { SurfaceWithFields } from '../surfaces'
 import { sendRoast } from './roastDelivery'
 import { ROAST_PANE_SITE, SEND_KEY } from './roastNames'
-import { RoastShown, readRoastInState, recordComment } from './roastState'
+import { RoastAttempt, RoastShown, readRoastInState, recordComment } from './roastState'
 import type { RoastRun, WrittenRoast } from './roastState'
 import {
   COMMENT_LABEL,
@@ -12,6 +12,7 @@ import {
   COMMENT_SUBMIT_LABEL,
   NO_ROAST,
   ROAST_REFUSED_NOTICE,
+  SECOND_ATTEMPT_LABEL,
   SENDING_ROAST_NOTICE,
   SEND_LABEL,
   describeOutputTokens,
@@ -26,12 +27,12 @@ export const drawRoastPane: MatchedHook<'ui.render', typeof ROAST_PANE_SITE> = a
   if (inState === null) {
     return <Text dimColor>{NO_ROAST}</Text>
   }
-  const { roast, secondsWriting, ...run } = inState
+  const { roast, secondsWriting, attempt, ...run } = inState
   switch (roast.shown) {
     case RoastShown.Writing:
-      return <Text dimColor>{describeWriting(secondsWriting)}</Text>
+      return drawWritingNotice($, e, attempt, describeWriting(secondsWriting))
     case RoastShown.WritingAgain:
-      return <Text dimColor>{describeWritingAgain(roast, secondsWriting)}</Text>
+      return drawWritingNotice($, e, attempt, describeWritingAgain(roast, secondsWriting))
     case RoastShown.NotWritten:
       return <Text color="warning">{describeRoastNotWritten(roast.failure)}</Text>
     case RoastShown.Written:
@@ -41,6 +42,23 @@ export const drawRoastPane: MatchedHook<'ui.render', typeof ROAST_PANE_SITE> = a
     case RoastShown.Sent:
       return <Text dimColor>{SENDING_ROAST_NOTICE}</Text>
   }
+}
+
+/** Draws `notice` dimmed, with SECOND_ATTEMPT_LABEL before it where `attempt` is the second. */
+function drawWritingNotice(
+  $: EngineInterface,
+  e: ResolveInput<'Pane'>,
+  attempt: RoastAttempt,
+  notice: string,
+): RenderElement {
+  const { Text } = $.ui.resolve(e)
+
+  return (
+    <Text>
+      {attempt === RoastAttempt.Second && <Text color="success">{SECOND_ATTEMPT_LABEL} </Text>}
+      <Text dimColor>{notice}</Text>
+    </Text>
+  )
 }
 
 /**

@@ -12,7 +12,13 @@ import type { RoastFailure } from './roastFailure'
 import { ROAST_PANE, SEND_KEY } from './roastNames'
 import { writePromptAfterUnseenMessages, writeRoastPrompt } from './roastPromptTexts'
 import { RoastVerdict, readRoastReply } from './roastReply'
-import { RoastShown, recordSecondsWriting, setRoastOfRun, setRoastWriting } from './roastState'
+import {
+  RoastShown,
+  recordSecondAttempt,
+  recordSecondsWriting,
+  setRoastOfRun,
+  setRoastWriting,
+} from './roastState'
 import type { RoastProgressOf, RoastRun } from './roastState'
 import {
   PANE_TITLE,
@@ -52,20 +58,31 @@ export function openRoastPane($: EngineInterface): Promise<UiOpenResult> {
 
 /**
  * Asks a fork made from the main conversation for the roast of `run`, and shows the result in the
- * Roast pane. A `finding` that is not empty goes to the fork as a complaint of the user, which the
- * fork takes into the roast or refuses with a reason, and the pane then shows that reason. Asks
- * again after an error of the API that passes, until a fork writes or refuses the roast, fails for
- * good, or the state dropped `run`. A failure thrown on the way shows in the pane too. Every second
- * until then, the pane shows the seconds since the first fork started.
+ * Roast pane. A `finding` that is not empty goes to the fork as a complaint from the user, which
+ * the fork takes into the roast or refuses with a reason. A refusal starts the second attempt: a
+ * new fork, made from the main conversation as it is by then, gets the same prompt, and the pane
+ * shows the reason for a second refusal. Asks again after an error of the API that passes, until a
+ * fork writes or refuses the roast, fails for good, or the state dropped `run`. A failure thrown on
+ * the way shows in the pane too. Every second until then, the pane shows the seconds since the
+ * first fork started.
  */
 export async function writeRoast(
   $: EngineInterface,
   run: RoastRun,
   finding: string,
 ): Promise<void> {
-  await runCountingSeconds($, run, () =>
-    forkRoast($, writeRoastPrompt(finding), roast => showForkedRoast($, run, readVerdict(roast))),
-  ).catch(
+  const prompt = writeRoastPrompt(finding)
+  const showVerdictOf = (roast: ForkedRoast) => showForkedRoast($, run, readVerdict(roast))
+  await runCountingSeconds($, run, async () => {
+    const firstRoast = await forkRoast(
+      $,
+      prompt,
+      async roast => isRefusedRoast(roast) || showVerdictOf(roast),
+    )
+    if (isRefusedRoast(firstRoast) && (await recordSecondAttempt($, run))) {
+      await forkRoast($, prompt, showVerdictOf)
+    }
+  }).catch(
     async (error: unknown) => {
       const message = messageOf(error)
       await setRoastOfRun($, run, notWritten({ cause: RoastNotWrittenCause.Thrown, message }))
@@ -95,20 +112,20 @@ async function runCountingSeconds(
 }
 
 /**
- * Asks a fork made from the main conversation for a roast with `prompt`, and hands each result to
- * `useResult`. Each fork gets the messages of the main conversation that it does not see before
- * `prompt`. Asks again after an error of the API that passes, until a fork writes the roast or
- * fails for good, or `useResult` returns false.
+ * Asks a fork made from the main conversation for a roast with `prompt`, hands each result to
+ * `useResult`, and returns the result of the last fork. Each fork gets the messages of the main
+ * conversation that it does not see before `prompt`. Asks again after an error of the API that
+ * passes, until a fork writes the roast or fails for good, or `useResult` returns false.
  */
 export async function forkRoast(
   $: EngineInterface,
   prompt: string,
   useResult: (roast: ForkedRoast) => Promise<boolean>,
-): Promise<void> {
+): Promise<ForkedRoast> {
   for (let tries = 1; ; tries += 1) {
     const roast = await forkRoastOnce($, prompt, tries)
     if (!(await useResult(roast)) || roast.shown !== RoastShown.WritingAgain) {
-      return
+      return roast
     }
     await $.clock.sleep(randomWaitAfter(tries, FORK_RETRY_WAITS))
   }
@@ -220,6 +237,11 @@ function readVerdict(roast: ForkedRoast): ForkedReply {
     case RoastVerdict.Refused:
       return { shown: RoastShown.Refused, reason: read.model.reason }
   }
+}
+
+/** Whether the fork that wrote `roast` refused the roast. */
+function isRefusedRoast(roast: ForkedRoast): boolean {
+  return readVerdict(roast).shown === RoastShown.Refused
 }
 
 /** Shows `roast` in the Roast pane for `run`, and returns whether the state still has `run`. */

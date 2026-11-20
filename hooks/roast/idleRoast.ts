@@ -159,20 +159,17 @@ function waitForIdleRoast($: EngineInterface): void {
 }
 
 /**
- * Has a fork write the idle roast once `wait` ended, as `forkRoast` describes, and uses each result
- * while `wait` is the wait of the session. Drops the result once a turn started since or the idle
- * roast was switched off.
+ * Has a fork write the idle roast once `wait` ended, as `forkRoast` describes, while `wait` is the
+ * wait of the session, and uses the result of the last fork. Drops the result once a turn started
+ * since or the idle roast was switched off.
  */
 async function roastAfterIdleWait($: EngineInterface, wait: Timer): Promise<void> {
   const sessionId = await $.session.id()
-  await forkRoast($, IDLE_ROAST_PROMPT, async roast => {
-    if (idleWait !== wait) {
-      return false
-    }
+  const isWaitOfSession = () => idleWait === wait
+  const roast = await forkRoast($, IDLE_ROAST_PROMPT, async () => isWaitOfSession())
+  if (isWaitOfSession()) {
     await useIdleRoast($, sessionId, roast)
-
-    return true
-  })
+  }
 }
 
 /** Sends the reply in `roast` to deliverIdleRoastReply, or shows why no roast was written. */
