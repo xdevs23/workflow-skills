@@ -114,6 +114,10 @@ contributor or agent without history, reads that file first.
   is request that can be rejected
 - When delivery of sub-unit rejected, deliver none of sub-units that build on it. Handle rejection
   as `workflow-skills:implement` describes
+- Never put changes made for two entries with third-level heading, e.g. `#383` and `#384`, into one
+  commit
+- Group commits made for sub-units of one entry into one commit or several, as
+  `workflow-skills:logical-units` describes
 
 ## Findings raised while building a unit
 
