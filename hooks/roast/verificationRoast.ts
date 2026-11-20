@@ -21,6 +21,7 @@ import { RoastNotWrittenCause } from './roastFailure'
 import { ROAST_WORK, ROAST_WORK_TOOL } from './roastNames'
 import { attributeRoastToRoaster, writeVerificationRoastPrompt } from './roastPromptTexts'
 import { VerificationRoastVerdict, readVerificationRoastReply } from './roastReply'
+import type { VerificationRoastPoints } from './roastReply'
 import { RoastShown } from './roastState'
 import {
   REPORT_AS_OPEN_FINDING,
@@ -50,9 +51,17 @@ const ROAST_WORK_SCHEMA = {
 
 const CHANGE_NOT_NAMED = `Call ${ROAST_WORK} again with \`change\` set to ${CHANGE_NAME_RULE}.`
 
+const CHECK_TREE_BEFORE_CLEAN = 'Check the change against the tree before you report it clean.'
+
 const NO_POINT_FOUND =
-  'The roaster found no point in the work on this change. Check the change against the tree ' +
-  'before you report it clean.'
+  `The roaster did not find a point in the work on this change. ${CHECK_TREE_BEFORE_CLEAN}`
+
+const NO_CHANGE_POINT =
+  `The roaster did not find a point on the change itself. ${CHECK_TREE_BEFORE_CLEAN}`
+
+const CHANGE_POINTS_LABEL = 'Points on the change:'
+
+const PROCESS_POINTS_LABEL = 'Points on how the work was done:'
 
 /** The callers that roast_work denies. */
 enum DeniedCaller {
@@ -195,8 +204,18 @@ function answerWithReply(text: string): ToolCallResult {
   }
   switch (read.model.verdict) {
     case VerificationRoastVerdict.Roast:
-      return { result: attributeRoastToRoaster(read.model.roast) }
+      return { result: attributeRoastToRoaster(describePoints(read.model)) }
     case VerificationRoastVerdict.NoPoint:
       return { result: NO_POINT_FOUND }
   }
+}
+
+/** The roast in `points` as the final-verification agent reads it, each list under its label. */
+function describePoints({ changePoints, processPoints }: VerificationRoastPoints): string {
+  const onChange =
+    changePoints === undefined ? NO_CHANGE_POINT : `${CHANGE_POINTS_LABEL}\n\n${changePoints}`
+
+  return processPoints === undefined
+    ? onChange
+    : `${onChange}\n\n${PROCESS_POINTS_LABEL}\n\n${processPoints}`
 }
