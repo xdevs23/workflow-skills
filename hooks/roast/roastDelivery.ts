@@ -9,7 +9,11 @@ import type { TextWithLine } from '../sendToModel'
 import { runDetached } from '../timedWork'
 import { openRoastPane } from './roastActions'
 import { ROAST_PANE } from './roastNames'
-import { describeIdleRoastMessage, describeRoastNote } from './roastPromptTexts'
+import {
+  attributeRoastToRoaster,
+  describeIdleRoastMessage,
+  describeRoastNote,
+} from './roastPromptTexts'
 import {
   RoastSource,
   addPendingRoast,
@@ -52,10 +56,10 @@ export function roastsSource($: EngineInterface): PendingTextSource & PromptNote
 }
 
 /**
- * Sends the roast written for `run`, with the comment typed beside it, as a message of the user
- * once, and closes the Roast pane without waiting for the session. The roast goes to the model as
- * `submitAddedText` describes. Where the pane does not close, the roast does not
- * go into the state, or the prompt does not enter, the roast and the comment go back into the pane.
+ * Sends the roast written for `run`, with the comment typed beside it, once, and closes the Roast
+ * pane without waiting for the session. The roast goes to the model as `submitAddedText` describes.
+ * Where the pane does not close, the roast does not go into the state, or the prompt does not
+ * enter, the roast and the comment go back into the pane.
  */
 export async function sendRoast($: EngineInterface, run: RoastRun): Promise<void> {
   const written = await markRoastSent($, run)
@@ -181,7 +185,7 @@ function deliveryOf($: EngineInterface, roast: PendingRoast): PendingRoastDelive
 
       return {
         prompt: message,
-        noteAt: place => ({ text: message, line: describeRoastSentLine(place, roast.text) }),
+        noteAt: place => ({ text: message, line: describeRoastSentLine(place, message) }),
         restore: () => addPendingRoast($, roast),
         describeNotSent: describeIdleRoastFailed,
       }
@@ -189,7 +193,7 @@ function deliveryOf($: EngineInterface, roast: PendingRoast): PendingRoastDelive
   }
 }
 
-/** The message of the user: their comment, if they typed one, and the roast after it. */
+/** The comment typed by the user, if any, then the roast as attributeRoastToRoaster returns it. */
 function composeMessage({ comment, text }: WrittenRoast): string {
-  return [comment.trim(), text].filter(part => part !== '').join('\n\n')
+  return [comment.trim(), attributeRoastToRoaster(text)].filter(part => part !== '').join('\n\n')
 }

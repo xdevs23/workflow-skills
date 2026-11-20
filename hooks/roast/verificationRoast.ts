@@ -19,7 +19,7 @@ import { forkRoastWithinHook } from './roastActions'
 import type { RoastWithinHook } from './roastActions'
 import { RoastNotWrittenCause } from './roastFailure'
 import { ROAST_WORK, ROAST_WORK_TOOL } from './roastNames'
-import { writeVerificationRoastPrompt } from './roastPromptTexts'
+import { attributeRoastToRoaster, writeVerificationRoastPrompt } from './roastPromptTexts'
 import { VerificationRoastVerdict, readVerificationRoastReply } from './roastReply'
 import { RoastShown } from './roastState'
 import {
@@ -195,7 +195,7 @@ function answerWithReply(text: string): ToolCallResult {
   }
   switch (read.model.verdict) {
     case VerificationRoastVerdict.Roast:
-      return { result: read.model.roast }
+      return { result: attributeRoastToRoaster(read.model.roast) }
     case VerificationRoastVerdict.NoPoint:
       return { result: NO_POINT_FOUND }
   }
