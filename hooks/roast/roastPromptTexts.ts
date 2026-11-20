@@ -1,7 +1,17 @@
 import { PendingTextPlace } from '../pendingTexts'
 import type { MessageAsRead } from './messagesUnseenByFork'
-import { IdleRoastVerdict, RoastVerdict, VerificationRoastVerdict } from './roastReply'
-import type { IdleRoastReply, RoastReply, VerificationRoastReply } from './roastReply'
+import {
+  CompactionRoastVerdict,
+  IdleRoastVerdict,
+  RoastVerdict,
+  VerificationRoastVerdict,
+} from './roastReply'
+import type {
+  CompactionRoastReply,
+  IdleRoastReply,
+  RoastReply,
+  VerificationRoastReply,
+} from './roastReply'
 
 /** The opening of every prompt for a roast. */
 const ROASTER_ROLE =
@@ -73,6 +83,24 @@ export const IDLE_ROAST_PROMPT =
   `${IDLE_ROAST_REPLY_EXAMPLE}, or with ${NO_BLOCKING_POINT_REPLY_EXAMPLE} if no point blocks ` +
   'the work.'
 
+const COMPACTION_ROAST_REPLY_EXAMPLE = JSON.stringify({
+  verdict: CompactionRoastVerdict.Roast,
+  roast: '<the roast>',
+} satisfies CompactionRoastReply)
+
+const COMPACTION_NO_POINT_REPLY_EXAMPLE = JSON.stringify({
+  verdict: CompactionRoastVerdict.NoPoint,
+} satisfies CompactionRoastReply)
+
+/**
+ * The message that asks a fork made from the main conversation, as a compaction starts, for the
+ * compaction roast. The fork replies with a JSON object, which readCompactionRoastReply reads.
+ */
+export const COMPACTION_ROAST_PROMPT =
+  `${ROAST_POINTS} ${ROAST_BLUNTNESS} ${JSON_REPLY} Reply with ` +
+  `${COMPACTION_ROAST_REPLY_EXAMPLE}, or with ${COMPACTION_NO_POINT_REPLY_EXAMPLE} if the ` +
+  'transcript proves no point.'
+
 const ROAST_SENT_AT: Record<PendingTextPlace, string> = {
   [PendingTextPlace.ToolResult]: 'They forwarded it while you worked.',
   [PendingTextPlace.BesidePrompt]: 'They forwarded it before this message.',
@@ -95,6 +123,14 @@ export function describeRoastNote(place: PendingTextPlace, message: string): str
 /** The message that sends the model `roast`, a roast written by the idle roast. */
 export function describeIdleRoastMessage(roast: string): string {
   return attributeRoastToRoaster(roast, READ_ROAST_FIRST)
+}
+
+/** The message that sends the model `roast`, written about the chat before a compaction. */
+export function describeCompactionRoastMessage(roast: string): string {
+  return attributeRoastToRoaster(
+    roast,
+    `It covers the chat before the compaction. ${READ_ROAST_FIRST}`,
+  )
 }
 
 /**

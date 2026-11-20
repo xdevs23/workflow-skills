@@ -267,11 +267,62 @@ export function describeIdleRoastNotWrittenToast(failure: RoastFailure): string 
   return `${describeIdleRoastNotWritten(failure)} ${DEBUG_LOG_NOTE}`
 }
 
+/**
+ * A roast written by a fork that did not go to Claude waits for the next message, or for the next
+ * tool result when a turn is running.
+ */
+const FORKED_ROAST_WAITS =
+  'It goes to Claude with your next message, or with the next tool result if a turn is running ' +
+  'by then.'
+
 /** The toast for an idle roast that did not go to Claude for `reason` and waits again. */
 export function describeIdleRoastFailed(reason: string): string {
+  return `The idle roast was not sent to Claude: ${reason}. ${FORKED_ROAST_WAITS}`
+}
+
+/**
+ * The toast for a roast about the chat before a compaction that did not go to Claude for `reason`
+ * and waits again.
+ */
+export function describeCompactionRoastFailed(reason: string): string {
   return (
-    `The idle roast was not sent to Claude: ${reason}. It goes to Claude with your next message, ` +
-    'or with the next tool result if a turn is running by then.'
+    `The roast about the chat before the compaction was not sent to Claude: ${reason}. ` +
+    FORKED_ROAST_WAITS
+  )
+}
+
+export const COMPACTION_ROAST_FOUND_NO_POINT =
+  'The roast about the chat before the compaction found no point, so nothing went to Claude.'
+
+const COMPACTION_ROAST_NEXT_TRY = 'The next compaction starts a new roast.'
+
+/**
+ * The text for a roast about the chat before a compaction that was not written, with the next
+ * step.
+ */
+export function describeCompactionRoastNotWritten(failure: RoastFailure): string {
+  return (
+    'The roast about the chat before the compaction was not written. ' +
+    describeNotWritten(failure, COMPACTION_ROAST_NEXT_TRY)
+  )
+}
+
+/** The toast for a roast about the chat before a compaction that was not written. */
+export function describeCompactionRoastNotWrittenToast(failure: RoastFailure): string {
+  return `${describeCompactionRoastNotWritten(failure)} ${DEBUG_LOG_NOTE}`
+}
+
+/**
+ * The line in the debug log for a roast about the chat before a compaction whose only try failed
+ * with `error`, an error of the API that may clear on its own.
+ */
+export function describeCompactionRoastNotAskedAgain({
+  error,
+}: RoastProgressOf<RoastShown.WritingAgain>): string {
+  return (
+    'The roast about the chat before the compaction was not written: the API returned the error ' +
+    `${error}, which may clear on its own. A fork asked again would read the summary in place ` +
+    `of the chat, so the plugin does not ask again. ${COMPACTION_ROAST_NEXT_TRY}`
   )
 }
 

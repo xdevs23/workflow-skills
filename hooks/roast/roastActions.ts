@@ -197,14 +197,34 @@ async function forkRoastOnce(
   prompt: string,
   tries: number,
 ): Promise<ForkedRoast> {
-  return readForkReply(await $.model.fork({ prompt: await writeForkPrompt($, prompt) }), tries)
+  return askFork($, await writeForkPrompt($, prompt), tries)
+}
+
+/**
+ * Asks one fork for a roast with `forkPrompt`, made by writeForkPrompt, and does not ask again
+ * after an error of the API that passes. The fork is asked before this function returns.
+ */
+export function forkRoastWithoutRetry(
+  $: EngineInterface,
+  forkPrompt: string,
+): Promise<ForkedRoast> {
+  return askFork($, forkPrompt, 1)
+}
+
+/** Asks one fork for a roast with `forkPrompt`, as the try numbered `tries`. */
+async function askFork(
+  $: EngineInterface,
+  forkPrompt: string,
+  tries: number,
+): Promise<ForkedRoast> {
+  return readForkReply(await $.model.fork({ prompt: forkPrompt }), tries)
 }
 
 /**
  * `prompt` for a fork, after the messages of the main conversation that the fork does not see.
  * Where those messages are unknown, `prompt` alone, and the debug log gets the reason.
  */
-async function writeForkPrompt($: EngineInterface, prompt: string): Promise<string> {
+export async function writeForkPrompt($: EngineInterface, prompt: string): Promise<string> {
   const unseen = await readMessagesUnseenByFork($)
   if (!unseen.isKnown) {
     $.ui.log(describeForkViewUnknown(unseen.cause), { to: 'debug' })

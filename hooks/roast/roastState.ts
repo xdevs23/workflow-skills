@@ -63,15 +63,20 @@ export enum RoastSource {
   Pane = 'pane',
   /** A fork wrote it once the main conversation was idle, with the idle roast switched on. */
   Idle = 'idle',
+  /**
+   * A fork started by a compaction in the main conversation wrote it about the chat before the
+   * compaction.
+   */
+  Compaction = 'compaction',
 }
 
 /**
  * A roast that has not gone to the model yet: one sent by the user from the Roast pane, with its
- * run of /roast, or one written by the idle roast for the session `sessionId`.
+ * run of /roast, or one written by the idle roast or for a compaction for the session `sessionId`.
  */
 export type PendingRoast =
   | (RoastRun & { source: RoastSource.Pane; written: WrittenRoast })
-  | { source: RoastSource.Idle; sessionId: string; text: string }
+  | { source: RoastSource.Idle | RoastSource.Compaction; sessionId: string; text: string }
 
 /** The pending roasts taken from the state, split by the session they were written for. */
 export type TakenRoasts = {

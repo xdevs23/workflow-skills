@@ -6,8 +6,7 @@ import type {
   SessionCompactResult,
 } from 'claude-code'
 
-import { REPLACES_CONVERSATION } from './compactionTrigger'
-import { isMainConversation } from './conversation'
+import { replacesMainConversation } from './compactionTrigger'
 import { showFailure } from './failureToast'
 import { PromptOutcome, submitToSessionOrRestore } from './sendToModel'
 import type { NoteSource } from './sendToModel'
@@ -47,11 +46,7 @@ export async function compactWithNotes(
   sources: readonly CompactionNoteSource[],
 ): Promise<SessionCompactResult> {
   const compacted = await next(e)
-  if (
-    compacted.skip !== undefined ||
-    !REPLACES_CONVERSATION[e.trigger] ||
-    !isMainConversation(e)
-  ) {
+  if (compacted.skip !== undefined || !replacesMainConversation(e)) {
     return compacted
   }
   const taken = await takeNotes(sources)

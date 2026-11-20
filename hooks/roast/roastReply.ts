@@ -38,6 +38,18 @@ export type VerificationRoastReply =
   | { verdict: VerificationRoastVerdict.Roast; roast: string }
   | { verdict: VerificationRoastVerdict.NoPoint }
 
+/** The verdicts that the prompt of the compaction roast offers its fork. */
+export enum CompactionRoastVerdict {
+  Roast = 'roast',
+  /** The transcript before the compaction proves no point, so the fork wrote no roast. */
+  NoPoint = 'no-point',
+}
+
+/** The JSON object that the prompt of the compaction roast asks its fork to reply with. */
+export type CompactionRoastReply =
+  | { verdict: CompactionRoastVerdict.Roast; roast: string }
+  | { verdict: CompactionRoastVerdict.NoPoint }
+
 export function readRoastReply(text: string): JsonTextRead<RoastReply> {
   return readJsonText(text, toRoastReply)
 }
@@ -51,6 +63,12 @@ export function readIdleRoastReply(text: string): JsonTextRead<IdleRoastReply> {
 export function readVerificationRoastReply(text: string): JsonTextRead<VerificationRoastReply> {
   return readJsonText(text, value =>
     toRoastOrNoneReply(value, VerificationRoastVerdict.Roast, VerificationRoastVerdict.NoPoint),
+  )
+}
+
+export function readCompactionRoastReply(text: string): JsonTextRead<CompactionRoastReply> {
+  return readJsonText(text, value =>
+    toRoastOrNoneReply(value, CompactionRoastVerdict.Roast, CompactionRoastVerdict.NoPoint),
   )
 }
 

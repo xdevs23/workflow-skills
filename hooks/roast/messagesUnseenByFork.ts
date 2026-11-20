@@ -7,7 +7,7 @@ import type {
   ToolUseSummary,
 } from 'claude-code'
 
-import { REPLACES_CONVERSATION } from '../compactionTrigger'
+import { replacesMainConversation } from '../compactionTrigger'
 import { isMainConversation } from '../conversation'
 import type { EveryEvent } from '../everyEvent'
 import { ofRunningSession, updateOfSession } from '../sessionBoundState'
@@ -74,7 +74,7 @@ export const forgetForkViewOnCompaction: MatchedHook<'session.compact', EveryEve
   next,
 ) => {
   const compacted = await next(e)
-  if (isMainConversation(e) && compacted.skip === undefined && REPLACES_CONVERSATION[e.trigger]) {
+  if (compacted.skip === undefined && replacesMainConversation(e)) {
     await changeForkView($, await $.session.id(), () => null)
   }
 

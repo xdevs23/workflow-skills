@@ -32,7 +32,8 @@ Then run a skill, such as `/workflow-skills:implement`.
   none of them, the Roast pane shows the reason in place of the roast, and you cannot send the
   roast. After `/idle-roast on`, Claude gets a roast of what blocks the work once it has been idle
   for about five minutes. The switch applies to this session only, and `/idle-roast off` switches
-  it off
+  it off. When a compaction starts, a fork roasts the chat before it, and Claude gets that roast
+  after the summary, so Claude still sees the mistakes made before the compaction
 
 ## License
 

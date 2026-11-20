@@ -11,6 +11,7 @@ import { openRoastPane } from './roastActions'
 import { ROAST_PANE } from './roastNames'
 import {
   attributeRoastToRoaster,
+  describeCompactionRoastMessage,
   describeIdleRoastMessage,
   describeRoastNote,
 } from './roastPromptTexts'
@@ -25,6 +26,7 @@ import type { PendingRoast, RoastRun, WrittenRoast } from './roastState'
 import {
   ROAST_TO_OTHER_SESSION,
   ROAST_WAITING_AFTER_STOP,
+  describeCompactionRoastFailed,
   describeIdleRoastFailed,
   describeRoastNotSent,
   describeRoastSentLine,
@@ -160,7 +162,7 @@ async function submitRoast($: EngineInterface, roast: PendingRoast): Promise<voi
 
 /**
  * The delivery of `roast`. A roast from the Roast pane goes back into the pane, and a roast written
- * by the idle roast waits again for the next prompt or tool result.
+ * by the idle roast or for a compaction waits again for the next prompt or tool result.
  */
 function deliveryOf($: EngineInterface, roast: PendingRoast): PendingRoastDelivery {
   switch (roast.source) {
@@ -180,16 +182,38 @@ function deliveryOf($: EngineInterface, roast: PendingRoast): PendingRoastDelive
         describeNotSent: describeRoastNotSent,
       }
     }
-    case RoastSource.Idle: {
-      const message = describeIdleRoastMessage(roast.text)
+    case RoastSource.Idle:
+      return forkedRoastDelivery(
+        $,
+        roast,
+        describeIdleRoastMessage(roast.text),
+        describeIdleRoastFailed,
+      )
+    case RoastSource.Compaction:
+      return forkedRoastDelivery(
+        $,
+        roast,
+        describeCompactionRoastMessage(roast.text),
+        describeCompactionRoastFailed,
+      )
+  }
+}
 
-      return {
-        prompt: message,
-        noteAt: place => ({ text: message, line: describeRoastSentLine(place, message) }),
-        restore: () => addPendingRoast($, roast),
-        describeNotSent: describeIdleRoastFailed,
-      }
-    }
+/**
+ * The delivery of `roast`, written by a fork without the Roast pane, as `message`, which waits
+ * again among the pending roasts when it does not go, with the toast made by `describeNotSent`.
+ */
+function forkedRoastDelivery(
+  $: EngineInterface,
+  roast: PendingRoast,
+  message: string,
+  describeNotSent: (reason: string) => string,
+): PendingRoastDelivery {
+  return {
+    prompt: message,
+    noteAt: place => ({ text: message, line: describeRoastSentLine(place, message) }),
+    restore: () => addPendingRoast($, roast),
+    describeNotSent,
   }
 }
 
