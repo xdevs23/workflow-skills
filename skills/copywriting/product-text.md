@@ -185,7 +185,8 @@ Run copy phase as a `Workflow()` in four phases: **Intent → Write → Check �
 - Open string appended for a copywriter with this line, `<plugin root>` = plugin directory
   containing this skill:
 
-  ```text REQUIRED: before you write, read the file <plugin root>/skills/hygiene/SKILL.md with the
+  ```text
+  REQUIRED: before you write, read the file <plugin root>/skills/hygiene/SKILL.md with the
   Read tool, and follow it in every comment, document, commit message and returned string.
   ```
 
