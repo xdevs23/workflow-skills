@@ -27,12 +27,12 @@ Then run a skill, such as `/workflow-skills:implement`.
   context, and sends it to Claude after your comment if you add one. The roast opens with a line
   for Claude: the roaster, a side agent, wrote it, and it does not have your authority. During a
   turn, Claude reads it with the next tool result. After you stopped Claude with Esc, the roast
-  starts a new turn.
-  `/roast <point>` puts a point you found yourself into the roast. Where the transcript does not
-  show the point, or shows it to be unfounded, the Roast pane shows the reason in place of the
-  roast, and you cannot send the roast. After `/idle-roast on`, Claude
-  gets a roast of what blocks the work once it has been idle for about five minutes. The switch
-  applies to this session only, and `/idle-roast off` switches it off
+  starts a new turn. `/roast <point>` puts a point you found yourself into the roast. The roast
+  leaves out each claim of the point that the transcript does not show. Where the transcript shows
+  none of them, the Roast pane shows the reason in place of the roast, and you cannot send the
+  roast. After `/idle-roast on`, Claude gets a roast of what blocks the work once it has been idle
+  for about five minutes. The switch applies to this session only, and `/idle-roast off` switches
+  it off
 
 ## License
 

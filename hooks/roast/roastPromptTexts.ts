@@ -160,11 +160,13 @@ export function writeRoastPrompt(finding: string): string {
     'assistant does not see the complaint. Do not quote it, and write the point from the ' +
     'transcript alone.' +
     `\n\n${JSON_REPLY} Where the transcript proves the complaint, reply with ` +
-    `${ROAST_REPLY_EXAMPLE}. ${ROAST_BLUNTNESS} Where the transcript shows the complaint to be ` +
-    'unjustified or invalid, or does not show what the complaint claims, write no roast. Reply ' +
-    `instead with ${REFUSED_REPLY_EXAMPLE}, with the reason written to the user: say that the ` +
-    'claim is unfounded and why, and ask the user to clarify the complaint. In the reason, call ' +
-    'the assistant "the assistant" and never "you", since the user did none of its work. Only ' +
+    `${ROAST_REPLY_EXAMPLE}. Where the transcript proves only some claims of the complaint, ` +
+    'write the roast on those claims alone, and leave every other claim out of the roast ' +
+    `without mentioning it. ${ROAST_BLUNTNESS} Where the transcript proves no claim of the ` +
+    `complaint, write no roast. Reply instead with ${REFUSED_REPLY_EXAMPLE}, with the reason ` +
+    'written to the user: say that no claim of the complaint holds and why, and ask the user to ' +
+    'clarify the complaint. In the reason, call the assistant "the assistant" and never "you", ' +
+    'since the user did none of its work. Only ' +
     'the user reads the reason, and the reason never reaches the assistant.\n\nThe complaint, as ' +
     `the user typed it:\n\n${finding}`
   )
