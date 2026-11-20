@@ -1,6 +1,7 @@
 import type { EngineInterface, Register } from 'claude-code'
 
 import { compactWithNotes } from './afterCompaction'
+import { registerChatReplies } from './chatReplies'
 import {
   registerPluginCommands,
   replyToFailedPluginCommand,
@@ -116,6 +117,7 @@ export const register: Register = on => {
   registerImports(on)
   registerSelfCheck(on)
   registerRulesBanner(on)
+  registerChatReplies(on)
   registerRoast(on)
 }
 
