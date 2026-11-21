@@ -32,7 +32,7 @@ import {
   readSendInput,
   readWithdrawInput,
   replyUsage,
-  sendProblemOf,
+  SEND_BLANK_PROBLEM,
 } from './inputs'
 import {
   ALL_CLOSED,
@@ -136,7 +136,7 @@ export const sendRequest: MatchedHook<'tool.call', { tool: typeof SEND_TOOL }> =
   const sessionId = await sessionForUse($)
   const input = readSendInput(e)
   if (input.outcome !== SendOutcome.Valid) {
-    return { deny: sendProblemOf(input) }
+    return { deny: SEND_BLANK_PROBLEM }
   }
   const sent = { text: input.text, sentAt: await $.clock.now() }
   const { request, requests } = await saveNewRequest($, sessionId, sent)

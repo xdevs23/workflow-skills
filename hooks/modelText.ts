@@ -1,9 +1,7 @@
 import type { Request } from '../types'
-import { DECISION_AS_DRAFT } from './decisionDraft'
 import { PendingTextPlace } from './pendingTexts'
 import type { HookSubject } from './hookFailure'
 import { LIST_TOOL, SEND_TOOL } from './names'
-import { NOT_A_REQUEST, REQUEST_DEFINITION } from './notRequest'
 import { sortedByNumber } from './numbered'
 import { Withdrawal, isDone, isWithdrawn, openRequestsOf } from './requests'
 import type { DoneRequest } from './requests'
@@ -20,13 +18,12 @@ const REPLY_DELIVERY =
 export const SEND_DESCRIPTION = [
   'Sends the user a request, such as to power-cycle a board, without waiting for it, so you keep',
   'working.',
-  REQUEST_DEFINITION,
+  'A request asks the user for work that only the user can do outside this session.',
   `The request waits in the ${REQUESTS_PANE_TITLE} pane with this session`,
   'until the user marks it done, at any time, also after a restart that resumes this session.',
   'The call returns at once with the number of the request, counted from 1 in each session.',
   REPLY_DELIVERY,
-  NOT_A_REQUEST,
-  DECISION_AS_DRAFT.text,
+  'Never send a question, or a note that a draft waits for approval or a question is open.',
   `Call ${LIST_TOOL} first, and never send a request again that is open or done there.`,
   'Write the request so the user can act on it days later without this conversation: name what',
   'to do and the work that waits on it.',

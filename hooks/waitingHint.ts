@@ -1,4 +1,4 @@
-import { AT_CLAUSE_END, WITHIN_SENTENCE } from './clauses'
+import { AT_CLAUSE_END } from './clauses'
 import { DECISION_AS_DRAFT } from './decisionDraft'
 import { HintKindName, HintWithoutPoint } from './hintKind'
 import type { HintKind } from './hintKind'
@@ -26,7 +26,7 @@ const NUMBERS = String.raw`${NUMBER}(?:(?:\s*,\s*|\s+and\s+)${NUMBER})*`
 /** The numbers that name an item, such as 2, #21, (#21) or (#21, #22). */
 const ITEM_NUMBER = String.raw`(?:\s+${NUMBERS}|\s*\(${NUMBERS}\))`
 /** An item named after a pull request or an issue, whose state is not an open question. */
-const NOT_AFTER_TRACKER = String.raw`(?<!\b(?:PRs?|pull\s+requests?|issues?)\b${WITHIN_SENTENCE})`
+const NOT_AFTER_TRACKER = String.raw`(?<!\b(?:PRs?|pull\s+requests?|issues?)\b[^.!?\n]{0,40})`
 /** What is left to the user besides a question, such as a decision or point 2. */
 const OPEN_ITEM =
   String.raw`\b(?:decisions?|answers?|approvals?|choices?|points?|items?)${ITEM_NUMBER}?`
@@ -44,45 +44,24 @@ const IS_NOT_YET_ANSWERED = String.raw`(?:has|have|is|are)\s+not\s+(?:yet\s+)?(?
  * you", and say nothing about the message itself. */
 export const WAITING_FOR_YOU = /(?<!\bon\s+)\b(?:waiting|waits)\s+(?:for|on)\s+you(?:r)?\b/i
 
-/** Phrases that name a question, a decision, an answer or a pick as still left to the user. */
-export const OPEN_DECISION_PHRASES: readonly RegExp[] = [
-  phrase(
-    String.raw`${NOT_AFTER_TRACKER}${OPEN_ITEM}(?:\s+(?:on|about|of|for|from)\b${CLAUSE})?` +
-      String.raw`\s+(?:is|are|remains?|stays?)\s+still\s+${OPEN_WORD}\b`,
-  ),
-  phrase(
-    String.raw`\b${OPEN_WORD}\s+from\s+(?:(?:earlier|before)${AT_CLAUSE_END}|${EARLIER_MESSAGE})`,
-  ),
-  phrase(String.raw`\byour\s+answer\s+on\s+${SENTENCE}\s+is\s+still\b`),
-  phrase(String.raw`\byou\s+(?:${HAVE_NOT_ANSWERED}|${HAVE_NOT_SAID}|${DID_NOT_ANSWER})\b`),
-  /\byou\s+have\s+yet\s+to\s+answer\b/i,
-  /\bonce\s+you(?:['’]ve|\s+have)\s+answered\b/i,
-  /\bneeds?\s+your\s+(?:answer|pick|choice|decision|call)\b/i,
-  phrase(
-    String.raw`\bstill\s+(?:have|has)\s+(?:${COUNT}\s+)?(?:more\s+)?` +
-      String.raw`(?:open\s+questions?\b|questions?\b${CLAUSE}\bfor\s+you\b)`,
-  ),
-  phrase(
-    String.raw`\bquestions?\b${CLAUSE}(?:\s+(?:is|are|remains?|stays?)|['’](?:s|re))` +
-      String.raw`\s+(?:still\s+)?${OPEN_STATE}`,
-  ),
-  phrase(String.raw`\bquestions?\b${CLAUSE}\b(?:${STILL_STANDS}|${IS_NOT_YET_ANSWERED})\b`),
-  phrase(String.raw`${ASKED}${SENTENCE}${EARLIER_MESSAGE}`),
-  phrase(String.raw`${EARLIER_MESSAGE}${SENTENCE}${ASKED}`),
-  /\bmy\s+(?:earlier|previous|last|other)\s+questions?\b/i,
-  /\bmy\s+questions?\s+(?:above|from\s+(?:before|earlier))\b/i,
-  /\bquestions?\s+(?:I|we)\s+(?:asked|put|posted|raised)\b/i,
-  /\bone\s+open\s+question\s+for\s+you\b/i,
-]
-
 /** The hint after a message that waits for an answer or an approval from the user. */
 export const WAITING_HINT: HintKind<HintKindName.Waiting> = {
   name: HintKindName.Waiting,
   phrases: [
-    ...OPEN_DECISION_PHRASES,
+    phrase(
+      String.raw`${NOT_AFTER_TRACKER}${OPEN_ITEM}(?:\s+(?:on|about|of|for|from)\b${CLAUSE})?` +
+        String.raw`\s+(?:is|are|remains?|stays?)\s+still\s+${OPEN_WORD}\b`,
+    ),
     phrase(String.raw`\bstill\s+${OPEN_WORD}\s*:`),
     phrase(
-      String.raw`(?<!\b(?:blocks?|holds?|stops?|pauses?)\b${WITHIN_SENTENCE}|\bonly\s+)` +
+      String.raw`\b${OPEN_WORD}\s+from\s+(?:(?:earlier|before)${AT_CLAUSE_END}|${EARLIER_MESSAGE})`,
+    ),
+    /\bstill\s+waiting\b/i,
+    WAITING_FOR_YOU,
+    /\bawait(?:s|ing)?\s+your\b/i,
+    phrase(String.raw`\byour\s+answer\s+on\s+${SENTENCE}\s+is\s+still\b`),
+    phrase(
+      String.raw`(?<!\b(?:blocks?|holds?|stops?|pauses?)\b[^.!?\n]{0,40}|\bonly\s+)` +
         String.raw`\b(?:once|until|after)\s+you\s+(?:answer|approve|say\s+so)\b`,
     ),
     phrase(String.raw`\bI['’]m\s+holding\b${CLAUSE}\buntil\s+you(?:r)?\b`),
@@ -92,13 +71,28 @@ export const WAITING_HINT: HintKind<HintKindName.Waiting> = {
         String.raw`pending\s+your\s+approval\b)`,
     ),
     phrase(
-      String.raw`(?<!\b(?:no|not|nothing|nobody)\b${WITHIN_SENTENCE})` +
-        String.raw`\b(?:approvals?|decisions?|answers?)\b${WITHIN_SENTENCE}\bon\s+your\s+side\b`,
+      String.raw`(?<!\b(?:no|not|nothing|nobody)\b[^.!?\n]{0,40})` +
+        String.raw`\b(?:approvals?|decisions?|answers?)\b[^.!?\n]{0,40}\bon\s+your\s+side\b`,
     ),
-    /\bneeds?\s+your\s+(?:approval|go|ok(?:ay)?)\b/i,
-    /\bstill\s+waiting\b/i,
-    WAITING_FOR_YOU,
-    /\bawait(?:s|ing)?\s+your\b/i,
+    phrase(String.raw`\byou\s+(?:${HAVE_NOT_ANSWERED}|${HAVE_NOT_SAID}|${DID_NOT_ANSWER})\b`),
+    /\byou\s+have\s+yet\s+to\s+answer\b/i,
+    /\bonce\s+you(?:['’]ve|\s+have)\s+answered\b/i,
+    /\bneeds?\s+your\s+(?:answer|approval|go|pick|choice|decision|call|ok(?:ay)?)\b/i,
+    phrase(
+      String.raw`\bstill\s+(?:have|has)\s+(?:${COUNT}\s+)?(?:more\s+)?` +
+        String.raw`(?:open\s+questions?\b|questions?\b${CLAUSE}\bfor\s+you\b)`,
+    ),
+    phrase(
+      String.raw`\bquestions?\b${CLAUSE}(?:\s+(?:is|are|remains?|stays?)|['’](?:s|re))` +
+        String.raw`\s+(?:still\s+)?${OPEN_STATE}`,
+    ),
+    phrase(String.raw`\bquestions?\b${CLAUSE}\b(?:${STILL_STANDS}|${IS_NOT_YET_ANSWERED})\b`),
+    phrase(String.raw`${ASKED}${SENTENCE}${EARLIER_MESSAGE}`),
+    phrase(String.raw`${EARLIER_MESSAGE}${SENTENCE}${ASKED}`),
+    /\bmy\s+(?:earlier|previous|last|other)\s+questions?\b/i,
+    /\bmy\s+questions?\s+(?:above|from\s+(?:before|earlier))\b/i,
+    /\bquestions?\s+(?:I|we)\s+(?:asked|put|posted|raised)\b/i,
+    /\bone\s+open\s+question\s+for\s+you\b/i,
   ],
   text: [
     "If you're waiting for the user, ensure you have first researched whether rules, " +

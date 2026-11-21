@@ -1,7 +1,5 @@
 import type { Reply } from '../types'
-import { writeHintText } from './hintText'
 import { REPLY_COMMAND } from './names'
-import { REQUEST_DEFINITION, describeNotRequest, findNotRequestWording } from './notRequest'
 import { isPositiveInteger } from './positiveInteger'
 
 /** A text with at least one character other than white space. */
@@ -17,8 +15,8 @@ export const SEND_SCHEMA = {
       type: 'string',
       pattern: NON_BLANK.source,
       description:
-        `${REQUEST_DEFINITION} Write it as an instruction complete enough to act on without ` +
-        'this conversation, such as "Power-cycle lab-rpi-2. The flash test waits on it."',
+        'An instruction complete enough to act on without this conversation, such as ' +
+        '"Power-cycle lab-rpi-2. The flash test waits on it."',
     },
   },
   required: ['request'],
@@ -28,21 +26,14 @@ export const SEND_SCHEMA = {
 export enum SendOutcome {
   Valid = 'valid',
   RequestBlank = 'request-blank',
-  NotRequest = 'not-request',
 }
 
-export type SendFailure =
+export type SendInput =
+  | { outcome: SendOutcome.Valid; text: string }
   | { outcome: SendOutcome.RequestBlank }
-  | { outcome: SendOutcome.NotRequest; wording: string }
 
-export type SendInput = { outcome: SendOutcome.Valid; text: string } | SendFailure
-
-/** What the model is told when its input to the sending tool breaks a rule. */
-export function sendProblemOf(failure: SendFailure): string {
-  return failure.outcome === SendOutcome.RequestBlank
-    ? 'Give the request as a text that is not empty.'
-    : writeHintText(describeNotRequest(failure.wording))
-}
+/** What the model is told when its input to the sending tool is blank. */
+export const SEND_BLANK_PROBLEM = 'Give the request as a text that is not empty.'
 
 /** Reads the unchecked input of the model to the sending tool into a typed model. */
 export function readSendInput(input: ToolArguments): SendInput {
@@ -50,11 +41,8 @@ export function readSendInput(input: ToolArguments): SendInput {
   if (typeof request !== 'string' || !NON_BLANK.test(request)) {
     return { outcome: SendOutcome.RequestBlank }
   }
-  const wording = findNotRequestWording(request)
 
-  return wording === undefined
-    ? { outcome: SendOutcome.Valid, text: request.trim() }
-    : { outcome: SendOutcome.NotRequest, wording }
+  return { outcome: SendOutcome.Valid, text: request.trim() }
 }
 
 export const NUMBER_RULE = 'a whole number from 1 up'

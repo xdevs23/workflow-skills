@@ -137,8 +137,7 @@ Draft: .cache/specs/reaction-emoji.html
 # Requests to the user
 
 - Send request with tool `mcp__workflow-skills__send_request` only for something user does outside
-  session, e.g. power-cycle external system. Never send request to say that draft waits for
-  approval or that question is open
+  session, e.g. power-cycle external system
 - In session without that tool, e.g. Agent SDK session or `-p` run, write request in message. Stop
   work that depends on it
 - Name entry in each request by its number and title
