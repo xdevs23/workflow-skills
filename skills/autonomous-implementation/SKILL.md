@@ -7,8 +7,6 @@ description: Implement change autonomously, only when user has asked for it, for
 
 - Work this way only when user asked for it. User grants it for one task, for whole session until
   they revoke it, or for timeframe named by user
-- Record grant in run file: its scope, when it was given, end of its timeframe, and revocation once
-  user revokes it
 - Check grant before every decision
 - Once grant lapsed or was revoked, stop run at once: do not start another agent, stop running
   workflow, report, and ask user as global rules require
@@ -19,73 +17,39 @@ description: Implement change autonomously, only when user has asked for it, for
 
 ## What is turned around
 
-- Treat run file as authority: user's description, research done at intake, and decisions made by
-  subagents. User's answers rank above all of them
+- User's answers rank above research and decisions made by subagents
 - Leave every product and architecture decision to subagents
-- Orchestrate run: plan milestones, start agents, judge their results against rules, keep run file
-  current
 - Start agents that write code as `workflow-skills:implementer`. Hold their work to rules through
   reviewers
-- Hold every agent to `workflow-skills:todo-md` and `workflow-skills:local-cache`. Agents that write
-  text shown by product also to `workflow-skills:copywriting`. Name these skills in prompt handed to
-  each agent bound by them
 
 ## Intake
 
 - Take user's description of idea
-- Research everything needed by work before first milestone starts, with research agents such as
-  `workflow-skills:researcher-breadth` and `workflow-skills:researcher-contextfree`
-- Merge results returned by those agents with `workflow-skills:consolidator`
-- Collect intent, goal, technologies, target platforms and constraints
 - Ask user once, with question that does not block work, for their jurisdiction, to which hard rules
   on law refer, and for target platforms not named in description
 - Do not take action whose legality depends on jurisdiction until jurisdiction known
 
-## The run file
-
-- Write run file at intake into local storage defined by `workflow-skills:local-cache`. Keep it
-  current: description, intent, goal, technologies, constraints, jurisdiction, milestones with
-  state of each, and index that lists evidence
-- Record in run file, for running milestone: run ID of workflow, paths of workflow script and
-  journal, worktree used by workflow, and commit checked out in each repository when milestone
-  started. So you can find run and its state after resume
-- Reload whole run from run file after crash, compaction or resume
-
 ## Milestones
 
-- Define each milestone before its work starts: what it is, what it contains, what it delivers,
-  evidence that proves it, and when it stops
 - Keep final stop condition as user stated it. Such as: stop only when full app implemented,
   screenshots and screen recording show it fully working, and APK installable by user on their
   phone delivered
-- Shape workflows however work needs: which agents run, in which order, how many workflows a
-  milestone takes. Scripts do not enforce shape
 - Run every workflow in worktree
 - Commit work of each milestone in commit style
 - In project without pull requests or other review system, merge worktree of finished milestone
   into working branch as soon as milestone done
-- Run builds of each milestone yourself, as section on builds in `workflow-skills:implement`
-  describes. Where project needs targeted commands, let subagents design them, log decision in run
-  file, and build them in first milestone that needs them
+- Run builds for each milestone as section on builds in `workflow-skills:implement` describes.
+  Where project needs targeted commands, let subagents design and build them in first milestone
+  that needs them
 - After last fix, run checks of milestone again. Capture evidence for milestone again. Close
   milestone only on that result
-- Re-plan milestone that failed three times, or stop run with report
-- Stop with report instead of looping when usage limits of plan for models run low
+- Stop with report when usage limits for models run low
 - Fix every defect introduced by run itself, in whichever milestone it shows up
-- Fix defect present before run as separate unit in parallel, as `workflow-skills:todo-md`
-  describes. It is the one piece of work outside grant started by you
-
-## Decisions
-
-- Log every decision in run file with its options and its reason, marked as made by agent, so user
-  can override any of them later
-- Apply user's answers and overrides at start of next milestone
 
 ## Questions to the user
 
 - Hand each question to user as `workflow-skills:question` describes. Go on with decision made by
   subagents until answer arrives
-- Write each question into run file as well, with path of draft page of each decision
 
 ## Reviews
 
@@ -144,7 +108,6 @@ Only apply when Nix installed.
 ## Evidence and delivery
 
 - Capture screenshots and screen recordings as `workflow-skills:visual-verification` describes.
-  Copy ones shown by report from harness directory into local storage. List them in index in run
-  file
-- End run with report: what was built, how to build and install it, evidence, decisions made by
-  agents, open questions, and what was recorded for later
+  Copy ones shown by report from harness directory into local storage
+- End run with report: what was built, how to build and install it, evidence, decisions that
+  subagents returned with their results, open questions, and what was recorded for later
