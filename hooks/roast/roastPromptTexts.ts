@@ -2,12 +2,14 @@ import { PendingTextPlace } from '../pendingTexts'
 import type { MessageAsRead } from './messagesUnseenByFork'
 import {
   CompactionRoastVerdict,
+  HintRoastVerdict,
   IdleRoastVerdict,
   RoastVerdict,
   VerificationRoastVerdict,
 } from './roastReply'
 import type {
   CompactionRoastReply,
+  HintRoastReply,
   IdleRoastReply,
   RoastReply,
   VerificationRoastReply,
@@ -18,11 +20,17 @@ const ROASTER_ROLE =
   'From this message on, you are the roaster. The assistant in this conversation wrote the ' +
   'earlier replies.'
 
+/** Keeps the roaster out of the work of the assistant, which may still be running. */
+const DO_NOT_CONTINUE_WORK =
+  'Do not answer the user, and do not carry out any request made in this conversation.'
+
+const WRITE_ROAST_TO_ASSISTANT = 'Write the roast to the assistant as "you".'
+
 /** The opening of the prompts for the roast and the idle roast. */
 const ROAST_OPENING =
   `${ROASTER_ROLE} Review the work of the assistant so far and roast that work. The user may ` +
-  'send your roast to the assistant in this conversation. Write the roast to the assistant as ' +
-  '"you". In the roast, talk only to the assistant and never to the user.'
+  `send your roast to the assistant in this conversation. ${WRITE_ROAST_TO_ASSISTANT} In the ` +
+  'roast, talk only to the assistant and never to the user.'
 
 /** The note that the roaster wrote the roast, before the text of every roast sent to the model. */
 const ROASTER_SOURCE =
@@ -226,8 +234,8 @@ const NO_POINT_REPLY_EXAMPLE = JSON.stringify({
 export function writeVerificationRoastPrompt(change: string): string {
   return (
     `${ROASTER_ROLE} The work of the assistant may still be running, and you do not continue ` +
-    'it: do not answer the user, and do not carry out any request made in this conversation. ' +
-    `The assistant says that the change ${JSON.stringify(change)} is done. Find ` +
+    `it. ${DO_NOT_CONTINUE_WORK} The assistant says that the change ` +
+    `${JSON.stringify(change)} is done. Find ` +
     'every point where the work on that change disregards the rules or the facts in its ' +
     `context, ${ROAST_POINT_SOURCES}, or claims more than the transcript proves. ` +
     `${ROAST_CONTENT} Sort the points into two lists, each written as one text. A point ` +
@@ -242,5 +250,39 @@ export function writeVerificationRoastPrompt(change: string): string {
     `the assistant as "you". ${ROAST_BLUNTNESS} ${JSON_REPLY} Reply with ` +
     `${VERIFICATION_ROAST_REPLY_EXAMPLE}, without the field for a list with no point, or with ` +
     `${NO_POINT_REPLY_EXAMPLE} if the transcript proves no point.`
+  )
+}
+
+const HINT_ROAST_REPLY_EXAMPLE = JSON.stringify({
+  verdict: HintRoastVerdict.Roast,
+  roast: '<the roast>',
+} satisfies HintRoastReply)
+
+const HINT_NO_POINT_REPLY_EXAMPLE = JSON.stringify({
+  verdict: HintRoastVerdict.NoPoint,
+} satisfies HintRoastReply)
+
+/**
+ * The message that asks a fork made from the main conversation for the roast that sends the
+ * assistant back to work after its last reply. The roast takes the place of `hints`, the texts of
+ * the hints that phrases in that reply call for, and names what `tasks` ask for, the roaster task
+ * of each kind of those hints. The fork replies with a JSON object, which readHintRoastReply reads.
+ */
+export function writeHintRoastPrompt({
+  tasks,
+  hints,
+}: {
+  tasks: readonly string[]
+  hints: readonly string[]
+}): string {
+  return (
+    `${ROASTER_ROLE} The assistant ended its turn on its last reply, and a hook found phrases in ` +
+    'that reply that call for the hint below. The assistant goes back to work with your roast, ' +
+    `in place of the hint, which it does not see. ${DO_NOT_CONTINUE_WORK} Roast that reply. ` +
+    `${tasks.join(' ')} Carry into the roast every step of the hint that the transcript does ` +
+    `not show done. ${ROAST_CONTENT} ${WRITE_ROAST_TO_ASSISTANT} ${ROAST_BLUNTNESS} ` +
+    `${JSON_REPLY} Reply with ${HINT_ROAST_REPLY_EXAMPLE}, or with ` +
+    `${HINT_NO_POINT_REPLY_EXAMPLE} if the transcript proves no point.\n\nThe hint:\n\n` +
+    hints.join('\n\n')
   )
 }

@@ -101,4 +101,7 @@ export const WAITING_HINT: HintKind<HintKindName.Waiting> = {
     HAND_OVER_UNANSWERED,
     'Do not repeat open questions, and pick up independent work in the meantime.',
   ],
+  roasterTask:
+    'The reply waits for an answer or an approval from the user. Name what it leaves to the ' +
+    'user, and the work that the assistant could start in this turn without the user.',
 }

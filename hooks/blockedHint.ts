@@ -36,4 +36,7 @@ export const BLOCKED_HINT: HintKind<HintKindName.Blocked> = {
     'If nothing is startable, try splitting up the blocked units into smaller sub-units and ' +
       "start the ones that don't depend on the blocker.",
   ],
+  roasterTask:
+    'The reply reports work as blocked or idle. Name what it says blocks the work, and the work ' +
+    'that the assistant could start in this turn without that blocker.',
 }

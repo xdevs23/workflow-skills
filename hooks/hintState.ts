@@ -33,12 +33,12 @@ export const STOP_BLOCK_REASON = { door: 'note', origin: { kind: 'engine' } } as
 export async function offerNoteOnKindsUnsentInTurn(
   $: EngineInterface,
   kinds: readonly HintKind[],
-  describeNote: (unsent: readonly HintKind[]) => TextWithLine | undefined,
+  describeNote: (unsent: readonly HintKind[]) => Promise<TextWithLine | undefined>,
 ): Promise<TextWithLine | undefined> {
   const sessionId = await $.session.id()
   const sent = ofSession(await read($, hintKindsSentInTurn), sessionId)?.names ?? []
   const unsent = kinds.filter(kind => !sent.includes(kind.name))
-  const note = describeNote(unsent)
+  const note = await describeNote(unsent)
   if (note === undefined) {
     return undefined
   }

@@ -8,8 +8,13 @@ import { MILLISECONDS_PER_MINUTE, MILLISECONDS_PER_SECOND } from '../timeUnits'
 import { SwitchOutcome } from './idleRoastSwitch'
 import type { UnreadSwitch } from './idleRoastSwitch'
 import { ForkViewUnknown, ROW_LIMIT } from './messagesUnseenByFork'
-import { RoastNotWrittenCause, RoastRecovery, recoveryOf } from './roastFailure'
-import type { LastingApiError, RoastFailure } from './roastFailure'
+import {
+  HintRoastMissingCause,
+  RoastNotWrittenCause,
+  RoastRecovery,
+  recoveryOf,
+} from './roastFailure'
+import type { HintRoastMissing, LastingApiError, RoastFailure } from './roastFailure'
 import {
   IDLE_ROAST_COMMAND,
   IDLE_WAIT_SECONDS,
@@ -193,6 +198,28 @@ export function describeVerificationRoastDelayed({ retry, waitMs }: OwedRetry): 
     `The roast is not written yet: try ${retry.failedTries} failed with the API error ` +
     `${retry.error}, which may clear on its own. Call ${ROAST_WORK} again in ${secondsLeft} s.`
   )
+}
+
+/** What the note at the end of a turn carries where no roast on its hints came. */
+const HINT_TEXT_SENT = 'Claude got the fixed hint text in its place.'
+
+/** The line in the debug log for a roast on the hints at the end of a turn that did not come. */
+export function describeHintRoastMissing(missing: HintRoastMissing): string {
+  switch (missing.cause) {
+    case HintRoastMissingCause.NotAskedAgain:
+      return (
+        'The roast on the hints at the end of the turn was not written: the API returned the ' +
+        `error ${missing.error}, which may clear on its own. The end of a turn asks only one ` +
+        `fork. ${HINT_TEXT_SENT}`
+      )
+    case HintRoastMissingCause.NotWritten:
+      return (
+        'The roast on the hints at the end of the turn was not written. ' +
+        describeNotWritten(missing.failure, HINT_TEXT_SENT)
+      )
+    case HintRoastMissingCause.NoPoint:
+      return `The roast on the hints at the end of the turn found no point. ${HINT_TEXT_SENT}`
+  }
 }
 
 /** The notice for a roast written for `secondsWriting` so far. */

@@ -59,6 +59,18 @@ export type CompactionRoastReply =
   | { verdict: CompactionRoastVerdict.Roast; roast: string }
   | { verdict: CompactionRoastVerdict.NoPoint }
 
+/** The verdicts that the prompt of the roast on hints offers the fork. */
+export enum HintRoastVerdict {
+  Roast = 'roast',
+  /** The transcript proves no point on the last reply, so the fork wrote no roast. */
+  NoPoint = 'no-point',
+}
+
+/** The JSON object that the prompt of the roast on hints asks the fork to reply with. */
+export type HintRoastReply =
+  | { verdict: HintRoastVerdict.Roast; roast: string }
+  | { verdict: HintRoastVerdict.NoPoint }
+
 export function readRoastReply(text: string): JsonTextRead<RoastReply> {
   return readJsonText(text, toRoastReply)
 }
@@ -76,6 +88,12 @@ export function readVerificationRoastReply(text: string): JsonTextRead<Verificat
 export function readCompactionRoastReply(text: string): JsonTextRead<CompactionRoastReply> {
   return readJsonText(text, value =>
     toRoastOrNoneReply(value, CompactionRoastVerdict.Roast, CompactionRoastVerdict.NoPoint),
+  )
+}
+
+export function readHintRoastReply(text: string): JsonTextRead<HintRoastReply> {
+  return readJsonText(text, value =>
+    toRoastOrNoneReply(value, HintRoastVerdict.Roast, HintRoastVerdict.NoPoint),
   )
 }
 

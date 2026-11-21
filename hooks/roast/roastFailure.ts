@@ -62,3 +62,18 @@ export type RoastFailure =
   | { cause: RoastNotWrittenCause.ApiError; error: LastingApiError; status: number }
   | { cause: RoastNotWrittenCause.UnreadableReply; reason: JsonTextNotRead; reply: string }
   | { cause: RoastNotWrittenCause.Thrown; message: string }
+
+/** Why no roast on the hints at the end of a turn came. */
+export enum HintRoastMissingCause {
+  /** The only try failed with an error of the API that may clear on its own. */
+  NotAskedAgain = 'not asked again',
+  NotWritten = 'not written',
+  /** The fork found no point in the last reply. */
+  NoPoint = 'no point',
+}
+
+/** Why no roast on the hints at the end of a turn came, with the facts of the cause. */
+export type HintRoastMissing =
+  | { cause: HintRoastMissingCause.NoPoint }
+  | { cause: HintRoastMissingCause.NotAskedAgain; error: ModelApiError }
+  | { cause: HintRoastMissingCause.NotWritten; failure: RoastFailure }

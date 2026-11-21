@@ -191,8 +191,11 @@ async function sleepWithinBudget(
   return tryAt - (await $.clock.now())
 }
 
-/** Asks one fork for a roast with `prompt`, as the try numbered `tries`. */
-async function forkRoastOnce(
+/**
+ * Asks one fork for a roast with `prompt`, as the try numbered `tries`. The engine stops the budget
+ * of a calling hook while the fork runs.
+ */
+export async function forkRoastOnce(
   $: EngineInterface,
   prompt: string,
   tries: number,
