@@ -167,8 +167,7 @@ Run copy phase as a `Workflow()` in four phases: **Intent → Write → Check �
 2. **Create every key empty.** Let copy pass fill it. Placeholder text inside a key looks like
    finished copy to everyone who comes across it later. Writer skips key, critic finds sentence to
    audit, product ships with placeholder
-3. **Run every agent as `workflow-skills:workflows` describes.**
-4. **Show the user every slot reported by the copywriter for redesign**, with part of screen the
+3. **Show the user every slot reported by the copywriter for redesign**, with part of screen the
    copywriter named. Completeness pass lists such slot as held, separately from slot never written.
    Do not implement screen containing that slot until redesigned slot has copy
 

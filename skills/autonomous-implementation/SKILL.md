@@ -61,7 +61,6 @@ description: Implement change autonomously, only when user has asked for it, for
 - Shape workflows however work needs: which agents run, in which order, how many workflows a
   milestone takes. Scripts do not enforce shape
 - Run every workflow in worktree
-- Run every workflow and agent as `workflow-skills:workflows` describes
 - Commit work of each milestone in commit style
 - In project without pull requests or other review system, merge worktree of finished milestone
   into working branch as soon as milestone done

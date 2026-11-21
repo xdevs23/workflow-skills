@@ -25,7 +25,6 @@ description: Implement change to code, from first talk with user until user revi
 
 - Make change of few lines yourself, without workflow. Review it with
   `workflow-skills:review-pass`
-- Run every workflow and agent as `workflow-skills:workflows` describes
 - Write new workflow script for every run. Give it name and description that accurately describe
   what workflow is about
 - Split work as you see fit. Number of agents used by you is not limited
