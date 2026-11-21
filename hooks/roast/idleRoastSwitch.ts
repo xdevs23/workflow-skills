@@ -52,9 +52,5 @@ export function saveIdleRoastSwitch(
 ): Promise<void> {
   return isOn
     ? writeRecord($, { key: idleRoastKeyOf(sessionId), value: IDLE_ROAST_ON_VALUE })
-    : deleteIdleRoastSwitch($, sessionId)
-}
-
-export function deleteIdleRoastSwitch($: StoreEngine, sessionId: string): Promise<void> {
-  return deleteRecord($, idleRoastKeyOf(sessionId))
+    : deleteRecord($, idleRoastKeyOf(sessionId))
 }

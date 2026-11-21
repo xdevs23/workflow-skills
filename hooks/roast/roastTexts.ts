@@ -430,11 +430,3 @@ export function describeIdleRoastSwitchNotRead(read: UnreadSwitch): string {
 export function describeIdleRoastNotSwitched(failed: FailedStoreCall): string {
   return `The idle roast was not switched. ${describeFailedStoreCall(failed)}`
 }
-
-/** The toast for the switch of the ended session that the store failed to delete. */
-export function describeIdleRoastSwitchNotDeleted(failed: FailedStoreCall): string {
-  return (
-    'The idle roast switch of the ended session could not be deleted from the store. ' +
-    describeFailedStoreCall(failed)
-  )
-}

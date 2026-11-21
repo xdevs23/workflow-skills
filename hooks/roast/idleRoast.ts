@@ -4,13 +4,13 @@ import { isMainConversation } from '../conversation'
 import { messageOf } from '../errorMessage'
 import { EVERY_EVENT } from '../everyEvent'
 import type { EveryEvent } from '../everyEvent'
-import { showFailure, showingStoreFailure } from '../failureToast'
+import { showFailure } from '../failureToast'
 import { isMessageTypedByUser } from '../promptOrigin'
 import { SWITCHING_SOURCES } from '../sessionSources'
 import { readSessionAcceptsPluginPrompts } from '../sessionState'
 import { MILLISECONDS_PER_SECOND } from '../timeUnits'
 import { runAfter, runAfterMainTurn } from '../timedWork'
-import { SwitchOutcome, deleteIdleRoastSwitch, readIdleRoastSwitch } from './idleRoastSwitch'
+import { SwitchOutcome, readIdleRoastSwitch } from './idleRoastSwitch'
 import { forkRoast } from './roastActions'
 import type { ForkedRoast } from './roastActions'
 import { deliverRoast } from './roastDelivery'
@@ -24,7 +24,6 @@ import {
   IDLE_ROAST_FOUND_NO_BLOCKING_POINT,
   describeIdleRoastNotWritten,
   describeIdleRoastNotWrittenToast,
-  describeIdleRoastSwitchNotDeleted,
   describeIdleRoastSwitchNotRead,
 } from './roastTexts'
 
@@ -51,7 +50,6 @@ let isStretchRoasted = false
  */
 export function registerIdleRoast(on: On): void {
   on('session.start', EVERY_EVENT, loadSwitchAtStart)
-  on('session.end', EVERY_EVENT, deleteSwitchAtEnd)
   on('classic.SessionStart', { source: SWITCHING_SOURCES }, endStretchOnSwitch)
   on('prompt.submit', EVERY_EVENT, startStretchOnUserMessage)
   on('turn.start', EVERY_EVENT, cancelIdleWaitOnTurn)
@@ -62,18 +60,6 @@ export function registerIdleRoast(on: On): void {
 
 const loadSwitchAtStart: MatchedHook<'session.start', EveryEvent> = async ($, e, next) => {
   await loadIdleRoastSwitch($)
-
-  return next(e)
-}
-
-// The record of the switch exists only while the idle roast is on, so the store file, shared by
-// every session, does not grow with the sessions that ever ran /idle-roast.
-const deleteSwitchAtEnd: MatchedHook<'session.end', EveryEvent> = async ($, e, next) => {
-  await showingStoreFailure(
-    $,
-    () => deleteIdleRoastSwitch($, e.sessionId),
-    describeIdleRoastSwitchNotDeleted,
-  )
 
   return next(e)
 }
