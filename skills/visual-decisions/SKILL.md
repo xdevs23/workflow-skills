@@ -134,8 +134,9 @@ description: Draw page for user to look at: drafts, product decisions, plans and
 - Mark every part that changed as Updated, with purple outline and `UPDATED` badge. Remove Updated
   marks of earlier rounds. Circle just thing changed by you instead of marking entire section that
   already existed before
-- Show code changed in part marked Updated as unified diff from last round to this round: put each
-  changed line right under line it replaces, and highlight changed words
+- Show code changed in part marked Updated, Markdown of skills and agent templates included, as
+  unified diff from last round to this round: put each changed line right under line it replaces,
+  and highlight changed words
 - Show every other text changed in part marked Updated, e.g. plain-words box, plain-words column
   beside code, label or caption, as plain text of this round
 - Before editing page in place, copy code of each part about to change into old file
