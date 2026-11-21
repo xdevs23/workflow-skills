@@ -48,8 +48,8 @@ description: Write commit message
 
 ## Test lines
 
-- End body with `Test:` lines, one per thing actually exercised: what was tested and which
-  command ran
+- End message with `Test:` lines, also where body is omitted, one per thing exercised: what was
+  tested and which command ran
 - Write each `Test:` line as past fact
 - Never name test that would have run, should run or did not run
 - Write `Test: none` when nothing was tested
