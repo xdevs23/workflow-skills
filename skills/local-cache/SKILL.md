@@ -34,8 +34,7 @@ description: Decide where to put file not meant for repository, what to remove o
 - Put file into local storage only when it is needed later and exists nowhere else, e.g. evidence,
   image pasted by user, log or report. File that can be written again, build output, cache and copy
   of file already contained in repository or another long-term place do not qualify
-- Delete file from local storage as soon as nothing needs it anymore. Look through local storage at
-  end of every unit
+- Delete file from local storage as soon as nothing needs it anymore
 
 ## Cleaning up
 
@@ -62,7 +61,6 @@ description: Decide where to put file not meant for repository, what to remove o
 
 - Never keep large file or anything needed later in system temporary directory. Treat whatever is
   there as lost
-- When something important is lost there, recover it without asking user
 
 ## Reading stages
 
