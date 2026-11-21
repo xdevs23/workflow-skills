@@ -1,4 +1,5 @@
 import type { DoneMark, Goal } from '../../types'
+import { MarkSetter } from './doneMark'
 import { GOALS_COMMAND } from './goalNames'
 import { GoalPaneActionKind } from './goalPaneMessages'
 import { describePriority } from './priority'
@@ -80,9 +81,15 @@ export function describeGoalBadges({
   ]
 }
 
-/** The done mark of a goal as the person reads it, with the evidence given by Claude. */
+/** Who set a done mark, as the person reads it. */
+const MARK_SETTER_NAMES: Record<MarkSetter, string> = {
+  [MarkSetter.GoalChecker]: 'the goal checker',
+  [MarkSetter.Model]: 'Claude',
+}
+
+/** The done mark of a goal as the person reads it, with who set it and the evidence. */
 export function describeDoneMarkForPerson(mark: DoneMark): string {
-  return `Marked done by Claude: ${mark.evidence}`
+  return `Marked done by ${MARK_SETTER_NAMES[mark.setBy]}: ${mark.evidence}`
 }
 
 /** The text for a board that could not be read, with the reason and the next step of the store. */

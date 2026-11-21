@@ -20,7 +20,7 @@ import {
   detachTodo,
   editGoal,
   isNumberTaken,
-  markGoalDone,
+  markGoalsDone,
   nextGoalNumberOf,
   openGoalsByIdOf,
   openGoalsOf,
@@ -31,14 +31,15 @@ import {
 } from './board'
 import type {
   AddRefused,
+  AskedMark,
   BoardChange,
   ChangeRefused,
   Changed,
   DependentGoal,
   EditRefused,
   GoalEdit,
+  GoalsMarked,
   LoopRefused,
-  MarkRefused,
   NotChanged,
   NotOpenRefused,
   PrioritizedGoal,
@@ -47,7 +48,7 @@ import type {
   UnmarkRefused,
 } from './board'
 import { goalsUnmarkedForDependency } from './dependency'
-import type { MarkRemovalAsked, MarkedGoal, UnmarkedGoal } from './doneMark'
+import type { MarkRemovalAsked, UnmarkedGoal } from './doneMark'
 import {
   UnreadableRecordError,
   clearanceRecordOf,
@@ -209,27 +210,30 @@ export function saveEditedGoal(
 }
 
 /**
- * Marks the goal as done as markGoalDone does, and writes the mark. A dependency can lose its mark,
- * or be set on the goal, while the mark is written, so the board is read back after the write, and
- * every mark it leaves waiting for a dependency is removed.
+ * Marks the goals as markGoalsDone does, and writes the marks in the order they were set. A
+ * dependency can lose its mark, or be set on a goal, while the marks are written, so the board is
+ * read back after the writes, and every mark it leaves waiting for a dependency is removed.
  */
-export function saveDoneMark(
+export function saveDoneMarks(
   $: StoreEngine,
   scope: BoardScope,
-  number: number,
-  evidence: string,
+  marks: readonly AskedMark[],
   markedAt: number,
-): Promise<Changed<MarkedGoal> | Unchanged | MarkRefused | Failed> {
-  return changeBoard(
-    $,
-    scope,
-    board => markGoalDone(board, number, evidence, markedAt),
-    async goal => {
-      await writeRecord($, doneMarkRecordOf(scope, goal))
+): Promise<GoalsMarked | Failed> {
+  return returningFailure(async () => {
+    const marked = markGoalsDone(await readSettledBoard($, scope), marks, markedAt)
+    if (marked.outcome === Outcome.Changed) {
+      for (const result of marked.results) {
+        if (result.marked.outcome === Outcome.Changed) {
+          await writeRecord($, doneMarkRecordOf(scope, result.marked.goal))
+        }
+      }
       const stored = openGoalsByIdOf(await readSettledBoard($, scope))
       await writeMarkRemovals($, scope, goalsUnmarkedForDependency(stored, markedAt))
-    },
-  )
+    }
+
+    return marked
+  })
 }
 
 /** Removes the done mark as removeDoneMark does, and writes the removal. */

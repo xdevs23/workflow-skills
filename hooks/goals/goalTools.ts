@@ -13,7 +13,7 @@ import { denyFailedHook, denyFailedUse } from '../hookFailure'
 import type { ToolArguments } from '../inputs'
 import { toolName } from '../names'
 import { Outcome } from './board'
-import type { ChangeRefused, Changed, MarkRefused, Unchanged, UnmarkRefused } from './board'
+import type { ChangeRefused, Changed, Unchanged } from './board'
 import { describeStoreFailure } from './boardStore'
 import type { Failed } from './boardStore'
 import { attachTodoInSession, detachTodoInSession, readBoardOfSession } from './goalActions'
@@ -24,8 +24,6 @@ import {
   DETACH_TODO_TOOL,
   LIST_GOALS,
   LIST_GOALS_TOOL,
-  MARK_GOAL_DONE,
-  UNMARK_GOAL_DONE,
 } from './goalNames'
 import {
   ATTACH_PROBLEMS,
@@ -33,8 +31,6 @@ import {
   DETACH_PROBLEMS,
   DETACH_TODO_SCHEMA,
   InputOutcome,
-  MARK_GOAL_DONE_SCHEMA,
-  UNMARK_GOAL_DONE_SCHEMA,
   readTodoInput,
 } from './goalToolInputs'
 import type { TodoInput, ToolInput } from './goalToolInputs'
@@ -42,11 +38,8 @@ import {
   ATTACH_TODO_DESCRIPTION,
   DETACH_TODO_DESCRIPTION,
   GOAL_TOOLS_SUBJECT,
-  GoalsReader,
   LIST_GOALS_DESCRIPTION,
-  MARK_GOAL_DONE_DESCRIPTION,
   SUBAGENT_DENIAL,
-  UNMARK_GOAL_DONE_DESCRIPTION,
   describeAttached,
   describeDetached,
   describeGoals,
@@ -70,18 +63,6 @@ const TOOLS: readonly ToolSpec[] = [
     inputSchema: DETACH_TODO_SCHEMA,
     isDeferred: false,
   },
-  {
-    name: MARK_GOAL_DONE,
-    description: MARK_GOAL_DONE_DESCRIPTION,
-    inputSchema: MARK_GOAL_DONE_SCHEMA,
-    isDeferred: false,
-  },
-  {
-    name: UNMARK_GOAL_DONE,
-    description: UNMARK_GOAL_DONE_DESCRIPTION,
-    inputSchema: UNMARK_GOAL_DONE_SCHEMA,
-    isDeferred: false,
-  },
 ]
 
 /** The tools of the goals board, as the engine lists them. */
@@ -99,7 +80,7 @@ export type GoalChangeTool<Input> = {
 }
 
 /** The outcomes of a change made by a goal tool. */
-type ToolChange = Changed | Unchanged | ChangeRefused | MarkRefused | UnmarkRefused | Failed
+type ToolChange = Changed | Unchanged | ChangeRefused | Failed
 
 const ATTACHING: GoalChangeTool<TodoInput<TodoEntry>> = {
   subagentDenial: SUBAGENT_DENIAL,
@@ -114,16 +95,14 @@ const DETACHING: GoalChangeTool<TodoInput<string>> = {
 }
 
 /**
- * Registers the tools by which the model lists the goals, attaches TODO entries to them and marks
- * them as done.
+ * Registers the tools by which the model lists the goals and attaches TODO entries to them.
  */
 export async function registerGoalTools($: EngineInterface): Promise<void> {
   await Promise.all(TOOLS.map(tool => $.tool.register(tool)))
 }
 
 // A subagent reads the goals too, so it can check its work against them. It works on a task of its
-// own, so only the main conversation gets the notes on open goals. A subagent reads the done marks
-// as set by the main conversation.
+// own, so only the main conversation gets the notes on open goals.
 export const listGoals: MatchedHook<'tool.call', { tool: typeof LIST_GOALS_TOOL }> = async (
   $,
   e,
@@ -132,12 +111,9 @@ export const listGoals: MatchedHook<'tool.call', { tool: typeof LIST_GOALS_TOOL 
   if (read.outcome !== Outcome.Read) {
     return denyFailedUse($, GOAL_TOOLS_SUBJECT, read.failure)
   }
-  if (!isMainConversation(e)) {
-    return { result: describeGoals(read.board, GoalsReader.Subagent) }
-  }
-  const listed = describeGoals(read.board, GoalsReader.MainConversation)
+  const listed = describeGoals(read.board)
 
-  return { result: withNotesOnOpenGoals(read.board, listed) }
+  return { result: isMainConversation(e) ? withNotesOnOpenGoals(read.board, listed) : listed }
 }
 
 export const attachTodo: MatchedHook<'tool.call', { tool: typeof ATTACH_TODO_TOOL }> = ($, e) =>

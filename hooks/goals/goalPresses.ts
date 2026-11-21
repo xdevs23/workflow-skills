@@ -1,6 +1,6 @@
 import type { EngineInterface } from 'claude-code'
 
-import type { Goal } from '../../types'
+import type { DoneMark, Goal } from '../../types'
 import { showFailure } from '../failureToast'
 import { Outcome, Refusal, openGoalsByIdOf } from './board'
 import type { Changed, LoopRefused, NotChanged, NotOpenRefused, Unchanged } from './board'
@@ -146,7 +146,7 @@ async function unmarkOnScreen(
   $: EngineInterface,
   sessionId: string,
   number: number,
-  shown: { evidence: string; markedAt: number },
+  shown: DoneMark,
   reason: string | undefined,
 ): Promise<GoalSaveResult> {
   const removed = await removeDoneMarkInSession(

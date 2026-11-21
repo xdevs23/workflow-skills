@@ -4,18 +4,16 @@ import { EVERY_EVENT } from '../everyEvent'
 import type { PromptFooter } from '../promptFooter'
 import { SWITCHING_SOURCES } from '../sessionSources'
 import { loadBoardAtStart } from './goalActions'
+import { applyGoalCheckerAnswer } from './goalCheck'
+import { ATTACH_TODO_TOOL, DETACH_TODO_TOOL, GOALS_PANE_SITE, LIST_GOALS_TOOL } from './goalNames'
 import {
-  ATTACH_TODO_TOOL,
-  DETACH_TODO_TOOL,
-  GOALS_PANE_SITE,
-  LIST_GOALS_TOOL,
-  MARK_GOAL_DONE_TOOL,
-  UNMARK_GOAL_DONE_TOOL,
-} from './goalNames'
-import { endIdleStretch, waitAfterTurn } from './goalIdleReminder'
+  endIdleStretch,
+  missingWorkSource,
+  waitAfterTurn,
+  waitAgainAfterCheck,
+} from './goalIdleCheck'
 import { showNudgesWaitingAfterStop } from './goalNudge'
 import { addGoalChangesToToolResult, submitWithGoalChanges } from './goalReminderHooks'
-import { handleMarkGoalDoneCall, handleUnmarkGoalDoneCall } from './goalMarkTools'
 import {
   answerFailedGoalsPanePost,
   answerGoalsPanePost,
@@ -53,11 +51,12 @@ export function registerGoals(on: On, footer: PromptFooter): void {
   on('tool.call', { tool: LIST_GOALS_TOOL }, listGoals).catch(denyGoalToolFailure)
   on('tool.call', { tool: ATTACH_TODO_TOOL }, attachTodo).catch(denyGoalToolFailure)
   on('tool.call', { tool: DETACH_TODO_TOOL }, detachTodo).catch(denyGoalToolFailure)
-  on('tool.call', { tool: MARK_GOAL_DONE_TOOL }, handleMarkGoalDoneCall).catch(
-    denyGoalToolFailure,
-  )
-  on('tool.call', { tool: UNMARK_GOAL_DONE_TOOL }, handleUnmarkGoalDoneCall).catch(
-    denyGoalToolFailure,
+  // The engine passes `$` only to a function named at the call, so the goal check is handed the
+  // delivery of the goals found open and the wait after a failed check here.
+  on('turn.complete', EVERY_EVENT, ($, e, next) =>
+    applyGoalCheckerAnswer($, e, next, missingWorkSource($), checked =>
+      waitAgainAfterCheck($, checked),
+    ),
   )
   on('ui.render', GOALS_PANE_SITE, drawGoalsPane)
   on('ui.message', GOALS_PANE_SITE, answerGoalsPanePost).catch(answerFailedGoalsPanePost)

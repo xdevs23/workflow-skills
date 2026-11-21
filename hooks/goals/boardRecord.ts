@@ -2,8 +2,8 @@ import type { AttachedTodo, Board, Goal, Setting } from '../../types'
 import { describeUnreadableRecord, isRecord } from '../pluginStore'
 import { isPositiveInteger } from '../positiveInteger'
 import type { DependentGoal, PrioritizedGoal } from './board'
-import { MarkRemover, markRemovalAskedOf } from './doneMark'
-import type { MarkRemovalAsked, MarkedGoal, UnmarkedGoal } from './doneMark'
+import { MarkRemover, MarkSetter, readMarkSetter, storedMarkRemovalOf } from './doneMark'
+import type { MarkedGoal, StoredMarkRemoval, UnmarkedGoal } from './doneMark'
 import { isPriority } from './priority'
 import type { Priority } from './priority'
 import { settingOf } from './setting'
@@ -32,13 +32,19 @@ type StoredRecord = { version: typeof RECORD_VERSION } & (
   | { part: RecordPart.Text; goalId: string; text: string; editedAt: number }
   | { part: RecordPart.Clearance; goalId: string; clearedAt: number }
   | { part: RecordPart.Todo; goalId: string; number: string; title: string; attachedAt: number }
-  | { part: RecordPart.DoneMark; goalId: string; evidence: string; markedAt: number }
+  | {
+      part: RecordPart.DoneMark
+      goalId: string
+      evidence: string
+      markedAt: number
+      setBy: MarkSetter
+    }
   | ({
       part: RecordPart.MarkRemoval
       goalId: string
       markedAt: number
       removedAt: number
-    } & MarkRemovalAsked)
+    } & StoredMarkRemoval)
   | ({ part: RecordPart.Priority; goalId: string } & Setting<Priority>)
   | ({ part: RecordPart.Dependency; goalId: string } & Setting<string>)
 )
@@ -109,7 +115,7 @@ export function todoRecordOf(scope: BoardScope, goal: Goal, todo: AttachedTodo):
 
 /** The record of the done mark of `goal`, written only when the mark is set. */
 export function doneMarkRecordOf(scope: BoardScope, goal: MarkedGoal): BoardRecord {
-  const { evidence, markedAt } = goal.doneMark
+  const { evidence, markedAt, setBy } = goal.doneMark
 
   return recordOf(scope, {
     version: RECORD_VERSION,
@@ -117,6 +123,7 @@ export function doneMarkRecordOf(scope: BoardScope, goal: MarkedGoal): BoardReco
     goalId: goal.id,
     evidence,
     markedAt,
+    setBy,
   })
 }
 
@@ -133,7 +140,7 @@ export function markRemovalRecordOf(scope: BoardScope, goal: UnmarkedGoal): Boar
     goalId: goal.id,
     markedAt,
     removedAt,
-    ...markRemovalAskedOf(goal.markRemoval),
+    ...storedMarkRemovalOf(goal.markRemoval),
   })
 }
 
@@ -227,11 +234,13 @@ function patchOf(
     case RecordPart.Clearance:
       return { clearedAt: record.clearedAt }
     case RecordPart.DoneMark:
-      return { doneMark: { evidence: record.evidence, markedAt: record.markedAt } }
+      return {
+        doneMark: { evidence: record.evidence, markedAt: record.markedAt, setBy: record.setBy },
+      }
     case RecordPart.MarkRemoval: {
       const { markedAt, removedAt } = record
 
-      return { markRemoval: { markedAt, removedAt, ...markRemovalAskedOf(record) } }
+      return { markRemoval: { markedAt, removedAt, ...storedMarkRemovalOf(record) } }
     }
     case RecordPart.Priority:
       return { prioritySetting: settingOf(record.value, record.setAt) }
@@ -306,12 +315,27 @@ const PARSERS: Record<RecordPart, (value: Record<string, unknown>) => StoredReco
     typeof attachedAt === 'number'
       ? { version: RECORD_VERSION, part: RecordPart.Todo, goalId, number, title, attachedAt }
       : undefined,
-  [RecordPart.DoneMark]: ({ goalId, evidence, markedAt }) =>
-    typeof goalId === 'string' && typeof evidence === 'string' && typeof markedAt === 'number'
-      ? { version: RECORD_VERSION, part: RecordPart.DoneMark, goalId, evidence, markedAt }
-      : undefined,
+  [RecordPart.DoneMark]: ({ goalId, evidence, markedAt, setBy }) => {
+    // A mark stored before the goal checker set the done marks has no setter, and was set by the
+    // model.
+    const setter = setBy === undefined ? MarkSetter.Model : readMarkSetter(setBy)
+
+    return typeof goalId === 'string' &&
+      typeof evidence === 'string' &&
+      typeof markedAt === 'number' &&
+      setter !== undefined
+      ? {
+          version: RECORD_VERSION,
+          part: RecordPart.DoneMark,
+          goalId,
+          evidence,
+          markedAt,
+          setBy: setter,
+        }
+      : undefined
+  },
   [RecordPart.MarkRemoval]: ({ goalId, markedAt, removedAt, ...asked }) => {
-    const removal = readMarkRemovalAsked(asked)
+    const removal = readStoredMarkRemoval(asked)
 
     return typeof goalId === 'string' &&
       typeof markedAt === 'number' &&
@@ -345,11 +369,11 @@ const PARSERS: Record<RecordPart, (value: Record<string, unknown>) => StoredReco
  * Reads the remover of a stored removal, with the fields of that remover. A reason that is not
  * text, or is blank, reads as absent.
  */
-function readMarkRemovalAsked({
+function readStoredMarkRemoval({
   removedBy,
   reason,
   dependencyNumber,
-}: Record<string, unknown>): MarkRemovalAsked | undefined {
+}: Record<string, unknown>): StoredMarkRemoval | undefined {
   const remover = Object.values(MarkRemover).find(each => each === removedBy)
   switch (remover) {
     case undefined:
@@ -357,7 +381,7 @@ function readMarkRemovalAsked({
     case MarkRemover.Model:
       return { removedBy: remover }
     case MarkRemover.User:
-      return markRemovalAskedOf(
+      return storedMarkRemovalOf(
         typeof reason === 'string' ? { removedBy: remover, reason } : { removedBy: remover },
       )
     case MarkRemover.Dependency:

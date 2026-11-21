@@ -2,6 +2,7 @@ import type { DoneMark } from '../../types'
 import { isRecord } from '../pluginStore'
 import { isPositiveInteger } from '../positiveInteger'
 import { UnreadablePost, unreadableField } from '../unreadablePost'
+import { readMarkSetter } from './doneMark'
 import { GoalPaneActionKind } from './goalPaneMessages'
 import type { GoalPaneAction } from './goalPaneMessages'
 import { isPriority } from './priority'
@@ -67,8 +68,9 @@ function readDoneMark(mark: unknown): DoneMark | undefined {
     return undefined
   }
   const { evidence, markedAt } = mark
+  const setBy = readMarkSetter(mark.setBy)
 
-  return typeof evidence === 'string' && typeof markedAt === 'number'
-    ? { evidence, markedAt }
+  return typeof evidence === 'string' && typeof markedAt === 'number' && setBy !== undefined
+    ? { evidence, markedAt, setBy }
     : undefined
 }

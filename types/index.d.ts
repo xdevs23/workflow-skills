@@ -1,12 +1,13 @@
 import type { Outcome, Read } from '../hooks/goals/board'
-import type { MarkRemovalAsked } from '../hooks/goals/doneMark'
+import type { MarkSetter, StoredMarkRemoval } from '../hooks/goals/doneMark'
 import type {
   ImportAction,
   ImportInPane,
   ImportResult,
   ImportableSessions,
 } from '../hooks/imports/importPaneMessages'
-import type { IdlePhase } from '../hooks/goals/goalIdleReminder'
+import type { GoalCheckPhase } from '../hooks/goals/goalCheck'
+import type { IdlePhase } from '../hooks/goals/goalIdleCheck'
 import type { GoalPaneAction, GoalSaveResult } from '../hooks/goals/goalPaneMessages'
 import type { RowMode } from '../hooks/goals/goalRowState'
 import type { Priority } from '../hooks/goals/priority'
@@ -25,6 +26,7 @@ import type { Refusal as ReminderRefusal } from '../hooks/reminders/reminders'
 import type { ForkView } from '../hooks/roast/messagesUnseenByFork'
 import type { PendingRoast, SessionRoast } from '../hooks/roast/roastState'
 import type { VerifierRetries } from '../hooks/roast/verifierRetryState'
+import type { TextWithLine } from '../hooks/sendToModel'
 import type { ActivityOfSession } from '../hooks/sessionState'
 
 /** What the user wrote in reply to a question. */
@@ -71,16 +73,17 @@ export type AttachedTodo = {
  * The removal of the done mark set at `markedAt`: when, by whom, and, for a removal by the user,
  * why, if given. The reason is never blank.
  */
-export type MarkRemoval = { markedAt: number; removedAt: number } & MarkRemovalAsked
+export type MarkRemoval = { markedAt: number; removedAt: number } & StoredMarkRemoval
 
 /**
- * A goal reported as done by the model, with the evidence for the user to look at. The goal stays
- * open until the user clears it.
+ * A goal judged done, with the evidence for the user to look at. The goal is open until the user
+ * clears it.
  */
 export type DoneMark = {
-  /** What the user looks at to check the goal, such as a file, a branch or a version. */
+  /** What the user looks at to check the goal, such as a commit and a file. */
   evidence: string
   markedAt: number
+  setBy: MarkSetter
 }
 
 /** A goal set by the user for the work, open until the user clears it. */
@@ -183,8 +186,8 @@ export type SeenBoard = {
 }
 
 /**
- * The time between two turns of the main conversation of a session, and how far the reminder of
- * the open goals in it got.
+ * The time between two turns of the main conversation of a session, and how far the goal check in
+ * it got.
  */
 export type IdleStretch = {
   sessionId: string
@@ -192,6 +195,35 @@ export type IdleStretch = {
   stretchId: string
   phase: IdlePhase
 }
+
+/**
+ * The done mark that the user removed from a goal, as the goal checker reads it: the evidence of
+ * the mark, the time of the removal as an ISO 8601 text, and the reason given by the user, if any.
+ */
+export type RemovedMark = { evidence: string; removedAt: string; reason?: string }
+
+/** An open goal as listed for the goal checker, with the done mark the user removed, if any. */
+export type ListedGoal = { goal: number; text: string; removedMark?: RemovedMark }
+
+/** The default branch of the project, by the ref it was found under, and the commit at its head. */
+export type DefaultBranch = { ref: string; head: string }
+
+/**
+ * The last goal check of a session: while its goal checker runs, the goals listed for it, and once
+ * the verdicts were reported, the goals whose verdicts were applied.
+ */
+export type GoalCheck = {
+  sessionId: string
+  /** The idle stretch the check started in, which starts no other check. */
+  stretchId: string
+  phase: GoalCheckPhase
+  /** Absent when git found no default branch. */
+  defaultBranch?: DefaultBranch
+  goals: readonly ListedGoal[]
+}
+
+/** The goals found open by the goal checker of a session, waiting to go to its model. */
+export type PendingMissingWork = { sessionId: string; note: TextWithLine }
 
 /** A goal pressed with Nudge, by its id and the number shown to the user. */
 export type NudgedGoal = { id: string; number: number }
@@ -403,6 +435,10 @@ declare module 'claude-code' {
        * the idle minutes run, before the first turn and after the turn started by the reminder.
        */
       idleStretch: IdleStretch | null
+      /** The last goal check of the session; null before the first check. */
+      goalCheck: GoalCheck | null
+      /** The goals found open by the goal checker of the session; null while none waits. */
+      pendingMissingWork: PendingMissingWork | null
       /** The nudges of the session waiting to be sent to the model; null while none waits. */
       waitingNudges: WaitingNudges | null
       /**

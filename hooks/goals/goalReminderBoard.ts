@@ -34,17 +34,15 @@ export async function readBoardToRemind(
 
 /**
  * Records `board` as seen by the model running the session `sessionId`, and returns the open goals
- * on it as `describeOpenGoalsSent` writes them with `describeList`, ended by
- * `withNotesOnOpenGoals`.
+ * on it as `describeOpenGoalsSent` writes them, ended by `withNotesOnOpenGoals`.
  */
 export async function listOpenGoals(
   $: EngineInterface,
   sessionId: string,
   board: Board,
-  describeList: (board: Board) => string | undefined,
 ): Promise<GoalList> {
   const seenBefore = await exchangeSeenBoard($, sessionId, board)
-  const sent = describeOpenGoalsSent(board, seenBefore, describeList)
+  const sent = describeOpenGoalsSent(board, seenBefore)
   if (sent === undefined) {
     return { sent, seenBefore }
   }

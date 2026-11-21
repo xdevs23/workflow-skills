@@ -7,11 +7,7 @@ import { callToolWithNote, logSentLine, submitWithNoteAndLineOrRestore } from '.
 import type { TextWithLine } from '../sendToModel'
 import { Outcome } from './board'
 import { listOpenGoals, readBoardToRemind } from './goalReminderBoard'
-import {
-  describeGoalChangesSent,
-  describeOpenGoalsAfterCompaction,
-  describeOpenGoalsNotSent,
-} from './goalReminders'
+import { describeGoalChangesSent, describeOpenGoalsNotSent } from './goalReminders'
 import { exchangeSeenBoard, readBoardInState, readSeenBoard, restoreSeenBoard } from './goalState'
 import { GOAL_TOOLS } from './goalTools'
 import { withNotesOnOpenGoals } from './goalToolTexts'
@@ -37,12 +33,7 @@ async function takeOpenGoals($: EngineInterface): Promise<CompactionNote | undef
   if (board === undefined) {
     return undefined
   }
-  const { sent, seenBefore } = await listOpenGoals(
-    $,
-    sessionId,
-    board,
-    describeOpenGoalsAfterCompaction,
-  )
+  const { sent, seenBefore } = await listOpenGoals($, sessionId, board)
 
   return sent === undefined
     ? undefined

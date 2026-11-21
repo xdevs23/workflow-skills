@@ -3,8 +3,10 @@ import type { EngineInterface } from 'claude-code'
 
 import type {
   Board,
+  GoalCheck,
   GoalInPane,
   IdleStretch,
+  PendingMissingWork,
   SeenBoard,
   SessionBoard,
   UnreadBoard,
@@ -34,6 +36,11 @@ const goalsPaneTyped = atom({ plugin: 'workflow-skills', key: 'goalsPaneTyped' }
 const seenBoard = atom({ plugin: 'workflow-skills', key: 'seenBoard' } as const, null)
 const idleStretch = atom({ plugin: 'workflow-skills', key: 'idleStretch' } as const, null)
 const waitingNudges = atom({ plugin: 'workflow-skills', key: 'waitingNudges' } as const, null)
+const goalCheck = atom({ plugin: 'workflow-skills', key: 'goalCheck' } as const, null)
+const pendingMissingWork = atom(
+  { plugin: 'workflow-skills', key: 'pendingMissingWork' } as const,
+  null,
+)
 
 /**
  * The board in the state while its session runs, and null otherwise, such as before the session
@@ -169,6 +176,40 @@ export function updateIdleStretch(
 ): Promise<IdleStretch | null> {
   return updateOfSession($, sessionId, change, changeInState =>
     update($, idleStretch, changeInState),
+  )
+}
+
+/** The last goal check of the session `sessionId`, if it had one. */
+export async function readGoalCheck(
+  $: EngineInterface,
+  sessionId: string,
+): Promise<GoalCheck | null> {
+  return ofSession(await read($, goalCheck), sessionId)
+}
+
+/**
+ * Replaces the last goal check of the session `sessionId` with what `change` makes of it, unless
+ * another session runs by now. `change` is called with null when the session had no check.
+ */
+export async function updateGoalCheck(
+  $: EngineInterface,
+  sessionId: string,
+  change: (check: GoalCheck | null) => GoalCheck | null,
+): Promise<void> {
+  await updateOfSession($, sessionId, change, changeInState => update($, goalCheck, changeInState))
+}
+
+/**
+ * Replaces the goals found open by the goal checker of the session `sessionId` with what `change`
+ * makes of them, unless another session runs by now. `change` is called with null while none wait.
+ */
+export async function updatePendingMissingWork(
+  $: EngineInterface,
+  sessionId: string,
+  change: (pending: PendingMissingWork | null) => PendingMissingWork | null,
+): Promise<void> {
+  await updateOfSession($, sessionId, change, changeInState =>
+    update($, pendingMissingWork, changeInState),
   )
 }
 

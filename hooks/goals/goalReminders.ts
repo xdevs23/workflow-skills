@@ -1,4 +1,4 @@
-import type { Board, DoneMark, Goal } from '../../types'
+import type { Board, Goal } from '../../types'
 import { AND_LIST } from '../listFormat'
 import type { TextWithLine } from '../sendToModel'
 import { openGoalsByIdOf, openGoalsByPriorityOf, openGoalsOf } from './board'
@@ -7,10 +7,9 @@ import { MarkRemover, doneMarkOf } from './doneMark'
 import { dependedGoalOf, unfinishedDependencyOf } from './dependency'
 import type { OpenGoals } from './dependency'
 import { describeUnfinishedDependency, nameGoalWithPriority, priorityTagOf } from './goalListTexts'
-import { MARK_GOAL_DONE_TOOL } from './goalNames'
 import { PANE_TITLE, nameGoal } from './goalPaneTexts'
 import { describePriority, priorityOf } from './priority'
-import { GoalsReader, describeDoneMarkForModel } from './goalToolTexts'
+import { describeDoneMarkForModel } from './goalToolTexts'
 import { describeEntry, describeTodoNumber } from './todoEntry'
 
 /** The toast for a board that could not be read for a reminder, with the failure from the store. */
@@ -29,10 +28,11 @@ export function describeOpenGoalsNotSent(reason: string): string {
 const OPEN_GOALS_HEADING = '# Open goals, by priority (P0 most important)'
 
 /**
- * The text sent to the main conversation after it compacts: the open goals by priority, with
- * their priorities, the goals each of them depends on, their done marks and their TODO entries.
+ * The open goals of `board` as every list sent to the main conversation writes them: by priority,
+ * with their priorities, the goals each of them depends on, their done marks and their TODO
+ * entries.
  */
-export function describeOpenGoalsAfterCompaction(board: Board): string | undefined {
+export function describeOpenGoalsList(board: Board): string | undefined {
   const goals = openGoalsByPriorityOf(board)
   const open = openGoalsByIdOf(board)
 
@@ -42,43 +42,16 @@ export function describeOpenGoalsAfterCompaction(board: Board): string | undefin
 }
 
 /**
- * The first paragraph of the reminder sent after the idle minutes, while a goal is open without a
- * done mark. It tells the model to work on the goals.
+ * The open goals on `now` as describeOpenGoalsList writes them, followed by the note on
+ * the goals added, edited, unmarked, prioritized, made dependent and cleared by the user since the
+ * model saw the board as `seen`. The list contains only open goals, so the note goes with it.
  */
-const IDLE_WITH_UNFINISHED_GOALS =
-  'You are idle while goals are open. Pick up the work on them in this turn, P0 first. Do not ' +
-  'end the turn on a status report.'
-
-/**
- * The reminder sent once the model has been idle for a while opens with
- * `IDLE_WITH_UNFINISHED_GOALS` and then has one paragraph per open goal, in priority order. Goals
- * marked as done are left out of the opening, so the reminder does not ask for more work on a board
- * with only those goals.
- */
-export function describeOpenGoalsAfterIdle(board: Board): string | undefined {
-  const goals = openGoalsByPriorityOf(board)
-  if (goals.length === 0) {
-    return undefined
-  }
-  const opening = goals.some(goal => doneMarkOf(goal) === undefined)
-    ? [IDLE_WITH_UNFINISHED_GOALS]
-    : []
-  const open = openGoalsByIdOf(board)
-
-  return [...opening, ...goals.map(goal => describeUnsatisfiedGoal(open, goal))].join('\n\n')
-}
-
-/**
- * The open goals on `now` as `describeList` writes them, followed by the note on the goals added,
- * edited, unmarked, prioritized, made dependent and cleared by the user since the model saw the
- * board as `seen`. The list contains only open goals, so the note goes with it.
- */
-export function describeOpenGoalsSent(
-  now: Board,
-  seen: Board | null,
-  describeList: (board: Board) => string | undefined,
-): TextWithLine | undefined {
-  return describeSent(now, describeList(now), seen === null ? [] : changesSince(seen, now))
+export function describeOpenGoalsSent(now: Board, seen: Board | null): TextWithLine | undefined {
+  return describeSent(
+    now,
+    describeOpenGoalsList(now),
+    seen === null ? [] : changesSince(seen, now),
+  )
 }
 
 /**
@@ -88,7 +61,7 @@ export function describeOpenGoalsSent(
  */
 export function describeGoalChangesSent(seen: Board | null, now: Board): TextWithLine | undefined {
   return seen === null
-    ? describeOpenGoalsSent(now, seen, describeOpenGoalsAfterCompaction)
+    ? describeOpenGoalsSent(now, seen)
     : describeSent(now, undefined, changesSince(seen, now))
 }
 
@@ -102,7 +75,7 @@ function describeGoalWithTodos(open: OpenGoals, goal: Goal): string[] {
   return [
     `${label}${tag === undefined ? '' : `${tag} `}${goal.text}`,
     ...(unfinished === undefined ? [] : [`${indent}${describeUnfinishedDependency(unfinished)}`]),
-    ...(mark === undefined ? [] : [`${indent}${describeMarkToMainConversation(mark)}`]),
+    ...(mark === undefined ? [] : [`${indent}${describeDoneMarkForModel(mark)}`]),
     ...goal.todos.map(todo => `${indent}${describeEntry(todo)}`),
   ]
 }
@@ -117,7 +90,7 @@ function describeUnsatisfiedGoal(open: OpenGoals, goal: Goal): string {
   return [
     `${nameGoalWithPriority(goal)} is not satisfied yet: ${asSentence(goal.text)}`,
     ...(unfinished === undefined ? [] : [describeUnfinishedDependency(unfinished)]),
-    ...(mark === undefined ? [] : [asSentence(describeMarkToMainConversation(mark))]),
+    ...(mark === undefined ? [] : [asSentence(describeDoneMarkForModel(mark))]),
     ...(goal.todos.length === 0 ? [] : [`Attached: ${attached}.`]),
   ].join(' ')
 }
@@ -134,8 +107,7 @@ const NUDGE_FOR_ONE_GOAL: NudgeTexts = {
     'while, and would like you to work on it and bring it to completion.',
   closing:
     'Start working on the goal as soon as possible, without interrupting the current work. ' +
-    'Either finish the goal cleanly and properly, as the rules require, or mark it as done with ' +
-    `${MARK_GOAL_DONE_TOOL}, so the user can check the result. If the result of the goal is a ` +
+    'Finish the goal cleanly and properly, as the rules require. If the result of the goal is a ' +
     'draft, open the draft now. The user will not tolerate more delays that you cannot ' +
     'seriously explain and back with clear evidence of why you cannot complete the goal.',
 }
@@ -146,15 +118,14 @@ const NUDGE_FOR_SEVERAL_GOALS: NudgeTexts = {
     'while, and would like you to work on them and bring them to completion.',
   closing:
     'Start working on the goals as soon as possible, without interrupting the current work. ' +
-    'Either finish each goal cleanly and properly, as the rules require, or mark that goal as ' +
-    `done with ${MARK_GOAL_DONE_TOOL}, so the user can check the result. If the result of a goal ` +
-    'is a draft, open the draft now. The user will not tolerate more delays that you cannot ' +
+    'Finish each goal cleanly and properly, as the rules require. If the result of a goal is a ' +
+    'draft, open the draft now. The user will not tolerate more delays that you cannot ' +
     'seriously explain and back with clear evidence of why you cannot complete the goals.',
 }
 
 /**
- * The prompt sent when the user presses Nudge on `goals`: the goals as the reminder after the idle
- * minutes writes them, between the request to finish them and how to finish them.
+ * The prompt sent when the user presses Nudge on `goals`: one paragraph for each goal, with its
+ * dependency and its done mark, between the request to finish the goals and how to finish them.
  */
 export function describeNudge(open: OpenGoals, goals: GoalsToNudge): string {
   const texts = goals.length === 1 ? NUDGE_FOR_ONE_GOAL : NUDGE_FOR_SEVERAL_GOALS
@@ -227,11 +198,11 @@ function describeMarkRemovedNote(goal: Goal): string {
     const dependsOn = nameGoal(removal.dependencyNumber)
 
     return (
-      `Your done mark on ${name} was removed, since ${name} depends on ${dependsOn}, which was ` +
+      `The done mark on ${name} was removed, since ${name} depends on ${dependsOn}, which was ` +
       'not marked as done.'
     )
   }
-  const removed = `The user removed your done mark from ${name}`
+  const removed = `The user removed the done mark from ${name}`
   const reason = removal?.removedBy === MarkRemover.User ? removal.reason : undefined
 
   return reason === undefined
@@ -264,7 +235,8 @@ type NotedChange = { goal: Goal; kind: NotedKind }
 
 /**
  * The changes made by the user since the model last saw the board as `seen`, with the marks
- * removed with them. The model sets and removes its own marks, so the note leaves those out.
+ * removed with them. The note contains changes by the user alone, so it leaves out the marks set by
+ * the goal checker, and the removals by the model on a board stored before the goal checker.
  */
 function changesSince(seen: Board, now: Board): NotedChange[] {
   return changesBetween(seen, now).flatMap(({ goal, kind }): NotedChange[] => {
@@ -329,11 +301,6 @@ function describeSentLine(
   return changes.length === 0
     ? `${PANE_TITLE}: ${listed}`
     : `${PANE_TITLE}: ${listed}, with ${changed}`
-}
-
-/** The done mark as the main conversation reads it, the only reader of the reminders. */
-function describeMarkToMainConversation(mark: DoneMark): string {
-  return describeDoneMarkForModel(mark, GoalsReader.MainConversation)
 }
 
 function asSentence(text: string): string {

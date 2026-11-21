@@ -1,8 +1,6 @@
 import { NON_BLANK, NUMBER_RULE } from '../inputs'
 import type { ToolArguments } from '../inputs'
 import { isPositiveInteger } from '../positiveInteger'
-import { LINE_BREAKING_CHARACTERS, MAX_EVIDENCE_LENGTH } from './board'
-import { EVIDENCE_BLANK, EVIDENCE_EXAMPLES } from './goalToolTexts'
 
 // A product choice: a heading in TODO.md is one short line, and every list of the goals read by the
 // model repeats each entry attached to a goal.
@@ -12,36 +10,6 @@ const GOAL_SCHEMA = {
   type: 'integer',
   minimum: 1,
   description: `The number of the goal, as ${NUMBER_RULE}.`,
-}
-
-/**
- * One line that is not blank, with white space around it: a character other than white space, and
- * no character that breaks the line between the first and the last of those.
- */
-const ONE_LINE_NOT_BLANK =
-  `^\\s*[^\\s${LINE_BREAKING_CHARACTERS}](?:[^${LINE_BREAKING_CHARACTERS}]*` +
-  `[^\\s${LINE_BREAKING_CHARACTERS}])?\\s*$`
-
-export const MARK_GOAL_DONE_SCHEMA = {
-  type: 'object',
-  properties: {
-    goal: GOAL_SCHEMA,
-    evidence: {
-      type: 'string',
-      pattern: ONE_LINE_NOT_BLANK,
-      maxLength: MAX_EVIDENCE_LENGTH,
-      description: EVIDENCE_EXAMPLES,
-    },
-  },
-  required: ['goal', 'evidence'],
-  additionalProperties: false,
-}
-
-export const UNMARK_GOAL_DONE_SCHEMA = {
-  type: 'object',
-  properties: { goal: GOAL_SCHEMA },
-  required: ['goal'],
-  additionalProperties: false,
 }
 
 /** The input of a tool that changes the TODO entries of a goal, with the entry as described. */
@@ -85,9 +53,6 @@ export type ToolInput<Input> =
 /** The input of a tool that changes the TODO entries of a goal. */
 export type TodoInput<Todo> = { goal: number; todo: Todo }
 
-/** The input of the tool that marks a goal as done. */
-export type MarkInput = { goal: number; evidence: string }
-
 /** The input of a tool that needs only the number of a goal. */
 export type GoalInput = { goal: number }
 
@@ -130,23 +95,6 @@ export function readGoalInput(input: ToolArguments): ToolInput<GoalInput> {
   return isPositiveInteger(goal)
     ? { outcome: InputOutcome.Valid, input: { goal } }
     : invalid(GOAL_PROBLEM)
-}
-
-/**
- * Reads the input of the model to the tool that marks a goal as done, which arrives unchecked.
- * An evidence that breaks a rule is refused by the board rules, so only its type is read here,
- * and a missing evidence gets the reply to a blank one.
- */
-export function readMarkInput(input: ToolArguments): ToolInput<MarkInput> {
-  const read = readGoalInput(input)
-  if (read.outcome !== InputOutcome.Valid) {
-    return read
-  }
-  const { evidence } = input
-
-  return typeof evidence === 'string'
-    ? { outcome: InputOutcome.Valid, input: { goal: read.input.goal, evidence } }
-    : invalid(EVIDENCE_BLANK)
 }
 
 /**

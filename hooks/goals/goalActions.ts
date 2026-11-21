@@ -5,14 +5,15 @@ import { showFailure } from '../failureToast'
 import { Outcome } from './board'
 import type {
   AddRefused,
+  AskedMark,
   BoardChange,
   ChangeRefused,
   Changed,
   DependentGoal,
   EditRefused,
   GoalEdit,
+  GoalsMarked,
   LoopRefused,
-  MarkRefused,
   NotChanged,
   NotOpenRefused,
   PrioritizedGoal,
@@ -20,7 +21,7 @@ import type {
   Unchanged,
   UnmarkRefused,
 } from './board'
-import type { MarkRemovalAsked, MarkedGoal, UnmarkedGoal } from './doneMark'
+import type { MarkRemovalAsked, UnmarkedGoal } from './doneMark'
 import { sessionScope } from './boardScope'
 import {
   describeStoreFailure,
@@ -28,7 +29,7 @@ import {
   saveAttachedTodo,
   saveClearedGoal,
   saveDetachedTodo,
-  saveDoneMark,
+  saveDoneMarks,
   saveEditedGoal,
   saveGoalDependency,
   saveGoalPriority,
@@ -154,15 +155,16 @@ export async function editGoalOfSession(
   return loadBoardAfterChange($, sessionId, edited)
 }
 
-/** Marks the goal numbered `number` on the board of the session `sessionId` as done. */
-export async function markGoalDoneInSession(
+/**
+ * Marks the goal of each of `marks` on the board of the session `sessionId` as done, as
+ * markGoalsDone does.
+ */
+export async function markGoalsDoneInSession(
   $: EngineInterface,
   sessionId: string,
-  number: number,
-  evidence: string,
-): Promise<Changed<MarkedGoal> | Unchanged | MarkRefused | Failed> {
-  const scope = sessionScope(sessionId)
-  const marked = await saveDoneMark($, scope, number, evidence, await $.clock.now())
+  marks: readonly AskedMark[],
+): Promise<GoalsMarked | Failed> {
+  const marked = await saveDoneMarks($, sessionScope(sessionId), marks, await $.clock.now())
 
   return loadBoardAfterChange($, sessionId, marked)
 }
@@ -246,7 +248,7 @@ export async function detachTodoInSession(
  * the store failed. A goal that is not open was cleared by another process or never added, so the
  * board is read again after a refusal too.
  */
-async function loadBoardAfterChange<Change extends Changed | NotChanged | Failed>(
+async function loadBoardAfterChange<Change extends Changed | NotChanged | GoalsMarked | Failed>(
   $: EngineInterface,
   sessionId: string,
   change: Change,

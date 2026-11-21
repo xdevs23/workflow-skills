@@ -1,10 +1,19 @@
 import type { DoneMark, Goal, MarkRemoval } from '../../types'
 
-// Only the model marks a goal as done, and the goal is open with the mark until the user clears it.
+// The goal checker marks a goal as done, and the goal is open with the mark until the user clears
+// it.
+
+/** Who set a done mark. */
+export enum MarkSetter {
+  GoalChecker = 'goal-checker',
+  /** The model, on a board stored before the goal checker set the done marks. */
+  Model = 'model',
+}
 
 /** Who removed a done mark. */
 export enum MarkRemover {
   User = 'user',
+  /** The model, on a board stored before the goal checker set the done marks. */
   Model = 'model',
   /** Removed because its dependency was no longer done. */
   Dependency = 'dependency',
@@ -15,9 +24,11 @@ export enum MarkRemover {
  * removal for a dependency, the number of the goal depended on.
  */
 export type MarkRemovalAsked =
-  | { removedBy: MarkRemover.Model }
   | { removedBy: MarkRemover.User; reason?: string }
   | { removedBy: MarkRemover.Dependency; dependencyNumber: number }
+
+/** The remover of a stored removal: one a caller can ask for, or the model on an older board. */
+export type StoredMarkRemoval = MarkRemovalAsked | { removedBy: MarkRemover.Model }
 
 /** A goal with a done mark, removed or not, as a mark leaves it. */
 export type MarkedGoal = Goal & { doneMark: DoneMark }
@@ -25,28 +36,58 @@ export type MarkedGoal = Goal & { doneMark: DoneMark }
 /** A goal with the removal of a done mark, as a removal leaves it. */
 export type UnmarkedGoal = Goal & { markRemoval: MarkRemoval }
 
-/** `asked` with only the fields of its remover, its reason trimmed, and a blank reason left out. */
-export function markRemovalAskedOf(asked: MarkRemovalAsked): MarkRemovalAsked {
-  switch (asked.removedBy) {
+/**
+ * `removal` with only the fields of its remover, its reason trimmed, and a blank reason left out.
+ */
+export function storedMarkRemovalOf(removal: StoredMarkRemoval): StoredMarkRemoval {
+  switch (removal.removedBy) {
     case MarkRemover.Model:
-      return { removedBy: asked.removedBy }
+      return { removedBy: removal.removedBy }
     case MarkRemover.User: {
-      const trimmed = asked.reason?.trim() ?? ''
+      const trimmed = removal.reason?.trim() ?? ''
 
       return trimmed === ''
-        ? { removedBy: asked.removedBy }
-        : { removedBy: asked.removedBy, reason: trimmed }
+        ? { removedBy: removal.removedBy }
+        : { removedBy: removal.removedBy, reason: trimmed }
     }
     case MarkRemover.Dependency:
-      return { removedBy: asked.removedBy, dependencyNumber: asked.dependencyNumber }
+      return { removedBy: removal.removedBy, dependencyNumber: removal.dependencyNumber }
   }
 }
 
-/** The done mark of `goal` while it has one: set by the model and not removed since. */
+/** The setter named by `value`, a stored text, or undefined when it names none. */
+export function readMarkSetter(value: unknown): MarkSetter | undefined {
+  return Object.values(MarkSetter).find(setter => setter === value)
+}
+
+/** The done mark of `goal` while it has one: set and not removed since. */
 export function doneMarkOf(goal: Goal): DoneMark | undefined {
   const mark = goal.doneMark
 
   return mark?.markedAt === goal.markRemoval?.markedAt ? undefined : mark
+}
+
+/** The done mark last removed from a goal by the user, with its removal. */
+export type UserRemovedMark = {
+  mark: DoneMark
+  removal: Extract<MarkRemoval, { removedBy: MarkRemover.User }>
+}
+
+/**
+ * The done mark last removed from `goal` by the user, while no mark was set on the goal since and
+ * no edit followed the removal. A mark removed up to the last edit, also by the edit itself, was
+ * set for an older text.
+ */
+export function userRemovedMarkOf(goal: Goal): UserRemovedMark | undefined {
+  const mark = doneMarkOf(goal) === undefined ? goal.doneMark : undefined
+  const removal = goal.markRemoval
+  if (mark === undefined || removal?.removedBy !== MarkRemover.User) {
+    return undefined
+  }
+
+  return goal.editedAt !== undefined && removal.removedAt <= goal.editedAt
+    ? undefined
+    : { mark, removal }
 }
 
 /** `goal` with its done mark `mark` removed as `removal` says. */
@@ -55,7 +96,7 @@ export function unmarkedGoalOf(
   mark: DoneMark,
   removal: MarkRemovalAsked & { removedAt: number },
 ): UnmarkedGoal {
-  const markRemoval = { ...markRemovalAskedOf(removal), removedAt: removal.removedAt }
+  const markRemoval = { ...storedMarkRemovalOf(removal), removedAt: removal.removedAt }
 
   return { ...goal, markRemoval: { ...markRemoval, markedAt: mark.markedAt } }
 }
