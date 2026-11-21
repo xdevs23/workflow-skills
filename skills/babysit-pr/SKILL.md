@@ -32,7 +32,6 @@ description: Whenever a PR is created or needs watching
   print again after restart
 - Post comment only when it adds something of value
 - Do not act on your own replies. Recognize them by mandatory prefix at their start
-- When watcher stops without error exit while pull request still open, start it again
 - When watcher exits with error, such as `login-lost`, branch without open pull request or branch
   with more than one: start it again only once cause named in error message or event fixed
 - Expect `login-lost` event as last line when `gh` has no login accepted by GitHub: none configured,
