@@ -92,6 +92,7 @@ export const WAITING_HINT: HintKind<HintKindName.Waiting> = {
     /\bmy\s+(?:earlier|previous|last|other)\s+questions?\b/i,
     /\bmy\s+questions?\s+(?:above|from\s+(?:before|earlier))\b/i,
     /\bquestions?\s+(?:I|we)\s+(?:asked|put|posted|raised)\b/i,
+    /\bone\s+open\s+question\s+for\s+you\b/i,
   ],
   text: [
     "If you're waiting for an answer from the user, ensure you have first researched whether the " +
