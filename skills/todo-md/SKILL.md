@@ -74,8 +74,8 @@ Draft: .cache/specs/reaction-emoji.html
   avatar"
 - Split feature, or anything bigger than small patch, into sub-units, each covering one aspect.
   Such as one behavior or one module
-- Add sub-units of unit once its draft approved, as `workflow-skills:implement` describes, before
-  building of unit starts
+- Add sub-units whenever unit needs them, each with own draft. Never draw one draft for all
+  sub-units
 - Word unit that removes violations of rule by what rule is for, such as "a value sent by the
   server and unknown to this build becomes an explicit unknown value where it arrives". Never word
   it as check to make pass, such as "make the lint pass"
