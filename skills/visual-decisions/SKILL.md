@@ -107,10 +107,10 @@ description: Draw page for user to look at: drafts, product decisions, plans and
   After, in at most 3 words
 - Never paste code, diff or test list into draft, except diff of code marked Updated. Approval of
   draft would approve that code
-- Show code only as short snippet of few lines that shows idea, under header with component and
-  path. Go one layer up and abstract away internal details of code, so functions, variables and
-  other declarations read like what it does in real world. Write in separate column beside each
-  line what line does in plain words
+- Show code only as short snippet of few lines that shows idea, except diff of code marked Updated.
+  Put code under header with component and path. Go one layer up and abstract away internal
+  details of code, so functions, variables and other declarations read like what it does in real
+  world. Write in separate column beside each line what line does in plain words
 - Write code asked for by user on page of its own next to draft, files side by side under their
   paths, dark mode. Open it like draft. Never answer such request in chat
 
