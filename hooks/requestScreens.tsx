@@ -6,7 +6,7 @@ import { replyOf, replyUsage } from './inputs'
 import { ALL_CLOSED } from './modelText'
 import { REPLY_COMMAND, REQUESTS_PANE } from './names'
 import { sortedByNumber } from './numbered'
-import { describePaneNotOpened } from './paneOpening'
+import { openPane } from './paneOpening'
 import type { PaneOpener } from './paneOpening'
 import { openRequestsOf } from './requests'
 import { sessionForUse } from './requestSession'
@@ -116,16 +116,11 @@ async function showPane($: EngineInterface): Promise<void> {
 }
 
 /** Opens the Requests pane, and returns why it did not open, undefined once it opened. */
-export async function openRequestsPane(
+export function openRequestsPane(
   $: EngineInterface,
   opener: PaneOpener,
 ): Promise<string | undefined> {
-  const opened = await $.ui.open({ id: REQUESTS_PANE, title: REQUESTS_PANE_TITLE, focus: true })
-  if (opened.isPlaced) {
-    return undefined
-  }
-
-  return describePaneNotOpened(REQUESTS_PANE_TITLE, opened.reason, opener)
+  return openPane($, { id: REQUESTS_PANE, title: REQUESTS_PANE_TITLE }, opener)
 }
 
 async function markDoneOnScreen(

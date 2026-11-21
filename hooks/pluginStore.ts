@@ -20,6 +20,7 @@ export enum RecordKind {
   Reminder = 'reminders',
   Session = 'sessions',
   IdleRoast = 'idle-roast',
+  Idea = 'ideas',
 }
 
 const KEY_SEPARATOR = ':'
@@ -65,7 +66,7 @@ export enum StoreCall {
 export type FailedStoreCall = { call: StoreCall; key: string; cause: Error }
 
 /** A record of the store under its key, as read, before it is parsed. */
-export type StoredEntry = { key: string; value: unknown }
+export type StoredEntry<Key extends string = string> = { key: Key; value: unknown }
 
 /** A failed call on the store, passed up to the read or the change that made it. */
 class StoreCallError extends Error {
@@ -131,11 +132,11 @@ export async function readEntriesUnder($: StoreEngine, prefix: string): Promise<
  * Reads the records of the store under the keys of `keys` that start with `prefix`, in their order
  * in `keys`, through callStore. A record deleted after the keys were listed is left out.
  */
-export async function readEntriesIn(
+export async function readEntriesIn<Key extends string>(
   $: StoreEngine,
   prefix: string,
-  keys: readonly string[],
-): Promise<StoredEntry[]> {
+  keys: readonly Key[],
+): Promise<StoredEntry<Key>[]> {
   const entries = await Promise.all(
     keys
       .filter(key => key.startsWith(prefix))

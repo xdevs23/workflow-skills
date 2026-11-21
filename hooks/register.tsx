@@ -26,6 +26,7 @@ import {
 } from './hintState'
 import { hintNotesSource } from './hintNoteDelivery'
 import { blockStopOnHintPhrase } from './hints'
+import { registerIdeas } from './ideas'
 import { registerImports } from './imports'
 import { LIST_TOOL, REQUESTS_PANE, SEND_TOOL, WITHDRAW_TOOL } from './names'
 import { registerNeededSkills } from './neededSkills'
@@ -116,7 +117,7 @@ export const register: Register = on => {
   on('session.append', STOP_BLOCK_REASON, markOfferedHintKindsSent)
   on('ui.render', { component: 'AbovePrompt' }, drawRequestBand)
   on('ui.render', { component: 'Pane', requestId: REQUESTS_PANE }, drawRequestPane)
-  // The footer draws the buttons in the order placed: Goals first, then Reminders.
+  // The footer draws the buttons in the order placed: Goals, Reminders, then Ideas.
   const footer = createPromptFooter()
   registerPromptFooter(on, footer)
   registerGoals(on, footer)
@@ -126,6 +127,7 @@ export const register: Register = on => {
   registerRulesBanner(on)
   registerChatReplies(on)
   registerRoast(on)
+  registerIdeas(on, footer)
 }
 
 // The engine passes `$` only to a function named at the call, so each feature that sends texts with

@@ -27,6 +27,6 @@ export async function importedIdsOf(
 // The 16 bytes of a random UUID, as many as the ids made by crypto.randomUUID.
 const ID_BYTES = 16
 
-function hexOf(bytes: Uint8Array): string {
+export function hexOf(bytes: Uint8Array): string {
   return [...bytes].map(byte => byte.toString(16).padStart(2, '0')).join('')
 }

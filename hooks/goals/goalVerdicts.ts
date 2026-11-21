@@ -1,5 +1,5 @@
 import type { Board, Goal, ListedGoal } from '../../types'
-import { NON_BLANK } from '../inputs'
+import { readNonBlank } from '../inputs'
 import { readJsonText } from '../jsonText'
 import type { JsonTextRead } from '../jsonText'
 import { isRecord } from '../pluginStore'
@@ -60,8 +60,9 @@ function readJudgment({
   if (verdict === GoalVerdict.Done && typeof evidence === 'string') {
     return { verdict, evidence }
   }
-  if (verdict === GoalVerdict.Open && typeof missing === 'string' && NON_BLANK.test(missing)) {
-    return { verdict, missing: missing.trim() }
+  const missingWork = readNonBlank(missing)
+  if (verdict === GoalVerdict.Open && missingWork !== undefined) {
+    return { verdict, missing: missingWork }
   }
 
   return undefined

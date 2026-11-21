@@ -12,6 +12,7 @@ import type { GoalPaneAction, GoalSaveResult } from '../hooks/goals/goalPaneMess
 import type { RowMode } from '../hooks/goals/goalRowState'
 import type { Priority } from '../hooks/goals/priority'
 import type { HintKindName } from '../hooks/hintKind'
+import type { SessionIdeas } from '../hooks/ideas/ideaState'
 import type { PendingHintNote } from '../hooks/hintNoteDelivery'
 import type { LoopLedger } from '../hooks/neededSkills/loadLedger'
 import type { PaneNotices } from '../hooks/paneNotice'
@@ -497,6 +498,11 @@ declare module 'claude-code' {
       sessionRoast: SessionRoast | null
       /** The roasts sent from the Roast pane that have not gone to the model yet. */
       pendingRoasts: readonly PendingRoast[]
+      /**
+       * The ideas recorded in the project of the session that last loaded them, with the id of
+       * that session; null before any session loaded them.
+       */
+      sessionIdeas: SessionIdeas | null
     }
   }
 }

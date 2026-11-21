@@ -11,6 +11,7 @@ import type {
 import { registerCommandShowingRejection } from './commandRegistration'
 import { goalsCommand } from './goals/goalCommands'
 import { replyToFailedHook } from './hookFailure'
+import { ideasCommand } from './ideas/ideasCommand'
 import { importCommands } from './imports'
 import { CommandRegistrar, type PluginCommand } from './pluginCommand'
 import { replyCommand } from './requestHooks'
@@ -35,6 +36,7 @@ function pluginCommands($: EngineInterface): PluginCommand[] {
     replyCommand($),
     goalsCommand($),
     remindersCommand($),
+    ideasCommand($),
     ...importCommands($),
     roastCommand($),
     idleRoastCommand($),

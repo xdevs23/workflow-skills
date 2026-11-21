@@ -5,6 +5,11 @@ import { isPositiveInteger } from './positiveInteger'
 /** A text with at least one character other than white space. */
 export const NON_BLANK = /\S/
 
+/** `value` trimmed when it is a string that is not blank, and undefined otherwise. */
+export function readNonBlank(value: unknown): string | undefined {
+  return typeof value === 'string' && NON_BLANK.test(value) ? value.trim() : undefined
+}
+
 /** The arguments given to a tool by the model, which arrive unchecked. */
 export type ToolArguments = { readonly [argument: string]: unknown }
 
@@ -37,12 +42,11 @@ export const SEND_BLANK_PROBLEM = 'Give the request as a text that is not empty.
 
 /** Reads the unchecked input of the model to the sending tool into a typed model. */
 export function readSendInput(input: ToolArguments): SendInput {
-  const { request } = input
-  if (typeof request !== 'string' || !NON_BLANK.test(request)) {
-    return { outcome: SendOutcome.RequestBlank }
-  }
+  const text = readNonBlank(input.request)
 
-  return { outcome: SendOutcome.Valid, text: request.trim() }
+  return text === undefined
+    ? { outcome: SendOutcome.RequestBlank }
+    : { outcome: SendOutcome.Valid, text }
 }
 
 export const NUMBER_RULE = 'a whole number from 1 up'
