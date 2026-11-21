@@ -31,6 +31,7 @@ import { LIST_TOOL, REQUESTS_PANE, SEND_TOOL, WITHDRAW_TOOL } from './names'
 import { registerNeededSkills } from './neededSkills'
 import { createPromptFooter, registerPromptFooter } from './promptFooter'
 import { PANE_CLOSED_BY_USER } from './paneClose'
+import { endToolRegistration, keepRegisteredPluginTools } from './pluginTools'
 import { closePaneSendingWaitingPrompts } from './promptWaits'
 import {
   denyHookFailure,
@@ -61,6 +62,9 @@ import {
 export const register: Register = on => {
   // Registered before every other hook of this plugin on a prompt, so it reads the prompt as typed.
   registerSessionRecords(on)
+  // Registered before every start hook that registers a tool, so it sees the start over.
+  on('session.start', EVERY_EVENT, endToolRegistration)
+  on('tool.list', EVERY_EVENT, keepRegisteredPluginTools)
   on('session.start', EVERY_EVENT, registerPluginCommands)
   on('session.start', { isInteractive: true }, startRequests)
   on('classic.SessionStart', readRequestsOfStartedSession)

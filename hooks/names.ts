@@ -5,9 +5,17 @@ export const SEND = 'send_request'
 export const LIST = 'list_requests'
 export const WITHDRAW = 'withdraw_request'
 
+/** The start of the name of every tool of this plugin, as the engine lists it. */
+const TOOL_PREFIX = `mcp__${PLUGIN}__` as const
+
 /** The name the engine lists a tool of this plugin under. */
-export function toolName<Name extends string>(name: Name): `mcp__${typeof PLUGIN}__${Name}` {
-  return `mcp__${PLUGIN}__${name}`
+export function toolName<Name extends string>(name: Name): `${typeof TOOL_PREFIX}${Name}` {
+  return `${TOOL_PREFIX}${name}`
+}
+
+/** Whether the engine lists the tool `name` as a tool of this plugin. */
+export function isToolOfPlugin(name: string): boolean {
+  return name.startsWith(TOOL_PREFIX)
 }
 
 /** The qualified name of a skill of this plugin, such as `workflow-skills:writing-code`. */

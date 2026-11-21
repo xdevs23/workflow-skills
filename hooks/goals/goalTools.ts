@@ -12,6 +12,7 @@ import { isMainConversation } from '../conversation'
 import { denyFailedHook, denyFailedUse } from '../hookFailure'
 import type { ToolArguments } from '../inputs'
 import { toolName } from '../names'
+import { registerPluginTool } from '../pluginTools'
 import { Outcome } from './board'
 import type { ChangeRefused, Changed, Unchanged } from './board'
 import { describeStoreFailure } from './boardStore'
@@ -98,7 +99,7 @@ const DETACHING: GoalChangeTool<TodoInput<string>> = {
  * Registers the tools by which the model lists the goals and attaches TODO entries to them.
  */
 export async function registerGoalTools($: EngineInterface): Promise<void> {
-  await Promise.all(TOOLS.map(tool => $.tool.register(tool)))
+  await Promise.all(TOOLS.map(tool => registerPluginTool($, tool)))
 }
 
 // A subagent reads the goals too, so it can check its work against them. It works on a task of its

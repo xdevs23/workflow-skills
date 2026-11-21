@@ -58,6 +58,7 @@ import {
   WITHDRAW_TOOL,
 } from './names'
 import { sortedByNumber } from './numbered'
+import { registerPluginTool } from './pluginTools'
 import { moveProjectRecordsToSessions } from './projectRequestRecords'
 import { isMessageTypedByUser } from './promptOrigin'
 import { Withdrawal, openRequestsOf } from './requests'
@@ -92,14 +93,14 @@ export const startRequests: MatchedHook<'session.start', { isInteractive: true }
 ) => {
   recordPersonAtPrompt(e.isInteractive)
   await Promise.all([
-    $.tool.register({
+    registerPluginTool($, {
       name: SEND,
       description: SEND_DESCRIPTION,
       inputSchema: SEND_SCHEMA,
       isDeferred: false,
     }),
-    $.tool.register({ name: LIST, description: LIST_DESCRIPTION, isDeferred: false }),
-    $.tool.register({
+    registerPluginTool($, { name: LIST, description: LIST_DESCRIPTION, isDeferred: false }),
+    registerPluginTool($, {
       name: WITHDRAW,
       description: WITHDRAW_DESCRIPTION,
       inputSchema: WITHDRAW_SCHEMA,
