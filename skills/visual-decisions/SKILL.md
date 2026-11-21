@@ -73,9 +73,6 @@ description: Draw page for user to look at: drafts, product decisions, plans and
   damaged state by color of legend and plain label
 - Write words on rest of page only as labels, titles, captions and marks. Never fill picture with
   sentences, table of text or list of cases, except diff of text marked Updated
-- Keep draft of change under 250 words of titles, labels, captions, bullets and badges, counted on
-  rendered page. Text shown by imitated screen or message and diff of text marked Updated do not
-  count. Cut it to what decision needs
 - On drafts of sub-units of one feature, draw same thing with same picture and same sample values
 - Draw page in visual way, so user looking at it sees at first glance what end result is and
   how change feels
@@ -161,7 +158,7 @@ description: Draw page for user to look at: drafts, product decisions, plans and
   that state at that version, since checkout in which it starts can contain a different version
 - Render page in headless browser at 1920×960, take screenshot of full page and look at it before
   showing page. Check that each section shows at first glance what it decides, without reading a
-  sentence. Count words of draft of change with script. Redraw section that needs reading
+  sentence. Redraw section that needs reading
 - Open page for user. Open one draft at a time. Draw and open next one once user approved the one
   before, since it can change what follows. Where session is headless, or runs in harness that
   cannot open a file for user, show page the way harness allows, e.g. inline artifact, inline HTML
