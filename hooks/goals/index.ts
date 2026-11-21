@@ -1,6 +1,7 @@
 import type { Hook, On } from 'claude-code'
 
 import { EVERY_EVENT } from '../everyEvent'
+import { declarePluginTools } from '../pluginTools'
 import type { PromptFooter } from '../promptFooter'
 import { SWITCHING_SOURCES } from '../sessionSources'
 import { loadBoardAtStart } from './goalActions'
@@ -23,6 +24,7 @@ import {
 import { GOALS_BUTTON, openGoalsFromButton } from './goalsButton'
 import { readGoalsOfSwitchedSession } from './goalSession'
 import {
+  GOAL_TOOL_SPECS,
   attachTodo,
   denyGoalToolFailure,
   detachTodo,
@@ -40,6 +42,7 @@ const startGoals: Hook<'session.start'> = async ($, e, next) => {
 
 /** Registers the hooks of the goals board, and places its button on the prompt footer `footer`. */
 export function registerGoals(on: On, footer: PromptFooter): void {
+  declarePluginTools(GOAL_TOOL_SPECS)
   on('session.start', startGoals)
   on('classic.SessionStart', { source: SWITCHING_SOURCES }, readGoalsOfSwitchedSession)
   // Registered before the tools of the goals, so the results of those tools contain the notes too.

@@ -12,6 +12,7 @@ import type {
   PromptSubmitResult,
   ToolCallInput,
   ToolCallResult,
+  ToolSpec,
 } from 'claude-code'
 
 import { registerCommandShowingRejection } from './commandRegistration'
@@ -58,7 +59,6 @@ import {
   WITHDRAW_TOOL,
 } from './names'
 import { sortedByNumber } from './numbered'
-import { registerPluginTool } from './pluginTools'
 import { moveProjectRecordsToSessions } from './projectRequestRecords'
 import { isMessageTypedByUser } from './promptOrigin'
 import { Withdrawal, openRequestsOf } from './requests'
@@ -83,6 +83,18 @@ import {
   takeReadAtStart,
 } from './sessionState'
 
+/** The tools by which the model sends, lists and withdraws requests. */
+export const REQUEST_TOOL_SPECS: readonly ToolSpec[] = [
+  { name: SEND, description: SEND_DESCRIPTION, inputSchema: SEND_SCHEMA, isDeferred: false },
+  { name: LIST, description: LIST_DESCRIPTION, isDeferred: false },
+  {
+    name: WITHDRAW,
+    description: WITHDRAW_DESCRIPTION,
+    inputSchema: WITHDRAW_SCHEMA,
+    isDeferred: false,
+  },
+]
+
 // Registered for a session with a person at the prompt alone. In a -p run or the Agent SDK, the
 // plugin registers neither the tools nor /reply and does not read any request, so every hook
 // below passes its event on unchanged.
@@ -93,19 +105,7 @@ export const startRequests: MatchedHook<'session.start', { isInteractive: true }
 ) => {
   recordPersonAtPrompt(e.isInteractive)
   await Promise.all([
-    registerPluginTool($, {
-      name: SEND,
-      description: SEND_DESCRIPTION,
-      inputSchema: SEND_SCHEMA,
-      isDeferred: false,
-    }),
-    registerPluginTool($, { name: LIST, description: LIST_DESCRIPTION, isDeferred: false }),
-    registerPluginTool($, {
-      name: WITHDRAW,
-      description: WITHDRAW_DESCRIPTION,
-      inputSchema: WITHDRAW_SCHEMA,
-      isDeferred: false,
-    }),
+    ...REQUEST_TOOL_SPECS.map(tool => $.tool.register(tool)),
     registerCommandShowingRejection($, REPLY_SPEC, REPLY_LOST_WITHOUT_COMMAND),
   ])
   // The requests saved under the project before they belonged to a session are moved to their

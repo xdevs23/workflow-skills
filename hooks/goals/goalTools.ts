@@ -12,7 +12,6 @@ import { isMainConversation } from '../conversation'
 import { denyFailedHook, denyFailedUse } from '../hookFailure'
 import type { ToolArguments } from '../inputs'
 import { toolName } from '../names'
-import { registerPluginTool } from '../pluginTools'
 import { Outcome } from './board'
 import type { ChangeRefused, Changed, Unchanged } from './board'
 import { describeStoreFailure } from './boardStore'
@@ -50,7 +49,8 @@ import {
 import { readEntryHeading, readEntryNumber } from './todoEntry'
 import type { TodoEntry } from './todoEntry'
 
-const TOOLS: readonly ToolSpec[] = [
+/** The tools by which the model lists the goals. */
+export const GOAL_TOOL_SPECS: readonly ToolSpec[] = [
   { name: LIST_GOALS, description: LIST_GOALS_DESCRIPTION, isDeferred: false },
   {
     name: ATTACH_TODO,
@@ -67,7 +67,9 @@ const TOOLS: readonly ToolSpec[] = [
 ]
 
 /** The tools of the goals board, as the engine lists them. */
-export const GOAL_TOOLS: ReadonlySet<string> = new Set(TOOLS.map(tool => toolName(tool.name)))
+export const GOAL_TOOLS: ReadonlySet<string> = new Set(
+  GOAL_TOOL_SPECS.map(tool => toolName(tool.name)),
+)
 
 /**
  * How a tool of the main conversation that changes a goal reads its input and describes its
@@ -99,7 +101,7 @@ const DETACHING: GoalChangeTool<TodoInput<string>> = {
  * Registers the tools by which the model lists the goals and attaches TODO entries to them.
  */
 export async function registerGoalTools($: EngineInterface): Promise<void> {
-  await Promise.all(TOOLS.map(tool => registerPluginTool($, tool)))
+  await Promise.all(GOAL_TOOL_SPECS.map(tool => $.tool.register(tool)))
 }
 
 // A subagent reads the goals too, so it can check its work against them. It works on a task of its
