@@ -21,6 +21,8 @@ contributor or agent without history, reads that file first.
   `workflow-skills:implement`, since code represents **design** and **diff** is in git
 - Check each condition yourself, from output and commits. Claim by agent that check passed is not
   evidence
+- Delete entry of unit merged into working branch before this session started, once code of unit is
+  on working branch
 - Delete entry also when user says so. Never delete entry for any other reason
 - Remove deleted entry from every `Builds on:` line that lists it
 - Read goals and entries attached to them with `mcp__workflow-skills__list_goals` when not in

@@ -9,7 +9,7 @@ const MAX_CHANGE_CHARACTERS = 80
 /** The rule for a message to the final-verification agent, as the texts to the model write it. */
 export const CHANGE_NAME_RULE =
   `a name of at most ${MAX_CHANGE_CHARACTERS} characters for the change to verify, such as a ` +
-  'TODO number, a branch or a worktree'
+  'TODO number, a branch, a worktree or a commit range'
 
 /** Whether `text` is not blank and fits into MAX_CHANGE_CHARACTERS characters. */
 export function isChangeName(text: string): boolean {
