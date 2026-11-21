@@ -136,17 +136,6 @@ description: Implement change to code, from first talk with user until user revi
     `workflow-skills:verifying-work` describes, pass on commit of working branch that contains
     change. Working branch: main, or branch into which project integrates
 
-## Final verification
-
-- Run `workflow-skills:final-verification` once you finished work of session: no `QUEUED` or
-  `IN PROGRESS` entry left that you can work on, and last change of session is on working branch
-- Name in prompt commit range of session on working branch
-- Fix findings reported by it like review findings. Fix of these findings needs no new run
-- Run it again for work done after that run, with commit range of that work
-- Start it with Agent tool from main conversation, never in workflow. `roast_work` denies agent
-  started by workflow
-- Session that changed no file needs no run. Never make change only to give agent work
-
 ## User review
 
 - Send change to user through review system used by project. Open pull request by

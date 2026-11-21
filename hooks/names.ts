@@ -25,12 +25,6 @@ export const WITHDRAW_TOOL = toolName(WITHDRAW)
 /** The built-in tool that loads a skill into the context of its caller. */
 export const SKILL_TOOL = 'Skill'
 
-/** The built-in tool that starts a subagent. */
-export const AGENT_TOOL = 'Agent'
-
-/** The qualified name of the agent that verifies the final state of a change. */
-export const FINAL_VERIFICATION_AGENT = `${PLUGIN}:final-verification`
-
 /** The qualified name of the agent that judges the open goals against the project. */
 export const GOAL_CHECKER_AGENT = `${PLUGIN}:goal-checker`
 

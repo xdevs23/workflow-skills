@@ -11,11 +11,6 @@ export type HookSubject = {
    * hooks that save nothing.
    */
   checkBeforeRetry?: string
-  /**
-   * The sentence that tells what to do about the failure. Absent where the reader goes on without
-   * what the hooks work on.
-   */
-  nextStep?: string
 }
 
 /** Denies the tool call whose hook failed, with the reason, which goes to the debug log too. */
@@ -63,7 +58,7 @@ export function describeHookFailure(subject: HookSubject, failure: HookFailure):
 }
 
 /** Writes the text for the failed hook to the debug log, and returns it. */
-export function logAndDescribe(
+function logAndDescribe(
   $: EngineInterface,
   subject: HookSubject,
   failure: HookFailure,
@@ -82,9 +77,7 @@ function writeToDebugLog($: EngineInterface, text: string): string {
 function describeFailedUse(subject: HookSubject, reason: string | undefined): string {
   return [
     `The ${subject.name} could not be used: ${reason ?? 'the hook failed without a reason'}`,
-    `${DEBUG_LOG_NOTE} ${
-      subject.nextStep ?? `Until the cause is fixed, go on without the ${subject.name}.`
-    }`,
+    `${DEBUG_LOG_NOTE} Until the cause is fixed, go on without the ${subject.name}.`,
   ].join('\n')
 }
 
@@ -96,7 +89,6 @@ function describeUnfinishedUse(subject: HookSubject, lastFailure: string | undef
   const unfinished = `The ${subject.name} did not finish in time`
   const failureLines =
     lastFailure === undefined ? [] : [`The last failure before that: ${lastFailure}`]
-  const nextStepLines = subject.nextStep === undefined ? [] : [subject.nextStep]
   const unfinishedLines =
     subject.checkBeforeRetry === undefined
       ? [`${unfinished}.`, ...failureLines, DEBUG_LOG_NOTE]
@@ -106,5 +98,5 @@ function describeUnfinishedUse(subject: HookSubject, lastFailure: string | undef
           `${subject.checkBeforeRetry} ${DEBUG_LOG_NOTE}`,
         ]
 
-  return [...unfinishedLines, ...nextStepLines].join('\n')
+  return unfinishedLines.join('\n')
 }

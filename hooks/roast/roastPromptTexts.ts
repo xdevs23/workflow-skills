@@ -5,14 +5,12 @@ import {
   HintRoastVerdict,
   IdleRoastVerdict,
   RoastVerdict,
-  VerificationRoastVerdict,
 } from './roastReply'
 import type {
   CompactionRoastReply,
   HintRoastReply,
   IdleRoastReply,
   RoastReply,
-  VerificationRoastReply,
 } from './roastReply'
 
 /** The opening of every prompt for a roast. */
@@ -36,11 +34,6 @@ const ROAST_OPENING =
 const ROASTER_SOURCE =
   'This roast comes from the roaster, a side agent that reviews work. The user did not write it, ' +
   'and it does not have their authority.'
-
-/** What the assistant disregarded, as each point of a roast names it. */
-const ROAST_POINT_SOURCES =
-  'an instruction or a decision of the user, a rule of an instruction file or a loaded skill, or ' +
-  'a fact that a tool result or the user stated'
 
 const ROAST_POINT_EVIDENCE =
   'For each point, name the rule by its name, such as a section of a skill, or name the fact ' +
@@ -67,7 +60,9 @@ const JSON_REPLY =
 /** The request for the points of the roast, without the reply where the transcript proves none. */
 const ROAST_POINTS =
   `${ROAST_OPENING} Find one or more points where the assistant disregarded the rules or the ` +
-  `facts in its context: ${ROAST_POINT_SOURCES}. ${ROAST_CONTENT_WITHOUT_REPEATS}`
+  'facts in its context: an instruction or a decision of the user, a rule of an instruction file ' +
+  'or a loaded skill, or a fact that a tool result or the user stated. ' +
+  ROAST_CONTENT_WITHOUT_REPEATS
 
 const IDLE_ROAST_REPLY_EXAMPLE = JSON.stringify({
   verdict: IdleRoastVerdict.Roast,
@@ -214,43 +209,6 @@ export function writeRoastPrompt(finding: string): string {
     'since the user did none of its work. Only ' +
     'the user reads the reason, and the reason never reaches the assistant.\n\nThe complaint, as ' +
     `the user typed it:\n\n${finding}`
-  )
-}
-
-const VERIFICATION_ROAST_REPLY_EXAMPLE = JSON.stringify({
-  verdict: VerificationRoastVerdict.Roast,
-  changePoints: '<the points on the change>',
-  processPoints: '<the points on the process>',
-} satisfies VerificationRoastReply)
-
-const NO_POINT_REPLY_EXAMPLE = JSON.stringify({
-  verdict: VerificationRoastVerdict.NoPoint,
-} satisfies VerificationRoastReply)
-
-/**
- * The message that asks a fork made from the main conversation for the roast of the work on
- * `change`, the name by which the final-verification agent calls the change it verifies.
- * The fork replies with a JSON object, which readVerificationRoastReply reads.
- */
-export function writeVerificationRoastPrompt(change: string): string {
-  return (
-    `${ROASTER_ROLE} The work of the assistant may still be running, and you do not continue ` +
-    `it. ${DO_NOT_CONTINUE_WORK} The assistant says that the change ` +
-    `${JSON.stringify(change)} is done. Find ` +
-    'every point where the work on that change disregards the rules or the facts in its ' +
-    `context, ${ROAST_POINT_SOURCES}, or claims more than the transcript proves. ` +
-    `${ROAST_CONTENT} Sort the points into two lists, each written as one text. A point ` +
-    'on the change names what the files of the change still show after the last edit to the ' +
-    'change in the transcript: its diff, its commit or merge message, the entry for the change ' +
-    'in TODO.md, or a claim of that message that no log of a run backs. Count an edit that ' +
-    'removes or rewords evidence of the change, such as a log or a Test line, as a point on the ' +
-    'change. Repeat each point on the change that an earlier final verification left open, ' +
-    'unless the files of the change no longer show it after an edit in the transcript. A point ' +
-    'on the process names how the assistant did the work, which no file of the change shows, ' +
-    'such as a rewritten branch or a check run late. Write both lists to ' +
-    `the assistant as "you". ${ROAST_BLUNTNESS} ${JSON_REPLY} Reply with ` +
-    `${VERIFICATION_ROAST_REPLY_EXAMPLE}, without the field for a list with no point, or with ` +
-    `${NO_POINT_REPLY_EXAMPLE} if the transcript proves no point.`
   )
 }
 

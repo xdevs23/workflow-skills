@@ -26,27 +26,6 @@ export type IdleRoastReply =
   | { verdict: IdleRoastVerdict.Roast; roast: string }
   | { verdict: IdleRoastVerdict.NoBlockingPoint }
 
-/** The verdicts that the prompt of roast_work offers its fork. */
-export enum VerificationRoastVerdict {
-  Roast = 'roast',
-  /** The transcript proves no point in the work on the change, so the fork wrote no roast. */
-  NoPoint = 'no-point',
-}
-
-/**
- * The points of a roast for roast_work, in two lists, at least one of them written. Points on the
- * change name what the files of the change still show. Points on the process name how the work was
- * done, which no file of the change shows.
- */
-export type VerificationRoastPoints =
-  | { changePoints: string; processPoints?: string }
-  | { changePoints?: string; processPoints: string }
-
-/** The JSON object that the prompt of roast_work asks its fork to reply with. */
-export type VerificationRoastReply =
-  | ({ verdict: VerificationRoastVerdict.Roast } & VerificationRoastPoints)
-  | { verdict: VerificationRoastVerdict.NoPoint }
-
 /** The verdicts that the prompt of the compaction roast offers its fork. */
 export enum CompactionRoastVerdict {
   Roast = 'roast',
@@ -81,10 +60,6 @@ export function readIdleRoastReply(text: string): JsonTextRead<IdleRoastReply> {
   )
 }
 
-export function readVerificationRoastReply(text: string): JsonTextRead<VerificationRoastReply> {
-  return readJsonText(text, toVerificationRoastReply)
-}
-
 export function readCompactionRoastReply(text: string): JsonTextRead<CompactionRoastReply> {
   return readJsonText(text, value =>
     toRoastOrNoneReply(value, CompactionRoastVerdict.Roast, CompactionRoastVerdict.NoPoint),
@@ -112,42 +87,6 @@ function toRoastReply(value: unknown): RoastReply | undefined {
   }
 
   return undefined
-}
-
-/**
- * `value` as a reply to roast_work, or undefined for a value of another shape, for a list that is
- * neither written text nor left out, or for a roast without a written list.
- */
-function toVerificationRoastReply(value: unknown): VerificationRoastReply | undefined {
-  if (!isRecord(value)) {
-    return undefined
-  }
-  if (value.verdict === VerificationRoastVerdict.NoPoint) {
-    return { verdict: value.verdict }
-  }
-  if (
-    value.verdict !== VerificationRoastVerdict.Roast ||
-    !isWrittenTextOrLeftOut(value.changePoints) ||
-    !isWrittenTextOrLeftOut(value.processPoints)
-  ) {
-    return undefined
-  }
-  const changePoints = readWrittenText(value.changePoints)
-  const processPoints = readWrittenText(value.processPoints)
-  if (changePoints !== undefined) {
-    return {
-      verdict: value.verdict,
-      changePoints,
-      ...(processPoints === undefined ? {} : { processPoints }),
-    }
-  }
-
-  return processPoints === undefined ? undefined : { verdict: value.verdict, processPoints }
-}
-
-/** Whether `field` of a reply is written text, or left out as a list without points is. */
-function isWrittenTextOrLeftOut(field: unknown): boolean {
-  return field === undefined || readWrittenText(field) !== undefined
 }
 
 /**
