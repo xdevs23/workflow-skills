@@ -64,6 +64,8 @@ export const WAITING_HINT: HintKind<HintKindName.Waiting> = {
       String.raw`(?<!\b(?:blocks?|holds?|stops?|pauses?)\b[^.!?\n]{0,40}|\bonly\s+)` +
         String.raw`\b(?:once|until|after)\s+you\s+(?:answer|approve|say\s+so)\b`,
     ),
+    phrase(String.raw`\bI['’]m\s+holding\b${CLAUSE}\buntil\s+you(?:r)?\b`),
+    phrase(String.raw`\bno\s+part\b${CLAUSE}\buntil\s+(?:a|the)\s+\w+\s+is\s+approved\b`),
     phrase(
       String.raw`(?<!\bon\s+)\b(?:waiting\s+for\s+approval\b(?!\s+(?:from|by)\b)|` +
         String.raw`pending\s+your\s+approval\b)`,

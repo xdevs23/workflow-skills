@@ -1,7 +1,13 @@
+import { AT_CLAUSE_END } from './clauses'
 import { HintKindName } from './hintKind'
 import type { HintKind } from './hintKind'
 import { CHECK_FOR_OPEN_WORK } from './openWork'
+import { phrase } from './phrase'
 import { WAITING_FOR_YOU } from './waitingHint'
+
+/** "Right now" or the end of the clause, after "nothing can start". A start followed by an object,
+ * as in "nothing can start the server twice", gets no hint. */
+const RIGHT_NOW_OR_CLAUSE_END = String.raw`(?:${AT_CLAUSE_END}|\s+right\s+now\b)`
 
 /** The hint after a message that reports work as blocked or idle. */
 export const BLOCKED_HINT: HintKind<HintKindName.Blocked> = {
@@ -17,6 +23,7 @@ export const BLOCKED_HINT: HintKind<HintKindName.Blocked> = {
     /\bnothing\s+has\s+changed\b(?!\s+in\b)/i,
     /(?:^|[.!?:])\s*(?:still\s+)?no\s+change\b(?!\s+(?:to|in)\b)/im,
     /\bnothing\s+new\s+came\s+in\b/i,
+    phrase(String.raw`\bnothing\s+can\s+start${RIGHT_NOW_OR_CLAUSE_END}`),
     /\beverything\s+left\s+is\s+blocked\b/i,
     /\beverything\s+left\s+waits\s+on\s+you(?:r)?\b/i,
     WAITING_FOR_YOU,
