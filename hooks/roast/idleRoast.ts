@@ -14,7 +14,7 @@ import { SwitchOutcome, deleteIdleRoastSwitch, readIdleRoastSwitch } from './idl
 import { forkRoast } from './roastActions'
 import type { ForkedRoast } from './roastActions'
 import { deliverRoast } from './roastDelivery'
-import { RoastNotWrittenCause, RoastRecovery, recoveryOf } from './roastFailure'
+import { RoastNotWrittenCause, RoastRecovery, recoveryOf, thrownFailure } from './roastFailure'
 import type { RoastFailure } from './roastFailure'
 import { IDLE_WAIT_SECONDS } from './roastNames'
 import { IDLE_ROAST_PROMPT } from './roastPromptTexts'
@@ -150,10 +150,10 @@ function waitForIdleRoast($: EngineInterface): void {
     IDLE_WAIT_SECONDS * MILLISECONDS_PER_SECOND,
     () =>
       roastAfterIdleWait($, wait).catch((error: unknown) => {
-        endStretchIfNeedsPerson({ cause: RoastNotWrittenCause.Thrown, message: messageOf(error) })
+        endStretchIfNeedsPerson(thrownFailure(messageOf(error)))
         throw error
       }),
-    message => describeIdleRoastNotWrittenToast({ cause: RoastNotWrittenCause.Thrown, message }),
+    message => describeIdleRoastNotWrittenToast(thrownFailure(message)),
   )
   idleWait = wait
 }

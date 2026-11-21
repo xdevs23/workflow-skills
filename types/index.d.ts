@@ -12,6 +12,7 @@ import type { GoalPaneAction, GoalSaveResult } from '../hooks/goals/goalPaneMess
 import type { RowMode } from '../hooks/goals/goalRowState'
 import type { Priority } from '../hooks/goals/priority'
 import type { HintKindName } from '../hooks/hintKind'
+import type { PendingHintNote } from '../hooks/hintNoteDelivery'
 import type { LoopLedger } from '../hooks/neededSkills/loadLedger'
 import type { PaneNotices } from '../hooks/paneNotice'
 import type { PaneRecord, TypedInWorker } from '../hooks/paneWorker'
@@ -446,6 +447,8 @@ declare module 'claude-code' {
        * before the first hint of the turn.
        */
       hintKindsSentInTurn: HintKindsSentInTurn | null
+      /** The note on hints waiting to go to the model of the session; null while none waits. */
+      pendingHintNote: PendingHintNote | null
       /** When the session is next sent the self-check; null before the user typed in it. */
       selfCheckSchedule: SelfCheckSchedule | null
       /**

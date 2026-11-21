@@ -26,16 +26,38 @@ export type HintKind<Name extends HintKindName = HintKindName> = {
   name: Name
   phrases: readonly RegExp[]
   text: HintText
+  /** Where set, the roaster writes the note on the hint in place of `text`. */
+  roaster?: HintRoaster
+}
+
+/**
+ * What goes to the model from a roasted hint kind whose roaster does not find a point in the
+ * message.
+ */
+export enum HintWithoutPoint {
+  /** The text of the kind, since its phrases alone show that the hint applies. */
+  Text = 'text',
+  /** Nothing, since its phrases also match messages that the hint does not concern. */
+  Nothing = 'nothing',
+}
+
+/** How the roaster writes the note on a hint of a roasted kind. */
+export type HintRoaster = {
   /**
-   * The sentences of the prompt of the roaster that say what the roast on a message with a phrase
-   * of this kind names. Where set, the roaster writes the note on the hint in place of `text`.
+   * The sentences of the prompt of the roaster that describe what the roast on a message with a
+   * phrase of this kind covers.
    */
-  roasterTask?: string
+  task: string
+  withoutPoint: HintWithoutPoint
 }
 
 /** A hint kind whose note the roaster writes. */
-export type RoastedHintKind = HintKind & { roasterTask: string }
+export type RoastedHintKind = HintKind & { roaster: HintRoaster }
 
 export function isRoastedHintKind(kind: HintKind): kind is RoastedHintKind {
-  return kind.roasterTask !== undefined
+  return kind.roaster !== undefined
+}
+
+export function namesOfHintKinds(kinds: readonly HintKind[]): HintKindName[] {
+  return kinds.map(kind => kind.name)
 }

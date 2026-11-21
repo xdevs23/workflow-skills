@@ -1,4 +1,4 @@
-import type { HintKindName } from './hintKind'
+import type { HintKindName, HintRoaster } from './hintKind'
 import type { HintText, SharedStep } from './hintText'
 import { HAND_OVER_UNANSWERED } from './unansweredQuestions'
 
@@ -8,6 +8,8 @@ export type Refusal<Name extends HintKindName = HintKindName> = {
   name: Name
   pattern: RegExp
   reason: HintText
+  /** Where set, the roaster writes the note on the hint of the refusal at the end of a turn. */
+  roaster?: HintRoaster
 }
 
 /** The step shared by refusals whose text leaves to the user work already decided. */

@@ -1,4 +1,4 @@
-import { HintKindName } from './hintKind'
+import { HintKindName, HintWithoutPoint } from './hintKind'
 import { labelledLine } from './lineMarks'
 import type { Refusal } from './refusal'
 
@@ -14,4 +14,12 @@ export const COST_FRAMING: Refusal<HintKindName.CostFraming> = {
       'the option again, choose the right design and build that design. Do not present the ' +
       'design as a cost.',
   ],
+  roaster: {
+    task:
+      'The reply labels a decision as a cost. Name the wrong design that the cost comes from, ' +
+      'and the design that the assistant could build in this turn in its place. A cost that ' +
+      'concerns no design in the work, such as the price of a service the user asked about, is ' +
+      'not a point.',
+    withoutPoint: HintWithoutPoint.Nothing,
+  },
 }

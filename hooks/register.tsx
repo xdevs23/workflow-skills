@@ -24,6 +24,7 @@ import {
   forgetHintKindsSentInTurn,
   markOfferedHintKindsSent,
 } from './hintState'
+import { hintNotesSource } from './hintNoteDelivery'
 import { blockStopOnHintPhrase } from './hints'
 import { registerImports } from './imports'
 import { ASK_TOOL, LIST_TOOL, PANE, WITHDRAW_TOOL } from './names'
@@ -84,7 +85,7 @@ export const register: Register = on => {
   // Answers go beside a prompt through submitWithAnswers, which marks them as read only once the
   // prompt entered with them.
   on('prompt.submit', EVERY_EVENT, ($, e, next) =>
-    submitWithPendingTexts($, e, next, [roastsSource($)]),
+    submitWithPendingTexts($, e, next, [roastsSource($), hintNotesSource($)]),
   )
   on('prompt.submit', EVERY_EVENT, markTypedPromptTurnRunning)
   on('turn.start', EVERY_EVENT, markTurnRunning)
@@ -98,6 +99,9 @@ export const register: Register = on => {
       () => runPluginCommandOrNext($, e, next),
     ),
   ).catch(replyToFailedPluginCommand)
+  // Registered before completeMainTurn, so the hint kinds of a turn are cleared before the session
+  // counts as idle, and the kinds of a hint note submitted then count in the turn it starts.
+  on('turn.complete', EVERY_EVENT, forgetHintKindsSentInTurn)
   on('turn.complete', EVERY_EVENT, ($, e, next) =>
     completeMainTurn($, e, next, () => sendTextsWaitingForSession($)),
   )
@@ -106,7 +110,6 @@ export const register: Register = on => {
   )
   on('classic.Stop', blockStopOnHintPhrase)
   on('session.append', STOP_BLOCK_REASON, markOfferedHintKindsSent)
-  on('turn.complete', EVERY_EVENT, forgetHintKindsSentInTurn)
   on('ui.render', { component: 'AbovePrompt' }, drawQuestionBand)
   on('ui.render', { component: 'Pane', requestId: PANE }, drawQuestionPane)
   // The footer draws the buttons in the order placed: Goals first, then Reminders.
@@ -124,7 +127,7 @@ export const register: Register = on => {
 // The engine passes `$` only to a function named at the call, so each feature that sends texts with
 // the next tool result is named here.
 function pendingTextSourcesOf($: EngineInterface): PendingTextSource[] {
-  return [answersSource($), roastsSource($), missingWorkSource($)]
+  return [answersSource($), roastsSource($), missingWorkSource($), hintNotesSource($)]
 }
 
 // The engine passes `$` only to a function named at the call, so each feature whose texts wait for

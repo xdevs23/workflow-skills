@@ -7,7 +7,7 @@ import type { RetryWaits } from '../retryWait'
 import { MILLISECONDS_PER_SECOND } from '../timeUnits'
 import { runEvery } from '../timedWork'
 import { readMessagesUnseenByFork } from './messagesUnseenByFork'
-import { RoastNotWrittenCause, isPassingApiError } from './roastFailure'
+import { RoastNotWrittenCause, isPassingApiError, thrownFailure } from './roastFailure'
 import type { RoastFailure } from './roastFailure'
 import { ROAST_PANE, SEND_KEY } from './roastNames'
 import { writePromptAfterUnseenMessages, writeRoastPrompt } from './roastPromptTexts'
@@ -84,8 +84,7 @@ export async function writeRoast(
     }
   }).catch(
     async (error: unknown) => {
-      const message = messageOf(error)
-      await setRoastOfRun($, run, notWritten({ cause: RoastNotWrittenCause.Thrown, message }))
+      await setRoastOfRun($, run, notWritten(thrownFailure(messageOf(error))))
       throw error
     },
   )
@@ -122,13 +121,44 @@ export async function forkRoast(
   prompt: string,
   useResult: (roast: ForkedRoast) => Promise<boolean>,
 ): Promise<ForkedRoast> {
-  for (let tries = 1; ; tries += 1) {
-    const roast = await forkRoastOnce($, prompt, tries)
-    if (!(await useResult(roast)) || roast.shown !== RoastShown.WritingAgain) {
-      return roast
-    }
-    await $.clock.sleep(randomWaitAfter(tries, FORK_RETRY_WAITS))
+  let roast = await forkRoastOnce($, prompt, 1)
+  while ((await useResult(roast)) && roast.shown === RoastShown.WritingAgain) {
+    roast = await forkAfterPassingError($, prompt, roast)
   }
+
+  return roast
+}
+
+/**
+ * `first`, the result of a fork asked for a roast with `prompt`, or where it failed with an error
+ * of the API that passes, the result of the forks asked after it as forkRoast asks them, until a
+ * fork writes the roast or fails for good.
+ */
+export async function forkAgainAfterPassingErrors(
+  $: EngineInterface,
+  prompt: string,
+  first: ForkedRoast,
+): Promise<RoastProgressOf<RoastShown.Written | RoastShown.NotWritten>> {
+  let roast = first
+  while (roast.shown === RoastShown.WritingAgain) {
+    roast = await forkAfterPassingError($, prompt, roast)
+  }
+
+  return roast
+}
+
+/**
+ * Waits after `failed`, a try that failed with an error of the API that passes, as
+ * FORK_RETRY_WAITS sets, and asks the next fork for a roast with `prompt`.
+ */
+async function forkAfterPassingError(
+  $: EngineInterface,
+  prompt: string,
+  failed: RoastProgressOf<RoastShown.WritingAgain>,
+): Promise<ForkedRoast> {
+  await $.clock.sleep(randomWaitAfter(failed.failedTries, FORK_RETRY_WAITS))
+
+  return forkRoastOnce($, prompt, failed.failedTries + 1)
 }
 
 /**

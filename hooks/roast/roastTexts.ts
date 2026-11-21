@@ -1,3 +1,5 @@
+import type { HintKindName } from '../hintKind'
+import { AND_LIST } from '../listFormat'
 import { PendingTextPlace } from '../pendingTexts'
 import { JsonTextNotRead } from '../jsonText'
 import { DEBUG_LOG_NOTE } from '../failureToast'
@@ -200,26 +202,42 @@ export function describeVerificationRoastDelayed({ retry, waitMs }: OwedRetry): 
   )
 }
 
-/** What the note at the end of a turn carries where no roast on its hints came. */
-const HINT_TEXT_SENT = 'Claude got the fixed hint text in its place.'
+/**
+ * What goes to Claude in place of a roast on the hints at the end of a turn: the fixed texts of the
+ * hint kinds `fixedTextKindNames`.
+ */
+function describeFixedHintTextsSent(fixedTextKindNames: readonly HintKindName[]): string {
+  return fixedTextKindNames.length === 0
+    ? 'Nothing went to Claude.'
+    : `Claude gets the fixed text of the hints ${AND_LIST.format(fixedTextKindNames)} instead.`
+}
 
-/** The line in the debug log for a roast on the hints at the end of a turn that did not come. */
-export function describeHintRoastMissing(missing: HintRoastMissing): string {
+/**
+ * The line in the debug log for a roast on the hints at the end of a turn that was not written,
+ * with `fixedTextKindNames`, the hint kinds whose fixed text goes to Claude in place of the roast.
+ */
+export function describeHintRoastMissing(
+  missing: HintRoastMissing,
+  fixedTextKindNames: readonly HintKindName[],
+): string {
+  const sent = describeFixedHintTextsSent(fixedTextKindNames)
   switch (missing.cause) {
-    case HintRoastMissingCause.NotAskedAgain:
-      return (
-        'The roast on the hints at the end of the turn was not written: the API returned the ' +
-        `error ${missing.error}, which may clear on its own. The end of a turn asks only one ` +
-        `fork. ${HINT_TEXT_SENT}`
-      )
     case HintRoastMissingCause.NotWritten:
       return (
         'The roast on the hints at the end of the turn was not written. ' +
-        describeNotWritten(missing.failure, HINT_TEXT_SENT)
+        describeNotWritten(missing.failure, sent)
       )
     case HintRoastMissingCause.NoPoint:
-      return `The roast on the hints at the end of the turn found no point. ${HINT_TEXT_SENT}`
+      return `The roaster did not find a point in the reply at the end of the turn. ${sent}`
   }
+}
+
+/** The toast for a roast on the hints at the end of a turn lost to the failure `reason`. */
+export function describeHintRoastLost(reason: string): string {
+  return (
+    `The roast on the hints at the end of Claude's last turn failed: ${reason}. Neither the ` +
+    `roast nor the hints went to Claude. ${NO_ROAST} ${DEBUG_LOG_NOTE}`
+  )
 }
 
 /** The notice for a roast written for `secondsWriting` so far. */

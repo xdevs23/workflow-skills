@@ -7,7 +7,7 @@ import { showFailure } from '../failureToast'
 import { forkRoastWithoutRetry, writeForkPrompt } from './roastActions'
 import type { ForkedRoast } from './roastActions'
 import { deliverRoast } from './roastDelivery'
-import { RoastNotWrittenCause, RoastRecovery, recoveryOf } from './roastFailure'
+import { RoastNotWrittenCause, RoastRecovery, recoveryOf, thrownFailure } from './roastFailure'
 import type { RoastFailure } from './roastFailure'
 import { COMPACTION_ROAST_PROMPT } from './roastPromptTexts'
 import { CompactionRoastVerdict, readCompactionRoastReply } from './roastReply'
@@ -38,8 +38,7 @@ export const roastChatBeforeCompaction: MatchedHook<'session.compact', EveryEven
   const roast = forkRoastWithoutRetry($, forkPrompt)
   const compaction = next(e)
   deliverAfterCompaction($, sessionId, roast, compaction).catch((error: unknown) => {
-    const failure: RoastFailure = { cause: RoastNotWrittenCause.Thrown, message: messageOf(error) }
-    showFailure($, describeCompactionRoastNotWrittenToast(failure))
+    showFailure($, describeCompactionRoastNotWrittenToast(thrownFailure(messageOf(error))))
   })
 
   return compaction

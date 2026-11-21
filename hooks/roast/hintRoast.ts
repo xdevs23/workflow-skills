@@ -1,42 +1,101 @@
 import type { EngineInterface } from 'claude-code'
 
+import { messageOf } from '../errorMessage'
+import { HintWithoutPoint, namesOfHintKinds } from '../hintKind'
 import type { RoastedHintKind } from '../hintKind'
+import { deliverHintNote } from '../hintNoteDelivery'
 import { writeHintTextsWithEachStepOnce } from '../hintText'
-import { forkRoastOnce } from './roastActions'
-import type { ForkedRoast } from './roastActions'
-import { HintRoastMissingCause, RoastNotWrittenCause } from './roastFailure'
+import { runDetached } from '../timedWork'
+import { forkAgainAfterPassingErrors, forkRoastWithoutRetry, writeForkPrompt } from './roastActions'
+import { HintRoastMissingCause, RoastNotWrittenCause, thrownFailure } from './roastFailure'
 import type { HintRoastMissing } from './roastFailure'
 import { attributeRoastToRoaster, writeHintRoastPrompt } from './roastPromptTexts'
 import { HintRoastVerdict, readHintRoastReply } from './roastReply'
 import { RoastShown } from './roastState'
+import type { RoastProgressOf } from './roastState'
+import { describeHintRoastLost, describeHintRoastMissing } from './roastTexts'
 
 /** The roast on the hints at the end of a turn, attributed to the roaster, or why none came. */
-export type HintRoast =
+type HintRoast =
   | { isWritten: true; roast: string }
   | { isWritten: false; missing: HintRoastMissing }
 
 /**
- * The roast on the hints of `kinds` for the end of a turn, as one fork made from the main
- * conversation writes it.
+ * Asks a fork made from the main conversation for the roast on the hints of `kinds` at the end of a
+ * turn, and returns after it asked the fork, without waiting for the answer of the fork. Asks again
+ * after an error of the API that passes, as `forkAgainAfterPassingErrors` does. Once the last fork
+ * ended, sends the running session the roast as `deliverHintRoast` does.
  */
-export async function roastHints(
+export async function roastHintsDetached(
   $: EngineInterface,
   kinds: readonly RoastedHintKind[],
-): Promise<HintRoast> {
+): Promise<void> {
+  const sessionId = await $.session.id()
   const prompt = writeHintRoastPrompt({
-    tasks: kinds.map(kind => kind.roasterTask),
+    tasks: kinds.map(kind => kind.roaster.task),
     hints: writeHintTextsWithEachStepOnce(kinds.map(kind => kind.text)),
   })
-
-  return readForkedHintRoast(await forkRoastOnce($, prompt, 1))
+  // The rejection handler turns a thrown fork into a roast not written, so `roast` never rejects
+  // while nothing awaits it yet.
+  const roast = forkRoastWithoutRetry($, await writeForkPrompt($, prompt))
+    .then(first => forkAgainAfterPassingErrors($, prompt, first))
+    .then(readForkedHintRoast, (error: unknown) =>
+      missing({
+        cause: HintRoastMissingCause.NotWritten,
+        failure: thrownFailure(messageOf(error)),
+      }),
+    )
+  runDetached(
+    $,
+    async () => deliverHintRoast($, sessionId, kinds, await roast),
+    describeHintRoastLost,
+  )
 }
 
-function readForkedHintRoast(roast: ForkedRoast): HintRoast {
+/**
+ * Sends the session `sessionId` the note on `roast`, the roast on the hints of `kinds`. Where the
+ * roaster did not write a roast, sends the fixed texts of `kindsSentWithoutRoast` in its place,
+ * where there are any, and writes to the debug log why the roast was not written.
+ */
+async function deliverHintRoast(
+  $: EngineInterface,
+  sessionId: string,
+  kinds: readonly RoastedHintKind[],
+  roast: HintRoast,
+): Promise<void> {
+  if (roast.isWritten) {
+    await deliverHintNote($, sessionId, namesOfHintKinds(kinds), [[roast.roast]])
+
+    return
+  }
+  const fixedTextKinds = kindsSentWithoutRoast(kinds, roast.missing)
+  const fixedTextKindNames = namesOfHintKinds(fixedTextKinds)
+  $.ui.log(describeHintRoastMissing(roast.missing, fixedTextKindNames), { to: 'debug' })
+  if (fixedTextKinds.length > 0) {
+    await deliverHintNote($, sessionId, fixedTextKindNames, fixedTextKinds.map(kind => kind.text))
+  }
+}
+
+/**
+ * The kinds of `kinds` whose fixed text goes to the model where the roaster did not write a roast
+ * for `missing`: every kind after a failed fork, and after a fork that did not find a point, the
+ * kinds whose hint applies without a point.
+ */
+function kindsSentWithoutRoast(
+  kinds: readonly RoastedHintKind[],
+  missing: HintRoastMissing,
+): readonly RoastedHintKind[] {
+  return missing.cause === HintRoastMissingCause.NoPoint
+    ? kinds.filter(kind => kind.roaster.withoutPoint === HintWithoutPoint.Text)
+    : kinds
+}
+
+function readForkedHintRoast(
+  roast: RoastProgressOf<RoastShown.Written | RoastShown.NotWritten>,
+): HintRoast {
   switch (roast.shown) {
     case RoastShown.Written:
       return readHintRoastText(roast.text)
-    case RoastShown.WritingAgain:
-      return missing({ cause: HintRoastMissingCause.NotAskedAgain, error: roast.error })
     case RoastShown.NotWritten:
       return missing({ cause: HintRoastMissingCause.NotWritten, failure: roast.failure })
   }

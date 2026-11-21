@@ -1,4 +1,4 @@
-import { HintKindName } from './hintKind'
+import { HintKindName, HintWithoutPoint } from './hintKind'
 import type { HintKind } from './hintKind'
 import { labelledLine } from './lineMarks'
 import { NO_LETTER_AFTER, NO_LETTER_BEFORE } from './quotedText'
@@ -25,4 +25,12 @@ export const ACCEPTED_GAP_HINT: HintKind<HintKindName.AcceptedGap> = {
       'and run that code. Fix every gap that is real now. Do not label such a gap as a cost and ' +
       'do not ask the user to handle such a gap.',
   ],
+  roaster: {
+    task:
+      'The reply names a trade-off or declares a boundary on the work. Name each gap in the work ' +
+      'of this turn that the reply calls a trade-off or a boundary, and what the assistant could ' +
+      'read, run and fix about that gap in this turn. A trade-off or a boundary that leaves no ' +
+      'gap in the work of this turn, such as one the user asked about, is not a point.',
+    withoutPoint: HintWithoutPoint.Nothing,
+  },
 }

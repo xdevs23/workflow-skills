@@ -1,5 +1,5 @@
 import { AT_CLAUSE_END } from './clauses'
-import { HintKindName } from './hintKind'
+import { HintKindName, HintWithoutPoint } from './hintKind'
 import type { HintKind } from './hintKind'
 import { phrase } from './phrase'
 import { COUNT } from './quantityWords'
@@ -101,7 +101,10 @@ export const WAITING_HINT: HintKind<HintKindName.Waiting> = {
     HAND_OVER_UNANSWERED,
     'Do not repeat open questions, and pick up independent work in the meantime.',
   ],
-  roasterTask:
-    'The reply waits for an answer or an approval from the user. Name what it leaves to the ' +
-    'user, and the work that the assistant could start in this turn without the user.',
+  roaster: {
+    task:
+      'The reply waits for an answer or an approval from the user. Name what it leaves to the ' +
+      'user, and the work that the assistant could start in this turn without the user.',
+    withoutPoint: HintWithoutPoint.Text,
+  },
 }

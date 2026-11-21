@@ -23,11 +23,13 @@ const MESSAGE_NOT_VALID: SharedStep = { text: 'Your message is not valid.' }
 
 /** The hint that blocks the end of a turn on a message with the shape of the refusal. */
 export function hintOf<Name extends HintKindName>(refusal: Refusal<Name>): HintKind<Name> {
-  return {
+  const hint = {
     name: refusal.name,
     phrases: [refusal.pattern],
     text: [MESSAGE_NOT_VALID, ...refusal.reason],
   }
+
+  return refusal.roaster === undefined ? hint : { ...hint, roaster: refusal.roaster }
 }
 
 /** Every hint kind by name, so a name without a kind or with two kinds fails the type check. */

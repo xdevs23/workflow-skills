@@ -10,7 +10,7 @@ import { CommandRegistrar, type PluginCommand } from '../pluginCommand'
 import { isTypedByUser } from '../promptOrigin'
 import { runDetached } from '../timedWork'
 import { openRoastPane, startRoast, writeRoast } from './roastActions'
-import { RoastNotWrittenCause } from './roastFailure'
+import { thrownFailure } from './roastFailure'
 import { ROAST_COMMAND, ROAST_PANE_CLOSED_BY_USER } from './roastNames'
 import { dropRoast } from './roastState'
 import {
@@ -53,7 +53,7 @@ async function runRoastCommand(
   const run = await startRoast($)
   const opened = await openRoastPane($)
   runDetached($, () => writeRoast($, run, finding), message =>
-    describeRoastNotWritten({ cause: RoastNotWrittenCause.Thrown, message }),
+    describeRoastNotWritten(thrownFailure(message)),
   )
 
   return opened.isPlaced ? {} : { text: describeRoastPaneWaiting(opened.reason) }
