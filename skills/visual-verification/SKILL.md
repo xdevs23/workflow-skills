@@ -17,8 +17,6 @@ description: Verify changes to rendered output of any user interface, and adopt 
 
 ## Adopting a harness
 
-- Adopt harness in project without one as separate unit of work, before interface change that led
-  to it
 - Read every file of implementation guide in full, in order given in index, before writing any
   harness code. Guide: folder `implementation-guide/` beside this file, starting at
   `implementation-guide/index.md`
@@ -29,14 +27,12 @@ description: Verify changes to rendered output of any user interface, and adopt 
   as examples
 - Build harness of each project from guide, for language, toolkit and build used in that project.
   Plugin does not contain harness code
-- Hand each unit of adoption the parts of guide implemented by it, as rules binding the unit, each
-  as path under plugin root: `<plugin root>/skills/visual-verification/implementation-guide/<file>`.
+- Hand every agent working on adoption the parts of guide implemented by it, as rules binding that
+  agent, each as path under plugin root:
+  `<plugin root>/skills/visual-verification/implementation-guide/<file>`.
   Reviewers then check harness against wording of guide. Each finding points to guide file and line
   on which it is based. Plugin root: directory in plugin cache containing installed plugin, the one
   with manifest listing loaded version
-- Split adoption in each project into several units in sequence, e.g. integration survey and
-  launcher first, then data boundary, runtime and first scene, then comparison, reports and evidence
-  sheet, then self-test suite
 
 ## Verifying a change
 
@@ -116,8 +112,7 @@ settings.
   - changes only in checkpoints covered by user's words, every measured check passing;
   - for change that alters compatibility input on purpose, e.g. translation, fixture, scene module
     or dependency lock: the intended input change
-- Run every scene, capture and comparison, and self-test suite of harness, yourself in your build.
-  Implementer writes scenes, fixtures and harness code, runs none of them
+- Run every scene, capture and comparison, and self-test suite of harness in your build
 - Capture before state yourself, before first implementer starts, from commit where change starts,
   in worktree where your build runs, under name not used before in that worktree
 - Capture after state in your full build after merge, on branch containing whole change, as
@@ -134,7 +129,6 @@ settings.
   worktree where your build runs. Judge outcome from them
 - Check that receipt of after capture records commit built by you as source revision, and receipt of
   before capture records commit where change starts
-- Do not hand captures to reviewers
 
 ## Known pitfalls
 
