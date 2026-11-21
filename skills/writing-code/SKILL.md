@@ -94,7 +94,8 @@ description: Write or change code in any language, including types, comments, na
 - Never write parser by hand for established format
 - Never parse structured data as text
 - Keep communication structured
-- Build output from typed parts, never by string interpolation
+- Build output from typed parts, never by string interpolation. Single narrow value, e.g. file name
+  `${date}_${id}.txt`, does not break this rule
 - Read state already reported by mechanism instead of adding parallel flag, sentinel or magic
   string
 - Represent absence as absence: empty collection, null or optional, or error. Never placeholder of
