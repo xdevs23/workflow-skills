@@ -162,3 +162,4 @@ description: Implement change to code, from first talk with user until user revi
 - Count as time sink only time spent waiting on machines and on rework
 - Run checks of agent once, when agent finished writing
 - Remove redundant work from current task right away
+- Stop each agent whose result the work no longer needs
