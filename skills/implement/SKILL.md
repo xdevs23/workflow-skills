@@ -3,12 +3,19 @@ name: implement
 description: Implement change to code, from first talk with user until user reviews code
 ---
 
-## Draft
+## User's words
 
 - Keep user's words in session. Write no file of notes
+- Find user's words on unit in messages typed by user in every session transcript of project.
+  Search directory of transcripts for entry number, title and terms of unit
+- Count as user's words also choice approved by user in draft, and decision made by subagents
+  under explicit grant of `workflow-skills:autonomous-implementation`, found in session transcript
+
+## Draft
+
 - Write feature down first, as one entry in `TODO.md` as `workflow-skills:todo-md` describes
-- Once user's words give you enough to work with, draw draft for change as
-  `workflow-skills:visual-decisions` describes
+- Once user's words give you enough to work with and any discussion with user reached agreement,
+  draw draft for change as `workflow-skills:visual-decisions` describes
 - Show on draft: UI/UX where there is one, how state is represented in backend, and modules
   into which feature is split, with what each module may know of others. Such as core that is
   agnostic and one module for each implementation, where modules do not know of each other
@@ -55,8 +62,7 @@ description: Implement change to code, from first talk with user until user revi
 - Once all implementers done, start following reviewers in parallel on whole change. Tell them
   which repositories change is in, and at which commits it starts and ends
 - Start scope reviewer as `workflow-skills:reviewer-scope`. Hand it directory of session
-  transcripts and search terms as `workflow-skills:question` describes, and approved draft. It
-  works without rules
+  transcripts, entry number, title and terms of unit, and approved draft. It works without rules
 - Start prose reviewer as `workflow-skills:reviewer-prose`, on smallest model available, at medium
   effort
 - Start four more as `workflow-skills:reviewer-layer`. Hand each path of approved draft and skills
@@ -109,7 +115,8 @@ description: Implement change to code, from first talk with user until user revi
   again once fixes merged into build branch
 - Where project does not have a command that builds, checks or tests one part alone within seconds,
   design commands that do. Such as one build target for each module, test filter or incremental
-  build. Put them to user as unit of work. Record and implement that unit once user approves it
+  build. Draw draft of unit of work that adds them. Record and implement that unit once user
+  approves draft
 - Until such commands exist, leave out first step of section on merging. Full build after merge
   covers change
 

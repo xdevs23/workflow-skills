@@ -1,123 +1,122 @@
 import type { EngineInterface } from 'claude-code'
 
-import type { Question } from '../types'
+import type { Reply, Request } from '../types'
 import { PendingTextPlace, submitAddedText } from './pendingTexts'
 import type { PendingTextSource } from './pendingTexts'
-import { describeAnswers, describeAnswersNote } from './modelText'
-import { undeliveredAnswersOf } from './questions'
-import type { AnsweredQuestion } from './questions'
-import { awaitingSessionOf } from './questionSession'
-import {
-  handleStoreFailure,
-  saveAnswer,
-  saveDelivery,
-  toastStoreFailure,
-} from './questionStore'
+import { describeReplies, describeRepliesNote } from './modelText'
+import { undeliveredRepliesOf } from './requests'
+import type { DoneRequest } from './requests'
+import { awaitingSessionOf } from './requestSession'
+import { saveDelivery, saveReply } from './requestStore'
+import { handleStoreFailure, toastStoreFailure } from './requestStoreFailure'
 import { PromptOutcome, isPromptEntered, submitToSession } from './sendToModel'
 import type { Delivery, TextWithLine } from './sendToModel'
 import {
-  claimAnswers,
-  loadQuestionsFromStore,
-  releaseAnswers,
-  setQuestionsInState,
-  updateQuestions,
+  claimReplies,
+  loadRequestsFromStore,
+  releaseReplies,
+  setRequestsInState,
+  updateRequests,
 } from './sessionState'
 
 /**
- * Hands the answers not yet read by the session `sessionId` to `send`, together with the questions
+ * Hands the replies not yet read by the session `sessionId` to `send`, together with the requests
  * of that session, and stores them as delivered once `send` reports them accepted. `send` runs also
- * when the list of answers is empty. Answers another delivery of the session is sending
- * are left to that delivery, so parallel tool calls give each answer to the model once.
+ * when the list of replies is empty. Replies another delivery of the session is sending
+ * are left to that delivery, so parallel tool calls give each reply to the model once.
  */
-export async function deliverAnswers<T>(
+export async function deliverReplies<T>(
   $: EngineInterface,
   sessionId: string,
   send: (
-    answered: readonly AnsweredQuestion[],
-    questions: readonly Question[],
+    done: readonly DoneRequest[],
+    requests: readonly Request[],
   ) => Promise<Delivery<T>>,
 ): Promise<T> {
-  const questions = await loadQuestionsFromStore($, sessionId)
-  const answered = await claimAnswers($, undeliveredAnswersOf(questions))
+  const requests = await loadRequestsFromStore($, sessionId)
+  const done = await claimReplies($, undeliveredRepliesOf(requests))
   try {
-    const delivery = await send(answered, questions)
-    if (delivery.isAccepted && answered.length > 0) {
-      await storeDelivery($, sessionId, answered)
+    const delivery = await send(done, requests)
+    if (delivery.isAccepted && done.length > 0) {
+      await storeDelivery($, sessionId, done)
     }
 
     return delivery.result
   } finally {
-    if (answered.length > 0) {
-      await releaseAnswers($, answered)
+    if (done.length > 0) {
+      await releaseReplies($, done)
     }
   }
 }
 
 /**
- * Stores the answers as delivered. A refused write leaves them undelivered, so the model reads
+ * Stores the replies as delivered. A refused write leaves them undelivered, so the model reads
  * them again with a later delivery, and the user is told.
  */
 async function storeDelivery(
   $: EngineInterface,
   sessionId: string,
-  answered: readonly AnsweredQuestion[],
+  done: readonly DoneRequest[],
 ): Promise<void> {
   await toastStoreFailure($, async () => {
-    const delivered = await saveDelivery($, sessionId, answered)
-    await updateQuestions($, questions =>
-      questions.map(question => delivered.find(each => each.id === question.id) ?? question),
+    const delivered = await saveDelivery($, sessionId, done)
+    await updateRequests($, requests =>
+      requests.map(request => delivered.find(each => each.id === request.id) ?? request),
     )
   })
 }
 
 /**
- * Stores the answer of the user to the open question of the session `sessionId` that `which`
- * selects, and returns whether such a question was open. The answer goes to the model as
- * `submitAddedText` describes.
+ * Marks the open request of the session `sessionId` that `which` selects done with the reply of
+ * the user, if any, and returns whether such a request was open. The request marked done goes to
+ * the model as `submitAddedText` describes.
  */
-export async function recordAnswerAndDeliver(
+export async function recordReplyAndDeliver(
   $: EngineInterface,
   sessionId: string,
-  which: (question: Question) => boolean,
-  text: string,
+  which: (request: Request) => boolean,
+  typed: Pick<Reply, 'text'>,
 ): Promise<boolean> {
-  const answer = { text, answeredAt: await $.clock.now() }
-  const { answered, questions } = await saveAnswer($, sessionId, which, answer)
-  await setQuestionsInState($, sessionId, questions)
-  if (answered !== undefined) {
-    submitAddedText($, answersSource($))
+  const reply = { ...typed, repliedAt: await $.clock.now() }
+  const { done, requests } = await saveReply($, sessionId, which, reply)
+  await setRequestsInState($, sessionId, requests)
+  if (done !== undefined) {
+    submitAddedText($, repliesSource($))
   }
 
-  return answered !== undefined
+  return done !== undefined
 }
 
-/** The answers to the questions of the session, as a source of texts sent to the model. */
-export function answersSource($: EngineInterface): PendingTextSource {
+/** The replies to the requests of the session, as a source of texts sent to the model. */
+export function repliesSource($: EngineInterface): PendingTextSource {
   return {
-    takeNote: () => takeAnswersNote($),
-    submit: () => submitAnswers($),
-    describeNotSent: describeAnswersNotSent,
-    waitingAfterStopToast: ANSWERS_WAITING_AFTER_STOP,
-    describeWaitingForPane: describeAnswersWaitingForPane,
+    takeNote: () => takeRepliesNote($),
+    submit: () => submitReplies($),
+    describeNotSent: describeRepliesNotSent,
+    waitingAfterStopToast: REPLIES_WAITING_AFTER_STOP,
+    describeWaitingForPane: describeRepliesWaitingForPane,
   }
 }
 
-const ANSWERS_WAITING_AFTER_STOP =
-  'Your answer is sent to Claude once you type a slash command or send a message.'
+const REPLIES_WAITING_AFTER_STOP =
+  'The request you marked done goes to Claude once you type a slash command or send a message.'
 
-function describeAnswersWaitingForPane(paneTitle: string): string {
-  return `Your answer is sent to Claude once you close the ${paneTitle} pane or send a message.`
+function describeRepliesWaitingForPane(paneTitle: string): string {
+  return (
+    `The request you marked done goes to Claude once you close the ${paneTitle} pane or send a ` +
+    'message.'
+  )
 }
 
-/** The toast for answers left unsent for `reason`. */
-function describeAnswersNotSent(reason: string): string {
+/** The toast for replies left unsent for `reason`. */
+function describeRepliesNotSent(reason: string): string {
   return (
-    `This plugin could not send your answers to Claude: ${reason}. ` +
+    `This plugin could not tell Claude which requests you marked done: ${reason}. ` +
     'It sends them with your next prompt or the next tool result.'
   )
 }
 
-async function takeAnswersNote($: EngineInterface): Promise<TextWithLine | undefined> {
+async function takeRepliesNote($: EngineInterface): Promise<TextWithLine | undefined> {
   const sessionId = await awaitingSessionOf($)
   if (sessionId === null) {
     return undefined
@@ -126,11 +125,11 @@ async function takeAnswersNote($: EngineInterface): Promise<TextWithLine | undef
   return handleStoreFailure(
     $,
     () =>
-      deliverAnswers($, sessionId, async answered => ({
+      deliverReplies($, sessionId, async done => ({
         result:
-          answered.length === 0
+          done.length === 0
             ? undefined
-            : describeAnswersNote(PendingTextPlace.ToolResult, answered),
+            : describeRepliesNote(PendingTextPlace.ToolResult, done),
         isAccepted: true,
       })),
     message => {
@@ -142,23 +141,23 @@ async function takeAnswersNote($: EngineInterface): Promise<TextWithLine | undef
 }
 
 /**
- * Sends the undelivered answers of the session awaiting answers to the model as a prompt in the
+ * Sends the undelivered replies of the session awaiting replies to the model as a prompt in the
  * name of the user, and stores them as delivered once the prompt is accepted. The delivery skips
- * answers already delivered, so a delivery started while another one runs sends each answer once.
+ * replies already delivered, so a delivery started while another one runs sends each reply once.
  */
-async function submitAnswers($: EngineInterface): Promise<void> {
+async function submitReplies($: EngineInterface): Promise<void> {
   const sessionId = await awaitingSessionOf($)
   if (sessionId === null) {
     return
   }
-  await deliverAnswers($, sessionId, async answered => {
-    if (answered.length === 0) {
+  await deliverReplies($, sessionId, async done => {
+    if (done.length === 0) {
       return { result: undefined, isAccepted: false }
     }
-    const text = describeAnswers(answered)
+    const text = describeReplies(done)
     const submitted = await submitToSession($, sessionId, { text, asUser: true })
     if (submitted.outcome === PromptOutcome.Dropped) {
-      $.ui.toast(describeAnswersNotSent(submitted.reason))
+      $.ui.toast(describeRepliesNotSent(submitted.reason))
     }
 
     return { result: undefined, isAccepted: isPromptEntered(submitted) }

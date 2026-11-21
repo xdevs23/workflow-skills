@@ -28,3 +28,16 @@ const BLANKED_WORD = '·'
 export function withoutQuotedText(message: string): string {
   return message.replace(QUOTED_TEXT, quoted => quoted.replace(WORD, BLANKED_WORD))
 }
+
+/** The span with every mark but its line breaks blanked, so its length and its lines stay. */
+export function blankSpan(span: string): string {
+  return span.replace(/[^\n]/g, BLANKED_WORD)
+}
+
+/**
+ * Returns the message with its code, quotations and quoted lines blanked mark by mark, so no
+ * question mark of theirs counts, and every other mark stays at its place in the message.
+ */
+export function withoutQuotedSpans(message: string): string {
+  return message.replace(QUOTED_TEXT, blankSpan)
+}

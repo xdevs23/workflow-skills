@@ -1,24 +1,24 @@
 import { atom, read, update } from 'claude-code'
 import type { EngineInterface } from 'claude-code'
 
-import type { Question, SessionQuestions } from '../types'
-import type { AnsweredQuestion } from './questions'
-import { readSessionQuestions } from './questionStore'
+import type { Request, SessionRequests } from '../types'
+import type { DoneRequest } from './requests'
+import { readSessionRequests } from './requestStore'
 import { isSessionRunning, ofRunningSession } from './sessionBoundState'
 
 // The engine lists the state a module reads and writes from the source of the module, so every
-// state reference of the questions is written in this file with its plugin and key as literals,
+// state reference of the requests is written in this file with its plugin and key as literals,
 // and the other modules read and write that state through the functions below.
 const sessionActivity = atom(
   { plugin: 'workflow-skills', key: 'sessionActivity' } as const,
   null,
 )
-const sessionQuestions = atom(
-  { plugin: 'workflow-skills', key: 'sessionQuestions' } as const,
+const sessionRequests = atom(
+  { plugin: 'workflow-skills', key: 'sessionRequests' } as const,
   null,
 )
-const deliveringAnswers = atom(
-  { plugin: 'workflow-skills', key: 'deliveringAnswers' } as const,
+const deliveringReplies = atom(
+  { plugin: 'workflow-skills', key: 'deliveringReplies' } as const,
   [],
 )
 
@@ -35,7 +35,7 @@ export function hasPersonAtPrompt(): boolean {
   return isPersonAtPrompt
 }
 
-// The session whose questions the start of the process read, also when the read failed. The
+// The session whose requests the start of the process read, also when the read failed. The
 // classic SessionStart hook that follows the start then leaves that read out, so a failure shows
 // once. Before the start, the classic hook reads nothing, since no person is known to be at the
 // prompt yet.
@@ -45,7 +45,7 @@ export function recordReadAtStart(sessionId: string): void {
   sessionReadAtStart = sessionId
 }
 
-/** Whether the start of the process read the questions of `sessionId`, answered once. */
+/** Whether the start of the process read the requests of `sessionId`, true once. */
 export function takeReadAtStart(sessionId: string): boolean {
   const wasRead = sessionReadAtStart === sessionId
   sessionReadAtStart = undefined
@@ -54,65 +54,65 @@ export function takeReadAtStart(sessionId: string): boolean {
 }
 
 /**
- * Reads the questions of the session `sessionId` from the store into the state that the screens
+ * Reads the requests of the session `sessionId` from the store into the state that the screens
  * draw, and returns them.
  */
-export async function loadQuestionsFromStore(
+export async function loadRequestsFromStore(
   $: EngineInterface,
   sessionId: string,
-): Promise<readonly Question[]> {
-  const questions = await readSessionQuestions($, sessionId)
-  await setQuestionsInState($, sessionId, questions)
+): Promise<readonly Request[]> {
+  const requests = await readSessionRequests($, sessionId)
+  await setRequestsInState($, sessionId, requests)
 
-  return questions
+  return requests
 }
 
 /**
- * Loads the questions of the session `sessionId` from the store into the state, unless the state
+ * Loads the requests of the session `sessionId` from the store into the state, unless the state
  * contains them already.
  */
-export async function loadQuestionsUnlessInState(
+export async function loadRequestsUnlessInState(
   $: EngineInterface,
   sessionId: string,
 ): Promise<void> {
-  if ((await readQuestionsInState($))?.sessionId !== sessionId) {
-    await loadQuestionsFromStore($, sessionId)
+  if ((await readRequestsInState($))?.sessionId !== sessionId) {
+    await loadRequestsFromStore($, sessionId)
   }
 }
 
 /**
- * The questions in the state with the id of their session while that session runs, and null
+ * The requests in the state with the id of their session while that session runs, and null
  * otherwise, such as before the session read them or after a switch to another session.
  */
-export async function readQuestionsInState($: EngineInterface): Promise<SessionQuestions | null> {
-  return ofRunningSession($, await read($, sessionQuestions))
+export async function readRequestsInState($: EngineInterface): Promise<SessionRequests | null> {
+  return ofRunningSession($, await read($, sessionRequests))
 }
 
 /**
- * Puts the questions of the session `sessionId`, as the store has them, into the state, unless
+ * Puts the requests of the session `sessionId`, as the store has them, into the state, unless
  * another session runs by now.
  */
-export async function setQuestionsInState(
+export async function setRequestsInState(
   $: EngineInterface,
   sessionId: string,
-  questions: readonly Question[],
+  requests: readonly Request[],
 ): Promise<void> {
   if (await isSessionRunning($, sessionId)) {
-    await update($, sessionQuestions, () => ({ sessionId, questions }))
+    await update($, sessionRequests, () => ({ sessionId, requests }))
   }
 }
 
 /**
- * Changes the questions in the state, once a session has read them, and keeps the session they
- * belong to. `change` finds the questions by their ids, which differ across sessions, so a change
- * for one session leaves the questions of another as they are.
+ * Changes the requests in the state, once a session has read them, and keeps the session they
+ * belong to. `change` finds the requests by their ids, which differ across sessions, so a change
+ * for one session leaves the requests of another as they are.
  */
-export async function updateQuestions(
+export async function updateRequests(
   $: EngineInterface,
-  change: (questions: readonly Question[]) => readonly Question[],
+  change: (requests: readonly Request[]) => readonly Request[],
 ): Promise<void> {
-  await update($, sessionQuestions, inState =>
-    inState === null ? null : { ...inState, questions: change(inState.questions) },
+  await update($, sessionRequests, inState =>
+    inState === null ? null : { ...inState, requests: change(inState.requests) },
   )
 }
 
@@ -184,28 +184,28 @@ export async function changeSessionActivity(
 }
 
 /**
- * Marks the answers as being delivered by this session, and returns the ones another delivery of
+ * Marks the replies as being delivered by this session, and returns the ones another delivery of
  * the session was not delivering already.
  */
-export async function claimAnswers(
+export async function claimReplies(
   $: EngineInterface,
-  undelivered: readonly AnsweredQuestion[],
-): Promise<AnsweredQuestion[]> {
-  let claimed: AnsweredQuestion[] = []
-  await update($, deliveringAnswers, delivering => {
-    claimed = undelivered.filter(question => !delivering.includes(question.id))
+  undelivered: readonly DoneRequest[],
+): Promise<DoneRequest[]> {
+  let claimed: DoneRequest[] = []
+  await update($, deliveringReplies, delivering => {
+    claimed = undelivered.filter(request => !delivering.includes(request.id))
 
-    return [...delivering, ...claimed.map(question => question.id)]
+    return [...delivering, ...claimed.map(request => request.id)]
   })
 
   return claimed
 }
 
-export async function releaseAnswers(
+export async function releaseReplies(
   $: EngineInterface,
-  claimed: readonly AnsweredQuestion[],
+  claimed: readonly DoneRequest[],
 ): Promise<void> {
-  await update($, deliveringAnswers, delivering =>
-    delivering.filter(id => !claimed.some(question => question.id === id)),
+  await update($, deliveringReplies, delivering =>
+    delivering.filter(id => !claimed.some(request => request.id === id)),
   )
 }

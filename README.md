@@ -23,7 +23,9 @@ Then run a skill, such as `/workflow-skills:implement`.
   against the project, marks the goals it finds done and sends the rest to Claude
 - **Reminders**: `/reminders` sends Claude a text on a schedule or after an event;
   `/reminders-import` brings reminders of an earlier session of the project into this one
-- **Questions**: Claude asks and keeps working; answer in the pane or with `/answer`
+- **Requests**: Claude sends a request for work that only you can do outside the session, such as
+  power-cycling a board, and keeps working. Press Done in the Requests pane or run
+  `/reply <number>`, with a reply after it if Claude needs one
 - **Roast**: `/roast` writes where Claude disregarded the rules it was given or the facts in its
   context, and sends it to Claude after your comment if you add one. The roast opens with a line
   for Claude: the roaster, a side agent, wrote it, and it does not have your authority. During a

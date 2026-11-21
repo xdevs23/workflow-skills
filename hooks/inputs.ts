@@ -1,101 +1,60 @@
+import type { Reply } from '../types'
 import { writeHintText } from './hintText'
-import { ANSWER_COMMAND } from './names'
+import { REPLY_COMMAND } from './names'
+import { REQUEST_DEFINITION, describeNotRequest, findNotRequestWording } from './notRequest'
 import { isPositiveInteger } from './positiveInteger'
-import type { Refusal } from './refusal'
-import { refusalsIn } from './refusals'
 
 /** A text with at least one character other than white space. */
 export const NON_BLANK = /\S/
-/** The question mark of Latin, of Chinese and Japanese, and of Arabic script. */
-const QUESTION_MARK = /[?？؟]/
-const MIN_CHOICES = 2
 
 /** The arguments given to a tool by the model, which arrive unchecked. */
 export type ToolArguments = { readonly [argument: string]: unknown }
 
-const QUESTION_RULE = 'a text with a question mark'
-const CHOICES_RULE = `at least ${MIN_CHOICES} different texts that are not empty`
-
-export const ASK_SCHEMA = {
+export const SEND_SCHEMA = {
   type: 'object',
   properties: {
-    question: {
+    request: {
       type: 'string',
-      pattern: QUESTION_MARK.source,
+      pattern: NON_BLANK.source,
       description:
-        `The question, as ${QUESTION_RULE}, complete enough to answer without this ` +
-        'conversation.',
-    },
-    choices: {
-      type: 'array',
-      items: { type: 'string', pattern: NON_BLANK.source },
-      minItems: MIN_CHOICES,
-      uniqueItems: true,
-      description:
-        `The answers to pick from, as ${CHOICES_RULE}, where the question has a fixed set of ` +
-        'them. The user can still answer in other words.',
+        `${REQUEST_DEFINITION} Write it as an instruction complete enough to act on without ` +
+        'this conversation, such as "Power-cycle lab-rpi-2. The flash test waits on it."',
     },
   },
-  required: ['question'],
+  required: ['request'],
   additionalProperties: false,
 }
 
-export enum AskOutcome {
+export enum SendOutcome {
   Valid = 'valid',
-  QuestionInvalid = 'question-invalid',
-  Refused = 'refused',
-  ChoicesInvalid = 'choices-invalid',
+  RequestBlank = 'request-blank',
+  NotRequest = 'not-request',
 }
 
-type FixedAskProblem = AskOutcome.QuestionInvalid | AskOutcome.ChoicesInvalid
+export type SendFailure =
+  | { outcome: SendOutcome.RequestBlank }
+  | { outcome: SendOutcome.NotRequest; wording: string }
 
-export type AskFailure =
-  | { outcome: FixedAskProblem }
-  | { outcome: AskOutcome.Refused; refusal: Refusal }
+export type SendInput = { outcome: SendOutcome.Valid; text: string } | SendFailure
 
-export type AskInput =
-  | { outcome: AskOutcome.Valid; question: string; choices: readonly string[] }
-  | AskFailure
-
-const ASK_PROBLEMS: Record<FixedAskProblem, string> = {
-  [AskOutcome.QuestionInvalid]: `Give the question as ${QUESTION_RULE}.`,
-  [AskOutcome.ChoicesInvalid]: `Give the choices as ${CHOICES_RULE}, or leave them out.`,
+/** What the model is told when its input to the sending tool breaks a rule. */
+export function sendProblemOf(failure: SendFailure): string {
+  return failure.outcome === SendOutcome.RequestBlank
+    ? 'Give the request as a text that is not empty.'
+    : writeHintText(describeNotRequest(failure.wording))
 }
 
-/** What the model is told when its input to the asking tool breaks a rule. */
-export function askProblemOf(failure: AskFailure): string {
-  return failure.outcome === AskOutcome.Refused
-    ? `The question is refused. ${writeHintText(failure.refusal.reason)}`
-    : ASK_PROBLEMS[failure.outcome]
-}
+/** Reads the unchecked input of the model to the sending tool into a typed model. */
+export function readSendInput(input: ToolArguments): SendInput {
+  const { request } = input
+  if (typeof request !== 'string' || !NON_BLANK.test(request)) {
+    return { outcome: SendOutcome.RequestBlank }
+  }
+  const wording = findNotRequestWording(request)
 
-/** Reads the input of the model to the asking tool, which arrives unchecked, into a typed model. */
-export function readAskInput(input: ToolArguments): AskInput {
-  const { question, choices } = input
-  if (typeof question !== 'string' || !QUESTION_MARK.test(question)) {
-    return { outcome: AskOutcome.QuestionInvalid }
-  }
-  const [refusal] = refusalsIn(question)
-  if (refusal !== undefined) {
-    return { outcome: AskOutcome.Refused, refusal }
-  }
-  if (choices === undefined) {
-    return { outcome: AskOutcome.Valid, question: question.trim(), choices: [] }
-  }
-  if (!isChoiceList(choices)) {
-    return { outcome: AskOutcome.ChoicesInvalid }
-  }
-
-  return { outcome: AskOutcome.Valid, question: question.trim(), choices }
-}
-
-function isChoiceList(value: unknown): value is string[] {
-  return (
-    Array.isArray(value) &&
-    value.length >= MIN_CHOICES &&
-    value.every(choice => typeof choice === 'string' && NON_BLANK.test(choice)) &&
-    new Set(value).size === value.length
-  )
+  return wording === undefined
+    ? { outcome: SendOutcome.Valid, text: request.trim() }
+    : { outcome: SendOutcome.NotRequest, wording }
 }
 
 export const NUMBER_RULE = 'a whole number from 1 up'
@@ -106,14 +65,14 @@ export const WITHDRAW_SCHEMA = {
     number: {
       type: 'integer',
       minimum: 1,
-      description: `The number of your question, as ${NUMBER_RULE}.`,
+      description: `The number of your request, as ${NUMBER_RULE}.`,
     },
   },
   required: ['number'],
   additionalProperties: false,
 }
 
-export const WITHDRAW_PROBLEM = `Give the number of the question as ${NUMBER_RULE}.`
+export const WITHDRAW_PROBLEM = `Give the number of the request as ${NUMBER_RULE}.`
 
 /** Reads the number in the input of the model to the withdrawing tool, undefined without one. */
 export function readWithdrawInput(input: ToolArguments): number | undefined {
@@ -123,39 +82,49 @@ export function readWithdrawInput(input: ToolArguments): number | undefined {
 }
 
 /** The number argument of a command, as its usage shows it. */
-export const NUMBER_ARGUMENT = '<number>'
-const ANSWER_ARGUMENT = '<answer>'
+const NUMBER_ARGUMENT = '<number>'
+const REPLY_ARGUMENT = '[<reply>]'
 
-export const ANSWER_ARGUMENTS = `[${NUMBER_ARGUMENT} ${ANSWER_ARGUMENT}]`
+export const REPLY_ARGUMENTS = `[${NUMBER_ARGUMENT} ${REPLY_ARGUMENT}]`
 
-/** The command that answers the question numbered `number`, as the user types it. */
-export function answerUsage(number: number | typeof NUMBER_ARGUMENT = NUMBER_ARGUMENT): string {
-  return `/${ANSWER_COMMAND} ${number} ${ANSWER_ARGUMENT}`
+/** The command that marks the request numbered `number` done, as the user types it. */
+export function replyUsage(number: number | typeof NUMBER_ARGUMENT = NUMBER_ARGUMENT): string {
+  return `/${REPLY_COMMAND} ${number} ${REPLY_ARGUMENT}`
 }
 
-export const ANSWER_USAGE_PROBLEM = `Write ${answerUsage()}, such as /${ANSWER_COMMAND} 3 yes.`
+export const REPLY_USAGE_PROBLEM = `Write ${replyUsage()}, such as /${REPLY_COMMAND} 3 rebooted.`
 
-export enum AnswerRequest {
+export enum ReplyCommand {
   List = 'list',
-  Answer = 'answer',
+  Done = 'done',
   Unreadable = 'unreadable',
 }
 
-export type AnswerArguments =
-  | { request: AnswerRequest.List }
-  | { request: AnswerRequest.Answer; number: number; text: string }
-  | { request: AnswerRequest.Unreadable }
+export type ReplyArguments =
+  | { kind: ReplyCommand.List }
+  | { kind: ReplyCommand.Done; number: number; reply: Pick<Reply, 'text'> }
+  | { kind: ReplyCommand.Unreadable }
 
-/** Reads the arguments of the answer command: none to list the open questions, or an answer. */
-export function readAnswerArguments(args: string): AnswerArguments {
+/** The reply typed as `text`, trimmed, and no reply for a blank text. */
+export function replyOf(text: string | undefined): Pick<Reply, 'text'> {
+  const reply = text?.trim() ?? ''
+
+  return reply === '' ? {} : { text: reply }
+}
+
+/**
+ * Reads the arguments of the reply command: none to list the open requests, or the number of a
+ * request marked done, with the reply, if any.
+ */
+export function readReplyArguments(args: string): ReplyArguments {
   const trimmed = args.trim()
   if (trimmed === '') {
-    return { request: AnswerRequest.List }
+    return { kind: ReplyCommand.List }
   }
-  const parts = /^#?(?<number>\d+)\s+(?<text>\S[\s\S]*)$/.exec(trimmed)?.groups
-  if (parts?.number === undefined || parts.text === undefined) {
-    return { request: AnswerRequest.Unreadable }
+  const parts = /^#?(?<number>\d+)(?:\s+(?<text>\S[\s\S]*))?$/.exec(trimmed)?.groups
+  if (parts?.number === undefined) {
+    return { kind: ReplyCommand.Unreadable }
   }
 
-  return { request: AnswerRequest.Answer, number: Number(parts.number), text: parts.text }
+  return { kind: ReplyCommand.Done, number: Number(parts.number), reply: replyOf(parts.text) }
 }

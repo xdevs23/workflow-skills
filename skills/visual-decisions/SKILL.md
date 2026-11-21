@@ -5,13 +5,25 @@ description: Draw page for user to look at: drafts, product decisions, plans and
 
 ## When it applies
 
+- While user talks back and forth with you about what to build or decide, draw no draft, decision,
+  plan or design page. Draw it once you and user agree. Every bullet below that orders such page
+  waits for that agreement. Page that explains code path, problem or trade-off stays allowed
 - Draw page when `workflow-skills:implement` asks for draft of a change. Show on it overall shape,
   direction, architecture and design of change
 - Draw page when change sets what someone sees or does, scope of product or which data is kept
 - Draw page for substantial plan or design, and for explanation of complex code path, problem or
   trade-off. Open it for user instead of writing it into chat
-- Draw page for decision handed to user by `workflow-skills:question`. In "What this draft builds",
-  name entry of `TODO.md` waiting on decision
+- Before drawing decision, trace each choice it takes as settled to user's words, found as
+  `workflow-skills:implement` describes
+- Choice traced without reading every transcript of project, e.g. one not readable: get what was
+  missing and trace again. Never undo it before trace is complete
+- Choice not found in user's words after trace read every transcript of project: keep it where
+  rules, instructions, facts about project or engineering judgment give answer. Undo it otherwise,
+  with what was built on it and records about that choice in `TODO.md`
+- Choice whose trace stays incomplete after second try: keep it and what was built on it. Draw it
+  as decision with kept state as recommended option
+- Draw page with recommended option for every decision left after that. In "What this draft
+  builds", name entry of `TODO.md` waiting on decision
 
 ## Before you draw
 
@@ -57,7 +69,7 @@ description: Draw page for user to look at: drafts, product decisions, plans and
 - Product decisions that need more room: split them into separate pages. Draw next page once user
   replied to the one before
 - Split page into numbered sections, each with title of at most 8 words
-- Title each section showing After with outcome shown by its pictures, e.g. "Every open question
+- Title each section showing After with outcome shown by its pictures, e.g. "Every open request
   survives a restart"
 - Draw each section in form given by section on pictures for what it shows
 - Name sample in one line under title of first section using it

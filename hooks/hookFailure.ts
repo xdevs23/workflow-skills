@@ -4,7 +4,7 @@ import { DEBUG_LOG_NOTE } from './failureToast'
 
 /** What the hooks of one feature work on, as written in the texts about a failed hook of it. */
 export type HookSubject = {
-  /** The noun for what the hooks work on, such as "questions" or "goals board". */
+  /** The noun for what the hooks work on, such as "requests" or "goals board". */
   name: string
   /**
    * The sentence that tells how to see whether a change was saved, before trying again. Absent for

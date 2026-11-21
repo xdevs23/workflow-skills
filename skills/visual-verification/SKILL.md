@@ -59,7 +59,7 @@ settings.
    report
 9. Report product findings separately from harness failures. Product finding: defect in product,
    shown by scene. Harness failure: scene that could not run or could not check what it declares.
-   Hand product decision to user as `workflow-skills:question` describes when required outcome is
+   Draw product decision as `workflow-skills:visual-decisions` describes when required outcome is
    still open
 
 - Accept difference as artifact only after inspecting it and capturing both states again, and only
@@ -105,7 +105,7 @@ settings.
 
 ## Visual work in a change of `workflow-skills:implement`
 
-- Take what visual change should do from user's words, found as `workflow-skills:question`
+- Take what visual change should do from user's words, found as `workflow-skills:implement`
   describes, and approved draft
 - Judge visual change by outcome of comparison, which has one of three forms:
   - zero changed pixels on every checkpoint;

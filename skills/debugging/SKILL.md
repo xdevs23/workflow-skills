@@ -4,7 +4,7 @@ description: Find and fix cause of bug, failing build, check or test, or limit h
 ---
 
 - Fix defect in shared component inside that component. Never by giving each consumer a copy
-- At roadblock, stop. Hand decision to user as `workflow-skills:question` describes, with condition
+- At roadblock, stop. Draw decision as `workflow-skills:visual-decisions` describes, with condition
   that ends workaround, before adding any workaround or compatibility shim
 - Start work that replaces approved workaround, as unit of work described by
   `workflow-skills:todo-md`. Remove workaround once that condition met
@@ -19,7 +19,8 @@ description: Find and fix cause of bug, failing build, check or test, or limit h
   has in memory, what it writes for later
 - Where clean design differs from code, rewrite the part or change how it works, in place of fix
   around failure
-- Propose rewrite of code outside your change to user before starting it
+- Draw rewrite of code outside your change as `workflow-skills:visual-decisions` describes before
+  starting it
 - When one of your own changes caused failure, change or remove that change in place of building
   around it
 - Never offer as option leaving unfixed a known defect in code added or edited by your change. Race

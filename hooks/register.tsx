@@ -7,7 +7,7 @@ import {
   replyToFailedPluginCommand,
   runPluginCommandOrNext,
 } from './commandDispatch'
-import { answersSource } from './delivery'
+import { repliesSource } from './delivery'
 import { EVERY_EVENT } from './everyEvent'
 import { registerGoals } from './goals'
 import { missingWorkSource, startDueGoalCheck } from './goals/goalIdleCheck'
@@ -27,21 +27,21 @@ import {
 import { hintNotesSource } from './hintNoteDelivery'
 import { blockStopOnHintPhrase } from './hints'
 import { registerImports } from './imports'
-import { ASK_TOOL, LIST_TOOL, PANE, WITHDRAW_TOOL } from './names'
+import { LIST_TOOL, REQUESTS_PANE, SEND_TOOL, WITHDRAW_TOOL } from './names'
 import { registerNeededSkills } from './neededSkills'
 import { createPromptFooter, registerPromptFooter } from './promptFooter'
 import { PANE_CLOSED_BY_USER } from './paneClose'
 import { closePaneSendingWaitingPrompts } from './promptWaits'
 import {
-  askQuestion,
   denyHookFailure,
-  listQuestions,
-  readQuestionsOfStartedSession,
-  startQuestions,
-  submitWithAnswers,
-  withdrawQuestion,
-} from './questionHooks'
-import { drawQuestionBand, drawQuestionPane } from './questionScreens'
+  listRequests,
+  readRequestsOfStartedSession,
+  sendRequest,
+  startRequests,
+  submitWithReplies,
+  withdrawRequest,
+} from './requestHooks'
+import { drawRequestBand, drawRequestPane } from './requestScreens'
 import { registerReminders } from './reminders'
 import { remindersAfterCompaction } from './reminders/eventCadence'
 import { watchTimedReminders } from './reminders/timedDelivery'
@@ -62,8 +62,8 @@ export const register: Register = on => {
   // Registered before every other hook of this plugin on a prompt, so it reads the prompt as typed.
   registerSessionRecords(on)
   on('session.start', EVERY_EVENT, registerPluginCommands)
-  on('session.start', { isInteractive: true }, startQuestions)
-  on('classic.SessionStart', readQuestionsOfStartedSession)
+  on('session.start', { isInteractive: true }, startRequests)
+  on('classic.SessionStart', readRequestsOfStartedSession)
   // The engine passes `$` only to a function named at the call, so each note sent after a
   // compaction is named here. The open goals come before the reminders.
   on('session.compact', EVERY_EVENT, ($, e, next) =>
@@ -78,11 +78,11 @@ export const register: Register = on => {
   )
   // Registered before the tools of this plugin, so it denies a call before the tool runs.
   registerNeededSkills(on)
-  on('tool.call', { tool: ASK_TOOL }, askQuestion).catch(denyHookFailure)
-  on('tool.call', { tool: LIST_TOOL }, listQuestions).catch(denyHookFailure)
-  on('tool.call', { tool: WITHDRAW_TOOL }, withdrawQuestion).catch(denyHookFailure)
-  on('prompt.submit', EVERY_EVENT, submitWithAnswers)
-  // Answers go beside a prompt through submitWithAnswers, which marks them as read only once the
+  on('tool.call', { tool: SEND_TOOL }, sendRequest).catch(denyHookFailure)
+  on('tool.call', { tool: LIST_TOOL }, listRequests).catch(denyHookFailure)
+  on('tool.call', { tool: WITHDRAW_TOOL }, withdrawRequest).catch(denyHookFailure)
+  on('prompt.submit', EVERY_EVENT, submitWithReplies)
+  // Replies go beside a prompt through submitWithReplies, which marks them as read only once the
   // prompt entered with them.
   on('prompt.submit', EVERY_EVENT, ($, e, next) =>
     submitWithPendingTexts($, e, next, [roastsSource($), hintNotesSource($)]),
@@ -110,8 +110,8 @@ export const register: Register = on => {
   )
   on('classic.Stop', blockStopOnHintPhrase)
   on('session.append', STOP_BLOCK_REASON, markOfferedHintKindsSent)
-  on('ui.render', { component: 'AbovePrompt' }, drawQuestionBand)
-  on('ui.render', { component: 'Pane', requestId: PANE }, drawQuestionPane)
+  on('ui.render', { component: 'AbovePrompt' }, drawRequestBand)
+  on('ui.render', { component: 'Pane', requestId: REQUESTS_PANE }, drawRequestPane)
   // The footer draws the buttons in the order placed: Goals first, then Reminders.
   const footer = createPromptFooter()
   registerPromptFooter(on, footer)
@@ -127,7 +127,7 @@ export const register: Register = on => {
 // The engine passes `$` only to a function named at the call, so each feature that sends texts with
 // the next tool result is named here.
 function pendingTextSourcesOf($: EngineInterface): PendingTextSource[] {
-  return [answersSource($), roastsSource($), missingWorkSource($), hintNotesSource($)]
+  return [repliesSource($), roastsSource($), missingWorkSource($), hintNotesSource($)]
 }
 
 // The engine passes `$` only to a function named at the call, so each feature whose texts wait for

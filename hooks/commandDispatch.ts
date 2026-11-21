@@ -13,7 +13,7 @@ import { goalsCommand } from './goals/goalCommands'
 import { replyToFailedHook } from './hookFailure'
 import { importCommands } from './imports'
 import { CommandRegistrar, type PluginCommand } from './pluginCommand'
-import { answerCommand } from './questionHooks'
+import { replyCommand } from './requestHooks'
 import { remindersCommand } from './reminders/remindersCommand'
 import { idleRoastCommand } from './roast/idleRoastCommand'
 import { roastCommand } from './roast/roastCommand'
@@ -32,7 +32,7 @@ import { roastCommand } from './roast/roastCommand'
  */
 function pluginCommands($: EngineInterface): PluginCommand[] {
   return [
-    answerCommand($),
+    replyCommand($),
     goalsCommand($),
     remindersCommand($),
     ...importCommands($),

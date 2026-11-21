@@ -1,8 +1,8 @@
 import { closingQuestionPattern } from './closingQuestion'
+import { DECISION_AS_DRAFT } from './decisionDraft'
 import { HintKindName } from './hintKind'
 import { QUESTION_MARKS } from './lineMarks'
 import type { Refusal } from './refusal'
-import { HAND_OVER_UNANSWERED } from './unansweredQuestions'
 import { runWithoutWorkNeedingApproval } from './workNeedingApproval'
 
 const PERMISSION_ASKERS = [
@@ -41,6 +41,6 @@ export const ASKED_PERMISSION: Refusal<HintKindName.AskedPermission> = {
     'Your text ends on a question that asks the user for permission to do work. If the user ' +
       'only asked a question, delete the offer and end on the answer. If the user asked for this ' +
       'work or a rule orders the work, do the work now, and say in your message what you chose.',
-    HAND_OVER_UNANSWERED,
+    DECISION_AS_DRAFT,
   ],
 }

@@ -17,5 +17,5 @@ description: Change how project builds, configures or releases artifacts.
   date
 - Never download file into repository, including asset, font or file of other repository. Add it
   as package dependency of project, or fetch it at build time through build system of project
-- Hand decision to user as `workflow-skills:question` describes before deciding where dependency
+- Draw decision as `workflow-skills:visual-decisions` describes before deciding where dependency
   is fetched from, e.g. registry or git repository. Also before vendoring a binary

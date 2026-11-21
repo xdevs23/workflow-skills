@@ -9,7 +9,7 @@ description: Implement change autonomously, only when user has asked for it, for
   they revoke it, or for timeframe named by user
 - Check grant before every decision
 - Once grant lapsed or was revoked, stop run at once: do not start another agent, stop running
-  workflow, report, and ask user as global rules require
+  workflow, report
 - Keep everything outward-facing out of grant, such as pushing, publishing and posting. It still
   needs user's consent
 - Within grant, use this skill in place of `workflow-skills:implement` for granted work. Global rule
@@ -17,17 +17,24 @@ description: Implement change autonomously, only when user has asked for it, for
 
 ## What is turned around
 
-- User's answers rank above research and decisions made by subagents
+- User's words rank above research and decisions made by subagents
 - Leave every product and architecture decision to subagents
+- Put no question to user
+- Draw no drafts, decision, plan or design pages
+- Where another skill says to draw decision or stop for one, go on with decision made by subagents
+- Hold every action that needs consent from user. Go on with other work
+- Once all work left waits on held actions, end run with report. Count final stop condition met
+  except for held actions, each named in report
 - Start agents that write code as `workflow-skills:implementer`. Hold their work to rules through
   reviewers
 
 ## Intake
 
 - Take user's description of idea
-- Ask user once, with question that does not block work, for their jurisdiction, to which hard rules
-  on law refer, and for target platforms not named in description
-- Do not take action whose legality depends on jurisdiction until jurisdiction known
+- Take jurisdiction, to which hard rules on law refer, and target platforms from user's words and
+  instruction files of user
+- Hold every action whose legality depends on jurisdiction that neither user's words nor
+  instruction files of user name. Go on with other work
 
 ## Milestones
 
@@ -45,11 +52,6 @@ description: Implement change autonomously, only when user has asked for it, for
   milestone only on that result
 - Stop with report when usage limits for models run low
 - Fix every defect introduced by run itself, in whichever milestone it shows up
-
-## Questions to the user
-
-- Hand each question to user as `workflow-skills:question` describes. Go on with decision made by
-  subagents until answer arrives
 
 ## Reviews
 
@@ -110,4 +112,5 @@ Only apply when Nix installed.
 - Capture screenshots and screen recordings as `workflow-skills:visual-verification` describes.
   Copy ones shown by report from harness directory into local storage
 - End run with report: what was built, how to build and install it, evidence, decisions that
-  subagents returned with their results, open questions, and what was recorded for later
+  subagents returned with their results, actions held for consent from user or for jurisdiction, and
+  what was recorded for later

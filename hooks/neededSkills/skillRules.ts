@@ -1,8 +1,6 @@
-import { ASK_TOOL, QUESTION_SKILL, VISUAL_DECISIONS_SKILL, skillName } from '../names'
+import { VISUAL_DECISIONS_SKILL, skillName } from '../names'
 import type { QualifiedSkill } from '../names'
 import { allOf } from './allOf'
-import { callsTool } from './callsTool'
-import { inMainConversation } from './inMainConversation'
 import type { Matcher } from './matcher'
 import { pluginFilePath } from './pluginFilePath'
 import type { PluginFilePath } from './pluginFilePath'
@@ -81,5 +79,4 @@ export const SKILL_RULES: readonly SkillRule[] = [
     files: [],
   },
   { when: runsCommand('git push'), skills: [skillName('hygiene')], files: [] },
-  { when: inMainConversation(callsTool(ASK_TOOL)), skills: [QUESTION_SKILL], files: [] },
 ]

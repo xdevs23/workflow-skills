@@ -1,15 +1,15 @@
+import { DECISION_AS_DRAFT } from './decisionDraft'
 import { HintKindName } from './hintKind'
 import type { HintKind } from './hintKind'
 import { phrase } from './phrase'
 import { COUNT } from './quantityWords'
-import { HAND_OVER_UNANSWERED } from './unansweredQuestions'
 
 const FURTHER = String.raw`(?:more|other|another|further|follow-?up)`
 const LATER = String.raw`(?:after\s+(?:that|this)|afterwards|later|next|to\s+follow|coming)`
 const NEXT_QUESTION = String.raw`(?:the\s+)?(?:next|other|remaining)\s+(?:one|questions?)`
 const ANOTHER_QUESTION = String.raw`another\s+(?:one|question)`
 
-/** The hint after a message that announces a question in place of asking it. */
+/** The hint after a message that holds back a question or a decision for later. */
 export const HELD_QUESTION_HINT: HintKind<HintKindName.HeldQuestion> = {
   name: HintKindName.HeldQuestion,
   phrases: [
@@ -23,10 +23,5 @@ export const HELD_QUESTION_HINT: HintKind<HintKindName.HeldQuestion> = {
         String.raw`(?:${NEXT_QUESTION}|${ANOTHER_QUESTION}|the\s+rest|${FURTHER}\s+questions?)\b`,
     ),
   ],
-  text: [
-    'Your message announces a question in place of asking it. Never announce a question. Run ' +
-      'each question you hold back through workflow-skills:question now, and act on the answer ' +
-      'the subagent finds.',
-    HAND_OVER_UNANSWERED,
-  ],
+  text: ['Your message holds back a question or a decision for later.', DECISION_AS_DRAFT],
 }

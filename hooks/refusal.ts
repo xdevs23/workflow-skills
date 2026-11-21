@@ -1,8 +1,8 @@
+import { DECISION_AS_DRAFT } from './decisionDraft'
 import type { HintKindName, HintRoaster } from './hintKind'
 import type { HintText, SharedStep } from './hintText'
-import { HAND_OVER_UNANSWERED } from './unansweredQuestions'
 
-/** A shape of text refused at the end of a turn and in an asked question, with the reason why. */
+/** A shape of text refused at the end of a turn, with the reason why. */
 export type Refusal<Name extends HintKindName = HintKindName> = {
   /** The name of the hint kind of the refusal. */
   name: Name
@@ -20,4 +20,4 @@ const DO_DECIDED_WORK: SharedStep = {
 }
 
 /** The end of the reason of a refusal whose text leaves to the user work already decided. */
-export const DECIDED_WORK_REMEDY: HintText = [DO_DECIDED_WORK, HAND_OVER_UNANSWERED]
+export const DECIDED_WORK_REMEDY: HintText = [DO_DECIDED_WORK, DECISION_AS_DRAFT]

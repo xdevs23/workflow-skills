@@ -29,36 +29,37 @@ import type { PendingRoast, SessionRoast } from '../hooks/roast/roastState'
 import type { TextWithLine } from '../hooks/sendToModel'
 import type { ActivityOfSession } from '../hooks/sessionState'
 
-/** What the user wrote in reply to a question. */
-export type Answer = {
-  text: string
-  answeredAt: number
-  /** Whether the asking session has read the answer, from a tool result, a prompt or the list. */
+/** Records that the user marked a request done. */
+export type Reply = {
+  /** What the user wrote in reply; absent for a request marked done without a reply. */
+  text?: string
+  repliedAt: number
+  /** Whether the sending session has read that the request is done, from a tool result, a prompt
+   * or the list. */
   isDelivered: boolean
 }
 
 /**
- * A question the model put to the user, stored under the session that asked it until the user
- * answers it. Only that session shows it, stores its answer and delivers that answer.
+ * A request the model sent to the user for work outside the session, stored under the session
+ * that sent it until the user marks it done. Only that session shows it, stores the reply and
+ * delivers that reply.
  */
-export type Question = {
-  /** The part of the store key that names the question, unique across every session. */
+export type Request = {
+  /** The part of the store key that names the request, unique across every session. */
   id: string
-  /** The number the user and the model name the question by, unique in its session. */
+  /** The number the user and the model name the request by, unique in its session. */
   number: number
   text: string
-  /** The answers the user can pick from; empty for a question answered in words alone. */
-  choices: readonly string[]
-  askedAt: number
-  answer?: Answer
-  /** When the asking session took the question back, which closes it without an answer. */
+  sentAt: number
+  reply?: Reply
+  /** When the sending session took the request back, which closes it without a reply. */
   withdrawnAt?: number
 }
 
-/** The questions of a session, as the session last read or wrote them. */
-export type SessionQuestions = {
+/** The requests of a session, as the session last read or wrote them. */
+export type SessionRequests = {
   sessionId: string
-  questions: readonly Question[]
+  requests: readonly Request[]
 }
 
 /** A TODO entry attached to a goal, known by its number in TODO.md. */
@@ -409,13 +410,13 @@ declare module 'claude-code' {
        */
       sessionActivity: ActivityOfSession | null
       /**
-       * The questions of the session that last read or wrote them, with the id of that session,
+       * The requests of the session that last read or wrote them, with the id of that session,
        * since the state may outlive a switch to another session by /clear or /resume; null before
        * any session read them and in a session without a person at the prompt.
        */
-      sessionQuestions: SessionQuestions | null
-      /** The ids of the questions whose answers this session is delivering right now. */
-      deliveringAnswers: readonly string[]
+      sessionRequests: SessionRequests | null
+      /** The ids of the requests whose replies this session is delivering right now. */
+      deliveringReplies: readonly string[]
       /**
        * The board of the session that last read it, with the id of that session, since the state
        * may outlive a switch to another session; null before any session read it.

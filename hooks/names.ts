@@ -1,9 +1,9 @@
 /** The name of the plugin in its manifest, which the engine puts into the names of its tools. */
 export const PLUGIN = 'workflow-skills'
 
-export const ASK = 'ask_question'
-export const LIST = 'list_questions'
-export const WITHDRAW = 'withdraw_question'
+export const SEND = 'send_request'
+export const LIST = 'list_requests'
+export const WITHDRAW = 'withdraw_request'
 
 /** The name the engine lists a tool of this plugin under. */
 export function toolName<Name extends string>(name: Name): `mcp__${typeof PLUGIN}__${Name}` {
@@ -18,7 +18,7 @@ export function skillName<Name extends string>(name: Name): `${typeof PLUGIN}:${
   return `${PLUGIN}:${name}`
 }
 
-export const ASK_TOOL = toolName(ASK)
+export const SEND_TOOL = toolName(SEND)
 export const LIST_TOOL = toolName(LIST)
 export const WITHDRAW_TOOL = toolName(WITHDRAW)
 
@@ -28,13 +28,10 @@ export const SKILL_TOOL = 'Skill'
 /** The qualified name of the agent that judges the open goals against the project. */
 export const GOAL_CHECKER_AGENT = `${PLUGIN}:goal-checker`
 
-/** The qualified name for the skill to load before a question is put to the user. */
-export const QUESTION_SKILL = skillName('question')
-
 /** The qualified name for the skill that draws drafts and opens them for the user. */
 export const VISUAL_DECISIONS_SKILL = skillName('visual-decisions')
 
-export const ANSWER_COMMAND = 'answer'
+export const REPLY_COMMAND = 'reply'
 
-/** The id of the pane that lists the open questions. */
-export const PANE = 'questions'
+/** The id of the pane that lists the open requests. */
+export const REQUESTS_PANE = 'requests'

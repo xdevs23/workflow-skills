@@ -118,8 +118,8 @@ Draft: .cache/specs/reaction-emoji.html
 ## Findings raised while building a unit
 
 - Fix finding about code added or edited by unit in unit itself. Never record it
-- Handle finding, also one about older code, as `workflow-skills:question` describes when fixing it
-  needs decision by user
+- Draw decision about finding, also about finding in older code, as
+  `workflow-skills:visual-decisions` describes when fixing it needs decision by user
 - Record work that comes up during unit or is left over from it as sub-unit of entry for that
   unit, never as new entry
 - Record work left over from unit whose entry was deleted as finished as new entry
@@ -134,20 +134,18 @@ Draft: .cache/specs/reaction-emoji.html
 - Record fix of older defect as `IN PROGRESS` entry while it runs
 - Add fix of older defect to `Builds on:` line of unit when unit cannot work without it
 
-# Facts asked of the user
+# Requests to the user
 
-- Ask each question as `workflow-skills:question` describes
-- While user talks back and forth with you, ask question in your message. Do not call
-  `mcp__workflow-skills__ask_question` then
-- Otherwise ask with tool `mcp__workflow-skills__ask_question`
-- In session without that tool, e.g. Agent SDK session, ask with tool `AskUserQuestion`
-- Where `AskUserQuestion` is absent too or returns no answer, e.g. in `-p` run, ask in message. Stop
-  work that depends on answer
-- Name entry in each question by its number and title
-- Take answer that arrives with tool result, or as message, as user's own reply. Act on it as on
+- Send request with tool `mcp__workflow-skills__send_request` only for something user does outside
+  session, e.g. power-cycle external system. Never send request to say that draft waits for
+  approval or that question is open
+- In session without that tool, e.g. Agent SDK session or `-p` run, write request in message. Stop
+  work that depends on it
+- Name entry in each request by its number and title
+- Take reply that arrives with tool result, or as message, as user's own reply. Act on it as on
   any other reply of user
-- When user answers in chat a question still open in `mcp__workflow-skills__ask_question`, withdraw
-  it with `mcp__workflow-skills__withdraw_question` in same turn
+- When user replies in chat to request still open, withdraw it with
+  `mcp__workflow-skills__withdraw_request` in same turn
 
 # The states an entry can take
 
@@ -159,14 +157,12 @@ State is fixed enum: one of markers listed here, grouped by where item stands.
 
 **Waiting on a decision**
 
-- `NEEDS DECISION`: work cannot go on until decision made, fact answered or theory defined
-- Before marking entry `NEEDS DECISION`, trace open point to user words as
-  `workflow-skills:question` describes. Undo point made by session
+- `NEEDS DECISION`: work cannot go on until decision made or theory defined
+- Before marking entry `NEEDS DECISION`, handle open point as `workflow-skills:visual-decisions`
+  describes
 - **A decision still owed blocks only the item concerned by it.** Skip and mark item. Move work on
   to next one
-- Work on smallest change possible where answer from user does not change outcome
-- Hand decision or fact to user once, as `workflow-skills:question` describes. Draw decision into
-  draft of unit
+- Work on smallest change possible where decision does not change outcome
 
 **Ready to build**
 
@@ -219,5 +215,5 @@ background tasks). Then check TODO.md for entries that are `IN PROGRESS` or `QUE
   entry can be deleted. Change waiting on review by user, such as open pull request: handle
   comments as `workflow-skills:implement` describes. Do not build it again. Never merge it
   yourself to meet condition for deleting entry
-- `NEEDS DECISION`: Hand decision or fact to user as `workflow-skills:question` describes, unless
-  draft of unit shows decision, or question is still open in `mcp__workflow-skills__ask_question`
+- `NEEDS DECISION`: Draw decision into draft of unit as `workflow-skills:visual-decisions`
+  describes, unless draft of unit shows decision

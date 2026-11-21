@@ -8,11 +8,12 @@ import type { RetryWaits } from './retryWait'
  * The kinds of record in the store used by the plugin. Every record is stored under the key
  * `<kind>:<owner>:<rest>`. The owner is the one writer of the record, such as a session, and the
  * rest is read by the module of the kind. The store does not offer compare-and-set, so no key is
- * written by two owners.
+ * written by two owners. The kinds of a request and of its reply use the keys `questions` and
+ * `answers`, since stored records use these keys.
  */
 export enum RecordKind {
-  Question = 'questions',
-  Answer = 'answers',
+  Request = 'questions',
+  Reply = 'answers',
   Withdrawal = 'withdrawals',
   Delivery = 'deliveries',
   Goal = 'goals',

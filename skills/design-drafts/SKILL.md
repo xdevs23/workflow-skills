@@ -10,8 +10,8 @@ description: Draw several design drafts for user to choose from
   resolution and density of target screen
 - Draw screen of app alone. Never draw status bar, taskbar, frame of device or other part of
   operating system around it. Draw shell only where drafts change shell itself
-- Where screen does not have code yet, take resolution and fonts from what user named. Ask for
-  resolution in question at end of message when user did not name one
+- Where screen does not have code yet, take resolution and fonts from what user named. Pick
+  resolution yourself when user did not name one
 - Keep drafts in folder of drafts in project cache defined by `workflow-skills:local-cache`
 - Write each page as standalone HTML file, all CSS inside it, as raw CSS or Tailwind classes
 - Draw draft of app screen in dark and light theme. Follow system setting
@@ -32,7 +32,6 @@ description: Draw several design drafts for user to choose from
 - Draw states that change layout as separate drafts, e.g. smaller screen, values not reported by
   source, text too long for its space
 - Do not write open points on drafts
-- Put point that needs an answer into question at end of message
 
 ## A whole screen
 
@@ -67,15 +66,14 @@ description: Draw several design drafts for user to choose from
 - Check: text does not overflow its box, nothing cut at edge of screen, long value of sample fits or
   is shortened the way product shortens it
 
-## After the answer
+## After the choice
 
 - Whole screen: draw details of chosen direction as new drafts, with their entries on overview.
   Keep each earlier draft beside its new version, labeled "Earlier draft"
 - Part of screen: draw details of chosen direction in new sections of same page. Put changed
   detail next to its earlier version, labeled "Earlier draft" and "After"
 
-## Asking
+## Opening
 
 - Open overview or page for user
 - Keep chat message to path of overview and one line per direction
-- End message with one question: which direction user picks, or which parts of which
