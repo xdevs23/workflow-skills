@@ -30,7 +30,7 @@ export const blockStopOnHintPhrase: Hook<'classic.Stop'> = ($, e, next) =>
       describeHintNote,
     )
     if (roasted.length > 0) {
-      await roastHintsDetached($, roasted)
+      await roastHintsDetached($, message, roasted)
     }
 
     return note

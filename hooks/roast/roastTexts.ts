@@ -229,6 +229,11 @@ export function describeHintRoastMissing(
       )
     case HintRoastMissingCause.NoPoint:
       return `The roaster did not find a point in the reply at the end of the turn. ${sent}`
+    case HintRoastMissingCause.SessionLeft:
+      return (
+        'The roast on the hints at the end of the turn was not written: another session runs by ' +
+        `now, so the roaster was not asked again after an API error. ${sent}`
+      )
   }
 }
 

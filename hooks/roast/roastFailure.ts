@@ -73,9 +73,11 @@ export enum HintRoastMissingCause {
   NotWritten = 'not written',
   /** The fork found no point in the last reply. */
   NoPoint = 'no point',
+  /** Another session runs by now, so no fork was asked again after an error of the API. */
+  SessionLeft = 'session left',
 }
 
 /** Why no roast on the hints at the end of a turn came, with the facts of the cause. */
 export type HintRoastMissing =
-  | { cause: HintRoastMissingCause.NoPoint }
+  | { cause: HintRoastMissingCause.NoPoint | HintRoastMissingCause.SessionLeft }
   | { cause: HintRoastMissingCause.NotWritten; failure: RoastFailure }

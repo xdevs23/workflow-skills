@@ -163,7 +163,8 @@ const REFUSED_REPLY_EXAMPLE = JSON.stringify({
 
 /**
  * `prompt` for a fork that does not see `unseen`, the newest messages of the main conversation,
- * with those messages before it. `prompt` alone where `unseen` is empty.
+ * with those messages before it. `prompt` alone where `unseen` is empty. Only `prompt` says which
+ * part of the transcript the fork judges.
  */
 export function writePromptAfterUnseenMessages(
   prompt: string,
@@ -176,8 +177,8 @@ export function writePromptAfterUnseenMessages(
   return (
     'The transcript you see ends before the newest messages of this conversation. These ' +
     'messages came after it, as a JSON array of messages with their text, their tool calls and ' +
-    'the text of each tool result. Read them as the end of the transcript, and judge the work of ' +
-    `the assistant up to the last of them:\n\n${JSON.stringify(unseen)}\n\n${prompt}`
+    'the text of each tool result. Read them as the end of the transcript:\n\n' +
+    `${JSON.stringify(unseen)}\n\n${prompt}`
   )
 }
 
@@ -264,21 +265,26 @@ const HINT_NO_POINT_REPLY_EXAMPLE = JSON.stringify({
 
 /**
  * The message that asks a fork made from the main conversation for the roast that sends the
- * assistant back to work after its last reply. The roast takes the place of `hints`, the texts of
- * the hints that phrases in that reply call for, and names what `tasks` ask for, the roaster task
- * of each kind of those hints. The fork replies with a JSON object, which readHintRoastReply reads.
+ * assistant back to work after `reply`, the reply on which it ended a turn. The transcript of a
+ * fork asked again after an API error may go on past `reply`, so the message quotes it. The roast
+ * takes the place of `hints`, the texts of the hints that phrases in that reply call for, and names
+ * what `tasks` ask for, the roaster task of each kind of those hints. The fork replies with a JSON
+ * object, which readHintRoastReply reads.
  */
 export function writeHintRoastPrompt({
+  reply,
   tasks,
   hints,
 }: {
+  reply: string
   tasks: readonly string[]
   hints: readonly string[]
 }): string {
   return (
-    `${ROASTER_ROLE} The assistant ended its turn on its last reply, and a hook found phrases in ` +
-    'that reply that call for the hint below. The assistant goes back to work with your roast, ' +
-    `in place of the hint, which it does not see. ${DO_NOT_CONTINUE_WORK} Roast that reply. ` +
+    `${ROASTER_ROLE} The assistant ended a turn on the reply ${JSON.stringify(reply)}, and a ` +
+    'hook found phrases in that reply that call for the hint below. The transcript may go on ' +
+    'after that reply. The assistant goes back to work with your roast, in place of the hint, ' +
+    `which it does not see. ${DO_NOT_CONTINUE_WORK} Roast that reply. ` +
     `${tasks.join(' ')} Carry into the roast every step of the hint that the transcript does ` +
     `not show done. ${ROAST_CONTENT} ${WRITE_ROAST_TO_ASSISTANT} ${ROAST_BLUNTNESS} ` +
     `${JSON_REPLY} Reply with ${HINT_ROAST_REPLY_EXAMPLE}, or with ` +

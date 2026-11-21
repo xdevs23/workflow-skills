@@ -15,7 +15,11 @@ import { updateOfSession } from './sessionBoundState'
 /** A note on the hints of `kinds` that has not gone to the model of the session `sessionId` yet. */
 export type PendingHintNote = { sessionId: string; kinds: readonly HintKindName[]; text: string }
 
-const pendingHintNote = atom({ plugin: 'workflow-skills', key: 'pendingHintNote' } as const, null)
+// A change of PendingHintNote or of the names of the hint kinds changes the tag, so a note written
+// by another version of the plugin reads as absent.
+const pendingHintNote = atom({ plugin: 'workflow-skills', key: 'pendingHintNote' } as const, null, {
+  shape: 'text-with-hint-kind-names',
+})
 
 /** Ends the hints. The user reads only the message, where an answer to a hint reads as nonsense. */
 const HINT_CLOSING = 'Act on this reminder without mentioning the reminder in your message.'
@@ -105,7 +109,8 @@ async function addPendingHintNote($: EngineInterface, note: PendingHintNote): Pr
 /**
  * Removes the pending hint note of the running session from the state, and returns it. Its kinds
  * count as sent in the turn that receives the note, so the reply to the note cannot start the same
- * hints again.
+ * hints again. A note put back after a failed delivery keeps its kinds counted, so an end of the
+ * turn does not send the hints that the waiting note still carries.
  */
 async function takePendingHintNote($: EngineInterface): Promise<PendingHintNote | undefined> {
   let taken: PendingHintNote | undefined

@@ -8,9 +8,12 @@ import type { HintKind, HintKindName, RoastedHintKind } from './hintKind'
 import type { TextWithLine } from './sendToModel'
 import { ofSession, updateOfSession } from './sessionBoundState'
 
+// A change of HintKindsSentInTurn or of the names of the hint kinds changes the tag, so the kinds
+// written by another version of the plugin read as absent.
 const hintKindsSentInTurn = atom(
   { plugin: 'workflow-skills', key: 'hintKindsSentInTurn' } as const,
   null,
+  { shape: 'hint-kind-names-with-offered-note' },
 )
 
 /**

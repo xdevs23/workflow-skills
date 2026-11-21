@@ -121,26 +121,23 @@ export async function forkRoast(
   prompt: string,
   useResult: (roast: ForkedRoast) => Promise<boolean>,
 ): Promise<ForkedRoast> {
-  let roast = await forkRoastOnce($, prompt, 1)
-  while ((await useResult(roast)) && roast.shown === RoastShown.WritingAgain) {
-    roast = await forkAfterPassingError($, prompt, roast)
-  }
-
-  return roast
+  return forkAgainAfterPassingErrors($, prompt, await forkRoastOnce($, prompt, 1), useResult)
 }
 
 /**
- * `first`, the result of a fork asked for a roast with `prompt`, or where it failed with an error
- * of the API that passes, the result of the forks asked after it as forkRoast asks them, until a
- * fork writes the roast or fails for good.
+ * Hands `first`, the result of a fork asked for a roast with `prompt`, and each result after it to
+ * `useResult`, and returns the result of the last fork. Where `first` failed with an error of the
+ * API that passes, asks the next forks as forkRoast asks them, until a fork writes the roast or
+ * fails for good, or `useResult` returns false.
  */
 export async function forkAgainAfterPassingErrors(
   $: EngineInterface,
   prompt: string,
   first: ForkedRoast,
-): Promise<RoastProgressOf<RoastShown.Written | RoastShown.NotWritten>> {
+  useResult: (roast: ForkedRoast) => Promise<boolean>,
+): Promise<ForkedRoast> {
   let roast = first
-  while (roast.shown === RoastShown.WritingAgain) {
+  while ((await useResult(roast)) && roast.shown === RoastShown.WritingAgain) {
     roast = await forkAfterPassingError($, prompt, roast)
   }
 

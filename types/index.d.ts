@@ -446,9 +446,9 @@ declare module 'claude-code' {
        * The hint kinds sent in the running turn of the main conversation of the session; null
        * before the first hint of the turn.
        */
-      hintKindsSentInTurn: HintKindsSentInTurn | null
+      hintKindsSentInTurn: Shaped<HintKindsSentInTurn | null>
       /** The note on hints waiting to go to the model of the session; null while none waits. */
-      pendingHintNote: PendingHintNote | null
+      pendingHintNote: Shaped<PendingHintNote | null>
       /** When the session is next sent the self-check; null before the user typed in it. */
       selfCheckSchedule: SelfCheckSchedule | null
       /**
