@@ -38,7 +38,7 @@ description: Decide where to put file not meant for repository, what to remove o
 
 ## Cleaning up
 
-- After every merged unit, remove build artifacts not meant for user, e.g. build outputs, `result`
+- Remove build artifacts not meant for user once no work needs them, e.g. build outputs, `result`
   links, build directories in finished worktrees, test captures, scratch files written by you in
   system temporary directory, entries of package and build caches that nothing refers to anymore
 - Keep everything made for user to see, use or keep, e.g. renders, screenshots, recordings, HTML
