@@ -1,22 +1,18 @@
-import type { EngineInterface, MatchedHook, On, Timer } from 'claude-code'
+import type { EngineInterface, MatchedHook, On } from 'claude-code'
 
-import { isMainConversation } from '../conversation'
 import { messageOf } from '../errorMessage'
 import { EVERY_EVENT } from '../everyEvent'
 import type { EveryEvent } from '../everyEvent'
 import { showFailure } from '../failureToast'
 import { isMessageTypedByUser } from '../promptOrigin'
 import { SWITCHING_SOURCES } from '../sessionSources'
-import { readSessionAcceptsPluginPrompts } from '../sessionState'
-import { MILLISECONDS_PER_SECOND } from '../timeUnits'
-import { runAfter, runAfterMainTurn } from '../timedWork'
+import { runDetached } from '../timedWork'
 import { SwitchOutcome, readIdleRoastSwitch } from './idleRoastSwitch'
 import { forkRoast } from './roastActions'
 import type { ForkedRoast } from './roastActions'
 import { deliverRoast } from './roastDelivery'
 import { RoastNotWrittenCause, RoastRecovery, recoveryOf, thrownFailure } from './roastFailure'
 import type { RoastFailure } from './roastFailure'
-import { IDLE_WAIT_SECONDS } from './roastNames'
 import { IDLE_ROAST_PROMPT } from './roastPromptTexts'
 import { IdleRoastVerdict, readIdleRoastReply } from './roastReply'
 import { RoastShown, RoastSource } from './roastState'
@@ -28,14 +24,9 @@ import {
 } from './roastTexts'
 
 // Whether the idle roast is on for the running session, as read from the store at the start of the
-// session and at a switch to another one, and as set by /idle-roast since. The end of a turn reads
-// it here, so a session with the idle roast off does not read the store after each turn.
+// session and at a switch to another one, and as set by /idle-roast since. The end of the wait
+// reads it here, so a session with the idle roast off does not read the store after each turn.
 let isSwitchedOn = false
-
-// The wait of the running session for an idle roast, replaced at the end of each turn of the main
-// conversation, and cancelled at the start of one and at a switch to another session. A roast
-// written after the wait ended goes to the session only while no turn started since.
-let idleWait: Timer | undefined = undefined
 
 // Whether the idle stretch already got a roast, or a reply that no point blocks the work. A message
 // typed by the user ends the stretch, so the turns that follow the roast before the user returns
@@ -44,17 +35,32 @@ let idleWait: Timer | undefined = undefined
 let isStretchRoasted = false
 
 /**
- * Registers the hooks that have a fork roast the main conversation where it blocks the work, once
- * the main conversation has been idle for IDLE_WAIT_SECONDS since the last response, in a session
- * with the idle roast switched on.
+ * Registers the hooks that read the switch of the idle roast and follow the idle stretch, for
+ * roastIdleStretchDetached.
  */
 export function registerIdleRoast(on: On): void {
   on('session.start', EVERY_EVENT, loadSwitchAtStart)
   on('classic.SessionStart', { source: SWITCHING_SOURCES }, endStretchOnSwitch)
   on('prompt.submit', EVERY_EVENT, startStretchOnUserMessage)
-  on('turn.start', EVERY_EVENT, cancelIdleWaitOnTurn)
-  on('turn.complete', EVERY_EVENT, ($, e, next) =>
-    runAfterMainTurn(e, next, async () => waitForIdleRoast($)),
+}
+
+/**
+ * Has a fork roast the main conversation where it blocks the work, in a session with the idle roast
+ * switched on, once per idle stretch, as roastAfterIdleWait describes. Runs it as `runDetached`
+ * does, so the wait that ended does not wait for the fork.
+ */
+export function roastIdleStretchDetached(
+  $: EngineInterface,
+  isWaitOfSession: () => boolean,
+): void {
+  runDetached(
+    $,
+    () =>
+      roastAfterIdleWait($, isWaitOfSession).catch((error: unknown) => {
+        endStretchIfNeedsPerson(thrownFailure(messageOf(error)))
+        throw error
+      }),
+    message => describeIdleRoastNotWrittenToast(thrownFailure(message)),
   )
 }
 
@@ -64,13 +70,12 @@ const loadSwitchAtStart: MatchedHook<'session.start', EveryEvent> = async ($, e,
   return next(e)
 }
 
-// After /clear, /resume or a fork, another conversation runs, for which neither the wait nor the
-// stretch was started, and which has a switch of its own.
+// After /clear, /resume or a fork, another conversation runs, for which the stretch was not
+// started, and which has a switch of its own.
 const endStretchOnSwitch: MatchedHook<
   'classic.SessionStart',
   { source: typeof SWITCHING_SOURCES }
 > = async ($, e, next) => {
-  cancelIdleWait()
   isStretchRoasted = false
   await loadIdleRoastSwitch($)
 
@@ -94,15 +99,10 @@ async function loadIdleRoastSwitch($: EngineInterface): Promise<void> {
 
 /**
  * Sets the idle roast of the running session on when `isOn`, and off otherwise, once /idle-roast
- * saved it. The wait starts again now unless a turn runs, whose end starts it. Off cancels the
- * wait, so a roast still being written for it is dropped.
+ * saved it. Off drops an idle roast still being written.
  */
-export async function setIdleRoastSwitch($: EngineInterface, isOn: boolean): Promise<void> {
+export function setIdleRoastSwitch(isOn: boolean): void {
   isSwitchedOn = isOn
-  cancelIdleWait()
-  if (await readSessionAcceptsPluginPrompts($)) {
-    waitForIdleRoast($)
-  }
 }
 
 const startStretchOnUserMessage: MatchedHook<'prompt.submit', EveryEvent> = ($, e, next) => {
@@ -113,47 +113,22 @@ const startStretchOnUserMessage: MatchedHook<'prompt.submit', EveryEvent> = ($, 
   return next(e)
 }
 
-const cancelIdleWaitOnTurn: MatchedHook<'turn.start', EveryEvent> = ($, e, next) => {
-  if (isMainConversation(e)) {
-    cancelIdleWait()
-  }
-
-  return next(e)
-}
-
-function cancelIdleWait(): void {
-  idleWait?.cancel()
-  idleWait = undefined
-}
-
-function waitForIdleRoast($: EngineInterface): void {
+/**
+ * Has a fork write the idle roast once the wait ended, as `forkRoast` describes, while
+ * `isWaitOfSession` and the idle roast is on, and uses the result of the last fork. Drops the
+ * result once a turn started since or the idle roast was switched off.
+ */
+async function roastAfterIdleWait(
+  $: EngineInterface,
+  isWaitOfSession: () => boolean,
+): Promise<void> {
   if (!isSwitchedOn || isStretchRoasted) {
     return
   }
-  idleWait?.cancel()
-  const wait: Timer = runAfter(
-    $,
-    IDLE_WAIT_SECONDS * MILLISECONDS_PER_SECOND,
-    () =>
-      roastAfterIdleWait($, wait).catch((error: unknown) => {
-        endStretchIfNeedsPerson(thrownFailure(messageOf(error)))
-        throw error
-      }),
-    message => describeIdleRoastNotWrittenToast(thrownFailure(message)),
-  )
-  idleWait = wait
-}
-
-/**
- * Has a fork write the idle roast once `wait` ended, as `forkRoast` describes, while `wait` is the
- * wait of the session, and uses the result of the last fork. Drops the result once a turn started
- * since or the idle roast was switched off.
- */
-async function roastAfterIdleWait($: EngineInterface, wait: Timer): Promise<void> {
   const sessionId = await $.session.id()
-  const isWaitOfSession = () => idleWait === wait
-  const roast = await forkRoast($, IDLE_ROAST_PROMPT, async () => isWaitOfSession())
-  if (isWaitOfSession()) {
+  const isRoastOfWait = (): boolean => isWaitOfSession() && isSwitchedOn
+  const roast = await forkRoast($, IDLE_ROAST_PROMPT, async () => isRoastOfWait())
+  if (isRoastOfWait()) {
     await useIdleRoast($, sessionId, roast)
   }
 }

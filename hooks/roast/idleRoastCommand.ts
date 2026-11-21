@@ -4,8 +4,10 @@ import { replyWithFailures } from '../failureToast'
 import { CommandRegistrar, type PluginCommand } from '../pluginCommand'
 import { returningStoreFailure } from '../pluginStore'
 import { isTypedByUser } from '../promptOrigin'
+import { readSessionAcceptsPluginPrompts } from '../sessionState'
 import { setIdleRoastSwitch } from './idleRoast'
 import { SwitchOutcome, readIdleRoastSwitch, saveIdleRoastSwitch } from './idleRoastSwitch'
+import { restartIdleWait } from './idleWait'
 import { IDLE_ROAST_COMMAND, IS_ON_AFTER, isIdleRoastWord } from './roastNames'
 import {
   IDLE_ROAST_ARGUMENT_HINT,
@@ -64,7 +66,10 @@ async function runIdleRoastCommand(
   return switchIdleRoast($, sessionId, IS_ON_AFTER[words])
 }
 
-/** Saves the idle roast of the session `sessionId` as on when `isOn`, and off otherwise. */
+/**
+ * Saves the idle roast of the session `sessionId` as on when `isOn`, and off otherwise. On starts
+ * the wait again now unless a turn runs, whose end starts it.
+ */
 async function switchIdleRoast(
   $: EngineInterface,
   sessionId: string,
@@ -77,7 +82,10 @@ async function switchIdleRoast(
   if (typeof notSwitched === 'string') {
     return replyWithFailures($, [notSwitched])
   }
-  await setIdleRoastSwitch($, isOn)
+  setIdleRoastSwitch(isOn)
+  if (isOn && (await readSessionAcceptsPluginPrompts($))) {
+    restartIdleWait($)
+  }
 
   return { text: describeIdleRoastSwitch(isOn) }
 }

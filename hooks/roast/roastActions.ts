@@ -121,7 +121,7 @@ export async function forkRoast(
  * API that passes, asks the next forks as forkRoast asks them, until a fork writes the roast or
  * fails for good, or `useResult` returns false.
  */
-export async function forkAgainAfterPassingErrors(
+async function forkAgainAfterPassingErrors(
   $: EngineInterface,
   prompt: string,
   first: ForkedRoast,
@@ -153,7 +153,7 @@ async function forkAfterPassingError(
  * Asks one fork for a roast with `prompt`, as the try numbered `tries`. The engine stops the budget
  * of a calling hook while the fork runs.
  */
-export async function forkRoastOnce(
+async function forkRoastOnce(
   $: EngineInterface,
   prompt: string,
   tries: number,

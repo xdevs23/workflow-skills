@@ -4,7 +4,7 @@ import type { HintKind } from './hintKind'
 import { kindsWithPhraseIn } from './hintKinds'
 import { writeHintNote } from './hintNoteDelivery'
 import { claimHintKindsUnsentInTurn } from './hintState'
-import { roastHintsDetached } from './roast/hintRoast'
+import { queueHintRoast } from './roast/hintRoast'
 import { stopWithNoteAlsoAfterBlock } from './sendToModel'
 import type { TextWithLine } from './sendToModel'
 
@@ -18,9 +18,9 @@ function describeHintNote(kinds: readonly HintKind[]): TextWithLine {
 /**
  * Sends the main conversation back to work when its turn would end on a message with a phrase of a
  * hint kind outside quoted text, with the note on the kinds not yet sent in the turn, as
- * `stopWithNoteAlsoAfterBlock` does. The roasted kinds do not make the turn wait:
- * `roastHintsDetached` sends them once they count as sent. Each kind is sent at most once per
- * turn, so the turn ends.
+ * `stopWithNoteAlsoAfterBlock` does. The roasted kinds do not make the turn wait: `queueHintRoast`
+ * has them roasted once the main conversation stayed idle after the turn. Each kind is sent at most
+ * once per turn, so the turn ends.
  */
 export const blockStopOnHintPhrase: Hook<'classic.Stop'> = ($, e, next) =>
   stopWithNoteAlsoAfterBlock($, e, next, async message => {
@@ -30,7 +30,7 @@ export const blockStopOnHintPhrase: Hook<'classic.Stop'> = ($, e, next) =>
       describeHintNote,
     )
     if (roasted.length > 0) {
-      await roastHintsDetached($, message, roasted)
+      queueHintRoast(message, roasted)
     }
 
     return note
