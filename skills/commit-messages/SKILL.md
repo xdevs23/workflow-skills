@@ -26,7 +26,8 @@ description: Write commit message
 
 ## Body
 
-- Write body in prose paragraphs, five parts, each present and distinguishable:
+- Write body in prose paragraphs from five parts, each distinguishable. Write part only where it
+  states fact not given by subject or other part:
   - Before: what world was and did, in past tense
   - After: what world is and does now
   - What: contents of diff in plain language, so reader who never opens diff knows what is in
@@ -42,6 +43,7 @@ description: Write commit message
 - Write lists as bullets `* ...`
 - Keep body shorter than diff, unless change needs a real explanation
 - Omit body for change that affects documentation only
+- Omit body where it would only repeat what diff shows
 - Break body lines at word boundary, at most 80 characters. Never break inside word or link
 
 ## Test lines
