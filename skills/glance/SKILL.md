@@ -1,6 +1,6 @@
 ---
 name: glance
-description: Overview of where work stands while several things run
+description: Overview of where work stands
 ---
 
 ```text
@@ -13,7 +13,6 @@ description: Overview of where work stands while several things run
 
 ## When it applies
 
-- Give glance always while doing several things at once
 - Give glance when user asks for overview or status
 
 ## The shape

@@ -15,7 +15,6 @@ description: Change how project builds, configures or releases artifacts.
 - Before adding dependency, choosing its version or writing against its API: look up current
   release and documentation online. Check that release for known compromise. Record check with
   date
-- Research and pick library yourself
 - Never download file into repository, including asset, font or file of other repository. Add it
   as package dependency of project, or fetch it at build time through build system of project
 - Hand decision to user as `workflow-skills:question` describes before deciding where dependency

@@ -40,7 +40,6 @@ description: Whenever a PR is created or needs watching
 - Expect watcher to exit after `login-lost` without sending further requests, since repeated
   requests with rejected token make GitHub refuse every request from account for a while
 - Tell user that `gh` login lost and that `gh auth login` restores it
-- When pull request closed or merged, stop polling
 
 ## Comments and reviews
 
