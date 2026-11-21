@@ -178,6 +178,8 @@ description: Design or plan shape of change or system: modules, layers, interfac
 
 - Look for patterns, prior art and documentation before proposing architecture
 - Let work depending on open point wait for experiment resolving it
+- Try design in scratch space before drawing it, e.g. compile module shape in throwaway worktree.
+  Never merge scratch work
 - Make every architectural decision deliberately. Write it down with checkable acceptance criteria,
   in commit message or pull request for the change
 - Build in layers, scaffolding first, then one piece at a time
