@@ -1,6 +1,8 @@
 import type { EngineInterface, Register } from 'claude-code'
 
 import { compactWithNotes } from './afterCompaction'
+import { registerAutonomy } from './autonomy'
+import { autonomyAfterCompaction, autonomyNoteSource } from './autonomy/autonomyNotes'
 import { registerChatReplies } from './chatReplies'
 import {
   registerPluginCommands,
@@ -77,11 +79,12 @@ export const register: Register = on => {
     compactWithNotes($, e, next, [
       openGoalsAfterCompaction($),
       remindersAfterCompaction($),
+      autonomyAfterCompaction($),
     ]),
   )
   // Registered before the tools of this plugin, so their results also contain the pending texts.
   on('tool.call', EVERY_EVENT, ($, e, next) =>
-    callToolWithPendingTexts($, e, next, pendingTextSourcesOf($)),
+    callToolWithPendingTexts($, e, next, [...pendingTextSourcesOf($), autonomyNoteSource($)]),
   )
   // Registered before the tools of this plugin, so it denies a call before the tool runs.
   registerNeededSkills(on)
@@ -127,6 +130,7 @@ export const register: Register = on => {
   registerImports(on)
   registerSelfCheck(on)
   registerRulesBanner(on)
+  registerAutonomy(on)
   registerChatReplies(on)
   registerRoast(on)
   registerIdeas(on, footer, tools)

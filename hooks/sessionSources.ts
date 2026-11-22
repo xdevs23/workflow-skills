@@ -6,3 +6,7 @@ export const SWITCHING_SOURCES = ['resume', 'clear', 'fork'] as const
 
 /** The sources of the classic SessionStart hook that begin a session with a new id. */
 export const NEW_SESSION_SOURCES = ['startup', 'clear', 'fork'] as const
+
+export const EMPTY_CONVERSATION_SOURCES = ['startup', 'clear'] as const
+
+export const CONTINUED_CONVERSATION_SOURCES = ['resume', 'fork'] as const

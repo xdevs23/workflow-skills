@@ -1,28 +1,32 @@
 ---
 name: autonomous-implementation
-description: Implement change autonomously, only when user has asked for it, for one task, for session until revoked or for timeframe
+description: Implement work end to end without questions, for project, entry of TODO.md or goal where user granted it
 ---
 
 ## The grant
 
-- Work this way only when user asked for it. User grants it for one task, for whole session until
-  they revoke it, or for timeframe named by user
-- Check grant before every decision
-- Once grant lapsed or was revoked, stop run at once: do not start another agent, stop running
-  workflow, report
-- Keep everything outward-facing out of grant, such as pushing, publishing and posting. It still
-  needs user's consent
-- Within grant, use this skill in place of `workflow-skills:implement` for granted work. Global rule
-  to implement through `workflow-skills:implement` applies to all other work
+- Work this way only on what latest note in conversation says
+  `workflow-skills:autonomous-implementation` applies to: whole project, entry of TODO.md with
+  entries under it, or goal of session. Without such note, it applies to nothing
+- User sets it with `/autonomy` or `/goals <number> autonomy on`
+- Read latest note before every decision
+- Once latest note no longer lists work this run does, stop run at once: do not start another agent, stop
+  running workflow, report
+- Within grant, use this skill in place of `workflow-skills:implement`. Global rule to implement
+  through `workflow-skills:implement` applies to all other work
+- Keep standards for all other work, such as rules of `workflow-skills:writing-code` and
+  `workflow-skills:hygiene`
+- Put no question to user. Leave no decision open. Leave no point open for user or for later
+- Finish everything end to end. Fill every gap until work is done
+- Hold every action that needs consent from user, such as pushing, publishing and posting
 
 ## What is turned around
 
 - User's words rank above research and decisions made by subagents
 - Leave every product and architecture decision to subagents
-- Put no question to user
 - Draw no drafts, decision, plan or design pages
 - Where another skill says to draw decision or stop for one, go on with decision made by subagents
-- Hold every action that needs consent from user. Go on with other work
+- Go on with other work while held action waits for consent
 - Once all work left waits on held actions, end run with report. Count final stop condition met
   except for held actions, each named in report
 - Start agents that write code as `workflow-skills:implementer`. Hold their work to rules through
@@ -112,5 +116,4 @@ Only apply when Nix installed.
 - Capture screenshots and screen recordings as `workflow-skills:visual-verification` describes.
   Copy ones shown by report from harness directory into local storage
 - End run with report: what was built, how to build and install it, evidence, decisions that
-  subagents returned with their results, actions held for consent from user or for jurisdiction, and
-  what was recorded for later
+  subagents returned with results, and actions held for consent from user or for jurisdiction

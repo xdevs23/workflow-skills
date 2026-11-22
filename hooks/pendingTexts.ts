@@ -69,7 +69,7 @@ export function callToolWithPendingTexts(
   $: EngineInterface,
   e: Frozen<ToolCallInput>,
   next: Next<'tool.call'>,
-  sources: readonly PendingTextSource[],
+  sources: readonly NoteSource<TextWithLine>[],
 ): Promise<ToolCallResult> {
   return callToolWithNote(e, next, async () => {
     const notes = await Promise.all(
@@ -94,15 +94,21 @@ export function callToolWithPendingTexts(
  * Submits the prompt `e` with the notes of `sources` beside it, when the user typed it as a
  * message. Where the prompt enters without the notes, the texts go back to their sources.
  */
-export async function submitWithPendingTexts(
+export function submitWithPendingTexts(
   $: EngineInterface,
   e: Frozen<PromptSubmitInput>,
   next: Next<'prompt.submit'>,
   sources: readonly PromptNoteSource[],
 ): Promise<PromptSubmitResult> {
-  if (!isMessageTypedByUser(e)) {
-    return next(e)
-  }
+  return isMessageTypedByUser(e) ? submitWithNotesBeside($, e, next, sources) : next(e)
+}
+
+export async function submitWithNotesBeside(
+  $: EngineInterface,
+  e: Frozen<PromptSubmitInput>,
+  next: Next<'prompt.submit'>,
+  sources: readonly PromptNoteSource[],
+): Promise<PromptSubmitResult> {
   const notes = await Promise.all(sources.map(source => source.takeNoteBesidePrompt()))
   const taken = notes.filter(note => note !== undefined)
   if (taken.length === 0) {

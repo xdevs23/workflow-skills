@@ -189,6 +189,10 @@ export function openGoalsOf(board: Board): Goal[] {
   return board.goals.filter(isOpen)
 }
 
+export function openGoalNumbered(board: Board, number: number): Goal | undefined {
+  return openGoalsOf(board).find(goal => goal.number === number)
+}
+
 export function clearedGoalsOf(board: Board): Goal[] {
   return board.goals.filter(goal => !isOpen(goal))
 }
@@ -520,7 +524,7 @@ function changeOpenGoal<Other extends NotChanged, Changing extends Goal = Goal>(
   number: number,
   change: (goal: Goal) => ChangedGoal<Changing> | Other,
 ): Changed<Changing> | NotOpenRefused | Other {
-  const goal = openGoalsOf(board).find(each => each.number === number)
+  const goal = openGoalNumbered(board, number)
   if (goal === undefined) {
     return { outcome: Outcome.Refused, refusal: Refusal.GoalNotOpen, goal: number }
   }

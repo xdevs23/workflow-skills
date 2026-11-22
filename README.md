@@ -26,6 +26,13 @@ Then run a skill, such as `/workflow-skills:implement`.
   compactions, and deletes them once the entry is finished. Clearing a goal deletes the ideas
   recorded for the entries attached to it. `/ideas` lists them by entry, and you can delete any one
   of them there
+- **Autonomy**: `/autonomy always` lets Claude finish work end to end without questions in the
+  whole project, `/autonomy #161` in one entry of TODO.md and the entries under it, and
+  `/goals 5 autonomy on` for one goal. A grant for the project or an entry applies in every session
+  of the project, and a grant for a goal in the session of that goal. `/autonomy` shows where it
+  applies and `/autonomy off` removes every grant. Every system prompt names both modes, and a note
+  in the conversation tells Claude where autonomy applies each time that changes. Everything else
+  follows `workflow-skills:implement`
 - **Requests**: Claude sends a request for work that only you can do outside the session, such as
   power-cycling a board, and keeps working. Press Done in the Requests pane or run
   `/reply <number>`, with a reply after it if Claude needs one

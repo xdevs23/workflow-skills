@@ -1,3 +1,4 @@
+import type { SessionAutonomy } from '../hooks/autonomy/autonomyState'
 import type { Outcome, Read } from '../hooks/goals/board'
 import type { MarkSetter, StoredMarkRemoval } from '../hooks/goals/doneMark'
 import type {
@@ -460,6 +461,11 @@ declare module 'claude-code' {
        * that session; null before any session loaded them.
        */
       sessionIdeas: SessionIdeas | null
+      /**
+       * The grants of autonomous implementation loaded by the session, with the id of that
+       * session; null before any session loaded them.
+       */
+      sessionAutonomy: SessionAutonomy | null
     }
   }
 }

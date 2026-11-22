@@ -21,6 +21,9 @@ export enum RecordKind {
   Session = 'sessions',
   IdleRoast = 'idle-roast',
   Idea = 'ideas',
+  ProjectAutonomy = 'project-autonomy',
+  GoalAutonomy = 'goal-autonomy',
+  AutonomyRevocation = 'autonomy-revocations',
 }
 
 const KEY_SEPARATOR = ':'

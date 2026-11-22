@@ -8,6 +8,7 @@ import type {
   Next,
 } from 'claude-code'
 
+import { autonomyCommand } from './autonomy/autonomyCommand'
 import { registerCommandShowingRejection } from './commandRegistration'
 import { goalsCommand } from './goals/goalCommands'
 import { replyToFailedHook } from './hookFailure'
@@ -40,6 +41,7 @@ function pluginCommands($: EngineInterface): PluginCommand[] {
     ...importCommands($),
     roastCommand($),
     idleRoastCommand($),
+    autonomyCommand($),
   ]
 }
 

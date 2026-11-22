@@ -2,7 +2,7 @@ import type { EngineInterface } from 'claude-code'
 
 import type { DoneMark, Goal } from '../../types'
 import { showFailure } from '../failureToast'
-import { Outcome, Refusal, openGoalsByIdOf } from './board'
+import { Outcome, Refusal, openGoalNumbered } from './board'
 import type { Changed, LoopRefused, NotChanged, NotOpenRefused, Unchanged } from './board'
 import type { Failed } from './boardStore'
 import { MarkRemover } from './doneMark'
@@ -96,8 +96,7 @@ async function nudgeGoal(
   if (loaded.outcome === Outcome.Failed) {
     return FAILED_GOAL_SAVE
   }
-  const open = openGoalsByIdOf(loaded.board)
-  const goal = [...open.values()].find(each => each.number === number)
+  const goal = openGoalNumbered(loaded.board, number)
   if (goal === undefined) {
     return refusedWith($, describeNoLongerOpen({ number }))
   }
