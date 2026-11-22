@@ -24,6 +24,8 @@ contributor or agent without history, reads that file first.
 - Delete entry of unit merged into working branch before this session started, once code of unit is
   on working branch
 - Delete entry also when user says so. Never delete entry for any other reason
+- Delete user's words recorded for deleted entry with `mcp__workflow-skills__delete_ideas`, in same
+  turn
 - Remove deleted entry from every `Builds on:` line that lists it
 - Read goals and entries attached to them with `mcp__workflow-skills__list_goals` when not in
   context. Goal is not satisfied yet until user clears it
@@ -51,12 +53,14 @@ Draft: .cache/specs/reaction-emoji.html
 ```
 
 - Write entry as heading, followed by `Builds on:` line and `Draft:` line where they apply. Write
-  nothing else into entry
+  nothing else into entry: no description, history, reason, date or pointer to notes
+- Record what user says about entry as `workflow-skills:implement` describes
 - Write every heading strictly in format `### #<number> - <title> - <STATE>`. Write nothing after
   state marker
 - **`### #<number> - <title>`**: number is id in tracker and never changes. Write in title what
-  item *is*. Leave state to state marker. If project uses separate convention for ids, keep
-  internal numbering as it is and add project id at start of title, for example:
+  item *is*, in user's words where user named it. Leave state to state marker. If project uses
+  separate convention for ids, keep internal numbering as it is and add project id at start of
+  title, for example:
   `#142 - GH #73 - Reaction emoji support - RECORDED`
   `#165 - ABC-210 - User type 'editor' - IN PROGRESS`
 - **`- <STATE>`**: state marker, in uppercase, after separator dash used by format

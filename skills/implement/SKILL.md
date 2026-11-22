@@ -5,11 +5,15 @@ description: Implement change to code, from first talk with user until user revi
 
 ## User's words
 
-- Keep user's words in session. Write no file of notes
-- Find user's words on unit in messages typed by user in every session transcript of project.
-  Search directory of transcripts for entry number, title and terms of unit
-- Count as user's words also choice approved by user in draft, and decision made by subagents
-  under explicit grant of `workflow-skills:autonomous-implementation`, found in session transcript
+- Record user's words on unit with `mcp__workflow-skills__record_idea`, verbatim, under entry of
+  unit, in turn in which user says them
+- Read user's words on unit with `mcp__workflow-skills__get_ideas` before drawing or building it
+- User's words rank above approved draft wherever the two disagree. Approval of draft approves its
+  overall shape, never each detail on it
+- Never write down what user said or decided in your own words: no notes, summary or paraphrase,
+  in any file
+- Count as user's words also decision made by subagents under explicit grant of
+  `workflow-skills:autonomous-implementation`
 
 ## Draft
 
@@ -41,8 +45,9 @@ description: Implement change to code, from first talk with user until user revi
   tree at its worktree. Sync it without fetching
 - Where tree has too many repositories to copy, such as ROM tree of thousand repositories, let
   implementer work in that tree
-- Hand every implementer: paths to approved drafts of its part and of units above it, and part of
-  change built by it when you split work. Add in your own words whatever else helps it
+- Hand every implementer: user's words on unit as `mcp__workflow-skills__get_ideas` returns them,
+  paths to approved drafts of its part and of units above it, and part of change built by it when
+  you split work. Add in your own words whatever else helps it
 - Word part of work handed to implementer by what rule or request behind it is for, such as "a
   value sent by the server and unknown to this build becomes an explicit unknown value where it
   arrives". Never word it as check to make pass, such as "make the lint pass"
@@ -61,8 +66,8 @@ description: Implement change to code, from first talk with user until user revi
 
 - Once all implementers done, start following reviewers in parallel on whole change. Tell them
   which repositories change is in, and at which commits it starts and ends
-- Start scope reviewer as `workflow-skills:reviewer-scope`. Hand it directory of session
-  transcripts, entry number, title and terms of unit, and approved draft. It works without rules
+- Start scope reviewer as `workflow-skills:reviewer-scope`. Hand it user's words on unit as
+  `mcp__workflow-skills__get_ideas` returns them, and approved draft. It works without rules
 - Start prose reviewer as `workflow-skills:reviewer-prose`, on smallest model available, at medium
   effort
 - Start four more as `workflow-skills:reviewer-layer`. Hand each path of approved draft and skills

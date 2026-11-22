@@ -13,15 +13,10 @@ description: Draw page for user to look at: drafts, product decisions, plans and
 - Draw page when change sets what someone sees or does, scope of product or which data is kept
 - Draw page for substantial plan or design, and for explanation of complex code path, problem or
   trade-off. Open it for user instead of writing it into chat
-- Before drawing decision, trace each choice it takes as settled to user's words, found as
+- Before drawing decision, trace each choice it takes as settled to user's words, read as
   `workflow-skills:implement` describes
-- Choice traced without reading every transcript of project, e.g. one not readable: get what was
-  missing and trace again. Never undo it before trace is complete
-- Choice not found in user's words after trace read every transcript of project: keep it where
-  rules, instructions, facts about project or engineering judgment give answer. Undo it otherwise,
-  with what was built on it and records about that choice in `TODO.md`
-- Choice whose trace stays incomplete after second try: keep it and what was built on it. Draw it
-  as decision with kept state as recommended option
+- Choice not found in user's words: keep it where rules, instructions, facts about project or
+  engineering judgment give answer. Undo it otherwise, with what was built on it
 - Draw page with recommended option for every decision left after that. In "What this draft
   builds", name entry of `TODO.md` waiting on decision
 

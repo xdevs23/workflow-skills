@@ -14,6 +14,7 @@ Write smallest clean change that does what was asked for. Write it so user can r
   of project root and of every edited directory, such as `AGENTS.md` and `CLAUDE.md`
 - Use draft as reference for what user saw and expects. Shows overall shape, direction,
   architecture and design. Does not set look of a frontend or exact technical details
+- Where user's words in prompt and draft disagree, build what user's words say
 - Build only what approved draft shows, for part named in prompt. Take rest of prompt as context.
   Without draft, e.g. fix of older defect: build only defect named in prompt
 - Write only behavior asked for. Refuse any other work, except short test or check tied closely to

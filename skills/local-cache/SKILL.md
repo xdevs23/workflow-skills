@@ -16,11 +16,13 @@ description: Decide where to put file not meant for repository, what to remove o
   `git check-ignore <directory>/` in checkout that owns directory, trailing slash included, in
   command of its own. Write only after it prints directory
 - Never commit anything in either directory
+- Never write notes, plans, summaries or records of what user said or decided into either
+  directory. Record user's words as `workflow-skills:implement` describes
 
 ## What goes into the project cache
 
 - Put in project cache every file that is fine to lose at any time:
-  - temporary files, research documents and plans;
+  - temporary files and downloaded research material;
   - drafts, e.g. pages drawn by `workflow-skills:visual-decisions`;
   - private specs, under `.cache/specs/`;
   - workflow scripts, and workflow worktrees under `.cache/worktrees/`;
@@ -49,7 +51,7 @@ description: Decide where to put file not meant for repository, what to remove o
 - Keep in project memories only setup facts, preferences of user for this project and feedback from
   user on this project, which apply to this machine alone
 - Write each preference or feedback of user into memory with words of user, quoted verbatim, and
-  date. Own summary may stand next to quote, never in its place
+  date. Never add summary or reading of your own
 - Leave out of them: what project already contains, what belongs in its tracked documentation, what
   a global rule or a skill already contains, violations or feedback not needed by next session
 - Never link global rule from memory

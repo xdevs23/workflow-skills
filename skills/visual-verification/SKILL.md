@@ -105,7 +105,7 @@ settings.
 
 ## Visual work in a change of `workflow-skills:implement`
 
-- Take what visual change should do from user's words, found as `workflow-skills:implement`
+- Take what visual change should do from user's words, read as `workflow-skills:implement`
   describes, and approved draft
 - Judge visual change by outcome of comparison, which has one of three forms:
   - zero changed pixels on every checkpoint;

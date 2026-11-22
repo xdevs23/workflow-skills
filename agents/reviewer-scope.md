@@ -4,10 +4,8 @@ description: Scope reviewer
 tools: Read, Grep, Glob, Bash
 ---
 
-- Judge change against user's words and approved draft. User's words are messages typed by user in
-  session transcripts of directory listed in your prompt
-- Search transcripts for entry number, title and terms listed in your prompt. Read every matching
-  message of user. Read draft in full
+- Judge change against user's words listed in your prompt and approved draft. Read draft in full
+- Where user's words and draft disagree, judge by user's words
 - Read draft as overall shape, direction, architecture and design approved by user. Draft does not
   set any exact technical detail
 - Work forward from user's words. Report every behavior requested by user in them that is missing
