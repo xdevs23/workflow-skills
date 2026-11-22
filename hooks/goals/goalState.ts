@@ -5,7 +5,6 @@ import type {
   Board,
   GoalCheck,
   GoalInPane,
-  IdleStretch,
   PendingMissingWork,
   SeenBoard,
   SessionBoard,
@@ -34,7 +33,6 @@ const goalsPane = atom({ plugin: 'workflow-skills', key: 'goalsPane' } as const,
 })
 const goalsPaneTyped = atom({ plugin: 'workflow-skills', key: 'goalsPaneTyped' } as const, null)
 const seenBoard = atom({ plugin: 'workflow-skills', key: 'seenBoard' } as const, null)
-const idleStretch = atom({ plugin: 'workflow-skills', key: 'idleStretch' } as const, null)
 const waitingNudges = atom({ plugin: 'workflow-skills', key: 'waitingNudges' } as const, null)
 const goalCheck = atom({ plugin: 'workflow-skills', key: 'goalCheck' } as const, null)
 // A change of PendingMissingWork changes the tag, so the goals found open that another version of
@@ -156,29 +154,6 @@ async function updateSeenBoard(
     sessionId,
     seen => ({ sessionId, board: change(seen?.board ?? null) }),
     changeInState => update($, seenBoard, changeInState),
-  )
-}
-
-/** The idle stretch of the main conversation of the session `sessionId`, if it has one. */
-export async function readIdleStretch(
-  $: EngineInterface,
-  sessionId: string,
-): Promise<IdleStretch | null> {
-  return ofSession(await read($, idleStretch), sessionId)
-}
-
-/**
- * Replaces the idle stretch of the session `sessionId` with what `change` makes of it, unless
- * another session runs by now, and returns the stretch of that session in the state after it.
- * `change` is called with null when the session has no stretch.
- */
-export function updateIdleStretch(
-  $: EngineInterface,
-  sessionId: string,
-  change: (stretch: IdleStretch | null) => IdleStretch | null,
-): Promise<IdleStretch | null> {
-  return updateOfSession($, sessionId, change, changeInState =>
-    update($, idleStretch, changeInState),
   )
 }
 

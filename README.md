@@ -19,8 +19,7 @@ Then run a skill, such as `/workflow-skills:implement`.
   product and marketing text, checked for style and facts
 - **Goals**: `/goals` sets what Claude works toward until you clear it, and `/goals <text>` adds
   a goal without the pane; `/goals-import` brings open goals of an earlier session of the project
-  into this one. After Claude has been idle for 30 minutes, a fresh agent checks the open goals
-  against the project, marks the goals it finds done and sends the rest to Claude
+  into this one
 - **Reminders**: `/reminders` sends Claude a text on a schedule or after an event;
   `/reminders-import` brings reminders of an earlier session of the project into this one
 - **Ideas**: Claude records your words that shape an entry in TODO.md, so they outlast

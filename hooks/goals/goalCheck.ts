@@ -103,15 +103,13 @@ function checkerNameOf(check: CheckedStretch): string {
 /**
  * Applies the verdicts in the final answer of the goal checker of the running check, which ends its
  * run with the turn `e`, once: marks the goals judged done, and hands the goals judged open to
- * `missingWork`. A run ended without an answer shows in a toast. An error of the API can clear on
- * its own, so after one, `waitAgain` has the check run again after the idle minutes.
+ * `missingWork`. A run ended without an answer shows in a toast.
  */
 export async function applyGoalCheckerAnswer(
   $: EngineInterface,
   e: Frozen<TurnCompleteInput>,
   next: Next<'turn.complete'>,
   missingWork: PendingTextSource,
-  waitAgain: (checked: CheckedStretch) => Promise<void>,
 ): Promise<TurnCompleteResult> {
   const completed = await next(e)
   const check = e.agentId === undefined ? null : await takeRunningCheck($, e.agentId)
@@ -120,9 +118,6 @@ export async function applyGoalCheckerAnswer(
   }
   if (e.reason !== 'answer') {
     showFailure($, describeVerdictsNotReported(e.reason))
-    if (e.reason === 'error') {
-      await waitAgain(check)
-    }
     return completed
   }
   const read = readCheckerAnswer(e.answer)

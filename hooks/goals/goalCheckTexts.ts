@@ -95,17 +95,6 @@ function describeWaiting(goal: Goal, waiting: readonly WaitingWork[], readAt: nu
     ])
 }
 
-/**
- * The closing of a toast on a goal check that is not run again by itself. A check runs after the
- * idle minutes that follow a turn not started by the goals found open.
- */
-const CHECK_AGAIN = 'The goals are checked again once Claude is idle after your next message.'
-
-/** The toast for a goal check stopped by the error with the message `reason`. */
-export function describeGoalsNotChecked(reason: string): string {
-  return `The open goals could not be checked: ${reason}. ${CHECK_AGAIN} ${DEBUG_LOG_NOTE}`
-}
-
 /** The toast for a goal checker that did not start, with the refusal of its start, if any. */
 export function describeCheckerNotStarted(refusal: string | undefined): string {
   const opening =
@@ -113,19 +102,16 @@ export function describeCheckerNotStarted(refusal: string | undefined): string {
       ? 'The goal checker did not start, since a hook returned without starting it.'
       : `The goal checker did not start: ${refusal}.`
 
-  return `${opening} ${CHECK_AGAIN} ${DEBUG_LOG_NOTE}`
+  return `${opening} ${DEBUG_LOG_NOTE}`
 }
 
 const NOT_CHECKED = 'so the open goals were not checked.'
 
 /** The toast for a goal checker that ended for each reason without an answer. */
 const VERDICTS_NOT_REPORTED: Record<Exclude<TurnCompleteReason, 'answer'>, string> = {
-  aborted: `The goal checker was stopped before it reported its verdicts, ${NOT_CHECKED} ` +
-    CHECK_AGAIN,
-  refusal: `The model refused the goal check, ${NOT_CHECKED} ${CHECK_AGAIN}`,
-  error:
-    `The goal checker stopped on an error of the API, ${NOT_CHECKED} They are checked again ` +
-    'once Claude has been idle again.',
+  aborted: `The goal checker was stopped before it reported its verdicts, ${NOT_CHECKED}`,
+  refusal: `The model refused the goal check, ${NOT_CHECKED}`,
+  error: `The goal checker stopped on an error of the API, ${NOT_CHECKED}`,
 }
 
 export function describeVerdictsNotReported(reason: Exclude<TurnCompleteReason, 'answer'>): string {
@@ -134,13 +120,13 @@ export function describeVerdictsNotReported(reason: Exclude<TurnCompleteReason, 
 
 export const VERDICTS_NOT_READ_TOAST =
   'The goal checker gave its verdicts in another shape than asked for, so they were not ' +
-  `applied. ${CHECK_AGAIN} ${DEBUG_LOG_NOTE}`
+  `applied. ${DEBUG_LOG_NOTE}`
 
 /** The toast for the goals numbered `goals`, which got no verdict, a malformed one or several. */
 export function describeGoalsNotJudged(goals: readonly number[]): string {
   return (
     'The goal checker gave no usable verdict on these goals, so they were neither marked nor ' +
-    `sent to Claude: ${AND_LIST.format(goals.map(nameGoal))}. ${CHECK_AGAIN} ${DEBUG_LOG_NOTE}`
+    `sent to Claude: ${AND_LIST.format(goals.map(nameGoal))}. ${DEBUG_LOG_NOTE}`
   )
 }
 
@@ -155,15 +141,14 @@ const REFUSED_EVIDENCE: Record<EvidenceRefusal, string> = {
 export function describeEvidenceRefused(goal: number, refusal: EvidenceRefusal): string {
   return (
     `The goal checker judged ${nameGoal(goal)} done ${REFUSED_EVIDENCE[refusal]}, so it was not ` +
-    `marked. ${CHECK_AGAIN} ${DEBUG_LOG_NOTE}`
+    `marked. ${DEBUG_LOG_NOTE}`
   )
 }
 
 /** The toast for the done marks that the store did not save, with the failure. */
 export function describeMarksNotSaved(storeFailure: string): string {
   return (
-    `The goals judged done by the goal checker were not marked. ${storeFailure} ${CHECK_AGAIN} ` +
-    DEBUG_LOG_NOTE
+    `The goals judged done by the goal checker were not marked. ${storeFailure} ${DEBUG_LOG_NOTE}`
   )
 }
 

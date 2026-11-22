@@ -10,7 +10,7 @@ import {
 import { repliesSource } from './delivery'
 import { EVERY_EVENT } from './everyEvent'
 import { registerGoals } from './goals'
-import { missingWorkSource, startDueGoalCheck } from './goals/goalIdleCheck'
+import { missingWorkSource } from './goals/goalMissingWork'
 import { sendNudgesWhileSessionAcceptsPrompts } from './goals/goalNudge'
 import { openGoalsAfterCompaction } from './goals/goalReminderHooks'
 import {
@@ -146,7 +146,6 @@ function pendingTextSourcesOf($: EngineInterface): PendingTextSource[] {
 function sendTextsWaitingForSession($: EngineInterface): void {
   submitPendingTexts($, pendingTextSourcesOf($))
   sendNudgesWhileSessionAcceptsPrompts($)
-  startDueGoalCheck($)
   watchTimedReminders($)
   waitForSelfCheckDueTime($)
 }

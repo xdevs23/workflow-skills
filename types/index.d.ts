@@ -7,7 +7,6 @@ import type {
   ImportableSessions,
 } from '../hooks/imports/importPaneMessages'
 import type { GoalCheckPhase } from '../hooks/goals/goalCheck'
-import type { IdlePhase } from '../hooks/goals/goalIdleCheck'
 import type { GoalPaneAction, GoalSaveResult } from '../hooks/goals/goalPaneMessages'
 import type { MissingWork, WaitingWork } from '../hooks/goals/goalVerdicts'
 import type { RowMode } from '../hooks/goals/goalRowState'
@@ -187,17 +186,6 @@ export type SeenBoard = {
    * the start.
    */
   board: Board | null
-}
-
-/**
- * The time between two turns of the main conversation of a session, and how far the goal check in
- * it got.
- */
-export type IdleStretch = {
-  sessionId: string
-  /** New for each stretch, so a timer of the idle minutes acts only while its stretch lasts. */
-  stretchId: string
-  phase: IdlePhase
 }
 
 /**
@@ -442,11 +430,6 @@ declare module 'claude-code' {
       goalsPaneTyped: TypedInWorker | null
       /** The board seen by the model of the session; null before the board is first read. */
       seenBoard: SeenBoard | null
-      /**
-       * The idle stretch of the main conversation of the session; null while neither a turn nor
-       * the idle minutes run, before the first turn and after the turn started by the reminder.
-       */
-      idleStretch: IdleStretch | null
       /** The last goal check of the session; null before the first check. */
       goalCheck: GoalCheck | null
       /** The goals found open by the goal checker of the session; null while none waits. */
