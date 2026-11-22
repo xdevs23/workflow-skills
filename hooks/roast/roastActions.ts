@@ -1,7 +1,9 @@
 import type { EngineInterface, ModelForkResult, UiOpenResult } from 'claude-code'
 
 import { messageOf } from '../errorMessage'
+import { readIdeasRecordedBySession } from '../ideas/ideaActions'
 import { moveKeyboardTo } from '../paneFocus'
+import { describeUnreadableRecord } from '../pluginStore'
 import { randomWaitAfter } from '../retryWait'
 import type { RetryWaits } from '../retryWait'
 import { listRunningAgents } from '../runningAgents'
@@ -12,6 +14,7 @@ import { RoastNotWrittenCause, isPassingApiError, thrownFailure } from './roastF
 import type { RoastFailure } from './roastFailure'
 import { ROAST_PANE, SEND_KEY } from './roastNames'
 import {
+  writePromptAfterRecordedIdeas,
   writePromptAfterRunningAgents,
   writePromptAfterUnseenMessages,
   writeRoastPrompt,
@@ -28,6 +31,7 @@ import type { RoastProgressOf, RoastRun } from './roastState'
 import {
   PANE_TITLE,
   describeForkViewUnknown,
+  describeRecordedIdeasUnknown,
   describeRunningAgentsUnknown,
   describeSecondsNotShown,
 } from './roastTexts'
@@ -188,12 +192,15 @@ async function askFork(
 }
 
 /**
- * `prompt` for a fork, after the background agents that still run and the messages of the main
- * conversation that the fork does not see. Where the agents or those messages are unknown, the
- * prompt omits them, and the debug log gets the reason.
+ * `prompt` for a fork, after the words of the user recorded in the session, the background agents
+ * that still run and the messages of the main conversation that the fork does not see. Where one
+ * of them is unknown, the prompt omits it, and the debug log gets the reason.
  */
 export async function writeForkPrompt($: EngineInterface, prompt: string): Promise<string> {
-  const promptWithAgents = await writePromptAfterKnownAgents($, prompt)
+  const promptWithAgents = await writePromptAfterKnownAgents(
+    $,
+    await writePromptAfterKnownIdeas($, prompt),
+  )
   const unseen = await readMessagesUnseenByFork($)
   if (!unseen.isKnown) {
     $.ui.log(describeForkViewUnknown(unseen.cause), { to: 'debug' })
@@ -217,6 +224,20 @@ async function writePromptAfterKnownAgents($: EngineInterface, prompt: string): 
   }
 
   return writePromptAfterRunningAgents(prompt, running.agents)
+}
+
+async function writePromptAfterKnownIdeas($: EngineInterface, prompt: string): Promise<string> {
+  const recorded = await readIdeasRecordedBySession($)
+  if (!recorded.isKnown) {
+    $.ui.log(describeRecordedIdeasUnknown(recorded.cause), { to: 'debug' })
+
+    return prompt
+  }
+  for (const key of recorded.unreadableKeys) {
+    $.ui.log(describeUnreadableRecord(key), { to: 'debug' })
+  }
+
+  return writePromptAfterRecordedIdeas(prompt, recorded.ideas)
 }
 
 /** What a fork reply to a roast shows: the roast, the refusal of the roast, or a failure. */

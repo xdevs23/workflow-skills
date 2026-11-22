@@ -1,3 +1,4 @@
+import type { Idea } from '../ideas/ideaStore'
 import { PendingTextPlace } from '../pendingTexts'
 import type { RunningAgent } from '../runningAgents'
 import type { MessageAsRead } from './messagesUnseenByFork'
@@ -38,15 +39,22 @@ const ROASTER_SOURCE =
 
 const ROAST_POINT_EVIDENCE =
   'For each point, name where the transcript shows it, such as a file, a diff or the output of ' +
-  'a command, and say what it makes worse in the result of the work. Name only points the ' +
-  'transcript proves.'
+  'a command. Name only points the transcript proves.'
 
-const ROAST_MISSED_GOAL =
-  'Where the work does not reach a goal of the user, add at least one line that names the goal ' +
-  'and says why the work does not reach it.'
+const STATE_OUTSIDE_TRANSCRIPT =
+  'You see only this transcript, as it was when you were asked. You do not know what is ' +
+  'released, pushed, deployed or installed, who uses the software, or what changed after the ' +
+  'assistant last looked. Never state any of that as a fact, and read what the assistant said ' +
+  'about it earlier as possibly out of date. Say what a point makes worse only where the ' +
+  'transcript shows that, and otherwise name the defect alone.'
 
-/** What every roast contains: the evidence for each point, and why the work misses a goal. */
-const ROAST_CONTENT = `${ROAST_POINT_EVIDENCE} ${ROAST_MISSED_GOAL}`
+const ROAST_UNFINISHED_WORK =
+  'Where the assistant reported a goal of the user or an entry of TODO.md as done although the ' +
+  'transcript shows it unfinished, or stopped working on one that is not done, add a line that ' +
+  'names it and says what is still missing to complete it.'
+
+const ROAST_CONTENT =
+  `${ROAST_POINT_EVIDENCE} ${STATE_OUTSIDE_TRANSCRIPT} ${ROAST_UNFINISHED_WORK}`
 
 const ROAST_CONTENT_WITHOUT_REPEATS =
   `${ROAST_CONTENT} Leave out each point that an earlier roast in this conversation ` +
@@ -55,8 +63,9 @@ const ROAST_CONTENT_WITHOUT_REPEATS =
 const NOT_A_POINT =
   'The way the assistant got to the result is never a point: a step of a process that it ' +
   'skipped or did another way, such as a skill it did not load or a record it did not keep, is ' +
-  'not a point. Code without comments or documents is not a point either, unless the user ' +
-  'asked for them.'
+  'not a point. Nothing else that happens inside the session and leaves the result as it is ' +
+  'counts as a point. Code without comments or documents is not a point either, unless the ' +
+  'user asked for them.'
 
 const ROAST_BLUNTNESS = 'Be blunt: no praise, no softening.'
 
@@ -66,11 +75,15 @@ const JSON_REPLY =
 
 /** The request for the points of the roast, without the reply where the transcript proves none. */
 const ROAST_POINTS =
-  `${ROAST_OPENING} Find one or more points where the result of the work falls short: code ` +
-  'that is wrong, slow, unclean, poorly split into modules or poorly engineered, work that does ' +
+  `${ROAST_OPENING} Find one or more points where the result of the work falls short: a goal ` +
+  'of the user or an entry of TODO.md that the work does not bring to completion, code that is ' +
+  'wrong, slow, unclean, poorly split into modules or poorly engineered, a fix or another ' +
+  'change built on a guess, without evidence in the transcript that backs it, work that does ' +
   'not do what the user asked for or decided, or a statement about the result that the ' +
-  `transcript shows to be false. Judge the result alone. ${NOT_A_POINT} ` +
-  ROAST_CONTENT_WITHOUT_REPEATS
+  'transcript shows to be false. Hold the code to the highest standard. Where code breaks a ' +
+  'rule loaded in this conversation, say how to improve the code, such as a class to refactor, ' +
+  'a file to split in two, a layer smeared into another or a type leaked across a boundary. ' +
+  `Judge the result alone. ${NOT_A_POINT} ${ROAST_CONTENT_WITHOUT_REPEATS}`
 
 const IDLE_ROAST_REPLY_EXAMPLE = JSON.stringify({
   verdict: IdleRoastVerdict.Roast,
@@ -204,6 +217,21 @@ export function writePromptAfterRunningAgents(
     'passing the id listed with it to TaskStop. Count as a point each listed agent whose result ' +
     'the work no longer needs, and tell the assistant to stop it:\n\n' +
     `${JSON.stringify(agents)}\n\n${prompt}`
+  )
+}
+
+export function writePromptAfterRecordedIdeas(prompt: string, ideas: readonly Idea[]): string {
+  if (ideas.length === 0) {
+    return prompt
+  }
+  const words = ideas.map(({ entry, words: wordsOfUser }) => ({ entry, words: wordsOfUser }))
+
+  return (
+    'This JSON array lists words of the user that the assistant recorded in this session, ' +
+    'verbatim, each with the entry of TODO.md it was recorded for. The user wrote these words, ' +
+    'also where the transcript no longer shows the message. Judge what the user asked for and ' +
+    'decided by these words and by the messages of the user in the transcript, never by how ' +
+    `the assistant put it:\n\n${JSON.stringify(words)}\n\n${prompt}`
   )
 }
 

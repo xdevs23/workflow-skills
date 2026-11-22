@@ -18,8 +18,8 @@ import {
 import { IDEAS_PANE, keepButtonKeyOf } from './ideaNames'
 import { IdeasOutcome, setIdeaAwaitingDelete, setIdeasInState } from './ideaState'
 import type { LoadedIdeas } from './ideaState'
-import { deleteIdea, deleteIdeasUnder, readIdeasOf } from './ideaStore'
-import type { IdeaId } from './ideaStore'
+import { deleteIdea, deleteIdeasUnder, readIdeasOf, readIdeasRecordedBy } from './ideaStore'
+import type { Idea, IdeaId } from './ideaStore'
 
 // The Ideas pane draws the ideas from the state, since a drawing that read the store would start
 // git and read every key of the store on each redraw. The state gets the ideas when the pane opens
@@ -58,6 +58,26 @@ async function readLoadedIdeas($: EngineInterface, project: string): Promise<Loa
 
 function ideasNotRead(failure: ProjectFailure): LoadedIdeas {
   return { outcome: IdeasOutcome.Failed, failure: describeIdeasNotRead(failure) }
+}
+
+export type IdeasOfSession =
+  | {
+      readonly isKnown: true
+      readonly ideas: readonly Idea[]
+      readonly unreadableKeys: readonly string[]
+    }
+  | { readonly isKnown: false; readonly cause: string }
+
+export async function readIdeasRecordedBySession($: EngineInterface): Promise<IdeasOfSession> {
+  const sessionId = await $.session.id()
+
+  return returningProjectFailure(
+    $,
+    async (project): Promise<IdeasOfSession> => {
+      return { isKnown: true, ...(await readIdeasRecordedBy($, { project, sessionId })) }
+    },
+    (failure): IdeasOfSession => ({ isKnown: false, cause: describeProjectFailure(failure) }),
+  )
 }
 
 /** Deletes the idea `id`, shows a failed delete in a toast, and loads the ideas again. */

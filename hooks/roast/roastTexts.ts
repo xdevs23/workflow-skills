@@ -152,6 +152,10 @@ export function describeRunningAgentsUnknown(cause: string): string {
   )
 }
 
+export function describeRecordedIdeasUnknown(cause: string): string {
+  return `The fork that writes the roast got no words of the user recorded in the session. ${cause}`
+}
+
 /** The text for a run of /roast that ended without a roast, with the next step. */
 export function describeRoastNotWritten(failure: RoastFailure): string {
   return describeNotWritten(failure, `Run /${ROAST_COMMAND} again.`)
