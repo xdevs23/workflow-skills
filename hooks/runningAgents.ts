@@ -33,7 +33,7 @@ export function listRunningAgents($: EngineInterface): Promise<RunningAgents> {
  * Whether `agent` runs, and the model or the person started it from the main conversation, so the
  * assistant can stop it with TaskStop. An agent spawned by another agent stays out, since the
  * agent that spawned it decides when its result is no longer needed. An agent that a plugin
- * started for its own work, such as the goal checker, stays out as well. A teammate stays out
+ * started for its own work stays out as well. A teammate stays out
  * too: a message stops it, and one in a pane of its own keeps its last status after the pane dies.
  */
 function isRunningAgentOfAssistant(agent: AgentInfo): boolean {

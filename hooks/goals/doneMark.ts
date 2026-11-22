@@ -66,29 +66,6 @@ export function doneMarkOf(goal: Goal): DoneMark | undefined {
   return mark?.markedAt === goal.markRemoval?.markedAt ? undefined : mark
 }
 
-/** The done mark last removed from a goal by the user, with its removal. */
-export type UserRemovedMark = {
-  mark: DoneMark
-  removal: Extract<MarkRemoval, { removedBy: MarkRemover.User }>
-}
-
-/**
- * The done mark last removed from `goal` by the user, while no mark was set on the goal since and
- * no edit followed the removal. A mark removed up to the last edit, also by the edit itself, was
- * set for an older text.
- */
-export function userRemovedMarkOf(goal: Goal): UserRemovedMark | undefined {
-  const mark = doneMarkOf(goal) === undefined ? goal.doneMark : undefined
-  const removal = goal.markRemoval
-  if (mark === undefined || removal?.removedBy !== MarkRemover.User) {
-    return undefined
-  }
-
-  return goal.editedAt !== undefined && removal.removedAt <= goal.editedAt
-    ? undefined
-    : { mark, removal }
-}
-
 /** `goal` with its done mark `mark` removed as `removal` says. */
 export function unmarkedGoalOf(
   goal: Goal,

@@ -10,7 +10,6 @@ import {
 import { repliesSource } from './delivery'
 import { EVERY_EVENT } from './everyEvent'
 import { registerGoals } from './goals'
-import { missingWorkSource } from './goals/goalMissingWork'
 import { sendNudgesWhileSessionAcceptsPrompts } from './goals/goalNudge'
 import { openGoalsAfterCompaction } from './goals/goalReminderHooks'
 import {
@@ -136,7 +135,7 @@ export const register: Register = on => {
 // The engine passes `$` only to a function named at the call, so each feature that sends texts with
 // the next tool result is named here.
 function pendingTextSourcesOf($: EngineInterface): PendingTextSource[] {
-  return [repliesSource($), roastsSource($), missingWorkSource($), hintNotesSource($)]
+  return [repliesSource($), roastsSource($), hintNotesSource($)]
 }
 
 // The engine passes `$` only to a function named at the call, so each feature whose texts wait for

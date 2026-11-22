@@ -238,8 +238,8 @@ type NotedChange = { goal: Goal; kind: NotedKind }
 
 /**
  * The changes made by the user since the model last saw the board as `seen`, with the marks
- * removed with them. The note contains changes by the user alone, so it leaves out the marks set by
- * the goal checker, and the removals by the model on a board stored before the goal checker.
+ * removed with them. The note contains changes by the user alone, so it leaves out the marks set
+ * and removed by the model.
  */
 function changesSince(seen: Board, now: Board): NotedChange[] {
   return changesBetween(seen, now).flatMap(({ goal, kind }): NotedChange[] => {

@@ -350,8 +350,7 @@ const PARSERS: Record<RecordPart, (value: Record<string, unknown>) => StoredReco
       : undefined
   },
   [RecordPart.DoneMark]: ({ goalId, evidence, markedAt, setBy }) => {
-    // A mark stored before the goal checker set the done marks has no setter, and was set by the
-    // model.
+    // A mark stored before marks had setters was set by the model.
     const setter = setBy === undefined ? MarkSetter.Model : readMarkSetter(setBy)
 
     return typeof goalId === 'string' &&

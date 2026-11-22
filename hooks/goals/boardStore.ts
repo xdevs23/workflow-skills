@@ -22,7 +22,6 @@ import {
   editGoal,
   isNumberTaken,
   markGoalDone,
-  markGoalsDone,
   nextGoalNumberOf,
   openGoalsByIdOf,
   openGoalsOf,
@@ -33,14 +32,12 @@ import {
 } from './board'
 import type {
   AddRefused,
-  AskedMark,
   AttachRefused,
   Changed,
   DependentGoal,
   DetachRefused,
   EditRefused,
   GoalEdit,
-  GoalsMarked,
   LoopRefused,
   MarkRefused,
   NotChanged,
@@ -236,33 +233,6 @@ export function saveDoneMark(
       await writeMarkRemovals($, scope, goalsUnmarkedForDependency(stored, markedAt))
     },
   )
-}
-
-/**
- * Marks the goals as markGoalsDone does, and writes the marks in the order they were set. A
- * dependency can lose its mark, or be set on a goal, while the marks are written, so the board is
- * read back after the writes, and every mark it leaves waiting for a dependency is removed.
- */
-export function saveDoneMarks(
-  $: StoreEngine,
-  scope: BoardScope,
-  marks: readonly AskedMark[],
-  markedAt: number,
-): Promise<GoalsMarked | Failed> {
-  return returningFailure(async () => {
-    const marked = markGoalsDone(await readSettledBoard($, scope), marks, markedAt)
-    if (marked.outcome === Outcome.Changed) {
-      for (const result of marked.results) {
-        if (result.marked.outcome === Outcome.Changed) {
-          await writeRecord($, doneMarkRecordOf(scope, result.marked.goal))
-        }
-      }
-      const stored = openGoalsByIdOf(await readSettledBoard($, scope))
-      await writeMarkRemovals($, scope, goalsUnmarkedForDependency(stored, markedAt))
-    }
-
-    return marked
-  })
 }
 
 /** Removes the done mark as removeDoneMark does, and writes the removal. */

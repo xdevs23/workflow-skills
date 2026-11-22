@@ -6,9 +6,7 @@ import type {
   ImportResult,
   ImportableSessions,
 } from '../hooks/imports/importPaneMessages'
-import type { GoalCheckPhase } from '../hooks/goals/goalCheck'
 import type { GoalPaneAction, GoalSaveResult } from '../hooks/goals/goalPaneMessages'
-import type { MissingWork, WaitingWork } from '../hooks/goals/goalVerdicts'
 import type { RowMode } from '../hooks/goals/goalRowState'
 import type { Priority } from '../hooks/goals/priority'
 import type { HintKindName } from '../hooks/hintKind'
@@ -186,43 +184,6 @@ export type SeenBoard = {
    * the start.
    */
   board: Board | null
-}
-
-/**
- * The done mark that the user removed from a goal, as the goal checker reads it: the evidence of
- * the mark, the time of the removal as an ISO 8601 text, and the reason given by the user, if any.
- */
-export type RemovedMark = { evidence: string; removedAt: string; reason?: string }
-
-/** An open goal as listed for the goal checker, with the done mark the user removed, if any. */
-export type ListedGoal = { goal: number; text: string; removedMark?: RemovedMark }
-
-/** The default branch of the project, by the ref it was found under, and the commit at its head. */
-export type DefaultBranch = { ref: string; head: string }
-
-/**
- * The last goal check of a session: while its goal checker runs, the goals listed for it, and once
- * the verdicts were reported, the goals whose verdicts were applied.
- */
-export type GoalCheck = {
-  sessionId: string
-  /** The idle stretch the check started in, which starts no other check. */
-  stretchId: string
-  phase: GoalCheckPhase
-  /** Absent when git found no default branch. */
-  defaultBranch?: DefaultBranch
-  goals: readonly ListedGoal[]
-}
-
-/**
- * The goals found open by the goal checker of a session on `board`, with the goals judged done that
- * wait for them, waiting to go to its model.
- */
-export type PendingMissingWork = {
-  sessionId: string
-  board: Board
-  missing: readonly MissingWork[]
-  waiting: readonly WaitingWork[]
 }
 
 /** A goal pressed with Nudge, by its id and the number shown to the user. */
@@ -430,10 +391,6 @@ declare module 'claude-code' {
       goalsPaneTyped: TypedInWorker | null
       /** The board seen by the model of the session; null before the board is first read. */
       seenBoard: SeenBoard | null
-      /** The last goal check of the session; null before the first check. */
-      goalCheck: GoalCheck | null
-      /** The goals found open by the goal checker of the session; null while none waits. */
-      pendingMissingWork: Shaped<PendingMissingWork | null>
       /** The nudges of the session waiting to be sent to the model; null while none waits. */
       waitingNudges: WaitingNudges | null
       /**

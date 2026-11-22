@@ -129,19 +129,6 @@ export type MarkRefused =
   | NotOpenRefused
   | DependencyNotDoneRefused
 
-/** A done mark asked for `goal`, with its evidence. */
-export type AskedMark = { goal: Goal; evidence: string }
-
-/** What became of the done mark asked for `goal`. */
-export type MarkResult = { goal: Goal; marked: Changed<MarkedGoal> | Unchanged | MarkRefused }
-
-/** The board after the done marks asked of markGoalsDone, and what became of each of them. */
-export type GoalsMarked = {
-  outcome: Outcome.Changed | Outcome.Unchanged
-  board: Board
-  results: readonly MarkResult[]
-}
-
 /** The refusal of a dependency of goal `goal` on goal `dependsOn`, which depends on `goal`. */
 export type LoopRefused = {
   outcome: Outcome.Refused
@@ -389,47 +376,9 @@ export function markGoalDone(
 }
 
 /**
- * Marks the goal of each of `marks` as done as markGoalDone does, each goal after the goal it
- * depends on, so a goal that depends on a goal marked by the same call is marked too.
- */
-export function markGoalsDone(
-  board: Board,
-  marks: readonly AskedMark[],
-  markedAt: number,
-): GoalsMarked {
-  let current = board
-  const results = marks.map(({ goal, evidence }): MarkResult => {
-    const marked = markGoalDone(current, goal.number, evidence, markedAt, MarkSetter.GoalChecker)
-    current = marked.outcome === Outcome.Changed ? marked.board : current
-
-    return { goal, marked }
-  })
-  if (current === board) {
-    return { outcome: Outcome.Unchanged, board, results }
-  }
-  const waiting = results.filter(isWaitingForDependency)
-  const retried = markGoalsDone(
-    current,
-    marks.filter(mark => waiting.some(result => result.goal.id === mark.goal.id)),
-    markedAt,
-  )
-
-  return {
-    outcome: Outcome.Changed,
-    board: retried.board,
-    results: [...results.filter(result => !isWaitingForDependency(result)), ...retried.results],
-  }
-}
-
-/** Whether the mark of `result` was refused because the dependency of its goal is not done. */
-function isWaitingForDependency({ marked }: MarkResult): boolean {
-  return marked.outcome === Outcome.Refused && marked.refusal === Refusal.DependencyNotDone
-}
-
-/**
  * Removes the done mark of the open goal numbered `number`, with the marks of the goals depending
  * on it. With `markedAt`, only the mark set at that time is removed, so a press on a mark drawn
- * before the goal checker set a new one does not remove the new one. The reason is trimmed, and a
+ * before a new one was set does not remove the new one. The reason is trimmed, and a
  * blank reason is skipped.
  */
 export function removeDoneMark(

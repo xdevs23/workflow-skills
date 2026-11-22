@@ -6,14 +6,12 @@ import type { EntryNumber } from '../todoEntry'
 import { Outcome } from './board'
 import type {
   AddRefused,
-  AskedMark,
   AttachRefused,
   Changed,
   DependentGoal,
   DetachRefused,
   EditRefused,
   GoalEdit,
-  GoalsMarked,
   LoopRefused,
   MarkRefused,
   NotChanged,
@@ -33,7 +31,6 @@ import {
   saveClearedGoal,
   saveDetachedTodo,
   saveDoneMark,
-  saveDoneMarks,
   saveEditedGoal,
   saveGoalDependency,
   saveGoalPriority,
@@ -184,20 +181,6 @@ export async function markGoalDoneInSession(
 }
 
 /**
- * Marks the goal of each of `marks` on the board of the session `sessionId` as done, as
- * markGoalsDone does.
- */
-export async function markGoalsDoneInSession(
-  $: EngineInterface,
-  sessionId: string,
-  marks: readonly AskedMark[],
-): Promise<GoalsMarked | Failed> {
-  const marked = await saveDoneMarks($, sessionScope(sessionId), marks, await $.clock.now())
-
-  return loadBoardAfterChange($, sessionId, marked)
-}
-
-/**
  * Removes the done mark of the goal numbered `number` on the board of the session `sessionId`, as
  * removeDoneMark does, with the remover and reason in `asked`.
  */
@@ -276,7 +259,7 @@ export async function detachTodoInSession(
  * the store failed. A goal that is not open was cleared by another process or never added, so the
  * board is read again after a refusal too.
  */
-async function loadBoardAfterChange<Change extends Changed | NotChanged | GoalsMarked | Failed>(
+async function loadBoardAfterChange<Change extends Changed | NotChanged | Failed>(
   $: EngineInterface,
   sessionId: string,
   change: Change,

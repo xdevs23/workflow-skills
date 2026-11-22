@@ -42,7 +42,6 @@ export const WITHDRAW_TOOL = toolName(WITHDRAW)
 export const SKILL_TOOL = 'Skill'
 
 /** The qualified name of the agent that judges the open goals against the project. */
-export const GOAL_CHECKER_AGENT = `${PLUGIN}:goal-checker`
 
 /** The qualified name for the skill that draws drafts and opens them for the user. */
 export const VISUAL_DECISIONS_SKILL = skillName('visual-decisions')
