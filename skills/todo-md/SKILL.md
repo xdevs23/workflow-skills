@@ -130,7 +130,7 @@ Draft: .cache/specs/reaction-emoji.html
 - Draw decision about finding, also about finding in older code, as
   `workflow-skills:visual-decisions` describes when fixing it needs decision by user
 - Write work that comes up during unit as sub-unit of entry for that unit only when unit cannot
-  finish without it
+  finish without it. Write it as `READY`
 - Fix other small work that comes up right away, as `workflow-skills:implement` describes, without
   entry
 - Name other big work that comes up once, in report to user. Never write entry for it
