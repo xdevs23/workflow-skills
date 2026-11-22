@@ -73,11 +73,9 @@ export enum HintRoastMissingCause {
   NotWritten = 'not written',
   /** The fork found no point in the last reply. */
   NoPoint = 'no point',
-  /** A turn started or another session runs since the wait for the roast started. */
-  WaitCancelled = 'wait cancelled',
 }
 
 /** Why no roast on the hints at the end of a turn came, with the facts of the cause. */
 export type HintRoastMissing =
-  | { cause: HintRoastMissingCause.NoPoint | HintRoastMissingCause.WaitCancelled }
+  | { cause: HintRoastMissingCause.NoPoint }
   | { cause: HintRoastMissingCause.NotWritten; failure: RoastFailure }

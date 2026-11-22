@@ -177,19 +177,25 @@ export function describeHintRoastMissing(
       )
     case HintRoastMissingCause.NoPoint:
       return `The roaster did not find a point in the reply at the end of the turn. ${sent}`
-    case HintRoastMissingCause.WaitCancelled:
-      return (
-        'The roast on the hints at the end of the turn was dropped: a turn started or another ' +
-        `session runs since that turn. ${sent}`
-      )
   }
+}
+
+/**
+ * The line in the debug log for the roast on the hints `kindNames` at the end of a turn, dropped
+ * once a turn started or another session runs.
+ */
+export function describeHintRoastDropped(kindNames: readonly HintKindName[]): string {
+  return (
+    `The roast on the hints ${AND_LIST.format(kindNames)} at the end of a turn was dropped: a ` +
+    'turn started or another session runs since that turn. Nothing went to Claude.'
+  )
 }
 
 /** The toast for a roast on the hints at the end of a turn lost to the failure `reason`. */
 export function describeHintRoastLost(reason: string): string {
   return (
-    `The roast on the hints at the end of Claude's last turn failed: ${reason}. Neither the ` +
-    `roast nor the hints went to Claude. ${NO_ROAST} ${DEBUG_LOG_NOTE}`
+    `A roast on the hints at the end of Claude's last turn failed: ${reason}. Neither that ` +
+    `roast nor its hints went to Claude. ${NO_ROAST} ${DEBUG_LOG_NOTE}`
   )
 }
 

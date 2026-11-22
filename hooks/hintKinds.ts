@@ -8,8 +8,8 @@ import { COST_FRAMING } from './costFraming'
 import { HANDED_CALL } from './handedCall'
 import { HANDED_DECISION } from './handedDecision'
 import { HELD_QUESTION_HINT } from './heldQuestionHint'
-import { HintKindName } from './hintKind'
-import type { HintKind } from './hintKind'
+import { HintKindName, isRoastedHintKind } from './hintKind'
+import type { HintKind, RoastedHintKind } from './hintKind'
 import type { SharedStep } from './hintText'
 import { IDLE_REPLY_HINT } from './idleReplyHint'
 import { NOTHING_NEEDS_ACTION_HINT } from './nothingNeedsActionHint'
@@ -48,6 +48,11 @@ const HINT_KINDS: { readonly [Name in HintKindName]: HintKind<Name> } = {
   [HintKindName.NothingNeedsAction]: NOTHING_NEEDS_ACTION_HINT,
   [HintKindName.UnverifiedWork]: UNVERIFIED_WORK_HINT,
   [HintKindName.Waiting]: WAITING_HINT,
+}
+
+/** The roasted hint kinds named in `names`, in their order. */
+export function roastedHintKindsNamed(names: readonly HintKindName[]): RoastedHintKind[] {
+  return names.map(name => HINT_KINDS[name]).filter(isRoastedHintKind)
 }
 
 /**

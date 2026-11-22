@@ -4,7 +4,7 @@ import { EVERY_EVENT } from '../everyEvent'
 import { registerPromptWaitPane } from '../promptWaits'
 import { roastChatBeforeCompaction } from './compactionRoast'
 import { registerIdleRoast } from './idleRoast'
-import { registerIdleWait } from './idleWait'
+import { registerIdleWait } from './idleWaitRoasts'
 import { forgetForkViewOnCompaction, recordForkView } from './messagesUnseenByFork'
 import { dropRoastOnClose } from './roastCommand'
 import { ROAST_PANE, ROAST_PANE_CLOSED_BY_USER, ROAST_PANE_SITE } from './roastNames'
@@ -21,8 +21,7 @@ export function registerRoast(on: On): void {
   on('ui.render', ROAST_PANE_SITE, drawRoastPane)
   on('ui.close', ROAST_PANE_CLOSED_BY_USER, dropRoastOnClose)
   // The turn started by a note on hints starts the wait again at its end, so the idle roast reads
-  // the conversation after the hints. Registered before the idle roast, so a switch cancels the
-  // wait before endStretchOnSwitch runs.
+  // the conversation after the hints.
   registerIdleWait(on)
   registerIdleRoast(on)
   on('turn.step', EVERY_EVENT, recordForkView)

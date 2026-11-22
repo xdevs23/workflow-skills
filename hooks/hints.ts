@@ -4,7 +4,7 @@ import type { HintKind } from './hintKind'
 import { kindsWithPhraseIn } from './hintKinds'
 import { writeHintNote } from './hintNoteDelivery'
 import { claimHintKindsUnsentInTurn } from './hintState'
-import { queueHintRoast } from './roast/hintRoast'
+import { queueHintRoast } from './roast/hintRoastQueue'
 import { stopWithNoteAlsoAfterBlock } from './sendToModel'
 import type { TextWithLine } from './sendToModel'
 
@@ -30,7 +30,7 @@ export const blockStopOnHintPhrase: Hook<'classic.Stop'> = ($, e, next) =>
       describeHintNote,
     )
     if (roasted.length > 0) {
-      queueHintRoast(message, roasted)
+      await queueHintRoast($, message, roasted)
     }
 
     return note

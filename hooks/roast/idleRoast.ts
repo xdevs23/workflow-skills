@@ -5,9 +5,9 @@ import { EVERY_EVENT } from '../everyEvent'
 import type { EveryEvent } from '../everyEvent'
 import { showFailure } from '../failureToast'
 import { isMessageTypedByUser } from '../promptOrigin'
-import { SWITCHING_SOURCES } from '../sessionSources'
-import { runDetached } from '../timedWork'
 import { SwitchOutcome, readIdleRoastSwitch } from './idleRoastSwitch'
+import { IdleWaitCancel } from './idleWait'
+import type { IdleWaitWork } from './idleWait'
 import { forkRoast } from './roastActions'
 import type { ForkedRoast } from './roastActions'
 import { deliverRoast } from './roastDelivery'
@@ -35,33 +35,30 @@ let isSwitchedOn = false
 let isStretchRoasted = false
 
 /**
- * Registers the hooks that read the switch of the idle roast and follow the idle stretch, for
- * roastIdleStretchDetached.
+ * Registers the hooks that read the switch of the idle roast at the start of the session and follow
+ * the idle stretch, for idleRoastAfterIdleWait.
  */
 export function registerIdleRoast(on: On): void {
   on('session.start', EVERY_EVENT, loadSwitchAtStart)
-  on('classic.SessionStart', { source: SWITCHING_SOURCES }, endStretchOnSwitch)
   on('prompt.submit', EVERY_EVENT, startStretchOnUserMessage)
 }
 
 /**
- * Has a fork roast the main conversation where it blocks the work, in a session with the idle roast
- * switched on, once per idle stretch, as roastAfterIdleWait describes. Runs it as `runDetached`
- * does, so the wait that ended does not wait for the fork.
+ * The idle roast as work of the idle wait: a fork roasts the main conversation where it blocks the
+ * work, in a session with the idle roast switched on, once per idle stretch, as roastAfterIdleWait
+ * describes.
  */
-export function roastIdleStretchDetached(
-  $: EngineInterface,
-  isWaitOfSession: () => boolean,
-): void {
-  runDetached(
-    $,
-    () =>
+export function idleRoastAfterIdleWait($: EngineInterface): IdleWaitWork {
+  return {
+    start: async () => isStretchToRoast(),
+    cancel: cause => endStretchOnSwitch($, cause),
+    end: isWaitOfSession =>
       roastAfterIdleWait($, isWaitOfSession).catch((error: unknown) => {
         endStretchIfNeedsPerson(thrownFailure(messageOf(error)))
         throw error
       }),
-    message => describeIdleRoastNotWrittenToast(thrownFailure(message)),
-  )
+    describeFailure: message => describeIdleRoastNotWrittenToast(thrownFailure(message)),
+  }
 }
 
 const loadSwitchAtStart: MatchedHook<'session.start', EveryEvent> = async ($, e, next) => {
@@ -72,14 +69,16 @@ const loadSwitchAtStart: MatchedHook<'session.start', EveryEvent> = async ($, e,
 
 // After /clear, /resume or a fork, another conversation runs, for which the stretch was not
 // started, and which has a switch of its own.
-const endStretchOnSwitch: MatchedHook<
-  'classic.SessionStart',
-  { source: typeof SWITCHING_SOURCES }
-> = async ($, e, next) => {
-  isStretchRoasted = false
-  await loadIdleRoastSwitch($)
+async function endStretchOnSwitch($: EngineInterface, cause: IdleWaitCancel): Promise<void> {
+  if (cause === IdleWaitCancel.SessionSwitched) {
+    isStretchRoasted = false
+    await loadIdleRoastSwitch($)
+  }
+}
 
-  return next(e)
+/** Whether the idle roast is on and the idle stretch has no roast yet. */
+function isStretchToRoast(): boolean {
+  return isSwitchedOn && !isStretchRoasted
 }
 
 /**
@@ -115,51 +114,53 @@ const startStretchOnUserMessage: MatchedHook<'prompt.submit', EveryEvent> = ($, 
 
 /**
  * Has a fork write the idle roast once the wait ended, as `forkRoast` describes, while
- * `isWaitOfSession` and the idle roast is on, and uses the result of the last fork. Drops the
- * result once a turn started since or the idle roast was switched off.
+ * `isWaitOfSession` and the idle roast is on, uses the result of the last fork, and returns whether
+ * it sent the roast. Drops the result once a turn started since or the idle roast was switched off.
  */
 async function roastAfterIdleWait(
   $: EngineInterface,
   isWaitOfSession: () => boolean,
-): Promise<void> {
-  if (!isSwitchedOn || isStretchRoasted) {
-    return
+): Promise<boolean> {
+  if (!isStretchToRoast()) {
+    return false
   }
   const sessionId = await $.session.id()
   const isRoastOfWait = (): boolean => isWaitOfSession() && isSwitchedOn
   const roast = await forkRoast($, IDLE_ROAST_PROMPT, async () => isRoastOfWait())
-  if (isRoastOfWait()) {
-    await useIdleRoast($, sessionId, roast)
-  }
+
+  return isRoastOfWait() && (await useIdleRoast($, sessionId, roast))
 }
 
-/** Sends the reply in `roast` to deliverIdleRoastReply, or shows why no roast was written. */
+/**
+ * Sends the reply in `roast` to deliverIdleRoastReply, or shows why no roast was written, and
+ * returns whether it sent the roast.
+ */
 async function useIdleRoast(
   $: EngineInterface,
   sessionId: string,
   roast: ForkedRoast,
-): Promise<void> {
+): Promise<boolean> {
   switch (roast.shown) {
     case RoastShown.Written:
-      await deliverIdleRoastReply($, sessionId, roast.text)
-      break
+      return deliverIdleRoastReply($, sessionId, roast.text)
     case RoastShown.NotWritten:
       showIdleRoastFailure($, roast.failure)
-      break
+
+      return false
     case RoastShown.WritingAgain:
-      break
+      return false
   }
 }
 
 /**
- * Sends the roast in `reply` to the session `sessionId` unless no point blocks the work. Either
- * verdict ends the stretch once it was used.
+ * Sends the roast in `reply` to the session `sessionId` unless no point blocks the work, and
+ * returns whether it sent the roast. Either verdict ends the stretch.
  */
 async function deliverIdleRoastReply(
   $: EngineInterface,
   sessionId: string,
   reply: string,
-): Promise<void> {
+): Promise<boolean> {
   const read = readIdleRoastReply(reply)
   if (!read.isRead) {
     showIdleRoastFailure($, {
@@ -168,17 +169,19 @@ async function deliverIdleRoastReply(
       reply,
     })
 
-    return
+    return false
   }
+  isStretchRoasted = true
   switch (read.model.verdict) {
     case IdleRoastVerdict.Roast:
       await deliverRoast($, { source: RoastSource.Idle, sessionId, text: read.model.roast })
-      break
+
+      return true
     case IdleRoastVerdict.NoBlockingPoint:
       $.ui.log(IDLE_ROAST_FOUND_NO_BLOCKING_POINT, { to: 'debug' })
-      break
+
+      return false
   }
-  isStretchRoasted = true
 }
 
 /**

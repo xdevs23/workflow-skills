@@ -25,6 +25,8 @@ import type {
 } from '../hooks/reminders/reminderPaneMessages'
 import type { ReadReminders, RemindersNotRead } from '../hooks/reminders/reminderStore'
 import type { Refusal as ReminderRefusal } from '../hooks/reminders/reminders'
+import type { HintRoastsOfSession } from '../hooks/roast/hintRoastQueue'
+import type { IdleWaitEnd } from '../hooks/roast/idleWait'
 import type { ForkView } from '../hooks/roast/messagesUnseenByFork'
 import type { PendingRoast, SessionRoast } from '../hooks/roast/roastState'
 import type { TextWithLine } from '../hooks/sendToModel'
@@ -450,6 +452,13 @@ declare module 'claude-code' {
       hintKindsSentInTurn: Shaped<HintKindsSentInTurn | null>
       /** The note on hints waiting to go to the model of the session; null while none waits. */
       pendingHintNote: Shaped<PendingHintNote | null>
+      /** The roasts on hints of the session not written yet; null while none waits. */
+      hintRoastsOfSession: Shaped<HintRoastsOfSession | null>
+      /**
+       * When the wait of the session after a turn ends, for the roasts after it; null before the
+       * first wait with a roast at its end, and once a wait was cancelled.
+       */
+      idleWaitEnd: IdleWaitEnd | null
       /** When the session is next sent the self-check; null before the user typed in it. */
       selfCheckSchedule: SelfCheckSchedule | null
       /**
