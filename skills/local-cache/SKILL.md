@@ -51,7 +51,8 @@ description: Decide where to put file not meant for repository, what to remove o
 - Keep in project memories only setup facts, preferences of user for this project and feedback from
   user on this project, which apply to this machine alone
 - Write each preference or feedback of user into memory with words of user, quoted verbatim, and
-  date. Never add summary or reading of your own
+  date. Only addition: few words on what quote was said about. Never add summary or reading of
+  your own
 - Leave out of them: what project already contains, what belongs in its tracked documentation, what
   a global rule or a skill already contains, violations or feedback not needed by next session
 - Never link global rule from memory

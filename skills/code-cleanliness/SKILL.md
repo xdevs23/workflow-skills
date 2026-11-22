@@ -33,7 +33,6 @@ Review change for code cleanliness only: readability and hygiene.
   `workflow-skills:writing-code`
 - Suggest one or more of these steps for every reported comment:
   - remove comment;
-  - shorten it;
   - write code in cleaner, more readable, more obvious way so it does not need a comment;
   - remove code described by the comment;
   - report content of comment, or code described by it, as rule violation

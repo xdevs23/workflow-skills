@@ -111,7 +111,8 @@ Draft: .cache/specs/reaction-emoji.html
   sub-unit using it
 - Chain by `Builds on:` sub-units that edit same lines of shared file that cannot be split, e.g.
   lockfile or sequence of migrations
-- Give every entry that has sub-units state of least advanced sub-unit under it
+- Give every entry that has sub-units `IN PROGRESS` while any sub-unit under it is `IN PROGRESS`.
+  Otherwise state of least advanced sub-unit under it
 - Build each sub-unit as separate unit, in separate worktree and on separate branch, with one or
   more workflow runs. You may start building on whatever base suits work
 - Deliver each sub-unit separately, such as through separate pull request against main branch of
@@ -162,9 +163,8 @@ Draft: .cache/specs/reaction-emoji.html
 State is fixed enum: one of three markers.
 
 - `RECORDED`: asked for by user. Not started
-- `READY`: user said it can be built. Whether unit is ready to build follows from words of user
-  alone
-- Mark sub-unit `READY` once everything needed by it is clear
+- `READY`: can be built. Entry without number in dot notation becomes `READY` on words of user
+  alone. Sub-unit becomes `READY` once everything needed by it is clear
 - `IN PROGRESS`: under construction, until entry deleted as section `Purpose` describes
 - Entry waiting on decision by user keeps its state. Handle open point as
   `workflow-skills:visual-decisions` describes

@@ -52,6 +52,12 @@ const ROAST_CONTENT_WITHOUT_REPEATS =
   `${ROAST_CONTENT} Leave out each point that an earlier roast in this conversation ` +
   'already made, unless the assistant repeated what that point names after that roast.'
 
+const NOT_A_POINT =
+  'The way the assistant got to the result is never a point: a step of a process that it ' +
+  'skipped or did another way, such as a skill it did not load or a record it did not keep, is ' +
+  'not a point. Code without comments or documents is not a point either, unless the user ' +
+  'asked for them.'
+
 const ROAST_BLUNTNESS = 'Be blunt: no praise, no softening.'
 
 const JSON_REPLY =
@@ -63,10 +69,8 @@ const ROAST_POINTS =
   `${ROAST_OPENING} Find one or more points where the result of the work falls short: code ` +
   'that is wrong, slow, unclean, poorly split into modules or poorly engineered, work that does ' +
   'not do what the user asked for or decided, or a statement about the result that the ' +
-  'transcript shows to be false. Judge the result alone, never the way the assistant got there. ' +
-  'A step of a process that the assistant skipped or did another way, such as a skill it did ' +
-  'not load or a record it did not keep, is not a point. Code without comments or documents is ' +
-  `not a point either, unless the user asked for them. ${ROAST_CONTENT_WITHOUT_REPEATS}`
+  `transcript shows to be false. Judge the result alone. ${NOT_A_POINT} ` +
+  ROAST_CONTENT_WITHOUT_REPEATS
 
 const IDLE_ROAST_REPLY_EXAMPLE = JSON.stringify({
   verdict: IdleRoastVerdict.Roast,
@@ -270,7 +274,8 @@ export function writeHintRoastPrompt({
     'after that reply. The assistant goes back to work with your roast, in place of the hint, ' +
     `which it does not see. ${DO_NOT_CONTINUE_WORK} Roast that reply. ` +
     `${tasks.join(' ')} Carry into the roast every step of the hint that the transcript does ` +
-    `not show done. ${ROAST_CONTENT} ${WRITE_ROAST_TO_ASSISTANT} ${ROAST_BLUNTNESS} ` +
+    `not show done. ${NOT_A_POINT} ${ROAST_CONTENT} ${WRITE_ROAST_TO_ASSISTANT} ` +
+    `${ROAST_BLUNTNESS} ` +
     `${JSON_REPLY} Reply with ${HINT_ROAST_REPLY_EXAMPLE}, or with ` +
     `${HINT_NO_POINT_REPLY_EXAMPLE} if the transcript proves no point.\n\nThe hint:\n\n` +
     hints.join('\n\n')
