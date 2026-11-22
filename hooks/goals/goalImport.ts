@@ -12,11 +12,12 @@ export type ImportedGoal = { goal: Goal; lostDependency?: number }
 
 /**
  * The open goals of `source` with the ids `pickedIds`, in their order on `source`, added to
- * `target` at `importedAt` as addGoal adds a goal. Each new goal has the text and the priority of
- * the source goal, and the id given to it by `newIds`, which has the new id of every open goal of
- * `source`, so a goal imported once is found on `target` and not imported again. A new goal
- * depends on the new goal made from the goal depended on by the source goal, when that goal is
- * imported with it or was imported before. Done marks and TODO entries are not imported.
+ * `target` as addGoal adds a goal. Each new goal has the text, the priority and the time of adding
+ * of the source goal, so it shows the age of the source goal. Its priority and dependency are set
+ * at `importedAt`. Each new goal has the id given to it by `newIds`, which has the new id of every
+ * open goal of `source`, so a goal imported once is found on `target` and not imported again. A
+ * new goal depends on the new goal made from the goal depended on by the source goal, when that
+ * goal is imported with it or was imported before. Done marks and TODO entries are not imported.
  */
 export function importedGoalsOf(
   source: Board,
@@ -35,7 +36,7 @@ export function importedGoalsOf(
   const imported: ImportedGoal[] = []
   let board = target
   for (const { goal, id } of picked.filter(each => !onTarget.has(each.id))) {
-    const added = addGoal(board, { id, text: goal.text }, importedAt)
+    const added = addGoal(board, { id, text: goal.text }, goal.addedAt)
     if (added.outcome !== Outcome.Changed) {
       continue
     }

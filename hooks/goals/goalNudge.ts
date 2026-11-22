@@ -172,7 +172,8 @@ async function submitNudgePrompt(
   if (goals === undefined) {
     return false
   }
-  const submitted = await submitToSession($, sessionId, { text: describeNudge(open, goals) })
+  const text = describeNudge(open, goals, await $.clock.now())
+  const submitted = await submitToSession($, sessionId, { text })
   if (submitted.outcome === PromptOutcome.Dropped) {
     showFailure($, describeNudgeNotSent(goals, submitted.reason))
   }

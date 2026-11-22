@@ -1,6 +1,6 @@
 import type { TurnCompleteReason } from 'claude-code'
 
-import type { Board, DefaultBranch, Goal, ListedGoal } from '../../types'
+import type { DefaultBranch, Goal, ListedGoal, PendingMissingWork } from '../../types'
 import { DEBUG_LOG_NOTE } from '../failureToast'
 import { AND_LIST } from '../listFormat'
 import type { TextWithLine } from '../sendToModel'
@@ -8,9 +8,9 @@ import { MAX_EVIDENCE_LENGTH, Refusal } from './board'
 import type { EvidenceRefusal } from './board'
 import { describeGoalWithPriority } from './goalListTexts'
 import { PANE_TITLE, nameGoal } from './goalPaneTexts'
-import { withNotesOnOpenGoals } from './goalToolTexts'
+import { describeAgeForModel, withNotesOnOpenGoals } from './goalToolTexts'
 import { GoalVerdict } from './goalVerdicts'
-import type { MissingWork, WaitingWork } from './goalVerdicts'
+import type { WaitingWork } from './goalVerdicts'
 
 // The texts of the goal check: the prompt that starts the goal checker, the prompt that sends the
 // goals found open to the main conversation, and the toasts on a check that failed.
@@ -53,18 +53,21 @@ const MISSING_WORK_OPENING =
 const MISSING_WORK_CLOSING = 'Finish what is missing.'
 
 /**
- * The note that sends `missing`, the goals of `board` judged open, to the main conversation, each
- * with the goals of `waiting` that wait for it, with its transcript line.
+ * The note that sends `missing`, the goals of `board` judged open, to the main conversation at
+ * `readAt`, each with its age and the goals of `waiting` that wait for it. The note comes with its
+ * transcript line.
  */
 export function describeMissingWork(
-  board: Board,
-  missing: readonly MissingWork[],
-  waiting: readonly WaitingWork[],
+  { board, missing, waiting }: PendingMissingWork,
+  readAt: number,
 ): TextWithLine {
   const goals = missing.map(({ goal, missing: what }) =>
-    [describeGoalWithPriority(goal), `Missing: ${what}`, ...describeWaiting(goal, waiting)].join(
-      '\n',
-    ),
+    [
+      describeGoalWithPriority(goal),
+      describeAgeForModel(goal, readAt),
+      `Missing: ${what}`,
+      ...describeWaiting(goal, waiting, readAt),
+    ].join('\n'),
   )
   const names = AND_LIST.format(missing.map(({ goal }) => nameGoal(goal.number)))
 
@@ -77,14 +80,18 @@ export function describeMissingWork(
   }
 }
 
-/** The lines on the goals of `waiting` that wait for `goal`, each followed by its own. */
-function describeWaiting(goal: Goal, waiting: readonly WaitingWork[]): string[] {
+/**
+ * The lines on the goals of `waiting` that wait for `goal`, each with its age at `readAt` and
+ * followed by its own.
+ */
+function describeWaiting(goal: Goal, waiting: readonly WaitingWork[], readAt: number): string[] {
   return waiting
     .filter(each => each.dependsOn === goal.number)
     .flatMap(each => [
       `Judged done, marked once ${nameGoal(goal.number)} is done: ` +
         describeGoalWithPriority(each.goal),
-      ...describeWaiting(each.goal, waiting),
+      describeAgeForModel(each.goal, readAt),
+      ...describeWaiting(each.goal, waiting, readAt),
     ])
 }
 

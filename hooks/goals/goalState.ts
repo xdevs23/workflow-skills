@@ -37,9 +37,12 @@ const seenBoard = atom({ plugin: 'workflow-skills', key: 'seenBoard' } as const,
 const idleStretch = atom({ plugin: 'workflow-skills', key: 'idleStretch' } as const, null)
 const waitingNudges = atom({ plugin: 'workflow-skills', key: 'waitingNudges' } as const, null)
 const goalCheck = atom({ plugin: 'workflow-skills', key: 'goalCheck' } as const, null)
+// A change of PendingMissingWork changes the tag, so the goals found open that another version of
+// the plugin stored read as absent.
 const pendingMissingWork = atom(
   { plugin: 'workflow-skills', key: 'pendingMissingWork' } as const,
   null,
+  { shape: 'board-with-missing-and-waiting-work' },
 )
 
 /**

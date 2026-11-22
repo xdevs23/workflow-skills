@@ -107,7 +107,7 @@ export const listGoals: MatchedHook<'tool.call', { tool: typeof LIST_GOALS_TOOL 
   if (read.outcome !== Outcome.Read) {
     return denyFailedUse($, GOAL_TOOLS_SUBJECT, read.failure)
   }
-  const listed = describeGoals(read.board)
+  const listed = describeGoals(read.board, await $.clock.now())
 
   return { result: isMainConversation(e) ? withNotesOnOpenGoals(read.board, listed) : listed }
 }

@@ -7,6 +7,7 @@ import { showFailure } from '../failureToast'
 import type { PendingTextSource } from '../pendingTexts'
 import { readCanSubmitPluginPrompt } from '../promptWaits'
 import { PromptOutcome, submitToSessionOrRestore } from '../sendToModel'
+import type { TextWithLine } from '../sendToModel'
 import { MILLISECONDS_PER_MINUTE } from '../timeUnits'
 import { runAfter, runAfterMainTurn, runDetached } from '../timedWork'
 import { startGoalCheck } from './goalCheck'
@@ -14,6 +15,7 @@ import type { CheckedStretch } from './goalCheck'
 import {
   MISSING_WORK_WAITING_AFTER_STOP,
   describeGoalsNotChecked,
+  describeMissingWork,
   describeMissingWorkNotSent,
   describeMissingWorkWaitingForPane,
 } from './goalCheckTexts'
@@ -127,7 +129,7 @@ export function waitAgainAfterCheck(
 /** The goals found open by the goal checker, as a source of texts sent to the model. */
 export function missingWorkSource($: EngineInterface): PendingTextSource {
   return {
-    takeNote: async () => (await takeMissingWork($))?.note,
+    takeNote: () => takeMissingWorkNote($),
     submit: () => submitMissingWork($),
     describeNotSent: describeMissingWorkNotSent,
     waitingAfterStopToast: MISSING_WORK_WAITING_AFTER_STOP,
@@ -144,14 +146,14 @@ async function submitMissingWork($: EngineInterface): Promise<void> {
   if (pending === undefined) {
     return
   }
-  const { sessionId, note } = pending
+  const { sessionId } = pending
   const reminded = newStretch(sessionId, IdlePhase.Running)
   await updateIdleStretch($, sessionId, () => reminded)
   // The prompt shows in the transcript itself, so it is sent without a transcript line.
   const submitted = await submitToSessionOrRestore(
     $,
     sessionId,
-    { text: note.text },
+    { text: describeMissingWork(pending, await $.clock.now()).text },
     async () => {
       await updatePendingMissingWork($, sessionId, waiting => waiting ?? pending)
       await waitAgain($, reminded)
@@ -160,6 +162,16 @@ async function submitMissingWork($: EngineInterface): Promise<void> {
   if (submitted.outcome === PromptOutcome.Dropped) {
     showFailure($, describeMissingWorkNotSent(submitted.reason))
   }
+}
+
+/**
+ * Removes the goals found open from the state, and returns their note at the time of the call, if
+ * any wait for the session.
+ */
+async function takeMissingWorkNote($: EngineInterface): Promise<TextWithLine | undefined> {
+  const pending = await takeMissingWork($)
+
+  return pending && describeMissingWork(pending, await $.clock.now())
 }
 
 /** Removes the goals found open from the state, and returns them, if any wait for the session. */

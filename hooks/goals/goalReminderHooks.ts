@@ -91,12 +91,13 @@ async function takeGoalChanges(
     return undefined
   }
   const { board } = inState
+  const readAt = await $.clock.now()
   // With nothing to send, the check writes no text and leaves the board seen as it is.
-  if (describeGoalChangesSent(await readSeenBoard($, sessionId), board) === undefined) {
+  if (describeGoalChangesSent(await readSeenBoard($, sessionId), board, readAt) === undefined) {
     return undefined
   }
   const before = await exchangeSeenBoard($, sessionId, board)
-  const sent = describeGoalChangesSent(before, board)
+  const sent = describeGoalChangesSent(before, board, readAt)
 
   return sent === undefined
     ? undefined

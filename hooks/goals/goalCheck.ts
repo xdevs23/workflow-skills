@@ -25,7 +25,6 @@ import {
   describeEvidenceRefused,
   describeGoalsNotJudged,
   describeMarksNotSaved,
-  describeMissingWork,
   describeVerdictsNotReported,
   writeGoalCheckPrompt,
 } from './goalCheckTexts'
@@ -155,8 +154,8 @@ async function applyVerdicts(
   const marked = await markGoalsDoneInSession($, sessionId, sorted.done)
   const waiting = settleMarks($, marked)
   if (sorted.missing.length > 0) {
-    const note = describeMissingWork(board, sorted.missing, waiting)
-    await updatePendingMissingWork($, sessionId, () => ({ sessionId, note }))
+    const pending = { sessionId, board, missing: sorted.missing, waiting }
+    await updatePendingMissingWork($, sessionId, () => pending)
     submitAddedText($, missingWork)
   }
   if (sorted.notJudged.length > 0) {

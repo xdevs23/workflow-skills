@@ -3,14 +3,13 @@ import { AND_LIST } from '../listFormat'
 import type { TextWithLine } from '../sendToModel'
 import { openGoalsByIdOf, openGoalsByPriorityOf, openGoalsOf } from './board'
 import { ChangeKind, changesBetween } from './boardChanges'
-import { MarkRemover, doneMarkOf } from './doneMark'
-import { dependedGoalOf, unfinishedDependencyOf } from './dependency'
+import { MarkRemover } from './doneMark'
+import { dependedGoalOf } from './dependency'
 import type { OpenGoals } from './dependency'
-import { describeUnfinishedDependency, nameGoalWithPriority, priorityTagOf } from './goalListTexts'
+import { nameGoalWithPriority, priorityTagOf } from './goalListTexts'
 import { PANE_TITLE, nameGoal } from './goalPaneTexts'
 import { describePriority, priorityOf } from './priority'
-import { describeDoneMarkForModel } from './goalToolTexts'
-import { describeEntry, describeTodoNumber } from './todoEntry'
+import { describeOpenGoalDetails } from './goalToolTexts'
 
 /** The toast for a board that could not be read for a reminder, with the failure from the store. */
 export function describeReminderNotRead(storeFailure: string): string {
@@ -28,70 +27,70 @@ export function describeOpenGoalsNotSent(reason: string): string {
 const OPEN_GOALS_HEADING = '# Open goals, by priority (P0 most important)'
 
 /**
- * The open goals of `board` as every list sent to the main conversation writes them: by priority,
- * with their priorities, the goals each of them depends on, their done marks and their TODO
- * entries.
+ * The open goals of `board` as every list sent to the main conversation at `readAt` shows them: by
+ * priority, with their priorities, their ages, the goals each of them depends on, their done marks
+ * and their TODO entries.
  */
-export function describeOpenGoalsList(board: Board): string | undefined {
+export function describeOpenGoalsList(board: Board, readAt: number): string | undefined {
   const goals = openGoalsByPriorityOf(board)
   const open = openGoalsByIdOf(board)
 
   return goals.length === 0
     ? undefined
-    : [OPEN_GOALS_HEADING, ...goals.flatMap(goal => describeGoalWithTodos(open, goal))].join('\n')
+    : [
+        OPEN_GOALS_HEADING,
+        ...goals.flatMap(goal => describeGoalWithTodos(open, goal, readAt)),
+      ].join('\n')
 }
 
 /**
- * The open goals on `now` as describeOpenGoalsList writes them, followed by the note on
- * the goals added, edited, unmarked, prioritized, made dependent and cleared by the user since the
- * model saw the board as `seen`. The list contains only open goals, so the note goes with it.
+ * The open goals on `now` as `describeOpenGoalsList` returns them at `readAt`, followed by the note
+ * on the goals added, edited, unmarked, prioritized, made dependent and cleared by the user since
+ * the model saw the board as `seen`. The list contains only open goals, so the note is sent with
+ * it.
  */
-export function describeOpenGoalsSent(now: Board, seen: Board | null): TextWithLine | undefined {
+export function describeOpenGoalsSent(
+  now: Board,
+  seen: Board | null,
+  readAt: number,
+): TextWithLine | undefined {
   return describeSent(
     now,
-    describeOpenGoalsList(now),
+    describeOpenGoalsList(now, readAt),
     seen === null ? [] : changesSince(seen, now),
   )
 }
 
 /**
  * The note on the goals added, edited, unmarked, prioritized, made dependent and cleared by the
- * user since the model saw the board as `seen`, or the open goals on `now` for a model that has
- * not seen a board yet.
+ * user since the model saw the board as `seen`, or, for a model that has not seen a board yet, the
+ * open goals on `now` read at `readAt`.
  */
-export function describeGoalChangesSent(seen: Board | null, now: Board): TextWithLine | undefined {
+export function describeGoalChangesSent(
+  seen: Board | null,
+  now: Board,
+  readAt: number,
+): TextWithLine | undefined {
   return seen === null
-    ? describeOpenGoalsSent(now, seen)
+    ? describeOpenGoalsSent(now, seen, readAt)
     : describeSent(now, undefined, changesSince(seen, now))
 }
 
-function describeGoalWithTodos(open: OpenGoals, goal: Goal): string[] {
+function describeGoalWithTodos(open: OpenGoals, goal: Goal, readAt: number): string[] {
   const label = `${goal.number}. `
   const indent = ' '.repeat(label.length)
   const tag = priorityTagOf(goal)
-  const unfinished = unfinishedDependencyOf(open, goal)
-  const mark = doneMarkOf(goal)
 
   return [
     `${label}${tag === undefined ? '' : `${tag} `}${goal.text}`,
-    ...(unfinished === undefined ? [] : [`${indent}${describeUnfinishedDependency(unfinished)}`]),
-    ...(mark === undefined ? [] : [`${indent}${describeDoneMarkForModel(mark)}`]),
-    ...goal.todos.map(todo => `${indent}${describeEntry(todo)}`),
+    ...describeOpenGoalDetails(open, goal, readAt).map(line => `${indent}${line}`),
   ]
 }
 
-function describeUnsatisfiedGoal(open: OpenGoals, goal: Goal): string {
-  const unfinished = unfinishedDependencyOf(open, goal)
-  const mark = doneMarkOf(goal)
-  const attached = goal.todos
-    .map(todo => `${describeTodoNumber(todo.number)} (${todo.title})`)
-    .join(', ')
-
+function describeUnsatisfiedGoal(open: OpenGoals, goal: Goal, readAt: number): string {
   return [
     `${nameGoalWithPriority(goal)} is not satisfied yet: ${asSentence(goal.text)}`,
-    ...(unfinished === undefined ? [] : [describeUnfinishedDependency(unfinished)]),
-    ...(mark === undefined ? [] : [asSentence(describeDoneMarkForModel(mark))]),
-    ...(goal.todos.length === 0 ? [] : [`Attached: ${attached}.`]),
+    ...describeOpenGoalDetails(open, goal, readAt).map(asSentence),
   ].join(' ')
 }
 
@@ -124,15 +123,16 @@ const NUDGE_FOR_SEVERAL_GOALS: NudgeTexts = {
 }
 
 /**
- * The prompt sent when the user presses Nudge on `goals`: one paragraph for each goal, with its
- * dependency and its done mark, between the request to finish the goals and how to finish them.
+ * The prompt sent at `readAt` when the user presses Nudge on `goals`: one paragraph for each goal,
+ * with its age, its dependency, its done mark and its TODO entries, between the request to finish
+ * the goals and how to finish them.
  */
-export function describeNudge(open: OpenGoals, goals: GoalsToNudge): string {
+export function describeNudge(open: OpenGoals, goals: GoalsToNudge, readAt: number): string {
   const texts = goals.length === 1 ? NUDGE_FOR_ONE_GOAL : NUDGE_FOR_SEVERAL_GOALS
 
   return [
     texts.opening,
-    ...goals.map(goal => describeUnsatisfiedGoal(open, goal)),
+    ...goals.map(goal => describeUnsatisfiedGoal(open, goal, readAt)),
     texts.closing,
   ].join('\n\n')
 }

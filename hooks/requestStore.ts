@@ -30,14 +30,14 @@ import {
 } from './requests'
 import type { DoneRequest } from './requests'
 import { RequestNotReadError, RequestNotSavedError } from './requestStoreFailure'
-import { MILLISECONDS_PER_HOUR } from './timeUnits'
+import { MILLISECONDS_PER_DAY } from './timeUnits'
 
 /**
  * The requests of another session are deleted at the start of a process once the newest of their
  * records is this old, so the store contains no requests of sessions ended long ago. The age
  * leaves a month for `claude --resume` to bring a session back with its requests.
  */
-export const SESSION_REQUESTS_MAX_AGE_MS = 30 * 24 * MILLISECONDS_PER_HOUR
+export const SESSION_REQUESTS_MAX_AGE_MS = 30 * MILLISECONDS_PER_DAY
 
 function storeKeyOf(sessionId: string, id: string): string {
   return recordKeyOf(RecordKind.Request, sessionId, id)

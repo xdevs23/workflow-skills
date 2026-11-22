@@ -9,6 +9,7 @@ import type {
 import type { GoalCheckPhase } from '../hooks/goals/goalCheck'
 import type { IdlePhase } from '../hooks/goals/goalIdleCheck'
 import type { GoalPaneAction, GoalSaveResult } from '../hooks/goals/goalPaneMessages'
+import type { MissingWork, WaitingWork } from '../hooks/goals/goalVerdicts'
 import type { RowMode } from '../hooks/goals/goalRowState'
 import type { Priority } from '../hooks/goals/priority'
 import type { HintKindName } from '../hooks/hintKind'
@@ -29,7 +30,6 @@ import type { HintRoastsOfSession } from '../hooks/roast/hintRoastQueue'
 import type { IdleWaitEnd } from '../hooks/roast/idleWait'
 import type { ForkView } from '../hooks/roast/messagesUnseenByFork'
 import type { PendingRoast, SessionRoast } from '../hooks/roast/roastState'
-import type { TextWithLine } from '../hooks/sendToModel'
 import type { ActivityOfSession } from '../hooks/sessionState'
 
 /** Records that the user marked a request done. */
@@ -226,8 +226,16 @@ export type GoalCheck = {
   goals: readonly ListedGoal[]
 }
 
-/** The goals found open by the goal checker of a session, waiting to go to its model. */
-export type PendingMissingWork = { sessionId: string; note: TextWithLine }
+/**
+ * The goals found open by the goal checker of a session on `board`, with the goals judged done that
+ * wait for them, waiting to go to its model.
+ */
+export type PendingMissingWork = {
+  sessionId: string
+  board: Board
+  missing: readonly MissingWork[]
+  waiting: readonly WaitingWork[]
+}
 
 /** A goal pressed with Nudge, by its id and the number shown to the user. */
 export type NudgedGoal = { id: string; number: number }
@@ -442,7 +450,7 @@ declare module 'claude-code' {
       /** The last goal check of the session; null before the first check. */
       goalCheck: GoalCheck | null
       /** The goals found open by the goal checker of the session; null while none waits. */
-      pendingMissingWork: PendingMissingWork | null
+      pendingMissingWork: Shaped<PendingMissingWork | null>
       /** The nudges of the session waiting to be sent to the model; null while none waits. */
       waitingNudges: WaitingNudges | null
       /**

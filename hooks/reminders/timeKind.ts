@@ -1,6 +1,7 @@
 import type { SelectOption } from 'claude-code'
 
-import { MILLISECONDS_PER_HOUR, MILLISECONDS_PER_MINUTE } from '../timeUnits'
+import { HOUR, MINUTE } from '../timeUnits'
+import type { UnitOfTime } from '../timeUnits'
 import { CadenceProblem, FieldKind, listKind } from './cadenceKind'
 import type { CadenceKind, ListedKind } from './cadenceKind'
 
@@ -13,28 +14,12 @@ export enum TimeUnit {
   Hours = 'hours',
 }
 
-/**
- * A unit by its length, how the cadence line and the dropdown write an amount of it, and the label
- * of the field the amount is typed into.
- */
-type UnitOfTime = { milliseconds: number; amount: Intl.NumberFormat; amountLabel: string }
+/** A unit of time with the label of the field the amount is typed into. */
+type UnitOfInterval = UnitOfTime & { amountLabel: string }
 
-const UNITS: Record<TimeUnit, UnitOfTime> = {
-  [TimeUnit.Minutes]: {
-    milliseconds: MILLISECONDS_PER_MINUTE,
-    amount: amountFormatOf('minute'),
-    amountLabel: 'Minutes',
-  },
-  [TimeUnit.Hours]: {
-    milliseconds: MILLISECONDS_PER_HOUR,
-    amount: amountFormatOf('hour'),
-    amountLabel: 'Hours',
-  },
-}
-
-/** Writes an amount of `unit` in words, such as "1 hour" and "2 hours". */
-function amountFormatOf(unit: 'minute' | 'hour'): Intl.NumberFormat {
-  return new Intl.NumberFormat('en', { style: 'unit', unit, unitDisplay: 'long' })
+const UNITS: Record<TimeUnit, UnitOfInterval> = {
+  [TimeUnit.Minutes]: { ...MINUTE, amountLabel: 'Minutes' },
+  [TimeUnit.Hours]: { ...HOUR, amountLabel: 'Hours' },
 }
 
 /**

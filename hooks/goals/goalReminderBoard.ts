@@ -42,7 +42,7 @@ export async function listOpenGoals(
   board: Board,
 ): Promise<GoalList> {
   const seenBefore = await exchangeSeenBoard($, sessionId, board)
-  const sent = describeOpenGoalsSent(board, seenBefore)
+  const sent = describeOpenGoalsSent(board, seenBefore, await $.clock.now())
   if (sent === undefined) {
     return { sent, seenBefore }
   }

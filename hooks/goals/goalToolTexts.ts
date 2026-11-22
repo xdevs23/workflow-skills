@@ -1,4 +1,5 @@
 import type { Board, DoneMark, Goal } from '../../types'
+import { describeElapsedTime } from '../elapsedTime'
 import type { HookSubject } from '../hookFailure'
 import { LOOK_UP_TERMS_AND_RULES } from '../lookUpTermsAndRules'
 import { sortedByNumber } from '../numbered'
@@ -24,10 +25,10 @@ import type { TodoEntry } from './todoEntry'
 
 export const LIST_GOALS_DESCRIPTION = [
   'Lists the goals set by the user on the goals board of this session: each open goal with its',
-  'number, its priority if the user set one, the goal it depends on while that goal is not marked',
-  'as done, its done mark if the open goal has one, and the TODO entries attached to the open',
-  'goal, then the goals cleared by the user. The open goals are listed by priority, P0 the most',
-  'important and goals',
+  'number, its priority if the user set one, how long it has been open, the goal it depends on',
+  'while that goal is not marked as done, its done mark if the open goal has one, and the TODO',
+  'entries attached to the open goal, then the goals cleared by the user. The open goals are',
+  'listed by priority, P0 the most important and goals',
   'without a priority last. Only the user adds, edits, prioritizes and clears goals, and sets',
   'which goal depends on which. Goals of other sessions are not listed. The open goals are work',
   'the user needs done. Check them before you report work as finished. After you have been idle',
@@ -127,10 +128,38 @@ function describeGoalNotOpen(goal: number): string {
 }
 
 /**
- * The open goals by priority, with the goals each of them depends on, their done marks and the
- * entries attached to them, then the cleared goals by number.
+ * The line that shows the model how long an open goal has been open at `readAt`, such as "Open for
+ * 13 days, since Nov 9." and "Open for less than a minute, since 06:10."
  */
-export function describeGoals(board: Board): string {
+export function describeAgeForModel(goal: Goal, readAt: number): string {
+  const { elapsed, start } = describeElapsedTime(goal.addedAt, readAt)
+
+  return `Open for ${elapsed}, since ${start}.`
+}
+
+/**
+ * The lines that show the model `goal`, an open goal of `open`, below its text at `readAt`: its
+ * age, the goal it depends on while that goal is not marked as done, its done mark and the TODO
+ * entries attached to it.
+ */
+export function describeOpenGoalDetails(open: OpenGoals, goal: Goal, readAt: number): string[] {
+  const unfinished = unfinishedDependencyOf(open, goal)
+  const mark = doneMarkOf(goal)
+  const attached = goal.todos.map(describeEntry).join(', ')
+
+  return [
+    describeAgeForModel(goal, readAt),
+    ...(unfinished === undefined ? [] : [describeUnfinishedDependency(unfinished)]),
+    ...(mark === undefined ? [] : [describeDoneMarkForModel(mark)]),
+    ...(goal.todos.length === 0 ? [] : [`Attached: ${attached}`]),
+  ]
+}
+
+/**
+ * The open goals by priority at `readAt`, with their ages, the goals each of them depends on, their
+ * done marks and the entries attached to them, then the cleared goals by number.
+ */
+export function describeGoals(board: Board, readAt: number): string {
   const open = openGoalsByPriorityOf(board)
   const cleared = sortedByNumber(clearedGoalsOf(board))
   const byId = openGoalsByIdOf(board)
@@ -138,22 +167,13 @@ export function describeGoals(board: Board): string {
   return [
     open.length === 0
       ? NO_OPEN_GOAL
-      : open.map(goal => describeOpenGoal(byId, goal)).join('\n'),
+      : open.map(goal => describeOpenGoal(byId, goal, readAt)).join('\n'),
     ...(cleared.length === 0
       ? []
       : [['Cleared by the user:', ...cleared.map(describeGoal)].join('\n')]),
   ].join('\n\n')
 }
 
-function describeOpenGoal(open: OpenGoals, goal: Goal): string {
-  const unfinished = unfinishedDependencyOf(open, goal)
-  const mark = doneMarkOf(goal)
-  const attached = goal.todos.map(describeEntry).join(', ')
-
-  return [
-    describeGoalWithPriority(goal),
-    ...(unfinished === undefined ? [] : [describeUnfinishedDependency(unfinished)]),
-    ...(mark === undefined ? [] : [describeDoneMarkForModel(mark)]),
-    ...(goal.todos.length === 0 ? [] : [`Attached: ${attached}`]),
-  ].join('\n')
+function describeOpenGoal(open: OpenGoals, goal: Goal, readAt: number): string {
+  return [describeGoalWithPriority(goal), ...describeOpenGoalDetails(open, goal, readAt)].join('\n')
 }
