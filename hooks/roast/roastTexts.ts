@@ -140,8 +140,16 @@ const FORK_VIEW_UNKNOWN_CAUSES: Record<ForkViewUnknown, string> = {
 /** The line in the debug log for a fork that got the prompt alone for `cause`. */
 export function describeForkViewUnknown(cause: ForkViewUnknown): string {
   return (
-    'The fork that writes the roast got the prompt alone and may lack the newest messages of the ' +
-    `main conversation. ${FORK_VIEW_UNKNOWN_CAUSES[cause]}`
+    'The fork that writes the roast got no messages of the main conversation in front of the ' +
+    `prompt and may lack the newest ones. ${FORK_VIEW_UNKNOWN_CAUSES[cause]}`
+  )
+}
+
+/** The line in the debug log for a fork that got no list of running agents, for `cause`. */
+export function describeRunningAgentsUnknown(cause: string): string {
+  return (
+    'The fork that writes the roast got no list of the running background agents, since the ' +
+    `engine did not list them: ${cause}`
   )
 }
 

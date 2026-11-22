@@ -1,4 +1,5 @@
 import { PendingTextPlace } from '../pendingTexts'
+import type { RunningAgent } from '../runningAgents'
 import type { MessageAsRead } from './messagesUnseenByFork'
 import {
   CompactionRoastVerdict,
@@ -174,6 +175,28 @@ export function writePromptAfterUnseenMessages(
     'messages came after it, as a JSON array of messages with their text, their tool calls and ' +
     'the text of each tool result. Read them as the end of the transcript:\n\n' +
     `${JSON.stringify(unseen)}\n\n${prompt}`
+  )
+}
+
+/**
+ * `prompt` for a fork, after `agents`, the background agents of the session that are still
+ * running, with the request to roast each one that the work no longer needs. Where `agents` is
+ * empty, the function returns `prompt` alone, without that request.
+ */
+export function writePromptAfterRunningAgents(
+  prompt: string,
+  agents: readonly RunningAgent[],
+): string {
+  if (agents.length === 0) {
+    return prompt
+  }
+
+  return (
+    'This JSON array lists each background agent of this conversation that is running, with id, ' +
+    'agent type, task description and, where given, name. The assistant stops an agent by ' +
+    'passing the id listed with it to TaskStop. Count as a point each listed agent whose result ' +
+    'the work no longer needs, and tell the assistant to stop it:\n\n' +
+    `${JSON.stringify(agents)}\n\n${prompt}`
   )
 }
 

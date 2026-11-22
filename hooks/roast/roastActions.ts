@@ -4,13 +4,18 @@ import { messageOf } from '../errorMessage'
 import { moveKeyboardTo } from '../paneFocus'
 import { randomWaitAfter } from '../retryWait'
 import type { RetryWaits } from '../retryWait'
+import { listRunningAgents } from '../runningAgents'
 import { MILLISECONDS_PER_SECOND } from '../timeUnits'
 import { runEvery } from '../timedWork'
 import { readMessagesUnseenByFork } from './messagesUnseenByFork'
 import { RoastNotWrittenCause, isPassingApiError, thrownFailure } from './roastFailure'
 import type { RoastFailure } from './roastFailure'
 import { ROAST_PANE, SEND_KEY } from './roastNames'
-import { writePromptAfterUnseenMessages, writeRoastPrompt } from './roastPromptTexts'
+import {
+  writePromptAfterRunningAgents,
+  writePromptAfterUnseenMessages,
+  writeRoastPrompt,
+} from './roastPromptTexts'
 import { RoastVerdict, readRoastReply } from './roastReply'
 import {
   RoastShown,
@@ -23,6 +28,7 @@ import type { RoastProgressOf, RoastRun } from './roastState'
 import {
   PANE_TITLE,
   describeForkViewUnknown,
+  describeRunningAgentsUnknown,
   describeSecondsNotShown,
 } from './roastTexts'
 
@@ -182,18 +188,35 @@ async function askFork(
 }
 
 /**
- * `prompt` for a fork, after the messages of the main conversation that the fork does not see.
- * Where those messages are unknown, `prompt` alone, and the debug log gets the reason.
+ * `prompt` for a fork, after the background agents that still run and the messages of the main
+ * conversation that the fork does not see. Where the agents or those messages are unknown, the
+ * prompt omits them, and the debug log gets the reason.
  */
 export async function writeForkPrompt($: EngineInterface, prompt: string): Promise<string> {
+  const promptWithAgents = await writePromptAfterKnownAgents($, prompt)
   const unseen = await readMessagesUnseenByFork($)
   if (!unseen.isKnown) {
     $.ui.log(describeForkViewUnknown(unseen.cause), { to: 'debug' })
 
+    return promptWithAgents
+  }
+
+  return writePromptAfterUnseenMessages(promptWithAgents, unseen.messages)
+}
+
+/**
+ * `prompt` after the running background agents. Where the engine did not list them, `prompt`
+ * alone, and the debug log gets the reason.
+ */
+async function writePromptAfterKnownAgents($: EngineInterface, prompt: string): Promise<string> {
+  const running = await listRunningAgents($)
+  if (!running.isKnown) {
+    $.ui.log(describeRunningAgentsUnknown(running.cause), { to: 'debug' })
+
     return prompt
   }
 
-  return writePromptAfterUnseenMessages(prompt, unseen.messages)
+  return writePromptAfterRunningAgents(prompt, running.agents)
 }
 
 /** What a fork reply to a roast shows: the roast, the refusal of the roast, or a failure. */
