@@ -30,8 +30,7 @@ export const PANE_TITLE = 'Roast'
 export const ROAST_ARGUMENT_HINT = '[point you found]'
 
 export const ROAST_DESCRIPTION =
-  'Roast this session where it disregarded the rules it was given or the facts, and send the ' +
-  'roast to Claude'
+  'Roast this session where the result of its work falls short, and send the roast to Claude'
 
 export const ROAST_SUBJECT: HookSubject = { name: 'roast' }
 

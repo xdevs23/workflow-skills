@@ -37,9 +37,9 @@ const ROASTER_SOURCE =
   'and it does not have their authority.'
 
 const ROAST_POINT_EVIDENCE =
-  'For each point, name the rule by its name, such as a section of a skill, or name the fact ' +
-  'from the transcript, without quoting the text of the rule. Say what the assistant did ' +
-  'instead and what that cost. Name only points the transcript proves.'
+  'For each point, name where the transcript shows it, such as a file, a diff or the output of ' +
+  'a command, and say what it makes worse in the result of the work. Name only points the ' +
+  'transcript proves.'
 
 const ROAST_MISSED_GOAL =
   'Where the work does not reach a goal of the user, add at least one line that names the goal ' +
@@ -60,10 +60,12 @@ const JSON_REPLY =
 
 /** The request for the points of the roast, without the reply where the transcript proves none. */
 const ROAST_POINTS =
-  `${ROAST_OPENING} Find one or more points where the assistant disregarded the rules or the ` +
-  'facts in its context: an instruction or a decision of the user, a rule of an instruction file ' +
-  'or a loaded skill, or a fact that a tool result or the user stated. ' +
-  ROAST_CONTENT_WITHOUT_REPEATS
+  `${ROAST_OPENING} Find one or more points where the result of the work falls short: code ` +
+  'that is wrong, slow, unclean, poorly split into modules or poorly engineered, work that does ' +
+  'not do what the user asked for or decided, or a statement about the result that the ' +
+  'transcript shows to be false. Judge the result alone, never the way the assistant got there. ' +
+  'A step of a process that the assistant skipped or did another way, such as a skill it did ' +
+  `not load or a record it did not keep, is not a point. ${ROAST_CONTENT_WITHOUT_REPEATS}`
 
 const IDLE_ROAST_REPLY_EXAMPLE = JSON.stringify({
   verdict: IdleRoastVerdict.Roast,
@@ -219,9 +221,9 @@ export function writeRoastPrompt(finding: string): string {
     'roast. The user wrote the complaint. The assistant did not. The complaint is about the work ' +
     'of the assistant, and the user addresses the complaint to you, the roaster. Do not answer ' +
     'the complaint in the roast. Use the complaint only to write the roast to the assistant: ' +
-    'take the complaint into the roast as a point, written to the assistant as "you". The ' +
-    'assistant does not see the complaint. Do not quote it, and write the point from the ' +
-    'transcript alone.' +
+    'take the complaint into the roast as a point, whatever the complaint is about, written to ' +
+    'the assistant as "you". The assistant does not see the complaint. Do not quote it, and ' +
+    'write the point from the transcript alone.' +
     `\n\n${JSON_REPLY} Where the transcript proves the complaint, reply with ` +
     `${ROAST_REPLY_EXAMPLE}. Where the transcript proves only some claims of the complaint, ` +
     'write the roast on those claims alone, and leave every other claim out of the roast ' +

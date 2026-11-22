@@ -29,17 +29,18 @@ Then run a skill, such as `/workflow-skills:implement`.
 - **Requests**: Claude sends a request for work that only you can do outside the session, such as
   power-cycling a board, and keeps working. Press Done in the Requests pane or run
   `/reply <number>`, with a reply after it if Claude needs one
-- **Roast**: `/roast` writes where Claude disregarded the rules it was given or the facts in its
-  context, and sends it to Claude after your comment if you add one. The roast opens with a line
-  for Claude: the roaster, a side agent, wrote it, and it does not have your authority. During a
-  turn, Claude reads it with the next tool result. After you stopped Claude with Esc, the roast
-  starts a new turn. `/roast <point>` puts a point you found yourself into the roast. The roast
-  leaves out each claim of the point that the transcript does not show. Where the transcript shows
-  none of them, the Roast pane shows the reason in place of the roast, and you cannot send the
-  roast. After `/idle-roast on`, Claude gets a roast of what blocks the work once it has been idle
-  for about five minutes. The switch applies to this session only, and `/idle-roast off` switches
-  it off. When a compaction starts, a fork roasts the chat before it, and Claude gets that roast
-  after the summary, so Claude still sees the mistakes made before the compaction
+- **Roast**: `/roast` writes where the result of Claude's work falls short, such as code that is
+  wrong or unclean, or work that does not do what you asked for. It judges the result and not the
+  way Claude got there, and sends the roast to Claude after your comment if you add one. The roast
+  opens with a line for Claude: the roaster, a side agent, wrote it, and it does not have your
+  authority. During a turn, Claude reads it with the next tool result. After you stopped Claude with
+  Esc, the roast starts a new turn. `/roast <point>` puts a point you found yourself into the roast.
+  The roast leaves out each claim of the point that the transcript does not show. Where the
+  transcript shows none of them, the Roast pane shows the reason in place of the roast, and you
+  cannot send the roast. After `/idle-roast on`, Claude gets a roast of what blocks the work once it
+  has been idle for about five minutes. The switch applies to this session only, and `/idle-roast
+  off` switches it off. When a compaction starts, a fork roasts the chat before it, and Claude gets
+  that roast after the summary, so Claude still sees the mistakes made before the compaction
 
 ## License
 
