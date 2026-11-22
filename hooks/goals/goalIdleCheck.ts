@@ -178,7 +178,7 @@ async function takeMissingWorkNote($: EngineInterface): Promise<TextWithLine | u
 async function takeMissingWork($: EngineInterface): Promise<PendingMissingWork | undefined> {
   let taken: PendingMissingWork | undefined
   await updatePendingMissingWork($, await $.session.id(), pending => {
-    // A retried write runs this again, and its last run decides.
+    // A retried write runs this again, and the later run overwrites what the earlier one set.
     taken = pending ?? undefined
 
     return null
@@ -206,7 +206,7 @@ async function replaceStretch(
 ): Promise<boolean> {
   let isReplaced = false
   await updateIdleStretch($, current.sessionId, stretch => {
-    // A retried write runs this again, and its last run decides.
+    // A retried write runs this again, and the later run overwrites what the earlier one set.
     isReplaced = isSameStretch(stretch, current)
 
     return isReplaced ? next : stretch

@@ -31,6 +31,7 @@ import type { IdleWaitEnd } from '../hooks/roast/idleWait'
 import type { ForkView } from '../hooks/roast/messagesUnseenByFork'
 import type { PendingRoast, SessionRoast } from '../hooks/roast/roastState'
 import type { ActivityOfSession } from '../hooks/sessionState'
+import type { EntryNumber } from '../hooks/todoEntry'
 
 /** Records that the user marked a request done. */
 export type Reply = {
@@ -67,8 +68,7 @@ export type SessionRequests = {
 
 /** A TODO entry attached to a goal, known by its number in TODO.md. */
 export type AttachedTodo = {
-  /** The number of the entry in TODO.md, such as "41", or "41.1" for a sub-unit. */
-  number: string
+  number: EntryNumber
   title: string
   attachedAt: number
 }

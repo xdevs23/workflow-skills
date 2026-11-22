@@ -29,7 +29,7 @@ const OPEN_GOALS_HEADING = '# Open goals, by priority (P0 most important)'
 /**
  * The open goals of `board` as every list sent to the main conversation at `readAt` shows them: by
  * priority, with their priorities, their ages, the goals each of them depends on, their done marks
- * and their TODO entries.
+ * and the TODO entries attached to them.
  */
 export function describeOpenGoalsList(board: Board, readAt: number): string | undefined {
   const goals = openGoalsByPriorityOf(board)
@@ -124,8 +124,8 @@ const NUDGE_FOR_SEVERAL_GOALS: NudgeTexts = {
 
 /**
  * The prompt sent at `readAt` when the user presses Nudge on `goals`: one paragraph for each goal,
- * with its age, its dependency, its done mark and its TODO entries, between the request to finish
- * the goals and how to finish them.
+ * with its age, its dependency, its done mark and the TODO entries attached to it, between the
+ * request to finish the goals and how to finish them.
  */
 export function describeNudge(open: OpenGoals, goals: GoalsToNudge, readAt: number): string {
   const texts = goals.length === 1 ? NUDGE_FOR_ONE_GOAL : NUDGE_FOR_SEVERAL_GOALS

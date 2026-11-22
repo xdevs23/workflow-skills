@@ -59,7 +59,7 @@ export async function registerDeclaredTools(
   await Promise.all(declared.declaredSpecs.map(spec => $.tool.register(spec)))
 }
 
-/** Creates the record of the tools of this plugin, for the features to declare theirs in. */
+/** Creates the record of the tools of this plugin, for the features to declare tools in. */
 export function createPluginTools(): DeclaredTools {
   return new DeclaredTools()
 }

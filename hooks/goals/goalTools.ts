@@ -13,7 +13,7 @@ import { denyFailedHook, denyFailedUse } from '../hookFailure'
 import type { ToolArguments } from '../inputs'
 import { toolName } from '../names'
 import { Outcome } from './board'
-import type { ChangeRefused, Changed, Unchanged } from './board'
+import type { AttachRefused, Changed, DetachRefused, Unchanged } from './board'
 import { describeStoreFailure } from './boardStore'
 import type { Failed } from './boardStore'
 import { attachTodoInSession, detachTodoInSession, readBoardOfSession } from './goalActions'
@@ -46,7 +46,9 @@ import {
   describeRefusal,
   withNotesOnOpenGoals,
 } from './goalToolTexts'
-import { readEntryHeading, readEntryNumber } from './todoEntry'
+import { readEntryNumber } from '../todoEntry'
+import type { EntryNumber } from '../todoEntry'
+import { readEntryHeading } from './todoEntry'
 import type { TodoEntry } from './todoEntry'
 
 /** The tools by which the model lists the goals. */
@@ -75,24 +77,20 @@ export const GOAL_TOOLS: ReadonlySet<string> = new Set(
  * How a tool of the main conversation that changes a goal reads its input and describes its
  * change.
  */
-export type GoalChangeTool<Input> = {
-  /** What a subagent is told, since only the main conversation makes the change. */
-  subagentDenial: string
+type GoalChangeTool<Input> = {
   readInput: (args: ToolArguments) => ToolInput<Input>
   describeDone: (input: Input) => string
 }
 
 /** The outcomes of a change made by a goal tool. */
-type ToolChange = Changed | Unchanged | ChangeRefused | Failed
+type ToolChange = Changed | Unchanged | AttachRefused | DetachRefused | Failed
 
 const ATTACHING: GoalChangeTool<TodoInput<TodoEntry>> = {
-  subagentDenial: SUBAGENT_DENIAL,
   readInput: args => readTodoInput(args, readEntryHeading, ATTACH_PROBLEMS),
   describeDone: ({ goal, todo }) => describeAttached(goal, todo),
 }
 
-const DETACHING: GoalChangeTool<TodoInput<string>> = {
-  subagentDenial: SUBAGENT_DENIAL,
+const DETACHING: GoalChangeTool<TodoInput<EntryNumber>> = {
   readInput: args => readTodoInput(args, readEntryNumber, DETACH_PROBLEMS),
   describeDone: ({ goal, todo }) => describeDetached(goal, todo),
 }
@@ -135,14 +133,14 @@ export function denyGoalToolFailure(
  * Changes a goal with `change` for a call of the main conversation whose input `tool` reads, and
  * returns what the model is told of the outcome.
  */
-export async function changeGoalByTool<Input>(
+async function changeGoalByTool<Input>(
   $: EngineInterface,
   e: Frozen<ToolCallInput>,
   tool: GoalChangeTool<Input>,
   change: (sessionId: string, input: Input) => Promise<ToolChange>,
 ): Promise<ToolCallResult> {
   if (!isMainConversation(e)) {
-    return { deny: tool.subagentDenial }
+    return { deny: SUBAGENT_DENIAL }
   }
   const read = tool.readInput(e)
   if (read.outcome !== InputOutcome.Valid) {

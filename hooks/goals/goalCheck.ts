@@ -56,8 +56,8 @@ export type CheckedStretch = Pick<GoalCheck, 'sessionId' | 'stretchId'>
 
 /**
  * Starts the goal checker on the goals of goalsToCheckOf, in the stretch `stretch`. Starts
- * nothing when the last check applied verdicts on each of these goals, as listed now, on the same
- * head of the default branch. A start that is refused shows in a toast.
+ * nothing when the last check applied verdicts on each of these goals, as this check lists them,
+ * on the same head of the default branch. A start that is refused shows in a toast.
  */
 export async function startGoalCheck($: EngineInterface, stretch: CheckedStretch): Promise<void> {
   const board = await readBoardToRemind($, stretch.sessionId)
@@ -207,13 +207,13 @@ async function readDefaultBranch($: EngineInterface): Promise<DefaultBranch | un
 
 /**
  * Records `check` as the goal check of its session, unless the last check applied verdicts on each
- * goal of `check` as it is listed now, on the same head of the default branch. Returns whether it
+ * goal of `check` as `check` lists it, on the same head of the default branch. Returns whether it
  * did.
  */
 async function recordGoalCheck($: EngineInterface, check: GoalCheck): Promise<boolean> {
   let isRecorded = false
   await updateGoalCheck($, check.sessionId, last => {
-    // A retried write runs this again, and its last run decides.
+    // A retried write runs this again, and the later run overwrites what the earlier one set.
     isRecorded = last === null || !isJudgedBy(check, last)
 
     return isRecorded ? check : last
@@ -260,7 +260,7 @@ async function takeRunningCheck($: EngineInterface, agentId: string): Promise<Go
   }
   let taken: GoalCheck | null = null
   await updateGoalCheck($, sessionId, check => {
-    // A retried write runs this again, and its last run decides.
+    // A retried write runs this again, and the later run overwrites what the earlier one set.
     taken = isRunBy(check, agentName) ? check : null
 
     return taken === null ? check : { ...taken, phase: GoalCheckPhase.Reported, goals: [] }

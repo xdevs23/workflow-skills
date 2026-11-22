@@ -148,10 +148,10 @@ function buttonsAt({ Button }: PaneElements, { goal, buttons }: GoalRow, place: 
 
 /**
  * Draws the row of one of the open goals `open`: its number, its text with its badges, its
- * pickers, its done mark, the question to clear it, its TODO entries and the buttons of the mode
- * the row is in, and under the row the field that edits its text, in place of the text, with the
- * warning on a blank text after it, or the field for the reason to unmark it. A row with saves on
- * the queue is drawn dim with what runs, with its badges in place of its pickers.
+ * pickers, its done mark, the question to clear it, the TODO entries attached to it and the buttons
+ * of the mode the row is in, and under the row the field that edits its text, in place of the
+ * text, with the warning on a blank text after it, or the field for the reason to unmark it. A row
+ * with saves on the queue is drawn dim with what runs, with its badges in place of its pickers.
  */
 function drawGoal(surface: PaneSurface, row: GoalRow, open: OpenGoals) {
   const { Box, Text } = surface.elements

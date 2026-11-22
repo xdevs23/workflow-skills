@@ -1,23 +1,18 @@
-import { NON_BLANK, NUMBER_RULE } from '../inputs'
+import { NON_BLANK, NUMBER_RULE, numberSchema } from '../inputs'
 import type { ToolArguments } from '../inputs'
 import { isPositiveInteger } from '../positiveInteger'
+import { ENTRY_NUMBER_RULE } from '../todoEntry'
 
 // A product choice: a heading in TODO.md is one short line, and every list of the goals read by the
 // model repeats each entry attached to a goal.
 const MAX_TODO_LENGTH = 200
-
-const GOAL_SCHEMA = {
-  type: 'integer',
-  minimum: 1,
-  description: `The number of the goal, as ${NUMBER_RULE}.`,
-}
 
 /** The input of a tool that changes the TODO entries of a goal, with the entry as described. */
 function todoChangeSchema(todoDescription: string) {
   return {
     type: 'object',
     properties: {
-      goal: GOAL_SCHEMA,
+      goal: numberSchema('the goal'),
       todo: {
         type: 'string',
         pattern: NON_BLANK.source,
@@ -36,7 +31,7 @@ export const ATTACH_TODO_SCHEMA = todoChangeSchema(
 )
 
 export const DETACH_TODO_SCHEMA = todoChangeSchema(
-  'The TODO entry by its number, such as #12 or #12.3. Every entry in TODO.md has a number.',
+  `The TODO entry as ${ENTRY_NUMBER_RULE}. Every entry in TODO.md has a number.`,
 )
 
 /** Whether the input of a goal tool follows its rules. */
@@ -53,16 +48,13 @@ export type ToolInput<Input> =
 /** The input of a tool that changes the TODO entries of a goal. */
 export type TodoInput<Todo> = { goal: number; todo: Todo }
 
-/** The input of a tool that needs only the number of a goal. */
-export type GoalInput = { goal: number }
-
 enum TodoProblem {
   TodoBlank = 'todo-blank',
   TodoTooLong = 'todo-too-long',
   TodoNotInForm = 'todo-not-in-form',
 }
 
-export const GOAL_PROBLEM = `Give the number of the goal as ${NUMBER_RULE}.`
+const GOAL_PROBLEM = `Give the number of the goal as ${NUMBER_RULE}.`
 const TOO_LONG_PROBLEM = `Give the TODO entry in at most ${MAX_TODO_LENGTH} characters.`
 
 /** What the model is told when its TODO entry for the attaching tool breaks a rule. */
@@ -78,23 +70,9 @@ export const ATTACH_PROBLEMS: Record<TodoProblem, string> = {
 
 /** What the model is told when its TODO entry for the detaching tool breaks a rule. */
 export const DETACH_PROBLEMS: Record<TodoProblem, string> = {
-  [TodoProblem.TodoBlank]:
-    'The TODO entry is blank. Give the entry by its number, such as #12 or #12.3.',
+  [TodoProblem.TodoBlank]: `The TODO entry is blank. Give the entry as ${ENTRY_NUMBER_RULE}.`,
   [TodoProblem.TodoTooLong]: TOO_LONG_PROBLEM,
-  [TodoProblem.TodoNotInForm]:
-    'Give the TODO entry by its number alone, such as #12 or #12.3.',
-}
-
-/**
- * Reads the number of the goal in the input of the model to a goal tool, which arrives
- * unchecked.
- */
-export function readGoalInput(input: ToolArguments): ToolInput<GoalInput> {
-  const { goal } = input
-
-  return isPositiveInteger(goal)
-    ? { outcome: InputOutcome.Valid, input: { goal } }
-    : invalid(GOAL_PROBLEM)
+  [TodoProblem.TodoNotInForm]: `Give the TODO entry as ${ENTRY_NUMBER_RULE}, without its title.`,
 }
 
 /**
@@ -107,11 +85,10 @@ export function readTodoInput<Todo>(
   readTodo: (text: string) => Todo | undefined,
   problems: Record<TodoProblem, string>,
 ): ToolInput<TodoInput<Todo>> {
-  const read = readGoalInput(input)
-  if (read.outcome !== InputOutcome.Valid) {
-    return read
+  const { goal, todo } = input
+  if (!isPositiveInteger(goal)) {
+    return invalid(GOAL_PROBLEM)
   }
-  const { todo } = input
   if (typeof todo !== 'string' || !NON_BLANK.test(todo)) {
     return invalid(problems[TodoProblem.TodoBlank])
   }
@@ -123,7 +100,7 @@ export function readTodoInput<Todo>(
 
   return entry === undefined
     ? invalid(problems[TodoProblem.TodoNotInForm])
-    : { outcome: InputOutcome.Valid, input: { goal: read.input.goal, todo: entry } }
+    : { outcome: InputOutcome.Valid, input: { goal, todo: entry } }
 }
 
 function invalid(problem: string): { outcome: InputOutcome.Invalid; problem: string } {

@@ -35,8 +35,8 @@ export function describeUnfinishedDependency(dependsOn: Goal): string {
 }
 
 /**
- * The open goals of `board` by priority, each with its dependency while it is not done, its done
- * mark and its TODO entries below it, one to a line.
+ * The open goals of `board` by priority, each followed by its dependency while it is not done, its
+ * done mark and the TODO entries attached to it, one to a line.
  */
 export function describeOpenGoals(board: Board): string[] {
   const open = openGoalsByIdOf(board)

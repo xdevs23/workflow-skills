@@ -3,6 +3,8 @@ import { describeElapsedTime } from '../elapsedTime'
 import type { HookSubject } from '../hookFailure'
 import { LOOK_UP_TERMS_AND_RULES } from '../lookUpTermsAndRules'
 import { sortedByNumber } from '../numbered'
+import { ENTRY_NUMBER_RULE } from '../todoEntry'
+import type { EntryNumber } from '../todoEntry'
 import {
   Refusal,
   clearedGoalsOf,
@@ -10,7 +12,7 @@ import {
   openGoalsByPriorityOf,
   openGoalsOf,
 } from './board'
-import type { ChangeRefused } from './board'
+import type { AttachRefused, DetachRefused } from './board'
 import { doneMarkOf } from './doneMark'
 import { unfinishedDependencyOf } from './dependency'
 import type { OpenGoals } from './dependency'
@@ -18,7 +20,7 @@ import { describeGoalWithPriority, describeUnfinishedDependency } from './goalLi
 import { LIST_GOALS_TOOL } from './goalNames'
 import { PANE_TITLE, nameGoal } from './goalPaneTexts'
 import { describeGoal } from './goalTexts'
-import { describeEntry, describeTodoNumber } from './todoEntry'
+import { describeEntry } from './todoEntry'
 import type { TodoEntry } from './todoEntry'
 
 // The texts of the goals read by the model, with the tool that lists them.
@@ -28,27 +30,25 @@ export const LIST_GOALS_DESCRIPTION = [
   'number, its priority if the user set one, how long it has been open, the goal it depends on',
   'while that goal is not marked as done, its done mark if the open goal has one, and the TODO',
   'entries attached to the open goal, then the goals cleared by the user. The open goals are',
-  'listed by priority, P0 the most important and goals',
-  'without a priority last. Only the user adds, edits, prioritizes and clears goals, and sets',
-  'which goal depends on which. Goals of other sessions are not listed. The open goals are work',
-  'the user needs done. Check them before you report work as finished. After you have been idle',
-  'for a while, a fresh agent checks the open goals against the project and marks each goal it',
-  'finds done.',
+  'listed by priority, P0 the most important and goals without a priority last. Only the user',
+  'adds, edits, prioritizes and clears goals, and sets which goal depends on which. Goals of other',
+  'sessions are not listed. The open goals are work the user needs done. Check them before you',
+  'report work as finished. After you have been idle for a while, a fresh agent checks the open',
+  'goals against the project and marks each goal it finds done.',
 ].join(' ')
 
 export const ATTACH_TODO_DESCRIPTION = [
   'Attaches a TODO entry to an open goal of the goals board of this session, to record that the',
   'goal needs that entry built. Give the number of the goal, and the entry with its number and',
   'title as its heading in TODO.md shows the entry. An entry may be needed by several goals.',
-  'Attached',
-  'again under the same number, an entry gets the new text. You cannot add or clear a goal: only',
-  'the user does.',
+  'Attached again under the same number, an entry gets the new text. You cannot add or clear a',
+  'goal: only the user does.',
 ].join(' ')
 
 export const DETACH_TODO_DESCRIPTION = [
   'Detaches a TODO entry from an open goal of the goals board of this session, once the entry is',
   'deleted from TODO.md or is no longer needed by the goal. Give the number of the goal, and the',
-  'entry by its number, such as #12 or #12.3. Every entry in TODO.md has a number.',
+  `entry as ${ENTRY_NUMBER_RULE}. Every entry in TODO.md has a number.`,
 ].join(' ')
 
 /** The goals board, as written in the texts about a failed hook of a goal tool. */
@@ -95,25 +95,18 @@ export function describeAttached(goal: number, todo: TodoEntry): string {
   return `Attached ${describeEntry(todo)} to ${nameGoal(goal)}.`
 }
 
-export function describeDetached(goal: number, todoNumber: string): string {
-  return `Detached ${describeTodoNumber(todoNumber)} from ${nameGoal(goal)}.`
+export function describeDetached(goal: number, todoNumber: EntryNumber): string {
+  return `Detached ${todoNumber} from ${nameGoal(goal)}.`
 }
 
 /** What the model is told of a refused change of a goal by a tool, by the cause. */
-export function describeRefusal(refused: ChangeRefused): string {
+export function describeRefusal(refused: AttachRefused | DetachRefused): string {
   switch (refused.refusal) {
     case Refusal.GoalNotOpen:
       return describeGoalNotOpen(refused.goal)
     case Refusal.TodoNotAttached:
       return (
-        `${describeTodoNumber(refused.todo)} is not attached to ${nameGoal(refused.goal)}. ` +
-        SEE_OPEN_GOALS
-      )
-    case Refusal.NotTodoNumber:
-      return (
-        `${describeTodoNumber(refused.todo)} is not the number of an entry in TODO.md, which ` +
-        'has numbers such as #12 or #12.3. Give the entry as its heading in TODO.md shows the ' +
-        'entry.'
+        `${refused.todo} is not attached to ${nameGoal(refused.goal)}. ${SEE_OPEN_GOALS}`
       )
     case Refusal.BlankTitle:
       return (

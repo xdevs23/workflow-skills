@@ -1,4 +1,6 @@
 import type { AttachedTodo, Board, Goal, Setting } from '../../types'
+import { compareEntries } from '../todoEntry'
+import type { EntryNumber } from '../todoEntry'
 import {
   closesLoop,
   dependedGoalOf,
@@ -11,7 +13,7 @@ import type { MarkRemovalAsked, MarkedGoal, UnmarkedGoal } from './doneMark'
 import { priorityOf, sortedByPriority } from './priority'
 import type { Priority } from './priority'
 import { settingOf } from './setting'
-import { isTodoNumber } from './todoEntry'
+import type { TodoEntry } from './todoEntry'
 
 // The rules of a board: every goal has a number of its own, and no goal gets the number of another
 // goal again, also after that goal was cleared, since cleared goals are never removed from the
@@ -50,7 +52,6 @@ export enum Refusal {
   EvidenceTooLong = 'evidence-too-long',
   GoalNotOpen = 'goal-not-open',
   NotMarkedDone = 'not-marked-done',
-  NotTodoNumber = 'not-todo-number',
   NumberTaken = 'number-taken',
   TextChangedElsewhere = 'text-changed-elsewhere',
   TodoNotAttached = 'todo-not-attached',
@@ -62,16 +63,25 @@ export type AddRefused = { outcome: Outcome.Refused } & (
   | { refusal: Refusal.NumberTaken; goal: number }
 )
 
-/** A refused change of a goal on the board, with the numbers named by it. */
-export type ChangeRefused = { outcome: Outcome.Refused } & (
-  | { refusal: Refusal.BlankTitle }
-  | { refusal: Refusal.GoalNotOpen; goal: number }
-  | { refusal: Refusal.NotTodoNumber; todo: string }
-  | { refusal: Refusal.TodoNotAttached; goal: number; todo: string }
-)
-
 /** The refusal of a change of a goal whose number is not the number of an open goal. */
-export type NotOpenRefused = Extract<ChangeRefused, { refusal: Refusal.GoalNotOpen }>
+export type NotOpenRefused = {
+  outcome: Outcome.Refused
+  refusal: Refusal.GoalNotOpen
+  goal: number
+}
+
+/** The refusal of attaching a TODO entry: an entry without a title, or a goal that is not open. */
+export type AttachRefused =
+  | { outcome: Outcome.Refused; refusal: Refusal.BlankTitle }
+  | NotOpenRefused
+
+/**
+ * The refusal of detaching the TODO entry `todo` from goal `goal`: a goal that is not open, or an
+ * entry not attached to the goal.
+ */
+export type DetachRefused =
+  | { outcome: Outcome.Refused; refusal: Refusal.TodoNotAttached; goal: number; todo: EntryNumber }
+  | NotOpenRefused
 
 /**
  * The refusal of an edit of goal `goal`, whose text was changed to `text` since the edit started
@@ -163,12 +173,11 @@ export type Changed<Changing extends Goal = Goal> = {
 
 export type Unchanged = { outcome: Outcome.Unchanged; board: Board }
 
-export type BoardChange = Changed | Unchanged | ChangeRefused
-
 /** Every outcome of a change of a goal other than the change itself. */
 export type NotChanged =
   | Unchanged
-  | ChangeRefused
+  | AttachRefused
+  | DetachRefused
   | EditRefused
   | MarkRefused
   | UnmarkRefused
@@ -264,19 +273,20 @@ export function clearGoal(
   board: Board,
   number: number,
   clearedAt: number,
-): Changed | ChangeRefused {
-  return changeOpenGoal<ChangeRefused>(board, number, goal => ({
+): Changed | NotOpenRefused {
+  return changeOpenGoal<NotOpenRefused>(board, number, goal => ({
     outcome: Outcome.Changed,
     goal: { ...goal, clearedAt },
   }))
 }
 
 /**
- * Gives the open goal numbered `number` the text of `edit`. The goal keeps its number, its TODO
- * entries and its place on the board. A done mark of the goal was set for the text before the
- * edit, so the edit removes it, as removed by the user, with the marks of the goals depending on
- * it. An edit to the text already set changes nothing. An edit started from a text other than the
- * current text of the goal is refused, so a text saved elsewhere since is not replaced unseen.
+ * Gives the open goal numbered `number` the text of `edit`. The goal still has its number, the
+ * TODO entries attached to it and its place on the board. A done mark of the goal was set for the
+ * text before the edit, so the edit removes it, as removed by the user, with the marks of the goals
+ * depending on it. An edit to the text already set changes nothing. An edit started from a text
+ * other than the current text of the goal is refused, so a text saved elsewhere since is not
+ * replaced unseen.
  */
 export function editGoal(
   board: Board,
@@ -502,40 +512,43 @@ export function setGoalDependency(
   return changed.outcome === Outcome.Changed ? withWaitingMarksRemoved(changed, setAt) : changed
 }
 
+/** The TODO entries of a goal in the order every goal lists them: by their numbers. */
+export function sortedTodos(todos: readonly AttachedTodo[]): AttachedTodo[] {
+  return [...todos].sort((first, second) => compareEntries(first.number, second.number))
+}
+
 /**
  * Attaches the TODO entry to the open goal numbered `goalNumber`. An entry attached under the same
- * TODO number is replaced in its place by the entry with the newer title.
+ * TODO number is replaced by the entry with the newer title.
  */
 export function attachTodo(
   board: Board,
   goalNumber: number,
-  todo: Pick<AttachedTodo, 'number' | 'title'>,
+  todo: TodoEntry,
   attachedAt: number,
-): BoardChange {
-  if (!isTodoNumber(todo.number)) {
-    return { outcome: Outcome.Refused, refusal: Refusal.NotTodoNumber, todo: todo.number }
-  }
+): Changed | Unchanged | AttachRefused {
   if (todo.title.trim() === '') {
     return { outcome: Outcome.Refused, refusal: Refusal.BlankTitle }
   }
 
-  return changeOpenGoal(board, goalNumber, goal => {
+  return changeOpenGoal<Unchanged>(board, goalNumber, goal => {
     const attached = goal.todos.find(each => each.number === todo.number)
     if (attached?.title === todo.title) {
       return { outcome: Outcome.Unchanged, board }
     }
     const entry = { number: todo.number, title: todo.title, attachedAt }
-    const todos =
-      attached === undefined
-        ? [...goal.todos, entry]
-        : goal.todos.map(each => (each.number === todo.number ? entry : each))
+    const todos = sortedTodos([...goal.todos.filter(each => each !== attached), entry])
 
     return { outcome: Outcome.Changed, goal: { ...goal, todos } }
   })
 }
 
-export function detachTodo(board: Board, goalNumber: number, todoNumber: string): BoardChange {
-  return changeOpenGoal<ChangeRefused>(board, goalNumber, goal =>
+export function detachTodo(
+  board: Board,
+  goalNumber: number,
+  todoNumber: EntryNumber,
+): Changed | DetachRefused {
+  return changeOpenGoal<DetachRefused>(board, goalNumber, goal =>
     goal.todos.some(each => each.number === todoNumber)
       ? {
           outcome: Outcome.Changed,

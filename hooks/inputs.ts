@@ -51,15 +51,18 @@ export function readSendInput(input: ToolArguments): SendInput {
 
 export const NUMBER_RULE = 'a whole number from 1 up'
 
+/** The schema of the number of `numbered`, such as "your request", as the model gives it. */
+export function numberSchema(numbered: string) {
+  return {
+    type: 'integer',
+    minimum: 1,
+    description: `The number of ${numbered}, as ${NUMBER_RULE}.`,
+  }
+}
+
 export const WITHDRAW_SCHEMA = {
   type: 'object',
-  properties: {
-    number: {
-      type: 'integer',
-      minimum: 1,
-      description: `The number of your request, as ${NUMBER_RULE}.`,
-    },
-  },
+  properties: { number: numberSchema('your request') },
   required: ['number'],
   additionalProperties: false,
 }

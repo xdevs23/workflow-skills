@@ -1,4 +1,4 @@
-import type { AttachedTodo, Board, Goal } from '../../types'
+import type { Board, Goal } from '../../types'
 import {
   StoreCall,
   deleteRecord,
@@ -11,6 +11,7 @@ import {
   writeRecord,
 } from '../pluginStore'
 import type { StoreEngine } from '../pluginStore'
+import type { EntryNumber } from '../todoEntry'
 import { importedIdsOf } from '../importedId'
 import {
   Outcome,
@@ -32,10 +33,10 @@ import {
 import type {
   AddRefused,
   AskedMark,
-  BoardChange,
-  ChangeRefused,
+  AttachRefused,
   Changed,
   DependentGoal,
+  DetachRefused,
   EditRefused,
   GoalEdit,
   GoalsMarked,
@@ -68,6 +69,7 @@ import type { BoardScope } from './boardScope'
 import { importedGoalsOf } from './goalImport'
 import type { ImportedGoal } from './goalImport'
 import type { Priority } from './priority'
+import type { TodoEntry } from './todoEntry'
 
 // The store does not offer compare-and-set. Changes made at once by several processes do not
 // overwrite each other, since every change writes only the record of its own part of the board: a
@@ -185,7 +187,7 @@ export function saveClearedGoal(
   scope: BoardScope,
   number: number,
   clearedAt: number,
-): Promise<Changed | ChangeRefused | Failed> {
+): Promise<Changed | NotOpenRefused | Failed> {
   return changeBoard(
     $,
     scope,
@@ -288,9 +290,9 @@ export function saveAttachedTodo(
   $: StoreEngine,
   scope: BoardScope,
   goalNumber: number,
-  todo: Pick<AttachedTodo, 'number' | 'title'>,
+  todo: TodoEntry,
   attachedAt: number,
-): Promise<BoardChange | Failed> {
+): Promise<Changed | Unchanged | AttachRefused | Failed> {
   return changeBoard(
     $,
     scope,
@@ -303,8 +305,8 @@ export function saveDetachedTodo(
   $: StoreEngine,
   scope: BoardScope,
   goalNumber: number,
-  todoNumber: string,
-): Promise<BoardChange | Failed> {
+  todoNumber: EntryNumber,
+): Promise<Changed | DetachRefused | Failed> {
   return changeBoard(
     $,
     scope,

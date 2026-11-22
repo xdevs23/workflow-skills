@@ -2,14 +2,15 @@ import type { EngineInterface } from 'claude-code'
 
 import type { UnreadBoard } from '../../types'
 import { showFailure } from '../failureToast'
+import type { EntryNumber } from '../todoEntry'
 import { Outcome } from './board'
 import type {
   AddRefused,
   AskedMark,
-  BoardChange,
-  ChangeRefused,
+  AttachRefused,
   Changed,
   DependentGoal,
+  DetachRefused,
   EditRefused,
   GoalEdit,
   GoalsMarked,
@@ -136,7 +137,7 @@ export async function clearGoalOfSession(
   $: EngineInterface,
   sessionId: string,
   number: number,
-): Promise<Changed | ChangeRefused | Failed> {
+): Promise<Changed | NotOpenRefused | Failed> {
   const cleared = await saveClearedGoal($, sessionScope(sessionId), number, await $.clock.now())
 
   return loadBoardAfterChange($, sessionId, cleared)
@@ -224,7 +225,7 @@ export async function attachTodoInSession(
   sessionId: string,
   goalNumber: number,
   todo: TodoEntry,
-): Promise<BoardChange | Failed> {
+): Promise<Changed | Unchanged | AttachRefused | Failed> {
   const scope = sessionScope(sessionId)
   const attached = await saveAttachedTodo($, scope, goalNumber, todo, await $.clock.now())
 
@@ -236,8 +237,8 @@ export async function detachTodoInSession(
   $: EngineInterface,
   sessionId: string,
   goalNumber: number,
-  todoNumber: string,
-): Promise<BoardChange | Failed> {
+  todoNumber: EntryNumber,
+): Promise<Changed | DetachRefused | Failed> {
   const detached = await saveDetachedTodo($, sessionScope(sessionId), goalNumber, todoNumber)
 
   return loadBoardAfterChange($, sessionId, detached)

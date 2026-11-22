@@ -1,13 +1,15 @@
 import type { AttachedTodo, Board, Goal, Setting } from '../../types'
 import { describeUnreadableRecord, isRecord } from '../pluginStore'
 import { isPositiveInteger } from '../positiveInteger'
+import { readEntryNumber } from '../todoEntry'
+import type { EntryNumber } from '../todoEntry'
+import { sortedTodos } from './board'
 import type { DependentGoal, PrioritizedGoal } from './board'
 import { MarkRemover, MarkSetter, readMarkSetter, storedMarkRemovalOf } from './doneMark'
 import type { MarkedGoal, StoredMarkRemoval, UnmarkedGoal } from './doneMark'
 import { isPriority } from './priority'
 import type { Priority } from './priority'
 import { settingOf } from './setting'
-import { isTodoNumber } from './todoEntry'
 import { boardPrefixOf } from './boardScope'
 import type { BoardScope } from './boardScope'
 
@@ -27,11 +29,12 @@ enum RecordPart {
   Dependency = 'dependency',
 }
 
-type StoredRecord = { version: typeof RECORD_VERSION } & (
+/** A record of a part of a goal, with the number of an attached TODO entry as `TodoNumber`. */
+type PartRecord<TodoNumber extends string> = { version: typeof RECORD_VERSION } & (
   | { part: RecordPart.Goal; id: string; number: number; text: string; addedAt: number }
   | { part: RecordPart.Text; goalId: string; text: string; editedAt: number }
   | { part: RecordPart.Clearance; goalId: string; clearedAt: number }
-  | { part: RecordPart.Todo; goalId: string; number: string; title: string; attachedAt: number }
+  | { part: RecordPart.Todo; goalId: string; number: TodoNumber; title: string; attachedAt: number }
   | {
       part: RecordPart.DoneMark
       goalId: string
@@ -49,8 +52,18 @@ type StoredRecord = { version: typeof RECORD_VERSION } & (
   | ({ part: RecordPart.Dependency; goalId: string } & Setting<string>)
 )
 
+/** A record of a board as read from the store and as built to be written to it. */
+type StoredRecord = PartRecord<EntryNumber>
+
+/**
+ * A record in the form written to the store, with the number of an attached TODO entry without its
+ * `#`. Older versions of the plugin read the number only in that form, and the store has records
+ * written by them.
+ */
+type WrittenRecord = PartRecord<string>
+
 /** A record of a board in the form written to the store, under its key. */
-export type BoardRecord = { key: string; value: StoredRecord }
+export type BoardRecord = { key: string; value: WrittenRecord }
 
 /** A value read from the store, under its key. */
 export type StoredEntry = { key: string; value: unknown }
@@ -171,8 +184,20 @@ export function dependencyRecordOf(scope: BoardScope, goal: DependentGoal): Boar
   })
 }
 
-export function todoKeyOf(scope: BoardScope, goal: Pick<Goal, 'id'>, todoNumber: string): string {
-  return `${partKeyOf(scope, goal.id, RecordPart.Todo)}:${todoNumber}`
+export function todoKeyOf(
+  scope: BoardScope,
+  goal: Pick<Goal, 'id'>,
+  todoNumber: EntryNumber,
+): string {
+  return `${partKeyOf(scope, goal.id, RecordPart.Todo)}:${writtenTodoNumberOf(todoNumber)}`
+}
+
+function writtenTodoNumberOf(number: EntryNumber): string {
+  return number.slice('#'.length)
+}
+
+function readWrittenTodoNumber(value: unknown): EntryNumber | undefined {
+  return typeof value === 'string' ? readEntryNumber(`#${value}`) : undefined
 }
 
 /**
@@ -216,7 +241,7 @@ export function readBoard(scope: BoardScope, entries: readonly StoredEntry[]): B
     goals: goals.map(goal => ({
       ...goal,
       ...patches.get(goal.id),
-      todos: todos.get(goal.id) ?? [],
+      todos: sortedTodos(todos.get(goal.id) ?? []),
     })),
   }
 }
@@ -249,8 +274,14 @@ function patchOf(
   }
 }
 
-function recordOf(scope: BoardScope, value: StoredRecord): BoardRecord {
-  return { key: keyOf(scope, value), value }
+function recordOf(scope: BoardScope, record: StoredRecord): BoardRecord {
+  return { key: keyOf(scope, record), value: writtenRecordOf(record) }
+}
+
+function writtenRecordOf(record: StoredRecord): WrittenRecord {
+  return record.part === RecordPart.Todo
+    ? { ...record, number: writtenTodoNumberOf(record.number) }
+    : record
 }
 
 function keyOf(scope: BoardScope, record: StoredRecord): string {
@@ -308,13 +339,16 @@ const PARSERS: Record<RecordPart, (value: Record<string, unknown>) => StoredReco
     typeof goalId === 'string' && typeof clearedAt === 'number'
       ? { version: RECORD_VERSION, part: RecordPart.Clearance, goalId, clearedAt }
       : undefined,
-  [RecordPart.Todo]: ({ goalId, number, title, attachedAt }) =>
-    typeof goalId === 'string' &&
-    isTodoNumber(number) &&
-    typeof title === 'string' &&
-    typeof attachedAt === 'number'
+  [RecordPart.Todo]: ({ goalId, number: written, title, attachedAt }) => {
+    const number = readWrittenTodoNumber(written)
+
+    return typeof goalId === 'string' &&
+      number !== undefined &&
+      typeof title === 'string' &&
+      typeof attachedAt === 'number'
       ? { version: RECORD_VERSION, part: RecordPart.Todo, goalId, number, title, attachedAt }
-      : undefined,
+      : undefined
+  },
   [RecordPart.DoneMark]: ({ goalId, evidence, markedAt, setBy }) => {
     // A mark stored before the goal checker set the done marks has no setter, and was set by the
     // model.
