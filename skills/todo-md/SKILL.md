@@ -9,7 +9,11 @@ contributor or agent without history, reads that file first.
 # Purpose
 
 - Use `TODO.md` as tracker of units of work, like an issue tracker would be used for
-- Write entry only for work asked for by user, work planned with user, and work being done
+- Write entry only for work asked for by user. Never write entry on your own decision. Only
+  exceptions:
+  - sub-unit that unit asked for by user cannot finish without;
+  - fix of older defect, while it runs;
+  - step owed to whoever operates production
 - Do not write entry for task that changes nothing in project
 - Treat state in `TODO.md` as last state written down by someone. Before you report state or act on
   it, check work against branches, history of main branch, pull requests and deployment where it
@@ -41,7 +45,8 @@ contributor or agent without history, reads that file first.
 
 # Layout of the file
 
-- Write entries in order of their numbers, so newest entry is last one in file
+- Write entries in order of their numbers, so newest entry is last one in file. Write sub-units of
+  one entry in order in which they are built
 - Write nothing else into file
 
 # Anatomy of an entry
@@ -84,18 +89,19 @@ Draft: .cache/specs/reaction-emoji.html
   server and unknown to this build becomes an explicit unknown value where it arrives". Never word
   it as check to make pass, such as "make the lint pass"
 - Give each sub-unit fourth-level entry in dot notation under entry to which it belongs, in shape of
-  any other entry, and `Builds on:` line listing sub-units needed by it first. Nest sub-units deeper
-  in dot notation, such as `#383.1.1` under `#383.1`:
+  any other entry, and `Builds on:` line listing sub-units needed by it first
+- Never nest sub-unit under sub-unit. Write part of sub-unit, or work needed by it first, as
+  sub-unit of same entry, placed before sub-unit that needs it:
 
   ```
   ### #383 - Profile avatars - IN PROGRESS
   Draft: .cache/specs/profile-avatars.html
   #### #383.1 - The profile page shows the avatar - IN PROGRESS
   Draft: .cache/specs/profile-avatars-383.1.html
-  #### #383.2 - The avatar can be replaced - QUEUED
+  #### #383.2 - The avatar can be replaced - READY
   Builds on: #383.1
   Draft: .cache/specs/profile-avatars-383.2.html
-  #### #383.3 - A replaced avatar is resized to the sizes used on the page - QUEUED
+  #### #383.3 - A replaced avatar is resized to the sizes used on the page - READY
   Builds on: #383.2
   Draft: .cache/specs/profile-avatars-383.3.html
   ```
@@ -106,9 +112,8 @@ Draft: .cache/specs/reaction-emoji.html
 - Chain by `Builds on:` sub-units that edit same lines of shared file that cannot be split, e.g.
   lockfile or sequence of migrations
 - Give every entry that has sub-units state of least advanced sub-unit under it
-- Build each sub-unit without sub-units of its own as separate unit, in separate worktree and on
-  separate branch, with one or more workflow runs. You may start building on whatever base suits
-  work
+- Build each sub-unit as separate unit, in separate worktree and on separate branch, with one or
+  more workflow runs. You may start building on whatever base suits work
 - Deliver each sub-unit separately, such as through separate pull request against main branch of
   project. Only once every sub-unit listed in its `Builds on:` line is merged there. Pull request
   is request that can be rejected
@@ -124,9 +129,11 @@ Draft: .cache/specs/reaction-emoji.html
 - Fix finding about code added or edited by unit in unit itself. Never record it
 - Draw decision about finding, also about finding in older code, as
   `workflow-skills:visual-decisions` describes when fixing it needs decision by user
-- Record work that comes up during unit or is left over from it as sub-unit of entry for that
-  unit, never as new entry
-- Record work left over from unit whose entry was deleted as finished as new entry
+- Write work that comes up during unit as sub-unit of entry for that unit only when unit cannot
+  finish without it
+- Fix other small work that comes up right away, as `workflow-skills:implement` describes, without
+  entry
+- Name other big work that comes up once, in report to user. Never write entry for it
 - Fix defect in older code outside unit, such as flaky test harness, as separate unit in parallel
   with unit
 - Start fix of older defect without asking user, as only unit started by you without user's word
@@ -152,36 +159,17 @@ Draft: .cache/specs/reaction-emoji.html
 
 # The states an entry can take
 
-State is fixed enum: one of markers listed here, grouped by where item stands.
+State is fixed enum: one of three markers.
 
-**Recorded**
-
-- `RECORDED`: captured so it is not lost. Deliberately not started
-
-**Waiting on a decision**
-
-- `NEEDS DECISION`: work cannot go on until decision made or theory defined
-- Before marking entry `NEEDS DECISION`, handle open point as `workflow-skills:visual-decisions`
-  describes
-- **A decision still owed blocks only the item concerned by it.** Skip and mark item. Move work on
-  to next one
-- Work on smallest change possible where decision does not change outcome
-
-**Ready to build**
-
-- `READY`: design agreed with user, for example by approved draft
+- `RECORDED`: asked for by user. Not started
+- `READY`: user said it can be built. Whether unit is ready to build follows from words of user
+  alone
 - Mark sub-unit `READY` once everything needed by it is clear
-- `QUEUED`: unit can be built at any time, even if session is wiped and started fresh
-
-Whether unit is ready to build follows from words of user alone.
-
-**Being built**
-
 - `IN PROGRESS`: under construction, until entry deleted as section `Purpose` describes
-
-**Stopped**
-
-- `PARKED`: deliberately not being done
+- Entry waiting on decision by user keeps its state. Handle open point as
+  `workflow-skills:visual-decisions` describes
+- **A decision still owed blocks only the item concerned by it.** Move work on to next one
+- Work on smallest change possible where decision does not change outcome
 
 ## What never goes in
 
@@ -208,15 +196,13 @@ Whether unit is ready to build follows from words of user alone.
 ## Your action
 
 First thing you do when you see this skill: check what work is currently running (workflows,
-background tasks). Then check TODO.md for entries that are `IN PROGRESS` or `QUEUED`.
+background tasks). Then check TODO.md for entries that are `IN PROGRESS` or `READY`.
 
 - `RECORDED`: Do not do anything about it. User says something when they want anything done about
   it
-- `QUEUED`: Start work right away, also while other work runs. Set it to `IN PROGRESS` after you
+- `READY`: Start work right away, also while other work runs. Set it to `IN PROGRESS` after you
   launched work (code edits, workflows, commands)
 - `IN PROGRESS`: Check current progress on item. Resume work if not running. Keep working until
   entry can be deleted. Change waiting on review by user, such as open pull request: handle
   comments as `workflow-skills:implement` describes. Do not build it again. Never merge it
   yourself to meet condition for deleting entry
-- `NEEDS DECISION`: Draw decision into draft of unit as `workflow-skills:visual-decisions`
-  describes, unless draft of unit shows decision

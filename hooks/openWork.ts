@@ -4,7 +4,7 @@ import type { SharedStep } from './hintText'
 export const CHECK_FOR_OPEN_WORK: SharedStep = {
   text:
     'Read the result of every run and build that ended, and fix every failure. Pick up every ' +
-    'todo that is IN PROGRESS or QUEUED.',
+    'todo that is IN PROGRESS or READY.',
 }
 
 /** The use of idle time shared by the hints that find a session idle, once no work is open. */

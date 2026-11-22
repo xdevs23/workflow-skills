@@ -23,8 +23,8 @@ description: Implement change to code, from first talk with user until user revi
 - Show on draft: UI/UX where there is one, how state is represented in backend, and modules
   into which feature is split, with what each module may know of others. Such as core that is
   agnostic and one module for each implementation, where modules do not know of each other
-- Add sub-units for modules of change and for gaps under it whenever change needs them, as
-  `workflow-skills:todo-md` describes. Move down until you have everything needed
+- Add sub-units for modules of change whenever change needs them, as `workflow-skills:todo-md`
+  describes
 - Save draft of feature as `<change>.html` in folder for private specs inside project cache, set by
   `workflow-skills:local-cache`. Draft of sub-unit as `<change>-<sub-unit number>.html`
 - When user says what should be different, update draft as `workflow-skills:visual-decisions`
