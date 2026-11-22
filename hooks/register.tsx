@@ -51,6 +51,7 @@ import { remindersAfterCompaction } from './reminders/eventCadence'
 import { watchTimedReminders } from './reminders/timedDelivery'
 import { registerRoast } from './roast'
 import { roastsSource } from './roast/roastDelivery'
+import { registerQuestionRule } from './questionRule'
 import { registerRulesBanner } from './rulesBanner'
 import { registerSelfCheck } from './selfCheck'
 import { waitForSelfCheckDueTime } from './selfCheck/idleSelfCheck'
@@ -130,6 +131,7 @@ export const register: Register = on => {
   registerImports(on)
   registerSelfCheck(on)
   registerRulesBanner(on)
+  registerQuestionRule(on)
   registerAutonomy(on)
   registerChatReplies(on)
   registerRoast(on)

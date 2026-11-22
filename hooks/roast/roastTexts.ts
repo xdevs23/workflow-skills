@@ -6,6 +6,8 @@ import { DEBUG_LOG_NOTE } from '../failureToast'
 import type { HookSubject } from '../hookFailure'
 import { describeFailedStoreCall, describeUnreadableRecord } from '../pluginStore'
 import type { FailedStoreCall } from '../pluginStore'
+import { describeProjectFailure } from '../projectFolder'
+import type { ProjectFailure } from '../projectFolder'
 import { MILLISECONDS_PER_MINUTE, MILLISECONDS_PER_SECOND } from '../timeUnits'
 import { SwitchOutcome } from './idleRoastSwitch'
 import type { UnreadSwitch } from './idleRoastSwitch'
@@ -152,8 +154,11 @@ export function describeRunningAgentsUnknown(cause: string): string {
   )
 }
 
-export function describeRecordedIdeasUnknown(cause: string): string {
-  return `The fork that writes the roast got no words of the user recorded in the session. ${cause}`
+export function describeRecordedWordsUnknown(failure: ProjectFailure): string {
+  return (
+    'The fork that writes the roast got no words of the user recorded in the session. ' +
+    describeProjectFailure(failure)
+  )
 }
 
 /** The text for a run of /roast that ended without a roast, with the next step. */

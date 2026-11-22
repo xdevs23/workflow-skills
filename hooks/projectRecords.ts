@@ -43,11 +43,16 @@ export async function readProjectRecords<T, Key extends string>(
     project: string
     keysListedBefore: readonly Key[]
     parse: (value: unknown) => T | undefined
+    recordedBy?: string
   },
 ): Promise<ReadProjectRecords<T, Key>> {
-  const { kind, project, keysListedBefore, parse } = read
+  const { kind, project, keysListedBefore, parse, recordedBy } = read
   const digest = await projectDigestOf(project)
-  const keysOfProject = keysListedBefore.filter(key => projectDigestIn(kind, key) === digest)
+  const keysOfProject = keysListedBefore.filter(
+    key =>
+      projectDigestIn(kind, key) === digest &&
+      (recordedBy === undefined || sessionIn(kind, key) === recordedBy),
+  )
   const records: ProjectRecord<T, Key>[] = []
   const unreadableKeys: Key[] = []
   for (const { key, value } of await readEntriesIn($, recordPrefixOf(kind), keysOfProject)) {
@@ -69,10 +74,14 @@ async function projectDigestOf(project: string): Promise<string> {
   return hexOf(new Uint8Array(digest).slice(0, PROJECT_DIGEST_BYTES))
 }
 
-function projectDigestIn(kind: RecordKind, key: string): string | undefined {
-  const owner = keyPartAfter(recordPrefixOf(kind), key)
+function sessionIn(kind: RecordKind, key: string): string | undefined {
+  return keyPartAfter(recordPrefixOf(kind), key)
+}
 
-  return owner === undefined ? undefined : keyPartAfter(recordPrefixOf(kind, owner), key)
+function projectDigestIn(kind: RecordKind, key: string): string | undefined {
+  const sessionId = sessionIn(kind, key)
+
+  return sessionId === undefined ? undefined : keyPartAfter(recordPrefixOf(kind, sessionId), key)
 }
 
 function projectIn(value: unknown): string | undefined {

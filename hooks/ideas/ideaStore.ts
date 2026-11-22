@@ -36,7 +36,7 @@ export async function readIdeasOf(
   scope: { project: string; includesEntry: (entry: EntryNumber) => boolean },
 ): Promise<ReadIdeas> {
   const { project, includesEntry } = scope
-  const { ideas, unreadableKeys } = await readIdeasUnder($, project, IDEAS_PREFIX)
+  const { ideas, unreadableKeys } = await readIdeasIn($, { project })
 
   return { ideas: ideas.filter(idea => includesEntry(idea.entry)), unreadableKeys }
 }
@@ -45,19 +45,18 @@ export function readIdeasRecordedBy(
   $: StoreEngine,
   scope: { project: string; sessionId: string },
 ): Promise<ReadIdeas> {
-  return readIdeasUnder($, scope.project, recordPrefixOf(RecordKind.Idea, scope.sessionId))
+  return readIdeasIn($, { project: scope.project, recordedBy: scope.sessionId })
 }
 
-async function readIdeasUnder(
+async function readIdeasIn(
   $: StoreEngine,
-  project: string,
-  keyPrefix: string,
+  scope: { project: string; recordedBy?: string },
 ): Promise<ReadIdeas> {
   const { records, unreadableKeys } = await readProjectRecords($, {
     kind: RecordKind.Idea,
-    project,
-    keysListedBefore: (await listKeys($)).filter(isIdeaId).filter(id => id.startsWith(keyPrefix)),
+    keysListedBefore: (await listKeys($)).filter(isIdeaId),
     parse: parseIdea,
+    ...scope,
   })
   const ideas = records.map(({ key, value }): IdentifiedIdea => ({ ...value, id: key }))
   ideas.sort((earlier, later) => earlier.recordedAt - later.recordedAt)
