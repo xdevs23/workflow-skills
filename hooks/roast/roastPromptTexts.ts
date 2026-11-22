@@ -53,8 +53,12 @@ const ROAST_UNFINISHED_WORK =
   'transcript shows it unfinished, or stopped working on one that is not done, add a line that ' +
   'names it and says what is still missing to complete it.'
 
+const MEMORY_IN_ROAST =
+  'Never tell the assistant to write a memory or to move one. Where a memory is out of date or ' +
+  'not needed, you may tell the assistant to delete it.'
+
 const ROAST_CONTENT =
-  `${ROAST_POINT_EVIDENCE} ${STATE_OUTSIDE_TRANSCRIPT} ${ROAST_UNFINISHED_WORK}`
+  `${ROAST_POINT_EVIDENCE} ${STATE_OUTSIDE_TRANSCRIPT} ${ROAST_UNFINISHED_WORK} ${MEMORY_IN_ROAST}`
 
 const ROAST_CONTENT_WITHOUT_REPEATS =
   `${ROAST_CONTENT} Leave out each point that an earlier roast in this conversation ` +

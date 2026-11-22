@@ -114,6 +114,8 @@ export const AUTONOMY_MODE =
       'for one piece of work does not extend to anything else.',
     `Only the user changes where it applies, with /${AUTONOMY_COMMAND} or ${GRANT_FOR_GOAL}.`,
     'Edit by hand a change so small or trivial that neither skill helps with it.',
+    'A question from the user that only asks for information is not an instruction: answer ' +
+      'it, and do not act on it.',
   ].join(' ')
 
 export function describeAutonomyNote(grants: readonly Grant[]): TextWithLine {
