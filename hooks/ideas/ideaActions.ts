@@ -2,13 +2,15 @@ import type { EngineInterface } from 'claude-code'
 
 import type { Goal } from '../../types'
 import { showingStoreFailure } from '../failureToast'
-import { describeFailedStoreCall, returningStoreFailure } from '../pluginStore'
+import { returningStoreFailure } from '../pluginStore'
 import {
   describeIdeaNotDeleted,
+  describeIdeasFailure,
   describeIdeasNotRead,
   describeIdeasOfClearedGoalNotDeleted,
 } from './ideaPaneTexts'
-import { readProjectOfIdeas } from './ideaProject'
+import { IdeasFailureKind, returningIdeasFailure, showingIdeasFailure } from './ideaProject'
+import type { IdeasFailure } from './ideaProject'
 import { IDEAS_PANE, keepButtonKeyOf } from './ideaNames'
 import { IdeasOutcome, setIdeaAwaitingDelete, setIdeasInState } from './ideaState'
 import type { LoadedIdeas } from './ideaState'
@@ -19,43 +21,65 @@ import type { IdeaId } from './ideaStore'
 // git and read every key of the store on each redraw. The state gets the ideas when the pane opens
 // and after every save and delete.
 
-/** Reads the ideas recorded in `project` from the store into the state. */
-export async function loadIdeasIntoState($: EngineInterface, project: string): Promise<void> {
+/** Reads the ideas recorded in the project used by the session from the store into the state. */
+export async function loadIdeasIntoState($: EngineInterface): Promise<void> {
   const sessionId = await $.session.id()
-  const loaded = await returningStoreFailure(
-    async (): Promise<LoadedIdeas> => ({
-      outcome: IdeasOutcome.Read,
-      ...(await readIdeasOf($, { project, includesEntry: () => true })),
-    }),
-    (failed): LoadedIdeas => ({
-      outcome: IdeasOutcome.Failed,
-      failure: describeIdeasNotRead(failed),
-    }),
+  const loaded = await returningIdeasFailure(
+    $,
+    project => readLoadedIdeas($, project),
+    ideasNotRead,
   )
   await setIdeasInState($, sessionId, loaded)
+}
+
+/** Reads the ideas recorded in `project` from the store into the state. */
+export async function loadIdeasOfProjectIntoState(
+  $: EngineInterface,
+  project: string,
+): Promise<void> {
+  const sessionId = await $.session.id()
+  const loaded = await returningStoreFailure(
+    () => readLoadedIdeas($, project),
+    failed => ideasNotRead({ kind: IdeasFailureKind.Store, failed }),
+  )
+  await setIdeasInState($, sessionId, loaded)
+}
+
+async function readLoadedIdeas($: EngineInterface, project: string): Promise<LoadedIdeas> {
+  return {
+    outcome: IdeasOutcome.Read,
+    ...(await readIdeasOf($, { project, includesEntry: () => true })),
+  }
+}
+
+function ideasNotRead(failure: IdeasFailure): LoadedIdeas {
+  return { outcome: IdeasOutcome.Failed, failure: describeIdeasNotRead(failure) }
 }
 
 /** Deletes the idea `id`, shows a failed delete in a toast, and loads the ideas again. */
 export async function deleteIdeaOnScreen($: EngineInterface, id: IdeaId): Promise<void> {
   await showingStoreFailure($, () => deleteIdea($, id), describeIdeaNotDeleted)
-  await loadIdeasIntoState($, await readProjectOfIdeas($))
+  await loadIdeasIntoState($)
 }
 
 /**
  * Deletes the ideas recorded for each TODO entry attached to `goal`, which the user cleared, and
- * for every entry under it. Shows a failed delete in a toast, and loads the ideas again.
+ * for every entry under it. Shows a failed delete in a toast, and loads the ideas again after the
+ * delete, also after a failed one.
  */
 export async function deleteIdeasOfClearedGoal($: EngineInterface, goal: Goal): Promise<void> {
-  const project = await readProjectOfIdeas($)
   const entries = goal.todos.map(todo => todo.number)
-  await showingStoreFailure(
+  await showingIdeasFailure(
     $,
-    async () => {
-      await deleteIdeasUnder($, { project, entries })
+    async project => {
+      try {
+        await deleteIdeasUnder($, { project, entries })
+      } finally {
+        await loadIdeasOfProjectIntoState($, project)
+      }
     },
-    failed => describeIdeasOfClearedGoalNotDeleted(goal.number, describeFailedStoreCall(failed)),
+    failure => describeIdeasOfClearedGoalNotDeleted(goal.number, describeIdeasFailure(failure)),
   )
-  await loadIdeasIntoState($, project)
 }
 
 /**

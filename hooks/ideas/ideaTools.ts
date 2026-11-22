@@ -1,9 +1,8 @@
 import type { EngineInterface, MatchedHook, ToolCallResult, ToolSpec } from 'claude-code'
 
 import { denyFailedUse } from '../hookFailure'
-import { describeFailedStoreCall, returningStoreFailure } from '../pluginStore'
 import { isEntryAtOrUnder } from '../todoEntry'
-import { loadIdeasIntoState } from './ideaActions'
+import { loadIdeasOfProjectIntoState } from './ideaActions'
 import {
   ENTRY_PROBLEM,
   ENTRY_SCHEMA,
@@ -21,7 +20,8 @@ import {
   RECORD_IDEA,
   RECORD_IDEA_TOOL,
 } from './ideaNames'
-import { readProjectOfIdeas } from './ideaProject'
+import { describeIdeasFailure } from './ideaPaneTexts'
+import { returningIdeasFailure } from './ideaProject'
 import { deleteIdeasUnder, readIdeasOf, saveIdea } from './ideaStore'
 import {
   DELETE_IDEAS_DESCRIPTION,
@@ -67,18 +67,21 @@ export const recordIdea: MatchedHook<'tool.call', { tool: typeof RECORD_IDEA_TOO
   if (words.outcome !== WordsOutcome.Valid) {
     return { deny: WORDS_PROBLEMS[words.outcome] }
   }
-  const [sessionId, project, recordedAt] = await Promise.all([
-    $.session.id(),
-    readProjectOfIdeas($),
-    $.clock.now(),
+  // The session id and the clock are read while git looks up the project. The outer Promise.all
+  // awaits them also when a failed lookup skips the work.
+  const sessionAndTime = Promise.all([$.session.id(), $.clock.now()])
+  const [, recorded] = await Promise.all([
+    sessionAndTime,
+    denyingIdeasFailure($, async project => {
+      const [sessionId, recordedAt] = await sessionAndTime
+      await saveIdea($, { sessionId, project, idea: { entry, words: words.text, recordedAt } })
+      await loadIdeasOfProjectIntoState($, project)
+
+      return { result: describeRecorded(entry) }
+    }),
   ])
 
-  return denyingStoreFailure($, async () => {
-    await saveIdea($, { sessionId, project, idea: { entry, words: words.text, recordedAt } })
-    await loadIdeasIntoState($, project)
-
-    return { result: describeRecorded(entry) }
-  })
+  return recorded
 }
 
 export const getIdeas: MatchedHook<'tool.call', { tool: typeof GET_IDEAS_TOOL }> = async (
@@ -89,9 +92,8 @@ export const getIdeas: MatchedHook<'tool.call', { tool: typeof GET_IDEAS_TOOL }>
   if (entry === undefined) {
     return { deny: ENTRY_PROBLEM }
   }
-  const project = await readProjectOfIdeas($)
 
-  return denyingStoreFailure($, async () => {
+  return denyingIdeasFailure($, async project => {
     const read = await readIdeasOf($, {
       project,
       includesEntry: recorded => isEntryAtOrUnder(entry, recorded),
@@ -109,22 +111,24 @@ export const deleteIdeasOfEntry: MatchedHook<
   if (entry === undefined) {
     return { deny: ENTRY_PROBLEM }
   }
-  const project = await readProjectOfIdeas($)
 
-  return denyingStoreFailure($, async () => {
+  return denyingIdeasFailure($, async project => {
     const deleted = await deleteIdeasUnder($, { project, entries: [entry] })
-    await loadIdeasIntoState($, project)
+    await loadIdeasOfProjectIntoState($, project)
 
     return { result: describeDeleted(entry, deleted) }
   })
 }
 
-/** Runs `work`, and denies the tool call with the failure of the store that stopped it. */
-function denyingStoreFailure(
+/**
+ * Looks up the project, runs `work` on it, and denies the tool call with the reason when the lookup
+ * or the store stops it.
+ */
+function denyingIdeasFailure(
   $: EngineInterface,
-  work: () => Promise<ToolCallResult>,
+  work: (project: string) => Promise<ToolCallResult>,
 ): Promise<ToolCallResult> {
-  return returningStoreFailure(work, failed =>
-    denyFailedUse($, IDEAS_SUBJECT, describeFailedStoreCall(failed)),
+  return returningIdeasFailure($, work, failure =>
+    denyFailedUse($, IDEAS_SUBJECT, describeIdeasFailure(failure)),
   )
 }

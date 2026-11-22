@@ -1,6 +1,8 @@
 import type { HookSubject } from '../hookFailure'
 import { describeFailedStoreCall } from '../pluginStore'
 import type { FailedStoreCall } from '../pluginStore'
+import { IdeasFailureKind } from './ideaProject'
+import type { IdeasFailure } from './ideaProject'
 
 // The texts shown to the user for ideas.
 
@@ -30,8 +32,29 @@ export const YES_DELETE_LABEL = 'Yes, delete'
 
 export const KEEP_LABEL = 'Keep'
 
-export function describeIdeasNotRead(failed: FailedStoreCall): string {
-  return `The ideas recorded in this project could not be read. ${describeFailedStoreCall(failed)}`
+/** The reason and the next step for `failure`. */
+export function describeIdeasFailure(failure: IdeasFailure): string {
+  switch (failure.kind) {
+    case IdeasFailureKind.Store:
+      return describeFailedStoreCall(failure.failed)
+    case IdeasFailureKind.GitNotRun:
+      return (
+        `git did not run in the project root ${failure.root}: ` +
+        `${failure.cause.message}. Check that git is installed and runs in that folder, then ` +
+        'try again.'
+      )
+    case IdeasFailureKind.GitRefused:
+      return (
+        `git exited with code ${failure.exitCode} in the project root ${failure.root}, which is ` +
+        `inside a repository. Fix what git reports, then try again. git reported:\n` +
+        failure.stderr.trim()
+      )
+  }
+}
+
+/** Builds the text the Ideas pane shows when `failure` stopped the read of the ideas. */
+export function describeIdeasNotRead(failure: IdeasFailure): string {
+  return `The ideas recorded in this project could not be read. ${describeIdeasFailure(failure)}`
 }
 
 export function describeIdeaNotDeleted(failed: FailedStoreCall): string {
