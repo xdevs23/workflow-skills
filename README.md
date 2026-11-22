@@ -24,8 +24,9 @@ Then run a skill, such as `/workflow-skills:implement`.
 - **Reminders**: `/reminders` sends Claude a text on a schedule or after an event;
   `/reminders-import` brings reminders of an earlier session of the project into this one
 - **Ideas**: Claude records your words that shape an entry in TODO.md, so they outlast
-  compactions, and deletes them once the entry is finished. `/ideas` lists them by entry, and you
-  can delete any one of them there
+  compactions, and deletes them once the entry is finished. Clearing a goal deletes the ideas
+  recorded for the entries attached to it. `/ideas` lists them by entry, and you can delete any one
+  of them there
 - **Requests**: Claude sends a request for work that only you can do outside the session, such as
   power-cycling a board, and keeps working. Press Done in the Requests pane or run
   `/reply <number>`, with a reply after it if Claude needs one

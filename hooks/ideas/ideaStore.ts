@@ -78,19 +78,24 @@ export async function readIdeasOf(
 }
 
 /**
- * Deletes the ideas recorded in `project` for `entry` and for every entry under it, and returns
- * them with the keys of the records in another shape, which stay.
+ * Deletes the ideas recorded in `project` for each entry of `entries` and for every entry under it,
+ * each idea once, and returns them with the keys of the records in another shape, which stay. A
+ * failed delete is thrown after every delete has ended, so a read after it finds the ideas left.
  */
 export async function deleteIdeasUnder(
   $: StoreEngine,
-  scope: { project: string; entry: EntryNumber },
+  scope: { project: string; entries: readonly EntryNumber[] },
 ): Promise<ReadIdeas> {
-  const { project, entry } = scope
+  const { project, entries } = scope
   const deleted = await readIdeasOf($, {
     project,
-    includesEntry: recorded => isEntryAtOrUnder(recorded, entry),
+    includesEntry: recorded => entries.some(entry => isEntryAtOrUnder(recorded, entry)),
   })
-  await Promise.all(deleted.ideas.map(idea => deleteIdea($, idea.id)))
+  const deletes = await Promise.allSettled(deleted.ideas.map(idea => deleteIdea($, idea.id)))
+  const failed = deletes.find(result => result.status === 'rejected')
+  if (failed !== undefined) {
+    throw failed.reason
+  }
 
   return deleted
 }

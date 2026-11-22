@@ -112,7 +112,7 @@ export const deleteIdeasOfEntry: MatchedHook<
   const project = await readProjectOfIdeas($)
 
   return denyingStoreFailure($, async () => {
-    const deleted = await deleteIdeasUnder($, { project, entry })
+    const deleted = await deleteIdeasUnder($, { project, entries: [entry] })
     await loadIdeasIntoState($, project)
 
     return { result: describeDeleted(entry, deleted) }

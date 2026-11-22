@@ -39,6 +39,7 @@ import {
   saveRemovedDoneMark,
 } from './boardStore'
 import type { Failed, GoalsImported } from './boardStore'
+import { runGoalClearedHooks } from './goalClearedHooks'
 import { describeNotRead } from './goalPaneTexts'
 import { recordBoardSeenAtStart, setLoadedBoard } from './goalState'
 import type { Priority } from './priority'
@@ -132,15 +133,22 @@ export async function importGoalsIntoSession(
   return imported
 }
 
-/** Clears the goal numbered `number` on the board of the session `sessionId`. */
+/**
+ * Clears the goal numbered `number` on the board of the session `sessionId`, and then runs the
+ * hooks that other features set for a cleared goal.
+ */
 export async function clearGoalOfSession(
   $: EngineInterface,
   sessionId: string,
   number: number,
 ): Promise<Changed | NotOpenRefused | Failed> {
-  const cleared = await saveClearedGoal($, sessionScope(sessionId), number, await $.clock.now())
+  const saved = await saveClearedGoal($, sessionScope(sessionId), number, await $.clock.now())
+  const cleared = await loadBoardAfterChange($, sessionId, saved)
+  if (cleared.outcome === Outcome.Changed) {
+    await runGoalClearedHooks($, cleared.goal)
+  }
 
-  return loadBoardAfterChange($, sessionId, cleared)
+  return cleared
 }
 
 /** Gives the goal numbered `number` on the board of the session `sessionId` the text of `edit`. */

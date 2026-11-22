@@ -37,3 +37,14 @@ export function describeIdeasNotRead(failed: FailedStoreCall): string {
 export function describeIdeaNotDeleted(failed: FailedStoreCall): string {
   return `The store did not delete the idea. ${describeFailedStoreCall(failed)}`
 }
+
+/**
+ * The toast shown when the ideas recorded for the TODO entries attached to goal `goalNumber` were
+ * not deleted after the user cleared it, with `failure` saying why.
+ */
+export function describeIdeasOfClearedGoalNotDeleted(goalNumber: number, failure: string): string {
+  return (
+    `Goal ${goalNumber} is cleared, but not every idea recorded for the TODO entries attached to ` +
+    `it was deleted. ${failure}`
+  )
+}

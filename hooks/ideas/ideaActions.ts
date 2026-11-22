@@ -1,13 +1,18 @@
 import type { EngineInterface } from 'claude-code'
 
+import type { Goal } from '../../types'
 import { showingStoreFailure } from '../failureToast'
-import { returningStoreFailure } from '../pluginStore'
-import { describeIdeaNotDeleted, describeIdeasNotRead } from './ideaPaneTexts'
+import { describeFailedStoreCall, returningStoreFailure } from '../pluginStore'
+import {
+  describeIdeaNotDeleted,
+  describeIdeasNotRead,
+  describeIdeasOfClearedGoalNotDeleted,
+} from './ideaPaneTexts'
 import { readProjectOfIdeas } from './ideaProject'
 import { IDEAS_PANE, keepButtonKeyOf } from './ideaNames'
 import { IdeasOutcome, setIdeaAwaitingDelete, setIdeasInState } from './ideaState'
 import type { LoadedIdeas } from './ideaState'
-import { deleteIdea, readIdeasOf } from './ideaStore'
+import { deleteIdea, deleteIdeasUnder, readIdeasOf } from './ideaStore'
 import type { IdeaId } from './ideaStore'
 
 // The Ideas pane draws the ideas from the state, since a drawing that read the store would start
@@ -34,6 +39,23 @@ export async function loadIdeasIntoState($: EngineInterface, project: string): P
 export async function deleteIdeaOnScreen($: EngineInterface, id: IdeaId): Promise<void> {
   await showingStoreFailure($, () => deleteIdea($, id), describeIdeaNotDeleted)
   await loadIdeasIntoState($, await readProjectOfIdeas($))
+}
+
+/**
+ * Deletes the ideas recorded for each TODO entry attached to `goal`, which the user cleared, and
+ * for every entry under it. Shows a failed delete in a toast, and loads the ideas again.
+ */
+export async function deleteIdeasOfClearedGoal($: EngineInterface, goal: Goal): Promise<void> {
+  const project = await readProjectOfIdeas($)
+  const entries = goal.todos.map(todo => todo.number)
+  await showingStoreFailure(
+    $,
+    async () => {
+      await deleteIdeasUnder($, { project, entries })
+    },
+    failed => describeIdeasOfClearedGoalNotDeleted(goal.number, describeFailedStoreCall(failed)),
+  )
+  await loadIdeasIntoState($, project)
 }
 
 /**

@@ -10,11 +10,20 @@ import type {
 
 import { EVERY_EVENT } from '../everyEvent'
 import type { EveryEvent } from '../everyEvent'
+import { setGoalClearedHook } from '../goals/goalClearedHooks'
 import { denyFailedHook } from '../hookFailure'
 import { registerDeclaredTools } from '../pluginTools'
 import type { DeclaredToolSpecs, PluginTools } from '../pluginTools'
 import type { PromptFooter } from '../promptFooter'
-import { DELETE_IDEAS_TOOL, GET_IDEAS_TOOL, IDEAS_PANE_SITE, RECORD_IDEA_TOOL } from './ideaNames'
+import { deleteIdeasOfClearedGoal } from './ideaActions'
+import {
+  DELETE_IDEAS_TOOL,
+  GET_IDEAS_TOOL,
+  IDEAS_FEATURE,
+  IDEAS_PANE_SITE,
+  RECORD_IDEA_TOOL,
+} from './ideaNames'
+import { describeIdeasOfClearedGoalNotDeleted } from './ideaPaneTexts'
 import { IDEAS_BUTTON, openIdeasFromButton } from './ideasButton'
 import { drawIdeasPane } from './ideasPane'
 import { IDEAS_SUBJECT } from './ideaTexts'
@@ -27,13 +36,20 @@ import {
 
 type StartIdeas = MatchedHook<'session.start', EveryEvent>
 
-/** Registers the idea tools declared in `declaredTools` at the start of a session. */
+/**
+ * Registers the idea tools declared in `declaredTools` at the start of a session, and deletes the
+ * ideas recorded for the TODO entries attached to each goal the user clears.
+ */
 async function startIdeas(
   $: EngineInterface,
   e: Parameters<StartIdeas>[1],
   next: Parameters<StartIdeas>[2],
   declaredTools: DeclaredToolSpecs,
 ): Promise<Awaited<ReturnType<StartIdeas>>> {
+  setGoalClearedHook(IDEAS_FEATURE, {
+    run: goal => deleteIdeasOfClearedGoal($, goal),
+    describeFailure: (goal, message) => describeIdeasOfClearedGoalNotDeleted(goal.number, message),
+  })
   await registerDeclaredTools($, declaredTools)
 
   return next(e)
