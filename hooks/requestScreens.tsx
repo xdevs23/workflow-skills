@@ -79,7 +79,7 @@ function drawDoneFields(
     toastStoreFailure($, () => markDoneOnScreen($, request, reply))
 
   return (
-    <Box>
+    <Box columnGap={1}>
       <Button key={`done-${request.number}`} label="Done" onPress={() => markDone({})} />
       <Input
         key={`reply-${request.number}`}
