@@ -28,7 +28,7 @@ export const MAX_EVIDENCE_LENGTH = 80
  * the control characters, tab and line feed among them, and the separators of lines and
  * paragraphs. Written as the inside of a character class.
  */
-const LINE_BREAKING_CHARACTERS = '\\u0000-\\u001f\\u007f-\\u009f\\u2028\\u2029'
+export const LINE_BREAKING_CHARACTERS = '\\u0000-\\u001f\\u007f-\\u009f\\u2028\\u2029'
 
 const LINE_BREAKING = new RegExp(`[${LINE_BREAKING_CHARACTERS}]`)
 
@@ -343,15 +343,16 @@ function withWaitingMarksRemoved<Changing extends Goal>(
 }
 
 /**
- * Marks the open goal numbered `number` as done with `evidence`, in place of any mark already on
- * it. A goal whose dependency is not done yet is refused. A mark with the evidence already on the
- * goal changes nothing.
+ * Marks the open goal numbered `number` as done with `evidence` by `setBy`, in place of any mark
+ * already on it. A goal whose dependency is not done yet is refused. A mark with the evidence and
+ * setter already on the goal changes nothing.
  */
 export function markGoalDone(
   board: Board,
   number: number,
   evidence: string,
   markedAt: number,
+  setBy: MarkSetter,
 ): Changed<MarkedGoal> | Unchanged | MarkRefused {
   const trimmed = evidence.trim()
   if (trimmed === '') {
@@ -378,14 +379,11 @@ export function markGoalDone(
 
     const mark = doneMarkOf(goal)
 
-    return mark?.evidence === trimmed && mark.setBy === MarkSetter.GoalChecker
+    return mark?.evidence === trimmed && mark.setBy === setBy
       ? { outcome: Outcome.Unchanged, board }
       : {
           outcome: Outcome.Changed,
-          goal: {
-            ...goal,
-            doneMark: { evidence: trimmed, markedAt, setBy: MarkSetter.GoalChecker },
-          },
+          goal: { ...goal, doneMark: { evidence: trimmed, markedAt, setBy } },
         }
   })
 }
@@ -401,7 +399,7 @@ export function markGoalsDone(
 ): GoalsMarked {
   let current = board
   const results = marks.map(({ goal, evidence }): MarkResult => {
-    const marked = markGoalDone(current, goal.number, evidence, markedAt)
+    const marked = markGoalDone(current, goal.number, evidence, markedAt, MarkSetter.GoalChecker)
     current = marked.outcome === Outcome.Changed ? marked.board : current
 
     return { goal, marked }

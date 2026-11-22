@@ -15,6 +15,7 @@ import type {
   GoalEdit,
   GoalsMarked,
   LoopRefused,
+  MarkRefused,
   NotChanged,
   NotOpenRefused,
   PrioritizedGoal,
@@ -22,7 +23,8 @@ import type {
   Unchanged,
   UnmarkRefused,
 } from './board'
-import type { MarkRemovalAsked, UnmarkedGoal } from './doneMark'
+import { MarkSetter } from './doneMark'
+import type { MarkRemovalAsked, MarkedGoal, UnmarkedGoal } from './doneMark'
 import { sessionScope } from './boardScope'
 import {
   describeStoreFailure,
@@ -30,6 +32,7 @@ import {
   saveAttachedTodo,
   saveClearedGoal,
   saveDetachedTodo,
+  saveDoneMark,
   saveDoneMarks,
   saveEditedGoal,
   saveGoalDependency,
@@ -162,6 +165,22 @@ export async function editGoalOfSession(
   const edited = await saveEditedGoal($, scope, number, edit, await $.clock.now())
 
   return loadBoardAfterChange($, sessionId, edited)
+}
+
+/**
+ * Marks the goal numbered `number` on the board of the session `sessionId` as done by the model
+ * with `evidence`, as markGoalDone does.
+ */
+export async function markGoalDoneInSession(
+  $: EngineInterface,
+  sessionId: string,
+  number: number,
+  evidence: string,
+): Promise<Changed<MarkedGoal> | Unchanged | MarkRefused | Failed> {
+  const mark = { number, evidence, setBy: MarkSetter.Model }
+  const marked = await saveDoneMark($, sessionScope(sessionId), mark, await $.clock.now())
+
+  return loadBoardAfterChange($, sessionId, marked)
 }
 
 /**

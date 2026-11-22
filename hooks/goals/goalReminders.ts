@@ -7,6 +7,7 @@ import { MarkRemover } from './doneMark'
 import { dependedGoalOf } from './dependency'
 import type { OpenGoals } from './dependency'
 import { nameGoalWithPriority, priorityTagOf } from './goalListTexts'
+import { MARK_GOAL_DONE_TOOL } from './goalNames'
 import { PANE_TITLE, nameGoal } from './goalPaneTexts'
 import { describePriority, priorityOf } from './priority'
 import { describeOpenGoalDetails } from './goalToolTexts'
@@ -106,7 +107,8 @@ const NUDGE_FOR_ONE_GOAL: NudgeTexts = {
     'while, and would like you to work on it and bring it to completion.',
   closing:
     'Start working on the goal as soon as possible, without interrupting the current work. ' +
-    'Finish the goal cleanly and properly, as the rules require. If the result of the goal is a ' +
+    'Either finish the goal cleanly and properly, as the rules require, or mark it as done with ' +
+    `${MARK_GOAL_DONE_TOOL}, so the user can check the result. If the result of the goal is a ` +
     'draft, open the draft now. The user will not tolerate more delays that you cannot ' +
     'seriously explain and back with clear evidence of why you cannot complete the goal.',
 }
@@ -117,8 +119,9 @@ const NUDGE_FOR_SEVERAL_GOALS: NudgeTexts = {
     'while, and would like you to work on them and bring them to completion.',
   closing:
     'Start working on the goals as soon as possible, without interrupting the current work. ' +
-    'Finish each goal cleanly and properly, as the rules require. If the result of a goal is a ' +
-    'draft, open the draft now. The user will not tolerate more delays that you cannot ' +
+    'Either finish each goal cleanly and properly, as the rules require, or mark that goal as ' +
+    `done with ${MARK_GOAL_DONE_TOOL}, so the user can check the result. If the result of a goal ` +
+    'is a draft, open the draft now. The user will not tolerate more delays that you cannot ' +
     'seriously explain and back with clear evidence of why you cannot complete the goals.',
 }
 

@@ -1,19 +1,17 @@
 import type { DoneMark, Goal, MarkRemoval } from '../../types'
 
-// The goal checker marks a goal as done, and the goal is open with the mark until the user clears
-// it.
+// The model marks a goal as done, and the goal is open with the mark until the user clears it.
 
 /** Who set a done mark. */
 export enum MarkSetter {
+  /** The goal checker of an earlier version, on a board stored by that version. */
   GoalChecker = 'goal-checker',
-  /** The model, on a board stored before the goal checker set the done marks. */
   Model = 'model',
 }
 
 /** Who removed a done mark. */
 export enum MarkRemover {
   User = 'user',
-  /** The model, on a board stored before the goal checker set the done marks. */
   Model = 'model',
   /** Removed because its dependency was no longer done. */
   Dependency = 'dependency',
@@ -25,10 +23,11 @@ export enum MarkRemover {
  */
 export type MarkRemovalAsked =
   | { removedBy: MarkRemover.User; reason?: string }
+  | { removedBy: MarkRemover.Model }
   | { removedBy: MarkRemover.Dependency; dependencyNumber: number }
 
-/** The remover of a stored removal: one a caller can ask for, or the model on an older board. */
-export type StoredMarkRemoval = MarkRemovalAsked | { removedBy: MarkRemover.Model }
+/** The remover of a stored removal. */
+export type StoredMarkRemoval = MarkRemovalAsked
 
 /** A goal with a done mark, removed or not, as a mark leaves it. */
 export type MarkedGoal = Goal & { doneMark: DoneMark }
