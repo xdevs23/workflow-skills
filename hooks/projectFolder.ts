@@ -1,36 +1,32 @@
 import type { EngineInterface, ProcessRunResult } from 'claude-code'
 
-import { showFailure } from '../failureToast'
-import { returningStoreFailure } from '../pluginStore'
-import type { FailedStoreCall } from '../pluginStore'
+import { showFailure } from './failureToast'
+import { describeFailedStoreCall, returningStoreFailure } from './pluginStore'
+import type { FailedStoreCall } from './pluginStore'
 
-/** The kinds of failure that stop work on the ideas recorded in the project. */
-export enum IdeasFailureKind {
-  /** A call on the store failed. */
+export enum ProjectFailureKind {
   Store = 'store',
-  /** git did not start or did not finish while it looked up the project. */
   GitNotRun = 'git-not-run',
-  /** git exited with an error in a project root inside a repository. */
   GitRefused = 'git-refused',
 }
 
 /** A lookup of the project that failed, with the project root that git ran in. */
 type FailedProjectLookup =
-  | { kind: IdeasFailureKind.GitNotRun; root: string; cause: Error }
-  | { kind: IdeasFailureKind.GitRefused; root: string; exitCode: number; stderr: string }
+  | { kind: ProjectFailureKind.GitNotRun; root: string; cause: Error }
+  | { kind: ProjectFailureKind.GitRefused; root: string; exitCode: number; stderr: string }
 
-export type IdeasFailure =
-  | { kind: IdeasFailureKind.Store; failed: FailedStoreCall }
+export type ProjectFailure =
+  | { kind: ProjectFailureKind.Store; failed: FailedStoreCall }
   | FailedProjectLookup
 
 /**
  * The folder of the repository for the project root of the session: the parent of the common git
  * folder, which every worktree of the repository shares, or the project root itself outside git.
  * The entries in TODO.md belong to the repository, so every worktree and subfolder of it reads the
- * same words. Returns the failed lookup when git did not run, or when it refused inside a
+ * same records. Returns the failed lookup when git did not run, or when it refused inside a
  * repository.
  */
-async function lookUpProjectOfIdeas($: EngineInterface): Promise<string | FailedProjectLookup> {
+async function lookUpProject($: EngineInterface): Promise<string | FailedProjectLookup> {
   const root = await $.session.root()
   let commonFolder: ProcessRunResult
   try {
@@ -47,7 +43,7 @@ async function lookUpProjectOfIdeas($: EngineInterface): Promise<string | Failed
       throw error
     }
 
-    return { kind: IdeasFailureKind.GitNotRun, root, cause: error }
+    return { kind: ProjectFailureKind.GitNotRun, root, cause: error }
   }
   if (commonFolder.exitCode === 0) {
     const path = commonFolder.stdout.trim()
@@ -57,7 +53,7 @@ async function lookUpProjectOfIdeas($: EngineInterface): Promise<string | Failed
   const { exitCode, stderr } = commonFolder
 
   return (await hasGitEntryAtOrAbove($, root))
-    ? { kind: IdeasFailureKind.GitRefused, root, exitCode, stderr }
+    ? { kind: ProjectFailureKind.GitRefused, root, exitCode, stderr }
     : root
 }
 
@@ -74,36 +70,47 @@ async function hasGitEntryAtOrAbove($: EngineInterface, folder: string): Promise
   return parent !== folder && hasGitEntryAtOrAbove($, parent)
 }
 
-/**
- * Looks up the project the ideas are recorded in, runs `work` on it, and returns the value that
- * `toFailed` builds from the failure when the lookup or the store stops `work`.
- */
-export async function returningIdeasFailure<T, Failed>(
+export async function returningProjectFailure<T, Failed>(
   $: EngineInterface,
   work: (project: string) => Promise<T>,
-  toFailed: (failure: IdeasFailure) => Failed,
+  toFailed: (failure: ProjectFailure) => Failed,
 ): Promise<T | Failed> {
-  const project = await lookUpProjectOfIdeas($)
+  const project = await lookUpProject($)
   if (typeof project !== 'string') {
     return toFailed(project)
   }
 
   return returningStoreFailure(
     () => work(project),
-    failed => toFailed({ kind: IdeasFailureKind.Store, failed }),
+    failed => toFailed({ kind: ProjectFailureKind.Store, failed }),
   )
 }
 
-/**
- * Runs `work` as returningIdeasFailure does, and shows the failure that stopped it as `describe`
- * writes it.
- */
-export async function showingIdeasFailure(
+export async function showingProjectFailure(
   $: EngineInterface,
   work: (project: string) => Promise<void>,
-  describe: (failure: IdeasFailure) => string,
+  describe: (failure: ProjectFailure) => string,
 ): Promise<void> {
-  await returningIdeasFailure($, work, failure => {
+  await returningProjectFailure($, work, failure => {
     showFailure($, describe(failure))
   })
+}
+
+export function describeProjectFailure(failure: ProjectFailure): string {
+  switch (failure.kind) {
+    case ProjectFailureKind.Store:
+      return describeFailedStoreCall(failure.failed)
+    case ProjectFailureKind.GitNotRun:
+      return (
+        `git did not run in the project root ${failure.root}: ` +
+        `${failure.cause.message}. Check that git is installed and runs in that folder, then ` +
+        'try again.'
+      )
+    case ProjectFailureKind.GitRefused:
+      return (
+        `git exited with code ${failure.exitCode} in the project root ${failure.root}, which is ` +
+        `inside a repository. Fix what git reports, then try again. git reported:\n` +
+        failure.stderr.trim()
+      )
+  }
 }

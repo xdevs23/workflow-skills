@@ -1,6 +1,7 @@
 import type { EngineInterface, MatchedHook, ToolCallResult, ToolSpec } from 'claude-code'
 
 import { denyFailedUse } from '../hookFailure'
+import { describeProjectFailure, returningProjectFailure } from '../projectFolder'
 import { isEntryAtOrUnder } from '../todoEntry'
 import { loadIdeasOfProjectIntoState } from './ideaActions'
 import {
@@ -20,8 +21,6 @@ import {
   RECORD_IDEA,
   RECORD_IDEA_TOOL,
 } from './ideaNames'
-import { describeIdeasFailure } from './ideaPaneTexts'
-import { returningIdeasFailure } from './ideaProject'
 import { deleteIdeasUnder, readIdeasOf, saveIdea } from './ideaStore'
 import {
   DELETE_IDEAS_DESCRIPTION,
@@ -128,7 +127,7 @@ function denyingIdeasFailure(
   $: EngineInterface,
   work: (project: string) => Promise<ToolCallResult>,
 ): Promise<ToolCallResult> {
-  return returningIdeasFailure($, work, failure =>
-    denyFailedUse($, IDEAS_SUBJECT, describeIdeasFailure(failure)),
+  return returningProjectFailure($, work, failure =>
+    denyFailedUse($, IDEAS_SUBJECT, describeProjectFailure(failure)),
   )
 }

@@ -4,13 +4,17 @@ import type { Goal } from '../../types'
 import { showingStoreFailure } from '../failureToast'
 import { returningStoreFailure } from '../pluginStore'
 import {
+  ProjectFailureKind,
+  describeProjectFailure,
+  returningProjectFailure,
+  showingProjectFailure,
+} from '../projectFolder'
+import type { ProjectFailure } from '../projectFolder'
+import {
   describeIdeaNotDeleted,
-  describeIdeasFailure,
   describeIdeasNotRead,
   describeIdeasOfClearedGoalNotDeleted,
 } from './ideaPaneTexts'
-import { IdeasFailureKind, returningIdeasFailure, showingIdeasFailure } from './ideaProject'
-import type { IdeasFailure } from './ideaProject'
 import { IDEAS_PANE, keepButtonKeyOf } from './ideaNames'
 import { IdeasOutcome, setIdeaAwaitingDelete, setIdeasInState } from './ideaState'
 import type { LoadedIdeas } from './ideaState'
@@ -24,7 +28,7 @@ import type { IdeaId } from './ideaStore'
 /** Reads the ideas recorded in the project used by the session from the store into the state. */
 export async function loadIdeasIntoState($: EngineInterface): Promise<void> {
   const sessionId = await $.session.id()
-  const loaded = await returningIdeasFailure(
+  const loaded = await returningProjectFailure(
     $,
     project => readLoadedIdeas($, project),
     ideasNotRead,
@@ -40,7 +44,7 @@ export async function loadIdeasOfProjectIntoState(
   const sessionId = await $.session.id()
   const loaded = await returningStoreFailure(
     () => readLoadedIdeas($, project),
-    failed => ideasNotRead({ kind: IdeasFailureKind.Store, failed }),
+    failed => ideasNotRead({ kind: ProjectFailureKind.Store, failed }),
   )
   await setIdeasInState($, sessionId, loaded)
 }
@@ -52,7 +56,7 @@ async function readLoadedIdeas($: EngineInterface, project: string): Promise<Loa
   }
 }
 
-function ideasNotRead(failure: IdeasFailure): LoadedIdeas {
+function ideasNotRead(failure: ProjectFailure): LoadedIdeas {
   return { outcome: IdeasOutcome.Failed, failure: describeIdeasNotRead(failure) }
 }
 
@@ -69,7 +73,7 @@ export async function deleteIdeaOnScreen($: EngineInterface, id: IdeaId): Promis
  */
 export async function deleteIdeasOfClearedGoal($: EngineInterface, goal: Goal): Promise<void> {
   const entries = goal.todos.map(todo => todo.number)
-  await showingIdeasFailure(
+  await showingProjectFailure(
     $,
     async project => {
       try {
@@ -78,7 +82,7 @@ export async function deleteIdeasOfClearedGoal($: EngineInterface, goal: Goal): 
         await loadIdeasOfProjectIntoState($, project)
       }
     },
-    failure => describeIdeasOfClearedGoalNotDeleted(goal.number, describeIdeasFailure(failure)),
+    failure => describeIdeasOfClearedGoalNotDeleted(goal.number, describeProjectFailure(failure)),
   )
 }
 

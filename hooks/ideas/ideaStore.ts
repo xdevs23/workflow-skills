@@ -1,16 +1,6 @@
-import { hexOf } from '../importedId'
-import {
-  RecordKind,
-  deleteRecord,
-  isRecord,
-  keyPartAfter,
-  listKeys,
-  readEntriesIn,
-  recordKeyOf,
-  recordPrefixOf,
-  writeRecord,
-} from '../pluginStore'
+import { RecordKind, deleteRecord, isRecord, listKeys, recordPrefixOf } from '../pluginStore'
 import type { StoreEngine } from '../pluginStore'
+import { readProjectRecords, saveProjectRecord } from '../projectRecords'
 import { isEntryAtOrUnder, readEntryNumber } from '../todoEntry'
 import type { EntryNumber } from '../todoEntry'
 
@@ -22,9 +12,6 @@ export type IdeaId = string & { readonly [IDEA_ID_BRAND]: true }
 /** Words of the user recorded for the entry `entry` in TODO.md at the time `recordedAt`. */
 export type Idea = { entry: EntryNumber; words: string; recordedAt: number }
 
-/** An idea as the store has it, with the folder of the project it was recorded in. */
-type StoredIdea = Idea & { project: string }
-
 /** An idea read from the store, with the id that names it. */
 export type IdentifiedIdea = Idea & { id: IdeaId }
 
@@ -33,25 +20,14 @@ export type ReadIdeas = { ideas: IdentifiedIdea[]; unreadableKeys: string[] }
 
 const IDEAS_PREFIX = recordPrefixOf(RecordKind.Idea)
 
-// The key holds the first bytes of the SHA-256 digest of the project after its owner, so a read
-// lists the keys of one project before it reads any value. A product choice: 8 bytes keep the key
-// short, and another project with the same digest costs only reads, since the record holds the
-// project too.
-const PROJECT_DIGEST_BYTES = 8
-
 /** Stores `idea`, recorded in `project`, under a new key owned by the session `sessionId`. */
-export async function saveIdea(
+export function saveIdea(
   $: StoreEngine,
   recorded: { sessionId: string; project: string; idea: Idea },
 ): Promise<void> {
   const { sessionId, project, idea } = recorded
-  const digest = await projectDigestOf(project)
-  const value: StoredIdea = { ...idea, project }
 
-  return writeRecord($, {
-    key: recordKeyOf(RecordKind.Idea, sessionId, digest, crypto.randomUUID()),
-    value,
-  })
+  return saveProjectRecord($, { kind: RecordKind.Idea, sessionId, project, value: idea })
 }
 
 /** The ideas recorded in `project` for an entry that `includesEntry` accepts, oldest first. */
@@ -60,18 +36,15 @@ export async function readIdeasOf(
   scope: { project: string; includesEntry: (entry: EntryNumber) => boolean },
 ): Promise<ReadIdeas> {
   const { project, includesEntry } = scope
-  const digest = await projectDigestOf(project)
-  const ids = (await listKeys($)).filter((key): key is IdeaId => projectDigestIn(key) === digest)
-  const ideas: IdentifiedIdea[] = []
-  const unreadableKeys: string[] = []
-  for (const { key, value } of await readEntriesIn($, IDEAS_PREFIX, ids)) {
-    const idea = parseIdea(value)
-    if (idea === undefined) {
-      unreadableKeys.push(key)
-    } else if (idea.project === project && includesEntry(idea.entry)) {
-      ideas.push({ ...idea, id: key })
-    }
-  }
+  const { records, unreadableKeys } = await readProjectRecords($, {
+    kind: RecordKind.Idea,
+    project,
+    keysListedBefore: (await listKeys($)).filter(isIdeaId),
+    parse: parseIdea,
+  })
+  const ideas = records
+    .filter(({ value }) => includesEntry(value.entry))
+    .map(({ key, value }): IdentifiedIdea => ({ ...value, id: key }))
   ideas.sort((earlier, later) => earlier.recordedAt - later.recordedAt)
 
   return { ideas, unreadableKeys }
@@ -107,32 +80,18 @@ export function deleteIdea($: StoreEngine, id: IdeaId): Promise<void> {
   return deleteRecord($, id)
 }
 
-async function projectDigestOf(project: string): Promise<string> {
-  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(project))
-
-  return hexOf(new Uint8Array(digest).slice(0, PROJECT_DIGEST_BYTES))
+function isIdeaId(key: string): key is IdeaId {
+  return key.startsWith(IDEAS_PREFIX)
 }
 
-/** The digest of the project in the key `key` of an idea, which follows the owner of the key. */
-function projectDigestIn(key: string): string | undefined {
-  const owner = keyPartAfter(IDEAS_PREFIX, key)
-
-  return owner === undefined
-    ? undefined
-    : keyPartAfter(recordPrefixOf(RecordKind.Idea, owner), key)
-}
-
-function parseIdea(value: unknown): StoredIdea | undefined {
+function parseIdea(value: unknown): Idea | undefined {
   if (!isRecord(value)) {
     return undefined
   }
-  const { project, words, recordedAt } = value
+  const { words, recordedAt } = value
   const entry = readEntryNumber(value.entry)
 
-  return typeof project === 'string' &&
-    entry !== undefined &&
-    typeof words === 'string' &&
-    typeof recordedAt === 'number'
-    ? { project, entry, words, recordedAt }
+  return entry !== undefined && typeof words === 'string' && typeof recordedAt === 'number'
+    ? { entry, words, recordedAt }
     : undefined
 }
