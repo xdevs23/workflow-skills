@@ -1,7 +1,8 @@
-import type { Hook, On } from 'claude-code'
+import type { EngineInterface, Hook, On } from 'claude-code'
 
 import { EVERY_EVENT } from '../everyEvent'
-import { declarePluginTools } from '../pluginTools'
+import { registerDeclaredTools } from '../pluginTools'
+import type { DeclaredToolSpecs, PluginTools } from '../pluginTools'
 import type { PromptFooter } from '../promptFooter'
 import { SWITCHING_SOURCES } from '../sessionSources'
 import { loadBoardAtStart } from './goalActions'
@@ -29,21 +30,33 @@ import {
   denyGoalToolFailure,
   detachTodo,
   listGoals,
-  registerGoalTools,
 } from './goalTools'
 
-/** Starts every part of the goals in a session, with or without a person at the prompt. */
-const startGoals: Hook<'session.start'> = async ($, e, next) => {
+type StartGoals = Hook<'session.start'>
+
+/**
+ * Starts every part of the goals in a session, with or without a person at the prompt, and
+ * registers the goal tools declared in `declaredTools`.
+ */
+async function startGoals(
+  $: EngineInterface,
+  e: Parameters<StartGoals>[1],
+  next: Parameters<StartGoals>[2],
+  declaredTools: DeclaredToolSpecs,
+): Promise<Awaited<ReturnType<StartGoals>>> {
   const sessionId = await $.session.id()
-  await Promise.all([registerGoalTools($), loadBoardAtStart($, sessionId)])
+  await Promise.all([registerDeclaredTools($, declaredTools), loadBoardAtStart($, sessionId)])
 
   return next(e)
 }
 
-/** Registers the hooks of the goals board, and places its button on the prompt footer `footer`. */
-export function registerGoals(on: On, footer: PromptFooter): void {
-  declarePluginTools(GOAL_TOOL_SPECS)
-  on('session.start', startGoals)
+/**
+ * Registers the hooks of the goals board, places its button on the prompt footer `footer`, and
+ * declares its tools in `tools`.
+ */
+export function registerGoals(on: On, footer: PromptFooter, tools: PluginTools): void {
+  const goalToolSpecs = tools.declare(GOAL_TOOL_SPECS)
+  on('session.start', ($, e, next) => startGoals($, e, next, goalToolSpecs))
   on('classic.SessionStart', { source: SWITCHING_SOURCES }, readGoalsOfSwitchedSession)
   // Registered before the tools of the goals, so the results of those tools contain the notes too.
   on('tool.call', EVERY_EVENT, addGoalChangesToToolResult)

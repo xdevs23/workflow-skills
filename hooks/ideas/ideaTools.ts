@@ -55,14 +55,6 @@ export const IDEA_TOOL_SPECS: readonly ToolSpec[] = [
   },
 ]
 
-/**
- * Registers the tools that let the model record words of the user for an entry, list them and
- * delete them once the entry is finished.
- */
-export async function registerIdeaTools($: EngineInterface): Promise<void> {
-  await Promise.all(IDEA_TOOL_SPECS.map(tool => $.tool.register(tool)))
-}
-
 export const recordIdea: MatchedHook<'tool.call', { tool: typeof RECORD_IDEA_TOOL }> = async (
   $,
   e,

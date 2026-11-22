@@ -1,6 +1,7 @@
 import type { On } from 'claude-code'
 
 import { EVERY_EVENT } from '../everyEvent'
+import { PLUGIN_TOOLS } from '../names'
 import {
   forgetCompactedLoads,
   forgetEndedAgent,
@@ -8,7 +9,7 @@ import {
   recordCommandLoad,
   recordLoad,
 } from './ledgerHooks'
-import { PLUGIN_TOOLS, denyCheckedCallUntilLoaded, denyPluginToolUntilLoaded } from './refusal'
+import { denyCheckedCallUntilLoaded, denyPluginToolUntilLoaded } from './refusal'
 
 /**
  * Registers the hooks that record a ledger of the loads for each loop in the session, and the hooks

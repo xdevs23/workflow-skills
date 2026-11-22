@@ -59,6 +59,8 @@ import {
   WITHDRAW_TOOL,
 } from './names'
 import { sortedByNumber } from './numbered'
+import { registerDeclaredTools } from './pluginTools'
+import type { DeclaredToolSpecs } from './pluginTools'
 import { moveProjectRecordsToSessions } from './projectRequestRecords'
 import { isMessageTypedByUser } from './promptOrigin'
 import { Withdrawal, openRequestsOf } from './requests'
@@ -95,17 +97,20 @@ export const REQUEST_TOOL_SPECS: readonly ToolSpec[] = [
   },
 ]
 
-// Registered for a session with a person at the prompt alone. In a -p run or the Agent SDK, the
-// plugin registers neither the tools nor /reply and does not read any request, so every hook
-// below passes its event on unchanged.
-export const startRequests: MatchedHook<'session.start', { isInteractive: true }> = async (
-  $,
-  e,
-  next,
-) => {
+type StartRequests = MatchedHook<'session.start', { isInteractive: true }>
+
+// Registered for a session with a person at the prompt alone, where it registers the request tools
+// declared in `declaredTools`. In a -p run or the Agent SDK, the plugin registers neither the tools
+// nor /reply and does not read any request, so every hook below passes its event on unchanged.
+export async function startRequests(
+  $: EngineInterface,
+  e: Parameters<StartRequests>[1],
+  next: Parameters<StartRequests>[2],
+  declaredTools: DeclaredToolSpecs,
+): Promise<Awaited<ReturnType<StartRequests>>> {
   recordPersonAtPrompt(e.isInteractive)
   await Promise.all([
-    ...REQUEST_TOOL_SPECS.map(tool => $.tool.register(tool)),
+    registerDeclaredTools($, declaredTools),
     registerCommandShowingRejection($, REPLY_SPEC, REPLY_LOST_WITHOUT_COMMAND),
   ])
   // The requests saved under the project before they belonged to a session are moved to their

@@ -32,7 +32,7 @@ import { LIST_TOOL, REQUESTS_PANE, SEND_TOOL, WITHDRAW_TOOL } from './names'
 import { registerNeededSkills } from './neededSkills'
 import { createPromptFooter, registerPromptFooter } from './promptFooter'
 import { PANE_CLOSED_BY_USER } from './paneClose'
-import { declarePluginTools, keepDeclaredPluginTools } from './pluginTools'
+import { createPluginTools, registerPluginTools } from './pluginTools'
 import { closePaneSendingWaitingPrompts } from './promptWaits'
 import {
   REQUEST_TOOL_SPECS,
@@ -64,10 +64,13 @@ import {
 export const register: Register = on => {
   // Registered before every other hook of this plugin on a prompt, so it reads the prompt as typed.
   registerSessionRecords(on)
-  declarePluginTools(REQUEST_TOOL_SPECS)
-  on('tool.list', EVERY_EVENT, keepDeclaredPluginTools)
+  const tools = createPluginTools()
+  registerPluginTools(on, tools)
+  const requestToolSpecs = tools.declare(REQUEST_TOOL_SPECS)
   on('session.start', EVERY_EVENT, registerPluginCommands)
-  on('session.start', { isInteractive: true }, startRequests)
+  on('session.start', { isInteractive: true }, ($, e, next) =>
+    startRequests($, e, next, requestToolSpecs),
+  )
   on('classic.SessionStart', readRequestsOfStartedSession)
   // The engine passes `$` only to a function named at the call, so each note sent after a
   // compaction is named here. The open goals come before the reminders.
@@ -120,14 +123,14 @@ export const register: Register = on => {
   // The footer draws the buttons in the order placed: Goals, Reminders, then Ideas.
   const footer = createPromptFooter()
   registerPromptFooter(on, footer)
-  registerGoals(on, footer)
+  registerGoals(on, footer, tools)
   registerReminders(on, footer)
   registerImports(on)
   registerSelfCheck(on)
   registerRulesBanner(on)
   registerChatReplies(on)
   registerRoast(on)
-  registerIdeas(on, footer)
+  registerIdeas(on, footer, tools)
 }
 
 // The engine passes `$` only to a function named at the call, so each feature that sends texts with

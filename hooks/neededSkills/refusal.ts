@@ -2,7 +2,7 @@ import type { EngineInterface, MatchedHook, Origin } from 'claude-code'
 
 import { isMadeByModel } from '../conversation'
 import type { EveryEvent } from '../everyEvent'
-import { toolName } from '../names'
+import { PLUGIN_TOOLS } from '../names'
 import { isRecord } from '../pluginStore'
 import { readLoop } from './ledgerState'
 import { LOAD_STEPS } from './loadKind'
@@ -11,10 +11,6 @@ import { loadsMissingFrom } from './loadLedger'
 import type { ToolCall } from './matcher'
 import { loadsNeededBy } from './neededLoads'
 import { describeRefusal } from './refusalText'
-import { regExpLiteralOf } from '../regExpLiteral'
-
-/** The matcher of the calls to the tools of this plugin, whose names share the prefix. */
-export const PLUGIN_TOOLS = { tool: new RegExp(`^${regExpLiteralOf(toolName(''))}`, 'u') }
 
 /**
  * Denies a call made by the model that runs any loop to a tool of this plugin while the loop has

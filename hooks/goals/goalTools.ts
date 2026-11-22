@@ -97,13 +97,6 @@ const DETACHING: GoalChangeTool<TodoInput<string>> = {
   describeDone: ({ goal, todo }) => describeDetached(goal, todo),
 }
 
-/**
- * Registers the tools by which the model lists the goals and attaches TODO entries to them.
- */
-export async function registerGoalTools($: EngineInterface): Promise<void> {
-  await Promise.all(GOAL_TOOL_SPECS.map(tool => $.tool.register(tool)))
-}
-
 // A subagent reads the goals too, so it can check its work against them. It works on a task of its
 // own, so only the main conversation gets the notes on open goals.
 export const listGoals: MatchedHook<'tool.call', { tool: typeof LIST_GOALS_TOOL }> = async (

@@ -1,3 +1,5 @@
+import { regExpLiteralOf } from './regExpLiteral'
+
 /** The name of the plugin in its manifest, which the engine puts into the names of its tools. */
 export const PLUGIN = 'workflow-skills'
 
@@ -8,14 +10,20 @@ export const WITHDRAW = 'withdraw_request'
 /** The start of the name of every tool of this plugin, as the engine lists it. */
 const TOOL_PREFIX = `mcp__${PLUGIN}__` as const
 
+/** The name of any tool of this plugin, as the engine lists it. */
+export type PluginToolName = `${typeof TOOL_PREFIX}${string}`
+
 /** The name the engine lists a tool of this plugin under. */
 export function toolName<Name extends string>(name: Name): `${typeof TOOL_PREFIX}${Name}` {
   return `${TOOL_PREFIX}${name}`
 }
 
+/** The matcher of the calls to the tools of this plugin, whose names share the prefix. */
+export const PLUGIN_TOOLS = { tool: new RegExp(`^${regExpLiteralOf(TOOL_PREFIX)}`, 'u') }
+
 /** Whether the engine lists the tool `name` as a tool of this plugin. */
-export function isToolOfPlugin(name: string): boolean {
-  return name.startsWith(TOOL_PREFIX)
+export function isToolOfPlugin(name: string): name is PluginToolName {
+  return PLUGIN_TOOLS.tool.test(name)
 }
 
 /** The qualified name of a skill of this plugin, such as `workflow-skills:writing-code`. */
