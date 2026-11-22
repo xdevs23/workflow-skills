@@ -29,9 +29,8 @@ Review change for code cleanliness only: readability and hygiene.
 - Report inconsistent style within file or module, and noisy or accidental debug logging
 - Report orphaned TODO and FIXME comments, dead imports, unused variables
 - Report formatting that hides intent of code, e.g. giant expressions or misleading indentation
-- Report every comment in change. Comment belongs only where code alone cannot make its meaning
-  clear, e.g. at external limitation, or where comment describes behavior of something not
-  controlled by project
+- Report every comment added or edited by change, unless it is of kind allowed by
+  `workflow-skills:writing-code`
 - Suggest one or more of these steps for every reported comment:
   - remove comment;
   - shorten it;

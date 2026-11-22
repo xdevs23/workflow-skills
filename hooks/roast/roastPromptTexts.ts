@@ -65,7 +65,8 @@ const ROAST_POINTS =
   'not do what the user asked for or decided, or a statement about the result that the ' +
   'transcript shows to be false. Judge the result alone, never the way the assistant got there. ' +
   'A step of a process that the assistant skipped or did another way, such as a skill it did ' +
-  `not load or a record it did not keep, is not a point. ${ROAST_CONTENT_WITHOUT_REPEATS}`
+  'not load or a record it did not keep, is not a point. Code without comments or documents is ' +
+  `not a point either, unless the user asked for them. ${ROAST_CONTENT_WITHOUT_REPEATS}`
 
 const IDLE_ROAST_REPLY_EXAMPLE = JSON.stringify({
   verdict: IdleRoastVerdict.Roast,

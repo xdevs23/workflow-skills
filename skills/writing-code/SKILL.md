@@ -8,7 +8,7 @@ description: Write or change code in any language, including types, comments, na
 
 ## Code style
 
-- Write code that reads like surrounding code. Match its comment density, naming, idioms
+- Write code that reads like surrounding code. Match its naming, idioms
 - When changing code below high standard, improve it
 - Never rewrite existing code beyond your change
 - Make what code does visible at a glance. Use annotations, decorators, delegates, operator
@@ -16,16 +16,18 @@ description: Write or change code in any language, including types, comments, na
 - Use idioms of each language, listed in file for that language in `languages`
 - Write structure following specification or hierarchy as typed DSL. Building structure that breaks
   constraints of specification fails
-- Comment only where logic is not self-evident. First try making such code clearer
-- Let comment contain constraint or reason not visible in code
-- Never restate next line in comment, narrate change in it ("used to be A, now B") or address
-  reviewer in it
+- Never write comment. Where code needs explaining, make code clearer. Only exceptions:
+  - comment that is absolutely necessary, e.g. link to source of fact, or reason why external limit
+    was accepted;
+  - safety comment, e.g. `// SAFETY:` in Rust;
+  - SPDX line or other legal notice
+- Keep comment written by another contributor as it is, on every line not touched by your change
 - Name things with plain words for what they do
 - Start name of function that does something with verb for what it does, e.g.
   `findCartsReferencingProduct` or `convertToRgb`
 - Never invent metaphor for name. Never use `util`, `misc`, `helper` or similar grab-bag name
-- Apply naming test to each name as you write it: hide its docstring, read only name and one line
-  using it. Rename when you then cannot say what value contains or what code does
+- Apply naming test to each name as you write it: read only name and one line using it. Rename
+  when you then cannot say what value contains or what code does
 - Name type, value or function by what it is in its domain, specific enough that name read alone
   fits nothing outside this code. Rename name made of generic words that fit many things, or of
   word that says nothing of what thing records, computes or contains
@@ -227,6 +229,8 @@ description: Write or change code in any language, including types, comments, na
   contain other uncommitted work
 - Change documentation describing interface used by others, e.g. API, command or screen, in same
   change as that interface
+- Write new document only where project itself requires it, or where explicit task or goal asks
+  for it
 - Never copy code that breaks rules. If existing code already violates rules, never use it as prior
   art to excuse writing same kind of code
 - Where scope allows, rewrite existing code cleanly. Otherwise integrate your part well, leave rest
@@ -236,7 +240,6 @@ description: Write or change code in any language, including types, comments, na
 
 - Address string meant for model to the model
 - Keep repository paths out of string meant for model
-- Where i18n key referenced, add comment there describing intent of string
 
 ## Rules in other skills
 
