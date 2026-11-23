@@ -161,6 +161,12 @@ export function describeRecordedWordsUnknown(failure: ProjectFailure): string {
   )
 }
 
+export function describeOpenGoalsUnknown(storeFailure: string): string {
+  return (
+    'The fork that writes the roast could not read the open goals in the session. ' + storeFailure
+  )
+}
+
 /** The text for a run of /roast that ended without a roast, with the next step. */
 export function describeRoastNotWritten(failure: RoastFailure): string {
   return describeNotWritten(failure, `Run /${ROAST_COMMAND} again.`)

@@ -11,10 +11,12 @@ import type { RunningAgents } from '../runningAgents'
 import { MILLISECONDS_PER_SECOND } from '../timeUnits'
 import { runEvery } from '../timedWork'
 import { readMessagesUnseenByFork } from './messagesUnseenByFork'
+import { listOpenGoalsForRoast } from './openGoalsForRoast'
 import { RoastNotWrittenCause, isPassingApiError, thrownFailure } from './roastFailure'
 import type { RoastFailure } from './roastFailure'
 import { ROAST_PANE, SEND_KEY } from './roastNames'
 import {
+  writePromptAfterOpenGoals,
   writePromptAfterRecordedWords,
   writePromptAfterRunningAgents,
   writePromptAfterUnseenMessages,
@@ -193,14 +195,15 @@ async function askFork(
 }
 
 export async function writeForkPrompt($: EngineInterface, prompt: string): Promise<string> {
-  const [recorded, running, unseen] = await Promise.all([
+  const [openGoals, recorded, running, unseen] = await Promise.all([
+    listOpenGoalsForRoast($),
     readWordsRecordedInSession($),
     listRunningAgents($),
     readMessagesUnseenByFork($),
   ])
   const promptWithAgents = writePromptAfterKnownAgents(
     $,
-    writePromptAfterKnownWords($, prompt, recorded),
+    writePromptAfterKnownWords($, writePromptAfterOpenGoals(prompt, openGoals), recorded),
     running,
   )
   if (!unseen.isKnown) {

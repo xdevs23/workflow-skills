@@ -1,3 +1,4 @@
+import { MARK_GOAL_DONE_TOOL } from '../goals/goalNames'
 import type { RecordedWords } from '../ideas/wordsOfSession'
 import { PendingTextPlace } from '../pendingTexts'
 import type { RunningAgent } from '../runningAgents'
@@ -240,6 +241,27 @@ export function writePromptAfterRecordedWords(
     'user in the transcript, never by how the assistant put it. A message of the user in the ' +
     'transcript outranks recorded words, and recorded words that contradict such a message ' +
     `are a point:\n\n${JSON.stringify(words)}\n\n${prompt}`
+  )
+}
+
+export function writePromptAfterOpenGoals(prompt: string, openGoals: string | undefined): string {
+  if (openGoals === undefined) {
+    return prompt
+  }
+
+  return (
+    'This list shows the goals of the user that are open at this moment, read from the board of ' +
+    'the goals and not from the transcript, each with its age, its done mark where it has one ' +
+    'and the entries of TODO.md attached to it. The board proves that a goal is open, and the ' +
+    'transcript shows where its work stands, also where it shows no work on the goal at all. ' +
+    'Where the transcript shows the work on a goal without a done mark finished, tell the ' +
+    `assistant to mark the goal as done with ${MARK_GOAL_DONE_TOOL} and name the evidence to ` +
+    'give. Where the assistant is not working on such a goal although it could, count that as ' +
+    'a point that holds up the work: name the goal and say what is still missing to complete ' +
+    'it, such as a merge, a test or a fix that the assistant left out. A goal that the ' +
+    'assistant never started counts too, and so does a goal that the assistant left alone ' +
+    'again after an earlier roast named ' +
+    `it. Leave out a goal that cannot move without the user:\n\n${openGoals}\n\n${prompt}`
   )
 }
 
