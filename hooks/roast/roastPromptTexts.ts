@@ -58,8 +58,18 @@ const MEMORY_IN_ROAST =
   'Never tell the assistant to write a memory or to move one. Where a memory is out of date or ' +
   'not needed, you may tell the assistant to delete it.'
 
+const ROAST_INVENTED_RULE =
+  'Where the assistant sets a rule or a limit for itself, such as announcing that from now on ' +
+  'it runs one build at a time or writing that into a memory, and no message of the user and ' +
+  'no rule loaded in this conversation sets it, add a line that names the rule and says that ' +
+  'nothing sets it. Name it where the assistant sets it, also before the assistant holds any ' +
+  'work back by it, and name the work that it parks, serializes or slows where it already ' +
+  'does. Tell the assistant to drop the rule and to delete each memory that records it. ' +
+  'Where a rule loaded in this conversation covers the case, name that rule.'
+
 const ROAST_CONTENT =
-  `${ROAST_POINT_EVIDENCE} ${STATE_OUTSIDE_TRANSCRIPT} ${ROAST_UNFINISHED_WORK} ${MEMORY_IN_ROAST}`
+  `${ROAST_POINT_EVIDENCE} ${STATE_OUTSIDE_TRANSCRIPT} ${ROAST_UNFINISHED_WORK} ` +
+  `${ROAST_INVENTED_RULE} ${MEMORY_IN_ROAST}`
 
 const ROAST_CONTENT_WITHOUT_REPEATS =
   `${ROAST_CONTENT} Leave out each point that an earlier roast in this conversation ` +
