@@ -2,7 +2,7 @@ import type { EngineInterface } from 'claude-code'
 
 import type { DoneMark, Goal } from '../../types'
 import { showFailure } from '../failureToast'
-import { Outcome, Refusal, openGoalNumbered } from './board'
+import { Outcome, Refusal } from './board'
 import type { Changed, LoopRefused, NotChanged, NotOpenRefused, Unchanged } from './board'
 import type { Failed } from './boardStore'
 import { MarkRemover } from './doneMark'
@@ -10,12 +10,10 @@ import {
   addGoalToSession,
   clearGoalOfSession,
   editGoalOfSession,
-  loadBoardShowingFailure,
   removeDoneMarkInSession,
   setGoalDependencyInSession,
   setGoalPriorityInSession,
 } from './goalActions'
-import { nudgeOpenGoal } from './goalNudge'
 import { GoalPaneActionKind, GoalSaveOutcome } from './goalPaneMessages'
 import type { GoalPaneAction, GoalSaveResult } from './goalPaneMessages'
 import {
@@ -58,8 +56,6 @@ export async function saveGoalPaneAction(
 
       return showChangeNotSaved($, set, describeDependencyNotSet, describeDependencyRefusal)
     }
-    case GoalPaneActionKind.Nudge:
-      return nudgeGoal($, sessionId, action.goal)
   }
 }
 
@@ -81,28 +77,6 @@ function refusedWith($: EngineInterface, text: string): GoalSaveResult {
   $.ui.toast(text)
 
   return REFUSED
-}
-
-/**
- * Nudges the model to finish goal `number`, while it is open on the board of the session
- * `sessionId` once read again from the store, and a toast shows a goal no longer open.
- */
-async function nudgeGoal(
-  $: EngineInterface,
-  sessionId: string,
-  number: number,
-): Promise<GoalSaveResult> {
-  const loaded = await loadBoardShowingFailure($, sessionId)
-  if (loaded.outcome === Outcome.Failed) {
-    return FAILED_GOAL_SAVE
-  }
-  const goal = openGoalNumbered(loaded.board, number)
-  if (goal === undefined) {
-    return refusedWith($, describeNoLongerOpen({ number }))
-  }
-  await nudgeOpenGoal($, sessionId, goal)
-
-  return SAVED
 }
 
 /**

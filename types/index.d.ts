@@ -187,24 +187,6 @@ export type SeenBoard = {
   board: Board | null
 }
 
-/** A goal pressed with Nudge, by its id and the number shown to the user. */
-export type NudgedGoal = { id: string; number: number }
-
-/** Goals pressed with Nudge, at least one. */
-export type NudgedGoals = readonly [NudgedGoal, ...NudgedGoal[]]
-
-/** The goals of one send of the nudges, taken from the waiting goals when the send started. */
-export type NudgeSend = { sendId: string; goals: NudgedGoals }
-
-/** The goals pressed with Nudge in the Goals pane whose prompt has not entered the session yet. */
-export type WaitingNudges = {
-  sessionId: string
-  /** The goals pressed and not taken by a send, each once, in the order they were pressed. */
-  waiting: readonly NudgedGoal[]
-  /** The send that runs, if one runs. */
-  sending: NudgeSend | null
-}
-
 /**
  * The value stored for a field: the text typed into a text field, the value of the option picked
  * in a dropdown, or the items added to a list field.
@@ -392,8 +374,6 @@ declare module 'claude-code' {
       goalsPaneTyped: TypedInWorker | null
       /** The board seen by the model of the session; null before the board is first read. */
       seenBoard: SeenBoard | null
-      /** The nudges of the session waiting to be sent to the model; null while none waits. */
-      waitingNudges: WaitingNudges | null
       /**
        * The hint kinds sent in the running turn of the main conversation of the session; null
        * before the first hint of the turn.

@@ -45,7 +45,6 @@ export enum GoalPaneActionKind {
   Unmark = 'unmark',
   Prioritize = 'prioritize',
   Depend = 'depend',
-  Nudge = 'nudge',
 }
 
 /**
@@ -55,7 +54,7 @@ export enum GoalPaneActionKind {
 export type GoalPaneAction = { goal: number } & (
   | { kind: GoalPaneActionKind.Add; text: string }
   | { kind: GoalPaneActionKind.Edit; text: string; editedFrom: string }
-  | { kind: GoalPaneActionKind.Clear | GoalPaneActionKind.Nudge }
+  | { kind: GoalPaneActionKind.Clear }
   | { kind: GoalPaneActionKind.Unmark; shown: DoneMark; reason?: string }
   | { kind: GoalPaneActionKind.Prioritize; priority?: Priority }
   | { kind: GoalPaneActionKind.Depend; dependsOn?: number }

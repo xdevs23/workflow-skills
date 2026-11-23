@@ -7,7 +7,6 @@ import type {
   SeenBoard,
   SessionBoard,
   UnreadBoard,
-  WaitingNudges,
 } from '../../types'
 import { NEW_PANE_RECORD, PANE_RECORD_SHAPE } from '../paneWorker'
 import type { StoredPane } from '../paneWorker'
@@ -31,7 +30,6 @@ const goalsPane = atom({ plugin: 'workflow-skills', key: 'goalsPane' } as const,
 })
 const goalsPaneTyped = atom({ plugin: 'workflow-skills', key: 'goalsPaneTyped' } as const, null)
 const seenBoard = atom({ plugin: 'workflow-skills', key: 'seenBoard' } as const, null)
-const waitingNudges = atom({ plugin: 'workflow-skills', key: 'waitingNudges' } as const, null)
 
 /**
  * The board in the state while its session runs, and null otherwise, such as before the session
@@ -144,27 +142,5 @@ async function updateSeenBoard(
     sessionId,
     seen => ({ sessionId, board: change(seen?.board ?? null) }),
     changeInState => update($, seenBoard, changeInState),
-  )
-}
-
-/** The waiting nudges of the session `sessionId`, if it has any. */
-export async function readWaitingNudges(
-  $: EngineInterface,
-  sessionId: string,
-): Promise<WaitingNudges | null> {
-  return ofSession(await read($, waitingNudges), sessionId)
-}
-
-/**
- * Replaces the waiting nudges of the session `sessionId` with what `change` makes of them, unless
- * another session runs by now, and returns the nudges of that session in the state after it.
- */
-export function updateWaitingNudges(
-  $: EngineInterface,
-  sessionId: string,
-  change: (nudges: WaitingNudges | null) => WaitingNudges | null,
-): Promise<WaitingNudges | null> {
-  return updateOfSession($, sessionId, change, changeInState =>
-    update($, waitingNudges, changeInState),
   )
 }

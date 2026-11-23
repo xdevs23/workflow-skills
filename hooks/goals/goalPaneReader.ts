@@ -32,7 +32,6 @@ export function readGoalPaneAction(action: unknown): GoalPaneAction | Unreadable
         ? { kind, goal, text, editedFrom }
         : unreadableField('editedFrom')
     case GoalPaneActionKind.Clear:
-    case GoalPaneActionKind.Nudge:
       return { kind, goal }
     case GoalPaneActionKind.Unmark: {
       const shown = readDoneMark(action.shown)

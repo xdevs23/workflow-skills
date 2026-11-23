@@ -10,7 +10,6 @@ import {
   CLEAR_LABEL,
   EDIT_LABEL,
   KEEP_LABEL,
-  NUDGE_LABEL,
   UNMARK_LABEL,
   YES_CLEAR_LABEL,
 } from './goalPaneTexts'
@@ -36,12 +35,6 @@ export type RowButton = {
   props: Omit<PaneButtonProps, 'key'>
 }
 
-/**
- * The buttons of the row of `goal`, pressed as `row`, in the order they are drawn: in a row not
- * pressed, Unmark in its done mark, then Edit where the surface draws input fields, Clear, and
- * Nudge while it is not marked as done; the yes and the keep of the question to clear it; Done and
- * Cancel while it is edited; Cancel while it is unmarked.
- */
 export function rowButtonsOf(
   pane: GoalsPaneControls,
   goal: PaneGoal,
@@ -107,13 +100,6 @@ export function rowButtonsOf(
         rowButtonOf(PaneElement.Clear, CLEAR_LABEL, () =>
           pane.act(() => ({ local: { goal: number, mode: RowMode.WaitingForYes } })),
         ),
-        ...(doneMark === undefined
-          ? [
-              rowButtonOf(PaneElement.Nudge, NUDGE_LABEL, () =>
-                pane.act(() => ({ save: { kind: GoalPaneActionKind.Nudge, goal: number } })),
-              ),
-            ]
-          : []),
       ]
   }
 }

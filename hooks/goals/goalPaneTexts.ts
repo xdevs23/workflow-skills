@@ -19,7 +19,6 @@ export const UNMARK_LABEL = 'Unmark'
 export const UNMARK_SUBMIT_LABEL = 'unmark'
 export const REASON_LABEL = 'Reason'
 export const REASON_PLACEHOLDER = 'Reason (optional)'
-export const NUDGE_LABEL = 'Nudge'
 export const CLEAR_LABEL = 'Clear'
 export const YES_CLEAR_LABEL = 'Yes, clear'
 export const KEEP_LABEL = 'Keep'
@@ -46,7 +45,6 @@ export function nameGoal(number: number): string {
 const SAVE_RUNNING_TEXTS: Record<GoalPaneActionKind, (goal: string) => string> = {
   [GoalPaneActionKind.Add]: goal => `Adding ${goal}…`,
   [GoalPaneActionKind.Clear]: goal => `Clearing ${goal}…`,
-  [GoalPaneActionKind.Nudge]: goal => `Nudging ${goal}…`,
   [GoalPaneActionKind.Edit]: goal => `Saving ${goal}…`,
   [GoalPaneActionKind.Unmark]: goal => `Saving ${goal}…`,
   [GoalPaneActionKind.Prioritize]: goal => `Saving ${goal}…`,

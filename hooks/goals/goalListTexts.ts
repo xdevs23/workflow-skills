@@ -17,7 +17,7 @@ export function priorityTagOf(goal: Goal): string | undefined {
 }
 
 /** The name of `goal` with its priority, if it has one, such as "Goal 2 (P0)". */
-export function nameGoalWithPriority(goal: Goal): string {
+function nameGoalWithPriority(goal: Goal): string {
   const tag = priorityTagOf(goal)
   const name = nameGoal(goal.number)
 

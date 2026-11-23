@@ -1,9 +1,6 @@
 import type { DoneMark, Goal } from '../../types'
 import type { HookSubject } from '../hookFailure'
-import { AND_LIST } from '../listFormat'
 import { DONE_LABEL } from '../paneTexts'
-import type { PluginPromptSituation } from '../promptWaits'
-import { SessionActivity } from '../sessionState'
 import { Refusal } from './board'
 import type { AddRefused, LoopRefused, TextChangedRefused } from './board'
 import { describeStoreFailure } from './boardStore'
@@ -53,53 +50,6 @@ export const GOALS_LOST_WITHOUT_COMMAND = 'The goals of this session cannot be o
 /** The goal as one line: its number, then its text. */
 export function describeGoal(goal: Goal): string {
   return `${nameGoal(goal.number)}: ${goal.text}`
-}
-
-function describeNudgeWaitingForTurnEnd(goalName: string): string {
-  return `The nudge for ${goalName} is sent to Claude once the current turn ends.`
-}
-
-const NUDGE_WAITING_BY_ACTIVITY: Record<SessionActivity, (goalName: string) => string> = {
-  [SessionActivity.Idle]: describeNudgeWaitingForTurnEnd,
-  [SessionActivity.TurnRunning]: describeNudgeWaitingForTurnEnd,
-  [SessionActivity.StoppedByUser]: goalName =>
-    `The nudge for ${goalName} is sent to Claude once you type a slash command, or once the turn ` +
-    'started by your next message ends.',
-}
-
-/** The toast for the nudge for `goal` while it waits in `situation`. */
-export function describeNudgeWaiting(
-  goal: Pick<Goal, 'number'>,
-  { activity, waitPane }: PluginPromptSituation,
-): string {
-  const goalName = nameGoal(goal.number)
-
-  return waitPane === undefined
-    ? NUDGE_WAITING_BY_ACTIVITY[activity](goalName)
-    : `The nudge for ${goalName} is sent to Claude after the ${waitPane.title} pane closes.`
-}
-
-/** What a press of Nudge shows for a goal marked as done since the pane drew it. */
-export function describeAlreadyMarkedDone(goal: Pick<Goal, 'number'>): string {
-  return `${nameGoal(goal.number)} is already marked as done.`
-}
-
-/** The toast for the nudge for `goals` left unsent, with the reason. */
-export function describeNudgeNotSent(
-  goals: readonly [Pick<Goal, 'number'>, ...Pick<Goal, 'number'>[]],
-  reason: string,
-): string {
-  const named = AND_LIST.format(goals.map(goal => nameGoal(goal.number)))
-
-  return `The nudge for ${named} was not sent to Claude: ${reason}.`
-}
-
-/** The toast for the waiting nudges left unsent once a stop by the user ended, with the reason. */
-export function describeWaitingNudgesNotSent(reason: string): string {
-  return (
-    `The waiting nudges were not sent to Claude: ${reason}. ` +
-    `Press Nudge again in the ${PANE_TITLE} pane.`
-  )
 }
 
 /** What a press in the Goals pane shows for a goal cleared since the pane drew it. */

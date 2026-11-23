@@ -17,7 +17,6 @@ export enum PaneElement {
   YesClear = 'confirm-clear',
   Keep = 'keep',
   Edit = 'edit',
-  Nudge = 'nudge',
   Clear = 'clear',
   DoneEditing = 'done-edit',
   CancelEditing = 'cancel-edit',

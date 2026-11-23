@@ -6,8 +6,7 @@ import { ChangeKind, changesBetween } from './boardChanges'
 import { MarkRemover } from './doneMark'
 import { dependedGoalOf } from './dependency'
 import type { OpenGoals } from './dependency'
-import { nameGoalWithPriority, priorityTagOf } from './goalListTexts'
-import { MARK_GOAL_DONE_TOOL } from './goalNames'
+import { priorityTagOf } from './goalListTexts'
 import { PANE_TITLE, nameGoal } from './goalPaneTexts'
 import { describePriority, priorityOf } from './priority'
 import { describeOpenGoalDetails } from './goalToolTexts'
@@ -86,58 +85,6 @@ function describeGoalWithTodos(open: OpenGoals, goal: Goal, readAt: number): str
     `${label}${tag === undefined ? '' : `${tag} `}${goal.text}`,
     ...describeOpenGoalDetails(open, goal, readAt).map(line => `${indent}${line}`),
   ]
-}
-
-function describeUnsatisfiedGoal(open: OpenGoals, goal: Goal, readAt: number): string {
-  return [
-    `${nameGoalWithPriority(goal)} is not satisfied yet: ${asSentence(goal.text)}`,
-    ...describeOpenGoalDetails(open, goal, readAt).map(asSentence),
-  ].join(' ')
-}
-
-/** The goals nudged in one prompt, at least one. */
-export type GoalsToNudge = readonly [Goal, ...Goal[]]
-
-/** The request to finish the goals and how to finish them, around the goals of a nudge. */
-type NudgeTexts = { opening: string; closing: string }
-
-const NUDGE_FOR_ONE_GOAL: NudgeTexts = {
-  opening:
-    'The user has noticed that the following goal has not been marked as done for quite a ' +
-    'while, and would like you to work on it and bring it to completion.',
-  closing:
-    'Start working on the goal as soon as possible, without interrupting the current work. ' +
-    'Either finish the goal cleanly and properly, as the rules require, or mark it as done with ' +
-    `${MARK_GOAL_DONE_TOOL}, so the user can check the result. If the result of the goal is a ` +
-    'draft, open the draft now. The user will not tolerate more delays that you cannot ' +
-    'seriously explain and back with clear evidence of why you cannot complete the goal.',
-}
-
-const NUDGE_FOR_SEVERAL_GOALS: NudgeTexts = {
-  opening:
-    'The user has noticed that the following goals have not been marked as done for quite a ' +
-    'while, and would like you to work on them and bring them to completion.',
-  closing:
-    'Start working on the goals as soon as possible, without interrupting the current work. ' +
-    'Either finish each goal cleanly and properly, as the rules require, or mark that goal as ' +
-    `done with ${MARK_GOAL_DONE_TOOL}, so the user can check the result. If the result of a goal ` +
-    'is a draft, open the draft now. The user will not tolerate more delays that you cannot ' +
-    'seriously explain and back with clear evidence of why you cannot complete the goals.',
-}
-
-/**
- * The prompt sent at `readAt` when the user presses Nudge on `goals`: one paragraph for each goal,
- * with its age, its dependency, its done mark and the TODO entries attached to it, between the
- * request to finish the goals and how to finish them.
- */
-export function describeNudge(open: OpenGoals, goals: GoalsToNudge, readAt: number): string {
-  const texts = goals.length === 1 ? NUDGE_FOR_ONE_GOAL : NUDGE_FOR_SEVERAL_GOALS
-
-  return [
-    texts.opening,
-    ...goals.map(goal => describeUnsatisfiedGoal(open, goal, readAt)),
-    texts.closing,
-  ].join('\n\n')
 }
 
 /** The kinds of change sent to the model: the changes made by the user. */

@@ -59,7 +59,6 @@ export function settleRow(
     case GoalPaneActionKind.Add:
     case GoalPaneActionKind.Prioritize:
     case GoalPaneActionKind.Depend:
-    case GoalPaneActionKind.Nudge:
       return row
   }
 }

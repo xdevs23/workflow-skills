@@ -11,7 +11,6 @@ import {
 import { repliesSource } from './delivery'
 import { EVERY_EVENT } from './everyEvent'
 import { registerGoals } from './goals'
-import { sendNudgesWhileSessionAcceptsPrompts } from './goals/goalNudge'
 import { openGoalsAfterCompaction } from './goals/goalReminderHooks'
 import {
   callToolWithPendingTexts,
@@ -148,7 +147,6 @@ function pendingTextSourcesOf($: EngineInterface): PendingTextSource[] {
 // the user that made the prompts submitted by the plugin wait call it.
 function sendTextsWaitingForSession($: EngineInterface): void {
   submitPendingTexts($, pendingTextSourcesOf($))
-  sendNudgesWhileSessionAcceptsPrompts($)
   watchTimedReminders($)
   waitForSelfCheckDueTime($)
 }

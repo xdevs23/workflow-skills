@@ -14,7 +14,6 @@ import {
   MARK_GOAL_DONE_TOOL,
   UNMARK_GOAL_DONE_TOOL,
 } from './goalNames'
-import { showNudgesWaitingAfterStop } from './goalNudge'
 import { addGoalChangesToToolResult, submitWithGoalChanges } from './goalReminderHooks'
 import {
   answerFailedGoalsPanePost,
@@ -63,7 +62,6 @@ export function registerGoals(on: On, footer: PromptFooter, tools: PluginTools):
   // Registered before the tools of the goals, so the results of those tools contain the notes too.
   on('tool.call', EVERY_EVENT, addGoalChangesToToolResult)
   on('prompt.submit', EVERY_EVENT, submitWithGoalChanges)
-  on('turn.complete', EVERY_EVENT, showNudgesWaitingAfterStop)
   on('tool.call', { tool: LIST_GOALS_TOOL }, listGoals).catch(denyGoalToolFailure)
   on('tool.call', { tool: ATTACH_TODO_TOOL }, attachTodo).catch(denyGoalToolFailure)
   on('tool.call', { tool: DETACH_TODO_TOOL }, detachTodo).catch(denyGoalToolFailure)
