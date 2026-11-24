@@ -1,6 +1,12 @@
-import { deleteRecordsFromFile, readRecordFile, setRecordsInFile } from './recordFiles'
+import {
+  deleteRecordsFromFile,
+  listRecordFiles,
+  readRecordFile,
+  setRecordsInFile,
+} from './recordFiles'
 import type { ReadRecordFile, RecordFilesEngine, StoredEntry } from './recordFiles'
-import { entriesOf, filePathOfKey, filesOfKeys, recordFilesUnder } from './recordPlacement'
+import { filePathOfKey, filesOfKeys, placesUnder } from './recordPlacement'
+import type { FileInRead } from './recordPlacement'
 import { describeRecordsFolderNotFound, recordsPlaceOf } from './recordsFolder'
 import type { RecordsFolderEngine } from './recordsFolder'
 import { StoreCall, StoreCallError, callStore } from './storeFailures'
@@ -73,7 +79,7 @@ async function readStoredEntriesUnderAny(
   const reads = new Map<string, Promise<ReadRecordFile>>()
   const entriesOfPrefixes = await Promise.all(
     prefixes.map(async prefix => {
-      const files = await recordFilesUnder($, folder, prefix)
+      const files = await filesUnder($, folder, prefix)
       const entries = await Promise.all(
         files.map(async ({ path, keyWhenUnreadable }) => {
           const read = reads.get(path) ?? readRecordFile($, path)
@@ -88,6 +94,28 @@ async function readStoredEntriesUnderAny(
   )
 
   return entriesOfPrefixes.flat()
+}
+
+/** The record files in the folder `folder` that can contain a key starting with `prefix`. */
+async function filesUnder($: StoreEngine, folder: string, prefix: string): Promise<FileInRead[]> {
+  const files = await Promise.all(
+    placesUnder(folder, prefix).map(async place =>
+      place.isFolder
+        ? (await listRecordFiles($, place.folder)).map(path => place.fileAt(path))
+        : [place.file],
+    ),
+  )
+
+  return files.flat()
+}
+
+/** The records of the file `read`, or its text as the record under `keyWhenUnreadable`. */
+function entriesOf(read: ReadRecordFile, keyWhenUnreadable: string | undefined): StoredEntry[] {
+  if (read.isReadable) {
+    return read.records
+  }
+
+  return keyWhenUnreadable === undefined ? [] : [{ key: keyWhenUnreadable, value: read.text }]
 }
 
 /** The values of the records under the keys of each file in `files`, each file read once. */

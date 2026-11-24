@@ -1,5 +1,4 @@
-import { listRecordFiles, recordFileNameOf, recordFilePathOf } from './recordFiles'
-import type { ReadRecordFile, RecordFilesEngine, StoredEntry } from './recordFiles'
+import { recordFileNameOf, recordFilePathOf } from './recordFiles'
 import { KEY_SEPARATOR, RecordKind, SESSION_SCOPE, recordKeyOf, recordPrefixOf } from './recordKeys'
 
 /**
@@ -108,62 +107,57 @@ function folderOfKind(folder: string, kind: RecordKind): string {
 export type FileInRead = { path: string; keyWhenUnreadable: string | undefined }
 
 /**
- * The record files in the records folder `folder` that can contain a key starting with `prefix`:
- * the file used by the session that the complete parts of the prefix name, or every session file,
- * every file of the kind, or every file.
+ * Where the records under a prefix are: one file, or every record file of a folder, each read as
+ * `fileAt` gives for its path.
  */
-export async function recordFilesUnder(
-  $: RecordFilesEngine,
-  folder: string,
-  prefix: string,
-): Promise<FileInRead[]> {
+export type PlaceInRead =
+  | { isFolder: false; file: FileInRead }
+  | { isFolder: true; folder: string; fileAt: (path: string) => FileInRead }
+
+/**
+ * The places in the records folder `folder` that can contain a key starting with `prefix`: the
+ * file used by the session that the complete parts of the prefix name, or the folder of the
+ * session files, the folder of the kind, or every folder.
+ */
+export function placesUnder(folder: string, prefix: string): PlaceInRead[] {
   const kind = kindOfKey(prefix)
   if (kind === undefined) {
-    const files = await Promise.all([
-      sessionFilesIn($, folder),
-      ...KINDS_OWNED_BY_PROJECT.map(each => recordFilesOfKind($, folder, each)),
-    ])
-
-    return files.flat()
+    return [
+      sessionFilesIn(folder),
+      ...KINDS_OWNED_BY_PROJECT.map(each => filesOfKind(folder, each)),
+    ]
   }
   const ownership = OWNERSHIP_OF_KINDS[kind]
   if (ownership.owner === RecordOwner.Project) {
-    return recordFilesOfKind($, folder, kind)
+    return [filesOfKind(folder, kind)]
   }
   const completeParts = prefix.split(KEY_SEPARATOR).slice(0, -1)
   const sessionId = sessionNamedIn(completeParts, ownership.scope)
 
   return sessionId === undefined
-    ? sessionFilesIn($, folder)
-    : [{ path: sessionFilePathOf(folder, sessionId), keyWhenUnreadable: prefix }]
+    ? [sessionFilesIn(folder)]
+    : [
+        {
+          isFolder: false,
+          file: { path: sessionFilePathOf(folder, sessionId), keyWhenUnreadable: prefix },
+        },
+      ]
 }
 
-async function sessionFilesIn($: RecordFilesEngine, folder: string): Promise<FileInRead[]> {
-  const paths = await listRecordFiles($, `${folder}/${SESSIONS_FOLDER}`)
-
-  return paths.map(path => ({ path, keyWhenUnreadable: undefined }))
-}
-
-async function recordFilesOfKind(
-  $: RecordFilesEngine,
-  folder: string,
-  kind: RecordKind,
-): Promise<FileInRead[]> {
-  const paths = await listRecordFiles($, folderOfKind(folder, kind))
-
-  return paths.map(path => ({ path, keyWhenUnreadable: recordKeyOf(kind, recordFileNameOf(path)) }))
-}
-
-/** The records of the file `read`, or its text as the record under `keyWhenUnreadable`. */
-export function entriesOf(
-  read: ReadRecordFile,
-  keyWhenUnreadable: string | undefined,
-): StoredEntry[] {
-  if (read.isReadable) {
-    return read.records
+function sessionFilesIn(folder: string): PlaceInRead {
+  return {
+    isFolder: true,
+    folder: `${folder}/${SESSIONS_FOLDER}`,
+    fileAt: path => ({ path, keyWhenUnreadable: undefined }),
   }
+}
 
-  return keyWhenUnreadable === undefined ? [] : [{ key: keyWhenUnreadable, value: read.text }]
+function filesOfKind(folder: string, kind: RecordKind): PlaceInRead {
+  return {
+    isFolder: true,
+    folder: folderOfKind(folder, kind),
+    fileAt: path => ({ path, keyWhenUnreadable: recordKeyOf(kind, recordFileNameOf(path)) }),
+  }
 }
 
 /** The keys of `keys` by the path of their file. */
