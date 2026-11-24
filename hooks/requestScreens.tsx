@@ -18,6 +18,10 @@ import type { SurfaceWithFields } from './surfaces'
 
 const OPEN_BUTTON = 'Open'
 
+// An Input of one row shows one line and cuts a longer text, so the field for a reply has rows that
+// a reply of a few sentences wraps into.
+const REPLY_FIELD_ROWS = 3
+
 export const drawRequestBand: MatchedHook<'ui.render', { component: 'AbovePrompt' }> = async (
   $,
   e,
@@ -84,6 +88,7 @@ function drawDoneFields(
       <Input
         key={`reply-${request.number}`}
         placeholder="Or type a reply"
+        rows={REPLY_FIELD_ROWS}
         submitLabel="done"
         onSubmit={text => {
           const reply = replyOf(text)
