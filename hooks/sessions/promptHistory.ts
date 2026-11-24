@@ -5,6 +5,7 @@ import type {
   ProcessSpawnResult,
 } from 'claude-code'
 
+import { claudeConfigFolderOf } from '../claudeConfigFolder'
 import { readJsonText } from '../jsonText'
 import { isRecord } from '../pluginStore'
 import { firstPromptOf, isSlashCommandText } from './sessionRecord'
@@ -129,15 +130,6 @@ export async function readStartsFromPromptHistory(
   }
 
   return { outcome: HistoryOutcome.Read, starts, unreadableLines }
-}
-
-/** The configuration folder of Claude Code: CLAUDE_CONFIG_DIR, or .claude in the home folder. */
-async function claudeConfigFolderOf($: EngineInterface): Promise<string | undefined> {
-  const home = await $.env.get('HOME')
-
-  return (
-    (await $.env.get('CLAUDE_CONFIG_DIR')) ?? (home === undefined ? undefined : `${home}/.claude`)
-  )
 }
 
 /**
