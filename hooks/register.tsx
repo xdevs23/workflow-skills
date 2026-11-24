@@ -1,8 +1,10 @@
 import type { EngineInterface, Register } from 'claude-code'
 
 import { compactWithNotes } from './afterCompaction'
+import { registerAgentMode } from './agentMode'
+import { agentModeNotes } from './agentMode/agentModeNotes'
 import { registerAutonomy } from './autonomy'
-import { autonomyAfterCompaction, autonomyNoteSource } from './autonomy/autonomyNotes'
+import { autonomyNotes } from './autonomy/autonomyNotes'
 import {
   registerPluginCommands,
   replyToFailedPluginCommand,
@@ -55,6 +57,8 @@ import { registerRulesBanner } from './rulesBanner'
 import { registerSelfCheck } from './selfCheck'
 import { waitForSelfCheckDueTime } from './selfCheck/idleSelfCheck'
 import { registerSessionRecords } from './sessions'
+import { submitWithSettingNotes } from './settingNotes'
+import type { SettingNotes } from './settingNotes'
 import { registerStoreMigration } from './storeMigration'
 import {
   completeMainTurn,
@@ -83,12 +87,15 @@ export const register: Register = on => {
     compactWithNotes($, e, next, [
       openGoalsAfterCompaction($),
       remindersAfterCompaction($),
-      autonomyAfterCompaction($),
+      ...settingNotesOf($).map(notes => notes.afterCompaction),
     ]),
   )
   // Registered before the tools of this plugin, so their results also contain the pending texts.
   on('tool.call', EVERY_EVENT, ($, e, next) =>
-    callToolWithPendingTexts($, e, next, [...pendingTextSourcesOf($), autonomyNoteSource($)]),
+    callToolWithPendingTexts($, e, next, [
+      ...pendingTextSourcesOf($),
+      ...settingNotesOf($).map(notes => notes.noteSource),
+    ]),
   )
   // Registered before the tools of this plugin, so it denies a call before the tool runs.
   registerNeededSkills(on)
@@ -136,6 +143,10 @@ export const register: Register = on => {
   registerRulesBanner(on)
   registerQuestionRule(on)
   registerAutonomy(on)
+  registerAgentMode(on)
+  on('prompt.submit', EVERY_EVENT, ($, e, next) =>
+    submitWithSettingNotes($, e, next, settingNotesOf($)),
+  )
   registerRoast(on, [LEAD_AGENT])
   registerIdeas(on, footer, tools)
 }
@@ -144,6 +155,12 @@ export const register: Register = on => {
 // the next tool result is named here.
 function pendingTextSourcesOf($: EngineInterface): PendingTextSource[] {
   return [repliesSource($), roastsSource($), hintNotesSource($)]
+}
+
+// The engine passes `$` only to a function named at the call, so each setting of the session sent
+// to the main conversation in notes is named here.
+function settingNotesOf($: EngineInterface): SettingNotes[] {
+  return [autonomyNotes($), agentModeNotes($)]
 }
 
 // The engine passes `$` only to a function named at the call, so each feature whose texts wait for

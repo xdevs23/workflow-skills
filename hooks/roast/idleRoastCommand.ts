@@ -2,10 +2,11 @@ import type { CommandRunInput, CommandRunResult, EngineInterface, Frozen } from 
 
 import { replyWithFailures } from '../failureToast'
 import { CommandRegistrar, type PluginCommand } from '../pluginCommand'
+import { RecordOutcome } from '../sessionRecord'
 import { returningStoreFailure } from '../storeFailures'
 import { isTypedByUser } from '../promptOrigin'
 import { setIdleRoastSwitch } from './idleRoast'
-import { SwitchOutcome, readIdleRoastSwitch, saveIdleRoastSwitch } from './idleRoastSwitch'
+import { readIdleRoastSwitch, saveIdleRoastSwitch } from './idleRoastSwitch'
 import { restartIdleWait } from './idleWait'
 import { roastsAfterIdleWait } from './idleWaitRoasts'
 import { IDLE_ROAST_COMMAND, IS_ON_AFTER, isIdleRoastWord } from './roastNames'
@@ -49,12 +50,12 @@ async function runIdleRoastCommand(
 ): Promise<CommandRunResult> {
   const sessionId = await $.session.id()
   const read = await readIdleRoastSwitch($, sessionId)
-  if (read.outcome !== SwitchOutcome.Read) {
+  if (read.outcome !== RecordOutcome.Read) {
     return replyWithFailures($, [describeIdleRoastSwitchNotRead(read)])
   }
   const words = e.args.trim()
   if (words === '') {
-    return { text: describeIdleRoastSwitch(read.isOn) }
+    return { text: describeIdleRoastSwitch(read.value) }
   }
   if (!isIdleRoastWord(words)) {
     return { text: describeUnknownIdleRoastWords(words) }

@@ -3,10 +3,9 @@ import type { EngineInterface, MatchedHook, On, PromptComposeSection } from 'cla
 import { isMainConversation } from '../conversation'
 import { EVERY_EVENT } from '../everyEvent'
 import type { EveryEvent } from '../everyEvent'
-import { CONTINUED_CONVERSATION_SOURCES, EMPTY_CONVERSATION_SOURCES } from '../sessionSources'
+import { CONVERSATION_STARTS } from '../sessionSources'
 import { loadGrantsShowingFailures } from './autonomyActions'
 import type { Grant } from './autonomyGrants'
-import { submitWithAutonomyNote } from './autonomyNotes'
 import { AUTONOMY_MODE_SECTION } from './autonomyNames'
 import { startConversationState } from './autonomyState'
 import { AUTONOMY_MODE } from './autonomyTexts'
@@ -14,17 +13,13 @@ import { AUTONOMY_MODE } from './autonomyTexts'
 export function registerAutonomy(on: On): void {
   on('turn.start', EVERY_EVENT, loadGrantsAtTurnStart)
   on('prompt.compose', EVERY_EVENT, appendAutonomyMode)
-  on('classic.SessionStart', { source: EMPTY_CONVERSATION_SOURCES }, async ($, e, next) => {
-    await startConversation($, [])
+  for (const { source, isEmpty } of CONVERSATION_STARTS) {
+    on('classic.SessionStart', { source }, async ($, e, next) => {
+      await startConversation($, isEmpty ? [] : null)
 
-    return next(e)
-  })
-  on('classic.SessionStart', { source: CONTINUED_CONVERSATION_SOURCES }, async ($, e, next) => {
-    await startConversation($, null)
-
-    return next(e)
-  })
-  on('prompt.submit', EVERY_EVENT, submitWithAutonomyNote)
+      return next(e)
+    })
+  }
 }
 
 async function startConversation(

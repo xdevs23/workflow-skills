@@ -1,3 +1,4 @@
+import type { SessionAgentMode } from '../hooks/agentMode/agentModeState'
 import type { SessionAutonomy } from '../hooks/autonomy/autonomyState'
 import type { Outcome, Read } from '../hooks/goals/board'
 import type { MarkSetter, StoredMarkRemoval } from '../hooks/goals/doneMark'
@@ -446,6 +447,11 @@ declare module 'claude-code' {
        * session; null before any session loaded them.
        */
       sessionAutonomy: SessionAutonomy | null
+      /**
+       * The agent mode set for the session and the mode last read by the model running the session,
+       * with the id of that session; null before any session loaded a mode.
+       */
+      sessionAgentMode: SessionAgentMode | null
     }
   }
 }

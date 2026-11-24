@@ -18,6 +18,7 @@ export enum RecordKind {
   ProjectAutonomy = 'project-autonomy',
   GoalAutonomy = 'goal-autonomy',
   AutonomyRevocation = 'autonomy-revocations',
+  AgentMode = 'agent-mode',
 }
 
 /** The kind of scope written before the session in the keys of goals and reminders. */

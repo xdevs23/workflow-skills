@@ -4,13 +4,13 @@ import { PendingTextPlace } from '../pendingTexts'
 import { JsonTextNotRead } from '../jsonText'
 import { DEBUG_LOG_NOTE } from '../failureToast'
 import type { HookSubject } from '../hookFailure'
-import { describeFailedStoreCall, describeUnreadableRecord } from '../storeFailures'
+import { describeFailedRecordRead } from '../sessionRecord'
+import type { FailedRecordRead } from '../sessionRecord'
+import { describeFailedStoreCall } from '../storeFailures'
 import type { FailedStoreCall } from '../storeFailures'
 import { describeProjectFailure } from '../projectFolder'
 import type { ProjectFailure } from '../projectFolder'
 import { MILLISECONDS_PER_MINUTE, MILLISECONDS_PER_SECOND } from '../timeUnits'
-import { SwitchOutcome } from './idleRoastSwitch'
-import type { UnreadSwitch } from './idleRoastSwitch'
 import { ForkViewUnknown, ROW_LIMIT } from './messagesUnseenByFork'
 import {
   HintRoastMissingCause,
@@ -437,13 +437,10 @@ export function describeUnknownIdleRoastWords(words: string): string {
 }
 
 /** The text for the switch of this session that could not be read, with the reason in `read`. */
-export function describeIdleRoastSwitchNotRead(read: UnreadSwitch): string {
-  const reason =
-    read.outcome === SwitchOutcome.Unreadable
-      ? describeUnreadableRecord(read.key)
-      : describeFailedStoreCall(read.failed)
-
-  return `Whether the idle roast is on for this session is unknown. ${reason}`
+export function describeIdleRoastSwitchNotRead(read: FailedRecordRead): string {
+  return (
+    `Whether the idle roast is on for this session is unknown. ${describeFailedRecordRead(read)}`
+  )
 }
 
 /** The reply to /idle-roast whose change the store failed to save, with the failure `failed`. */

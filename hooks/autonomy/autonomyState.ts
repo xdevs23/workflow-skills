@@ -3,6 +3,8 @@ import type { EngineInterface } from 'claude-code'
 
 import { returningProjectFailure } from '../projectFolder'
 import { updateOfSession } from '../sessionBoundState'
+import { takeSetting } from '../settingNotes'
+import type { SettingOfSession, TakenSetting } from '../settingNotes'
 import { GrantsFailureKind, isSameGrants, readGrants } from './autonomyGrants'
 import type { Grant, ReadGrants } from './autonomyGrants'
 
@@ -10,20 +12,13 @@ import type { Grant, ReadGrants } from './autonomyGrants'
 // state reference of the autonomy is written in this file with its plugin and key as literals.
 const sessionAutonomy = atom({ plugin: 'workflow-skills', key: 'sessionAutonomy' } as const, null)
 
-export type SessionAutonomy = {
-  sessionId: string
-  newestLoad: number
-  grants: readonly Grant[]
-  grantsReadByModel: readonly Grant[] | null
-}
-
-export type UnreadGrants = { grants: readonly Grant[]; restore: () => Promise<void> }
+export type SessionAutonomy = SettingOfSession<readonly Grant[]> & { newestLoad: number }
 
 export async function startConversationState(
   $: EngineInterface,
-  grantsReadByModel: readonly Grant[] | null,
+  readByModel: readonly Grant[] | null,
 ): Promise<void> {
-  await changeOwnState($, await $.session.id(), own => ({ ...own, grantsReadByModel }))
+  await changeOwnState($, await $.session.id(), own => ({ ...own, readByModel }))
 }
 
 export async function loadGrantsIntoState($: EngineInterface): Promise<ReadGrants> {
@@ -41,51 +36,30 @@ export async function loadGrantsIntoState($: EngineInterface): Promise<ReadGrant
     }),
   )
   await changeOwnState($, sessionId, own =>
-    own.newestLoad === started?.newestLoad ? { ...own, grants: loaded.grants } : own,
+    own.newestLoad === started?.newestLoad ? { ...own, setting: loaded.grants } : own,
   )
 
   return loaded
 }
 
-export function takeUnreadGrants($: EngineInterface): Promise<UnreadGrants | undefined> {
-  return takeGrants($, ({ grants, grantsReadByModel }) =>
-    grantsReadByModel === null || !isSameGrants(grants, grantsReadByModel),
-  )
-}
-
-export function takeEveryGrant($: EngineInterface): Promise<UnreadGrants | undefined> {
-  return takeGrants($, () => true)
-}
-
-async function takeGrants(
+export function takeUnreadGrants(
   $: EngineInterface,
-  isToSend: (own: SessionAutonomy) => boolean,
-): Promise<UnreadGrants | undefined> {
-  const sessionId = await $.session.id()
-  let taken: UnreadGrants | undefined
-  await updateOfSession<SessionAutonomy>(
+): Promise<TakenSetting<readonly Grant[]> | undefined> {
+  return takeSetting<SessionAutonomy>(
     $,
-    sessionId,
-    own => {
-      // A retried write runs this again, and its last run decides.
-      taken = undefined
-      if (own === null || !isToSend(own)) {
-        return own
-      }
-      const readBefore = own.grantsReadByModel
-      taken = {
-        grants: own.grants,
-        restore: async () => {
-          await changeOwnState($, sessionId, now => ({ ...now, grantsReadByModel: readBefore }))
-        },
-      }
-
-      return { ...own, grantsReadByModel: own.grants }
-    },
+    ({ setting, readByModel }) => readByModel === null || !isSameGrants(setting, readByModel),
     change => update($, sessionAutonomy, change),
   )
+}
 
-  return taken
+export function takeEveryGrant(
+  $: EngineInterface,
+): Promise<TakenSetting<readonly Grant[]> | undefined> {
+  return takeSetting<SessionAutonomy>(
+    $,
+    () => true,
+    change => update($, sessionAutonomy, change),
+  )
 }
 
 function changeOwnState(
@@ -96,7 +70,7 @@ function changeOwnState(
   return updateOfSession<SessionAutonomy>(
     $,
     sessionId,
-    own => change(own ?? { sessionId, newestLoad: 0, grants: [], grantsReadByModel: null }),
+    own => change(own ?? { sessionId, newestLoad: 0, setting: [], readByModel: null }),
     inState => update($, sessionAutonomy, inState),
   )
 }

@@ -6,8 +6,6 @@ export const AUTONOMY_GOAL_WORD = 'autonomy'
 
 export const AUTONOMY_MODE_SECTION = `${PLUGIN}:autonomy-mode`
 
-export const IMPLEMENT_SKILL = skillName('implement')
-
 export const AUTONOMOUS_IMPLEMENTATION_SKILL = skillName('autonomous-implementation')
 
 export const WRITING_CODE_SKILL = skillName('writing-code')

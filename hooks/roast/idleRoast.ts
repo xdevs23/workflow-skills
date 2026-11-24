@@ -5,7 +5,8 @@ import { EVERY_EVENT } from '../everyEvent'
 import type { EveryEvent } from '../everyEvent'
 import { showFailure } from '../failureToast'
 import { isMessageTypedByUser } from '../promptOrigin'
-import { SwitchOutcome, readIdleRoastSwitch } from './idleRoastSwitch'
+import { RecordOutcome } from '../sessionRecord'
+import { readIdleRoastSwitch } from './idleRoastSwitch'
 import { IdleWaitCancel } from './idleWait'
 import type { IdleWaitWork } from './idleWait'
 import { forkRoast } from './roastActions'
@@ -99,8 +100,8 @@ function isStretchToRoast(): boolean {
  */
 async function loadIdleRoastSwitch($: EngineInterface): Promise<void> {
   const read = await readIdleRoastSwitch($, await $.session.id())
-  if (read.outcome === SwitchOutcome.Read) {
-    isSwitchedOn = read.isOn
+  if (read.outcome === RecordOutcome.Read) {
+    isSwitchedOn = read.value
 
     return
   }

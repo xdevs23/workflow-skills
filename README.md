@@ -30,9 +30,25 @@ Then run a skill, such as `/workflow-skills:implement`.
   whole project, `/autonomy #161` in one entry of TODO.md and the entries under it, and
   `/goals 5 autonomy on` for one goal. A grant for the project or an entry applies in every session
   of the project, and a grant for a goal in the session of that goal. `/autonomy` shows where it
-  applies and `/autonomy off` removes every grant. Every system prompt names both modes, and a note
-  in the conversation tells Claude where autonomy applies each time that changes. Everything else
-  follows `workflow-skills:implement`
+  applies and `/autonomy off` removes every grant. Every system prompt describes autonomy, and a
+  note in the conversation tells Claude where it applies each time that changes. Everything else
+  follows the agent mode set for this session
+- **Agent mode**: `/agent-mode` sets how Claude works in this session, and `/agent-mode` alone
+  shows the mode
+  - In `orchestrator`, the default, Claude follows `workflow-skills:implement`, as every session
+    did before
+  - In `swarm`, Claude hands every unit of work to a subagent of the type `workflow-skills:lead`
+    and supervises it, as `workflow-skills:orchestrate` describes
+  - In `single`, `workflow-skills:implement` is not active. Claude makes the change itself,
+    whatever its size, and starts subagents and workflows, writes entries of TODO.md, records ideas
+    and draws drafts only when you ask for them or grant autonomy over work that needs them
+  - The rules that the plugin checks on each tool call, such as those of
+    `workflow-skills:writing-code`, apply in every mode
+  - The mode applies to the main conversation of this session and to no subagent it starts
+  - A session started by `/clear` or a fork starts in `orchestrator`, and a resumed session keeps
+    the mode set for it
+  - Every system prompt describes the modes, and a note in the conversation tells Claude which one
+    applies each time that changes
 - **Requests**: Claude sends a request for work that only you can do outside the session, such as
   power-cycling a board, and keeps working. Press Done in the Requests pane or run
   `/reply <number>`, with a reply after it if Claude needs one

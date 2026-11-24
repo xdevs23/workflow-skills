@@ -17,7 +17,6 @@ import {
   AutonomyWord,
   GoalAutonomyWord,
   HYGIENE_SKILL,
-  IMPLEMENT_SKILL,
   WRITING_CODE_SKILL,
 } from './autonomyNames'
 
@@ -102,10 +101,7 @@ export function describeAutonomyForPerson(grants: readonly Grant[]): string {
 
 export const AUTONOMY_MODE =
   [
-    `The default mode for work is ${IMPLEMENT_SKILL}: the user asks for a feature, you draw a ` +
-      'draft and show it, the user and you discuss and refine it, and then you mark the entry ' +
-      'READY.',
-    `The other mode is ${AUTONOMOUS_IMPLEMENTATION_SKILL}: you keep the same standards, such as ` +
+    `Under ${AUTONOMOUS_IMPLEMENTATION_SKILL}, you keep the same standards, such as ` +
       `those of ${WRITING_CODE_SKILL} and ${HYGIENE_SKILL}, ask no questions, leave no decision ` +
       'and no point open for the user or for later, finish everything end to end, and fill ' +
       'every gap until the work is done.',
@@ -113,7 +109,6 @@ export const AUTONOMY_MODE =
       'it in the conversation, and to nothing while the conversation has no such note. A grant ' +
       'for one piece of work does not extend to anything else.',
     `Only the user changes where it applies, with /${AUTONOMY_COMMAND} or ${GRANT_FOR_GOAL}.`,
-    'Edit by hand a change so small or trivial that neither skill helps with it.',
   ].join(' ')
 
 export function describeAutonomyNote(grants: readonly Grant[]): TextWithLine {
@@ -126,8 +121,7 @@ export function describeAutonomyNote(grants: readonly Grant[]): TextWithLine {
       }
     : {
         text:
-          `${AUTONOMOUS_IMPLEMENTATION_SKILL} applies only to ${listGrants(grants)}. ` +
-          `Everything else follows ${IMPLEMENT_SKILL}. ${replaced}`,
+          `${AUTONOMOUS_IMPLEMENTATION_SKILL} applies only to ${listGrants(grants)}. ${replaced}`,
         line: `Claude read that autonomous implementation applies to ${listGrants(grants)}.`,
       }
 }

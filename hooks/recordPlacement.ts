@@ -38,6 +38,7 @@ const OWNERSHIP_OF_KINDS: Record<RecordKind, Ownership> = {
   [RecordKind.ProjectAutonomy]: OWNED_BY_PROJECT,
   [RecordKind.GoalAutonomy]: SESSION_AFTER_KIND,
   [RecordKind.AutonomyRevocation]: OWNED_BY_PROJECT,
+  [RecordKind.AgentMode]: SESSION_AFTER_KIND,
 }
 
 const KINDS_OWNED_BY_PROJECT = Object.values(RecordKind).filter(
