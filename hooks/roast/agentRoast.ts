@@ -15,7 +15,12 @@ import { EVERY_EVENT } from '../everyEvent'
 import { showFailure } from '../failureToast'
 import { readWordsRecordedInSession } from '../ideas/wordsOfSession'
 import { findListedAgent } from '../listedAgent'
-import { runDetached } from '../timedWork'
+import { SWITCHING_SOURCES } from '../sessionSources'
+import {
+  cancelAgentIdleWait,
+  cancelEveryAgentIdleWait,
+  startAgentIdleWait,
+} from './agentIdleWait'
 import { useAfterCompaction } from './compactionRoast'
 import { isIdleRoastSwitchedOn } from './idleRoast'
 import { readAsModelRead } from './messagesUnseenByFork'
@@ -35,7 +40,6 @@ import {
 } from './roastPromptTexts'
 import { RoastSource } from './roastState'
 import { endStretchOnMessage, isStretchStillRunning, recordStretchRoastOnce } from './roastStretch'
-import type { StretchRoast } from './roastStretch'
 import {
   AGENT_ROAST_FOUND_NO_POINT,
   describeAgentRoastDropped,
@@ -65,24 +69,32 @@ type AgentRoastRequest = {
 
 /**
  * Registers the hooks that roast the work of each subagent of an agent type that
- * `roastedAgentTypes` lists: once per stretch of its work when it stops, in a session with the idle
- * roast switched on, and before each compaction of its conversation. A turn ended by an interrupt
- * stopped the subagent, so it gets no roast that would wake it. Each roast goes to the subagent and
- * to the main conversation.
+ * `roastedAgentTypes` lists. Once such a subagent was idle for IDLE_WAIT_SECONDS after a turn, in a
+ * session with the idle roast switched on, it gets a roast of what blocks the work, once per
+ * stretch of its work. It gets another roast before each compaction of its conversation. A turn
+ * ended by an interrupt stopped the subagent, so no wait follows it. Each roast goes to the
+ * subagent and to the main conversation.
  */
 export function registerAgentRoast(on: On, roastedAgentTypes: readonly string[]): void {
   on('turn.complete', EVERY_EVENT, async ($, e, next) => {
     const completed = await next(e)
-    const { agentId } = e
-    if (agentId !== undefined && !e.isAborted && isIdleRoastSwitchedOn()) {
-      runDetached(
-        $,
-        () => roastStoppedAgent($, agentId, roastedAgentTypes),
-        describeAgentRoastThrown,
-      )
+    if (e.agentId !== undefined && !e.isAborted) {
+      await startIdleWaitOfAgentToRoast($, e.agentId, roastedAgentTypes)
     }
 
     return completed
+  })
+  on('turn.start', EVERY_EVENT, (_$, e, next) => {
+    if (e.agentId !== undefined) {
+      cancelAgentIdleWait(e.agentId)
+    }
+
+    return next(e)
+  })
+  on('classic.SessionStart', { source: SWITCHING_SOURCES }, (_$, e, next) => {
+    cancelEveryAgentIdleWait()
+
+    return next(e)
   })
   on('session.compact', EVERY_EVENT, ($, e, next) =>
     roastAgentBeforeCompaction($, e, next, roastedAgentTypes),
@@ -91,21 +103,44 @@ export function registerAgentRoast(on: On, roastedAgentTypes: readonly string[])
 }
 
 /**
- * Has a model roast the work of the subagent `agentId`, which stopped, where `roastedAgentTypes`
- * lists its type and its stretch of work has no roast yet. Drops the roast once the stretch ended
- * or the idle roast was switched off.
+ * Starts the wait of the subagent `agentId` at the end of one of its turns, where
+ * `roastedAgentTypes` lists its type. The engine lists a subagent for a short time after its turn,
+ * so the wait keeps the subagent as listed here.
  */
-async function roastStoppedAgent(
+async function startIdleWaitOfAgentToRoast(
   $: EngineInterface,
   agentId: string,
   roastedAgentTypes: readonly string[],
 ): Promise<void> {
   const agent = await findAgentToRoast($, agentId, roastedAgentTypes)
-  const stretchRoast = agent === undefined ? undefined : recordStretchRoastOnce(agentId)
-  if (agent === undefined || stretchRoast === undefined) {
+  if (agent !== undefined) {
+    startAgentIdleWait(
+      $,
+      agentId,
+      isStillIdle => roastIdleAgent($, agent, isStillIdle),
+      describeAgentRoastThrown,
+    )
+  }
+}
+
+/**
+ * Has a model roast the work of `agent` once its wait ended, where the idle roast is on, the
+ * subagent was not stopped and its stretch of work has no roast yet. Drops the roast once the
+ * subagent started a turn, the stretch ended or the idle roast was switched off.
+ */
+async function roastIdleAgent(
+  $: EngineInterface,
+  agent: RoastedAgent,
+  isStillIdle: () => boolean,
+): Promise<void> {
+  if (!isIdleRoastSwitchedOn() || (await isAgentStopped($, agent.id))) {
     return
   }
-  const read = await $.session.messages({ agentId })
+  const stretchRoast = recordStretchRoastOnce(agent.id)
+  if (stretchRoast === undefined) {
+    return
+  }
+  const read = await $.session.messages({ agentId: agent.id })
   if ('deny' in read) {
     showFailure($, describeAgentTranscriptNotRead(read.deny))
 
@@ -114,9 +149,13 @@ async function roastStoppedAgent(
   const request: AgentRoastRequest = {
     sessionId: await $.session.id(),
     agent,
-    trigger: AgentRoastTrigger.Stop,
+    trigger: AgentRoastTrigger.Idle,
     transcript: readForRoaster(read),
-    isWanted: () => isStopRoastWanted($, agentId, stretchRoast, roastedAgentTypes),
+    isWanted: async () =>
+      isStillIdle() &&
+      isStretchStillRunning(stretchRoast) &&
+      isIdleRoastSwitchedOn() &&
+      !(await isAgentStopped($, agent.id)),
   }
   await useAgentRoast($, request, await askAgentRoast($, request))
 }
@@ -197,22 +236,11 @@ async function isAgentToRoast(
   return (await findAgentToRoast($, agentId, roastedAgentTypes)) !== undefined
 }
 
-/**
- * Whether the roast for the subagent `agentId`, recorded as `stretchRoast` when it stopped, is
- * still wanted: the stretch of work still runs, the idle roast is on, and the subagent is one to
- * roast.
- */
-async function isStopRoastWanted(
-  $: EngineInterface,
-  agentId: string,
-  stretchRoast: StretchRoast,
-  roastedAgentTypes: readonly string[],
-): Promise<boolean> {
-  return (
-    isStretchStillRunning(stretchRoast) &&
-    isIdleRoastSwitchedOn() &&
-    (await isAgentToRoast($, agentId, roastedAgentTypes))
-  )
+/** Whether the engine lists the subagent `agentId` as stopped. A roast sent to it would wake it. */
+async function isAgentStopped($: EngineInterface, agentId: string): Promise<boolean> {
+  const agent = await findListedAgent($, agentId)
+
+  return agent !== undefined && isStoppedStatus(agent.status)
 }
 
 /**

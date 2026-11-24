@@ -3,9 +3,8 @@ import type { EngineInterface, Timer } from 'claude-code'
 
 import { ofRunningSession } from '../sessionBoundState'
 import { readSessionAcceptsPluginPrompts } from '../sessionState'
-import { MILLISECONDS_PER_SECOND } from '../timeUnits'
 import { runAfter, runDetached } from '../timedWork'
-import { IDLE_WAIT_SECONDS } from './roastNames'
+import { IDLE_WAIT_MILLISECONDS } from './roastNames'
 
 /** Why the wait of the running session was cancelled. */
 export enum IdleWaitCancel {
@@ -39,8 +38,6 @@ export type IdleWaitWorks = readonly [IdleWaitWork, ...IdleWaitWork[]]
 
 /** When the wait of the session `sessionId` ends. */
 export type IdleWaitEnd = { sessionId: string; endsAt: number }
-
-const IDLE_WAIT_MILLISECONDS = IDLE_WAIT_SECONDS * MILLISECONDS_PER_SECOND
 
 // The end of the wait, stored so the start of the session after a reload of the plugin waits for
 // the time left.

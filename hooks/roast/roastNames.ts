@@ -1,4 +1,5 @@
 import { PANE_CLOSED_BY_USER } from '../paneClose'
+import { MILLISECONDS_PER_SECOND } from '../timeUnits'
 
 export const ROAST_COMMAND = 'roast'
 
@@ -23,11 +24,13 @@ export function isIdleRoastWord(words: string): words is IdleRoastWord {
 }
 
 /**
- * How long the main conversation is idle after the last response before the idle roast and the
- * roast on hints: a product choice, under the five minutes for which the prompt cache of a session
- * may last, so the fork reads the conversation from the cache.
+ * How long a conversation is idle after its last response before the idle roast, and in the main
+ * conversation also the roast on hints: a product choice, under the five minutes for which the
+ * prompt cache of a session may last, so the fork reads the conversation from the cache.
  */
 export const IDLE_WAIT_SECONDS = 290
+
+export const IDLE_WAIT_MILLISECONDS = IDLE_WAIT_SECONDS * MILLISECONDS_PER_SECOND
 
 export const ROAST_PANE = 'roast'
 

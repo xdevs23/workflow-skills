@@ -116,6 +116,16 @@ const RESULT_POINTS =
   'a file to split in two, a layer smeared into another or a type leaked across a boundary. ' +
   `Judge the result alone. ${NOT_A_POINT} ${ROAST_CONTENT_WITHOUT_REPEATS}`
 
+/** What counts as a point where an idle conversation blocks the work. */
+const BLOCKING_POINTS =
+  'Name only points that hold up the work, such as waiting for something the assistant could do ' +
+  'itself, asking permission for work the user already ordered, reporting something false as ' +
+  'done, or leaving a task half finished. Leave out minor points, such as a skill that was not ' +
+  `loaded again. ${ROAST_CONTENT_WITHOUT_REPEATS}`
+
+/** When the roaster replies that an idle conversation has no point to roast. */
+const WITHOUT_BLOCKING_POINT = 'no point blocks the work'
+
 /** The request for the points of the roast, without the reply where the transcript proves none. */
 const ROAST_POINTS = `${ROAST_OPENING} ${RESULT_POINTS}`
 
@@ -134,12 +144,9 @@ const NO_BLOCKING_POINT_REPLY_EXAMPLE = JSON.stringify({
  */
 export const IDLE_ROAST_PROMPT =
   `This conversation has been idle since the last reply of the assistant. ${ROAST_OPENING} ` +
-  'Name only points that hold up the work, such as waiting for something the assistant could do ' +
-  'itself, asking permission for work the user already ordered, reporting something false as ' +
-  'done, or leaving a task half finished. Leave out minor points, such as a skill that was not ' +
-  `loaded again. ${ROAST_CONTENT_WITHOUT_REPEATS} ${ROAST_BLUNTNESS} ${JSON_REPLY} Reply with ` +
-  `${IDLE_ROAST_REPLY_EXAMPLE}, or with ${NO_BLOCKING_POINT_REPLY_EXAMPLE} if no point blocks ` +
-  'the work.'
+  `${BLOCKING_POINTS} ${ROAST_BLUNTNESS} ${JSON_REPLY} Reply with ` +
+  `${IDLE_ROAST_REPLY_EXAMPLE}, or with ${NO_BLOCKING_POINT_REPLY_EXAMPLE} if ` +
+  `${WITHOUT_BLOCKING_POINT}.`
 
 const POINT_ROAST_REPLY_EXAMPLE = JSON.stringify({
   verdict: RoastOrNoPointVerdict.Roast,
@@ -178,8 +185,8 @@ export function describeRoastNote(place: PendingTextPlace, message: string): str
   )
 }
 
-/** The message that sends the model `roast`, a roast written once the model stopped working. */
-export function describeStopRoastMessage(roast: string): string {
+/** The message that sends the model `roast`, a roast written once its conversation was idle. */
+export function describeIdleRoastMessage(roast: string): string {
   return attributeRoastToRoaster(roast, READ_ROAST_FIRST)
 }
 
@@ -366,12 +373,37 @@ export function writeHintRoastPrompt({
   )
 }
 
-/** What the transcript of a subagent covers when each trigger makes the roaster roast it. */
-const AGENT_TRANSCRIPT_SPAN: Record<AgentRoastTrigger, string> = {
-  [AgentRoastTrigger.Stop]: 'The subagent stopped after the last message of the transcript.',
-  [AgentRoastTrigger.Compaction]:
-    'The transcript is the chat of the subagent before a compaction, which puts a summary in ' +
-    'its place.',
+/** The texts of the roast for a subagent that differ by what made the roaster write it. */
+type AgentRoastTriggerTexts = {
+  /** What the transcript of the subagent covers. */
+  transcriptSpan: string
+  /** What counts as a point of the roast. */
+  points: string
+  /** When the roaster replies that the roast has no point. */
+  withoutPoint: string
+  /** The message that sends the subagent the roast. */
+  describeMessage: (roast: string) => string
+  /** When the roaster wrote the roast, as the main conversation reads it. */
+  moment: string
+}
+
+const AGENT_ROAST_TEXTS: Record<AgentRoastTrigger, AgentRoastTriggerTexts> = {
+  [AgentRoastTrigger.Idle]: {
+    transcriptSpan: 'The subagent has been idle since the last message of the transcript.',
+    points: BLOCKING_POINTS,
+    withoutPoint: WITHOUT_BLOCKING_POINT,
+    describeMessage: describeIdleRoastMessage,
+    moment: 'while the subagent was idle',
+  },
+  [AgentRoastTrigger.Compaction]: {
+    transcriptSpan:
+      'The transcript is the chat of the subagent before a compaction, which puts a summary in ' +
+      'its place.',
+    points: RESULT_POINTS,
+    withoutPoint: 'the transcript proves no point',
+    describeMessage: describeCompactionRoastMessage,
+    moment: 'about the chat of the subagent before a compaction',
+  },
 }
 
 /** What part of the transcript of a subagent `tail` holds. */
@@ -396,38 +428,29 @@ export function writeAgentRoastPrompt({
   trigger: AgentRoastTrigger
   tail: TranscriptTail
 }): string {
+  const texts = AGENT_ROAST_TEXTS[trigger]
+
   return (
     `${ROASTER_ROLE} A conversation of this session started a ` +
     `subagent of the agent type ${agent.type} for the task ${JSON.stringify(agent.description)}. ` +
     `${describeTranscriptPart(tail)}, as a list of messages with their text, their tool calls ` +
     `and the text of each tool result:\n\n${tail.json}\n\n` +
     'In this message, "the assistant" is that subagent, and "this conversation" is that ' +
-    `transcript. ${AGENT_TRANSCRIPT_SPAN[trigger]} The messages of the role user in the ` +
+    `transcript. ${texts.transcriptSpan} The messages of the role user in the ` +
     'transcript come from the agent that started the subagent, from other agents or from ' +
     `hooks, and not from the user. ${DO_NOT_CONTINUE_WORK} ${ROAST_REQUEST} Your roast goes to ` +
     `the assistant and to the main conversation of this session. ${WRITE_ROAST_TO_ASSISTANT} ` +
     'In the roast, talk only to the assistant. ' +
-    `${RESULT_POINTS} ${ROAST_BLUNTNESS} ${JSON_REPLY} Reply with ${POINT_ROAST_REPLY_EXAMPLE}, ` +
-    `or with ${NO_POINT_REPLY_EXAMPLE} if the transcript proves no point.`
+    `${texts.points} ${ROAST_BLUNTNESS} ${JSON_REPLY} Reply with ` +
+    `${POINT_ROAST_REPLY_EXAMPLE}, or with ${NO_POINT_REPLY_EXAMPLE} if ${texts.withoutPoint}.`
   )
-}
-
-const AGENT_ROAST_MESSAGE: Record<AgentRoastTrigger, (roast: string) => string> = {
-  [AgentRoastTrigger.Stop]: describeStopRoastMessage,
-  [AgentRoastTrigger.Compaction]: describeCompactionRoastMessage,
 }
 
 /**
  * The message that sends a subagent `roast`, the roast about its work written once `trigger` came.
  */
 export function describeAgentRoastMessage(trigger: AgentRoastTrigger, roast: string): string {
-  return AGENT_ROAST_MESSAGE[trigger](roast)
-}
-
-/** When the roaster wrote the roast for a subagent, for each trigger. */
-const AGENT_ROAST_MOMENT: Record<AgentRoastTrigger, string> = {
-  [AgentRoastTrigger.Stop]: 'when the subagent stopped',
-  [AgentRoastTrigger.Compaction]: 'about the chat of the subagent before a compaction',
+  return AGENT_ROAST_TEXTS[trigger].describeMessage(roast)
 }
 
 /** The message that sends the main conversation `roast`, a roast about the work of a subagent. */
@@ -437,8 +460,10 @@ export function describeAgentRoastForMain(roast: AgentPendingRoast): string {
     ? 'The subagent got the roast too.'
     : `The roast did not reach the subagent: ${sentToAgent.reason}.`
 
+  const { moment } = AGENT_ROAST_TEXTS[roast.trigger]
+
   return (
-    `${ROAST_AUTHOR} The roaster wrote it ${AGENT_ROAST_MOMENT[roast.trigger]}, about the work ` +
+    `${ROAST_AUTHOR} The roaster wrote it ${moment}, about the work ` +
     `of the subagent of the agent type ${agent.type} with the agent id ${agent.id} and the task ` +
     `${JSON.stringify(agent.description)}. ${delivery} ${READ_ROAST_FIRST}\n\n${roast.text}`
   )

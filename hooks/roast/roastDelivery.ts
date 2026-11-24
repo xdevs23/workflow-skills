@@ -13,7 +13,7 @@ import {
   attributeRoastToRoaster,
   describeAgentRoastForMain,
   describeCompactionRoastMessage,
-  describeStopRoastMessage,
+  describeIdleRoastMessage,
   describeRoastNote,
 } from './roastPromptTexts'
 import {
@@ -189,7 +189,7 @@ function deliveryOf($: EngineInterface, roast: PendingRoast): PendingRoastDelive
       return forkedRoastDelivery(
         $,
         roast,
-        describeStopRoastMessage(roast.text),
+        describeIdleRoastMessage(roast.text),
         describeIdleRoastFailed,
       )
     case RoastSource.Compaction:

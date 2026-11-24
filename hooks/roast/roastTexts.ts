@@ -10,7 +10,7 @@ import { describeFailedStoreCall } from '../storeFailures'
 import type { FailedStoreCall } from '../storeFailures'
 import { describeProjectFailure } from '../projectFolder'
 import type { ProjectFailure } from '../projectFolder'
-import { MILLISECONDS_PER_MINUTE, MILLISECONDS_PER_SECOND } from '../timeUnits'
+import { MILLISECONDS_PER_MINUTE } from '../timeUnits'
 import { ForkViewUnknown, ROW_LIMIT } from './messagesUnseenByFork'
 import {
   HintRoastMissingCause,
@@ -21,7 +21,7 @@ import {
 import type { HintRoastMissing, LastingApiError, RoastFailure } from './roastFailure'
 import {
   IDLE_ROAST_COMMAND,
-  IDLE_WAIT_SECONDS,
+  IDLE_WAIT_MILLISECONDS,
   IdleRoastWord,
   ROAST_COMMAND,
 } from './roastNames'
@@ -357,9 +357,14 @@ export function describeCompactionRoastNotAskedAgain({
 export const AGENT_ROAST_FOUND_NO_POINT =
   'The roast for a subagent found no point, so nothing went to the subagent or to Claude.'
 
+/** The wait of IDLE_WAIT_MILLISECONDS in whole minutes, as the texts write it. */
+const IDLE_WAIT_WORDS = `about ${Math.round(
+  IDLE_WAIT_MILLISECONDS / MILLISECONDS_PER_MINUTE,
+)} minutes`
+
 const AGENT_ROAST_NEXT_TRY =
-  'The subagent gets a new roast once it stops after a message that this plugin did not send, ' +
-  'or once its conversation is compacted.'
+  `The subagent gets a new roast once it has been idle for ${IDLE_WAIT_WORDS} after a message ` +
+  'that this plugin did not send, or once its conversation is compacted.'
 
 /** The text for a roast for a subagent that was not written, with the next step. */
 export function describeAgentRoastNotWritten(failure: RoastFailure): string {
@@ -395,11 +400,6 @@ export function describeAgentRoastDropped(agent: RoastedAgent): string {
 export function describeAgentRoastFailed(reason: string): string {
   return `The roast for a subagent was not sent to Claude: ${reason}. ${FORKED_ROAST_WAITS}`
 }
-
-/** The wait of IDLE_WAIT_SECONDS in whole minutes, as the texts write it. */
-const IDLE_WAIT_WORDS = `about ${Math.round(
-  (IDLE_WAIT_SECONDS * MILLISECONDS_PER_SECOND) / MILLISECONDS_PER_MINUTE,
-)} minutes`
 
 export const IDLE_ROAST_DESCRIPTION =
   'Switch the idle roast of this session on or off, or show whether it is on. Once it is on, ' +
