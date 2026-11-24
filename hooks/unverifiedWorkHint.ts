@@ -1,4 +1,4 @@
-import { HintKindName } from './hintKind'
+import { HintKindName, HintWithoutPoint } from './hintKind'
 import type { HintKind } from './hintKind'
 import { EMPHASIS, LIST_MARK } from './lineMarks'
 import { phrase } from './phrase'
@@ -29,4 +29,12 @@ export const UNVERIFIED_WORK_HINT: HintKind<HintKindName.UnverifiedWork> = {
     'Your message reports work as not checked, not verified or not tested. Check that work now ' +
       'by running the code path changed by the work, and report what you observed.',
   ],
+  roaster: {
+    task:
+      'The reply reports work as not checked, not verified or not tested. Name that work and ' +
+      'what the transcript shows about whether the assistant checked it. Where a message of the ' +
+      'user tells the assistant not to check or not to run that work, that message comes first: ' +
+      'leave the step of the hint out for that work.',
+    withoutPoint: HintWithoutPoint.Nothing,
+  },
 }
