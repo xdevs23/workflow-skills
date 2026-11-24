@@ -26,6 +26,10 @@ export function hasStatusEnded(status: AgentStatus): boolean {
   return STAGE_OF_STATUS[status] === LoopStage.Ended
 }
 
+export function isStoppedStatus(status: AgentStatus): boolean {
+  return status === 'killed'
+}
+
 /** Whether an agent in `status` works on its task. */
 export function isRunningStatus(status: AgentStatus): boolean {
   return STAGE_OF_STATUS[status] === LoopStage.Working

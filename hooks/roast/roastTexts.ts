@@ -25,6 +25,7 @@ import {
   IdleRoastWord,
   ROAST_COMMAND,
 } from './roastNames'
+import type { RoastedAgent } from './roastedAgent'
 import type { RoastProgressOf, RoastShown } from './roastState'
 
 export const PANE_TITLE = 'Roast'
@@ -156,7 +157,7 @@ export function describeRunningAgentsUnknown(cause: string): string {
 
 export function describeRecordedWordsUnknown(failure: ProjectFailure): string {
   return (
-    'The fork that writes the roast did not get the words of the user recorded in the session ' +
+    'The model that writes the roast did not get the words of the user recorded in the session ' +
     'or any project idea. ' +
     describeProjectFailure(failure)
   )
@@ -351,6 +352,48 @@ export function describeCompactionRoastNotAskedAgain({
     `${error}, which may clear on its own. A fork asked again would read the summary in place ` +
     `of the chat, so the plugin does not ask again. ${COMPACTION_ROAST_NEXT_TRY}`
   )
+}
+
+export const AGENT_ROAST_FOUND_NO_POINT =
+  'The roast for a subagent found no point, so nothing went to the subagent or to Claude.'
+
+const AGENT_ROAST_NEXT_TRY =
+  'The subagent gets a new roast once it stops after a message that this plugin did not send, ' +
+  'or once its conversation is compacted.'
+
+/** The text for a roast for a subagent that was not written, with the next step. */
+export function describeAgentRoastNotWritten(failure: RoastFailure): string {
+  return (
+    'The roast for a subagent was not written. ' +
+    describeNotWritten(failure, AGENT_ROAST_NEXT_TRY)
+  )
+}
+
+/** The toast for a roast for a subagent that was not written, which the debug log has too. */
+export function describeAgentRoastNotWrittenToast(failure: RoastFailure): string {
+  return `${describeAgentRoastNotWritten(failure)} ${DEBUG_LOG_NOTE}`
+}
+
+/** The toast for a roast for a subagent whose transcript the engine refused for `reason`. */
+export function describeAgentTranscriptNotRead(reason: string): string {
+  return (
+    `The roast for a subagent was not written: its transcript could not be read: ${reason}. ` +
+    `${AGENT_ROAST_NEXT_TRY} ${DEBUG_LOG_NOTE}`
+  )
+}
+
+/** The line in the debug log for a roast about `agent` that was no longer wanted once written. */
+export function describeAgentRoastDropped(agent: RoastedAgent): string {
+  return (
+    `The roast for the subagent ${agent.id} (${agent.description}) was dropped: by the time it ` +
+    'was written, the subagent was stopped or no longer listed, a message had started new work ' +
+    'for it, or the idle roast was off. Nothing went to it or to Claude.'
+  )
+}
+
+/** The toast for a roast for a subagent that did not go to Claude for `reason` and waits again. */
+export function describeAgentRoastFailed(reason: string): string {
+  return `The roast for a subagent was not sent to Claude: ${reason}. ${FORKED_ROAST_WAITS}`
 }
 
 /** The wait of IDLE_WAIT_SECONDS in whole minutes, as the texts write it. */

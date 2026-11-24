@@ -27,6 +27,7 @@ import { hintNotesSource } from './hintNoteDelivery'
 import { blockStopOnHintPhrase } from './hints'
 import { registerIdeas } from './ideas'
 import { registerImports } from './imports'
+import { LEAD_AGENT } from './leadAgent'
 import { LIST_TOOL, REQUESTS_PANE, SEND_TOOL, WITHDRAW_TOOL } from './names'
 import { registerNeededSkills } from './neededSkills'
 import { createPromptFooter, registerPromptFooter } from './promptFooter'
@@ -135,7 +136,7 @@ export const register: Register = on => {
   registerRulesBanner(on)
   registerQuestionRule(on)
   registerAutonomy(on)
-  registerRoast(on)
+  registerRoast(on, [LEAD_AGENT])
   registerIdeas(on, footer, tools)
 }
 

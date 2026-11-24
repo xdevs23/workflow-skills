@@ -1,7 +1,8 @@
 import { atom, read, update } from 'claude-code'
-import type { EngineInterface, ModelApiError } from 'claude-code'
+import type { EngineInterface, ModelApiError, SessionSendResult } from 'claude-code'
 
 import { ofRunningSession, updateOfSession } from '../sessionBoundState'
+import type { AgentRoastTrigger, RoastedAgent } from './roastedAgent'
 import type { RoastFailure } from './roastFailure'
 
 /** What became of the roast asked for by a run of /roast. */
@@ -68,15 +69,35 @@ export enum RoastSource {
    * compaction.
    */
   Compaction = 'compaction',
+  /**
+   * A model wrote it about the work of a subagent of an agent type registered with the roaster, and
+   * the roast went to that subagent too.
+   */
+  Agent = 'agent',
 }
 
 /**
  * A roast that has not gone to the model yet: one sent by the user from the Roast pane, with its
- * run of /roast, or one written by the idle roast or for a compaction for the session `sessionId`.
+ * run of /roast, or one written by the idle roast, for a compaction or about a subagent, for the
+ * session `sessionId`.
  */
 export type PendingRoast =
   | (RoastRun & { source: RoastSource.Pane; written: WrittenRoast })
   | { source: RoastSource.Idle | RoastSource.Compaction; sessionId: string; text: string }
+  | AgentPendingRoast
+
+/**
+ * A roast for a subagent that has not gone to the main conversation yet: the roast, the subagent,
+ * what made the roaster roast it, and what became of the roast sent to it.
+ */
+export type AgentPendingRoast = {
+  source: RoastSource.Agent
+  sessionId: string
+  text: string
+  agent: RoastedAgent
+  trigger: AgentRoastTrigger
+  sentToAgent: SessionSendResult
+}
 
 /** The pending roasts taken from the state, split by the session they were written for. */
 export type TakenRoasts = {

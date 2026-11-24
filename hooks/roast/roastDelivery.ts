@@ -11,8 +11,9 @@ import { openRoastPane } from './roastActions'
 import { ROAST_PANE } from './roastNames'
 import {
   attributeRoastToRoaster,
+  describeAgentRoastForMain,
   describeCompactionRoastMessage,
-  describeIdleRoastMessage,
+  describeStopRoastMessage,
   describeRoastNote,
 } from './roastPromptTexts'
 import {
@@ -26,6 +27,7 @@ import type { PendingRoast, RoastRun, WrittenRoast } from './roastState'
 import {
   ROAST_TO_OTHER_SESSION,
   ROAST_WAITING_AFTER_STOP,
+  describeAgentRoastFailed,
   describeCompactionRoastFailed,
   describeIdleRoastFailed,
   describeRoastNotSent,
@@ -162,7 +164,8 @@ async function submitRoast($: EngineInterface, roast: PendingRoast): Promise<voi
 
 /**
  * The delivery of `roast`. A roast from the Roast pane goes back into the pane, and a roast written
- * by the idle roast or for a compaction waits again for the next prompt or tool result.
+ * by the idle roast, for a compaction or about a subagent waits again for the next prompt or tool
+ * result.
  */
 function deliveryOf($: EngineInterface, roast: PendingRoast): PendingRoastDelivery {
   switch (roast.source) {
@@ -186,7 +189,7 @@ function deliveryOf($: EngineInterface, roast: PendingRoast): PendingRoastDelive
       return forkedRoastDelivery(
         $,
         roast,
-        describeIdleRoastMessage(roast.text),
+        describeStopRoastMessage(roast.text),
         describeIdleRoastFailed,
       )
     case RoastSource.Compaction:
@@ -196,11 +199,18 @@ function deliveryOf($: EngineInterface, roast: PendingRoast): PendingRoastDelive
         describeCompactionRoastMessage(roast.text),
         describeCompactionRoastFailed,
       )
+    case RoastSource.Agent:
+      return forkedRoastDelivery(
+        $,
+        roast,
+        describeAgentRoastForMain(roast),
+        describeAgentRoastFailed,
+      )
   }
 }
 
 /**
- * The delivery of `roast`, written by a fork without the Roast pane, as `message`, which waits
+ * The delivery of `roast`, written by a model without the Roast pane, as `message`, which waits
  * again among the pending roasts when it does not go, with the toast made by `describeNotSent`.
  */
 function forkedRoastDelivery(

@@ -9,13 +9,21 @@ import { SwitchOutcome, readIdleRoastSwitch } from './idleRoastSwitch'
 import { IdleWaitCancel } from './idleWait'
 import type { IdleWaitWork } from './idleWait'
 import { forkRoast } from './roastActions'
-import type { ForkedRoast } from './roastActions'
+import type { RoastTry } from './roastActions'
 import { deliverRoast } from './roastDelivery'
 import { RoastNotWrittenCause, RoastRecovery, recoveryOf, thrownFailure } from './roastFailure'
 import type { RoastFailure } from './roastFailure'
+import { showRoastFailure } from './roastFailureNotice'
+import type { RoastNotWrittenTexts } from './roastFailureNotice'
 import { IDLE_ROAST_PROMPT } from './roastPromptTexts'
 import { IdleRoastVerdict, readIdleRoastReply } from './roastReply'
 import { RoastShown, RoastSource } from './roastState'
+import {
+  MAIN_CONVERSATION,
+  endStretch,
+  isStretchRoasted,
+  recordStretchRoast,
+} from './roastStretch'
 import {
   IDLE_ROAST_FOUND_NO_BLOCKING_POINT,
   describeIdleRoastNotWritten,
@@ -23,16 +31,15 @@ import {
   describeIdleRoastSwitchNotRead,
 } from './roastTexts'
 
+const IDLE_ROAST_NOT_WRITTEN_TEXTS: RoastNotWrittenTexts = {
+  describeNotWritten: describeIdleRoastNotWritten,
+  describeNotWrittenToast: describeIdleRoastNotWrittenToast,
+}
+
 // Whether the idle roast is on for the running session, as read from the store at the start of the
 // session and at a switch to another one, and as set by /idle-roast since. The end of the wait
 // reads it here, so a session with the idle roast off does not read the store after each turn.
 let isSwitchedOn = false
-
-// Whether the idle stretch already got a roast, or a reply that no point blocks the work. A message
-// typed by the user ends the stretch, so the turns that follow the roast before the user returns
-// wait for no further roast. A reload of the plugin forgets both, and the end of the next turn
-// waits again.
-let isStretchRoasted = false
 
 /**
  * Registers the hooks that read the switch of the idle roast at the start of the session and follow
@@ -71,14 +78,19 @@ const loadSwitchAtStart: MatchedHook<'session.start', EveryEvent> = async ($, e,
 // started, and which has a switch of its own.
 async function endStretchOnSwitch($: EngineInterface, cause: IdleWaitCancel): Promise<void> {
   if (cause === IdleWaitCancel.SessionSwitched) {
-    isStretchRoasted = false
+    endStretch(MAIN_CONVERSATION)
     await loadIdleRoastSwitch($)
   }
 }
 
+/** Whether the idle roast is on for the running session. */
+export function isIdleRoastSwitchedOn(): boolean {
+  return isSwitchedOn
+}
+
 /** Whether the idle roast is on and the idle stretch has no roast yet. */
 function isStretchToRoast(): boolean {
-  return isSwitchedOn && !isStretchRoasted
+  return isSwitchedOn && !isStretchRoasted(MAIN_CONVERSATION)
 }
 
 /**
@@ -106,7 +118,7 @@ export function setIdleRoastSwitch(isOn: boolean): void {
 
 const startStretchOnUserMessage: MatchedHook<'prompt.submit', EveryEvent> = ($, e, next) => {
   if (isMessageTypedByUser(e)) {
-    isStretchRoasted = false
+    endStretch(MAIN_CONVERSATION)
   }
 
   return next(e)
@@ -138,7 +150,7 @@ async function roastAfterIdleWait(
 async function useIdleRoast(
   $: EngineInterface,
   sessionId: string,
-  roast: ForkedRoast,
+  roast: RoastTry,
 ): Promise<boolean> {
   switch (roast.shown) {
     case RoastShown.Written:
@@ -171,7 +183,7 @@ async function deliverIdleRoastReply(
 
     return false
   }
-  isStretchRoasted = true
+  recordStretchRoast(MAIN_CONVERSATION)
   switch (read.model.verdict) {
     case IdleRoastVerdict.Roast:
       await deliverRoast($, { source: RoastSource.Idle, sessionId, text: read.model.roast })
@@ -192,18 +204,11 @@ async function deliverIdleRoastReply(
  */
 function showIdleRoastFailure($: EngineInterface, failure: RoastFailure): void {
   endStretchIfNeedsPerson(failure)
-  switch (recoveryOf(failure)) {
-    case RoastRecovery.AskAgain:
-      $.ui.log(describeIdleRoastNotWritten(failure), { to: 'debug' })
-      break
-    case RoastRecovery.NeedsPerson:
-      showFailure($, describeIdleRoastNotWrittenToast(failure))
-      break
-  }
+  showRoastFailure($, failure, IDLE_ROAST_NOT_WRITTEN_TEXTS)
 }
 
 function endStretchIfNeedsPerson(failure: RoastFailure): void {
   if (recoveryOf(failure) === RoastRecovery.NeedsPerson) {
-    isStretchRoasted = true
+    recordStretchRoast(MAIN_CONVERSATION)
   }
 }

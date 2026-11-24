@@ -2,7 +2,7 @@ import type { EngineInterface, ModelForkResult, UiOpenResult } from 'claude-code
 
 import { messageOf } from '../errorMessage'
 import { readWordsRecordedInSession } from '../ideas/wordsOfSession'
-import type { WordsOfSession } from '../ideas/wordsOfSession'
+import type { RecordedWords, WordsOfSession } from '../ideas/wordsOfSession'
 import { moveKeyboardTo } from '../paneFocus'
 import { randomWaitAfter } from '../retryWait'
 import type { RetryWaits } from '../retryWait'
@@ -41,10 +41,10 @@ import {
 
 // The user may watch the Roast pane while the fork runs again, so the wait before the next try
 // grows from two seconds up to half a minute and goes no longer.
-const FORK_RETRY_WAITS: RetryWaits = { firstMs: 2000, longestMs: 30_000 }
+const RETRY_WAITS: RetryWaits = { firstMs: 2000, longestMs: 30_000 }
 
-/** The result of one fork asked for a roast. */
-export type ForkedRoast = RoastProgressOf<
+/** The result of one try of a fork or a completion asked for a roast. */
+export type RoastTry = RoastProgressOf<
   RoastShown.Written | RoastShown.WritingAgain | RoastShown.NotWritten
 >
 
@@ -76,7 +76,7 @@ export async function writeRoast(
   finding: string,
 ): Promise<void> {
   const prompt = writeRoastPrompt(finding)
-  const showVerdictOf = (roast: ForkedRoast) => showForkedRoast($, run, readVerdict(roast))
+  const showVerdictOf = (roast: RoastTry) => showForkedRoast($, run, readVerdict(roast))
   await runCountingSeconds($, run, async () => {
     const firstRoast = await forkRoast(
       $,
@@ -115,51 +115,36 @@ async function runCountingSeconds(
 }
 
 /**
- * Asks a fork made from the main conversation for a roast with `prompt`, hands each result to
- * `useResult`, and returns the result of the last fork. Each fork gets the messages of the main
- * conversation that it does not see before `prompt`. Asks again after an error of the API that
- * passes, until a fork writes the roast or fails for good, or `useResult` returns false.
+ * Asks a fork made from the main conversation for a roast with `prompt`, as
+ * askAgainAfterPassingErrors asks. Each fork gets the messages of the main conversation that it
+ * does not see before `prompt`.
  */
 export async function forkRoast(
   $: EngineInterface,
   prompt: string,
-  useResult: (roast: ForkedRoast) => Promise<boolean>,
-): Promise<ForkedRoast> {
-  return forkAgainAfterPassingErrors($, prompt, await forkRoastOnce($, prompt, 1), useResult)
+  useResult: (roast: RoastTry) => Promise<boolean>,
+): Promise<RoastTry> {
+  return askAgainAfterPassingErrors($, tries => forkRoastOnce($, prompt, tries), useResult)
 }
 
 /**
- * Hands `first`, the result of a fork asked for a roast with `prompt`, and each result after it to
- * `useResult`, and returns the result of the last fork. Where `first` failed with an error of the
- * API that passes, asks the next forks as forkRoast asks them, until a fork writes the roast or
- * fails for good, or `useResult` returns false.
+ * Asks for a roast with `ask`, given the number of the try, sends each result to `useResult`, and
+ * returns the result of the last try. After an error of the API that passes, waits as
+ * RETRY_WAITS sets and asks again, until a try writes the roast or fails for good, or
+ * `useResult` returns false.
  */
-async function forkAgainAfterPassingErrors(
+export async function askAgainAfterPassingErrors(
   $: EngineInterface,
-  prompt: string,
-  first: ForkedRoast,
-  useResult: (roast: ForkedRoast) => Promise<boolean>,
-): Promise<ForkedRoast> {
-  let roast = first
+  ask: (tries: number) => Promise<RoastTry>,
+  useResult: (roast: RoastTry) => Promise<boolean>,
+): Promise<RoastTry> {
+  let roast = await ask(1)
   while ((await useResult(roast)) && roast.shown === RoastShown.WritingAgain) {
-    roast = await forkAfterPassingError($, prompt, roast)
+    await $.clock.sleep(randomWaitAfter(roast.failedTries, RETRY_WAITS))
+    roast = await ask(roast.failedTries + 1)
   }
 
   return roast
-}
-
-/**
- * Waits after `failed`, a try that failed with an error of the API that passes, as
- * FORK_RETRY_WAITS sets, and asks the next fork for a roast with `prompt`.
- */
-async function forkAfterPassingError(
-  $: EngineInterface,
-  prompt: string,
-  failed: RoastProgressOf<RoastShown.WritingAgain>,
-): Promise<ForkedRoast> {
-  await $.clock.sleep(randomWaitAfter(failed.failedTries, FORK_RETRY_WAITS))
-
-  return forkRoastOnce($, prompt, failed.failedTries + 1)
 }
 
 /**
@@ -170,7 +155,7 @@ async function forkRoastOnce(
   $: EngineInterface,
   prompt: string,
   tries: number,
-): Promise<ForkedRoast> {
+): Promise<RoastTry> {
   return askFork($, await writeForkPrompt($, prompt), tries)
 }
 
@@ -181,7 +166,7 @@ async function forkRoastOnce(
 export function forkRoastWithoutRetry(
   $: EngineInterface,
   forkPrompt: string,
-): Promise<ForkedRoast> {
+): Promise<RoastTry> {
   return askFork($, forkPrompt, 1)
 }
 
@@ -190,8 +175,8 @@ async function askFork(
   $: EngineInterface,
   forkPrompt: string,
   tries: number,
-): Promise<ForkedRoast> {
-  return readForkReply(await $.model.fork({ prompt: forkPrompt }), tries)
+): Promise<RoastTry> {
+  return readModelReply(await $.model.fork({ prompt: forkPrompt }), tries)
 }
 
 export async function writeForkPrompt($: EngineInterface, prompt: string): Promise<string> {
@@ -234,20 +219,28 @@ function writePromptAfterKnownWords(
   prompt: string,
   recorded: WordsOfSession,
 ): string {
+  return writePromptAfterRecordedWords(prompt, listKnownWords($, recorded))
+}
+
+/** The words in `recorded`. Where they are unknown, logs why for debugging and returns none. */
+export function listKnownWords(
+  $: EngineInterface,
+  recorded: WordsOfSession,
+): readonly RecordedWords[] {
   if (!recorded.isKnown) {
     $.ui.log(describeRecordedWordsUnknown(recorded.failure), { to: 'debug' })
 
-    return prompt
+    return []
   }
 
-  return writePromptAfterRecordedWords(prompt, recorded.words)
+  return recorded.words
 }
 
 /** What a fork reply to a roast shows: the roast, the refusal of the roast, or a failure. */
-type ForkedReply = ForkedRoast | RoastProgressOf<RoastShown.Refused>
+type ForkedReply = RoastTry | RoastProgressOf<RoastShown.Refused>
 
 /** `roast` with the verdict of the fork read from its reply, where the fork replied. */
-function readVerdict(roast: ForkedRoast): ForkedReply {
+function readVerdict(roast: RoastTry): ForkedReply {
   if (roast.shown !== RoastShown.Written) {
     return roast
   }
@@ -268,7 +261,7 @@ function readVerdict(roast: ForkedRoast): ForkedReply {
 }
 
 /** Whether the fork that wrote `roast` refused the roast. */
-function isRefusedRoast(roast: ForkedRoast): boolean {
+function isRefusedRoast(roast: RoastTry): boolean {
   return readVerdict(roast).shown === RoastShown.Refused
 }
 
@@ -287,8 +280,11 @@ async function showForkedRoast(
   return isShown
 }
 
-/** What the fork reply `reply` to the try numbered `tries` shows for the roast. */
-function readForkReply(reply: ModelForkResult, tries: number): ForkedRoast {
+/**
+ * What `reply`, of a fork or a completion asked for a roast as the try numbered `tries`, shows for
+ * the roast.
+ */
+export function readModelReply(reply: ModelForkResult, tries: number): RoastTry {
   if (reply.isAnswered) {
     const text = reply.text.trim()
 

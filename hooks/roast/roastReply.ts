@@ -26,29 +26,20 @@ export type IdleRoastReply =
   | { verdict: IdleRoastVerdict.Roast; roast: string }
   | { verdict: IdleRoastVerdict.NoBlockingPoint }
 
-/** The verdicts that the prompt of the compaction roast offers its fork. */
-export enum CompactionRoastVerdict {
+/**
+ * The verdicts that the prompts of the compaction roast, the roast on hints and the roast of a
+ * subagent offer the model.
+ */
+export enum RoastOrNoPointVerdict {
   Roast = 'roast',
-  /** The transcript before the compaction proves no point, so the fork wrote no roast. */
+  /** The transcript proves no point, so the model wrote no roast. */
   NoPoint = 'no-point',
 }
 
-/** The JSON object that the prompt of the compaction roast asks its fork to reply with. */
-export type CompactionRoastReply =
-  | { verdict: CompactionRoastVerdict.Roast; roast: string }
-  | { verdict: CompactionRoastVerdict.NoPoint }
-
-/** The verdicts that the prompt of the roast on hints offers the fork. */
-export enum HintRoastVerdict {
-  Roast = 'roast',
-  /** The transcript proves no point on the last reply, so the fork wrote no roast. */
-  NoPoint = 'no-point',
-}
-
-/** The JSON object that the prompt of the roast on hints asks the fork to reply with. */
-export type HintRoastReply =
-  | { verdict: HintRoastVerdict.Roast; roast: string }
-  | { verdict: HintRoastVerdict.NoPoint }
+/** The JSON object that a prompt offering RoastOrNoPointVerdict asks the model to reply with. */
+export type RoastOrNoPointReply =
+  | { verdict: RoastOrNoPointVerdict.Roast; roast: string }
+  | { verdict: RoastOrNoPointVerdict.NoPoint }
 
 export function readRoastReply(text: string): JsonTextRead<RoastReply> {
   return readJsonText(text, toRoastReply)
@@ -60,15 +51,9 @@ export function readIdleRoastReply(text: string): JsonTextRead<IdleRoastReply> {
   )
 }
 
-export function readCompactionRoastReply(text: string): JsonTextRead<CompactionRoastReply> {
+export function readRoastOrNoPointReply(text: string): JsonTextRead<RoastOrNoPointReply> {
   return readJsonText(text, value =>
-    toRoastOrNoneReply(value, CompactionRoastVerdict.Roast, CompactionRoastVerdict.NoPoint),
-  )
-}
-
-export function readHintRoastReply(text: string): JsonTextRead<HintRoastReply> {
-  return readJsonText(text, value =>
-    toRoastOrNoneReply(value, HintRoastVerdict.Roast, HintRoastVerdict.NoPoint),
+    toRoastOrNoneReply(value, RoastOrNoPointVerdict.Roast, RoastOrNoPointVerdict.NoPoint),
   )
 }
 

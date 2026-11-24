@@ -2,7 +2,7 @@ import type { ModelApiError } from 'claude-code'
 
 import type { JsonTextNotRead } from '../jsonText'
 
-/** Why a fork asked for a roast, by /roast or by the idle roast, wrote no roast. */
+/** Why a model asked for a roast wrote no roast. */
 export enum RoastNotWrittenCause {
   NothingToFork = 'nothing to fork',
   ApiError = 'api error',

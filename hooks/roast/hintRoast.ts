@@ -16,11 +16,11 @@ import {
 import type { HintRoastRequest } from './hintRoastQueue'
 import type { IdleWaitWork } from './idleWait'
 import { forkRoast } from './roastActions'
-import type { ForkedRoast } from './roastActions'
+import type { RoastTry } from './roastActions'
 import { HintRoastMissingCause, RoastNotWrittenCause } from './roastFailure'
 import type { HintRoastMissing } from './roastFailure'
 import { attributeRoastToRoaster, writeHintRoastPrompt } from './roastPromptTexts'
-import { HintRoastVerdict, readHintRoastReply } from './roastReply'
+import { RoastOrNoPointVerdict, readRoastOrNoPointReply } from './roastReply'
 import { RoastShown } from './roastState'
 import {
   describeHintRoastDropped,
@@ -34,7 +34,7 @@ type HintRoast =
   | { isWritten: false; missing: HintRoastMissing }
 
 /** The result of the last fork asked for the roast on the hints of `kinds`. */
-type ForkedHintRoast = { kinds: readonly RoastedHintKind[]; roast: ForkedRoast }
+type ForkedHintRoast = { kinds: readonly RoastedHintKind[]; roast: RoastTry }
 
 /**
  * The roast on hints as work of the idle wait: the end of a turn hands the roasts queued in it to
@@ -189,7 +189,7 @@ function kindsSentWithoutRoast(
   }
 }
 
-function readForkedHintRoast(roast: ForkedRoast): HintRoast {
+function readForkedHintRoast(roast: RoastTry): HintRoast {
   switch (roast.shown) {
     case RoastShown.Written:
       return readHintRoastText(roast.text)
@@ -204,7 +204,7 @@ function readForkedHintRoast(roast: ForkedRoast): HintRoast {
 
 /** The roast in `reply`, the text of the fork, unless the fork found no point. */
 function readHintRoastText(reply: string): HintRoast {
-  const read = readHintRoastReply(reply)
+  const read = readRoastOrNoPointReply(reply)
   if (!read.isRead) {
     return missing({
       cause: HintRoastMissingCause.NotWritten,
@@ -212,9 +212,9 @@ function readHintRoastText(reply: string): HintRoast {
     })
   }
   switch (read.model.verdict) {
-    case HintRoastVerdict.Roast:
+    case RoastOrNoPointVerdict.Roast:
       return { isWritten: true, roast: attributeRoastToRoaster(read.model.roast) }
-    case HintRoastVerdict.NoPoint:
+    case RoastOrNoPointVerdict.NoPoint:
       return missing({ cause: HintRoastMissingCause.NoPoint })
   }
 }

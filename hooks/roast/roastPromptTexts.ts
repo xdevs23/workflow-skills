@@ -4,23 +4,19 @@ import type { RecordedWords } from '../ideas/wordsOfSession'
 import { PendingTextPlace } from '../pendingTexts'
 import type { RunningAgent } from '../runningAgents'
 import type { MessageAsRead } from './messagesUnseenByFork'
-import {
-  CompactionRoastVerdict,
-  HintRoastVerdict,
-  IdleRoastVerdict,
-  RoastVerdict,
-} from './roastReply'
-import type {
-  CompactionRoastReply,
-  HintRoastReply,
-  IdleRoastReply,
-  RoastReply,
-} from './roastReply'
+import type { AgentPendingRoast } from './roastState'
+import { AgentRoastTrigger } from './roastedAgent'
+import type { RoastedAgent } from './roastedAgent'
+import type { TranscriptTail } from './transcriptTail'
+import { IdleRoastVerdict, RoastOrNoPointVerdict, RoastVerdict } from './roastReply'
+import type { IdleRoastReply, RoastOrNoPointReply, RoastReply } from './roastReply'
 
 /** The opening of every prompt for a roast. */
-const ROASTER_ROLE =
-  'From this message on, you are the roaster. The assistant in this conversation wrote the ' +
-  'earlier replies.'
+const ROASTER_ROLE = 'From this message on, you are the roaster.'
+
+/** The opening of every prompt for a fork that roasts the conversation it was made from. */
+const FORK_ROASTER_ROLE =
+  `${ROASTER_ROLE} The assistant in this conversation wrote the earlier replies.`
 
 /** Keeps the roaster out of the work of the assistant, which may still be running. */
 const DO_NOT_CONTINUE_WORK =
@@ -28,17 +24,24 @@ const DO_NOT_CONTINUE_WORK =
 
 const WRITE_ROAST_TO_ASSISTANT = 'Write the roast to the assistant as "you".'
 
+const ROAST_REQUEST = 'Review the work of the assistant so far and roast that work.'
+
 /** The opening of the prompts for the roast and the idle roast. */
 const ROAST_OPENING =
-  `${ROASTER_ROLE} Review the work of the assistant so far and roast that work. The user may ` +
+  `${FORK_ROASTER_ROLE} ${ROAST_REQUEST} The user may ` +
   `send your roast to the assistant in this conversation. ${WRITE_ROAST_TO_ASSISTANT} In the ` +
   'roast, talk only to the assistant and never to the user.'
 
-/** The note that the roaster wrote the roast, before the text of every roast sent to the model. */
+const ROAST_AUTHOR =
+  'This roast comes from the roaster, a side agent that reviews work. The user did not write it.'
+
+/**
+ * The note that the roaster wrote the roast, before the text of every roast sent to the model about
+ * its own work.
+ */
 const ROASTER_SOURCE =
-  'This roast comes from the roaster, a side agent that reviews work. The user did not write it. ' +
-  'Check each point against what you did. Fix each point that holds. For a point that does not ' +
-  'hold, say what shows that.'
+  `${ROAST_AUTHOR} Check each point against what you did. Fix each point that holds. For a point ` +
+  'that does not hold, say what shows that.'
 
 const ROAST_POINT_EVIDENCE =
   'For each point, name where the transcript shows it, such as a file, a diff or what a command ' +
@@ -102,9 +105,9 @@ const JSON_REPLY =
   'You have no tools for this reply, so answer straight away with one JSON object and nothing ' +
   'before or after it, without a code fence.'
 
-/** The request for the points of the roast, without the reply where the transcript proves none. */
-const ROAST_POINTS =
-  `${ROAST_OPENING} Find one or more points where the result of the work falls short: code ` +
+/** What counts as a point where the result of the work falls short. */
+const RESULT_POINTS =
+  'Find one or more points where the result of the work falls short: code ' +
   'that is wrong, slow, unclean, poorly split into modules or poorly engineered, a fix or ' +
   'another change based on a guess, without evidence in the transcript that backs it, work ' +
   'that does not do what the user asked for or decided, or a statement about the result that the ' +
@@ -112,6 +115,9 @@ const ROAST_POINTS =
   'rule loaded in this conversation, say how to improve the code, such as a class to refactor, ' +
   'a file to split in two, a layer smeared into another or a type leaked across a boundary. ' +
   `Judge the result alone. ${NOT_A_POINT} ${ROAST_CONTENT_WITHOUT_REPEATS}`
+
+/** The request for the points of the roast, without the reply where the transcript proves none. */
+const ROAST_POINTS = `${ROAST_OPENING} ${RESULT_POINTS}`
 
 const IDLE_ROAST_REPLY_EXAMPLE = JSON.stringify({
   verdict: IdleRoastVerdict.Roast,
@@ -135,22 +141,22 @@ export const IDLE_ROAST_PROMPT =
   `${IDLE_ROAST_REPLY_EXAMPLE}, or with ${NO_BLOCKING_POINT_REPLY_EXAMPLE} if no point blocks ` +
   'the work.'
 
-const COMPACTION_ROAST_REPLY_EXAMPLE = JSON.stringify({
-  verdict: CompactionRoastVerdict.Roast,
+const POINT_ROAST_REPLY_EXAMPLE = JSON.stringify({
+  verdict: RoastOrNoPointVerdict.Roast,
   roast: '<the roast>',
-} satisfies CompactionRoastReply)
+} satisfies RoastOrNoPointReply)
 
-const COMPACTION_NO_POINT_REPLY_EXAMPLE = JSON.stringify({
-  verdict: CompactionRoastVerdict.NoPoint,
-} satisfies CompactionRoastReply)
+const NO_POINT_REPLY_EXAMPLE = JSON.stringify({
+  verdict: RoastOrNoPointVerdict.NoPoint,
+} satisfies RoastOrNoPointReply)
 
 /**
  * The message that asks a fork made from the main conversation, as a compaction starts, for the
- * compaction roast. The fork replies with a JSON object, which readCompactionRoastReply reads.
+ * compaction roast. The fork replies with a JSON object, which readRoastOrNoPointReply reads.
  */
 export const COMPACTION_ROAST_PROMPT =
   `${ROAST_POINTS} ${ROAST_BLUNTNESS} ${JSON_REPLY} Reply with ` +
-  `${COMPACTION_ROAST_REPLY_EXAMPLE}, or with ${COMPACTION_NO_POINT_REPLY_EXAMPLE} if the ` +
+  `${POINT_ROAST_REPLY_EXAMPLE}, or with ${NO_POINT_REPLY_EXAMPLE} if the ` +
   'transcript proves no point.'
 
 const ROAST_SENT_AT: Record<PendingTextPlace, string> = {
@@ -172,8 +178,8 @@ export function describeRoastNote(place: PendingTextPlace, message: string): str
   )
 }
 
-/** The message that sends the model `roast`, a roast written by the idle roast. */
-export function describeIdleRoastMessage(roast: string): string {
+/** The message that sends the model `roast`, a roast written once the model stopped working. */
+export function describeStopRoastMessage(roast: string): string {
   return attributeRoastToRoaster(roast, READ_ROAST_FIRST)
 }
 
@@ -187,7 +193,7 @@ export function describeCompactionRoastMessage(roast: string): string {
 
 /**
  * `roast` as the model gets it: ROASTER_SOURCE, then `request` on the same line where given, then
- * the roast. Every roast sent to the model goes through this function.
+ * the roast. Every roast sent to the model about its own work goes through this function.
  */
 export function attributeRoastToRoaster(roast: string, request?: string): string {
   const opening = request === undefined ? ROASTER_SOURCE : `${ROASTER_SOURCE} ${request}`
@@ -261,8 +267,8 @@ export function writePromptAfterRecordedWords(
   }))
 
   return (
-    'This JSON array lists what the assistant recorded in this session as verbatim words of ' +
-    'the user, each with the entry of TODO.md or the goal that the assistant recorded it for, ' +
+    'This JSON array lists what was recorded in this session as verbatim words of the user, ' +
+    'each with the entry of TODO.md or the goal that it was recorded for, ' +
     'and every project idea of this project: recorded words that count for the whole project, ' +
     'each with the entry or goal that it was for before that was finished. Read them as ' +
     'part of the transcript, also where the transcript no longer shows the message of the ' +
@@ -329,22 +335,13 @@ export function writeRoastPrompt(finding: string): string {
   )
 }
 
-const HINT_ROAST_REPLY_EXAMPLE = JSON.stringify({
-  verdict: HintRoastVerdict.Roast,
-  roast: '<the roast>',
-} satisfies HintRoastReply)
-
-const HINT_NO_POINT_REPLY_EXAMPLE = JSON.stringify({
-  verdict: HintRoastVerdict.NoPoint,
-} satisfies HintRoastReply)
-
 /**
  * The message that asks a fork made from the main conversation for the roast that sends the
  * assistant back to work after `reply`, the reply on which it ended a turn. The transcript of a
  * fork asked again after an API error may go on past `reply`, so the message quotes it. The roast
  * takes the place of `hints`, the texts of the hints that phrases in that reply call for, and names
  * what `tasks` ask for, the roaster task of each kind of those hints. The fork replies with a JSON
- * object, which readHintRoastReply reads.
+ * object, which readRoastOrNoPointReply reads.
  */
 export function writeHintRoastPrompt({
   reply,
@@ -356,15 +353,93 @@ export function writeHintRoastPrompt({
   hints: readonly string[]
 }): string {
   return (
-    `${ROASTER_ROLE} The assistant ended a turn on the reply ${JSON.stringify(reply)}, and a ` +
-    'hook found phrases in that reply that call for the hint below. The transcript may go on ' +
-    'after that reply. The assistant goes back to work with your roast, in place of the hint, ' +
-    `which it does not see. ${DO_NOT_CONTINUE_WORK} Roast that reply. ` +
+    `${FORK_ROASTER_ROLE} The assistant ended a turn on the reply ${JSON.stringify(reply)}, ` +
+    'and a hook found phrases in that reply that call for the hint below. The transcript may go ' +
+    'on after that reply. The assistant goes back to work with your roast, in place of the ' +
+    `hint, which it does not see. ${DO_NOT_CONTINUE_WORK} Roast that reply. ` +
     `${tasks.join(' ')} Carry into the roast every step of the hint that the transcript does ` +
     `not show done. ${NOT_A_POINT} ${ROAST_CONTENT} ${WRITE_ROAST_TO_ASSISTANT} ` +
     `${ROAST_BLUNTNESS} ` +
-    `${JSON_REPLY} Reply with ${HINT_ROAST_REPLY_EXAMPLE}, or with ` +
-    `${HINT_NO_POINT_REPLY_EXAMPLE} if the transcript proves no point.\n\nThe hint:\n\n` +
+    `${JSON_REPLY} Reply with ${POINT_ROAST_REPLY_EXAMPLE}, or with ` +
+    `${NO_POINT_REPLY_EXAMPLE} if the transcript proves no point.\n\nThe hint:\n\n` +
     hints.join('\n\n')
+  )
+}
+
+/** What the transcript of a subagent covers when each trigger makes the roaster roast it. */
+const AGENT_TRANSCRIPT_SPAN: Record<AgentRoastTrigger, string> = {
+  [AgentRoastTrigger.Stop]: 'The subagent stopped after the last message of the transcript.',
+  [AgentRoastTrigger.Compaction]:
+    'The transcript is the chat of the subagent before a compaction, which puts a summary in ' +
+    'its place.',
+}
+
+/** What part of the transcript of a subagent `tail` holds. */
+function describeTranscriptPart({ leftOut }: TranscriptTail): string {
+  return leftOut === 0
+    ? 'This JSON array is the transcript of the subagent'
+    : `This JSON array is the transcript of the subagent without its ${leftOut} oldest ` +
+        'messages, which did not fit into this message'
+}
+
+/**
+ * The message that asks a model for a roast about `agent`, from `tail`, the newest messages of the
+ * subagent, once `trigger` happened. The model replies with a JSON object, which
+ * readRoastOrNoPointReply reads.
+ */
+export function writeAgentRoastPrompt({
+  agent,
+  trigger,
+  tail,
+}: {
+  agent: RoastedAgent
+  trigger: AgentRoastTrigger
+  tail: TranscriptTail
+}): string {
+  return (
+    `${ROASTER_ROLE} A conversation of this session started a ` +
+    `subagent of the agent type ${agent.type} for the task ${JSON.stringify(agent.description)}. ` +
+    `${describeTranscriptPart(tail)}, as a list of messages with their text, their tool calls ` +
+    `and the text of each tool result:\n\n${tail.json}\n\n` +
+    'In this message, "the assistant" is that subagent, and "this conversation" is that ' +
+    `transcript. ${AGENT_TRANSCRIPT_SPAN[trigger]} The messages of the role user in the ` +
+    'transcript come from the agent that started the subagent, from other agents or from ' +
+    `hooks, and not from the user. ${DO_NOT_CONTINUE_WORK} ${ROAST_REQUEST} Your roast goes to ` +
+    `the assistant and to the main conversation of this session. ${WRITE_ROAST_TO_ASSISTANT} ` +
+    'In the roast, talk only to the assistant. ' +
+    `${RESULT_POINTS} ${ROAST_BLUNTNESS} ${JSON_REPLY} Reply with ${POINT_ROAST_REPLY_EXAMPLE}, ` +
+    `or with ${NO_POINT_REPLY_EXAMPLE} if the transcript proves no point.`
+  )
+}
+
+const AGENT_ROAST_MESSAGE: Record<AgentRoastTrigger, (roast: string) => string> = {
+  [AgentRoastTrigger.Stop]: describeStopRoastMessage,
+  [AgentRoastTrigger.Compaction]: describeCompactionRoastMessage,
+}
+
+/**
+ * The message that sends a subagent `roast`, the roast about its work written once `trigger` came.
+ */
+export function describeAgentRoastMessage(trigger: AgentRoastTrigger, roast: string): string {
+  return AGENT_ROAST_MESSAGE[trigger](roast)
+}
+
+/** When the roaster wrote the roast for a subagent, for each trigger. */
+const AGENT_ROAST_MOMENT: Record<AgentRoastTrigger, string> = {
+  [AgentRoastTrigger.Stop]: 'when the subagent stopped',
+  [AgentRoastTrigger.Compaction]: 'about the chat of the subagent before a compaction',
+}
+
+/** The message that sends the main conversation `roast`, a roast about the work of a subagent. */
+export function describeAgentRoastForMain(roast: AgentPendingRoast): string {
+  const { agent, sentToAgent } = roast
+  const delivery = sentToAgent.isDelivered
+    ? 'The subagent got the roast too.'
+    : `The roast did not reach the subagent: ${sentToAgent.reason}.`
+
+  return (
+    `${ROAST_AUTHOR} The roaster wrote it ${AGENT_ROAST_MOMENT[roast.trigger]}, about the work ` +
+    `of the subagent of the agent type ${agent.type} with the agent id ${agent.id} and the task ` +
+    `${JSON.stringify(agent.description)}. ${delivery} ${READ_ROAST_FIRST}\n\n${roast.text}`
   )
 }

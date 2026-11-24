@@ -32,7 +32,7 @@ export enum ForkViewUnknown {
 }
 
 /**
- * A message of the main conversation as its model read it: the text, the tool calls and the text
+ * A message of a conversation as its model read it: the text, the tool calls and the text
  * of each tool result, without the records that the tools stored.
  */
 export type MessageAsRead = {
@@ -111,7 +111,7 @@ async function changeForkView(
   await updateOfSession($, sessionId, change, changeInState => update($, forkView, changeInState))
 }
 
-function readAsModelRead(message: SessionMessage): MessageAsRead {
+export function readAsModelRead(message: SessionMessage): MessageAsRead {
   return {
     role: message.role,
     text: message.text,
