@@ -7,12 +7,12 @@ import { readBoardOfSession } from '../goals/goalActions'
 import type { ImportedGoal } from '../goals/goalImport'
 import { describeUnreadableRecord, returningStoreFailure } from '../pluginStore'
 import {
-  ProjectFailureKind,
   describeProjectFailure,
   returningProjectFailure,
   showingProjectFailure,
 } from '../projectFolder'
 import type { ProjectFailure } from '../projectFolder'
+import { ProjectFailureKind } from '../projectLookup'
 import {
   describeIdeaNotDeleted,
   describeIdeasNotRead,
