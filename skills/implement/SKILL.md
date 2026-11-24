@@ -3,6 +3,10 @@ name: implement
 description: Implement change to code, from first talk with user until user reviews code
 ---
 
+- In main conversation of session switched to swarm way of working by user, follow
+  `workflow-skills:orchestrate` in place of this skill. It names sections of this skill you still
+  follow
+
 ## User's words
 
 - Record user's words on unit with `mcp__workflow-skills__record_idea`, verbatim, under entry of
