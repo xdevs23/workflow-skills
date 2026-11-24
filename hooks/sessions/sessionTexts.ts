@@ -1,5 +1,5 @@
-import { describeFailedStoreCall } from '../pluginStore'
-import type { FailedStoreCall } from '../pluginStore'
+import { describeFailedStoreCall } from '../storeFailures'
+import type { FailedStoreCall } from '../storeFailures'
 
 export function describeStartNotRecorded(failed: FailedStoreCall): string {
   return (

@@ -1,4 +1,5 @@
-import { RecordKind, isRecord, recordKeyOf } from '../pluginStore'
+import { isRecord } from '../pluginStore'
+import { RecordKind, recordKeyOf } from '../recordKeys'
 
 // The version of the records written by this code. A record of a higher version was written by a
 // newer plugin with fields this code can misread, so it reads as unreadable and is left as it is.

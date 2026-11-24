@@ -2,14 +2,11 @@ import type { EngineInterface, MatchedHook, On } from 'claude-code'
 
 import { deleteEngineStoreValue, readEngineStoreEntries, readEngineStoreKeys } from './engineStore'
 import { showingStoreFailure } from './failureToast'
-import {
-  RecordOwner,
-  StoreCall,
-  callStore,
-  describeFailedStoreCall,
-  fileOfRecord,
-} from './pluginStore'
-import type { FailedStoreCall, FileOfRecord, StoredEntry } from './pluginStore'
+import { RecordOwner, fileOfRecord } from './recordPlacement'
+import { StoreCall, callStore, describeFailedStoreCall } from './storeFailures'
+import type { StoredEntry } from './pluginStore'
+import type { FileOfRecord } from './recordPlacement'
+import type { FailedStoreCall } from './storeFailures'
 import { lookUpProjectOf } from './projectLookup'
 import { projectIn } from './projectRecords'
 import { moveProjectRecordsToSessions } from './projectRequestRecords'

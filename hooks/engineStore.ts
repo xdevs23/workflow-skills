@@ -1,7 +1,7 @@
 import type { EngineInterface } from 'claude-code'
 
 import { isErrorWithText } from './errorMessage'
-import { StoreCall, callStore } from './pluginStore'
+import { StoreCall, callStore } from './storeFailures'
 import type { StoredEntry } from './pluginStore'
 import { randomWaitAfter } from './retryWait'
 import type { RetryWaits } from './retryWait'

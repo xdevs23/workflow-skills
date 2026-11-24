@@ -1,13 +1,12 @@
 import type { Board, Goal } from '../../types'
+import { deleteRecord, readEntriesUnder, writeRecord } from '../pluginStore'
 import {
-  deleteRecord,
   describeFailedStoreCall,
   describeUnreadableRecord,
-  readEntriesUnder,
   returningStoreFailure,
-  writeRecord,
-} from '../pluginStore'
-import type { FailedStoreCall, StoreEngine, StoredEntry } from '../pluginStore'
+} from '../storeFailures'
+import type { StoreEngine, StoredEntry } from '../pluginStore'
+import type { FailedStoreCall } from '../storeFailures'
 import type { EntryNumber } from '../todoEntry'
 import { importedIdsOf } from '../importedId'
 import {

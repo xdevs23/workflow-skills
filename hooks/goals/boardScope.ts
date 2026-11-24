@@ -1,4 +1,4 @@
-import { RecordKind, keyPartAfter, recordPrefixOf } from '../pluginStore'
+import { RecordKind, keyPartAfter, recordPrefixOf } from '../recordKeys'
 
 /** The kinds of board. A board for a project would be one more kind. */
 export enum ScopeKind {

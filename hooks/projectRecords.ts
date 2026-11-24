@@ -1,12 +1,7 @@
-import {
-  isRecord,
-  keyPartAfter,
-  readEntriesUnder,
-  recordKeyOf,
-  recordPrefixOf,
-  writeRecord,
-} from './pluginStore'
-import type { RecordKind, StoreEngine } from './pluginStore'
+import { isRecord, readEntriesUnder, writeRecord } from './pluginStore'
+import { keyPartAfter, recordKeyOf, recordPrefixOf } from './recordKeys'
+import type { StoreEngine } from './pluginStore'
+import type { RecordKind } from './recordKeys'
 
 export type ProjectRecord<T> = { key: string; value: T }
 

@@ -5,7 +5,7 @@ import { showFailure, showingStoreFailure } from '../failureToast'
 import { Outcome, clearedGoalsOf } from '../goals/board'
 import { readBoardOfSession } from '../goals/goalActions'
 import type { ImportedGoal } from '../goals/goalImport'
-import { describeUnreadableRecord, returningStoreFailure } from '../pluginStore'
+import { describeUnreadableRecord, returningStoreFailure } from '../storeFailures'
 import {
   describeProjectFailure,
   returningProjectFailure,

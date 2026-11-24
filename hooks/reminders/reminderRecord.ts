@@ -1,12 +1,6 @@
 import type { Cadence, CadenceValue, Reminder } from '../../types'
-import {
-  RecordKind,
-  SESSION_SCOPE,
-  isRecord,
-  keyPartAfter,
-  readStrings,
-  recordPrefixOf,
-} from '../pluginStore'
+import { isRecord, readStrings } from '../pluginStore'
+import { RecordKind, SESSION_SCOPE, keyPartAfter, recordPrefixOf } from '../recordKeys'
 import { isPositiveInteger } from '../positiveInteger'
 import type { StoredEntry } from '../pluginStore'
 

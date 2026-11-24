@@ -1,7 +1,9 @@
 import type { Reminder } from '../../types'
 import { importedIdsOf } from '../importedId'
-import { readEntriesUnder, returningStoreFailure, writeRecord } from '../pluginStore'
-import type { FailedStoreCall, StoreEngine, StoredEntry } from '../pluginStore'
+import { readEntriesUnder, writeRecord } from '../pluginStore'
+import { returningStoreFailure } from '../storeFailures'
+import type { StoreEngine, StoredEntry } from '../pluginStore'
+import type { FailedStoreCall } from '../storeFailures'
 import {
   cadenceRecordOf,
   enabledRecordOf,

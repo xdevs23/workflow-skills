@@ -5,8 +5,8 @@ import type {
   UiPressResult,
 } from 'claude-code'
 
-import { returningStoreFailure } from './pluginStore'
-import type { FailedStoreCall } from './pluginStore'
+import { returningStoreFailure } from './storeFailures'
+import type { FailedStoreCall } from './storeFailures'
 
 /** The closing sentence of a text that goes to the debug log as well as to the user. */
 export const DEBUG_LOG_NOTE = 'The debug log has this too.'

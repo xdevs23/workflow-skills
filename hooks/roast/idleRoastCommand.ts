@@ -2,7 +2,7 @@ import type { CommandRunInput, CommandRunResult, EngineInterface, Frozen } from 
 
 import { replyWithFailures } from '../failureToast'
 import { CommandRegistrar, type PluginCommand } from '../pluginCommand'
-import { returningStoreFailure } from '../pluginStore'
+import { returningStoreFailure } from '../storeFailures'
 import { isTypedByUser } from '../promptOrigin'
 import { setIdleRoastSwitch } from './idleRoast'
 import { SwitchOutcome, readIdleRoastSwitch, saveIdleRoastSwitch } from './idleRoastSwitch'

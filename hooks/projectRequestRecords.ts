@@ -6,7 +6,7 @@ import {
   readEngineStoreEntries,
   writeEngineStoreEntry,
 } from './engineStore'
-import { RecordKind, recordKeyOf } from './pluginStore'
+import { RecordKind, recordKeyOf } from './recordKeys'
 import { idOf, readProjectRequest, readRequestRecordKey } from './requestRecords'
 import type { ProjectRequest, RequestRecordKey } from './requestRecords'
 

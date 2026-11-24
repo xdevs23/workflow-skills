@@ -1,7 +1,7 @@
 import type { EngineInterface } from 'claude-code'
 
 import { readPaneNotice } from '../paneNotice'
-import { describeUnreadableRecord } from '../pluginStore'
+import { describeUnreadableRecord } from '../storeFailures'
 import { REMINDERS_PANE } from './reminderNames'
 import { RemindersShown } from './reminderPaneMessages'
 import type { RemindersPaneView } from './reminderPaneMessages'

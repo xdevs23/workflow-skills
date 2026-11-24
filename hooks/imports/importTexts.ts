@@ -1,5 +1,5 @@
-import { describeFailedStoreCall } from '../pluginStore'
-import type { FailedStoreCall } from '../pluginStore'
+import { describeFailedStoreCall } from '../storeFailures'
+import type { FailedStoreCall } from '../storeFailures'
 import { HistoryOutcome } from '../sessions/promptHistory'
 import type { PromptHistoryRead } from '../sessions/promptHistory'
 import { IMPORT_NAMES } from './importNames'

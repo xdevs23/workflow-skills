@@ -1,6 +1,6 @@
 import type { HookSubject } from '../hookFailure'
-import { describeFailedStoreCall } from '../pluginStore'
-import type { FailedStoreCall } from '../pluginStore'
+import { describeFailedStoreCall } from '../storeFailures'
+import type { FailedStoreCall } from '../storeFailures'
 import { describeProjectFailure } from '../projectFolder'
 import type { ProjectFailure } from '../projectFolder'
 

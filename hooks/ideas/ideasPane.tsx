@@ -1,6 +1,6 @@
 import type { MatchedHook } from 'claude-code'
 
-import { describeUnreadableRecord } from '../pluginStore'
+import { describeUnreadableRecord } from '../storeFailures'
 import { askToDeleteIdea, deleteIdeaOnScreen } from './ideaActions'
 import { compareLinks } from './ideaLink'
 import { keepButtonKeyOf } from './ideaNames'

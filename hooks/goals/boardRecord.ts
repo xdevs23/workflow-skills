@@ -1,5 +1,6 @@
 import type { AttachedTodo, Board, Goal, Setting } from '../../types'
-import { describeUnreadableRecord, isRecord } from '../pluginStore'
+import { isRecord } from '../pluginStore'
+import { describeUnreadableRecord } from '../storeFailures'
 import type { StoredEntry } from '../pluginStore'
 import { isPositiveInteger } from '../positiveInteger'
 import { readEntryNumber } from '../todoEntry'

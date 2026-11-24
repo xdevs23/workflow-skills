@@ -1,7 +1,7 @@
 import type { EngineInterface } from 'claude-code'
 
-import { describeFailedStoreCall, describeUnreadableRecord } from './pluginStore'
-import type { FailedStoreCall } from './pluginStore'
+import { describeFailedStoreCall, describeUnreadableRecord } from './storeFailures'
+import type { FailedStoreCall } from './storeFailures'
 
 /** A failure of the store of the plugin that a person can act on, its next step in the message. */
 export class RequestStoreError extends Error {}

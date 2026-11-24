@@ -1,8 +1,8 @@
 import type { EngineInterface } from 'claude-code'
 
 import { showFailure } from './failureToast'
-import { describeFailedStoreCall, returningStoreFailure } from './pluginStore'
-import type { FailedStoreCall } from './pluginStore'
+import { describeFailedStoreCall, returningStoreFailure } from './storeFailures'
+import type { FailedStoreCall } from './storeFailures'
 import { ProjectFailureKind } from './projectLookup'
 import { describeRecordsFolderNotFound, recordsPlaceOf } from './recordsFolder'
 import type { RecordsFolderNotFound } from './recordsFolder'

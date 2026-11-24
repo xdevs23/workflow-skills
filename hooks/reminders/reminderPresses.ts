@@ -2,7 +2,7 @@ import type { EngineInterface } from 'claude-code'
 
 import type { CardDraft } from '../../types'
 import { showFailure } from '../failureToast'
-import type { FailedStoreCall } from '../pluginStore'
+import type { FailedStoreCall } from '../storeFailures'
 import { CADENCE_KINDS } from './cadenceKinds'
 import {
   removeReminderOfSession,

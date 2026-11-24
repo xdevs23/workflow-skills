@@ -1,4 +1,5 @@
-import { RecordKind, deleteRecord, isRecord, recordPrefixOf, writeRecord } from '../pluginStore'
+import { deleteRecord, isRecord, writeRecord } from '../pluginStore'
+import { RecordKind, recordPrefixOf } from '../recordKeys'
 import type { StoreEngine } from '../pluginStore'
 import { isPositiveInteger } from '../positiveInteger'
 import { readProjectRecords, saveProjectRecord, sessionIn } from '../projectRecords'

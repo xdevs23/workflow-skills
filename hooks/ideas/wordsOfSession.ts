@@ -1,6 +1,6 @@
 import type { EngineInterface } from 'claude-code'
 
-import { describeUnreadableRecord } from '../pluginStore'
+import { describeUnreadableRecord } from '../storeFailures'
 import { returningProjectFailure } from '../projectFolder'
 import type { ProjectFailure } from '../projectFolder'
 import type { IdeaLink } from './ideaLink'

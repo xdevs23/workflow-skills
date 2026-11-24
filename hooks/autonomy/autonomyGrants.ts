@@ -1,19 +1,12 @@
 import type { Goal } from '../../types'
 import { Outcome, openGoalsByIdOf } from '../goals/board'
 import type { Read } from '../goals/board'
-import { sessionScope } from '../goals/boardScope'
-import { loadBoard } from '../goals/boardStore'
+import { boardPrefixOf, sessionScope } from '../goals/boardScope'
+import { loadBoardFrom } from '../goals/boardStore'
 import type { Failed } from '../goals/boardStore'
-import {
-  RecordKind,
-  deleteRecord,
-  isRecord,
-  readEntriesUnder,
-  recordKeyOf,
-  recordPrefixOf,
-  writeRecord,
-} from '../pluginStore'
-import type { StoreEngine } from '../pluginStore'
+import { deleteRecord, isRecord, readEntriesUnderAny, writeRecord } from '../pluginStore'
+import { RecordKind, recordKeyOf, recordPrefixOf } from '../recordKeys'
+import type { StoreEngine, StoredEntry } from '../pluginStore'
 import type { ProjectFailure } from '../projectFolder'
 import { readProjectRecords, saveProjectRecord } from '../projectRecords'
 import { readEntryNumber } from '../todoEntry'
@@ -92,12 +85,15 @@ export function deleteGoalGrant($: StoreEngine, sessionId: string, goal: Goal): 
 }
 
 export async function readGrants($: StoreEngine, sessionId: string): Promise<ReadGrants> {
-  const [projectGrants, revocations, goalGrants, board] = await Promise.all([
+  const scope = sessionScope(sessionId)
+  const goalGrantPrefix = recordPrefixOf(RecordKind.GoalAutonomy, sessionId)
+  const [projectGrants, revocations, ofSession] = await Promise.all([
     readProjectRecords($, { kind: RecordKind.ProjectAutonomy, parse: parseProjectGrant }),
     readProjectRecords($, { kind: RecordKind.AutonomyRevocation, parse: parseRevocation }),
-    readGoalGrantRecords($, sessionId),
-    loadBoard($, sessionScope(sessionId)),
+    readEntriesUnderAny($, goalGrantPrefix, [boardPrefixOf(scope)]),
   ])
+  const goalGrants = goalGrantRecordsIn(ofSession, goalGrantPrefix)
+  const board = await loadBoardFrom(scope, ofSession)
   const revokedAt = Math.max(0, ...revocations.records.map(({ value }) => value))
   const grantedSinceRevocation = <T>(granted: readonly Granted<T>[]): T[] =>
     granted.filter(({ grantedAt }) => grantedAt > revokedAt).map(({ grant }) => grant)
@@ -165,14 +161,13 @@ function goalGrantKeyOf(sessionId: string, goal: Goal): string {
   return recordKeyOf(RecordKind.GoalAutonomy, sessionId, goal.id)
 }
 
-async function readGoalGrantRecords(
-  $: StoreEngine,
-  sessionId: string,
-): Promise<{ records: Granted<string>[]; unreadableKeys: string[] }> {
+function goalGrantRecordsIn(
+  entries: readonly StoredEntry[],
+  prefix: string,
+): { records: Granted<string>[]; unreadableKeys: string[] } {
   const records: Granted<string>[] = []
   const unreadableKeys: string[] = []
-  const prefix = recordPrefixOf(RecordKind.GoalAutonomy, sessionId)
-  for (const { key, value } of await readEntriesUnder($, prefix)) {
+  for (const { key, value } of entries.filter(entry => entry.key.startsWith(prefix))) {
     const grantedAt = parseGrantedAt(value)
     if (grantedAt === undefined) {
       unreadableKeys.push(key)

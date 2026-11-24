@@ -1,10 +1,5 @@
-import {
-  RecordKind,
-  deleteRecord,
-  readEntriesIn,
-  recordPrefixOf,
-  writeRecord,
-} from '../pluginStore'
+import { deleteRecord, readEntriesIn, writeRecord } from '../pluginStore'
+import { RecordKind, recordPrefixOf } from '../recordKeys'
 import type { StoreEngine } from '../pluginStore'
 import {
   firstPromptKeyOf,

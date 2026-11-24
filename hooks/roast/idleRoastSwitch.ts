@@ -1,5 +1,7 @@
-import { deleteRecord, readEntriesIn, returningStoreFailure, writeRecord } from '../pluginStore'
-import type { FailedStoreCall, StoreEngine } from '../pluginStore'
+import { deleteRecord, readEntriesIn, writeRecord } from '../pluginStore'
+import { returningStoreFailure } from '../storeFailures'
+import type { StoreEngine } from '../pluginStore'
+import type { FailedStoreCall } from '../storeFailures'
 import { IDLE_ROAST_ON_VALUE, idleRoastKeyOf, isIdleRoastOnValue } from './idleRoastRecord'
 
 /** What was read of the idle roast switch of a session. */

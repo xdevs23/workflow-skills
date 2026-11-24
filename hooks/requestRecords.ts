@@ -1,5 +1,6 @@
 import type { Reply, Request } from '../types'
-import { RecordKind, isRecord, readStrings, recordPrefixOf } from './pluginStore'
+import { isRecord, readStrings } from './pluginStore'
+import { RecordKind, recordPrefixOf } from './recordKeys'
 import { isPositiveInteger } from './positiveInteger'
 import { UnreadableRequestError } from './requestStoreFailure'
 

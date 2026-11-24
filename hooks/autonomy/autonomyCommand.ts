@@ -9,7 +9,7 @@ import type {
 import type { Goal } from '../../types'
 import { replyWithFailures } from '../failureToast'
 import { CommandRegistrar, type PluginCommand } from '../pluginCommand'
-import { returningStoreFailure } from '../pluginStore'
+import { returningStoreFailure } from '../storeFailures'
 import type { StoreEngine } from '../pluginStore'
 import { returningProjectFailure } from '../projectFolder'
 import type { ProjectFailure } from '../projectFolder'
