@@ -34,7 +34,7 @@ export async function loadGrantsIntoState($: EngineInterface): Promise<ReadGrant
   }))
   const loaded = await returningProjectFailure(
     $,
-    project => readGrants($, { sessionId, project }),
+    () => readGrants($, sessionId),
     (failure): ReadGrants => ({
       grants: [],
       failures: [{ kind: GrantsFailureKind.Project, failure }],

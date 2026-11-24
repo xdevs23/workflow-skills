@@ -1,12 +1,7 @@
-import { RecordKind, deleteRecord, isRecord, listKeys, recordPrefixOf } from '../pluginStore'
+import { RecordKind, deleteRecord, isRecord, recordPrefixOf, writeRecord } from '../pluginStore'
 import type { StoreEngine } from '../pluginStore'
 import { isPositiveInteger } from '../positiveInteger'
-import {
-  readProjectRecords,
-  saveProjectRecord,
-  sessionIn,
-  writeProjectRecord,
-} from '../projectRecords'
+import { readProjectRecords, saveProjectRecord, sessionIn } from '../projectRecords'
 import { readEntryNumber } from '../todoEntry'
 import { IdeaLinkKind, isProjectLink } from './ideaLink'
 import type { EntryLink, FormerLink, GoalLink, IdeaLink } from './ideaLink'
@@ -31,32 +26,30 @@ export type RelinkedIdeas<Relinked extends IdeaLink> = {
 
 const IDEAS_PREFIX = recordPrefixOf(RecordKind.Idea)
 
-/** Stores `idea`, recorded in `project`, under a new key owned by the session `sessionId`. */
+/** Stores `idea` under a new key owned by the session `sessionId`. */
 export function saveIdea(
   $: StoreEngine,
-  recorded: { sessionId: string; project: string; idea: Idea },
+  recorded: { sessionId: string; idea: Idea },
 ): Promise<void> {
-  const { sessionId, project, idea } = recorded
+  const { sessionId, idea } = recorded
 
-  return saveProjectRecord($, { kind: RecordKind.Idea, sessionId, project, value: idea })
+  return saveProjectRecord($, { kind: RecordKind.Idea, sessionId, value: idea })
 }
 
 export async function readIdeasOf(
   $: StoreEngine,
-  scope: { project: string; includesLink: (link: IdeaLink) => boolean },
+  includesLink: (link: IdeaLink) => boolean,
 ): Promise<ReadIdeas> {
-  const { project, includesLink } = scope
-  const { ideas, unreadableKeys } = await readIdeasIn($, { project })
+  const { ideas, unreadableKeys } = await readIdeas($)
 
   return { ideas: ideas.filter(idea => includesLink(idea.link)), unreadableKeys }
 }
 
 export async function readProjectIdeasAndIdeasRecordedBy(
   $: StoreEngine,
-  scope: { project: string; sessionId: string },
+  sessionId: string,
 ): Promise<ReadIdeas> {
-  const { project, sessionId } = scope
-  const { ideas, unreadableKeys } = await readIdeasIn($, { project })
+  const { ideas, unreadableKeys } = await readIdeas($)
   const isRecordedBySession = (key: string) => sessionIn(RecordKind.Idea, key) === sessionId
 
   return {
@@ -65,14 +58,17 @@ export async function readProjectIdeasAndIdeasRecordedBy(
   }
 }
 
-async function readIdeasIn($: StoreEngine, scope: { project: string }): Promise<ReadIdeas> {
-  const { records, unreadableKeys } = await readProjectRecords($, {
-    kind: RecordKind.Idea,
-    keysListedBefore: (await listKeys($)).filter(isIdeaId),
-    parse: parseIdea,
-    project: scope.project,
-  })
-  const ideas = records.map(({ key, value }): IdentifiedIdea => ({ ...value, id: key }))
+async function readIdeas($: StoreEngine): Promise<ReadIdeas> {
+  const read = await readProjectRecords($, { kind: RecordKind.Idea, parse: parseIdea })
+  const ideas: IdentifiedIdea[] = []
+  const unreadableKeys = [...read.unreadableKeys]
+  for (const { key, value } of read.records) {
+    if (isIdeaId(key)) {
+      ideas.push({ ...value, id: key })
+    } else {
+      unreadableKeys.push(key)
+    }
+  }
   ideas.sort((earlier, later) => earlier.recordedAt - later.recordedAt)
 
   return { ideas, unreadableKeys }
@@ -80,17 +76,16 @@ async function readIdeasIn($: StoreEngine, scope: { project: string }): Promise<
 
 export async function relinkIdeasOf<Relinked extends IdeaLink>(
   $: StoreEngine,
-  relinking: { project: string; relink: (link: IdeaLink) => Relinked | undefined },
+  relink: (link: IdeaLink) => Relinked | undefined,
 ): Promise<RelinkedIdeas<Relinked>> {
-  const { project, relink } = relinking
-  const { ideas, unreadableKeys } = await readIdeasIn($, { project })
+  const { ideas, unreadableKeys } = await readIdeas($)
   const relinked = ideas.flatMap(({ id, link, words, recordedAt }) => {
     const newLink = relink(link)
 
     return newLink === undefined ? [] : [{ id, idea: { link: newLink, words, recordedAt } }]
   })
   const writes = await Promise.allSettled(
-    relinked.map(({ id, idea }) => writeProjectRecord($, { key: id, project, value: idea })),
+    relinked.map(({ id, idea }) => writeRecord($, { key: id, value: idea })),
   )
   const failed = writes.find(result => result.status === 'rejected')
   if (failed !== undefined) {

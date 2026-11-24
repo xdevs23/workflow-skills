@@ -36,30 +36,24 @@ export async function loadIdeasIntoState($: EngineInterface): Promise<void> {
   const sessionId = await $.session.id()
   const loaded = await returningProjectFailure(
     $,
-    project => readLoadedIdeas($, project),
+    () => readLoadedIdeas($),
     ideasNotRead,
   )
   await setIdeasInState($, sessionId, loaded)
 }
 
-/** Reads the ideas recorded in `project` from the store into the state. */
-export async function loadIdeasOfProjectIntoState(
-  $: EngineInterface,
-  project: string,
-): Promise<void> {
+/** Reads the ideas recorded in the project from the store into the state. */
+export async function loadIdeasOfProjectIntoState($: EngineInterface): Promise<void> {
   const sessionId = await $.session.id()
   const loaded = await returningStoreFailure(
-    () => readLoadedIdeas($, project),
+    () => readLoadedIdeas($),
     failed => ideasNotRead({ kind: ProjectFailureKind.Store, failed }),
   )
   await setIdeasInState($, sessionId, loaded)
 }
 
-async function readLoadedIdeas($: EngineInterface, project: string): Promise<LoadedIdeas> {
-  return {
-    outcome: IdeasOutcome.Read,
-    ...(await readIdeasOf($, { project, includesLink: () => true })),
-  }
+async function readLoadedIdeas($: EngineInterface): Promise<LoadedIdeas> {
+  return { outcome: IdeasOutcome.Read, ...(await readIdeasOf($, () => true)) }
 }
 
 function ideasNotRead(failure: ProjectFailure): LoadedIdeas {
@@ -98,8 +92,8 @@ async function unlinkIdeasOfClearedGoals($: EngineInterface): Promise<string | u
 
   return returningProjectFailure(
     $,
-    async project => {
-      await relinkIdeasOnScreen($, project, link => relinkToProjectFromGoals(link, cleared))
+    async () => {
+      await relinkIdeasOnScreen($, link => relinkToProjectFromGoals(link, cleared))
 
       return undefined
     },
@@ -117,24 +111,22 @@ export async function relinkIdeasOfImportedGoals(
   }
   await showingProjectFailure(
     $,
-    project =>
-      relinkIdeasOnScreen($, project, link => relinkToImportedGoal(link, importedBySource)),
+    () => relinkIdeasOnScreen($, link => relinkToImportedGoal(link, importedBySource)),
     failure => describeIdeasOfImportedGoalsNotRelinked(describeProjectFailure(failure)),
   )
 }
 
 async function relinkIdeasOnScreen(
   $: EngineInterface,
-  project: string,
   relink: (link: IdeaLink) => IdeaLink | undefined,
 ): Promise<void> {
   try {
-    const { unreadableKeys } = await relinkIdeasOf($, { project, relink })
+    const { unreadableKeys } = await relinkIdeasOf($, relink)
     for (const key of unreadableKeys) {
       $.ui.log(describeUnreadableRecord(key), { to: 'debug' })
     }
   } finally {
-    await loadIdeasOfProjectIntoState($, project)
+    await loadIdeasOfProjectIntoState($)
   }
 }
 

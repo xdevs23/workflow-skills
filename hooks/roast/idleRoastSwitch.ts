@@ -1,10 +1,4 @@
-import {
-  StoreCall,
-  callStore,
-  deleteRecord,
-  returningStoreFailure,
-  writeRecord,
-} from '../pluginStore'
+import { deleteRecord, readEntriesIn, returningStoreFailure, writeRecord } from '../pluginStore'
 import type { FailedStoreCall, StoreEngine } from '../pluginStore'
 import { IDLE_ROAST_ON_VALUE, idleRoastKeyOf, isIdleRoastOnValue } from './idleRoastRecord'
 
@@ -31,12 +25,12 @@ export function readIdleRoastSwitch($: StoreEngine, sessionId: string): Promise<
 
   return returningStoreFailure(
     async (): Promise<SwitchRead> => {
-      const stored = await callStore(StoreCall.Read, key, () => $.store.get(key))
+      const [stored] = await readEntriesIn($, key, [key])
       if (stored === undefined) {
         return { outcome: SwitchOutcome.Read, isOn: false }
       }
 
-      return isIdleRoastOnValue(stored)
+      return isIdleRoastOnValue(stored.value)
         ? { outcome: SwitchOutcome.Read, isOn: true }
         : { outcome: SwitchOutcome.Unreadable, key }
     },

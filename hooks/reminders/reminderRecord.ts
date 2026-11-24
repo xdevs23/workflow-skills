@@ -1,14 +1,18 @@
 import type { Cadence, CadenceValue, Reminder } from '../../types'
-import { RecordKind, isRecord, keyPartAfter, readStrings, recordPrefixOf } from '../pluginStore'
+import {
+  RecordKind,
+  SESSION_SCOPE,
+  isRecord,
+  keyPartAfter,
+  readStrings,
+  recordPrefixOf,
+} from '../pluginStore'
 import { isPositiveInteger } from '../positiveInteger'
 import type { StoredEntry } from '../pluginStore'
 
 // The version of the records written by this code. A record of a higher version was written by a
 // newer plugin with fields this code can misread, so it is unreadable and left as it is.
 const RECORD_VERSION = 1
-
-/** The kind of scope named in the keys of the reminders after the kind of record. */
-const SESSION_SCOPE = 'session'
 
 /**
  * The parts of a reminder, each stored under a key of its own, so that a change writes one key and
@@ -53,9 +57,12 @@ export function remindersPrefixOf(sessionId: string): string {
   return recordPrefixOf(RecordKind.Reminder, SESSION_SCOPE, sessionId)
 }
 
+/** The start of the key of every record of the reminders of every session. */
+export const SESSION_REMINDERS_PREFIX = recordPrefixOf(RecordKind.Reminder, SESSION_SCOPE)
+
 /** The id of the session whose reminders have the record under `key`, when it is such a record. */
 export function sessionOfReminderKey(key: string): string | undefined {
-  return keyPartAfter(recordPrefixOf(RecordKind.Reminder, SESSION_SCOPE), key)
+  return keyPartAfter(SESSION_REMINDERS_PREFIX, key)
 }
 
 /** The record that adds a reminder. Its key is the first of the reminder set in the store. */

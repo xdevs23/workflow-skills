@@ -3,14 +3,18 @@ import type { EngineInterface } from 'claude-code'
 import type { Request } from '../types'
 import {
   RecordKind,
-  describeRefusedListing,
-  describeRefusedRead,
+  deleteRecords,
+  describeFailedStoreCall,
+  readEntriesUnderAny,
   recordKeyOf,
   recordPrefixOf,
-  writeRetryingWhileLocked,
+  returningStoreFailure,
+  writeRecord,
 } from './pluginStore'
+import type { StoredEntry } from './pluginStore'
 import {
   RECORD_TIMES,
+  REQUEST_RECORD_KINDS,
   idOf,
   parseRecordTime,
   parseReply,
@@ -33,9 +37,8 @@ import { RequestNotReadError, RequestNotSavedError } from './requestStoreFailure
 import { MILLISECONDS_PER_DAY } from './timeUnits'
 
 /**
- * The requests of another session are deleted at the start of a process once the newest of their
- * records is this old, so the store contains no requests of sessions ended long ago. The age
- * leaves a month for `claude --resume` to bring a session back with its requests.
+ * A session deletes its requests at its start once the newest of their records is this old. The
+ * age leaves a month for `claude --resume` to bring a session back with its requests.
  */
 export const SESSION_REQUESTS_MAX_AGE_MS = 30 * MILLISECONDS_PER_DAY
 
@@ -51,27 +54,26 @@ function replyKeyOf(sessionId: string, id: string): string {
   return recordKeyOf(RecordKind.Reply, sessionId, id, crypto.randomUUID())
 }
 
-/** The records of one kind in the session, by the id of their request, in the order set. */
-async function readRecords<T>(
-  $: EngineInterface,
-  keys: readonly string[],
+/** Every record of the requests of the session `sessionId`, from one read of its file. */
+function readRequestRecords($: EngineInterface, sessionId: string): Promise<StoredEntry[]> {
+  const [first, ...more] = REQUEST_RECORD_KINDS
+  const prefixOf = (kind: RecordKind): string => recordPrefixOf(kind, sessionId)
+
+  return readFromStore(() => readEntriesUnderAny($, prefixOf(first), more.map(prefixOf)))
+}
+
+/** The records of one kind among `entries`, by the id of their request, in the order set. */
+function readRecords<T>(
+  entries: readonly StoredEntry[],
   record: RecordKind,
   sessionId: string,
   parse: (key: string, id: string, value: unknown) => T,
-): Promise<Map<string, T>> {
+): Map<string, T> {
   const prefix = recordPrefixOf(record, sessionId)
-  const stored = await Promise.all(
-    keys
-      .filter(key => key.startsWith(prefix))
-      .map(async key => ({
-        key,
-        id: idOf(key.slice(prefix.length)),
-        value: await readStoreValue($, key),
-      })),
-  )
   const records = new Map<string, T>()
-  for (const { key, id, value } of stored) {
-    if (value !== undefined && !records.has(id)) {
+  for (const { key, value } of entries.filter(entry => entry.key.startsWith(prefix))) {
+    const id = idOf(key.slice(prefix.length))
+    if (!records.has(id)) {
       records.set(id, parse(key, id, value))
     }
   }
@@ -88,13 +90,21 @@ export async function readSessionRequests(
   $: EngineInterface,
   sessionId: string,
 ): Promise<Request[]> {
-  const keys = await readStoreKeys($)
-  const [requests, replies, withdrawals, deliveries] = await Promise.all([
-    readRecords($, keys, RecordKind.Request, sessionId, parseRequest),
-    readRecords($, keys, RecordKind.Reply, sessionId, parseReply),
-    readRecords($, keys, RecordKind.Withdrawal, sessionId, parseRecordTime(RecordKind.Withdrawal)),
-    readRecords($, keys, RecordKind.Delivery, sessionId, parseRecordTime(RecordKind.Delivery)),
-  ])
+  const stored = await readRequestRecords($, sessionId)
+  const requests = readRecords(stored, RecordKind.Request, sessionId, parseRequest)
+  const replies = readRecords(stored, RecordKind.Reply, sessionId, parseReply)
+  const withdrawals = readRecords(
+    stored,
+    RecordKind.Withdrawal,
+    sessionId,
+    parseRecordTime(RecordKind.Withdrawal),
+  )
+  const deliveries = readRecords(
+    stored,
+    RecordKind.Delivery,
+    sessionId,
+    parseRecordTime(RecordKind.Delivery),
+  )
 
   return [...requests.values()].map(request => {
     const reply = replies.get(request.id)
@@ -201,77 +211,40 @@ export async function saveDelivery(
 }
 
 /**
- * Deletes the records of the requests of every session other than `old.sessionId` whose newest
- * record was made before `old.requestsMadeBefore`. A record of another shape, or one deleted since
- * the keys were listed, protects the session from deletion, since the age of the record is unknown.
+ * Deletes every record of the requests of the session `sessionId` once the newest of them was made
+ * before `requestsMadeBefore`. A record of another shape keeps the requests, since its age is not
+ * known.
  */
-export async function deleteOldRecords(
+export async function deleteOldRequests(
   $: EngineInterface,
   { sessionId, requestsMadeBefore }: { sessionId: string; requestsMadeBefore: number },
 ): Promise<void> {
-  const records = (await readStoreKeys($)).flatMap(key => {
-    const record = readRequestRecordKey(key)
+  const records = await readRequestRecords($, sessionId)
+  const madeAt = records.map(({ key, value }) => {
+    const kind = readRequestRecordKey(key)?.kind
 
-    return record === undefined || record.owner === sessionId ? [] : [record]
+    return (kind === undefined ? undefined : RECORD_TIMES[kind](value)) ?? Number.POSITIVE_INFINITY
   })
-  const made = await Promise.all(
-    records.map(async ({ key, kind, owner }) => ({
-      key,
-      owner,
-      madeAt: RECORD_TIMES[kind](await readStoreValue($, key)) ?? Number.POSITIVE_INFINITY,
-    })),
-  )
-  const newest = new Map<string, number>()
-  for (const { owner, madeAt } of made) {
-    newest.set(owner, Math.max(newest.get(owner) ?? madeAt, madeAt))
-  }
-  const idle = new Set(
-    [...newest].filter(([, madeAt]) => madeAt < requestsMadeBefore).map(([owner]) => owner),
-  )
-  await Promise.all(
-    made.filter(({ owner }) => idle.has(owner)).map(({ key }) => deleteRecord($, key)),
-  )
-}
-
-export function readStoreKeys($: EngineInterface): Promise<string[]> {
-  return readFromStore(() => $.store.keys(), describeRefusedListing)
-}
-
-export function readStoreValue($: EngineInterface, key: string): Promise<unknown> {
-  return readFromStore(() => $.store.get(key), cause => describeRefusedRead(key, cause))
-}
-
-/** Runs the read `read` of the store, and fails with its refusal as `describe` describes it. */
-async function readFromStore<T>(
-  read: () => Promise<T>,
-  describe: (cause: Error) => string,
-): Promise<T> {
-  try {
-    return await read()
-  } catch (error) {
-    if (!(error instanceof Error)) {
-      throw error
-    }
-    throw new RequestNotReadError(describe(error), error)
+  const [first, ...more] = records.map(({ key }) => key)
+  if (first !== undefined && Math.max(...madeAt) < requestsMadeBefore) {
+    await writeToStore(() => deleteRecords($, first, more))
   }
 }
 
-export function saveRecord($: EngineInterface, key: string, value: unknown): Promise<void> {
-  return writeRecord($, key, () => $.store.set(key, value))
+/** Runs the read `read` of the records, and fails with its refusal as a RequestNotReadError. */
+function readFromStore<T>(read: () => Promise<T>): Promise<T> {
+  return returningStoreFailure(read, failed => {
+    throw new RequestNotReadError(describeFailedStoreCall(failed), failed.cause)
+  })
 }
 
-export function deleteRecord($: EngineInterface, key: string): Promise<void> {
-  return writeRecord($, key, () => $.store.delete(key))
+function saveRecord($: EngineInterface, key: string, value: unknown): Promise<void> {
+  return writeToStore(() => writeRecord($, { key, value }))
 }
 
-/** Runs the change `write` to the key `key`, and fails with the refusal of the store. */
-async function writeRecord($: EngineInterface, key: string, write: () => Promise<void>) {
-  try {
-    await writeRetryingWhileLocked($, key, write)
-  } catch (error) {
-    if (!(error instanceof Error)) {
-      throw error
-    }
-    throw new RequestNotSavedError(key, error)
-  }
+/** Runs the change `write` of the records, and fails with its refusal as a RequestNotSavedError. */
+function writeToStore(write: () => Promise<void>): Promise<void> {
+  return returningStoreFailure(write, failed => {
+    throw new RequestNotSavedError(failed)
+  })
 }

@@ -87,10 +87,10 @@ export const recordIdea: MatchedHook<'tool.call', { tool: typeof RECORD_IDEA_TOO
   const sessionAndTime = Promise.all([$.session.id(), $.clock.now()])
   const [, recorded] = await Promise.all([
     sessionAndTime,
-    denyingIdeasFailure($, async project => {
+    denyingIdeasFailure($, async () => {
       const [sessionId, recordedAt] = await sessionAndTime
-      await saveIdea($, { sessionId, project, idea: { link, words: words.text, recordedAt } })
-      await loadIdeasOfProjectIntoState($, project)
+      await saveIdea($, { sessionId, idea: { link, words: words.text, recordedAt } })
+      await loadIdeasOfProjectIntoState($)
 
       return { result: describeRecorded(link) }
     }),
@@ -113,11 +113,8 @@ export const getIdeas: MatchedHook<'tool.call', { tool: typeof GET_IDEAS_TOOL }>
   }
   const { scope } = read
 
-  return denyingIdeasFailure($, async project => {
-    const ideas = await readIdeasOf($, {
-      project,
-      includesLink: recorded => isReadWith(recorded, scope),
-    })
+  return denyingIdeasFailure($, async () => {
+    const ideas = await readIdeasOf($, recorded => isReadWith(recorded, scope))
 
     return { result: describeIdeas(scope.link, ideas) }
   })
@@ -134,11 +131,8 @@ export const unlinkIdeasOfEntry: MatchedHook<
 
   return denyingIdeasFailure($, async project => {
     const todos = await readEntriesInTodoFile($, project)
-    const unlinked = await relinkIdeasOf($, {
-      project,
-      relink: link => relinkToProjectFromEntry(link, entry, todos),
-    })
-    await loadIdeasOfProjectIntoState($, project)
+    const unlinked = await relinkIdeasOf($, link => relinkToProjectFromEntry(link, entry, todos))
+    await loadIdeasOfProjectIntoState($)
 
     return { result: describeUnlinked(entry, unlinked) }
   })

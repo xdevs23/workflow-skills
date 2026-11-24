@@ -1,6 +1,6 @@
 import type { Reminder } from '../../types'
 import { importedIdsOf } from '../importedId'
-import { readEntriesIn, readEntriesUnder, returningStoreFailure, writeRecord } from '../pluginStore'
+import { readEntriesUnder, returningStoreFailure, writeRecord } from '../pluginStore'
 import type { FailedStoreCall, StoreEngine, StoredEntry } from '../pluginStore'
 import {
   cadenceRecordOf,
@@ -82,14 +82,15 @@ export function loadReminders(
   )
 }
 
-/** Reads the reminders of the session from the records under the keys of `keys`, listed before. */
-export function loadRemindersIn(
-  $: StoreEngine,
+/** Reads the reminders of the session from the records of `entries`, read before. */
+export function loadRemindersFrom(
   sessionId: string,
-  keys: readonly string[],
+  entries: readonly StoredEntry[],
 ): Promise<ReadReminders | Failed> {
+  const prefix = remindersPrefixOf(sessionId)
+
   return returningFailure(async () =>
-    readOf(sessionId, await readEntriesIn($, remindersPrefixOf(sessionId), keys)),
+    readOf(sessionId, entries.filter(({ key }) => key.startsWith(prefix))),
   )
 }
 

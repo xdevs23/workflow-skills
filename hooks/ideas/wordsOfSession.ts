@@ -17,11 +17,8 @@ export async function readWordsRecordedInSession($: EngineInterface): Promise<Wo
 
   return returningProjectFailure(
     $,
-    async (project): Promise<WordsOfSession> => {
-      const { ideas, unreadableKeys } = await readProjectIdeasAndIdeasRecordedBy($, {
-        project,
-        sessionId,
-      })
+    async (): Promise<WordsOfSession> => {
+      const { ideas, unreadableKeys } = await readProjectIdeasAndIdeasRecordedBy($, sessionId)
       for (const key of unreadableKeys) {
         $.ui.log(describeUnreadableRecord(key), { to: 'debug' })
       }

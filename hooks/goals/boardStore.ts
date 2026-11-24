@@ -1,16 +1,13 @@
 import type { Board, Goal } from '../../types'
 import {
-  StoreCall,
   deleteRecord,
-  describeRefusedRead,
-  describeRefusedWrite,
+  describeFailedStoreCall,
   describeUnreadableRecord,
-  readEntriesIn,
   readEntriesUnder,
   returningStoreFailure,
   writeRecord,
 } from '../pluginStore'
-import type { StoreEngine } from '../pluginStore'
+import type { FailedStoreCall, StoreEngine, StoredEntry } from '../pluginStore'
 import type { EntryNumber } from '../todoEntry'
 import { importedIdsOf } from '../importedId'
 import {
@@ -80,9 +77,8 @@ import type { TodoEntry } from './todoEntry'
 
 /** Why the store could not read or change a board. The stored records are left as they were. */
 export enum StoreFailure {
-  NotRead = 'not-read',
+  CallFailed = 'call-failed',
   Unreadable = 'unreadable',
-  NotSaved = 'not-saved',
 }
 
 /** The goals imported into a board, as they were stored. */
@@ -92,17 +88,9 @@ export type GoalsImported = { outcome: Outcome.Changed; imported: readonly Impor
 export type GoalImport = { into: BoardScope; from: Board; picked: ReadonlySet<string> }
 
 export type Failed = { outcome: Outcome.Failed } & (
-  | { failure: StoreFailure.NotRead; key: string; cause: Error }
+  | ({ failure: StoreFailure.CallFailed } & FailedStoreCall)
   | { failure: StoreFailure.Unreadable; key: string }
-  | { failure: StoreFailure.NotSaved; key: string; cause: Error }
 )
-
-/** The failure of the board for each failed call on the store. */
-const FAILURE_OF_CALL: Record<StoreCall, StoreFailure.NotRead | StoreFailure.NotSaved> = {
-  [StoreCall.List]: StoreFailure.NotRead,
-  [StoreCall.Read]: StoreFailure.NotRead,
-  [StoreCall.Write]: StoreFailure.NotSaved,
-}
 
 export function loadBoard($: StoreEngine, scope: BoardScope): Promise<Read | Failed> {
   return returningFailure(async () => ({
@@ -111,15 +99,16 @@ export function loadBoard($: StoreEngine, scope: BoardScope): Promise<Read | Fai
   }))
 }
 
-/** Reads the board of the scope from the records under the keys of `keys`, listed before. */
-export function loadBoardIn(
-  $: StoreEngine,
+/** Reads the board of the scope from the records of `entries`, read before. */
+export function loadBoardFrom(
   scope: BoardScope,
-  keys: readonly string[],
+  entries: readonly StoredEntry[],
 ): Promise<Read | Failed> {
+  const prefix = boardPrefixOf(scope)
+
   return returningFailure(async () => ({
     outcome: Outcome.Read,
-    board: settledBoardOf(readBoard(scope, await readEntriesIn($, boardPrefixOf(scope), keys))),
+    board: settledBoardOf(readBoard(scope, entries.filter(({ key }) => key.startsWith(prefix)))),
   }))
 }
 
@@ -314,12 +303,10 @@ export function saveDetachedTodo(
 
 export function describeStoreFailure(failed: Failed): string {
   switch (failed.failure) {
-    case StoreFailure.NotRead:
-      return describeRefusedRead(failed.key, failed.cause)
+    case StoreFailure.CallFailed:
+      return describeFailedStoreCall(failed)
     case StoreFailure.Unreadable:
       return describeUnreadableRecord(failed.key)
-    case StoreFailure.NotSaved:
-      return describeRefusedWrite(failed.key, failed.cause)
   }
 }
 
@@ -425,11 +412,10 @@ async function writeMarkRemovals(
 /** Runs `work`, and returns the failure of the store or of a stored record that stopped it. */
 async function returningFailure<T>(work: () => Promise<T>): Promise<T | Failed> {
   try {
-    return await returningStoreFailure(work, ({ call, key, cause }) => ({
+    return await returningStoreFailure(work, failed => ({
       outcome: Outcome.Failed,
-      failure: FAILURE_OF_CALL[call],
-      key,
-      cause,
+      failure: StoreFailure.CallFailed,
+      ...failed,
     }))
   } catch (error) {
     if (error instanceof UnreadableRecordError) {

@@ -1,6 +1,7 @@
 import type { EngineInterface } from 'claude-code'
 
-import { describeRefusedWrite, describeUnreadableRecord } from './pluginStore'
+import { describeFailedStoreCall, describeUnreadableRecord } from './pluginStore'
+import type { FailedStoreCall } from './pluginStore'
 
 /** A failure of the store of the plugin that a person can act on, its next step in the message. */
 export class RequestStoreError extends Error {}
@@ -52,8 +53,8 @@ export class RequestNotReadError extends RequestStoreError {
 export class RequestNotSavedError extends RequestStoreError {
   readonly key: string
 
-  constructor(key: string, cause: Error) {
-    super(describeRefusedWrite(key, cause), { cause })
-    this.key = key
+  constructor(failed: FailedStoreCall) {
+    super(describeFailedStoreCall(failed), { cause: failed.cause })
+    this.key = failed.key
   }
 }

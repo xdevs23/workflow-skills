@@ -54,6 +54,7 @@ import { registerRulesBanner } from './rulesBanner'
 import { registerSelfCheck } from './selfCheck'
 import { waitForSelfCheckDueTime } from './selfCheck/idleSelfCheck'
 import { registerSessionRecords } from './sessions'
+import { registerStoreMigration } from './storeMigration'
 import {
   completeMainTurn,
   endStopOnTypedCommand,
@@ -62,6 +63,9 @@ import {
 } from './turnState'
 
 export const register: Register = on => {
+  // The engine runs the hooks of an event in the order registered, so this registration comes first
+  // and the plugin moves the records for the project into their folder before any hook reads them.
+  registerStoreMigration(on)
   // Registered before every other hook of this plugin on a prompt, so it reads the prompt as typed.
   registerSessionRecords(on)
   const tools = createPluginTools()

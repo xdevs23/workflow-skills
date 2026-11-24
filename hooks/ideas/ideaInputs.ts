@@ -6,9 +6,9 @@ import type { EntryNumber } from '../todoEntry'
 import { IdeaLinkKind } from './ideaLink'
 import type { EntryLink } from './ideaLink'
 
-// The store has records for every project in one file capped at 4 MiB. A recorded word is in the
-// store until the user deletes it, so a long paste would leave less room for other records. A
-// product choice: 2000 characters hold the passages that shape an entry or a goal.
+// The records for the project contain a recorded word until the user deletes it, and every list of
+// ideas for the project reads it, so a long paste makes every list longer. A product choice: a
+// limit of 2000 characters covers the passages that shape an entry or a goal.
 const WORDS_MAX_LENGTH = 2000
 
 const ENTRY_PROPERTY = {

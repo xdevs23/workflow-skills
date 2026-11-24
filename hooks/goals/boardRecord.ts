@@ -1,5 +1,6 @@
 import type { AttachedTodo, Board, Goal, Setting } from '../../types'
 import { describeUnreadableRecord, isRecord } from '../pluginStore'
+import type { StoredEntry } from '../pluginStore'
 import { isPositiveInteger } from '../positiveInteger'
 import { readEntryNumber } from '../todoEntry'
 import type { EntryNumber } from '../todoEntry'
@@ -66,7 +67,6 @@ type WrittenRecord = PartRecord<string>
 export type BoardRecord = { key: string; value: WrittenRecord }
 
 /** A value read from the store, under its key. */
-export type StoredEntry = { key: string; value: unknown }
 
 export class UnreadableRecordError extends Error {
   readonly key: string

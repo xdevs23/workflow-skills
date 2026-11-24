@@ -6,6 +6,8 @@ export enum ProjectFailureKind {
   GitRefused = 'git-refused',
 }
 
+export type ProjectLookupEngine = Pick<EngineInterface, 'fs' | 'process'>
+
 /** A lookup of the project that failed, with the project root that git ran in. */
 export type FailedProjectLookup =
   | { kind: ProjectFailureKind.GitNotRun; root: string; cause: Error }
@@ -15,10 +17,10 @@ export type FailedProjectLookup =
  * The folder of the repository for the project root `root`: the parent of the common git folder,
  * which every worktree of the repository shares, or the project root itself outside git. The
  * entries in TODO.md belong to the repository, so every worktree and subfolder of it reads the same
- * records. Returns the failed lookup when git did not run, or when it refused inside a repository.
+ * records. Returns the failed lookup when git did not run, or when it failed inside a repository.
  */
 export async function lookUpProjectOf(
-  $: EngineInterface,
+  $: ProjectLookupEngine,
   root: string,
 ): Promise<string | FailedProjectLookup> {
   let commonFolder: ProcessRunResult
@@ -51,10 +53,10 @@ export async function lookUpProjectOf(
 }
 
 /**
- * Whether `folder` or a folder above it holds `.git`, the folder or file by which git finds a
+ * Whether `folder` or a folder above it contains `.git`, the folder or file by which git finds a
  * repository. git exits with the same code outside a repository as on a refusal inside one.
  */
-async function hasGitEntryAtOrAbove($: EngineInterface, folder: string): Promise<boolean> {
+async function hasGitEntryAtOrAbove($: ProjectLookupEngine, folder: string): Promise<boolean> {
   if (await $.fs.exists(`${folder}/.git`)) {
     return true
   }

@@ -2,14 +2,15 @@ import type { EngineInterface } from 'claude-code'
 
 import type { Board, Reminder } from '../../types'
 import { Outcome as BoardOutcome, openGoalsByIdOf, openGoalsOf } from '../goals/board'
-import { sessionOfBoardKey, sessionScope } from '../goals/boardScope'
-import { describeStoreFailure, loadBoardIn } from '../goals/boardStore'
+import { SESSION_BOARDS_PREFIX, sessionOfBoardKey, sessionScope } from '../goals/boardScope'
+import { describeStoreFailure, loadBoardFrom } from '../goals/boardStore'
 import { shownSettingsOf } from '../goals/goalPaneView'
 import { sortedByNumber } from '../numbered'
-import { describeFailedStoreCall, listKeys, returningStoreFailure } from '../pluginStore'
-import { sessionOfReminderKey } from '../reminders/reminderRecord'
+import { describeFailedStoreCall, readEntriesUnderAny, returningStoreFailure } from '../pluginStore'
+import type { StoredEntry } from '../pluginStore'
+import { SESSION_REMINDERS_PREFIX, sessionOfReminderKey } from '../reminders/reminderRecord'
 import { Outcome as ReminderOutcome, shownRemindersOf } from '../reminders/reminders'
-import { loadRemindersIn } from '../reminders/reminderStore'
+import { loadRemindersFrom } from '../reminders/reminderStore'
 import { readSessionStarts } from '../sessions/sessionStarts'
 import type { RecordedStart } from '../sessions/sessionStore'
 import { ImportKind, SessionsShown } from './importPaneMessages'
@@ -27,8 +28,8 @@ import {
   describeStartNotRead,
 } from './importTexts'
 
-/** A session with goals or reminders in the store, the keys of its records, and its start. */
-type StoredSession = { sessionId: string; keys: readonly string[]; start?: RecordedStart }
+/** A session with goals or reminders in the store, the records of them, and its start. */
+type StoredSession = { sessionId: string; entries: readonly StoredEntry[]; start?: RecordedStart }
 
 /** What became of a session read for the import panes. */
 enum ReadOutcome {
@@ -47,7 +48,8 @@ type ReadSession =
  * found in the prompt history of Claude Code, has the same folder as the running session, or when
  * it does not have a start that this code reads, such as a session begun before sessions recorded
  * their start and missing from that history. The newest session comes first, and the sessions
- * without a start record come last, in the order of their first keys set in the store.
+ * without a start record come last, in the order of their ids, those with goals before those with
+ * only reminders.
  */
 export async function loadImportableSessions($: EngineInterface): Promise<ImportableSessions> {
   const [root, sessionId] = await Promise.all([$.session.root(), $.session.id()])
@@ -74,13 +76,15 @@ export async function loadImportableSessions($: EngineInterface): Promise<Import
 }
 
 /**
- * The sessions other than `sessionId` with goals or reminders in the store, from one list of the
- * keys of the store, with the keys of their records and their start. A start record or a history
+ * The sessions other than `sessionId` with goals or reminders in the store, from one read of the
+ * file used by each session, with the records of them and their start. A start record or a history
  * that cannot be read goes to the debug log, and the sessions it concerns are listed as ones
  * without a start record.
  */
 async function listStoredSessions($: EngineInterface, sessionId: string): Promise<StoredSession[]> {
-  const bySession = keysBySession(await listKeys($))
+  const bySession = entriesBySession(
+    await readEntriesUnderAny($, SESSION_BOARDS_PREFIX, [SESSION_REMINDERS_PREFIX]),
+  )
   bySession.delete(sessionId)
   const { starts, unreadableKeys, history } = await readSessionStarts($, [...bySession.keys()])
   for (const key of unreadableKeys) {
@@ -91,24 +95,23 @@ async function listStoredSessions($: EngineInterface, sessionId: string): Promis
     $.ui.log(historyNotRead, { to: 'debug' })
   }
 
-  return [...bySession].map(([other, keys]) => {
+  return [...bySession].map(([other, entries]) => {
     const start = starts.get(other)
 
-    return start === undefined ? { sessionId: other, keys } : { sessionId: other, keys, start }
+    return start === undefined
+      ? { sessionId: other, entries }
+      : { sessionId: other, entries, start }
   })
 }
 
-/** The keys of the goals and the reminders of each session among `keys`, in their order. */
-function keysBySession(keys: readonly string[]): Map<string, string[]> {
-  const bySession = new Map<string, string[]>()
-  for (const key of keys) {
-    const sessionId = sessionOfBoardKey(key) ?? sessionOfReminderKey(key)
-    if (sessionId === undefined) {
-      continue
+/** The records of the goals and the reminders among `entries` by session, in their order. */
+function entriesBySession(entries: readonly StoredEntry[]): Map<string, StoredEntry[]> {
+  const bySession = new Map<string, StoredEntry[]>()
+  for (const entry of entries) {
+    const sessionId = sessionOfBoardKey(entry.key) ?? sessionOfReminderKey(entry.key)
+    if (sessionId !== undefined) {
+      bySession.set(sessionId, [...(bySession.get(sessionId) ?? []), entry])
     }
-    const listed = bySession.get(sessionId) ?? []
-    listed.push(key)
-    bySession.set(sessionId, listed)
   }
 
   return bySession
@@ -128,12 +131,12 @@ function compareNewestFirst(first: StoredSession, second: StoredSession): number
 /** The session `stored` with its rows, or the text for it, with its id cut to `idLength`. */
 async function readListedSession(
   $: EngineInterface,
-  { sessionId, keys, start }: StoredSession,
+  { sessionId, entries, start }: StoredSession,
   idLength: number,
 ): Promise<ReadSession> {
   const [board, reminders] = await Promise.all([
-    loadBoardIn($, sessionScope(sessionId), keys),
-    loadRemindersIn($, sessionId, keys),
+    loadBoardFrom(sessionScope(sessionId), entries),
+    loadRemindersFrom(sessionId, entries),
   ])
   const unreadableFor = (reason: string): ReadSession => ({
     outcome: ReadOutcome.Unreadable,

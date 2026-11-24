@@ -20,7 +20,10 @@ export function boardPrefixOf(scope: BoardScope): string {
   return recordPrefixOf(RecordKind.Goal, scope.kind, scope.id)
 }
 
+/** The start of the key of every record of the board of every session. */
+export const SESSION_BOARDS_PREFIX = recordPrefixOf(RecordKind.Goal, ScopeKind.Session)
+
 /** The id of the session whose board has the record under `key`, when it is such a record. */
 export function sessionOfBoardKey(key: string): string | undefined {
-  return keyPartAfter(recordPrefixOf(RecordKind.Goal, ScopeKind.Session), key)
+  return keyPartAfter(SESSION_BOARDS_PREFIX, key)
 }

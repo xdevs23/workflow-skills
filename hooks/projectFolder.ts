@@ -3,25 +3,26 @@ import type { EngineInterface } from 'claude-code'
 import { showFailure } from './failureToast'
 import { describeFailedStoreCall, returningStoreFailure } from './pluginStore'
 import type { FailedStoreCall } from './pluginStore'
-import { ProjectFailureKind, describeFailedProjectLookup, lookUpProjectOf } from './projectLookup'
-import type { FailedProjectLookup } from './projectLookup'
+import { ProjectFailureKind } from './projectLookup'
+import { describeRecordsFolderNotFound, recordsPlaceOf } from './recordsFolder'
+import type { RecordsFolderNotFound } from './recordsFolder'
 
 export type ProjectFailure =
   | { kind: ProjectFailureKind.Store; failed: FailedStoreCall }
-  | FailedProjectLookup
+  | RecordsFolderNotFound
 
 export async function returningProjectFailure<T, Failed>(
   $: EngineInterface,
   work: (project: string) => Promise<T>,
   toFailed: (failure: ProjectFailure) => Failed,
 ): Promise<T | Failed> {
-  const project = await lookUpProjectOf($, await $.session.root())
-  if (typeof project !== 'string') {
-    return toFailed(project)
+  const place = await recordsPlaceOf($)
+  if (!place.isFound) {
+    return toFailed(place.failure)
   }
 
   return returningStoreFailure(
-    () => work(project),
+    () => work(place.project),
     failed => toFailed({ kind: ProjectFailureKind.Store, failed }),
   )
 }
@@ -39,5 +40,5 @@ export async function showingProjectFailure(
 export function describeProjectFailure(failure: ProjectFailure): string {
   return failure.kind === ProjectFailureKind.Store
     ? describeFailedStoreCall(failure.failed)
-    : describeFailedProjectLookup(failure)
+    : describeRecordsFolderNotFound(failure)
 }

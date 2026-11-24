@@ -1,4 +1,10 @@
-import { StoreCall, callStore, deleteRecord, writeRecord } from '../pluginStore'
+import {
+  RecordKind,
+  deleteRecord,
+  readEntriesIn,
+  recordPrefixOf,
+  writeRecord,
+} from '../pluginStore'
 import type { StoreEngine } from '../pluginStore'
 import {
   firstPromptKeyOf,
@@ -46,10 +52,12 @@ export function saveFirstPrompt($: StoreEngine, sessionId: string, text: string)
 export async function readSessionStart($: StoreEngine, sessionId: string): Promise<StartRead> {
   const key = startKeyOf(sessionId)
   const promptKey = firstPromptKeyOf(sessionId)
-  const [stored, storedPrompt] = await Promise.all([
-    callStore(StoreCall.Read, key, () => $.store.get(key)),
-    callStore(StoreCall.Read, promptKey, () => $.store.get(promptKey)),
+  const entries = await readEntriesIn($, recordPrefixOf(RecordKind.Session, sessionId), [
+    key,
+    promptKey,
   ])
+  const stored = entries.find(entry => entry.key === key)?.value
+  const storedPrompt = entries.find(entry => entry.key === promptKey)?.value
   if (stored === undefined) {
     return { outcome: StartOutcome.Missing }
   }

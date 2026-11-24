@@ -61,7 +61,6 @@ import {
 import { sortedByNumber } from './numbered'
 import { registerDeclaredTools } from './pluginTools'
 import type { DeclaredToolSpecs } from './pluginTools'
-import { moveProjectRecordsToSessions } from './projectRequestRecords'
 import { isMessageTypedByUser } from './promptOrigin'
 import { Withdrawal, openRequestsOf } from './requests'
 import { openRequestsPane } from './requestScreens'
@@ -69,7 +68,7 @@ import { REPLY_LOST_WITHOUT_COMMAND } from './requestTexts'
 import { awaitingSessionOf, sessionForUse } from './requestSession'
 import {
   SESSION_REQUESTS_MAX_AGE_MS,
-  deleteOldRecords,
+  deleteOldRequests,
   saveNewRequest,
   saveWithdrawal,
 } from './requestStore'
@@ -113,12 +112,9 @@ export async function startRequests(
     registerDeclaredTools($, declaredTools),
     registerCommandShowingRejection($, REPLY_SPEC, REPLY_LOST_WITHOUT_COMMAND),
   ])
-  // The requests saved under the project before they belonged to a session are moved to their
-  // session first, so the load finds them.
-  await toastStoreFailure($, () => moveProjectRecordsToSessions($))
   const sessionId = await $.session.id()
   const requestsMadeBefore = (await $.clock.now()) - SESSION_REQUESTS_MAX_AGE_MS
-  await toastStoreFailure($, () => deleteOldRecords($, { sessionId, requestsMadeBefore }))
+  await toastStoreFailure($, () => deleteOldRequests($, { sessionId, requestsMadeBefore }))
   await toastStoreFailure($, () => loadRequestsUnlessInState($, sessionId))
   recordReadAtStart(sessionId)
 

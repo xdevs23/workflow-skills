@@ -5,10 +5,9 @@ import { UnreadableRequestError } from './requestStoreFailure'
 
 /**
  * The kinds of record stored for a request. Every record of a request is written by the session
- * that sent it, under a key that includes the id of the session. The one exception is a record of
- * a session idle for SESSION_REQUESTS_MAX_AGE_MS, which any session deletes.
+ * that sent it, under a key that includes the id of the session.
  */
-const REQUEST_RECORD_KINDS = [
+export const REQUEST_RECORD_KINDS = [
   RecordKind.Request,
   RecordKind.Reply,
   RecordKind.Withdrawal,
@@ -97,21 +96,24 @@ export function parseRequest(key: string, id: string, value: unknown): SentReque
 }
 
 /**
- * Reads a request written under the digest of a project into the session that sent it and the
- * record to write under that session: the stored value without its `sessionId`.
+ * A request written under the digest of a project: the session that sent it, and the record to
+ * write under that session.
  */
-export function parseProjectRequest(
-  key: string,
-  id: string,
-  value: unknown,
-): { sessionId: string; record: RequestRecord } {
-  if (isRecord(value)) {
-    const { sessionId, ...record } = value
-    if (typeof sessionId === 'string' && isRequestRecord(record) && record.id === id) {
-      return { sessionId, record }
-    }
+export type ProjectRequest = { sessionId: string; record: RequestRecord }
+
+/**
+ * Reads a request written under the digest of a project into the session that sent it and the
+ * stored value without its `sessionId`, or undefined for a value of another shape.
+ */
+export function readProjectRequest(id: string, value: unknown): ProjectRequest | undefined {
+  if (!isRecord(value)) {
+    return undefined
   }
-  throw new UnreadableRequestError(key)
+  const { sessionId, ...record } = value
+
+  return typeof sessionId === 'string' && isRequestRecord(record) && record.id === id
+    ? { sessionId, record }
+    : undefined
 }
 
 export function requestRecordOf({ sentAt, ...request }: SentRequest): RequestRecord {

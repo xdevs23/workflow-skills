@@ -4,9 +4,10 @@ import { RecordKind, isRecord, recordKeyOf } from '../pluginStore'
 // newer plugin with fields this code can misread, so it reads as unreadable and is left as it is.
 const RECORD_VERSION = 1
 
-// The store has the records of every session of every project in one file capped at 4 MiB, so a
-// prompt pasted whole would take the space of other records. A product choice: the first 200
-// characters tell the sessions in a list apart, and the import pane cuts the line to the screen.
+// Every record of a session is in one file, which the engine reads and writes up to 4 MiB, so a
+// prompt pasted whole would leave less of that 4 MiB for the other records. A product choice: the
+// first 200 characters tell the sessions in a list apart, and the import pane cuts the line to the
+// screen.
 const FIRST_PROMPT_MAX_LENGTH = 200
 
 /** The records of a session, each written once by the session, by the last part of its key. */
