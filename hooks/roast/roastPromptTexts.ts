@@ -1,4 +1,5 @@
 import { MARK_GOAL_DONE_TOOL } from '../goals/goalNames'
+import { describeIdeaLink } from '../ideas/ideaTexts'
 import type { RecordedWords } from '../ideas/wordsOfSession'
 import { PendingTextPlace } from '../pendingTexts'
 import type { RunningAgent } from '../runningAgents'
@@ -254,15 +255,21 @@ export function writePromptAfterRecordedWords(
   if (words.length === 0) {
     return prompt
   }
+  const listed = words.map(recorded => ({
+    recordedFor: describeIdeaLink(recorded.link),
+    words: recorded.words,
+  }))
 
   return (
     'This JSON array lists what the assistant recorded in this session as verbatim words of ' +
-    'the user, each with the entry of TODO.md that the assistant recorded it for. Read them as ' +
+    'the user, each with the entry of TODO.md or the goal that the assistant recorded it for, ' +
+    'and every project idea of this project: recorded words that count for the whole project, ' +
+    'each with the entry or goal that it was for before that was finished. Read them as ' +
     'part of the transcript, also where the transcript no longer shows the message of the ' +
     'user. Judge what the user asked for and decided by these words and by the messages of the ' +
     'user in the transcript, never by how the assistant put it. A message of the user in the ' +
     'transcript outranks recorded words, and recorded words that contradict such a message ' +
-    `are a point:\n\n${JSON.stringify(words)}\n\n${prompt}`
+    `are a point:\n\n${JSON.stringify(listed)}\n\n${prompt}`
   )
 }
 

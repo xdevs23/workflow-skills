@@ -1,8 +1,11 @@
 import type { EngineInterface } from 'claude-code'
 
 import type { Goal } from '../../types'
-import { showingStoreFailure } from '../failureToast'
-import { returningStoreFailure } from '../pluginStore'
+import { showFailure, showingStoreFailure } from '../failureToast'
+import { Outcome, clearedGoalsOf } from '../goals/board'
+import { readBoardOfSession } from '../goals/goalActions'
+import type { ImportedGoal } from '../goals/goalImport'
+import { describeUnreadableRecord, returningStoreFailure } from '../pluginStore'
 import {
   ProjectFailureKind,
   describeProjectFailure,
@@ -13,17 +16,20 @@ import type { ProjectFailure } from '../projectFolder'
 import {
   describeIdeaNotDeleted,
   describeIdeasNotRead,
-  describeIdeasOfClearedGoalNotDeleted,
+  describeIdeasOfClearedGoalsNotUnlinked,
+  describeIdeasOfImportedGoalsNotRelinked,
 } from './ideaPaneTexts'
+import { IdeaLinkKind, goalLinkOf } from './ideaLink'
+import type { GoalLink, IdeaLink, ProjectLink } from './ideaLink'
 import { IDEAS_PANE, keepButtonKeyOf } from './ideaNames'
 import { IdeasOutcome, setIdeaAwaitingDelete, setIdeasInState } from './ideaState'
 import type { LoadedIdeas } from './ideaState'
-import { deleteIdea, deleteIdeasUnder, readIdeasOf } from './ideaStore'
+import { deleteIdea, readIdeasOf, relinkIdeasOf } from './ideaStore'
 import type { IdeaId } from './ideaStore'
 
 // The Ideas pane draws the ideas from the state, since a drawing that read the store would start
 // git and read every key of the store on each redraw. The state gets the ideas when the pane opens
-// and after every save and delete.
+// and after every save, unlink and delete.
 
 /** Reads the ideas recorded in the project used by the session from the store into the state. */
 export async function loadIdeasIntoState($: EngineInterface): Promise<void> {
@@ -52,7 +58,7 @@ export async function loadIdeasOfProjectIntoState(
 async function readLoadedIdeas($: EngineInterface, project: string): Promise<LoadedIdeas> {
   return {
     outcome: IdeasOutcome.Read,
-    ...(await readIdeasOf($, { project, includesEntry: () => true })),
+    ...(await readIdeasOf($, { project, includesLink: () => true })),
   }
 }
 
@@ -66,24 +72,88 @@ export async function deleteIdeaOnScreen($: EngineInterface, id: IdeaId): Promis
   await loadIdeasIntoState($)
 }
 
-/**
- * Deletes the ideas recorded for each TODO entry attached to `goal`, which the user cleared, and
- * for every entry under it. Shows a failed delete in a toast, and loads the ideas again after the
- * delete, also after a failed one.
- */
-export async function deleteIdeasOfClearedGoal($: EngineInterface, goal: Goal): Promise<void> {
-  const entries = goal.todos.map(todo => todo.number)
-  await showingProjectFailure(
+export async function unlinkIdeasOfJustClearedGoal($: EngineInterface): Promise<void> {
+  const failure = await unlinkIdeasOfClearedGoals($)
+  if (failure !== undefined) {
+    $.ui.log(describeIdeasOfClearedGoalsNotUnlinked(failure), { to: 'debug' })
+  }
+}
+
+export async function repairIdeasOfClearedGoals($: EngineInterface): Promise<void> {
+  const failure = await unlinkIdeasOfClearedGoals($)
+  if (failure !== undefined) {
+    showFailure($, describeIdeasOfClearedGoalsNotUnlinked(failure))
+  }
+}
+
+async function unlinkIdeasOfClearedGoals($: EngineInterface): Promise<string | undefined> {
+  const read = await readBoardOfSession($, await $.session.id())
+  if (read.outcome !== Outcome.Read) {
+    return read.failure
+  }
+  const cleared = new Map(clearedGoalsOf(read.board).map(goal => [goal.id, goal]))
+  if (cleared.size === 0) {
+    return undefined
+  }
+
+  return returningProjectFailure(
     $,
     async project => {
-      try {
-        await deleteIdeasUnder($, { project, entries })
-      } finally {
-        await loadIdeasOfProjectIntoState($, project)
-      }
+      await relinkIdeasOnScreen($, project, link => relinkToProjectFromGoals(link, cleared))
+
+      return undefined
     },
-    failure => describeIdeasOfClearedGoalNotDeleted(goal.number, describeProjectFailure(failure)),
+    describeProjectFailure,
   )
+}
+
+export async function relinkIdeasOfImportedGoals(
+  $: EngineInterface,
+  imported: readonly ImportedGoal[],
+): Promise<void> {
+  const importedBySource = new Map(imported.map(({ sourceId, goal }) => [sourceId, goal]))
+  if (importedBySource.size === 0) {
+    return
+  }
+  await showingProjectFailure(
+    $,
+    project =>
+      relinkIdeasOnScreen($, project, link => relinkToImportedGoal(link, importedBySource)),
+    failure => describeIdeasOfImportedGoalsNotRelinked(describeProjectFailure(failure)),
+  )
+}
+
+async function relinkIdeasOnScreen(
+  $: EngineInterface,
+  project: string,
+  relink: (link: IdeaLink) => IdeaLink | undefined,
+): Promise<void> {
+  try {
+    const { unreadableKeys } = await relinkIdeasOf($, { project, relink })
+    for (const key of unreadableKeys) {
+      $.ui.log(describeUnreadableRecord(key), { to: 'debug' })
+    }
+  } finally {
+    await loadIdeasOfProjectIntoState($, project)
+  }
+}
+
+function relinkToProjectFromGoals(
+  link: IdeaLink,
+  cleared: ReadonlyMap<string, Goal>,
+): ProjectLink | undefined {
+  const goal = link.kind === IdeaLinkKind.Goal ? cleared.get(link.goal.id) : undefined
+
+  return goal === undefined ? undefined : { kind: IdeaLinkKind.Project, wasFor: goalLinkOf(goal) }
+}
+
+function relinkToImportedGoal(
+  link: IdeaLink,
+  importedBySource: ReadonlyMap<string, Goal>,
+): GoalLink | undefined {
+  const goal = link.kind === IdeaLinkKind.Goal ? importedBySource.get(link.goal.id) : undefined
+
+  return goal === undefined ? undefined : goalLinkOf(goal)
 }
 
 /**

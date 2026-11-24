@@ -6,8 +6,12 @@ description: Implement change to code, from first talk with user until user revi
 ## User's words
 
 - Record user's words on unit with `mcp__workflow-skills__record_idea`, verbatim, under entry of
-  unit, in turn in which user says them
+  unit, in turn in which user says them. Record user's words about goal as whole, not about one
+  unit of it, under that goal
 - Read user's words on unit with `mcp__workflow-skills__get_ideas` before drawing or building it
+- Count lines labelled `Project, was for` returned by `mcp__workflow-skills__get_ideas` as context
+  from finished entries and cleared goals, never as user's words on unit or requests on it. Say so
+  wherever you hand them on
 - User's words rank above approved draft wherever the two disagree. Approval of draft approves its
   overall shape, never each detail on it
 - Never write down what user said or decided in your own words: no notes, summary or paraphrase,

@@ -173,7 +173,7 @@ export function describeRefusal(
   }
 }
 
-function describeGoalNotOpen(goal: number): string {
+export function describeGoalNotOpen(goal: number): string {
   return `${nameGoal(goal)} is not open on the board of this session. ${SEE_OPEN_GOALS}`
 }
 

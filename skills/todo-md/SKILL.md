@@ -28,8 +28,8 @@ contributor or agent without history, reads that file first.
 - Delete entry of unit merged into working branch before this session started, once code of unit is
   on working branch
 - Delete entry also when user says so. Never delete entry for any other reason
-- Delete user's words recorded for deleted entry with `mcp__workflow-skills__delete_ideas`, in same
-  turn
+- Unlink user's words recorded for entry with `mcp__workflow-skills__unlink_ideas` before deleting
+  entry, in same turn
 - Remove deleted entry from every `Builds on:` line that lists it
 - Read goals and entries attached to them with `mcp__workflow-skills__list_goals` when not in
   context. Goal is not satisfied yet until user clears it

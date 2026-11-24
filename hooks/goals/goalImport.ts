@@ -5,10 +5,11 @@ import { priorityOf } from './priority'
 import { settingOf } from './setting'
 
 /**
- * A goal added from an open goal of another session, and the number of the goal of that session
- * depended on by the source goal, when the dependency was not carried over.
+ * A goal added from an open goal of another session, the id of that source goal, and the number
+ * of the goal of that session depended on by the source goal, when the dependency was not carried
+ * over.
  */
-export type ImportedGoal = { goal: Goal; lostDependency?: number }
+export type ImportedGoal = { goal: Goal; sourceId: string; lostDependency?: number }
 
 /**
  * The open goals of `source` with the ids `pickedIds`, in their order on `source`, added to
@@ -46,6 +47,7 @@ export function importedGoalsOf(
     const isCarried = dependsOn !== undefined && carried.has(dependsOn)
     const priority = priorityOf(goal)
     imported.push({
+      sourceId: goal.id,
       goal: {
         ...added.goal,
         ...(priority === undefined ? {} : { prioritySetting: settingOf(priority, importedAt) }),

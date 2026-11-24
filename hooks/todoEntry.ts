@@ -6,6 +6,12 @@ declare const ENTRY_NUMBER_BRAND: unique symbol
  */
 export type EntryNumber = string & { readonly [ENTRY_NUMBER_BRAND]: true }
 
+export enum EntryState {
+  Recorded = 'RECORDED',
+  Ready = 'READY',
+  InProgress = 'IN PROGRESS',
+}
+
 /** A number in dot notation as the model may write it, with leading zeros. */
 export const ENTRY_NUMBER_PATTERN = /^#0*[1-9]\d*(?:\.0*[1-9]\d*)*$/
 

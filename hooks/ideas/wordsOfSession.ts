@@ -3,10 +3,10 @@ import type { EngineInterface } from 'claude-code'
 import { describeUnreadableRecord } from '../pluginStore'
 import { returningProjectFailure } from '../projectFolder'
 import type { ProjectFailure } from '../projectFolder'
-import type { EntryNumber } from '../todoEntry'
-import { readIdeasRecordedBy } from './ideaStore'
+import type { IdeaLink } from './ideaLink'
+import { readProjectIdeasAndIdeasRecordedBy } from './ideaStore'
 
-export type RecordedWords = { readonly entry: EntryNumber; readonly words: string }
+export type RecordedWords = { readonly link: IdeaLink; readonly words: string }
 
 export type WordsOfSession =
   | { readonly isKnown: true; readonly words: readonly RecordedWords[] }
@@ -18,12 +18,15 @@ export async function readWordsRecordedInSession($: EngineInterface): Promise<Wo
   return returningProjectFailure(
     $,
     async (project): Promise<WordsOfSession> => {
-      const { ideas, unreadableKeys } = await readIdeasRecordedBy($, { project, sessionId })
+      const { ideas, unreadableKeys } = await readProjectIdeasAndIdeasRecordedBy($, {
+        project,
+        sessionId,
+      })
       for (const key of unreadableKeys) {
         $.ui.log(describeUnreadableRecord(key), { to: 'debug' })
       }
 
-      return { isKnown: true, words: ideas.map(({ entry, words }) => ({ entry, words })) }
+      return { isKnown: true, words: ideas.map(({ link, words }) => ({ link, words })) }
     },
     (failure): WordsOfSession => ({ isKnown: false, failure }),
   )

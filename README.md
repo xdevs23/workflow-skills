@@ -22,10 +22,10 @@ Then run a skill, such as `/workflow-skills:implement`.
   into this one
 - **Reminders**: `/reminders` sends Claude a text on a schedule or after an event;
   `/reminders-import` brings reminders of an earlier session of the project into this one
-- **Ideas**: Claude records your words that shape an entry in TODO.md, so they outlast
-  compactions, and deletes them once the entry is finished. Clearing a goal deletes the ideas
-  recorded for the entries attached to it. `/ideas` lists them by entry, and you can delete any one
-  of them there
+- **Ideas**: Claude records your words that shape an entry in TODO.md or a goal, so they outlast
+  compactions. Once the entry is finished or you clear the goal, the ideas recorded for it stay as
+  project ideas, each naming the entry or goal it was for, and Claude reads them with every entry
+  and goal. `/ideas` lists them by entry, goal and project, and only you delete an idea, there
 - **Autonomy**: `/autonomy always` lets Claude finish work end to end without questions in the
   whole project, `/autonomy #161` in one entry of TODO.md and the entries under it, and
   `/goals 5 autonomy on` for one goal. A grant for the project or an entry applies in every session

@@ -156,7 +156,8 @@ export function describeRunningAgentsUnknown(cause: string): string {
 
 export function describeRecordedWordsUnknown(failure: ProjectFailure): string {
   return (
-    'The fork that writes the roast got no words of the user recorded in the session. ' +
+    'The fork that writes the roast did not get the words of the user recorded in the session ' +
+    'or any project idea. ' +
     describeProjectFailure(failure)
   )
 }

@@ -40,6 +40,7 @@ import {
 } from './boardStore'
 import type { Failed, GoalsImported } from './boardStore'
 import { runGoalClearedHooks } from './goalClearedHooks'
+import { runGoalsImportedHooks } from './goalImportedHooks'
 import { describeNotRead } from './goalPaneTexts'
 import { recordBoardSeenAtStart, setLoadedBoard } from './goalState'
 import type { Priority } from './priority'
@@ -113,8 +114,9 @@ export async function addGoalToSession(
 
 /**
  * Imports the open goals with the ids `picked` of the session `from` into the board of the session
- * `into` as new goals, as saveImportedGoals stores them. The goals of `from` are left as they are.
- * A failed import may have stored some of the goals, so the board is read into the state again.
+ * `into` as new goals, as saveImportedGoals stores them, and then runs the hooks that other
+ * features set for imported goals. The goals of `from` are left as they are. A failed import may
+ * have stored some of the goals, so the board is read into the state again.
  */
 export async function importGoalsIntoSession(
   $: EngineInterface,
@@ -128,6 +130,8 @@ export async function importGoalsIntoSession(
   const imported = await saveImportedGoals($, goalImport, await $.clock.now())
   if (imported.outcome === Outcome.Failed) {
     await loadBoardIntoState($, into)
+  } else {
+    await runGoalsImportedHooks($, imported.imported)
   }
 
   return imported

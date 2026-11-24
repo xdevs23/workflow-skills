@@ -11,8 +11,7 @@ export const IDEAS_PANE_TITLE = 'Ideas'
 export const IDEAS_BUTTON_LABEL = IDEAS_PANE_TITLE
 
 export const IDEAS_DESCRIPTION =
-  `Open the ideas recorded for the entries in TODO.md of this project in the ${IDEAS_PANE_TITLE} ` +
-  'pane'
+  `Open the ideas recorded in this project in the ${IDEAS_PANE_TITLE} pane`
 
 /** The ideas as written in the texts about a failed hook for /ideas. */
 export const IDEAS_COMMAND_SUBJECT: HookSubject = { name: 'ideas' }
@@ -41,13 +40,16 @@ export function describeIdeaNotDeleted(failed: FailedStoreCall): string {
   return `The store did not delete the idea. ${describeFailedStoreCall(failed)}`
 }
 
-/**
- * The toast shown when the ideas recorded for the TODO entries attached to goal `goalNumber` were
- * not deleted after the user cleared it, with `failure` saying why.
- */
-export function describeIdeasOfClearedGoalNotDeleted(goalNumber: number, failure: string): string {
+export function describeIdeasOfClearedGoalsNotUnlinked(failure: string): string {
   return (
-    `Goal ${goalNumber} is cleared, but not every idea recorded for the TODO entries attached to ` +
-    `it was deleted. ${failure}`
+    'Not every idea recorded for a cleared goal was turned into a project idea. The next start ' +
+    `of this session tries again. ${failure}`
+  )
+}
+
+export function describeIdeasOfImportedGoalsNotRelinked(failure: string): string {
+  return (
+    'The goals are imported, but not every idea recorded for them in the earlier session was ' +
+    `linked to the imported goal. ${failure}`
   )
 }

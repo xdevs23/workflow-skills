@@ -29,11 +29,18 @@ export async function saveProjectRecord<Value extends object>(
   saved: { kind: RecordKind; sessionId: string; project: string; value: Value },
 ): Promise<void> {
   const { kind, sessionId, project, value } = saved
+  const key = recordKeyOf(kind, sessionId, await projectDigestOf(project), crypto.randomUUID())
 
-  return writeRecord($, {
-    key: recordKeyOf(kind, sessionId, await projectDigestOf(project), crypto.randomUUID()),
-    value: { ...value, project },
-  })
+  return writeProjectRecord($, { key, project, value })
+}
+
+export function writeProjectRecord<Value extends object>(
+  $: StoreEngine,
+  written: { key: string; project: string; value: Value },
+): Promise<void> {
+  const { key, project, value } = written
+
+  return writeRecord($, { key, value: { ...value, project } })
 }
 
 export async function readProjectRecords<T, Key extends string>(
@@ -43,16 +50,11 @@ export async function readProjectRecords<T, Key extends string>(
     project: string
     keysListedBefore: readonly Key[]
     parse: (value: unknown) => T | undefined
-    recordedBy?: string
   },
 ): Promise<ReadProjectRecords<T, Key>> {
-  const { kind, project, keysListedBefore, parse, recordedBy } = read
+  const { kind, project, keysListedBefore, parse } = read
   const digest = await projectDigestOf(project)
-  const keysOfProject = keysListedBefore.filter(
-    key =>
-      projectDigestIn(kind, key) === digest &&
-      (recordedBy === undefined || sessionIn(kind, key) === recordedBy),
-  )
+  const keysOfProject = keysListedBefore.filter(key => projectDigestIn(kind, key) === digest)
   const records: ProjectRecord<T, Key>[] = []
   const unreadableKeys: Key[] = []
   for (const { key, value } of await readEntriesIn($, recordPrefixOf(kind), keysOfProject)) {
@@ -74,7 +76,7 @@ async function projectDigestOf(project: string): Promise<string> {
   return hexOf(new Uint8Array(digest).slice(0, PROJECT_DIGEST_BYTES))
 }
 
-function sessionIn(kind: RecordKind, key: string): string | undefined {
+export function sessionIn(kind: RecordKind, key: string): string | undefined {
   return keyPartAfter(recordPrefixOf(kind), key)
 }
 
