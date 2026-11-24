@@ -3,9 +3,10 @@ name: implement
 description: Implement change to code, from first talk with user until user reviews code
 ---
 
-- In main conversation of session switched to swarm way of working by user, follow
+- In main conversation whose latest note on agent mode sets `swarm`, follow
   `workflow-skills:orchestrate` in place of this skill. It names sections of this skill you still
   follow
+- In main conversation whose latest note on agent mode sets `single`, do not follow this skill
 
 ## User's words
 

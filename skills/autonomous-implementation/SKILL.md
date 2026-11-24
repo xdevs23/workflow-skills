@@ -12,8 +12,8 @@ description: Implement work end to end without questions, for project, entry of 
 - Read latest note before every decision
 - Once latest note no longer lists work this run does, stop run at once: do not start another agent, stop
   running workflow, report
-- Within grant, use this skill in place of `workflow-skills:implement`. Global rule to implement
-  through `workflow-skills:implement` applies to all other work
+- Within grant, use this skill in place of `workflow-skills:implement`. In main conversation, all
+  other work follows agent mode set by latest note on agent mode
 - Keep standards for all other work, such as rules of `workflow-skills:writing-code` and
   `workflow-skills:hygiene`
 - Put no question to user. Leave no decision open. Leave no point open for user or for later

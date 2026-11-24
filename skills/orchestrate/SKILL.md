@@ -1,9 +1,9 @@
 ---
 name: orchestrate
-description: Hand every unit of work to `workflow-skills:lead` and supervise leads, in swarm way of working
+description: Hand every unit of work to `workflow-skills:lead` and supervise leads, in agent mode `swarm`
 ---
 
-- Follow this skill only in session switched to swarm way of working by user
+- Follow this skill only in main conversation whose latest note on agent mode sets `swarm`
 - Aim to satisfy user with work of leads, not to finish work yourself
 - Never draw draft, build, review whole change, fix or merge yourself
 
@@ -34,11 +34,14 @@ description: Hand every unit of work to `workflow-skills:lead` and supervise lea
   branches`. After compaction, find lead of unit with `ListAgents`
 - Hand lead in prompt: number and title of unit, user's words on unit as
   `mcp__workflow-skills__get_ideas` returns them, verbatim, paths to approved drafts of unit and of
-  units above it, and whether to draw draft or build. Add in your own words only what else helps
-  it
+  units above it, whether to draw draft or build, and grant of
+  `workflow-skills:autonomous-implementation` over unit where latest note on autonomy lists it. Add
+  in your own words only what else helps it
 - Keep hand-off short: write prompt, start lead, go back to user
 - Send all later work on unit to same lead: user's words on unit, verbatim, after recording them,
-  replies, workflow results, roasts and work sent back. Wake it with `SendMessage` to its agent id
+  replies, workflow results, roasts, work sent back, and each start or end of grant of
+  `workflow-skills:autonomous-implementation` over unit, as soon as note on autonomy shows it.
+  Wake it with `SendMessage` to its agent id
 - When lead ends with error or without report, wake same lead with `SendMessage`, naming what is
   missing. Start new lead on its branch only where it cannot be woken
 - Stop lead with `TaskStop` once user accepted its change or dropped its unit
