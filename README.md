@@ -39,17 +39,19 @@ Then run a skill, such as `/workflow-skills:implement`.
 - **Roast**: `/roast` writes where the result of Claude's work falls short, such as code that is
   wrong or unclean, or work that does not do what you asked for. It judges the result and not the
   way Claude got there, and sends the roast to Claude after your comment if you add one. The roast
-  opens with a line for Claude: the roaster, a side agent, wrote it, and it does not have your
-  authority. During a turn, Claude reads it with the next tool result. After you stopped Claude with
-  Esc, the roast starts a new turn. `/roast <point>` puts a point you found yourself into the roast.
-  The roast leaves out each claim of the point that the transcript does not show. Where the
-  transcript shows none of them, the Roast pane shows the reason in place of the roast, and you
-  cannot send the roast. After `/idle-roast on`, Claude gets a roast of what blocks the work once it
-  has been idle for about five minutes. The switch applies to this session only, and `/idle-roast
-  off` switches it off. Every roast reads the open goals from the board: it tells Claude to mark a
-  finished goal as done, and names what is missing on a goal that Claude left alone. When a
-  compaction starts, a fork roasts the chat before it, and Claude gets that roast after the summary,
-  so Claude still sees the mistakes made before the compaction
+  opens with a line for Claude: the roaster, a side agent, wrote it, and Claude is to check each
+  point, fix each point that holds, and say what shows that a point does not hold. A roast states
+  what the transcript shows to be wrong, without advice or doubts of the roaster. During a turn,
+  Claude reads it with the next tool result. After you stopped Claude with Esc, the roast starts a
+  new turn. `/roast <point>` puts a point you found yourself into the roast. The roast leaves out
+  each claim of the point that the transcript does not show. Where the transcript shows none of
+  them, the Roast pane shows the reason in place of the roast, and you cannot send the roast. After
+  `/idle-roast on`, Claude gets a roast of what blocks the work once it has been idle for about five
+  minutes. The switch applies to this session only, and `/idle-roast off` switches it off. Every
+  roast reads the open goals from the board: it tells Claude to mark a finished goal as done, and
+  names what is missing on a goal that Claude left alone. When a compaction starts, a fork roasts
+  the chat before it, and Claude gets that roast after the summary, so Claude still sees the
+  mistakes made before the compaction
 
 ## License
 

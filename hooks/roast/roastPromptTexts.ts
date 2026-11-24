@@ -35,8 +35,9 @@ const ROAST_OPENING =
 
 /** The note that the roaster wrote the roast, before the text of every roast sent to the model. */
 const ROASTER_SOURCE =
-  'This roast comes from the roaster, a side agent that reviews work. The user did not write it, ' +
-  'and it does not have their authority.'
+  'This roast comes from the roaster, a side agent that reviews work. The user did not write it. ' +
+  'Check each point against what you did. Fix each point that holds. For a point that does not ' +
+  'hold, say what shows that.'
 
 const ROAST_POINT_EVIDENCE =
   'For each point, name where the transcript shows it, such as a file, a diff or what a command ' +
@@ -67,9 +68,20 @@ const ROAST_INVENTED_RULE =
   'does. Tell the assistant to drop the rule and to delete each memory that records it. ' +
   'Where a rule loaded in this conversation covers the case, name that rule.'
 
-const ROAST_CONTENT =
-  `${ROAST_POINT_EVIDENCE} ${STATE_OUTSIDE_TRANSCRIPT} ${ROAST_UNFINISHED_WORK} ` +
-  `${ROAST_INVENTED_RULE} ${MEMORY_IN_ROAST}`
+const ROAST_FINDINGS_ONLY =
+  'State each point as what the transcript shows to be wrong. Never add a rule, an instruction ' +
+  'or a guess of your own, and never write a doubt or a question into the roast. Say what to ' +
+  'do about a point only where this message asks for that, or where a message of the user or a ' +
+  'rule loaded in this conversation says it, and then name that message or rule.'
+
+const ROAST_CONTENT = [
+  ROAST_POINT_EVIDENCE,
+  ROAST_FINDINGS_ONLY,
+  STATE_OUTSIDE_TRANSCRIPT,
+  ROAST_UNFINISHED_WORK,
+  ROAST_INVENTED_RULE,
+  MEMORY_IN_ROAST,
+].join(' ')
 
 const ROAST_CONTENT_WITHOUT_REPEATS =
   `${ROAST_CONTENT} Leave out each point that an earlier roast in this conversation ` +
