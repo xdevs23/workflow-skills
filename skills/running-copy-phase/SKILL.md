@@ -37,7 +37,8 @@ description: Run copy phase: have text for product written by copywriter agents,
 - Write writing system as one document of rules for project that go beyond
   `workflow-skills:writing-product-text`, e.g. name used for each thing and how each slot is built.
   Writers load that skill themselves
-- Phrase every rule **positively, with a check that passes or fails**
+- Phrase every rule **positively, with a check that passes or fails**. Model needs replacement
+  named, since name for bad habit teaches it nothing
 - Load SOURCE block before asking for a single word
 
 ## Specify the SENTENCE instead of the vibe
@@ -79,28 +80,30 @@ surface pattern known to it.
 ## Verification: what makes this a workflow
 
 - Verify in three stages, in this order: tool, then two agents
-
-1. **Mechanical check: a committed tool run with ONE COMMAND.** Reviewer does not do this check.
-   Tool RECOMPUTES everything from files: key parity across locales, length limits for slots,
-   syntax rules, grep for forbidden literals, check for leaked source language. Value identical to
-   the one in pivot language is suspect unless empty. Commit tool as script, put exact command for
-   it in every prompt. Tool runs without prompt template. **The tool never uses a self-report from a
-   writer as evidence.** Self-report only helps detect truncated or dishonest run
-2. **Source-verify reviewer** (`agentType:'workflow-skills:copy-source-verify'`): run it on a
-   **model strong on detail, never the smallest one**. Checks every factual claim against document
-   with facts *and* against live artifact. Checks register in every language, including languages
-   read by nobody on team. Standard example: wording suggesting temporary state where product
-   promises permanent one. Requires proof for every superlative. **Use what was observed, never
-   what was recalled:** fetch and transcribe wording of real artifacts, label such data "observed",
-   never let an agent cite an authority not checked by it
-3. **Critic with a fresh context** (`agentType:'workflow-skills:copy-critic'`): reviewer that never
-   saw the writing happen. Names source line for each sentence, lists every sentence without
-   subject and finite verb, counts markers of machine-written text. Audits, never rewrites
-
-- Run **completeness pass** alongside stages 2 and 3, inside Verify. In it, ask one question
-  about whole list of work, once and explicitly: "which item is missing entirely?" Check of single
-  items cannot see an absent item by its structure, and missing item is worst kind of defect to
-  ship
+- **Mechanical check: a committed tool run with ONE COMMAND**
+  - Let tool RECOMPUTE everything from files: key parity across locales, length limits for slots,
+    syntax rules, grep for forbidden literals, check for leaked source language
+  - Treat value identical to the one in pivot language as suspect unless empty
+  - Commit tool as script. Put exact command for it in every prompt. Run it without prompt
+    template
+  - Use self-report of a writer only to detect truncated or dishonest run
+- **Source-verify reviewer** (`agentType:'workflow-skills:copy-source-verify'`)
+  - Run it on a **model strong on detail, never the smallest one**
+  - It checks every factual claim against document with facts *and* against live artifact, and
+    register in every language, including languages read by nobody on team. Standard example:
+    wording suggesting temporary state where product promises permanent one
+  - It requires proof for every superlative
+  - **Use what was observed, never what was recalled:** fetch and transcribe wording of real
+    artifacts, label such data "observed", never let an agent cite an authority not checked by it
+- **Critic with a fresh context** (`agentType:'workflow-skills:copy-critic'`), reviewer that never
+  saw the writing happen
+  - It names source line for each sentence, lists every sentence without subject and finite verb,
+    counts markers of machine-written text
+  - It audits, never rewrites
+- Run **completeness pass** alongside source-verify reviewer and critic, inside Verify. In it, ask
+  one question about whole list of work, once and explicitly: "which item is missing entirely?"
+  Check of single items cannot see an absent item by its structure, and missing item is worst kind
+  of defect to ship
 
 ## The forbidden-literals manifest
 
@@ -112,8 +115,7 @@ surface pattern known to it.
 
 ## The shape
 
-Run copy phase as a `Workflow()` in four phases: **Intent → Write → Check → Verify.**
-
+- Run copy phase as a `Workflow()` in four phases: **Intent → Write → Check → Verify**
 - **Intent**: write or decide intent catalog before any writer starts. Without intents stated as
   goals, each writer invents separate standard, critic has nothing to check against
 - **Write**: fan out `agentType:'workflow-skills:copywriter'` with **one writer per area and
@@ -125,50 +127,28 @@ Run copy phase as a `Workflow()` in four phases: **Intent → Write → Check �
   parallel, plus completeness pass. Give source-verify reviewer copy, SOURCE block, intents and
   live artifact. Give critic copy, writing system, intents and forbidden-literals manifest
 
+One writer per area and locale, because one agent through a whole batch, N locales or N unrelated
+areas, wrote worse towards end and missed items unnoticed. One agent per string, its value copied
+into file by script, spent whole context of a writer on five-word label, dozens of times over, and
+slots of one screen stopped fitting together, e.g. two slots repeated same noun or dealt with same
+question, because no writer wrote them together.
+
 ## Laws
 
-1. **Write the copy first, and let implementation use only finished strings.** Never commit
-   placeholder prose to tree
-2. **Create every key empty.** Let copy pass fill it. Placeholder text inside a key looks like
-   finished copy to everyone who comes across it later. Writer skips key, critic finds sentence to
-   audit, product ships with placeholder
-3. **Show the user every slot reported by the copywriter for redesign**, with part of screen the
-   copywriter named. Completeness pass lists such slot as held, separately from slot never written.
-   Do not implement screen containing that slot until redesigned slot has copy
+- **Write the copy first, and let implementation use only finished strings.** Never commit
+  placeholder prose to tree
+- **Create every key empty.** Let copy pass fill it
+  - Placeholder text inside a key looks like finished copy to everyone who comes across it later.
+    Writer skips key, critic finds sentence to audit, product ships with placeholder
+- **Show the user every slot reported by the copywriter for redesign**, with part of screen the
+  copywriter named
+  - Let completeness pass list such slot as held, separately from slot never written
+  - Do not implement screen containing that slot until redesigned slot has copy
 
-## Agent prompt templates (verbatim base, append-only)
+## Agents
 
-- Every agent spawned by this skill has fixed template in `agents/`: `agents/copywriter.md`,
-  `agents/copy-source-verify.md`, `agents/copy-critic.md`. Use body of that file **VERBATIM** as
-  start of agent prompt. Body contains **authoritative rules** for agent
-- Invoke each by qualified agent type: `agentType:'workflow-skills:copywriter'` /
-  `'workflow-skills:copy-source-verify'` / `'workflow-skills:copy-critic'`
-- Pass `agent()` **ONLY the context for the task, APPENDED** after that base, as listed in its
-  phase
-- Do NOT modify, reorder or paraphrase base rules inline
-
-## What did NOT work (keep these)
-
-Each approach below was tried and produced worse copy.
-
-- **Pivot translation**, writing one language and translating it outward. Gave translated register
-  to every other locale at once. Replaced by writing each locale natively from intent
-- **Character limits per line on headlines.** Shipped staccato pattern. Replaced by limit for whole
-  slot
-- **Adjectives for texture in prompts** ("punchy", "snappy", "bold"). Produced rhythm of fragments,
-  although they were meant to prevent it
-- **One agent grinding through a whole batch in one go**, writing N locales or N unrelated areas of
-  product. Quality dropped towards end. Missing items went unnoticed. Replaced by one agent per area
-  and locale, with completeness pass
-- **One agent per string, returning a value copied into the file by a script.** Whole context of a
-  writer goes into five-word label, dozens of times over. Worse than cost: slots of one screen stop
-  fitting together, because one writer never wrote them together, e.g. two slots repeat same noun,
-  or both deal with same question
-- **Intents containing imagery from the draft.** Writer then translated draft instead of writing
-  from goal
-- **Placeholder copy in the tree.** Ends up on rendered production screens
-- **Style rules phrased as prohibitions** ("do not be salesy"). Model needs replacement named,
-  because name for bad habit teaches it nothing
+- Give each agent **ONLY the context for its task**, listed in its phase. Agent type carries its
+  rules
 
 ## Rules in other skills
 
