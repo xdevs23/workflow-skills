@@ -29,6 +29,11 @@ description: Hand every unit of work to `workflow-skills:lead` and supervise lea
 
 - Hand goal, entry of `TODO.md` or sub-unit, at level chosen by you, to lead that draws its draft
   or builds it. Start lead with Agent tool as `workflow-skills:lead`, in background
+- 3 to 5 leads running at once: sweet spot, not limit. Start more only where work needs them.
+  Every lead sends notifications and starts workflows. Too many leads overwhelm you with
+  notifications, and session lags until all work slows to crawl
+- Hand work of high priority first: goals, entries of `TODO.md` and tasks from user. Start work of
+  low priority, e.g. goal of lower priority, only once work of high priority is done
 - Give every unit exactly one lead. Unit inside unit of lead belongs to that lead
 - Give each lead a description with number and title of unit, e.g. `lead #218 merge feature
   branches`. After compaction, find lead of unit with `ListAgents`
