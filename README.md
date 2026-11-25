@@ -33,8 +33,9 @@ Then run a skill, such as `/workflow-skills:implement`.
   applies and `/autonomy off` removes every grant. Every system prompt describes autonomy, and a
   note in the conversation tells Claude where it applies each time that changes. Everything else
   follows the agent mode set for this session
-- **Agent mode**: `/agent-mode` sets how Claude works in this session, and `/agent-mode` alone
-  shows the mode
+- **Agent mode**: `/agent-mode` sets how Claude works in this session. `/agent-mode` alone shows
+  the mode, and the footer under the prompt shows it before its buttons: `swarm` in violet,
+  `orchestrator` in blue, `single` in green
   - In `orchestrator`, the default, Claude follows `workflow-skills:implement`, as every session
     did before
   - In `swarm`, Claude hands every unit of work to a subagent of the type `workflow-skills:lead`

@@ -4,7 +4,9 @@ import { isMainConversation } from '../conversation'
 import { EVERY_EVENT } from '../everyEvent'
 import type { EveryEvent } from '../everyEvent'
 import { showFailure } from '../failureToast'
+import type { PromptFooter } from '../promptFooter'
 import { CONVERSATION_STARTS } from '../sessionSources'
+import { AGENT_MODE_LABEL, drawAgentModeLabel } from './agentModeFooterLabel'
 import { AGENT_MODE_SECTION, DEFAULT_AGENT_MODE } from './agentModeNames'
 import type { AgentMode } from './agentModeNames'
 import { loadAgentModeIntoState, startConversationState } from './agentModeState'
@@ -16,8 +18,9 @@ const AGENT_MODE_RULE: PromptComposeSection = {
   scope: 'session',
 }
 
-export function registerAgentMode(on: On): void {
+export function registerAgentMode(on: On, footer: PromptFooter): void {
   on('turn.start', EVERY_EVENT, loadAgentModeAtTurnStart)
+  on('ui.render', footer.placeLabel(AGENT_MODE_LABEL), drawAgentModeLabel)
   on('prompt.compose', EVERY_EVENT, appendAgentMode)
   // The system prompt contains the default mode for a conversation without a note on the mode.
   for (const { source, isEmpty } of CONVERSATION_STARTS) {

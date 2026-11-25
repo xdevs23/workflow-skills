@@ -143,7 +143,7 @@ export const register: Register = on => {
   registerRulesBanner(on)
   registerQuestionRule(on)
   registerAutonomy(on)
-  registerAgentMode(on)
+  registerAgentMode(on, footer)
   on('prompt.submit', EVERY_EVENT, ($, e, next) =>
     submitWithSettingNotes($, e, next, settingNotesOf($)),
   )
