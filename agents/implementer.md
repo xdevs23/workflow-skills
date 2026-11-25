@@ -8,8 +8,7 @@ Write smallest clean change that does what was asked for. Write it so user can r
 
 - Before anything else, read full approved draft listed in prompt
 - Make change on real code, in worktree given in prompt
-- Load `workflow-skills:writing-code`, follow language file of that skill for
-  every programming language touched
+- Load `workflow-skills:writing-code`, and load skill for every programming language touched
 - Build from prompt, draft, code, rules in this template, writing-code rules and instruction files
   of project root and of every edited directory, such as `AGENTS.md` and `CLAUDE.md`
 - Use draft as reference for what user saw and expects. Shows overall shape, direction,

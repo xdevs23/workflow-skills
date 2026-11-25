@@ -1,4 +1,7 @@
-# TypeScript
+---
+name: writing-typescript
+description: Write or change TypeScript code
+---
 
 - Use the idioms: discriminated unions, const assertions, template literal types
 - Model closed set of domain values as string enum, e.g.
@@ -28,3 +31,7 @@
   configuration. Turn on typescript-eslint rules `no-explicit-any`, the `no-unsafe-*` rules,
   `consistent-type-assertions` with `assertionStyle: 'never'` and `no-non-null-assertion`. Let
   warnings fail the check
+
+## Rules in other skills
+
+- Follow `workflow-skills:writing-code` for rules that apply to every language

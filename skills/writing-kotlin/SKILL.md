@@ -1,4 +1,7 @@
-# Kotlin
+---
+name: writing-kotlin
+description: Write or change Kotlin code
+---
 
 - Use the idioms: scope functions, collection operators, coroutines, channels, flows, extension
   functions, sealed classes with exhaustive `when`, delegated properties, reified type parameters,
@@ -84,3 +87,7 @@
 - Never delegate to property of object replaceable by the class. Property delegated to property of
   another object (`by obj::prop`) binds that object once, when property initialized
 - Override `hashCode` to match whenever type overrides `equals`. Let neither throw
+
+## Rules in other skills
+
+- Follow `workflow-skills:writing-code` for rules that apply to every language

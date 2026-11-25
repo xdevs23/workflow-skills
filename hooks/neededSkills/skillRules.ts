@@ -11,31 +11,26 @@ import { writesFile } from './writesFile'
 export type SkillRule = {
   when: Matcher
   skills: readonly QualifiedSkill[]
-  /** Files inside the plugin that the matched calls need read, such as the rules for a language. */
+  /** Files inside the plugin that the matched calls need read, such as rules for product text. */
   files: readonly PluginFilePath[]
 }
 
 const WRITING_CODE = skillName('writing-code')
 const WRITES_HTML = writesFile({ names: ['*.html'] })
 
-/** A row for files named by `names`, which need writing-code and the rules for `language`. */
-function codeIn(language: string, ...names: readonly string[]): SkillRule {
-  return {
-    when: writesFile({ names }),
-    skills: [WRITING_CODE],
-    files: [pluginFilePath(`skills/writing-code/languages/${language}.md`)],
-  }
+function codeIn(languageSkill: QualifiedSkill, ...names: readonly string[]): SkillRule {
+  return { when: writesFile({ names }), skills: [WRITING_CODE, languageSkill], files: [] }
 }
 
 /** The rule table. Every row that matches a tool call applies to it. */
 export const SKILL_RULES: readonly SkillRule[] = [
-  codeIn('kotlin', '*.kt', '*.kts'),
-  codeIn('rust', '*.rs'),
-  codeIn('typescript', '*.ts', '*.tsx'),
-  codeIn('python', '*.py'),
-  codeIn('go', '*.go'),
-  codeIn('c-cpp', '*.c', '*.h', '*.cpp', '*.hpp'),
-  codeIn('nix', '*.nix'),
+  codeIn(skillName('writing-kotlin'), '*.kt', '*.kts'),
+  codeIn(skillName('writing-rust'), '*.rs'),
+  codeIn(skillName('writing-typescript'), '*.ts', '*.tsx'),
+  codeIn(skillName('writing-python'), '*.py'),
+  codeIn(skillName('writing-go'), '*.go'),
+  codeIn(skillName('writing-c-cpp'), '*.c', '*.h', '*.cpp', '*.hpp'),
+  codeIn(skillName('writing-nix'), '*.nix'),
   { when: runsCommand('git commit', 'git add'), skills: [skillName('commit-messages')], files: [] },
   { when: writesFile({ names: ['TODO.md'] }), skills: [skillName('todo-md')], files: [] },
   {

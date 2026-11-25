@@ -1,4 +1,7 @@
-# Go
+---
+name: writing-go
+description: Write or change Go code
+---
 
 - Assert at compile time that type conforms to interface: `var _ Message = (*Request)(nil)`
 - Wrap every error with what was being attempted:
@@ -20,3 +23,7 @@
 - Read text into closed set with one parse function returning error for text matching none of the
   values
 - Write value of closed set out as text through its `MarshalText` method
+
+## Rules in other skills
+
+- Follow `workflow-skills:writing-code` for rules that apply to every language

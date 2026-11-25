@@ -1,4 +1,7 @@
-# Rust
+---
+name: writing-rust
+description: Write or change Rust code
+---
 
 - Use the idioms: iterators, pattern matching, `Result` and `Option` combinators, trait
   implementations
@@ -67,3 +70,7 @@
 - Never store or return error as `String` or as `Box<dyn Error>`
 - Read text into closed set with `FromStr` where text arrives. Read error returned for text
   matching none of the values as unknown, so rest of input still usable
+
+## Rules in other skills
+
+- Follow `workflow-skills:writing-code` for rules that apply to every language

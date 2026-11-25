@@ -1,4 +1,7 @@
-# Nix
+---
+name: writing-nix
+description: Write or change Nix code
+---
 
 - Generate configuration files with `pkgs.formats`
 - Build with flakes
@@ -9,3 +12,7 @@
 - Let modules declare traits as typed enum options, enum constants in one types file
 - Let consumers read trait options with `or null`, derive defaults with `mkDefault`
 - Make state of traits printable
+
+## Rules in other skills
+
+- Follow `workflow-skills:writing-code` for rules that apply to every language

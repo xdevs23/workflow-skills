@@ -3,8 +3,8 @@ name: writing-code
 description: Write or change code in any language, including types, comments, names and strings
 ---
 
-- Before writing code in a language, read file for that language in `languages` dir next to this
-  file: `kotlin.md`, `rust.md`, `c-cpp.md`, `go.md`, `nix.md`, `typescript.md` or `python.md`
+- Before writing code in a language, load skill for that language, such as
+  `workflow-skills:writing-rust`
 
 ## Code style
 
@@ -13,7 +13,7 @@ description: Write or change code in any language, including types, comments, na
 - Never rewrite existing code beyond your change
 - Make what code does visible at a glance. Use annotations, decorators, delegates, operator
   overloads, data classes and abstractions where they make it read better
-- Use idioms of each language, listed in file for that language in `languages`
+- Use idioms of each language, listed in skill for that language
 - Write structure following specification or hierarchy as typed DSL. Building structure that breaks
   constraints of specification fails
 - Never write comment. Where code needs explaining, make code clearer. Only exceptions:
@@ -142,7 +142,7 @@ description: Write or change code in any language, including types, comments, na
 ## Closed sets
 
 - Define closed set of domain values, e.g. outcomes of decision or states of job, once, as enum in
-  form given in file for the language in `languages`
+  form given in skill for the language
 - Treat set extended by modules, e.g. message types or providers, as not closed. Put it into
   registry
 - Put definition of closed set in module for concept it belongs to, e.g. user roles in access

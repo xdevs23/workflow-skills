@@ -1,4 +1,7 @@
-# C and C++
+---
+name: writing-c-cpp
+description: Write or change C or C++ code
+---
 
 - Make ownership explicit. Free every allocation in exactly one place, in C++ an RAII type
 - Never let raw pointer own memory. Never return from function a pointer into its stack frame or
@@ -14,3 +17,7 @@
 - Read text into closed set with one function returning nothing for text matching none of the
   values
 - Never cast unchecked input to the enum
+
+## Rules in other skills
+
+- Follow `workflow-skills:writing-code` for rules that apply to every language

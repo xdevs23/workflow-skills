@@ -17,13 +17,13 @@ Review change for type safety only.
 - Report hardcoded domain values: value in closed set written as text outside definition of the
   set, e.g. in return, argument, key or comparison, also where a type lists allowed strings. Rules
   on closed sets of domain values in `workflow-skills:writing-code` define what's required. Name
-  tighter type in form given by language file of `workflow-skills:writing-code`. Leave alone string
-  whose purpose is text and which is defined in one place
+  tighter type in form given by skill for the language. Leave alone string whose purpose is text
+  and which is defined in one place
 - Report code reading meaning from where value sits in closed set, in list or in declaration, e.g.
   `ROLES[-1]` for most privileged role, comparison of two indexes or ordinals, slice taken as tier,
-  or sort by list order. Name type for the closed set in form given by language file of
-  `workflow-skills:writing-code`. Name order as rank or comparison written out beside the values,
-  as rules on closed sets in `workflow-skills:writing-code` require
+  or sort by list order. Name type for the closed set in form given by skill for the language.
+  Name order as rank or comparison written out beside the values, as rules on closed sets in
+  `workflow-skills:writing-code` require
 - Report value that can be null or undefined, passed to code written as if value were always
   present
 - Report illegal states representable by types: types allowing combinations forbidden by domain. Fix

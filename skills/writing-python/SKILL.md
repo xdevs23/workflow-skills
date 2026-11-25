@@ -1,4 +1,7 @@
-# Python
+---
+name: writing-python
+description: Write or change Python code
+---
 
 - Use the idioms: comprehensions, context managers, dataclasses, generators, walrus operator
 - Model closed set of domain values as `enum.Enum`. Never as `Literal` of strings, never with `str`
@@ -14,3 +17,7 @@
 - Never write `value or {}`, `value or []` or similar fallback for value to be supplied by
   caller
 - Import only at top of file
+
+## Rules in other skills
+
+- Follow `workflow-skills:writing-code` for rules that apply to every language

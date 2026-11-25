@@ -1,8 +1,8 @@
 declare const PLUGIN_FILE_PATH: unique symbol
 
 /**
- * The path of a file inside the plugin folder, relative to that folder, such as
- * `skills/writing-code/languages/kotlin.md`. Built by pluginFilePath alone.
+ * The path to a file inside the plugin folder, relative to that folder, such as
+ * `skills/copywriting/product-text.md`. Built by pluginFilePath alone.
  */
 export type PluginFilePath = string & { readonly [PLUGIN_FILE_PATH]: true }
 
