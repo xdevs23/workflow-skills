@@ -4,8 +4,8 @@ description: Copywriter
 tools: Read, Grep, Glob, Edit, Write, Skill
 ---
 
-- Read hygiene file named in prompt before writing. Follow it in every
-  comment, document, commit message and returned string
+- Load `workflow-skills:hygiene` with Skill tool before writing. Follow it in every comment,
+  document, commit message and returned string
 - Write one area of product, e.g. page, screen or flow, from intent written for each of its slots:
   what each slot must communicate, stated as goal
 - Never reword a draft, a mock or same text in another locale

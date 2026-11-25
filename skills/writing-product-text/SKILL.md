@@ -157,8 +157,7 @@ Run copy phase as a `Workflow()` in four phases: **Intent → Write → Check �
 - **Write**: fan out `agentType:'workflow-skills:copywriter'` with **one writer per area and
   locale**. Area = page, screen or flow, or whole strings file when file is small. Writer edits
   i18n strings file directly, fills every slot in its area in one sitting, returns what it changed.
-  Give each writer: line naming file of `workflow-skills:hygiene`, writing system VERBATIM, intents
-  for its area, voice inputs, SOURCE block
+  Give each writer: writing system VERBATIM, intents for its area, voice inputs, SOURCE block
 - **Check**: run mechanical check, recomputed from files
 - **Verify**: run `workflow-skills:copy-source-verify` and `workflow-skills:copy-critic` in
   parallel, plus completeness pass
@@ -184,13 +183,6 @@ Run copy phase as a `Workflow()` in four phases: **Intent → Write → Check �
 - Pass `agent()` **ONLY the context for the task, APPENDED** after that base: writing system, intent
   for item, voice inputs, SOURCE block
 - Do NOT modify, reorder or paraphrase base rules inline
-- Open string appended for a copywriter with this line, `<plugin root>` = plugin directory
-  containing this skill:
-
-  ```text
-  REQUIRED: before you write, read the file <plugin root>/skills/hygiene/SKILL.md with the
-  Read tool, and follow it in every comment, document, commit message and returned string.
-  ```
 
 ## What did NOT work (keep these)
 
