@@ -49,6 +49,8 @@ description: Implement change to code, from first talk with user until user revi
 - Split work as you see fit. Number of agents used by you is not limited
 - Start every implementer as `workflow-skills:implementer`, in worktree in folder set by
   `workflow-skills:local-cache` for workflow worktrees
+- When change adds text shown by product, run copy phase by `workflow-skills:running-copy-phase`
+  before implementers start. Hand them finished strings
 - In project made of several git repositories, give each implementer whole tree, with worktree for
   every repository. For tree managed by repo tool, add local manifest that points every project in
   tree at its worktree. Sync it without fetching
