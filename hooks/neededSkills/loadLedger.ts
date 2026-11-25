@@ -2,9 +2,11 @@ import type { QualifiedSkill } from '../names'
 
 /**
  * A load counts until more than this many tokens came into the context of the loop after it, so
- * the rules from the load are recent context for the model that runs the loop: a product choice.
+ * the rules from the load are recent context for the model that runs the loop: a product choice,
+ * fixed and not scaled to the context window of the model. On a model whose window holds at most
+ * this many tokens, only a compaction or a rewind ends a load.
  */
-export const MAX_TOKENS_AFTER_LOAD = 100_000
+export const MAX_TOKENS_AFTER_LOAD = 200_000
 
 /** What the last model request of a loop reported. */
 export type LoopMeasure = {
