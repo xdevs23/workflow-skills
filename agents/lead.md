@@ -1,7 +1,6 @@
 ---
 name: lead
 description: Owner of one goal, entry of TODO.md or sub-unit, from draft to merged and verified work
-tools: Read, Grep, Glob, Bash, Edit, Write, Skill, Agent, SendMessage, TaskStop, mcp__workflow-skills__get_ideas
 ---
 
 - Own only unit named in prompt: goal, entry of `TODO.md` or sub-unit. Draw its draft where prompt
