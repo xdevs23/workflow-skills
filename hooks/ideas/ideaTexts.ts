@@ -9,12 +9,18 @@ import type { EntryOrGoalLink, FormerLink, IdeaLink, ProjectLink } from './ideaL
 import { GET_IDEAS_TOOL, RECORD_IDEA_TOOL, UNLINK_IDEAS_TOOL } from './ideaNames'
 import type { Idea, ReadIdeas, RelinkedIdeas } from './ideaStore'
 
+/** How recorded words mark the place of an image or a file attached by the user. */
+export const ATTACHMENT_NOTATION = '[attachment: …]'
+
 export const RECORD_IDEA_DESCRIPTION = [
   'Records words of the user for an entry in TODO.md or for an open goal, given by its number, in',
   'this project, so they outlast compactions and restarts. Give the entry or the goal, not both.',
   'Record on your own, and only the words of the user that contribute to the design for the entry',
   'or the goal.',
   'Write the user words verbatim without paraphrasing.',
+  `Write an image or a file attached by the user as ${ATTACHMENT_NOTATION} at its place in the`,
+  'message, since the words contain text only: what the image shows, or the path of the file.',
+  'Never write in it what the user asks or decides.',
   `${GET_IDEAS_TOOL} lists them.`,
 ].join(' ')
 
