@@ -1,4 +1,11 @@
-import type { EngineInterface, MatchedHook, On, RenderInput, RenderPropsOf } from 'claude-code'
+import type {
+  EngineInterface,
+  MatchedHook,
+  On,
+  RenderInput,
+  RenderPropsOf,
+  ThemeKey,
+} from 'claude-code'
 
 import { PLUGIN } from './names'
 
@@ -31,12 +38,26 @@ export type FooterButton = {
   label: string
 }
 
+/** A label put on the prompt footer by a feature, before the buttons, in the color of its text. */
+export type FooterLabel<Shown extends string> = {
+  readonly colors: Readonly<Record<Shown, ThemeKey>>
+}
+
 /** The presses on one button of the prompt footer, as a matcher of `ui.press`. */
 type PressesOnButton = {
   readonly plugin: typeof PLUGIN
   readonly component: 'SessionMode'
   readonly element: string
 }
+
+type ModesOfFooter = { readonly component: 'SessionMode' }
+
+const MODES_OF_FOOTER: ModesOfFooter = { component: 'SessionMode' }
+
+type DrawModes = MatchedHook<'ui.render', ModesOfFooter>
+
+/** A `ui.render` hook of a feature that draws its label with `drawLabelAfterModes`. */
+export type DrawFooterLabel = DrawModes
 
 /**
  * The prompt footer, with the buttons placed on it after the mode labels, in the order placed. The
@@ -52,6 +73,12 @@ export type PromptFooter = {
    * the label of `button` is empty or a button placed before has its key.
    */
   place: (button: FooterButton) => PressesOnButton
+  /**
+   * Places `label` after the labels placed before it and keeps room for its widest text. A feature
+   * draws it with a hook of its own: `on('ui.render', footer.placeLabel(LABEL), drawHook)`. Throws
+   * where `label` has no text.
+   */
+  placeLabel: <Shown extends string>(label: FooterLabel<Shown>) => ModesOfFooter
 }
 
 /** The right part of the footer row: the columns spanned by the row, and the mode labels in it. */
@@ -83,12 +110,13 @@ function columnsSideBySide(widths: readonly number[]): number {
 }
 
 /**
- * How many of `buttons`, counted from the first, fit into `right` beside a hint line `hintColumns`
- * wide. The room allows for the longest label of a permission mode, whichever mode is drawn by the
- * engine before the hint line.
+ * How many of `buttons`, counted from the first, fit into `right` after labels `labelColumns` wide,
+ * beside a hint line `hintColumns` wide. The room allows for the longest label of a permission
+ * mode, whichever mode is drawn by the engine before the hint line.
  */
 function countButtonsFitting(
   buttons: readonly FooterButton[],
+  labelColumns: readonly number[],
   right: RightPart,
   hintColumns: number,
 ): number {
@@ -99,7 +127,9 @@ function countButtonsFitting(
   const counts = widths.map((_, index) => index + 1)
 
   return (
-    counts.findLast(count => columnsSideBySide([...modes, ...widths.slice(0, count)]) <= room) ?? 0
+    counts.findLast(
+      count => columnsSideBySide([...modes, ...labelColumns, ...widths.slice(0, count)]) <= room,
+    ) ?? 0
   )
 }
 
@@ -111,6 +141,7 @@ function countButtonsFitting(
  */
 class FooterRow {
   readonly #buttons: FooterButton[] = []
+  readonly #labelColumns: number[] = []
   #hintColumns: number | undefined
   #right: RightPart | undefined
 
@@ -130,6 +161,16 @@ class FooterRow {
     this.#buttons.push(button)
 
     return { plugin: PLUGIN, component: 'SessionMode', element: button.key }
+  }
+
+  placeLabel<Shown extends string>(label: FooterLabel<Shown>): ModesOfFooter {
+    const texts: readonly string[] = Object.keys(label.colors)
+    if (texts.length === 0) {
+      throw new Error('A footer label has no text.')
+    }
+    this.#labelColumns.push(Math.max(...texts.map(mostColumnsOf)))
+
+    return MODES_OF_FOOTER
   }
 
   /** Records `right` as the most recent right part, `undefined` for a viewport not measured. */
@@ -153,7 +194,7 @@ class FooterRow {
   #countFitting(): number {
     return this.#right === undefined || this.#hintColumns === undefined
       ? 0
-      : countButtonsFitting(this.#buttons, this.#right, this.#hintColumns)
+      : countButtonsFitting(this.#buttons, this.#labelColumns, this.#right, this.#hintColumns)
   }
 }
 
@@ -176,8 +217,6 @@ function findButtonsWithRoom(
 ): readonly FooterButton[] {
   return e.surface === 'terminal' ? row.findButtonsFitting() : row.buttons
 }
-
-type DrawModes = MatchedHook<'ui.render', { component: 'SessionMode' }>
 
 /**
  * Draws the mode labels of the prompt footer as the engine draws them, with the buttons placed on
@@ -207,6 +246,27 @@ async function drawButtonsAfterModes(
   )
 }
 
+/**
+ * Draws the mode labels as the hooks after this one draw them, with `shown` after them in the color
+ * that `label` sets for it.
+ */
+export async function drawLabelAfterModes<Shown extends string>(
+  $: EngineInterface,
+  e: Parameters<DrawModes>[1],
+  next: Parameters<DrawModes>[2],
+  label: FooterLabel<Shown>,
+  shown: Shown,
+): Promise<Awaited<ReturnType<DrawModes>>> {
+  const { Box, Text } = $.ui.resolve(e)
+
+  return (
+    <Box columnGap={BUTTON_GAP_COLUMNS}>
+      {await next(e)}
+      <Text color={label.colors[shown]}>{shown}</Text>
+    </Box>
+  )
+}
+
 type DrawHintLine = MatchedHook<'ui.render', { component: 'PromptHint'; surface: 'terminal' }>
 
 /**
@@ -226,7 +286,7 @@ function measureHintLine(
   return next(e)
 }
 
-/** Creates the prompt footer, for the features to place their buttons on. */
+/** Creates the prompt footer, for the features to place their buttons and labels on. */
 export function createPromptFooter(): FooterRow {
   return new FooterRow()
 }
@@ -239,7 +299,7 @@ export function registerPromptFooter(on: On, row: FooterRow): void {
   on('ui.render', { component: 'PromptHint', surface: 'terminal' }, ($, e, next) =>
     measureHintLine(row, $, e, next),
   )
-  on('ui.render', { component: 'SessionMode' }, ($, e, next) =>
+  on('ui.render', MODES_OF_FOOTER, ($, e, next) =>
     drawButtonsAfterModes(row, $, e, next),
   )
 }
