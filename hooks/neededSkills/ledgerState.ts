@@ -10,7 +10,7 @@ import type { LoopLedger } from './loadLedger'
 // The engine lists the state read and written by a module from the source of the module, so the
 // state reference of the ledgers is written in this file with the plugin and the key as literals.
 const loadLedgers = atom({ plugin: 'workflow-skills', key: 'loadLedgers' } as const, null, {
-  shape: 'loads-pending-until-measured',
+  shape: 'skill-loads-measured-once-reported',
 })
 
 /**

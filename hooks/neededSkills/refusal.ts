@@ -3,18 +3,17 @@ import type { EngineInterface, MatchedHook, Origin } from 'claude-code'
 import { isMadeByModel } from '../conversation'
 import type { EveryEvent } from '../everyEvent'
 import { PLUGIN_TOOLS } from '../names'
+import type { QualifiedSkill } from '../names'
 import { isRecord } from '../pluginStore'
 import { readLoop } from './ledgerState'
-import { LOAD_STEPS } from './loadKind'
-import type { Load } from './loadKind'
-import { loadsMissingFrom } from './loadLedger'
+import { skillsMissingFrom } from './loadLedger'
 import type { ToolCall } from './matcher'
-import { loadsNeededBy } from './neededLoads'
 import { describeRefusal } from './refusalText'
+import { skillsNeededBy } from './skillsNeededBy'
 
 /**
  * Denies a call made by the model that runs any loop to a tool of this plugin while the loop has
- * not loaded every skill and file the call needs. A hook of this plugin answers such a call, so it
+ * not loaded every skill the call needs. A hook of this plugin answers such a call, so it
  * never reaches the permission check.
  */
 export const denyPluginToolUntilLoaded: MatchedHook<'tool.call', typeof PLUGIN_TOOLS> = async (
@@ -23,15 +22,15 @@ export const denyPluginToolUntilLoaded: MatchedHook<'tool.call', typeof PLUGIN_T
   next,
 ) => {
   const call = { tool: e.tool, input: undefined, agentId: e.agentId, isReadOnly: false }
-  const missing = await readMissingLoads($, next.origin, call)
+  const missing = await readMissingSkills($, next.origin, call)
 
-  return missing.length === 0 ? next(e) : { deny: describeMissingLoads(missing, $.plugin.root) }
+  return missing.length === 0 ? next(e) : { deny: describeRefusal(missing) }
 }
 
 /**
- * Denies a call made by the model that runs any loop while the loop has not loaded every skill and
- * file the call needs, at the permission check, where the engine reports whether the tool holds the
- * call read-only.
+ * Denies a call made by the model that runs any loop while the loop has not loaded every skill the
+ * call needs, at the permission check, where the engine reports whether the tool sets the call to
+ * read-only.
  */
 export const denyCheckedCallUntilLoaded: MatchedHook<'tool.check', EveryEvent> = async (
   $,
@@ -44,41 +43,29 @@ export const denyCheckedCallUntilLoaded: MatchedHook<'tool.check', EveryEvent> =
     agentId: e.agentId,
     isReadOnly: e.isReadOnly === true,
   }
-  const missing = await readMissingLoads($, next.origin, call)
+  const missing = await readMissingSkills($, next.origin, call)
 
   return missing.length === 0
     ? next(e)
-    : { decision: 'deny', reason: describeMissingLoads(missing, $.plugin.root) }
+    : { decision: 'deny', reason: describeRefusal(missing) }
 }
 
 /**
- * The skills and files that `call` needs and the loop of the call did not load, for a call that
- * the model made from `origin`. No row matches a call to the Skill tool or to Read, so the loads
+ * The skills that `call` needs and the loop that runs the call did not load, for a call that the
+ * model made from `origin`. The rule table does not match a call to the Skill tool, so the loads
  * required by a denial always run.
  */
-async function readMissingLoads(
+async function readMissingSkills(
   $: EngineInterface,
   origin: Origin,
   call: ToolCall,
-): Promise<readonly Load[]> {
+): Promise<readonly QualifiedSkill[]> {
   const needed = isMadeByModel(origin)
-    ? loadsNeededBy({ call, projectRoot: await $.session.root() })
+    ? skillsNeededBy({ call, projectRoot: await $.session.root() })
     : []
   if (needed.length === 0) {
     return []
   }
 
-  return loadsMissingFrom(await readLoop($, await $.session.id(), call.agentId), needed)
-}
-
-function describeMissingLoads(missing: readonly Load[], pluginRoot: string): string {
-  const kinds = new Set(missing.map(load => load.kind))
-  const steps = [...kinds].map(kind =>
-    LOAD_STEPS[kind](
-      missing.filter(load => load.kind === kind).map(load => load.name),
-      pluginRoot,
-    ),
-  )
-
-  return describeRefusal(steps)
+  return skillsMissingFrom(await readLoop($, await $.session.id(), call.agentId), needed)
 }

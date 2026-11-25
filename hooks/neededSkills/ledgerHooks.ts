@@ -4,11 +4,11 @@ import { hasAgentEnded } from '../agentEnd'
 import { REPLACES_CONVERSATION } from '../compactionTrigger'
 import { isMadeByModel } from '../conversation'
 import type { EveryEvent } from '../everyEvent'
+import type { SKILL_TOOL } from '../names'
 import { changeLoop, forgetAgent } from './ledgerState'
-import { LoadKind } from './loadKind'
 import { NEW_LOOP, withLoad, withMeasure } from './loadLedger'
 import type { LoopLedger } from './loadLedger'
-import { loadMadeBy, neededSkillNamed } from './loadOfCall'
+import { neededSkillNamed } from './neededSkillNamed'
 
 export const measureContext: MatchedHook<'turn.step', EveryEvent> = async function* ($, e, next) {
   const response = yield* next(e)
@@ -25,16 +25,17 @@ export const measureContext: MatchedHook<'turn.step', EveryEvent> = async functi
   return response
 }
 
-/**
- * Records the load made by a call of a model to the Skill tool or to Read that ran without an
- * error. A call raised by a plugin brings nothing into the context of a model.
- */
-export const recordLoad: MatchedHook<'tool.call', EveryEvent> = async ($, e, next) => {
+/** A call raised by a plugin brings nothing into the context of a model. */
+export const recordSkillLoad: MatchedHook<'tool.call', { tool: typeof SKILL_TOOL }> = async (
+  $,
+  e,
+  next,
+) => {
   const ran = await next(e)
   const hasLoaded = isMadeByModel(next.origin) && ran.deny === undefined && ran.isError !== true
-  const load = hasLoaded ? loadMadeBy(e, $.plugin.root) : undefined
-  if (load !== undefined) {
-    await changeLedgerOf($, e, loop => withLoad(loop, load))
+  const skill = hasLoaded ? neededSkillNamed(e.skill) : undefined
+  if (skill !== undefined) {
+    await changeLedgerOf($, e, loop => withLoad(loop, skill))
   }
 
   return ran
@@ -48,9 +49,7 @@ export const recordCommandLoad: MatchedHook<'prompt.submit', EveryEvent> = async
   const submitted = await next(e)
   const skill = e.command === undefined ? undefined : neededSkillNamed(e.command.name)
   if (submitted.drop === undefined && skill !== undefined) {
-    await changeLoop($, await $.session.id(), undefined, loop =>
-      withLoad(loop, { kind: LoadKind.Skill, name: skill }),
-    )
+    await changeLoop($, await $.session.id(), undefined, loop => withLoad(loop, skill))
   }
 
   return submitted

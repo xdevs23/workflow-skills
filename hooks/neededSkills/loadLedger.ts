@@ -1,4 +1,4 @@
-import type { Load } from './loadKind'
+import type { QualifiedSkill } from '../names'
 
 /**
  * A load counts until more than this many tokens came into the context of the loop after it, so
@@ -15,97 +15,82 @@ export type LoopMeasure = {
   model: string
 }
 
-/** A load with the context size reported by the first model request of the loop after it. */
-export type RecordedLoad = Load & { contextTokens: number }
+export type SkillLoad = {
+  skill: QualifiedSkill
+  /**
+   * The context size reported by the first model request of the loop after the load, null until
+   * that request reports one.
+   */
+  contextTokens: number | null
+}
 
 /**
- * The ledger of one loop: the main conversation, a subagent or a workflow agent. A load is recorded
- * as pending until the next model request of the loop reports a size, and gets that size. The
- * engine runs a tool call while the request that made it still streams, before that request
- * reports a size, so the size reported last before a load can come from before a compaction.
+ * The ledger of one loop: the main conversation, a subagent or a workflow agent. The engine runs a
+ * tool call while the request that made it still streams, before that request reports a size, so
+ * the size reported last before a load can come from before a compaction.
  */
-export type LoopLedger =
-  | { measure: null; pendingLoads: readonly Load[] }
-  | { measure: LoopMeasure; loads: readonly RecordedLoad[]; pendingLoads: readonly Load[] }
+export type LoopLedger = { measure: LoopMeasure | null; loads: readonly SkillLoad[] }
 
-export const NEW_LOOP: LoopLedger = { measure: null, pendingLoads: [] }
+export const NEW_LOOP: LoopLedger = { measure: null, loads: [] }
 
-function isSameLoad(one: Load, other: Load): boolean {
-  return one.kind === other.kind && one.name === other.name
-}
-
-/** `loads` without an earlier load of the same as `load`. */
-function withoutLoad<Made extends Load>(loads: readonly Made[], load: Load): Made[] {
-  return loads.filter(made => !isSameLoad(made, load))
-}
-
-/** `loop` after a model request of it reported `measure`. */
 export function withMeasure(loop: LoopLedger, measure: LoopMeasure): LoopLedger {
   const carriedOver =
-    loop.measure === null ? [] : loadsCarriedOver(loop.measure, loop.loads, measure)
-  const stamped = loop.pendingLoads.map(load => ({ ...load, contextTokens: measure.contextTokens }))
+    loop.measure === null ? loop.loads : loadsCarriedOver(loop.measure, loop.loads, measure)
 
   return {
     measure,
-    loads: [...carriedOver, ...stamped],
-    pendingLoads: [],
+    loads: carriedOver.map(load => ({
+      ...load,
+      contextTokens: load.contextTokens ?? measure.contextTokens,
+    })),
   }
 }
 
 /**
  * The loads recorded at `before` as they stand at `after`. Fewer messages mean a compaction or a
- * rewind, which may have dropped the text of every load. Another model counts tokens by another
- * tokenizer, so the tokens counted after each load so far carry over, and counting goes on from
- * `after`.
+ * rewind, which may have dropped the text of every measured load. Another model counts tokens by
+ * another tokenizer, so the tokens counted after each load so far carry over, and counting goes on
+ * from `after`.
  */
 function loadsCarriedOver(
   before: LoopMeasure,
-  loads: readonly RecordedLoad[],
+  loads: readonly SkillLoad[],
   after: LoopMeasure,
-): readonly RecordedLoad[] {
+): readonly SkillLoad[] {
   if (after.messageCount < before.messageCount) {
-    return []
+    return loads.filter(load => load.contextTokens === null)
   }
   if (after.model === before.model) {
     return loads
   }
   const shift = after.contextTokens - before.contextTokens
 
-  return loads.map(load => ({ ...load, contextTokens: load.contextTokens + shift }))
+  return loads.map(load => ({
+    ...load,
+    contextTokens: load.contextTokens === null ? null : load.contextTokens + shift,
+  }))
 }
 
-/**
- * `loop` with `load` pending, in place of an earlier load of the same, so a load is either recorded
- * or pending, never both.
- */
-export function withLoad(loop: LoopLedger, load: Load): LoopLedger {
-  const pendingLoads = [...withoutLoad(loop.pendingLoads, load), load]
-
-  return loop.measure === null
-    ? { measure: null, pendingLoads }
-    : { measure: loop.measure, loads: withoutLoad(loop.loads, load), pendingLoads }
+export function withLoad(loop: LoopLedger, skill: QualifiedSkill): LoopLedger {
+  return {
+    measure: loop.measure,
+    loads: [...loop.loads.filter(load => load.skill !== skill), { skill, contextTokens: null }],
+  }
 }
 
-/** The loads of `needed` that `loop` does not count. */
-export function loadsMissingFrom(loop: LoopLedger, needed: readonly Load[]): readonly Load[] {
-  const counted = countedLoadsOf(loop)
-
-  return needed.filter(load => !counted.some(made => isSameLoad(made, load)))
+export function skillsMissingFrom(
+  loop: LoopLedger,
+  needed: readonly QualifiedSkill[],
+): readonly QualifiedSkill[] {
+  return needed.filter(
+    skill => !loop.loads.some(load => load.skill === skill && isRecent(load, loop.measure)),
+  )
 }
 
-/**
- * The loads of `loop` after which at most MAX_TOKENS_AFTER_LOAD tokens came into the context of the
- * loop, and every pending load.
- */
-export function countedLoadsOf(loop: LoopLedger): readonly Load[] {
-  const { measure } = loop
-
-  return measure === null
-    ? loop.pendingLoads
-    : [
-        ...loop.loads.filter(
-          load => measure.contextTokens - load.contextTokens <= MAX_TOKENS_AFTER_LOAD,
-        ),
-        ...loop.pendingLoads,
-      ]
+function isRecent(load: SkillLoad, measure: LoopMeasure | null): boolean {
+  return (
+    load.contextTokens === null ||
+    measure === null ||
+    measure.contextTokens - load.contextTokens <= MAX_TOKENS_AFTER_LOAD
+  )
 }

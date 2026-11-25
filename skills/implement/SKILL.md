@@ -86,10 +86,10 @@ description: Implement change to code, from first talk with user until user revi
   `workflow-skills:debugging`, `workflow-skills:building-screens`, `workflow-skills:ux-design`,
   `workflow-skills:storing-data`, `workflow-skills:securing-access`,
   `workflow-skills:changing-the-build`, `workflow-skills:verifying-work`,
-  `workflow-skills:working-with-outside-systems`, `workflow-skills:copywriting` with its
-  `product-text.md` when change adds text shown by product, `workflow-skills:hygiene`, and
-  instruction files in project root, in every directory edited by change, and global instruction
-  file
+  `workflow-skills:working-with-outside-systems`, `workflow-skills:copywriting` with
+  `workflow-skills:writing-product-text` when change adds text shown by product,
+  `workflow-skills:hygiene`, and instruction files in project root, in every directory edited by
+  change, and global instruction file
   - Correctness reviewer loads `workflow-skills:reviewer-correctness`,
     `workflow-skills:missing-gaps` and `workflow-skills:runtime-cost`, without rules
   - Duplication and abstraction reviewer loads `workflow-skills:duplicate-checker` and

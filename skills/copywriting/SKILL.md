@@ -3,8 +3,7 @@ name: copywriting
 description: Write text read by person: product screens, marketing pages, translations, replies to user, and text leaving chat, e.g. commit messages, documents, PR and issue text, comments in code
 ---
 
-- Before writing text for product, e.g. product screen, marketing page or translation, read
-  `product-text.md` next to this file
+- Before writing text for product, load `workflow-skills:writing-product-text`
 
 ## Every text
 

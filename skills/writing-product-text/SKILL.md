@@ -1,4 +1,7 @@
-# Product text
+---
+name: writing-product-text
+description: Write text for product: product screen, marketing page or translation
+---
 
 - Hand copy artifact to `workflow-skills:implementer` agent started by
   `workflow-skills:implement`
@@ -213,3 +216,7 @@ Each approach below was tried and produced worse copy.
 - **Placeholder copy in the tree.** Ends up on rendered production screens
 - **Style rules phrased as prohibitions** ("do not be salesy"). Model needs replacement named,
   because name for bad habit teaches it nothing
+
+## Rules in other skills
+
+- Follow `workflow-skills:copywriting` for rules that apply to every text
