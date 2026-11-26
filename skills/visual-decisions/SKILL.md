@@ -158,6 +158,8 @@ description: Draw page for user to look at: drafts, product decisions, plans and
 - Write into line under title what changed after last reply from user, in place of text of earlier
   round
 - Update plain-words box and section titles whenever After changes
+- Open page for user again after each update, as section `Making the page` describes. Never ask
+  user to reload it: message can scroll away
 
 ## Making the page
 
