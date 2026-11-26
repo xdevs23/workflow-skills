@@ -136,8 +136,8 @@ Draft: .cache/specs/reaction-emoji.html
 - Fix other small work that comes up right away, as `workflow-skills:implement` describes, without
   entry
 - Name other big work that comes up once, in report to user. Never write entry for it
-- Fix defect in older code outside unit, such as flaky test harness, as separate unit in parallel
-  with unit
+- Fix defect in older code outside unit, such as flaky test harness, as separate side task beside
+  unit, when workload allows
 - Start fix of older defect without asking user, as only unit started by you without user's word
 - Build fix of older defect by `workflow-skills:implement`, with defect and evidence for it in
   prompt and without draft, in worktree and on branch of its own
@@ -151,6 +151,9 @@ Draft: .cache/specs/reaction-emoji.html
 
 - Send request with tool `mcp__workflow-skills__send_request` only for something user does outside
   session, e.g. power-cycle external system
+- Send such request as soon as work stops on machine, device or service that is down and only user
+  can bring back. Never send request for question, draft, decision, approval or review
+- Check blocker again before reporting it again
 - In session without that tool, e.g. Agent SDK session or `-p` run, write request in message. Stop
   work that depends on it
 - Name entry in each request by its number and title

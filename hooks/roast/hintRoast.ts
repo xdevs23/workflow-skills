@@ -1,19 +1,24 @@
-import type { EngineInterface } from 'claude-code'
+import type { EngineInterface, MatchedHook } from 'claude-code'
 
-import { HintWithoutPoint, namesOfHintKinds } from '../hintKind'
+import type { EveryEvent } from '../everyEvent'
+import { HintRoastKept, HintWithoutPoint, namesOfHintKinds } from '../hintKind'
 import type { HintKindName, RoastedHintKind } from '../hintKind'
 import { roastedHintKindsNamed } from '../hintKinds'
 import { deliverHintNote } from '../hintNoteDelivery'
 import { writeHintTextsWithEachStepOnce } from '../hintText'
 import type { HintText } from '../hintText'
+import { isMessageTypedByUser } from '../promptOrigin'
 import { runDetached } from '../timedWork'
 import {
   handHintRoastsToWait,
+  hasHintRoastOfWaitAmong,
   readHintRoastsOfWait,
+  removeHintKindsOfWait,
   removeHintRoastsOfWait,
   takeHintRoasts,
 } from './hintRoastQueue'
 import type { HintRoastRequest } from './hintRoastQueue'
+import { IdleWaitCancel } from './idleWait'
 import type { IdleWaitWork } from './idleWait'
 import { forkRoast } from './roastActions'
 import type { RoastTry } from './roastActions'
@@ -28,41 +33,54 @@ import {
   describeHintRoastMissing,
 } from './roastTexts'
 
-/** The roast on the hints at the end of a turn, attributed to the roaster, or why none came. */
+/** The roast on the hints at the end of turns, attributed to the roaster, or why none came. */
 type HintRoast =
   | { isWritten: true; roast: string }
   | { isWritten: false; missing: HintRoastMissing }
 
-/** The result of the last fork asked for the roast on the hints of `kinds`. */
-type ForkedHintRoast = { kinds: readonly RoastedHintKind[]; roast: RoastTry }
-
 /**
  * The roast on hints as work of the idle wait: the end of a turn hands the roasts queued in it to
- * the wait, and forks write them once the wait ended.
+ * the wait, and one fork writes them all once the wait ended.
  */
 export function hintRoastAfterIdleWait($: EngineInterface): IdleWaitWork {
   return {
-    start: () => startHintRoastsOfWait($),
-    cancel: () => dropHintRoasts($),
-    end: isWaitOfSession => roastHintsAfterWait($, isWaitOfSession),
+    start: async () => (await handHintRoastsToWait($)).length > 0,
+    cancel: cause => dropHintRoastsOnCancel($, cause),
+    end: () => roastHintsAfterWait($),
     describeFailure: describeHintRoastLost,
   }
 }
 
 /**
- * Hands the roasts queued in the turn that starts the wait to the wait, and returns whether there
- * are any. Drops the roasts of the wait before, which no turn start cancelled.
+ * Drops the roasts on hints not written yet that the cancel of the wait for `cause` ends: every
+ * roast once another session runs, and the hint kinds kept until the next turn once a turn starts.
  */
-async function startHintRoastsOfWait($: EngineInterface): Promise<boolean> {
-  const { ofWait, replaced } = await handHintRoastsToWait($)
-  logHintRoastsDropped($, replaced)
-
-  return ofWait.length > 0
+async function dropHintRoastsOnCancel($: EngineInterface, cause: IdleWaitCancel): Promise<void> {
+  switch (cause) {
+    case IdleWaitCancel.SessionSwitched:
+      return logHintRoastsDropped($, await takeHintRoasts($))
+    case IdleWaitCancel.TurnStarted:
+      return logHintRoastsDropped($, await removeHintKindsOfWait($, isKeptUntilTurnStart))
+  }
 }
 
-/** Drops every roast on hints not written yet, once the wait was cancelled. */
-async function dropHintRoasts($: EngineInterface): Promise<void> {
-  logHintRoastsDropped($, await takeHintRoasts($))
+function isKeptUntilTurnStart(name: HintKindName): boolean {
+  return roastedHintKindsNamed([name]).some(
+    kind => kind.roaster.kept === HintRoastKept.UntilTurnStart,
+  )
+}
+
+/** Drops every roast on hints not written yet once the user sends a message. */
+export const dropHintRoastsOnUserMessage: MatchedHook<'prompt.submit', EveryEvent> = async (
+  $,
+  e,
+  next,
+) => {
+  if (isMessageTypedByUser(e)) {
+    logHintRoastsDropped($, await takeHintRoasts($))
+  }
+
+  return next(e)
 }
 
 function logHintRoastsDropped($: EngineInterface, dropped: readonly HintRoastRequest[]): void {
@@ -72,63 +90,34 @@ function logHintRoastsDropped($: EngineInterface, dropped: readonly HintRoastReq
 }
 
 /**
- * Has a fork write each roast of the wait while `isWaitOfSession`, sends the session the roasts as
- * `deliverHintRoast` does, and returns whether it sent any note. Where a turn started or another
- * session runs once the forks returned, the cancel of the wait dropped the roasts, and none goes
- * out.
+ * Has one fork write the roast on every roast of the wait, sends the session the roast as
+ * `deliverHintRoast` does, and returns whether it sent a note. A turn started meanwhile does not
+ * stop the fork. Where the user sent a message or another session runs once the fork returned,
+ * the roasts were dropped, and none goes out. A fork that fails drops the roasts it wrote for.
  */
-async function roastHintsAfterWait(
-  $: EngineInterface,
-  isWaitOfSession: () => boolean,
-): Promise<boolean> {
-  const forks = (await readHintRoastsOfWait($)).map(request =>
-    forkHintRoast($, request, isWaitOfSession),
-  )
-  const roasts = (await Promise.allSettled(forks)).flatMap(fork =>
-    fork.status === 'fulfilled' ? [fork.value] : [],
-  )
-  // Read once for all roasts, since the first roast sent starts a turn.
-  const hasSentNote = isWaitOfSession() && (await deliverHintRoastsOfWait($, roasts))
-  // forkRoast returns each failure of the API as a result, and the engine types name no error
-  // class for a fork that throws, so such an error is shown once the other roasts went out.
-  await Promise.all(forks)
-
-  return hasSentNote
-}
-
-/**
- * Asks a fork made from the main conversation for the roast of `request`, as `forkRoast` does,
- * while `isWaitOfSession`.
- */
-async function forkHintRoast(
-  $: EngineInterface,
-  request: HintRoastRequest,
-  isWaitOfSession: () => boolean,
-): Promise<ForkedHintRoast> {
-  const kinds = roastedHintKindsNamed(request.kinds)
+async function roastHintsAfterWait($: EngineInterface): Promise<boolean> {
+  const requests = await readHintRoastsOfWait($)
+  if (requests.length === 0) {
+    return false
+  }
+  const ids = new Set(requests.map(request => request.id))
+  const isStillQueued = () => hasHintRoastOfWaitAmong($, ids)
+  const kinds = roastedHintKindsNamed([...new Set(requests.flatMap(request => request.kinds))])
   const prompt = writeHintRoastPrompt({
-    reply: request.reply,
+    replies: requests.map(request => request.reply),
     tasks: kinds.map(kind => kind.roaster.task),
     hints: writeHintTextsWithEachStepOnce(kinds.map(kind => kind.text)),
   })
+  const roast = await forkRoast($, prompt, isStillQueued).catch(async (error: unknown) => {
+    await removeHintRoastsOfWait($, ids)
+    throw error
+  })
+  if (!(await isStillQueued())) {
+    return false
+  }
+  await removeHintRoastsOfWait($, ids)
 
-  return { kinds, roast: await forkRoast($, prompt, async () => isWaitOfSession()) }
-}
-
-/**
- * Removes the roasts of the wait from the state, sends the session `roasts` as `deliverHintRoast`
- * does, and returns whether it sends any note.
- */
-async function deliverHintRoastsOfWait(
-  $: EngineInterface,
-  roasts: readonly ForkedHintRoast[],
-): Promise<boolean> {
-  await removeHintRoastsOfWait($)
-  const sessionId = await $.session.id()
-
-  return roasts
-    .map(({ kinds, roast }) => deliverHintRoast($, sessionId, kinds, readForkedHintRoast(roast)))
-    .includes(true)
+  return deliverHintRoast($, await $.session.id(), kinds, readForkedHintRoast(roast))
 }
 
 /**
@@ -161,7 +150,7 @@ function deliverHintRoast(
 
 /**
  * Sends the session `sessionId` the note on `texts`, the texts of the hints `kinds`, as
- * `runDetached` runs work, so a note that fails shows its own toast and the other notes still go.
+ * `runDetached` runs work, so a note that fails shows its own toast.
  */
 function sendHintNoteDetached(
   $: EngineInterface,
@@ -196,9 +185,9 @@ function readForkedHintRoast(roast: RoastTry): HintRoast {
     case RoastShown.NotWritten:
       return missing({ cause: HintRoastMissingCause.NotWritten, failure: roast.failure })
     case RoastShown.WritingAgain:
-      // forkRoast stops asking again only once the wait was cancelled, and roastHintsAfterWait
-      // reads no roast of a cancelled wait.
-      throw new Error('The roaster was not asked again while the wait for the roast still ran.')
+      // forkRoast stops asking again only once the roasts were dropped, and roastHintsAfterWait
+      // reads no roast of dropped roasts.
+      throw new Error('The roaster was not asked again while the roasts were still queued.')
   }
 }
 

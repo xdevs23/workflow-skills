@@ -115,9 +115,9 @@ description: Implement change to code, from first talk with user until user revi
   and fix are known. Or fix them all yourself by hand
 - Fix by hand every finding left after that fix run, and every finding of later review of change
 - Do not start any review round of your own on fix
-- Once change is built, start right away independent workflow for work named by implementers
-  outside their behavior: edge cases not covered, lint rules for rules that linter can check,
-  cleanup of existing code
+- In main conversation in agent mode `orchestrator`, once change is built, start right away
+  independent workflow for work named by implementers outside their behavior: edge cases not
+  covered, lint rules for rules that linter can check, cleanup of existing code
 - Take optional pick returned by reviewer into fix run when objectively better in every way and
   obvious engineering choice, like better correctness, code quality, performance. Drop other
   optional picks
@@ -170,12 +170,11 @@ description: Implement change to code, from first talk with user until user revi
 
 ## Wrapping up
 
-- While build or test runs longer than work needs, or while you are idle, measure where time goes.
-  Work on biggest time sink in separate worktree of its own, without waiting for run to end, so
-  future workflows run faster
 - After each workflow, read time taken by each agent. Name biggest time sink, remove it where it
   comes from. Such as by preparing shared artifact once, by handing context over in prompt or by
   cutting repeated run
+- Remove time sink caused by work running at same time, e.g. wait on shared machine or on files of
+  other work, by running less at once, never by new unit
 - Aim for at most 20 minutes per agent. Agent under 20 minutes does not need to be inspected
 - Count as time sink only time spent waiting on machines and on rework
 - Run checks of agent once, when agent finished writing

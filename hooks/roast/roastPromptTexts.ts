@@ -301,11 +301,14 @@ export function writePromptAfterOpenGoals(prompt: string, openGoals: string | un
     'Where the transcript shows the work on a goal without a done mark finished, tell the ' +
     `assistant to mark the goal as done with ${MARK_GOAL_DONE_TOOL} and name the evidence to ` +
     'give. Where the assistant is not working on such a goal although it could, count that as ' +
-    'a point that holds up the work: name the goal and say what is still missing to complete ' +
-    'it, such as a merge, a test or a fix that the assistant left out. A goal that the ' +
-    'assistant never started counts too, and so does a goal that the assistant left alone ' +
-    'again after an earlier roast named ' +
-    `it. Leave out a goal that cannot move without the user:\n\n${openGoals}\n\n${prompt}`
+    'a point that holds up the work only while fewer than three units of work run at once, or ' +
+    'while a running unit has a lower priority than the goal or is no longer needed by the ' +
+    'work. A unit is a goal, an entry of TODO.md or a sub-unit. For such a point, name the goal ' +
+    'and say what is still missing to complete it, such as a merge, a test or a fix that the ' +
+    'assistant left out. A goal that the assistant never started counts too, and so does a goal ' +
+    'that the assistant left alone again after an earlier roast named it. Leave out a goal ' +
+    'whose work would conflict with running work, such as by writing the same files, and a ' +
+    `goal that cannot move without the user:\n\n${openGoals}\n\n${prompt}`
   )
 }
 
@@ -346,31 +349,32 @@ export function writeRoastPrompt(finding: string): string {
 
 /**
  * The message that asks a fork made from the main conversation for the roast that sends the
- * assistant back to work after `reply`, the reply on which it ended a turn. The transcript of a
- * fork asked again after an API error may go on past `reply`, so the message quotes it. The roast
- * takes the place of `hints`, the texts of the hints that phrases in that reply call for, and names
- * what `tasks` ask for, the roaster task of each kind of those hints. The fork replies with a JSON
- * object, which readRoastOrNoPointReply reads.
+ * assistant back to work after `replies`, the replies on which it ended turns, oldest first. The
+ * transcript of the fork goes on past them, so the message quotes them. The roast takes the place
+ * of `hints`, the texts of the hints that phrases in those replies call for, and names what `tasks`
+ * ask for, the roaster task of each kind of those hints. The fork replies with a JSON object, which
+ * readRoastOrNoPointReply reads.
  */
 export function writeHintRoastPrompt({
-  reply,
+  replies,
   tasks,
   hints,
 }: {
-  reply: string
+  replies: readonly string[]
   tasks: readonly string[]
   hints: readonly string[]
 }): string {
   return (
-    `${FORK_ROASTER_ROLE} The assistant ended a turn on the reply ${JSON.stringify(reply)}, ` +
-    'and a hook found phrases in that reply that call for the hint below. The transcript may go ' +
-    'on after that reply. The assistant goes back to work with your roast, in place of the ' +
-    `hint, which it does not see. ${DO_NOT_CONTINUE_WORK} Roast that reply. ` +
-    `${tasks.join(' ')} Carry into the roast every step of the hint that the transcript does ` +
+    `${FORK_ROASTER_ROLE} The assistant ended turns on the replies in this JSON array, oldest ` +
+    `first: ${JSON.stringify(replies)}. A hook found phrases in those replies that call for the ` +
+    'hints below. The transcript may go on after those replies. The assistant goes back to work ' +
+    `with your roast, in place of the hints, which it does not see. ${DO_NOT_CONTINUE_WORK} ` +
+    'Roast those replies, and only what the transcript after them leaves standing. ' +
+    `${tasks.join(' ')} Carry into the roast every step of the hints that the transcript does ` +
     `not show done. ${NOT_A_POINT} ${ROAST_CONTENT} ${WRITE_ROAST_TO_ASSISTANT} ` +
     `${ROAST_BLUNTNESS} ` +
     `${JSON_REPLY} Reply with ${POINT_ROAST_REPLY_EXAMPLE}, or with ` +
-    `${NO_POINT_REPLY_EXAMPLE} if the transcript proves no point.\n\nThe hint:\n\n` +
+    `${NO_POINT_REPLY_EXAMPLE} if the transcript proves no point.\n\nThe hints:\n\n` +
     hints.join('\n\n')
   )
 }

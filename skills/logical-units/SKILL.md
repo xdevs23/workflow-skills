@@ -13,3 +13,5 @@ description: Squashing or creating logical units as commits
 - If commit not make sense to squash, leave alone
 - Reorder commit order fine when no conflict
 - When main worktree dirty or in use, can use internal git commands (merge-tree, index, ...) without touching checkout. This means running workflow or build is not excuse for wait
+- `git commit-tree` ignores `commit.gpgsign` and signs only with `-S`. Pass `-S` to every
+  `commit-tree` call in repository that signs commits

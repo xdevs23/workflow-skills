@@ -4,6 +4,7 @@ import { EVERY_EVENT } from '../everyEvent'
 import { registerPromptWaitPane } from '../promptWaits'
 import { registerAgentRoast } from './agentRoast'
 import { roastChatBeforeCompaction } from './compactionRoast'
+import { dropHintRoastsOnUserMessage } from './hintRoast'
 import { registerIdleRoast } from './idleRoast'
 import { registerIdleWait } from './idleWaitRoasts'
 import { forgetForkViewOnCompaction, recordForkView } from './messagesUnseenByFork'
@@ -26,6 +27,7 @@ export function registerRoast(on: On, roastedAgentTypes: readonly string[]): voi
   // the conversation after the hints.
   registerIdleWait(on)
   registerIdleRoast(on)
+  on('prompt.submit', EVERY_EVENT, dropHintRoastsOnUserMessage)
   on('turn.step', EVERY_EVENT, recordForkView)
   on('session.compact', EVERY_EVENT, forgetForkViewOnCompaction)
   on('session.compact', EVERY_EVENT, roastChatBeforeCompaction)

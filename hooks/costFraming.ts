@@ -1,4 +1,4 @@
-import { HintKindName, HintWithoutPoint } from './hintKind'
+import { HintKindName, HintRoastKept, HintWithoutPoint } from './hintKind'
 import { labelledLine } from './lineMarks'
 import type { Refusal } from './refusal'
 
@@ -21,5 +21,6 @@ export const COST_FRAMING: Refusal<HintKindName.CostFraming> = {
       'concerns no design in the work, such as the price of a service the user asked about, is ' +
       'not a point.',
     withoutPoint: HintWithoutPoint.Nothing,
+    kept: HintRoastKept.UntilUserMessage,
   },
 }

@@ -1,4 +1,4 @@
-import { HintKindName } from './hintKind'
+import { HintKindName, HintRoastKept, HintWithoutPoint } from './hintKind'
 import type { HintKind } from './hintKind'
 import { EMPHASIS, HEADING_MARK, LIST_MARK } from './lineMarks'
 import { phrase } from './phrase'
@@ -67,4 +67,13 @@ export const ANNOUNCED_WORK_HINT: HintKind<HintKindName.AnnouncedWork> = {
       'say in your message which one does the work. If the work cannot start, remove the claim ' +
       'and say what the work waits on.',
   ],
+  roaster: {
+    task:
+      'The reply announces work as next or as underway. Name each announced work that no ' +
+      'running task, workflow or agent does and that the assistant could start in this turn. ' +
+      'Work that the reply says waits for something the assistant cannot do itself is not a ' +
+      'point.',
+    withoutPoint: HintWithoutPoint.Nothing,
+    kept: HintRoastKept.UntilTurnStart,
+  },
 }

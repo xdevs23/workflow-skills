@@ -41,6 +41,17 @@ export enum HintWithoutPoint {
   Nothing = 'nothing',
 }
 
+/** How long the roast on a hint of a roasted kind waits to be written. */
+export enum HintRoastKept {
+  /** Until the next turn starts, since the model that resumes carries on with the work it named. */
+  UntilTurnStart = 'until turn start',
+  /**
+   * Until the user sends a message, since a turn started by a notification leaves what the hint
+   * names standing.
+   */
+  UntilUserMessage = 'until user message',
+}
+
 /** How the roaster writes the note on a hint of a roasted kind. */
 export type HintRoaster = {
   /**
@@ -49,6 +60,7 @@ export type HintRoaster = {
    */
   task: string
   withoutPoint: HintWithoutPoint
+  kept: HintRoastKept
 }
 
 /** A hint kind whose note the roaster writes. */

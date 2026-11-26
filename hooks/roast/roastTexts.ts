@@ -208,12 +208,13 @@ export function describeHintRoastMissing(
 
 /**
  * The line in the debug log for the roast on the hints `kindNames` at the end of a turn, dropped
- * once a turn started or another session runs.
+ * once the user sent a message, another session runs, or a turn started that ends these hints.
  */
 export function describeHintRoastDropped(kindNames: readonly HintKindName[]): string {
   return (
-    `The roast on the hints ${AND_LIST.format(kindNames)} at the end of a turn was dropped: a ` +
-    'turn started or another session runs since that turn. Nothing went to Claude.'
+    `The roast on the hints ${AND_LIST.format(kindNames)} at the end of a turn was dropped: ` +
+    'since that turn, the user sent a message, another session runs, or a turn started, which ' +
+    'ends these hints. Nothing went to Claude.'
   )
 }
 

@@ -1,9 +1,11 @@
 import { atom, read, update } from 'claude-code'
 import type { EngineInterface, Timer } from 'claude-code'
 
+import { messageOf } from '../errorMessage'
+import { showFailure } from '../failureToast'
 import { ofRunningSession } from '../sessionBoundState'
 import { readSessionAcceptsPluginPrompts } from '../sessionState'
-import { runAfter, runDetached } from '../timedWork'
+import { runAfter } from '../timedWork'
 import { IDLE_WAIT_MILLISECONDS } from './roastNames'
 
 /** Why the wait of the running session was cancelled. */
@@ -50,6 +52,10 @@ let waitNumber = 0
 
 // The timer of the end of the wait of the running session, until it fires.
 let pendingEnd: Timer | undefined = undefined
+
+// The works of the last end of a wait, so the works of a later end start only once they ended, and
+// one roast runs at a time.
+let worksOfLastEnd: Promise<void> = Promise.resolve()
 
 /**
  * Starts the wait in place of the one before it, at the end of a turn of the main conversation.
@@ -139,12 +145,15 @@ async function endWaitAfter(
   }
 }
 
-/** Runs `works` in their order once `milliseconds` passed, as endWaitWith describes. */
+/**
+ * Runs `works` in their order once `milliseconds` passed and the works of the last end of a wait
+ * ended, as endWaitWith describes.
+ */
 function runWorksAfter(
   $: EngineInterface,
   milliseconds: number,
   isWaitOfSession: () => boolean,
-  [first, ...rest]: IdleWaitWorks,
+  works: IdleWaitWorks,
 ): void {
   pendingEnd?.cancel()
   pendingEnd = runAfter(
@@ -152,24 +161,41 @@ function runWorksAfter(
     milliseconds,
     async () => {
       pendingEnd = undefined
-      await endWaitWith($, isWaitOfSession, first, rest)
+      worksOfLastEnd = worksOfLastEnd.then(() => endWaitWith($, isWaitOfSession, works))
+      await worksOfLastEnd
     },
-    first.describeFailure,
+    works[0].describeFailure,
   )
 }
 
 /**
- * Runs the end of `work` while `isWaitOfSession`, and where it sent the session nothing, the end of
- * the first work of `rest` as `runDetached` runs work, so a failure shows with the toast of its own
- * work, and the works after it do not run.
+ * Runs the end of each work of `works` in their order while `isWaitOfSession`, until one sent the
+ * session something or failed.
  */
 async function endWaitWith(
   $: EngineInterface,
   isWaitOfSession: () => boolean,
-  work: IdleWaitWork,
-  [next, ...rest]: readonly IdleWaitWork[],
+  works: readonly IdleWaitWork[],
 ): Promise<void> {
-  if (isWaitOfSession() && !(await work.end(isWaitOfSession)) && next !== undefined) {
-    runDetached($, () => endWaitWith($, isWaitOfSession, next, rest), next.describeFailure)
+  for (const work of works) {
+    if (!isWaitOfSession() || (await endWork($, work, isWaitOfSession))) {
+      return
+    }
   }
+}
+
+/**
+ * Runs the end of `work`, and returns whether it sent the session something. A failure shows with
+ * the toast of `work` and counts as sent, so the works after it do not run.
+ */
+function endWork(
+  $: EngineInterface,
+  work: IdleWaitWork,
+  isWaitOfSession: () => boolean,
+): Promise<boolean> {
+  return work.end(isWaitOfSession).catch((error: unknown) => {
+    showFailure($, work.describeFailure(messageOf(error)))
+
+    return true
+  })
 }

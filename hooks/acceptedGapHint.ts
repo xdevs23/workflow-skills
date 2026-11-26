@@ -1,4 +1,4 @@
-import { HintKindName, HintWithoutPoint } from './hintKind'
+import { HintKindName, HintRoastKept, HintWithoutPoint } from './hintKind'
 import type { HintKind } from './hintKind'
 import { labelledLine } from './lineMarks'
 import { NO_LETTER_AFTER, NO_LETTER_BEFORE } from './quotedText'
@@ -32,5 +32,6 @@ export const ACCEPTED_GAP_HINT: HintKind<HintKindName.AcceptedGap> = {
       'read, run and fix about that gap in this turn. A trade-off or a boundary that leaves no ' +
       'gap in the work of this turn, such as one the user asked about, is not a point.',
     withoutPoint: HintWithoutPoint.Nothing,
+    kept: HintRoastKept.UntilUserMessage,
   },
 }

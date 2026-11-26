@@ -1,5 +1,5 @@
 import { AT_CLAUSE_END } from './clauses'
-import { HintKindName, HintWithoutPoint } from './hintKind'
+import { HintKindName, HintRoastKept, HintWithoutPoint } from './hintKind'
 import type { HintKind } from './hintKind'
 import { CHECK_FOR_OPEN_WORK } from './openWork'
 import { phrase } from './phrase'
@@ -41,5 +41,6 @@ export const BLOCKED_HINT: HintKind<HintKindName.Blocked> = {
       'The reply reports work as blocked or idle. Name what it says blocks the work, and the ' +
       'work that the assistant could start in this turn without that blocker.',
     withoutPoint: HintWithoutPoint.Text,
+    kept: HintRoastKept.UntilUserMessage,
   },
 }

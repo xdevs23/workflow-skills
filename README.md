@@ -66,7 +66,8 @@ Then run a skill, such as `/workflow-skills:implement`.
   `/idle-roast on`, Claude gets a roast of what blocks the work once it has been idle for about five
   minutes. The switch applies to this session only, and `/idle-roast off` switches it off. Every
   roast reads the open goals from the board: it tells Claude to mark a finished goal as done, and
-  names what is missing on a goal that Claude left alone. When a compaction starts, a fork roasts
+  names what is missing on a goal that Claude left alone while fewer than three units of work run,
+  or while a running unit has a lower priority or is no longer needed. When a compaction starts, a fork roasts
   the chat before it, and Claude gets that roast after the summary, so Claude still sees the
   mistakes made before the compaction. A subagent of the type `workflow-skills:lead` gets a roast
   after each compaction of its own conversation, written by a second run of that compaction, which
