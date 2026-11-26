@@ -7,6 +7,8 @@ description: Implement change to code, from first talk with user until user revi
   `workflow-skills:orchestrate` in place of this skill. It names sections of this skill you still
   follow
 - In main conversation whose latest note on agent mode sets `single`, do not follow this skill
+- Run one-time mechanical task yourself, by hand, outside this skill, e.g. sync or move of
+  repositories: no draft, no workflow, no agent
 
 ## User's words
 

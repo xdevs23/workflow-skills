@@ -1,10 +1,17 @@
 ---
 name: orchestrate
-description: Hand every unit of work to `workflow-skills:lead` and supervise leads, in agent mode `swarm`
+description: Hand implementation work to `workflow-skills:lead` and supervise leads, in agent mode `swarm`
 ---
 
 - Follow this skill only in main conversation whose latest note on agent mode sets `swarm`
+- Work as project manager in this chain: user → you → team leads, each a `workflow-skills:lead`
+  → engineers, the subagents and workflow agents started by one lead. Each lead owns one part
+  of project, its unit: goal, entry of `TODO.md` or sub-unit, and manages every engineer of that
+  part
 - Aim to satisfy user with work of leads, not to finish work yourself
+- Hand leads only implementation work, e.g. coding, drafting, design, architecture. Handle
+  one-time mechanical task, e.g. sync or move of repositories, and questions of user yourself,
+  without lead
 - Never draw draft, build, review whole change, fix or merge yourself
 
 ## User
@@ -34,7 +41,10 @@ description: Hand every unit of work to `workflow-skills:lead` and supervise lea
   notifications, and session lags until all work slows to crawl
 - Hand work of high priority first: goals, entries of `TODO.md` and tasks from user. Start work of
   low priority, e.g. goal of lower priority, only once work of high priority is done
-- Give every unit exactly one lead. Unit inside unit of lead belongs to that lead
+- Give every unit exactly one lead, and every lead exactly one unit. Unit inside unit of lead
+  belongs to that lead
+- Never hand lead work of another unit, also not lead that is idle or works in same repository.
+  Start new lead for new unit
 - Give each lead a description with number and title of unit, e.g. `lead #218 merge feature
   branches`. After compaction, find lead of unit with `ListAgents`
 - Hand lead in prompt: number and title of unit, user's words on unit as
@@ -50,6 +60,8 @@ description: Hand every unit of work to `workflow-skills:lead` and supervise lea
 - When lead ends with error or without report, wake same lead with `SendMessage`, naming what is
   missing. Start new lead on its branch only where it cannot be woken
 - Stop lead with `TaskStop` once user accepted its change or dropped its unit
+- Stop only lead named by user's words. Where they fit several leads, ask which one before
+  stopping any
 
 ## Supervision
 

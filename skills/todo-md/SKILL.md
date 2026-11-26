@@ -14,7 +14,8 @@ contributor or agent without history, reads that file first.
   - sub-unit that unit asked for by user cannot finish without;
   - fix of older defect, while it runs;
   - step owed to whoever operates production
-- Do not write entry for task that changes nothing in project
+- Do not write entry for task that changes nothing in project, or for one-time mechanical task,
+  e.g. sync or move of repositories
 - Treat state in `TODO.md` as last state written down by someone. Before you report state or act on
   it, check work against branches, history of main branch, pull requests and deployment where it
   would show up. Correct entry first
