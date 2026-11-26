@@ -111,7 +111,7 @@ async function changeForkView(
   await updateOfSession($, sessionId, change, changeInState => update($, forkView, changeInState))
 }
 
-export function readAsModelRead(message: SessionMessage): MessageAsRead {
+function readAsModelRead(message: SessionMessage): MessageAsRead {
   return {
     role: message.role,
     text: message.text,

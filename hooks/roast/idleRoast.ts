@@ -19,12 +19,7 @@ import type { RoastNotWrittenTexts } from './roastFailureNotice'
 import { IDLE_ROAST_PROMPT } from './roastPromptTexts'
 import { IdleRoastVerdict, readIdleRoastReply } from './roastReply'
 import { RoastShown, RoastSource } from './roastState'
-import {
-  MAIN_CONVERSATION,
-  endStretch,
-  isStretchRoasted,
-  recordStretchRoast,
-} from './roastStretch'
+import { endStretch, isStretchRoasted, recordStretchRoast } from './roastStretch'
 import {
   IDLE_ROAST_FOUND_NO_BLOCKING_POINT,
   describeIdleRoastNotWritten,
@@ -79,7 +74,7 @@ const loadSwitchAtStart: MatchedHook<'session.start', EveryEvent> = async ($, e,
 // started, and which has a switch of its own.
 async function endStretchOnSwitch($: EngineInterface, cause: IdleWaitCancel): Promise<void> {
   if (cause === IdleWaitCancel.SessionSwitched) {
-    endStretch(MAIN_CONVERSATION)
+    endStretch()
     await loadIdleRoastSwitch($)
   }
 }
@@ -91,7 +86,7 @@ export function isIdleRoastSwitchedOn(): boolean {
 
 /** Whether the idle roast is on and the idle stretch has no roast yet. */
 function isStretchToRoast(): boolean {
-  return isSwitchedOn && !isStretchRoasted(MAIN_CONVERSATION)
+  return isSwitchedOn && !isStretchRoasted()
 }
 
 /**
@@ -119,7 +114,7 @@ export function setIdleRoastSwitch(isOn: boolean): void {
 
 const startStretchOnUserMessage: MatchedHook<'prompt.submit', EveryEvent> = ($, e, next) => {
   if (isMessageTypedByUser(e)) {
-    endStretch(MAIN_CONVERSATION)
+    endStretch()
   }
 
   return next(e)
@@ -184,7 +179,7 @@ async function deliverIdleRoastReply(
 
     return false
   }
-  recordStretchRoast(MAIN_CONVERSATION)
+  recordStretchRoast()
   switch (read.model.verdict) {
     case IdleRoastVerdict.Roast:
       await deliverRoast($, { source: RoastSource.Idle, sessionId, text: read.model.roast })
@@ -210,6 +205,6 @@ function showIdleRoastFailure($: EngineInterface, failure: RoastFailure): void {
 
 function endStretchIfNeedsPerson(failure: RoastFailure): void {
   if (recoveryOf(failure) === RoastRecovery.NeedsPerson) {
-    recordStretchRoast(MAIN_CONVERSATION)
+    recordStretchRoast()
   }
 }

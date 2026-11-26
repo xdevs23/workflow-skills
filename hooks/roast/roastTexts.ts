@@ -117,6 +117,8 @@ function describeRoastFailureParts(failure: RoastFailure): RoastFailureSentences
       return { cause: UNREADABLE_REPLY_CAUSES[failure.reason], reply: failure.reply }
     case RoastNotWrittenCause.Thrown:
       return { cause: `The roast could not be written: ${failure.message}.` }
+    case RoastNotWrittenCause.CompactionSkipped:
+      return { cause: `A hook skipped the compaction that writes the roast: ${failure.reason}.` }
   }
 }
 
@@ -363,8 +365,7 @@ const IDLE_WAIT_WORDS = `about ${Math.round(
 )} minutes`
 
 const AGENT_ROAST_NEXT_TRY =
-  `The subagent gets a new roast once it has been idle for ${IDLE_WAIT_WORDS} after a message ` +
-  'that this plugin did not send, or once its conversation is compacted.'
+  'The subagent gets a new roast at the next compaction of its conversation.'
 
 /** The text for a roast for a subagent that was not written, with the next step. */
 export function describeAgentRoastNotWritten(failure: RoastFailure): string {
@@ -379,20 +380,11 @@ export function describeAgentRoastNotWrittenToast(failure: RoastFailure): string
   return `${describeAgentRoastNotWritten(failure)} ${DEBUG_LOG_NOTE}`
 }
 
-/** The toast for a roast for a subagent whose transcript the engine refused for `reason`. */
-export function describeAgentTranscriptNotRead(reason: string): string {
-  return (
-    `The roast for a subagent was not written: its transcript could not be read: ${reason}. ` +
-    `${AGENT_ROAST_NEXT_TRY} ${DEBUG_LOG_NOTE}`
-  )
-}
-
 /** The line in the debug log for a roast about `agent` that was no longer wanted once written. */
 export function describeAgentRoastDropped(agent: RoastedAgent): string {
   return (
     `The roast for the subagent ${agent.id} (${agent.description}) was dropped: by the time it ` +
-    'was written, the subagent was stopped or no longer listed, a message had started new work ' +
-    'for it, or the idle roast was off. Nothing went to it or to Claude.'
+    'was written, the subagent was stopped or no longer listed. Nothing went to it or to Claude.'
   )
 }
 

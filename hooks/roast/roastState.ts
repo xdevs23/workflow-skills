@@ -2,7 +2,7 @@ import { atom, read, update } from 'claude-code'
 import type { EngineInterface, ModelApiError, SessionSendResult } from 'claude-code'
 
 import { ofRunningSession, updateOfSession } from '../sessionBoundState'
-import type { AgentRoastTrigger, RoastedAgent } from './roastedAgent'
+import type { RoastedAgent } from './roastedAgent'
 import type { RoastFailure } from './roastFailure'
 
 /** What became of the roast asked for by a run of /roast. */
@@ -88,14 +88,13 @@ export type PendingRoast =
 
 /**
  * A roast for a subagent that has not gone to the main conversation yet: the roast, the subagent,
- * what made the roaster roast it, and what became of the roast sent to it.
+ * and what became of the roast sent to it.
  */
 export type AgentPendingRoast = {
   source: RoastSource.Agent
   sessionId: string
   text: string
   agent: RoastedAgent
-  trigger: AgentRoastTrigger
   sentToAgent: SessionSendResult
 }
 

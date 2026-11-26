@@ -37,7 +37,11 @@ export async function useRoastOrNoPoint(
   }
 }
 
-async function sendRoastOrNoPointReply(
+/**
+ * Sends the roast in `reply`, unless it says the model found no point, or shows why it is
+ * unreadable.
+ */
+export async function sendRoastOrNoPointReply(
   $: EngineInterface,
   reply: string,
   texts: RoastOrNoPointTexts,

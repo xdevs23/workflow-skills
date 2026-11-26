@@ -5,9 +5,7 @@ import { PendingTextPlace } from '../pendingTexts'
 import type { RunningAgent } from '../runningAgents'
 import type { MessageAsRead } from './messagesUnseenByFork'
 import type { AgentPendingRoast } from './roastState'
-import { AgentRoastTrigger } from './roastedAgent'
 import type { RoastedAgent } from './roastedAgent'
-import type { TranscriptTail } from './transcriptTail'
 import { IdleRoastVerdict, RoastOrNoPointVerdict, RoastVerdict } from './roastReply'
 import type { IdleRoastReply, RoastOrNoPointReply, RoastReply } from './roastReply'
 
@@ -377,84 +375,31 @@ export function writeHintRoastPrompt({
   )
 }
 
-/** The texts of the roast for a subagent that differ by what made the roaster write it. */
-type AgentRoastTriggerTexts = {
-  /** What the transcript of the subagent covers. */
-  transcriptSpan: string
-  /** What counts as a point of the roast. */
-  points: string
-  /** When the roaster replies that the roast has no point. */
-  withoutPoint: string
-  /** The message that sends the subagent the roast. */
-  describeMessage: (roast: string) => string
-  /** When the roaster wrote the roast, as the main conversation reads it. */
-  moment: string
-}
-
-const AGENT_ROAST_TEXTS: Record<AgentRoastTrigger, AgentRoastTriggerTexts> = {
-  [AgentRoastTrigger.Idle]: {
-    transcriptSpan: 'The subagent has been idle since the last message of the transcript.',
-    points: BLOCKING_POINTS,
-    withoutPoint: WITHOUT_BLOCKING_POINT,
-    describeMessage: describeIdleRoastMessage,
-    moment: 'while the subagent was idle',
-  },
-  [AgentRoastTrigger.Compaction]: {
-    transcriptSpan:
-      'The transcript is the chat of the subagent before a compaction, which puts a summary in ' +
-      'its place.',
-    points: RESULT_POINTS,
-    withoutPoint: 'the transcript proves no point',
-    describeMessage: describeCompactionRoastMessage,
-    moment: 'about the chat of the subagent before a compaction',
-  },
-}
-
-/** What part of the transcript of a subagent `tail` holds. */
-function describeTranscriptPart({ leftOut }: TranscriptTail): string {
-  return leftOut === 0
-    ? 'This JSON array is the transcript of the subagent'
-    : `This JSON array is the transcript of the subagent without its ${leftOut} oldest ` +
-        'messages, which did not fit into this message'
-}
+/**
+ * The format of a compaction that writes a roast: the engine keeps only the text inside the
+ * summary tags of the compaction prompt.
+ */
+const COMPACTION_ROAST_FORMAT =
+  'These instructions replace every section asked for above: write no summary of the ' +
+  'conversation. Inside the <summary> tags, write only one JSON object and nothing before or ' +
+  `after it, without a code fence: ${POINT_ROAST_REPLY_EXAMPLE} with the roast, or ` +
+  `${NO_POINT_REPLY_EXAMPLE} if the conversation proves no point.`
 
 /**
- * The message that asks a model for a roast about `agent`, from `tail`, the newest messages of the
- * subagent, once `trigger` happened. The model replies with a JSON object, which
- * readRoastOrNoPointReply reads.
+ * The instructions for a compaction of the conversation of `agent` that writes a roast of it in
+ * place of a summary. The roast comes back as a JSON object, which readRoastOrNoPointReply reads.
  */
-export function writeAgentRoastPrompt({
-  agent,
-  trigger,
-  tail,
-}: {
-  agent: RoastedAgent
-  trigger: AgentRoastTrigger
-  tail: TranscriptTail
-}): string {
-  const texts = AGENT_ROAST_TEXTS[trigger]
-
+export function writeAgentCompactionRoastInstructions(agent: RoastedAgent): string {
   return (
-    `${ROASTER_ROLE} A conversation of this session started a ` +
-    `subagent of the agent type ${agent.type} for the task ${JSON.stringify(agent.description)}. ` +
-    `${describeTranscriptPart(tail)}, as a list of messages with their text, their tool calls ` +
-    `and the text of each tool result:\n\n${tail.json}\n\n` +
-    'In this message, "the assistant" is that subagent, and "this conversation" is that ' +
-    `transcript. ${texts.transcriptSpan} The messages of the role user in the ` +
-    'transcript come from the agent that started the subagent, from other agents or from ' +
+    `${COMPACTION_ROAST_FORMAT} ${ROASTER_ROLE} This conversation is the work of a subagent of ` +
+    `the agent type ${agent.type} for the task ${JSON.stringify(agent.description)}. In these ` +
+    'instructions, "the assistant" is that subagent. The messages of the role user in this ' +
+    'conversation come from the agent that started the subagent, from other agents or from ' +
     `hooks, and not from the user. ${DO_NOT_CONTINUE_WORK} ${ROAST_REQUEST} Your roast goes to ` +
-    `the assistant and to the main conversation of this session. ${WRITE_ROAST_TO_ASSISTANT} ` +
-    'In the roast, talk only to the assistant. ' +
-    `${texts.points} ${ROAST_BLUNTNESS} ${JSON_REPLY} Reply with ` +
-    `${POINT_ROAST_REPLY_EXAMPLE}, or with ${NO_POINT_REPLY_EXAMPLE} if ${texts.withoutPoint}.`
+    `the assistant and to the main conversation of this session. ${WRITE_ROAST_TO_ASSISTANT} In ` +
+    `the roast, talk only to the assistant. ${RESULT_POINTS} ${ROAST_BLUNTNESS} ` +
+    `${COMPACTION_ROAST_FORMAT}`
   )
-}
-
-/**
- * The message that sends a subagent `roast`, the roast about its work written once `trigger` came.
- */
-export function describeAgentRoastMessage(trigger: AgentRoastTrigger, roast: string): string {
-  return AGENT_ROAST_TEXTS[trigger].describeMessage(roast)
 }
 
 /** The message that sends the main conversation `roast`, a roast about the work of a subagent. */
@@ -464,11 +409,10 @@ export function describeAgentRoastForMain(roast: AgentPendingRoast): string {
     ? 'The subagent got the roast too.'
     : `The roast did not reach the subagent: ${sentToAgent.reason}.`
 
-  const { moment } = AGENT_ROAST_TEXTS[roast.trigger]
-
   return (
-    `${ROAST_AUTHOR} The roaster wrote it ${moment}, about the work ` +
-    `of the subagent of the agent type ${agent.type} with the agent id ${agent.id} and the task ` +
-    `${JSON.stringify(agent.description)}. ${delivery} ${READ_ROAST_FIRST}\n\n${roast.text}`
+    `${ROAST_AUTHOR} The roaster wrote it about the work of the subagent of the agent type ` +
+    `${agent.type} with the agent id ${agent.id} and the task ` +
+    `${JSON.stringify(agent.description)}, as a compaction of the conversation of the subagent ` +
+    `started. ${delivery} ${READ_ROAST_FIRST}\n\n${roast.text}`
   )
 }

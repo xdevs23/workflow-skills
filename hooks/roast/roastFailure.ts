@@ -11,6 +11,8 @@ export enum RoastNotWrittenCause {
   /** The reply is not the JSON object that the prompt asked for. */
   UnreadableReply = 'unreadable reply',
   Thrown = 'thrown',
+  /** A hook skipped the compaction asked to write the roast. */
+  CompactionSkipped = 'compaction skipped',
 }
 
 /** Whether a fork asked again can write the roast, or only a person can clear the cause. */
@@ -28,6 +30,7 @@ const RECOVERY_OF_CAUSE: Record<RoastNotWrittenCause, RoastRecovery> = {
   [RoastNotWrittenCause.Aborted]: RoastRecovery.AskAgain,
   [RoastNotWrittenCause.UnreadableReply]: RoastRecovery.AskAgain,
   [RoastNotWrittenCause.Thrown]: RoastRecovery.NeedsPerson,
+  [RoastNotWrittenCause.CompactionSkipped]: RoastRecovery.AskAgain,
 }
 
 export function recoveryOf(failure: RoastFailure): RoastRecovery {
@@ -62,6 +65,7 @@ export type RoastFailure =
   | { cause: RoastNotWrittenCause.ApiError; error: LastingApiError; status: number }
   | { cause: RoastNotWrittenCause.UnreadableReply; reason: JsonTextNotRead; reply: string }
   | { cause: RoastNotWrittenCause.Thrown; message: string }
+  | { cause: RoastNotWrittenCause.CompactionSkipped; reason: string }
 
 /** The failure of a roast stopped by a thrown error with the message `message`. */
 export function thrownFailure(message: string): RoastFailure {

@@ -68,11 +68,11 @@ Then run a skill, such as `/workflow-skills:implement`.
   roast reads the open goals from the board: it tells Claude to mark a finished goal as done, and
   names what is missing on a goal that Claude left alone. When a compaction starts, a fork roasts
   the chat before it, and Claude gets that roast after the summary, so Claude still sees the
-  mistakes made before the compaction. A subagent of the type `workflow-skills:lead` gets the same
-  roasts: one that names what blocks the work once it has been idle for about five minutes while the idle
-  roast is on, and one after a compaction of its own conversation. Each of them also goes to the
-  main conversation, which started the lead. After an idle roast, the lead gets the next one only
-  after it got a message that the plugin did not send
+  mistakes made before the compaction. A subagent of the type `workflow-skills:lead` gets a roast
+  after each compaction of its own conversation, written by a second run of that compaction, which
+  reads the conversation of the lead from its cache. The roast also goes to the main conversation,
+  which started the lead. A lead gets no idle roast: the engine forks only the main conversation,
+  and a copy of the conversation of the lead would be paid in full on every roast
 
 ## License
 
