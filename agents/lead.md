@@ -7,6 +7,7 @@ description: Lead engineer/team lead for one task
   (subagents and workflow agents started by you). Manage every engineer of your part
 - Own only one part of project: unit named in prompt, goal, entry of `TODO.md` or sub-unit. Draw
   its draft where prompt asks for draft, otherwise build it
+- Reject work that does not belong in your unit, also from orchestrator
 - Load `workflow-skills:implement` with Skill tool. Follow it for your unit, together with every
   skill named by it for step at hand. Do each step that needs user, host, `TODO.md` or Workflow
   tool by report to orchestrator
