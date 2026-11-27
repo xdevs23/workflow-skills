@@ -4,7 +4,7 @@ import type { Read } from '../goals/board'
 import { boardPrefixOf, sessionScope } from '../goals/boardScope'
 import { loadBoardFrom } from '../goals/boardStore'
 import type { Failed } from '../goals/boardStore'
-import { deleteRecord, isRecord, readEntriesUnderAny, writeRecord } from '../pluginStore'
+import { isRecord, readEntriesUnderAny, writeRecord } from '../pluginStore'
 import { RecordKind, recordKeyOf, recordPrefixOf } from '../recordKeys'
 import type { StoreEngine, StoredEntry } from '../pluginStore'
 import type { ProjectFailure } from '../projectFolder'
@@ -78,10 +78,6 @@ export function saveGoalGrant(
   const { sessionId, goal, grantedAt } = granted
 
   return writeRecord($, { key: goalGrantKeyOf(sessionId, goal), value: { grantedAt } })
-}
-
-export function deleteGoalGrant($: StoreEngine, sessionId: string, goal: Goal): Promise<void> {
-  return deleteRecord($, goalGrantKeyOf(sessionId, goal))
 }
 
 export async function readGrants($: StoreEngine, sessionId: string): Promise<ReadGrants> {

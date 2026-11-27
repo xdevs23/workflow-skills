@@ -28,7 +28,7 @@ Then run a skill, such as `/workflow-skills:implement`.
   and goal. `/ideas` lists them by entry, goal and project, and only you delete an idea, there
 - **Autonomy**: `/autonomy always` lets Claude finish work end to end without questions in the
   whole project, `/autonomy #161` in one entry of TODO.md and the entries under it, and
-  `/goals 5 autonomy on` for one goal. A grant for the project or an entry applies in every session
+  `/autonomy G5` for one goal. A grant for the project or an entry applies in every session
   of the project, and a grant for a goal in the session of that goal. `/autonomy` shows where it
   applies and `/autonomy off` removes every grant. Every system prompt describes autonomy, and a
   note in the conversation tells Claude where it applies each time that changes. Everything else

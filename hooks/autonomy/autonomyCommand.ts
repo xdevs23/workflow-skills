@@ -1,19 +1,13 @@
-import type {
-  CommandRunInput,
-  CommandRunResult,
-  EngineInterface,
-  Frozen,
-  PromptOrigin,
-} from 'claude-code'
+import type { CommandRunInput, CommandRunResult, EngineInterface, Frozen } from 'claude-code'
 
-import type { Goal } from '../../types'
 import { replyWithFailures } from '../failureToast'
+import { Outcome, openGoalNumbered } from '../goals/board'
+import { readBoardOfSession } from '../goals/goalActions'
+import { describeNotRead } from '../goals/goalPaneTexts'
+import { readGoalReference } from '../goals/goalReference'
 import { CommandRegistrar, type PluginCommand } from '../pluginCommand'
-import { returningStoreFailure } from '../storeFailures'
-import type { StoreEngine } from '../pluginStore'
 import { returningProjectFailure } from '../projectFolder'
 import type { ProjectFailure } from '../projectFolder'
-import { ProjectFailureKind } from '../projectLookup'
 import { isTypedByUser } from '../promptOrigin'
 import { readEntryNumber } from '../todoEntry'
 import { hasEntryInTodoFile } from '../todoFile'
@@ -21,18 +15,12 @@ import type { EntryNumber } from '../todoEntry'
 import {
   GrantReach,
   WHOLE_PROJECT,
-  deleteGoalGrant,
   saveGoalGrant,
   saveProjectGrant,
   saveRevocation,
 } from './autonomyGrants'
 import type { GrantScope } from './autonomyGrants'
-import {
-  AUTONOMY_COMMAND,
-  AutonomyWord,
-  GoalAutonomyWord,
-  isAutonomyWord,
-} from './autonomyNames'
+import { AUTONOMY_COMMAND, AutonomyWord, isAutonomyWord } from './autonomyNames'
 import { loadGrantsIntoState } from './autonomyState'
 import {
   AUTONOMY_ARGUMENT_HINT,
@@ -43,6 +31,7 @@ import {
   describeAutonomyForPerson,
   describeAutonomyNotChanged,
   describeEntryNotInTodo,
+  describeGoalNotOpen,
   describeGrantsFailure,
   describeUnknownAutonomyWords,
 } from './autonomyTexts'
@@ -51,22 +40,28 @@ enum ChangeKind {
   Revoke = 'revoke',
   GrantProject = 'grant-project',
   GrantEntry = 'grant-entry',
+  GrantGoal = 'grant-goal',
 }
 
 type AutonomyChange =
   | { kind: ChangeKind.Revoke | ChangeKind.GrantProject }
   | { kind: ChangeKind.GrantEntry; entry: EntryNumber }
+  | { kind: ChangeKind.GrantGoal; goalNumber: number }
 
 enum ChangeOutcome {
   Saved = 'saved',
   NotSaved = 'not-saved',
   EntryNotInTodo = 'entry-not-in-todo',
+  BoardNotRead = 'board-not-read',
+  GoalNotOpen = 'goal-not-open',
 }
 
 type ChangeResult =
   | { outcome: ChangeOutcome.Saved }
   | { outcome: ChangeOutcome.NotSaved; failure: ProjectFailure }
   | { outcome: ChangeOutcome.EntryNotInTodo; entry: EntryNumber }
+  | { outcome: ChangeOutcome.BoardNotRead; failure: string }
+  | { outcome: ChangeOutcome.GoalNotOpen; goalNumber: number }
 
 const SAVED: ChangeResult = { outcome: ChangeOutcome.Saved }
 
@@ -89,31 +84,6 @@ export function autonomyCommand($: EngineInterface): PluginCommand {
     run: e => runAutonomyCommand($, e),
     subjectOf: () => AUTONOMY_SUBJECT,
   }
-}
-
-export async function runGoalAutonomyCommand(
-  $: EngineInterface,
-  command: { goal: Goal; word: GoalAutonomyWord; origin: PromptOrigin },
-): Promise<CommandRunResult> {
-  const { goal, word, origin } = command
-  if (!isTypedByUser(origin)) {
-    return { text: AUTONOMY_NOT_TYPED_BY_USER }
-  }
-  const sessionId = await $.session.id()
-  const changedAt = await $.clock.now()
-  const changed = await returningStoreFailure(
-    async () => {
-      await changeGoalGrant($, { sessionId, goal, changedAt }, word)
-
-      return SAVED
-    },
-    (failed): ChangeResult => ({
-      outcome: ChangeOutcome.NotSaved,
-      failure: { kind: ProjectFailureKind.Store, failed },
-    }),
-  )
-
-  return replyToChange($, changed)
 }
 
 async function runAutonomyCommand(
@@ -147,8 +117,12 @@ function autonomyChangeOf(words: string): AutonomyChange | undefined {
     return AUTONOMY_WORD_CHANGES[words]
   }
   const entry = readEntryNumber(words)
+  if (entry !== undefined) {
+    return { kind: ChangeKind.GrantEntry, entry }
+  }
+  const goalNumber = readGoalReference(words)
 
-  return entry === undefined ? undefined : { kind: ChangeKind.GrantEntry, entry }
+  return goalNumber === undefined ? undefined : { kind: ChangeKind.GrantGoal, goalNumber }
 }
 
 async function changeGrants(
@@ -168,6 +142,8 @@ async function changeGrants(
       return SAVED
     case ChangeKind.GrantEntry:
       return grantEntry($, scope, change.entry, changedAt)
+    case ChangeKind.GrantGoal:
+      return grantGoal($, scope.sessionId, change.goalNumber, changedAt)
   }
 }
 
@@ -185,18 +161,23 @@ async function grantEntry(
   return SAVED
 }
 
-function changeGoalGrant(
-  $: StoreEngine,
-  change: { sessionId: string; goal: Goal; changedAt: number },
-  word: GoalAutonomyWord,
-): Promise<void> {
-  const { sessionId, goal, changedAt } = change
-  switch (word) {
-    case GoalAutonomyWord.On:
-      return saveGoalGrant($, { sessionId, goal, grantedAt: changedAt })
-    case GoalAutonomyWord.Off:
-      return deleteGoalGrant($, sessionId, goal)
+async function grantGoal(
+  $: EngineInterface,
+  sessionId: string,
+  goalNumber: number,
+  grantedAt: number,
+): Promise<ChangeResult> {
+  const loaded = await readBoardOfSession($, sessionId)
+  if (loaded.outcome === Outcome.Failed) {
+    return { outcome: ChangeOutcome.BoardNotRead, failure: loaded.failure }
   }
+  const goal = openGoalNumbered(loaded.board, goalNumber)
+  if (goal === undefined) {
+    return { outcome: ChangeOutcome.GoalNotOpen, goalNumber }
+  }
+  await saveGoalGrant($, { sessionId, goal, grantedAt })
+
+  return SAVED
 }
 
 async function replyToChange(
@@ -210,6 +191,10 @@ async function replyToChange(
       return replyWithAutonomy($, [changed.failure])
     case ChangeOutcome.EntryNotInTodo:
       return { text: describeEntryNotInTodo(changed.entry) }
+    case ChangeOutcome.BoardNotRead:
+      return replyWithFailures($, [describeNotRead(changed.failure)])
+    case ChangeOutcome.GoalNotOpen:
+      return { text: describeGoalNotOpen(changed.goalNumber) }
   }
 }
 

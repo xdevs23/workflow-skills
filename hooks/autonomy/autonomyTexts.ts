@@ -1,5 +1,6 @@
 import { describeStoreFailure } from '../goals/boardStore'
-import { GOALS_COMMAND } from '../goals/goalNames'
+import { nameGoal } from '../goals/goalPaneTexts'
+import { GOAL_REFERENCE_PLACEHOLDER } from '../goals/goalReference'
 import type { HookSubject } from '../hookFailure'
 import { AND_LIST, OR_LIST } from '../listFormat'
 import { describeUnreadableRecord } from '../storeFailures'
@@ -12,23 +13,20 @@ import type { Grant, GrantsFailure } from './autonomyGrants'
 import {
   AUTONOMOUS_IMPLEMENTATION_SKILL,
   AUTONOMY_COMMAND,
-  AUTONOMY_GOAL_WORD,
   AUTONOMY_WORDS,
   AutonomyWord,
-  GoalAutonomyWord,
   HYGIENE_SKILL,
   WRITING_CODE_SKILL,
 } from './autonomyNames'
 
 const ENTRY_PLACEHOLDER = '#<entry>'
 
-const GRANT_FOR_GOAL = `/${GOALS_COMMAND} <number> ${AUTONOMY_GOAL_WORD} ${GoalAutonomyWord.On}`
-
 export const AUTONOMY_DESCRIPTION =
-  'Show where autonomous implementation applies, grant it for this project or for an entry of ' +
-  'TODO.md with the entries under it, or remove every grant'
+  'Show where autonomous implementation applies, grant it for this project, for an entry of ' +
+  'TODO.md with the entries under it or for a goal of this session, or remove every grant'
 
-export const AUTONOMY_ARGUMENT_HINT = `[${[...AUTONOMY_WORDS, ENTRY_PLACEHOLDER].join('|')}]`
+export const AUTONOMY_ARGUMENT_HINT =
+  `[${[...AUTONOMY_WORDS, ENTRY_PLACEHOLDER, GOAL_REFERENCE_PLACEHOLDER].join('|')}]`
 
 export const AUTONOMY_SUBJECT: HookSubject = {
   name: 'autonomy',
@@ -38,17 +36,18 @@ export const AUTONOMY_SUBJECT: HookSubject = {
 }
 
 export const AUTONOMY_LOST_WITHOUT_COMMAND =
-  'In this session, you cannot grant autonomous implementation for this project or for an entry ' +
-  'of TODO.md, and cannot remove the grants already made.'
+  'In this session, you cannot grant autonomous implementation for this project, for an entry ' +
+  'of TODO.md or for a goal, and cannot remove the grants already made.'
 
 export const AUTONOMY_NOT_TYPED_BY_USER =
-  `Autonomous implementation was not changed. Only /${AUTONOMY_COMMAND} and ` +
-  `/${GOALS_COMMAND} typed by the user change where it applies.`
+  `Autonomous implementation was not changed. Only /${AUTONOMY_COMMAND} typed by the user ` +
+  'changes where it applies.'
 
 export function describeUnknownAutonomyWords(words: string): string {
   const accepted = OR_LIST.format([
     ...AUTONOMY_WORDS,
     'the number that names an entry of TODO.md, such as #161.2',
+    'G and the number of an open goal of this session, such as G18',
     'nothing',
   ])
 
@@ -59,6 +58,13 @@ export function describeEntryNotInTodo(entry: EntryNumber): string {
   return (
     `Entry ${entry} is not in TODO.md of this project, so /${AUTONOMY_COMMAND} changed ` +
     'nothing.'
+  )
+}
+
+export function describeGoalNotOpen(goalNumber: number): string {
+  return (
+    `${nameGoal(goalNumber)} is not an open goal of this session, so /${AUTONOMY_COMMAND} ` +
+    'changed nothing.'
   )
 }
 
@@ -94,7 +100,7 @@ export function describeAutonomyForPerson(grants: readonly Grant[]): string {
   return grants.length === 0
     ? 'Autonomous implementation applies to nothing. Grant it with ' +
         `/${AUTONOMY_COMMAND} ${AutonomyWord.Always}, /${AUTONOMY_COMMAND} ${ENTRY_PLACEHOLDER} ` +
-        `or ${GRANT_FOR_GOAL}.`
+        `or /${AUTONOMY_COMMAND} ${GOAL_REFERENCE_PLACEHOLDER}.`
     : `Autonomous implementation applies to ${listGrants(grants)}. Run ` +
         `/${AUTONOMY_COMMAND} ${AutonomyWord.Off} to remove every grant.`
 }
@@ -108,7 +114,7 @@ export const AUTONOMY_MODE =
     `${AUTONOMOUS_IMPLEMENTATION_SKILL} applies only to the work listed by the latest note on ` +
       'it in the conversation, and to nothing while the conversation has no such note. A grant ' +
       'for one piece of work does not extend to anything else.',
-    `Only the user changes where it applies, with /${AUTONOMY_COMMAND} or ${GRANT_FOR_GOAL}.`,
+    `Only the user changes where it applies, with /${AUTONOMY_COMMAND}.`,
   ].join(' ')
 
 export function describeAutonomyNote(grants: readonly Grant[]): TextWithLine {

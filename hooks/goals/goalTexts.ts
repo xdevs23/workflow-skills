@@ -32,13 +32,6 @@ export const GOALS_ADD_SUBJECT: HookSubject = {
 export const GOAL_NOT_TYPED_BY_USER =
   `The goal was not added. Only /${GOALS_COMMAND} typed by the user adds a goal.`
 
-export function describeCommandGoalNotOpen(goal: number): string {
-  return (
-    `${nameGoal(goal)} is not an open goal of this session, so /${GOALS_COMMAND} changed ` +
-    'nothing.'
-  )
-}
-
 /** The goals as written in the texts about a failed hook that saves a change made in the pane. */
 export const GOALS_PANE_SUBJECT: HookSubject = {
   name: 'goals',

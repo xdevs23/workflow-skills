@@ -8,7 +8,7 @@ description: Implement work end to end without questions, for project, entry of 
 - Work this way only on what latest note in conversation says
   `workflow-skills:autonomous-implementation` applies to: whole project, entry of TODO.md with
   entries under it, or goal of session. Without such note, it applies to nothing
-- User sets it with `/autonomy` or `/goals <number> autonomy on`
+- User sets it with `/autonomy`
 - Read latest note before every decision
 - Once latest note no longer lists work this run does, stop run at once: do not start another agent, stop
   running workflow, report
