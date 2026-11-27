@@ -60,7 +60,7 @@ description: Implement change to code, from first talk with user until user revi
   implementer work in that tree
 - Hand every implementer: user's words on unit as `mcp__workflow-skills__get_ideas` returns them,
   paths to approved drafts of its part and of units above it, and part of change built by it when
-  you split work. Add in your own words whatever else helps it
+  you split work
 - Word part of work handed to implementer by what rule or request behind it is for, such as "a
   value sent by the server and unknown to this build becomes an explicit unknown value where it
   arrives". Never word it as check to make pass, such as "make the lint pass"

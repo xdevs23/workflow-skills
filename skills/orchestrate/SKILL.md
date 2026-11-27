@@ -54,8 +54,7 @@ description: Hand implementation work to `workflow-skills:lead` and supervise le
 - Hand lead in prompt: number and title of unit, user's words on unit as
   `mcp__workflow-skills__get_ideas` returns them, verbatim, paths to approved drafts of unit and of
   units above it, whether to draw draft or build, and grant of
-  `workflow-skills:autonomous-implementation` over unit where latest note on autonomy lists it. Add
-  in your own words only what else helps it
+  `workflow-skills:autonomous-implementation` over unit where latest note on autonomy lists it
 - Keep hand-off short: write prompt, start lead, go back to user
 - Send all later work on unit to same lead: user's words on unit, verbatim, after recording them,
   replies, workflow results, roasts, work sent back, and each start or end of grant of
