@@ -24,8 +24,6 @@ description: Hand implementation work to `workflow-skills:lead` and supervise le
 
 ## Reports of leads
 
-- Handle each report of lead as section `Reports to orchestrator` of `workflow-skills:lead` names
-  it
 - Open draft sent by lead for user as `workflow-skills:visual-decisions` describes
 - Read each workflow script and command for host sent by lead before running it, as if written by
   you. Send it back to lead with reason where you would not run it on your own, e.g. where it
@@ -43,8 +41,8 @@ description: Hand implementation work to `workflow-skills:lead` and supervise le
 - Hand next unit of highest priority whose work conflicts with work of no running lead, e.g. by
   writing same files. High priority: goals, entries of `TODO.md` and tasks from user. Low
   priority: e.g. goal of lower priority
-- Hand unit started without user's word, e.g. fix of older defect, time sink or work named by
-  implementers, as side task beside work of high priority, only when workload allows
+- Hand unit started without user's word, e.g. fix of older defect or time sink, as side task
+  beside work of high priority, only when workload allows
 - Give every unit exactly one lead, and every lead exactly one unit. Unit inside unit of lead
   belongs to that lead
 - Never hand lead work of another unit, also not lead that is idle or works in same repository.
@@ -69,11 +67,11 @@ description: Hand implementation work to `workflow-skills:lead` and supervise le
 ## Supervision
 
 - Never judge lead by its report alone
-- Before taking finished work or answer to roast, read every roast of lead, user's words on unit
+- Before taking finished work, read every roast of lead, user's words on unit
   and evidence sent by lead. Look at state left by lead, e.g. git configuration, hooks and scripts,
   or at part of its diff only where point of roast or user's words name it
 - Send work back to same lead before it reaches user wherever it misses user's words or approved
-  draft, leaves point of roast unanswered, or works around way named by user's words, as
+  draft, or works around way named by user's words, as
   `workflow-skills:lead` describes. Name what is wrong and where. Ask lead to undo every
   work-around
 - Take change to user only once evidence sent by lead shows that section `Done` of

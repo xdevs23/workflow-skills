@@ -23,8 +23,6 @@ description: Implement change to code, from first talk with user until user revi
   overall shape, never each detail on it
 - Never write down what user said or decided in your own words: no notes, summary or paraphrase,
   in any file
-- Count as user's words also decision made by subagents under explicit grant of
-  `workflow-skills:autonomous-implementation`
 
 ## Draft
 
@@ -115,9 +113,6 @@ description: Implement change to code, from first talk with user until user revi
   and fix are known. Or fix them all yourself by hand
 - Fix by hand every finding left after that fix run, and every finding of later review of change
 - Do not start any review round of your own on fix
-- In main conversation in agent mode `orchestrator`, once change is built, start right away
-  independent workflow for work named by implementers outside their behavior: edge cases not
-  covered, lint rules for rules that linter can check, cleanup of existing code
 - Take optional pick returned by reviewer into fix run when objectively better in every way and
   obvious engineering choice, like better correctness, code quality, performance. Drop other
   optional picks
