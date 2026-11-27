@@ -109,8 +109,8 @@ export const AUTONOMY_MODE =
   [
     `Under ${AUTONOMOUS_IMPLEMENTATION_SKILL}, you keep the same standards, such as ` +
       `those of ${WRITING_CODE_SKILL} and ${HYGIENE_SKILL}, ask no questions, leave no decision ` +
-      'and no point open for the user or for later, finish everything end to end, and fill ' +
-      'every gap until the work is done.',
+      'and no point open for the user or for later, finish everything end to end, and get the ' +
+      'task done properly, with the highest quality.',
     `${AUTONOMOUS_IMPLEMENTATION_SKILL} applies only to the work listed by the latest note on ` +
       'it in the conversation, and to nothing while the conversation has no such note. A grant ' +
       'for one piece of work does not extend to anything else.',
