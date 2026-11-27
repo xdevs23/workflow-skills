@@ -3,11 +3,11 @@ name: design-drafts
 description: Draw several design drafts for user to choose from
 ---
 
-## Before you draw
+## Drafts
 
 - Draw as many drafts as user asks for. Three when user does not name a number
-- Read code of screen changed by drafts: layout, theme and its color values, fonts, icon set,
-  resolution and density of target screen
+- Match screen changed by drafts: layout, theme and its color values, fonts, icon set, resolution
+  and density of target screen
 - Draw screen of app alone. Never draw status bar, taskbar, frame of device or other part of
   operating system around it. Draw shell only where drafts change shell itself
 - Where screen does not have code yet, take resolution and fonts from what user named. Pick
@@ -52,19 +52,11 @@ description: Draw several design drafts for user to choose from
 - End page with section showing directions side by side, small size, one column per direction,
   one row per state, each direction with caption of its main property
 
-## Checking
+## Finished page
 
-- Render every page in headless browser at width and height of target screen, animations running
-- Scroll page top to bottom in steps of viewport height before screenshot, so motion started by
-  scrolling has run. Take screenshot of whole page, top to bottom, and look at it before showing
-  page
-- Check each section sized to viewport height at real viewport height, by one screenshot per
-  scroll position. Screenshot of whole page stretches such section
-- Take screenshot of finished state, after every motion on load ended. Headless browser with virtual
-  time can hold CSS animations at first frame while timers advance. Screenshot showing empty chart or
-  bars at zero shows start frame
-- Check: text does not overflow its box, nothing cut at edge of screen, long value of sample fits or
-  is shortened the way product shortens it
+- At width and height of target screen: text does not overflow its box, nothing is cut at edge of
+  screen, long value of sample fits or is shortened the way product shortens it, section sized to
+  viewport height fits real viewport height
 
 ## After the choice
 

@@ -3,7 +3,7 @@ name: local-cache
 description: Decide where to put file not meant for repository, what to remove once tasks are done, and what goes into project memories
 ---
 
-- Follow user's global preferences about these directories wherever they differ from this file
+- Follow global user preferences about these directories wherever they differ from this file
 
 ## The directories
 
@@ -12,12 +12,11 @@ description: Decide where to put file not meant for repository, what to remove o
   - `.local/`, the local storage, for the few files kept on this machine for the long term
 - Use local storage of main checkout also while working in a worktree, by its absolute path.
   `.local/` inside a worktree is inside project cache. Deleted with it
-- Make sure ignore rules of project cover a directory before writing anything there. Check with
-  `git check-ignore <directory>/` in checkout that owns directory, trailing slash included, in
-  command of its own. Write only after it prints directory
+- Write only into directory covered by ignore rules of project: `git check-ignore <directory>/`,
+  trailing slash included, prints it in checkout that owns directory
 - Never commit anything in either directory
 - Never write notes, plans, summaries or records of what user said or decided into either
-  directory. Record user's words as `workflow-skills:implement` describes
+  directory. Record user words as `workflow-skills:implement` describes
 
 ## What goes into the project cache
 
@@ -48,16 +47,16 @@ description: Decide where to put file not meant for repository, what to remove o
 
 ## Project memories
 
-- Keep in project memories only setup facts, preferences of user for this project and feedback from
+- Keep in project memories only setup facts, user preferences for this project and feedback from
   user on this project, which apply to this machine alone
-- Write each preference or feedback of user into memory with words of user, quoted verbatim, and
+- Write each user preference or feedback into memory with user words, quoted verbatim, and
   date. Only addition: few words on what quote was said about. Never add summary or reading of
   your own
 - Leave out of them: what project already contains, what belongs in its tracked documentation, what
   a global rule or a skill already contains, violations or feedback not needed by next session
 - Never link global rule from memory
 - Put knowledge about project into the project, in fitting place
-- Clean up project memories whenever you change them, so nothing in them is out of date
+- Keep nothing out of date in project memories
 - Delete memory that refers to something not understood by you. It was not written properly
 
 ## The system temporary directory

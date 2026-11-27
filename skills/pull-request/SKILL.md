@@ -3,14 +3,14 @@ name: pull-request
 description: Open PR, and write or update its description
 ---
 
-- Load `workflow-skills:hygiene` first. Its rules apply to title, description and every picture
-  attached to pull request
+- Rules of `workflow-skills:hygiene` apply to title, description and every picture attached to
+  pull request
 - Write title and description by `workflow-skills:copywriting`
 
 ## The template
 
-- Write description from this template into a file in project cache defined by
-  `workflow-skills:local-cache`, e.g. `body.md`. Save pictures in same directory
+- Keep description, e.g. `body.md`, and its pictures in project cache defined by
+  `workflow-skills:local-cache`
 - Fill `<model>` with every model that wrote commits of change. Model that opens pull request
   counts only when it wrote commits
 
@@ -92,9 +92,8 @@ Closes #<n>
 ## Evidence pictures
 
 - Attach to change of rendered output, in browser, native toolkit or terminal, one evidence sheet
-  per changed surface. Render it with visual harness of project from capture on base commit and one
-  on head commit, as `workflow-skills:visual-verification` describes. Surface without a scene: give
-  it one first
+  per changed surface, from capture on base commit and one on head commit, as
+  `workflow-skills:visual-verification` describes
 - Attach to any other change, e.g. to logic, data, a flow, tooling or a skill, one before and after
   picture drawn as `workflow-skills:visual-decisions` describes
 - Do not attach picture to change with nothing to draw, e.g. wording fix or dependency raise. Say
@@ -108,25 +107,14 @@ Closes #<n>
 
 ## The line graphic
 
-- Draw graphic with `pr-lines`: Python program `tools/pr-lines.py` in directory of installed plugin
-  under plugin cache, or in this repository
-- Pass `pr-lines` base commit, i.e. merge base shared by target branch and head, and head commit
-  from which pull request is opened
-- Run `pr-lines` inside repository, or name repository with `--repo`
-- Run `pr-lines` through Nix on Linux and on macOS with Apple silicon: app of flake brings Python,
-  git, resvg and Mona Sans fonts along. Command: `nix run path:<plugin directory>#pr-lines
-  -- <base> <head> --out lines.png`
-- Use `nix run github:xdevs23/workflow-skills#pr-lines -- <base> <head> --out lines.png` only in
-  session without plugin directory. It runs tool as it is on default branch
-- Without Nix, e.g. on Intel Mac, install Python 3.10 or later and git 2.40 or later, then resvg
-  with `brew install resvg`, `cargo install resvg` or release binary of resvg project
-- Without Nix, install Mona Sans with `brew install --cask font-mona-sans`, which puts files into
-  `~/Library/Fonts`, or from static release zip of `github/mona-sans`, which unpacks them into
-  `static/otf` and `static/ttf`
-- Without Nix, run `python3 <plugin directory>/tools/pr-lines.py <base> <head> --out lines.png
-  --fonts <directory>`. Directory: `~/Library/Fonts` after cask, or `static/otf` or `static/ttf`
-  folder of zip
-- Pass `--resvg <executable>` when resvg is not on `PATH`
+- `pr-lines` draws graphic: Python program `tools/pr-lines.py` in directory of installed plugin
+  under plugin cache, or in this repository. It takes base commit, i.e. merge base shared by
+  target branch and head, and head commit, inside repository or with `--repo`
+- With Nix: `nix run path:<plugin directory>#pr-lines -- <base> <head> --out lines.png`, which
+  brings Python, git, resvg and Mona Sans fonts. Without plugin directory:
+  `nix run github:xdevs23/workflow-skills#pr-lines -- <base> <head> --out lines.png`
+- Without Nix: Python 3.10 or later, git 2.40 or later, resvg (`--resvg <executable>` where not on
+  `PATH`) and Mona Sans (`--fonts <directory>`)
 - When a kind is wrong for project, e.g. Markdown files that are the product, add lines with
   `pr-lines` attribute to `.gitattributes` of repository, e.g. `skills/** pr-lines=code`. `pr-lines`
   reads them at head commit. They override shared rules for every path matched by them
@@ -135,9 +123,7 @@ Closes #<n>
 
 ## Opening and updating
 
-- Check that `gh --version` is [2.99.0](https://github.com/cli/cli/releases/tag/v2.99.0) or newer,
-  first release with `--attach`
-- Draw every picture before opening pull request
+- `--attach` needs `gh` [2.99.0](https://github.com/cli/cli/releases/tag/v2.99.0) or newer
 - Open pull request with `gh pr create --title "<title>" --body-file body.md --attach lines.png
   --attach evidence.png`. Pass each picture to `--attach` with path by which description refers
   to it. GitHub CLI uploads picture and replaces that reference with address of upload
@@ -145,7 +131,7 @@ Closes #<n>
   Enterprise Server, where GitHub CLI cannot upload pictures. There follow rules of project for
   pictures, or put pictures where project hosts images, refer to them by that address and say so
   under "Evidence"
-- After each push, run `pr-lines` again for new head and replace section in description file. Draw
-  evidence picture again when what it shows changed. Update every other part made wrong by push
+- After each push, description matches new head: line graphic, evidence picture and every other
+  part
 - Update pull request with `gh pr edit <number> --body-file body.md --attach lines.png --attach
   evidence.png`. Attach every picture again

@@ -232,7 +232,6 @@ description: Visual design of screen or page
 - Light metal with soft, broad highlights. Draw brushed finish as fine streaks, never as hard
   stripes
 - Render gem and glass with transparency, refraction and inner glint
-- Look at every 3D object at real size before returning page
 
 ## Speed
 
@@ -241,11 +240,11 @@ description: Visual design of screen or page
   sweeps over many keys
 - Keep page smooth on ordinary laptop and phone. Draw 3D only while it is visible, at resolution
   and frame rate that machine holds, and stop drawing scene that does not change
-- Show rendered object on every load. Load page several times before returning. Where rendering
-  fails or context is lost, show still picture of object, never black or empty area
+- Show rendered object on every load. Where rendering fails or context is lost, show still picture
+  of object, never black or empty area
 
-## Before returning
+## Finished page
 
-- Look at whole page at real size, part by part, in browser viewport of 1920×960 and of phone at
-  390×844. Fix covered controls and text, frames drawn twice, parts cut at edge, broken objects and
-  label off centre in button wider than label
+- At real size, in browser viewport of 1920×960 and of phone at 390×844: no covered controls or
+  text, no frame drawn twice, no part cut at edge, no broken object, no label off centre in button
+  wider than label

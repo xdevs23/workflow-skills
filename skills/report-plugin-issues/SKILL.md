@@ -14,10 +14,8 @@ description: Report skill, script, agent template or tool of workflow-skills plu
 
 ## An issue that already exists
 
-- Search open issues for problem with this command:
-  `gh issue list --repo xdevs23/workflow-skills --search "<words>"`
-- When open issue already describes problem, add what you found to it as comment instead of filing
-  new issue, with this command:
+- Problem already described by open issue goes there as comment, not as new issue:
+  `gh issue list --repo xdevs23/workflow-skills --search "<words>"`,
   `gh issue comment <number> --repo xdevs23/workflow-skills --body-file <file>`
 
 ## Contents of the issue
@@ -39,7 +37,7 @@ description: Report skill, script, agent template or tool of workflow-skills plu
 
 ## Filing
 
-- Write body to file in project cache defined by `workflow-skills:local-cache`
-- File issue directly with
-  `gh issue create --repo xdevs23/workflow-skills --title "<title>" --body-file <file>`
+- File issue with
+  `gh issue create --repo xdevs23/workflow-skills --title "<title>" --body-file <file>`, body file in
+  project cache defined by `workflow-skills:local-cache`
 - Tell user number of posted issue or comment

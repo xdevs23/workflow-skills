@@ -3,8 +3,7 @@ name: writing-code
 description: Write or change code in any language, including types, comments, names and strings
 ---
 
-- Before writing code in a language, load skill for that language, such as
-  `workflow-skills:writing-rust`
+- Follow skill for each language of code too, such as `workflow-skills:writing-rust`
 
 ## Code style
 
@@ -115,8 +114,8 @@ description: Write or change code in any language, including types, comments, na
 - Let module register itself from file of its own, e.g. by annotation, manifest or directory
   convention, so registry finds it without edit. Only where framework has no discovery, add one
   registering line to shared file
-- Before writing, list shared files to be edited by change. For each, check whether another module
-  of same kind would edit same lines. Move such edit into file of module
+- Never edit lines of shared file that another module of same kind would edit too. Such edit goes
+  into file of module
 - Improve shared code outside lines of change in unit of its own, as `workflow-skills:todo-md`
   describes for fix of older defect. This rule comes before rule on improving code below high
   standard
@@ -218,13 +217,11 @@ description: Write or change code in any language, including types, comments, na
   that code write whole sentence. Never define, return or pass sentence fragment, e.g. "for item
   42", to be glued into message
 
-## How the work is done
+## What the change keeps and touches
 
-- Keep what works through a change
-- Check every consumer of shared code
-- Read code first, in full around every search hit. Trace flow in every direction
-- Check code carried over from another version against target. Every name used in it must exist
-  there with same signature and meaning
+- Keep what works through a change, for every consumer of shared code
+- Code carried over from another version uses only names that exist in target with same signature
+  and meaning
 - Undo only your own edit, by applying its inverse. Never reset, restore or stash file that may
   contain other uncommitted work
 - Change documentation describing interface used by others, e.g. API, command or screen, in same

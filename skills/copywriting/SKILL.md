@@ -3,7 +3,7 @@ name: copywriting
 description: Write text read by person: product screens, marketing pages, translations, replies to user, and text leaving chat, e.g. commit messages, documents, PR and issue text, comments in code
 ---
 
-- Before writing text for product, load `workflow-skills:writing-product-text`
+- Text for product follows `workflow-skills:writing-product-text` too
 
 ## Every text
 
@@ -175,7 +175,7 @@ write
 - Answer short follow-up in one or two sentences, with reason asker can check
 - End answer to question on answer, without offer of work
 - Use standard devspeak, e.g. "Yes" or "Nope, we'll do that when X is done"
-- Never infer, comment on or judge habits, schedule or wellbeing of user. Never suggest sleep,
+- Never infer, comment on or judge user habits, schedule or wellbeing. Never suggest sleep,
   food, break or another change of behavior
 - Never take saved report or result returned by stage as only proof that user has not answered
 

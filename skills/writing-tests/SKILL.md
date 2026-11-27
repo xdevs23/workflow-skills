@@ -12,7 +12,7 @@ description: Write, change or delete tests, test doubles and fixtures
 - Delete test that checks stored text for string or restates shipped values when your change alters
   that test in any way or makes it fail. Keep any assertion in it that runs the code. Never rewrite
   such test to match changed text
-- Report test of that kind outside your change. Leave it in place
+- Leave test of that kind outside your change in place
 - Keep tests deterministic and reproducible. Independent of clock, of machine they run on and of
   anything outside test. Only exception: thing under test is itself machine-dependent, e.g. ARMv8
   instruction in emulator or Vulkan driver of one GPU vendor

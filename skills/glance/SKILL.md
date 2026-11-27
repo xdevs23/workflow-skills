@@ -22,4 +22,4 @@ description: Overview of where work stands
 - Put lines in code block, columns aligned
 - One line per item: number, short name, status symbol, short state where symbol does not say it
 - Mark status with ✅ for done or live, 🟡 for underway, ⬜ for not started
-- Mark goal of user with `← your goal`, after state
+- Mark user goal with `← your goal`, after state

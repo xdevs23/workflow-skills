@@ -34,11 +34,9 @@ description: Resume workflow run interrupted after agents did substantial work b
 
 ## A shutdown while a workflow runs
 
-- When user is about to shut down or reboot while workflow runs, check files of run are on
-  persistent disk: script file, `journal.jsonl` and `*.jsonl` transcripts of agents
-- Parse every line of journal, since resume replays from it
-- Check with `pgrep` that build and test processes are not writing, so shutdown cannot leave a file
-  half written
+- Before user shuts down or reboots while workflow runs: script file, `journal.jsonl` and `*.jsonl`
+  transcripts of agents are on persistent disk, every line of journal parses, and no build or test
+  process is writing, so shutdown cannot leave a file half written
 - Write resume note to `RESUME-<workflow>.md` in local storage defined by
   `workflow-skills:local-cache`: run ID, what is done and replays from journal, what has not
   started, exact call that resumes run, environment to bring up first (e.g. database stack),
@@ -99,8 +97,6 @@ description: Resume workflow run interrupted after agents did substantial work b
   agents get added beside old ones. So one agent can have several transcripts. Transcripts include
   output echoed by harness, and any figure in bytes goes stale the moment that output grows or
   shrinks. Decide which attempt contains the work by content test of rule 2
-- Get mapping right before going on. With wrong mapping you hand an agent work of another agent:
-  the damage prevented by rule 1
 
 ### Append a resume note to the prompts of the INTERRUPTED agents only
 
@@ -187,16 +183,7 @@ const scopePrompt = [RULES, SEAT_BRIEF].join('\n\n')
    differing input changed underneath it, findings based on that included, and spends rest of its
    effort on what it had not yet covered
 
-## What to expect
-
-- Expect agent that had effectively finished before stop to read transcript of that attempt and
-  return findings in it again almost at once, instead of redoing work
-- Expect agent that was partly done to continue from where it was
-- Treat output of resumed agent as work done by that agent. Hold it to same contract as output of
-  any other agent. Note instructs resumed agent but does not bring back context of earlier attempt.
-  So recovery loses very little of earlier work, yet more than nothing
-- Results of finished calls run again after first call that ends replay can differ from results
-  returned before stop
+- Hold output of resumed agent to same contract as output of any other agent
 
 ## Agents that completed with a bad result
 

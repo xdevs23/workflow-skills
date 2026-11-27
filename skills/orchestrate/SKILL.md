@@ -11,14 +11,13 @@ description: Hand implementation work to `workflow-skills:lead` and supervise le
 - Aim to satisfy user with work of leads, not to finish work yourself
 - Hand leads only implementation work, e.g. coding, drafting, design, architecture: work that
   needs draft, build or review. Do every task that needs none of them yourself, at once and without
-  lead, e.g. one-time mechanical task such as sync or move of repositories. Answer questions of
-  user yourself
+  lead, e.g. one-time mechanical task such as sync or move of repositories. Answer user questions
+  yourself
 - Never draw draft, build, review whole change, fix or merge yourself
 
 ## User
 
-- Follow sections `User's words` and `User review` of `workflow-skills:implement`, except: send
-  rejected change and every comment of user to same lead, in place of new run
+- Follow sections `User words` and `User review` of `workflow-skills:implement`
 - Follow `workflow-skills:todo-md` for `TODO.md` and goals. Write each unit into `TODO.md` before
   handing it to lead
 
@@ -28,8 +27,6 @@ description: Hand implementation work to `workflow-skills:lead` and supervise le
 - Read each workflow script and command for host sent by lead before running it, as if written by
   you. Send it back to lead with reason where you would not run it on your own, e.g. where it
   pushes, deletes or writes outside unit, or breaks rule of global instruction file. Never edit it
-- Put questions sent by leads to user one at a time, in order received, each with number and title
-  of its unit
 
 ## Hand-off
 
@@ -41,7 +38,7 @@ description: Hand implementation work to `workflow-skills:lead` and supervise le
 - Hand next unit of highest priority whose work conflicts with work of no running lead, e.g. by
   writing same files. High priority: goals, entries of `TODO.md` and tasks from user. Low
   priority: e.g. goal of lower priority
-- Hand unit started without user's word, e.g. fix of older defect or time sink, as side task
+- Hand unit started without user word, e.g. fix of older defect or time sink, as side task
   beside work of high priority, only when workload allows
 - Give every unit exactly one lead, and every lead exactly one unit. Unit inside unit of lead
   belongs to that lead
@@ -49,30 +46,25 @@ description: Hand implementation work to `workflow-skills:lead` and supervise le
   Start new lead for new unit
 - Give each lead a description with number and title of unit, e.g. `lead #218 merge feature
   branches`. After compaction, find lead of unit with `ListAgents`
-- Hand lead in prompt: number and title of unit, user's words on unit as
+- Hand lead in prompt: number and title of unit, user words on unit as
   `mcp__workflow-skills__get_ideas` returns them, verbatim, paths to approved drafts of unit and of
   units above it, and whether to draw draft or build
 - Keep hand-off short: write prompt, start lead, go back to user
 - Give each lead one task. Lead finishes it and returns, like a workflow. Start new lead for later
   work on unit
-- Send lead only corrections and follow-ups of its one task: user's words on it, verbatim, after
+- Send lead only corrections and follow-ups of its one task: user words on it, verbatim, after
   recording them, replies, workflow results, roasts and work sent back. Wake it with `SendMessage`
   to its agent id
 - When lead ends with error or without report, wake same lead with `SendMessage`, naming what is
   missing. Start new lead on its branch only where it cannot be woken
 - Stop lead with `TaskStop` once user accepted its change or dropped its unit
-- Stop only lead named by user's words. Where they fit several leads, ask which one before
+- Stop only lead named by user words. Where they fit several leads, ask which one before
   stopping any
 
 ## Supervision
 
 - Never judge lead by its report alone
-- Before taking finished work, read every roast of lead, user's words on unit
-  and evidence sent by lead. Look at state left by lead, e.g. git configuration, hooks and scripts,
-  or at part of its diff only where point of roast or user's words name it
-- Send work back to same lead before it reaches user wherever it misses user's words or approved
-  draft, or works around way named by user's words, as
-  `workflow-skills:lead` describes. Name what is wrong and where. Ask lead to undo every
-  work-around
-- Take change to user only once evidence sent by lead shows that section `Done` of
-  `workflow-skills:implement` holds
+- Send work back to same lead before it reaches user wherever it misses user words or approved
+  draft, or works around way named by user words. Name what is wrong and where. Ask lead to undo
+  every work-around
+- Take change to user only once section `Done` of `workflow-skills:implement` holds

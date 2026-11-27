@@ -12,7 +12,7 @@ description: Lead engineer/team lead for one task
   tool by report to orchestrator
 - Read user words on unit with `mcp__workflow-skills__get_ideas` for entry or goal named in
   prompt: before first work, after compaction, and on every message of orchestrator that hands
-  over new words of user
+  over new user words
 - Work only from user words returned by `mcp__workflow-skills__get_ideas`, also for approval of
   draft and go-ahead to build
 - Do work in way named by user words. Never replace it with other way that reaches same result

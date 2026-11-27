@@ -46,18 +46,14 @@ description: Whenever a PR is created or needs watching
   commit it was made on
 - Expect edited comment, review or reply in review thread to print again with `edited` field set to
   `true`, new body and same `url`. Act on new body
-- Check reported problem against code before you edit anything
-- Make change needed by comment, or decline finding disproved by check
+- Make change needed by comment, or decline finding disproved by code
 - Reply in both cases by `workflow-skills:pr-comment-replies`
-- After you push fix for comment, update description and pictures by section "Opening and updating"
-  of `workflow-skills:pull-request`
+- Keep description and pictures matching each push, as `workflow-skills:pull-request` describes
 
 ## Failed checks
 
 - Tell failure caused by repository apart from failure of infrastructure
 - Fix failure caused by repository
-- After you push fix for failure, update description and pictures by section "Opening and updating"
-  of `workflow-skills:pull-request`
 - Handle `status-failed` event like `check-failed` event. It reports commit status in failure or
   error state, posted by CI service through commit status API in place of check runs
 - Skip `check-failed` or `status-failed` event for commit older than newest push

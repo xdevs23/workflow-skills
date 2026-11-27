@@ -15,7 +15,6 @@ recorded once.
 - Report logic copied instead of shared
 - Report list of same items kept by hand in second place. Fix: derive it from first list. Where it
   cannot be derived, ask for check that fails build when lists disagree
-- Grep for the concept
 - Keep to change and code affected by it. Leave out work merged before change
 - Leave alone two places in code that encode decisions that differ
 - In every finding, cite both places, and say which one should become the single path

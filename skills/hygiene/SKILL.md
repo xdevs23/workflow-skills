@@ -9,16 +9,16 @@ description: Decide what may go into anything that leaves machine or goes to som
 
 ## Tracked files and their history
 
-- Keep out of every tracked file and every commit message: private conversation content, user's
+- Keep out of every tracked file and every commit message: private conversation content, user
   words, setup facts, machine internals, local absolute paths, model names, facts about a session,
   personal data, secrets. Applies to code, comments, documentation, agent instructions like
   `CLAUDE.md`, tests, scripts and assets alike
 - Write every tracked file and commit message so nobody would raise an eyebrow if everyone read it.
   Technical and focused. For reader who never saw the session
 
-## The user's words
+## The user words
 
-- Keep user's words verbatim only in untracked, ignored records, e.g. memory file of
+- Keep user words verbatim only in untracked, ignored records, e.g. memory file of
   `workflow-skills:local-cache`
 - General instruction to commit everything: read it as excluding private records, private specs,
   prompts that contain private text, scratch files and todo record
@@ -41,7 +41,7 @@ description: Decide what may go into anything that leaves machine or goes to som
 - Write post in your own voice
 - Give technical evidence in post, e.g. commits, pull requests and issues by number
 - Keep out of post: local paths, host names, names of accounts on the machine, session transcripts,
-  process narration, user's words
+  process narration, user words
 - Never edit or delete comment written by a person
 - To correct comment posted by you, post new comment
 
@@ -69,7 +69,7 @@ description: Decide what may go into anything that leaves machine or goes to som
 
 ## Identity
 
-- Never pass name or identity of user to agent or into output that does not need it
+- Never pass user name or identity to agent or into output that does not need it
 - Never put personal name into package root
 - Never put git identity into a command, e.g. `-c user.name=…` or `--author`, unless user asks for
   it

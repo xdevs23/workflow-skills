@@ -36,6 +36,6 @@ Review change for code cleanliness only: readability and hygiene.
   - write code in cleaner, more readable, more obvious way so it does not need a comment;
   - remove code described by the comment;
   - report content of comment, or code described by it, as rule violation
-- Look for rule violation behind a comment that explains something not allowed by architecture in
+- Report rule violation behind a comment that explains something not allowed by architecture in
   first place. Where tree contains that rule, say in finding which rule comment breaks
 - Give every reported name a replacement that passes naming test. Say where renaming is cheap

@@ -29,7 +29,7 @@ contributor or agent without history, reads that file first.
 - Delete entry of unit merged into working branch before this session started, once code of unit is
   on working branch
 - Delete entry also when user says so. Never delete entry for any other reason
-- Unlink user's words recorded for entry with `mcp__workflow-skills__unlink_ideas` before deleting
+- Unlink user words recorded for entry with `mcp__workflow-skills__unlink_ideas` before deleting
   entry, in same turn
 - Remove deleted entry from every `Builds on:` line that lists it
 - Read goals and entries attached to them with `mcp__workflow-skills__list_goals` when not in
@@ -64,7 +64,7 @@ Draft: .cache/specs/reaction-emoji.html
 - Write every heading strictly in format `### #<number> - <title> - <STATE>`. Write nothing after
   state marker
 - **`### #<number> - <title>`**: number is id in tracker and never changes. Write in title what
-  item *is*, in user's words where user named it. Leave state to state marker. If project uses
+  item *is*, in user words where user named it. Leave state to state marker. If project uses
   separate convention for ids, keep internal numbering as it is and add project id at start of
   title, for example:
   `#142 - GH #73 - Reaction emoji support - RECORDED`
@@ -114,13 +114,6 @@ Draft: .cache/specs/reaction-emoji.html
   lockfile or sequence of migrations
 - Give every entry that has sub-units `IN PROGRESS` while any sub-unit under it is `IN PROGRESS`.
   Otherwise state of least advanced sub-unit under it
-- Build each sub-unit as separate unit, in separate worktree and on separate branch, with one or
-  more workflow runs. You may start building on whatever base suits work
-- Deliver each sub-unit separately, such as through separate pull request against main branch of
-  project. Only once every sub-unit listed in its `Builds on:` line is merged there. Pull request
-  is request that can be rejected
-- When delivery of sub-unit rejected, deliver none of sub-units that build on it. Handle rejection
-  as `workflow-skills:implement` describes
 - Never put changes made for two entries with third-level heading, e.g. `#383` and `#384`, into one
   commit
 - Group commits made for sub-units of one entry into one commit or several, as
@@ -133,17 +126,12 @@ Draft: .cache/specs/reaction-emoji.html
   `workflow-skills:visual-decisions` describes when fixing it needs decision by user
 - Write work that comes up during unit as sub-unit of entry for that unit only when unit cannot
   finish without it. Write it as `READY`
-- Fix other small work that comes up right away, as `workflow-skills:implement` describes, without
-  entry
+- Fix other small work that comes up right away, without entry
 - Name other big work that comes up once, in report to user. Never write entry for it
 - Fix defect in older code outside unit, such as flaky test harness, as separate side task beside
   unit, when workload allows
-- Start fix of older defect without asking user, as only unit started by you without user's word
-- Build fix of older defect by `workflow-skills:implement`, with defect and evidence for it in
-  prompt and without draft, in worktree and on branch of its own
-- Deliver fix of older defect on its own, through pull request or review of its own
-- Split fix of older defect that reaches several modules into sub-units, one per module, each
-  delivered through pull request of its own
+- Start fix of older defect without asking user, as only unit started by you without user word
+- Deliver fix of older defect on its own, apart from unit
 - Record fix of older defect as `IN PROGRESS` entry while it runs
 - Add fix of older defect to `Builds on:` line of unit when unit cannot work without it
 
@@ -157,8 +145,8 @@ Draft: .cache/specs/reaction-emoji.html
 - In session without that tool, e.g. Agent SDK session or `-p` run, write request in message. Stop
   work that depends on it
 - Name entry in each request by its number and title
-- Take reply that arrives with tool result, or as message, as user's own reply. Act on it as on
-  any other reply of user
+- Take reply that arrives with tool result, or as message, as user reply. Act on it as on
+  any other user reply
 - When user replies in chat to request still open, withdraw it with
   `mcp__workflow-skills__withdraw_request` in same turn
 
@@ -167,7 +155,7 @@ Draft: .cache/specs/reaction-emoji.html
 State is fixed enum: one of three markers.
 
 - `RECORDED`: asked for by user. Not started
-- `READY`: can be built. Entry without number in dot notation becomes `READY` on words of user
+- `READY`: can be built. Entry without number in dot notation becomes `READY` on user words
   alone. Sub-unit becomes `READY` once everything needed by it is clear
 - `IN PROGRESS`: under construction, until entry deleted as section `Purpose` describes
 - Entry waiting on decision by user keeps its state. Handle open point as
@@ -197,16 +185,10 @@ State is fixed enum: one of three markers.
 - Test whether update needed by asking: **if the session ended right now, would the next reader
   know what to do?** If not, file is stale
 
-## Your action
+## What each state asks of you
 
-First thing you do when you see this skill: check what work is currently running (workflows,
-background tasks). Then check TODO.md for entries that are `IN PROGRESS` or `READY`.
-
-- `RECORDED`: Do not do anything about it. User says something when they want anything done about
-  it
-- `READY`: Start work right away, also while other work runs. Set it to `IN PROGRESS` after you
-  launched work (code edits, workflows, commands)
-- `IN PROGRESS`: Check current progress on item. Resume work if not running. Keep working until
-  entry can be deleted. Change waiting on review by user, such as open pull request: handle
-  comments as `workflow-skills:implement` describes. Do not build it again. Never merge it
-  yourself to meet condition for deleting entry
+- `RECORDED`: nothing. User says when they want anything done about it
+- `READY`: build it, also while other work runs. Set it to `IN PROGRESS` once work started
+- `IN PROGRESS`: finish it until entry can be deleted. Change waiting on user review, such as open
+  pull request: handle comments as `workflow-skills:implement` describes. Never merge it yourself
+  to meet condition for deleting entry

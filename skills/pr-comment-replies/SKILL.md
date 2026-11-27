@@ -3,7 +3,7 @@ name: pr-comment-replies
 description: Write and post reply on PR or issue. Load before posting one
 ---
 
-- Follow user's rules for comments posted on user's behalf wherever they differ from this skill.
+- Follow user rules for comments posted for user wherever they differ from this skill.
   Also on resolving threads
 - Write reply by `workflow-skills:copywriting`
 
@@ -25,7 +25,7 @@ description: Write and post reply on PR or issue. Load before posting one
 - Do not thank anyone in inline reply
 - When you accept finding, name commit with change in first sentence of reply
 - When you decline finding, give reason. Put code referred to by reply in code spans
-- Resolve every inline thread after your reply, declined findings included, unless by user's rules
+- Resolve every inline thread after your reply, declined findings included, unless by user rules
   only user resolves threads
 
 ## Top-level replies

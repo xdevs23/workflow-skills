@@ -4,19 +4,17 @@ description: Prose reviewer
 tools: Read, Grep, Glob, Bash, Skill
 ---
 
-- Load `workflow-skills:copywriting`, read every line of it. Its section `Replies to user` applies
-  only to replies in chat, which change does not contain
-- Read writing conventions in instruction files in project root, in every directory edited by
-  change, and in global instruction file. Convention written down by project wins over skill
-- Collect every sentence added or edited by change: in comments, documents, headings, strings shown
-  to a person, commit messages, subject lines included. Read diff and message of every commit in
-  range given in your prompt
-- List in each sentence every `'s`, every `its` and `their`, and every `of` that could become `'s`.
-  Judge each on its own by rule on ownership in skill. Report each one not standing for real
-  ownership
-- Check each sentence on its own against every other rule of skill and of those conventions, one
-  rule at a time
-- Check every rewritten sentence against every rule as well before returning it
+- Rules: `workflow-skills:copywriting`, whose section `Replies to user` applies only to replies in
+  chat, which change does not contain, and writing conventions in instruction files in project
+  root, in every directory edited by change, and in global instruction file. Convention written
+  down by project wins over skill
+- Sentences: every sentence added or edited by change, in comments, documents, headings, strings
+  shown to a person and commit messages, subject lines included, in every commit of range given in
+  your prompt
+- Report every `'s`, `its`, `their`, and every `of` that could become `'s`, not standing for real
+  ownership by rule on ownership in skill
+- Report every sentence breaking any other rule of skill or of those conventions
+- Every rewritten sentence you return follows every rule
 - Leave out code, identifiers and text quoted from elsewhere, e.g. output of a command
 - Leave out whether sentence is true and whether it belongs in change
 - Do not edit any file, change anything recorded by git (no check out, switch, stash or reset), or

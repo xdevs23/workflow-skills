@@ -13,20 +13,18 @@ description: Draw page for user to look at: drafts, product decisions, plans and
 - Draw page when change sets what someone sees or does, scope of product or which data is kept
 - Draw page for substantial plan or design, and for explanation of complex code path, problem or
   trade-off. Open it for user instead of writing it into chat
-- Before drawing decision, trace each choice it takes as settled to user's words, read as
+- Before drawing decision, trace each choice it takes as settled to user words, read as
   `workflow-skills:implement` describes
-- Choice not found in user's words: keep it where rules, instructions, facts about project or
+- Choice not found in user words: keep it where rules, instructions, facts about project or
   engineering judgment give answer. Undo it otherwise, with what was built on it
 - Draw page with recommended option for every decision left after that. In "What this draft
   builds", name entry of `TODO.md` waiting on decision
 
-## Before you draw
+## Content
 
-- Read in full the code behind every state drawn by you, at version shown by that state: its
+- Draw every state that has code from what that code does, at version shown by that state: its
   commit, or working tree with changes not committed yet. Exception: an After not defined by code
   yet
-- Draw every state that has code from what that code does
-- Read approved drafts of same feature before drawing draft of its sub-unit
 - Pick one realistic sample for whole page: real-looking names, texts and values. At least one long
   value where length matters
 
@@ -123,7 +121,7 @@ description: Draw page for user to look at: drafts, product decisions, plans and
 
 ## Choices
 
-- Make every choice left open by user's words yourself, product choices too, and draw it as part of
+- Make every choice left open by user words yourself, product choices too, and draw it as part of
   After. User says what should be different
 - Draw one After for each section, using better approach
 - Do not ask questions in page, and do not add open points
@@ -146,38 +144,25 @@ description: Draw page for user to look at: drafts, product decisions, plans and
   and highlight changed words
 - Show every other text changed in part marked Updated, e.g. plain-words box, plain-words column
   beside code, label or caption, as plain text of this round
-- Before editing page in place, copy code of each part about to change into old file
-- Write code of this round into new file
-- Make diff with `diff-table`: run `python3 <plugin directory>/tools/diff-table.py <old file> <new
-  file> --title <name of part>` with Python 3.10 or later. Plugin directory: directory of installed
-  plugin under plugin cache, or this repository
-- Put printed HTML into part marked Updated
+- `diff-table` draws that diff as HTML: `python3 <plugin directory>/tools/diff-table.py <old file>
+  <new file> --title <name of part>`, Python 3.10 or later. Plugin directory: directory of
+  installed plugin under plugin cache, or this repository
 - Put caption under each diff, naming red as last round and green as this round
 - When removing Updated mark of earlier round, replace its diff with code of this round, shown as
   section `Pictures` describes
 - Write into line under title what changed after last reply from user, in place of text of earlier
   round
 - Update plain-words box and section titles whenever After changes
-- Open page for user again after each update, as section `Making the page` describes. Never ask
-  user to reload it: message can scroll away
+- Open page for user again after each update. Never ask user to reload it: message can scroll away
 
-## Making the page
+## Showing the page
 
-- Draw page yourself, or hand first drawing to one agent when code to read is large. List in its
-  prompt at a minimum: files to read, approved drafts of same feature, every section with states
-  shown by it, rules of this skill, output path. Tell agent to write exactly that one file
-- Give that agent, for every state drawn by it that has code, the repository and either full commit
-  ID of that state or path of working tree with uncommitted changes. Tell it to read every file of
-  that state at that version, since checkout in which it starts can contain a different version
-- Render page in headless browser at 1920×960, take screenshot of full page and look at it before
-  showing page. Check that each section shows at first glance what it decides, without reading a
-  sentence. Redraw section that needs reading
-- Open page for user. Open one draft at a time. Draw and open next one once user approved the one
-  before, since it can change what follows. Where session is headless, or runs in harness that
-  cannot open a file for user, show page the way harness allows, e.g. inline artifact, inline HTML
-  or embedded screenshot
+- Open page for user, one draft at a time. Open next one once user approved the one before, since
+  it can change what follows. Where session is headless, or runs in harness that cannot open a file
+  for user, show page the way harness allows, e.g. inline artifact, inline HTML or embedded
+  screenshot
 
-## Implementation
+## Answers
 
 - Take answer exactly as written. Answer approving an After picture with one change asks for that
   picture with that change

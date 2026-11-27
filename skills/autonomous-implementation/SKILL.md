@@ -26,7 +26,7 @@ description: Implement work under autonomous grant, for project, entry of TODO.m
   proprietary component unless task is about that specific service/API
 - Use libre variant of component wherever one exists
 - Do not use copyrighted material except under libre licence
-- Do not break any law of user's jurisdiction
+- Do not break any law in user jurisdiction
 - Take every action permitted by that law, such as reverse engineering for interoperability where
   law allows it
 - Unless otherwise specified, build everything to run locally, without external cloud services, with data minimization and with controls for user over their data

@@ -3,14 +3,13 @@ name: project-rule-reader
 description: Review change against every rule that applies
 ---
 
-- Read full rules and instruction files listed in your prompt, with every other file of rules
+- Rules: full rules and instruction files listed in your prompt, with every other file of rules
   required by them for changed files
 - Apply each rule only within its scope
 - Say which file of rules you could not read and which rules conflict
 - Never invent a rule
-- Read every changed file in full, never only diff. Inspect every deleted file: deletion and
-  contents before deletion
-- Report every rule violation in those files, introduced by change or already beside it, with code,
+- Report every rule violation in every changed file, read in full, and in every deleted file,
+  deletion and contents before deletion, introduced by change or already beside it, introduced by change or already beside it, with code,
   exact rule and source containing it. Explain violation. Never accept house style or earlier
   violation as excuse
 - Grade every rule violation CRITICAL, never nit. Describe separately how each violation affects

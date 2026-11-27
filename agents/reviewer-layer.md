@@ -4,10 +4,9 @@ description: Review one layer of code
 tools: Read, Grep, Glob, Bash, Skill
 ---
 
-- Load every skill listed in prompt, plus every instruction file listed there
-   Review change described in prompt through each review skill
+- Review change described in prompt through every review skill and instruction file listed there
 - Leave wording of sentences to `workflow-skills:reviewer-prose`
-- When prompt lists approved draft, read it in full to learn what change is for. Leave to
+- Approved draft listed in prompt tells what change is for. Leave to
   `workflow-skills:reviewer-scope` the check whether change does exactly what user asks for
 - Judge whether change helps project, as well as whether it's correct. Besides problems described
   in lens skills, report every band-aid as finding, e.g. check around call in place of fix in called

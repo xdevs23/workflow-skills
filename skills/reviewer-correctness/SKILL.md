@@ -9,5 +9,5 @@ Review change for correctness only.
 - Try to break change. Look for every hazard in it, e.g. race in deduplication, ordering guarantee
   or retry path, and for every new way to fail added by it
 - Review only change
-- Read assertions. Report invariant asserted over whole set where rule applies to each row or each
+- Report invariant asserted over whole set where rule applies to each row or each
   item. Such assertion passes with a broken part, because other parts are sound
