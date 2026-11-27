@@ -22,7 +22,7 @@ const WORK_IN_MODE: Record<AgentMode, string> = {
     'that needs them, you start no subagents and no workflows, write no entries of TODO.md, ' +
     'record no ideas and draw no drafts, and make the change yourself, whatever its size. This ' +
     'holds also where a tool description, hint or refusal of this plugin asks you for one of ' +
-    'these things',
+    'these things. Commit each change once it is fully done',
   [AgentMode.Orchestrator]:
     `you follow ${IMPLEMENT_SKILL}: the user asks for a feature, you draw a draft and show it, ` +
     'the user and you discuss and refine it, and then you mark the entry READY. Edit by hand a ' +
@@ -37,7 +37,7 @@ const WORK_IN_MODE_FOR_PERSON: Record<AgentMode, string> = {
   [AgentMode.Single]:
     `Claude makes the change itself, without ${IMPLEMENT_SKILL}, and starts subagents and ` +
     'workflows, writes entries of TODO.md, records ideas and draws drafts only when you ask ' +
-    'for them',
+    'for them, and commits each change once it is fully done',
   [AgentMode.Orchestrator]: `Claude follows ${IMPLEMENT_SKILL}`,
   [AgentMode.Swarm]:
     'Claude hands every unit of work to a lead and supervises the leads, as ' +
