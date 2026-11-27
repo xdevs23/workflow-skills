@@ -10,8 +10,6 @@ description: Owner of one goal, entry of TODO.md or sub-unit, from draft to merg
 - Load `workflow-skills:implement` with Skill tool. Follow it for your unit, together with every
   skill named by it for step at hand. Do each step that needs user, host, `TODO.md` or Workflow
   tool by report to orchestrator
-- Read grant of `workflow-skills:autonomous-implementation` over unit, or its end, stated in prompt
-  or message of orchestrator, as note named by that skill. Load that skill under such grant
 - Read user's words on unit with `mcp__workflow-skills__get_ideas` for entry or goal named in
   prompt: before first work, after compaction, and on every message of orchestrator that hands
   over new words of user

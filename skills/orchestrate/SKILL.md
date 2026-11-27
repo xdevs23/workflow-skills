@@ -53,15 +53,13 @@ description: Hand implementation work to `workflow-skills:lead` and supervise le
   branches`. After compaction, find lead of unit with `ListAgents`
 - Hand lead in prompt: number and title of unit, user's words on unit as
   `mcp__workflow-skills__get_ideas` returns them, verbatim, paths to approved drafts of unit and of
-  units above it, whether to draw draft or build, and grant of
-  `workflow-skills:autonomous-implementation` over unit where latest note on autonomy lists it
+  units above it, and whether to draw draft or build
 - Keep hand-off short: write prompt, start lead, go back to user
 - Give each lead one task. Lead finishes it and returns, like a workflow. Start new lead for later
   work on unit
 - Send lead only corrections and follow-ups of its one task: user's words on it, verbatim, after
-  recording them, replies, workflow results, roasts, work sent back, and each start or end of grant
-  of `workflow-skills:autonomous-implementation` over unit, as soon as note on autonomy shows it.
-  Wake it with `SendMessage` to its agent id
+  recording them, replies, workflow results, roasts and work sent back. Wake it with `SendMessage`
+  to its agent id
 - When lead ends with error or without report, wake same lead with `SendMessage`, naming what is
   missing. Start new lead on its branch only where it cannot be woken
 - Stop lead with `TaskStop` once user accepted its change or dropped its unit
