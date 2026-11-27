@@ -1,4 +1,4 @@
-import { HintKindName, HintRoastKept, HintWithoutPoint } from './hintKind'
+import { HintKindName, HintRoastKept } from './hintKind'
 import type { HintKind } from './hintKind'
 import { EMPHASIS, HEADING_MARK, LIST_MARK } from './lineMarks'
 import { phrase } from './phrase'
@@ -73,7 +73,6 @@ export const ANNOUNCED_WORK_HINT: HintKind<HintKindName.AnnouncedWork> = {
       'running task, workflow or agent does and that the assistant could start in this turn. ' +
       'Work that the reply says waits for something the assistant cannot do itself is not a ' +
       'point.',
-    withoutPoint: HintWithoutPoint.Nothing,
     kept: HintRoastKept.UntilTurnStart,
   },
 }

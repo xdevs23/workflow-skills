@@ -1,4 +1,4 @@
-import { HintKindName } from './hintKind'
+import { HintKindName, HintRoastKept } from './hintKind'
 import type { HintKind } from './hintKind'
 import { CHECK_FOR_OPEN_WORK, OPTIMIZE_IDLE_TIME } from './openWork'
 
@@ -45,4 +45,10 @@ export const IDLE_REPLY_HINT: HintKind<HintKindName.IdleReply> = {
       'follow it.',
     OPTIMIZE_IDLE_TIME,
   ],
+  roaster: {
+    task:
+      'The reply only says that the assistant waits or idles. Name the open work toward the open ' +
+      'goals that the assistant could start in this turn.',
+    kept: HintRoastKept.UntilUserMessage,
+  },
 }

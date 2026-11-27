@@ -177,24 +177,11 @@ export function describeRoastNotWritten(failure: RoastFailure): string {
 }
 
 /**
- * What goes to Claude in place of a roast on the hints at the end of a turn: the fixed texts of the
- * hint kinds `fixedTextKindNames`.
+ * The line in the debug log for a roast on the hints at the end of a turn that was not written.
+ * Nothing goes to Claude in its place.
  */
-function describeFixedHintTextsSent(fixedTextKindNames: readonly HintKindName[]): string {
-  return fixedTextKindNames.length === 0
-    ? 'Nothing went to Claude.'
-    : `Claude gets the fixed text of the hints ${AND_LIST.format(fixedTextKindNames)} instead.`
-}
-
-/**
- * The line in the debug log for a roast on the hints at the end of a turn that was not written,
- * with `fixedTextKindNames`, the hint kinds whose fixed text goes to Claude in place of the roast.
- */
-export function describeHintRoastMissing(
-  missing: HintRoastMissing,
-  fixedTextKindNames: readonly HintKindName[],
-): string {
-  const sent = describeFixedHintTextsSent(fixedTextKindNames)
+export function describeHintRoastMissing(missing: HintRoastMissing): string {
+  const sent = 'Nothing went to Claude.'
   switch (missing.cause) {
     case HintRoastMissingCause.NotWritten:
       return (

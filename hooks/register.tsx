@@ -20,13 +20,9 @@ import {
   submitWithPendingTexts,
 } from './pendingTexts'
 import type { PendingTextSource } from './pendingTexts'
-import {
-  STOP_BLOCK_REASON,
-  forgetHintKindsSentInTurn,
-  markOfferedHintKindsSent,
-} from './hintState'
+import { forgetHintKindsSentInTurn } from './hintState'
 import { hintNotesSource } from './hintNoteDelivery'
-import { blockStopOnHintPhrase } from './hints'
+import { queueHintRoastOnHintPhrase } from './hints'
 import { registerIdeas } from './ideas'
 import { registerImports } from './imports'
 import { LEAD_AGENT } from './leadAgent'
@@ -129,8 +125,7 @@ export const register: Register = on => {
   on('ui.close', PANE_CLOSED_BY_USER, ($, e, next) =>
     closePaneSendingWaitingPrompts(e, next, () => sendTextsWaitingForSession($)),
   )
-  on('classic.Stop', blockStopOnHintPhrase)
-  on('session.append', STOP_BLOCK_REASON, markOfferedHintKindsSent)
+  on('classic.Stop', queueHintRoastOnHintPhrase)
   on('ui.render', { component: 'AbovePrompt' }, drawRequestBand)
   on('ui.render', { component: 'Pane', requestId: REQUESTS_PANE }, drawRequestPane)
   // The footer draws the buttons in the order placed: Goals, Reminders, then Ideas.

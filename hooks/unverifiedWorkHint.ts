@@ -1,4 +1,4 @@
-import { HintKindName, HintRoastKept, HintWithoutPoint } from './hintKind'
+import { HintKindName, HintRoastKept } from './hintKind'
 import type { HintKind } from './hintKind'
 import { EMPHASIS, LIST_MARK } from './lineMarks'
 import { phrase } from './phrase'
@@ -35,7 +35,6 @@ export const UNVERIFIED_WORK_HINT: HintKind<HintKindName.UnverifiedWork> = {
       'what the transcript shows about whether the assistant checked it. Where a message of the ' +
       'user tells the assistant not to check or not to run that work, that message comes first: ' +
       'leave the step of the hint out for that work.',
-    withoutPoint: HintWithoutPoint.Nothing,
     kept: HintRoastKept.UntilUserMessage,
   },
 }

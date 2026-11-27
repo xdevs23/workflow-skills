@@ -1,5 +1,5 @@
 import { RUN_WITHIN_SENTENCE, SENTENCE_START, closingQuestionPattern } from './closingQuestion'
-import { HintKindName } from './hintKind'
+import { HintKindName, HintRoastKept } from './hintKind'
 import type { Refusal } from './refusal'
 
 const WORDS_BEFORE_VERB = String.raw`(?:\s+(?:please|just|quickly|kindly|also|now)){0,2}`
@@ -44,4 +44,11 @@ export const ASKED_APPROVAL: Refusal<HintKindName.AskedApproval> = {
       'at the work when there is time and says what should be different. Go on with work that ' +
       "does not depend on the user's answer.",
   ],
+  roaster: {
+    task:
+      'The reply ends on a question that asks the user to approve or review work. Name the ' +
+      'question, and the work that the assistant could go on with in this turn without the ' +
+      'answer.',
+    kept: HintRoastKept.UntilUserMessage,
+  },
 }

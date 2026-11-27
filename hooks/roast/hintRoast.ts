@@ -1,12 +1,11 @@
 import type { EngineInterface, MatchedHook } from 'claude-code'
 
 import type { EveryEvent } from '../everyEvent'
-import { HintRoastKept, HintWithoutPoint, namesOfHintKinds } from '../hintKind'
-import type { HintKindName, RoastedHintKind } from '../hintKind'
-import { roastedHintKindsNamed } from '../hintKinds'
+import { HintRoastKept, namesOfHintKinds } from '../hintKind'
+import type { HintKind, HintKindName } from '../hintKind'
+import { hintKindsNamed } from '../hintKinds'
 import { deliverHintNote } from '../hintNoteDelivery'
 import { writeHintTextsWithEachStepOnce } from '../hintText'
-import type { HintText } from '../hintText'
 import { isMessageTypedByUser } from '../promptOrigin'
 import { runDetached } from '../timedWork'
 import {
@@ -65,7 +64,7 @@ async function dropHintRoastsOnCancel($: EngineInterface, cause: IdleWaitCancel)
 }
 
 function isKeptUntilTurnStart(name: HintKindName): boolean {
-  return roastedHintKindsNamed([name]).some(
+  return hintKindsNamed([name]).some(
     kind => kind.roaster.kept === HintRoastKept.UntilTurnStart,
   )
 }
@@ -102,7 +101,7 @@ async function roastHintsAfterWait($: EngineInterface): Promise<boolean> {
   }
   const ids = new Set(requests.map(request => request.id))
   const isStillQueued = () => hasHintRoastOfWaitAmong($, ids)
-  const kinds = roastedHintKindsNamed([...new Set(requests.flatMap(request => request.kinds))])
+  const kinds = hintKindsNamed([...new Set(requests.flatMap(request => request.kinds))])
   const prompt = writeHintRoastPrompt({
     replies: requests.map(request => request.reply),
     tasks: kinds.map(kind => kind.roaster.task),
@@ -122,60 +121,24 @@ async function roastHintsAfterWait($: EngineInterface): Promise<boolean> {
 
 /**
  * Sends the session `sessionId` the note on `roast`, the roast on the hints of `kinds`, as
- * sendHintNoteDetached does. Where the roaster did not write a roast, sends the fixed texts of
- * `kindsSentWithoutRoast` in its place, where there are any, and writes to the debug log why the
- * roast was not written. Returns whether it sends a note.
+ * `runDetached` runs work, so a note that fails shows its own toast. Where the roaster did not
+ * write a roast, writes to the debug log why, and sends nothing. Returns whether it sends a note.
  */
 function deliverHintRoast(
   $: EngineInterface,
   sessionId: string,
-  kinds: readonly RoastedHintKind[],
+  kinds: readonly HintKind[],
   roast: HintRoast,
 ): boolean {
-  if (roast.isWritten) {
-    sendHintNoteDetached($, sessionId, namesOfHintKinds(kinds), [[roast.roast]])
+  if (!roast.isWritten) {
+    $.ui.log(describeHintRoastMissing(roast.missing), { to: 'debug' })
 
-    return true
-  }
-  const fixedTextKinds = kindsSentWithoutRoast(kinds, roast.missing)
-  const fixedTextKindNames = namesOfHintKinds(fixedTextKinds)
-  $.ui.log(describeHintRoastMissing(roast.missing, fixedTextKindNames), { to: 'debug' })
-  if (fixedTextKinds.length === 0) {
     return false
   }
-  sendHintNoteDetached($, sessionId, fixedTextKindNames, fixedTextKinds.map(kind => kind.text))
+  const note = () => deliverHintNote($, sessionId, namesOfHintKinds(kinds), [[roast.roast]])
+  runDetached($, note, describeHintRoastLost)
 
   return true
-}
-
-/**
- * Sends the session `sessionId` the note on `texts`, the texts of the hints `kinds`, as
- * `runDetached` runs work, so a note that fails shows its own toast.
- */
-function sendHintNoteDetached(
-  $: EngineInterface,
-  sessionId: string,
-  kinds: readonly HintKindName[],
-  texts: readonly HintText[],
-): void {
-  runDetached($, () => deliverHintNote($, sessionId, kinds, texts), describeHintRoastLost)
-}
-
-/**
- * The kinds of `kinds` whose fixed text goes to the model where the roaster did not write a roast
- * for `missing`: every kind after a failed fork, and after a fork that did not find a point the
- * kinds whose hint applies without a point.
- */
-function kindsSentWithoutRoast(
-  kinds: readonly RoastedHintKind[],
-  missing: HintRoastMissing,
-): readonly RoastedHintKind[] {
-  switch (missing.cause) {
-    case HintRoastMissingCause.NotWritten:
-      return kinds
-    case HintRoastMissingCause.NoPoint:
-      return kinds.filter(kind => kind.roaster.withoutPoint === HintWithoutPoint.Text)
-  }
 }
 
 function readForkedHintRoast(roast: RoastTry): HintRoast {

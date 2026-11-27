@@ -1,4 +1,4 @@
-import { HintKindName } from './hintKind'
+import { HintKindName, HintRoastKept } from './hintKind'
 import { QUESTION_MARK_AT_END } from './lineMarks'
 import { NO_LETTER_BEFORE } from './quotedText'
 import { DECIDED_WORK_REMEDY } from './refusal'
@@ -16,4 +16,11 @@ export const HANDED_DECISION: Refusal<HintKindName.HandedDecision> = {
     'Your text ends on a question that leaves the user to pick between options, in place of work.',
     ...DECIDED_WORK_REMEDY,
   ],
+  roaster: {
+    task:
+      'The reply ends on a question that leaves the user to pick between options. Name the ' +
+      'options, and what the rules, the records of the project and the recorded words of the ' +
+      'user already set for the pick.',
+    kept: HintRoastKept.UntilUserMessage,
+  },
 }

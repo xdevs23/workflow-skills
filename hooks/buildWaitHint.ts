@@ -1,4 +1,4 @@
-import { HintKindName } from './hintKind'
+import { HintKindName, HintRoastKept } from './hintKind'
 import type { HintKind } from './hintKind'
 import { phrase } from './phrase'
 
@@ -32,4 +32,10 @@ export const BUILD_WAIT_HINT: HintKind<HintKindName.BuildWait> = {
       'running and whether restarting the build to include the new changes makes sense and is ' +
       'permissible.',
   ],
+  roaster: {
+    task:
+      'The reply waits on a build. Name the work that the assistant could do in this turn ' +
+      'without the result of the build.',
+    kept: HintRoastKept.UntilUserMessage,
+  },
 }

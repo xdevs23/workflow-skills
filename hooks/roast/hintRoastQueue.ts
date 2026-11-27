@@ -2,7 +2,7 @@ import { atom, read, update } from 'claude-code'
 import type { EngineInterface } from 'claude-code'
 
 import { namesOfHintKinds } from '../hintKind'
-import type { HintKindName, RoastedHintKind } from '../hintKind'
+import type { HintKind, HintKindName } from '../hintKind'
 import { ofRunningSession, updateOfSession } from '../sessionBoundState'
 
 /**
@@ -36,7 +36,7 @@ const hintRoastsOfSession = atom(
 export async function queueHintRoast(
   $: EngineInterface,
   reply: string,
-  kinds: readonly RoastedHintKind[],
+  kinds: readonly HintKind[],
 ): Promise<void> {
   const request: HintRoastRequest = {
     id: crypto.randomUUID(),

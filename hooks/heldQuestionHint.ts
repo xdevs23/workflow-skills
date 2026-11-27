@@ -1,5 +1,5 @@
 import { DECISION_AS_DRAFT } from './decisionDraft'
-import { HintKindName } from './hintKind'
+import { HintKindName, HintRoastKept } from './hintKind'
 import type { HintKind } from './hintKind'
 import { phrase } from './phrase'
 import { COUNT } from './quantityWords'
@@ -24,4 +24,10 @@ export const HELD_QUESTION_HINT: HintKind<HintKindName.HeldQuestion> = {
     ),
   ],
   text: ['Your message holds back a question or a decision for later.', DECISION_AS_DRAFT],
+  roaster: {
+    task:
+      'The reply holds back a question or a decision for later. Name it, and what the rules, the ' +
+      'records of the project and the recorded words of the user already set for it.',
+    kept: HintRoastKept.UntilUserMessage,
+  },
 }

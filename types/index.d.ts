@@ -313,14 +313,6 @@ export type ReminderNextSends = {
 export type HintKindsSentInTurn = {
   sessionId: string
   names: readonly HintKindName[]
-  /** The hint note returned at the last end of the turn; null once the model received it. */
-  offered: HintNoteOffered | null
-}
-
-/** A hint note returned at an end of a turn, with the names of the hint kinds in it. */
-export type HintNoteOffered = {
-  names: readonly HintKindName[]
-  text: string
 }
 
 /** When the main conversation of a session is next told to check the work delivered by it. */

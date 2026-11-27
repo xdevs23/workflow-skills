@@ -8,8 +8,8 @@ import { COST_FRAMING } from './costFraming'
 import { HANDED_CALL } from './handedCall'
 import { HANDED_DECISION } from './handedDecision'
 import { HELD_QUESTION_HINT } from './heldQuestionHint'
-import { HintKindName, isRoastedHintKind } from './hintKind'
-import type { HintKind, RoastedHintKind } from './hintKind'
+import { HintKindName } from './hintKind'
+import type { HintKind } from './hintKind'
 import type { SharedStep } from './hintText'
 import { IDLE_REPLY_HINT } from './idleReplyHint'
 import { NOTHING_NEEDS_ACTION_HINT } from './nothingNeedsActionHint'
@@ -21,15 +21,14 @@ import { WAITING_HINT } from './waitingHint'
 
 const MESSAGE_NOT_VALID: SharedStep = { text: 'Your message is not valid.' }
 
-/** The hint that blocks the end of a turn on a message with the shape of the refusal. */
+/** The hint on a message with the shape of the refusal. */
 export function hintOf<Name extends HintKindName>(refusal: Refusal<Name>): HintKind<Name> {
-  const hint = {
+  return {
     name: refusal.name,
     phrases: [refusal.pattern],
     text: [MESSAGE_NOT_VALID, ...refusal.reason],
+    roaster: refusal.roaster,
   }
-
-  return refusal.roaster === undefined ? hint : { ...hint, roaster: refusal.roaster }
 }
 
 /** Every hint kind by name, so a name without a kind or with two kinds fails the type check. */
@@ -50,9 +49,9 @@ const HINT_KINDS: { readonly [Name in HintKindName]: HintKind<Name> } = {
   [HintKindName.Waiting]: WAITING_HINT,
 }
 
-/** The roasted hint kinds named in `names`, in their order. */
-export function roastedHintKindsNamed(names: readonly HintKindName[]): RoastedHintKind[] {
-  return names.map(name => HINT_KINDS[name]).filter(isRoastedHintKind)
+/** The hint kinds named in `names`, in their order. */
+export function hintKindsNamed(names: readonly HintKindName[]): HintKind[] {
+  return names.map(name => HINT_KINDS[name])
 }
 
 /**

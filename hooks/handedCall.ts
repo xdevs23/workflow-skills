@@ -1,4 +1,4 @@
-import { HintKindName } from './hintKind'
+import { HintKindName, HintRoastKept } from './hintKind'
 import { QUESTION_MARKS } from './lineMarks'
 import { NO_LETTER_AFTER, NO_LETTER_BEFORE } from './quotedText'
 import { DECIDED_WORK_REMEDY } from './refusal'
@@ -24,4 +24,11 @@ export const HANDED_CALL: Refusal<HintKindName.HandedCall> = {
     'Your text ends on a sentence that leaves the decision to the user.',
     ...DECIDED_WORK_REMEDY,
   ],
+  roaster: {
+    task:
+      'The reply ends on a sentence that leaves a decision to the user. Name the decision, and ' +
+      'what the rules, the records of the project and the recorded words of the user already set ' +
+      'for it.',
+    kept: HintRoastKept.UntilUserMessage,
+  },
 }

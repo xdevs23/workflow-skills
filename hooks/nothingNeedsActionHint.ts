@@ -1,4 +1,4 @@
-import { HintKindName } from './hintKind'
+import { HintKindName, HintRoastKept } from './hintKind'
 import type { HintKind } from './hintKind'
 import { CHECK_FOR_OPEN_WORK, OPTIMIZE_IDLE_TIME } from './openWork'
 import { phrase } from './phrase'
@@ -45,4 +45,10 @@ export const NOTHING_NEEDS_ACTION_HINT: HintKind<HintKindName.NothingNeedsAction
     CHECK_FOR_OPEN_WORK,
     OPTIMIZE_IDLE_TIME,
   ],
+  roaster: {
+    task:
+      'The reply reports that nothing needs action. Name what the transcript shows still needs ' +
+      'action.',
+    kept: HintRoastKept.UntilUserMessage,
+  },
 }
