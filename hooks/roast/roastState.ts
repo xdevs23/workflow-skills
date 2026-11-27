@@ -69,6 +69,8 @@ export enum RoastSource {
    * compaction.
    */
   Compaction = 'compaction',
+  /** A fork wrote it about the delivered work, once the user typed no message for hours. */
+  SelfCheck = 'self-check',
   /**
    * A model wrote it about the work of a subagent of an agent type registered with the roaster, and
    * the roast went to that subagent too.
@@ -78,12 +80,16 @@ export enum RoastSource {
 
 /**
  * A roast that has not gone to the model yet: one sent by the user from the Roast pane, with its
- * run of /roast, or one written by the idle roast, for a compaction or about a subagent, for the
- * session `sessionId`.
+ * run of /roast, or one written by the idle roast, for a compaction, by the self-check or about a
+ * subagent, for the session `sessionId`.
  */
 export type PendingRoast =
   | (RoastRun & { source: RoastSource.Pane; written: WrittenRoast })
-  | { source: RoastSource.Idle | RoastSource.Compaction; sessionId: string; text: string }
+  | {
+    source: RoastSource.Idle | RoastSource.Compaction | RoastSource.SelfCheck
+    sessionId: string
+    text: string
+  }
   | AgentPendingRoast
 
 /**

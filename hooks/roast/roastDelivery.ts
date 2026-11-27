@@ -33,6 +33,7 @@ import {
   describeRoastNotSent,
   describeRoastSentLine,
   describeRoastWaitingForPane,
+  describeSelfCheckRoastFailed,
 } from './roastTexts'
 
 /** How a pending roast goes to the model, and where it goes back to when it does not. */
@@ -164,8 +165,8 @@ async function submitRoast($: EngineInterface, roast: PendingRoast): Promise<voi
 
 /**
  * The delivery of `roast`. A roast from the Roast pane goes back into the pane, and a roast written
- * by the idle roast, for a compaction or about a subagent waits again for the next prompt or tool
- * result.
+ * by the idle roast, for a compaction, by the self-check or about a subagent waits again for the
+ * next prompt or tool result.
  */
 function deliveryOf($: EngineInterface, roast: PendingRoast): PendingRoastDelivery {
   switch (roast.source) {
@@ -198,6 +199,13 @@ function deliveryOf($: EngineInterface, roast: PendingRoast): PendingRoastDelive
         roast,
         describeCompactionRoastMessage(roast.text),
         describeCompactionRoastFailed,
+      )
+    case RoastSource.SelfCheck:
+      return forkedRoastDelivery(
+        $,
+        roast,
+        describeIdleRoastMessage(roast.text),
+        describeSelfCheckRoastFailed,
       )
     case RoastSource.Agent:
       return forkedRoastDelivery(

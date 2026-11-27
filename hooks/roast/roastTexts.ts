@@ -309,6 +309,41 @@ export function describeCompactionRoastFailed(reason: string): string {
   )
 }
 
+/** The toast for a self-check roast that did not go to Claude for `reason` and waits again. */
+export function describeSelfCheckRoastFailed(reason: string): string {
+  return `The self-check roast was not sent to Claude: ${reason}. ${FORKED_ROAST_WAITS}`
+}
+
+/** What starts the self-check again once a self-check roast sent nothing. */
+const SELF_CHECK_NEXT_TRY = 'The next message you type starts the self-check again.'
+
+export const SELF_CHECK_ROAST_FOUND_NO_POINT =
+  'The self-check roast found no point in the delivered work, so nothing went to Claude. ' +
+  SELF_CHECK_NEXT_TRY
+
+/** The line in the debug log for a self-check roast that was not written. */
+export function describeSelfCheckRoastNotWritten(failure: RoastFailure): string {
+  return `The self-check roast was not written. ${describeNotWritten(failure, SELF_CHECK_NEXT_TRY)}`
+}
+
+/** The toast for a self-check roast that was not written, which the debug log has too. */
+export function describeSelfCheckRoastNotWrittenToast(failure: RoastFailure): string {
+  return `${describeSelfCheckRoastNotWritten(failure)} ${DEBUG_LOG_NOTE}`
+}
+
+/**
+ * The line in the debug log for a self-check roast that stopped asking again after `error`, an
+ * error of the API, once a message was typed.
+ */
+export function describeSelfCheckRoastNotAskedAgain({
+  error,
+}: RoastProgressOf<RoastShown.WritingAgain>): string {
+  return (
+    `The self-check roast was not written: the API returned the error ${error}, and a message ` +
+    'was typed before the next try, so the plugin did not ask again.'
+  )
+}
+
 export const COMPACTION_ROAST_FOUND_NO_POINT =
   'The roast about the chat before the compaction found no point, so nothing went to Claude.'
 

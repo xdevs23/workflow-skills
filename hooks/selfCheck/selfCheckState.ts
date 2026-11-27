@@ -4,11 +4,10 @@ import type { EngineInterface } from 'claude-code'
 import type { SelfCheckSchedule } from '../../types'
 import { ofSession, updateOfSession } from '../sessionBoundState'
 import { MILLISECONDS_PER_HOUR } from '../timeUnits'
-import { firstDueTimeAfter } from '../timedWork'
 
 /**
- * How long the user sends no message before the main conversation is told to check the work
- * delivered by it, and again after each further interval of that length: a product choice.
+ * How long the user sends no message before a fork roasts the work delivered by the main
+ * conversation, and again after each roast sent: a product choice.
  */
 const CHECK_INTERVAL_HOURS = 4
 
@@ -21,9 +20,6 @@ const selfCheckSchedule = atom(
   null,
 )
 
-/** A due time taken for sending: the schedule with that due time, and the one that replaces it. */
-export type TakenDueTime = { due: SelfCheckSchedule; next: SelfCheckSchedule }
-
 /** The self-check schedule of the main conversation of the session `sessionId`, if it has one. */
 export async function readSelfCheckSchedule(
   $: EngineInterface,
@@ -33,57 +29,41 @@ export async function readSelfCheckSchedule(
 }
 
 /**
- * Starts the self-check schedule of the session `sessionId` at the message typed by the user at
- * `typedAt`, and returns the schedule in the state after it.
+ * Starts the self-check schedule of the session `sessionId` at `startedAt`, the time of a message
+ * typed by the user or of a self-check roast sent, and returns the schedule in the state after it.
  */
 export function startScheduleAt(
   $: EngineInterface,
   sessionId: string,
-  typedAt: number,
+  startedAt: number,
 ): Promise<SelfCheckSchedule | null> {
   return updateSelfCheckSchedule($, sessionId, () => ({
     sessionId,
-    dueAt: typedAt + CHECK_INTERVAL,
+    dueAt: startedAt + CHECK_INTERVAL,
   }))
 }
 
 /**
- * Moves the self-check schedule of the session `sessionId` to the next due time when the
- * self-check is due, and returns the due time taken. One update does both, so only one of several
- * parallel prompts sends the self-check.
+ * Ends the self-check schedule of the session `sessionId` when the self-check is due, and returns
+ * the due schedule. One update does both, so only one of several callers roasts.
  */
-export async function takeDueTime(
+export async function takeDueSchedule(
   $: EngineInterface,
   sessionId: string,
-): Promise<TakenDueTime | undefined> {
+): Promise<SelfCheckSchedule | undefined> {
   const now = await $.clock.now()
   if (!isDue(await readSelfCheckSchedule($, sessionId), now)) {
     return undefined
   }
-  let taken: TakenDueTime | undefined = undefined
+  let taken: SelfCheckSchedule | undefined = undefined
   await updateSelfCheckSchedule($, sessionId, schedule => {
-    if (!isDue(schedule, now)) {
-      taken = undefined
+    // A retried write runs this again, and its last run decides.
+    taken = isDue(schedule, now) ? schedule : undefined
 
-      return schedule
-    }
-    const next = { ...schedule, dueAt: firstDueTimeAfter(schedule.dueAt, CHECK_INTERVAL, now) }
-    taken = { due: schedule, next }
-
-    return next
+    return taken === undefined ? schedule : null
   })
 
   return taken
-}
-
-/**
- * Puts back the due time of `taken`, after the self-check was not sent, while no message of the
- * user started the schedule again since.
- */
-export async function restoreDueTime($: EngineInterface, taken: TakenDueTime): Promise<void> {
-  await updateSelfCheckSchedule($, taken.due.sessionId, schedule =>
-    schedule?.dueAt === taken.next.dueAt ? taken.due : schedule,
-  )
 }
 
 /**

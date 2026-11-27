@@ -315,12 +315,12 @@ export type HintKindsSentInTurn = {
   names: readonly HintKindName[]
 }
 
-/** When the main conversation of a session is next told to check the work delivered by it. */
+/** When a fork next roasts the work delivered by the main conversation of a session. */
 export type SelfCheckSchedule = {
   sessionId: string
   /**
-   * The next due time after the last message typed by the user, in milliseconds since the epoch.
-   * The due times follow that message at equal intervals.
+   * The due time, one interval after the last message typed by the user or the last self-check
+   * roast sent, in milliseconds since the epoch.
    */
   dueAt: number
 }

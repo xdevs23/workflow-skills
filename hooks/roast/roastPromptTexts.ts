@@ -164,6 +164,19 @@ export const COMPACTION_ROAST_PROMPT =
   `${POINT_ROAST_REPLY_EXAMPLE}, or with ${NO_POINT_REPLY_EXAMPLE} if the ` +
   'transcript proves no point.'
 
+/**
+ * The message that asks a fork made from the main conversation, once the user typed no message for
+ * hours, for the roast on the work that the assistant delivered. The fork replies with a JSON
+ * object, which readRoastOrNoPointReply reads.
+ */
+export const SELF_CHECK_ROAST_PROMPT =
+  `The user has typed no message for hours. ${ROAST_OPENING} Find work that the assistant ` +
+  'presented as done although the transcript shows it incomplete or incorrect, or built on a ' +
+  `premise that the transcript shows to be wrong. ${NOT_A_POINT} ` +
+  `${ROAST_CONTENT_WITHOUT_REPEATS} ${ROAST_BLUNTNESS} ${JSON_REPLY} Reply with ` +
+  `${POINT_ROAST_REPLY_EXAMPLE}, or with ${NO_POINT_REPLY_EXAMPLE} if the transcript proves no ` +
+  'point.'
+
 const ROAST_SENT_AT: Record<PendingTextPlace, string> = {
   [PendingTextPlace.ToolResult]: 'They forwarded it while you worked.',
   [PendingTextPlace.BesidePrompt]: 'They forwarded it before this message.',

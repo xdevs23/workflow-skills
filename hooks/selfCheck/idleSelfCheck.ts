@@ -3,22 +3,30 @@ import type { EngineInterface, MatchedHook, Timer } from 'claude-code'
 import type { SelfCheckSchedule } from '../../types'
 import type { EveryEvent } from '../everyEvent'
 import { isTypedByUser } from '../promptOrigin'
-import { showFailure } from '../failureToast'
-import {
-  PromptOutcome,
-  submitToSessionOrRestore,
-  submitWithNoteAndLineOrRestore,
-} from '../sendToModel'
 import { readCanSubmitPluginPrompt } from '../promptWaits'
-import { runAfter, runDetached } from '../timedWork'
+import { runAfterEarlierRoasts } from '../roast/backgroundRoasts'
+import { forkRoast } from '../roast/roastActions'
+import { deliverRoast } from '../roast/roastDelivery'
+import { useRoastOrNoPoint } from '../roast/roastOrNoPoint'
+import type { RoastOrNoPointTexts } from '../roast/roastOrNoPoint'
+import { SELF_CHECK_ROAST_PROMPT } from '../roast/roastPromptTexts'
+import { RoastSource } from '../roast/roastState'
 import {
-  readSelfCheckSchedule,
-  restoreDueTime,
-  startScheduleAt,
-  takeDueTime,
-} from './selfCheckState'
-import type { TakenDueTime } from './selfCheckState'
-import { SELF_CHECK_TEXT, SENT_LINE, describeSelfCheckFailed } from './selfCheckTexts'
+  SELF_CHECK_ROAST_FOUND_NO_POINT,
+  describeSelfCheckRoastNotAskedAgain,
+  describeSelfCheckRoastNotWritten,
+  describeSelfCheckRoastNotWrittenToast,
+} from '../roast/roastTexts'
+import { runAfter, runDetached } from '../timedWork'
+import { readSelfCheckSchedule, startScheduleAt, takeDueSchedule } from './selfCheckState'
+import { describeSelfCheckFailed } from './selfCheckTexts'
+
+const SELF_CHECK_ROAST_TEXTS: RoastOrNoPointTexts = {
+  foundNoPoint: SELF_CHECK_ROAST_FOUND_NO_POINT,
+  describeNotAskedAgain: describeSelfCheckRoastNotAskedAgain,
+  describeNotWritten: describeSelfCheckRoastNotWritten,
+  describeNotWrittenToast: describeSelfCheckRoastNotWrittenToast,
+}
 
 // The pending wait for the due time of each session, so a new wait replaces the one before it. A
 // reload of the plugin cancels the waits and loads this module again, so the start of the session
@@ -53,45 +61,15 @@ export const startScheduleOnUserMessage: MatchedHook<'prompt.submit', EveryEvent
   next,
 ) => {
   if (isTypedByUser(e.origin)) {
-    const schedule = await startScheduleAt($, await $.session.id(), await $.clock.now())
-    if (schedule !== null) {
-      await waitForDueTime($, schedule)
-    }
+    await startScheduleWaiting($, await $.session.id(), await $.clock.now())
   }
 
   return next(e)
 }
 
-// A prompt not typed by the user, such as one from a scheduled task or another plugin, contains the
-// self-check once it is due. Claude Code does not run the hooks of this plugin for a prompt that
-// this plugin submits, so a due self-check waits for the end of the turn of that prompt. A command
-// may run without the model, so it contains nothing.
-export const submitWithSelfCheck: MatchedHook<'prompt.submit', EveryEvent> = async (
-  $,
-  e,
-  next,
-) => {
-  if (isTypedByUser(e.origin) || e.command !== undefined) {
-    return next(e)
-  }
-  const taken = await takeSelfCheck($, await $.session.id())
-  if (taken === undefined) {
-    return next(e)
-  }
-  const delivery = await submitWithNoteAndLineOrRestore(
-    $,
-    e,
-    next,
-    { text: SELF_CHECK_TEXT, line: SENT_LINE },
-    () => restoreDueTime($, taken),
-  )
-
-  return delivery.result
-}
-
 /**
  * Waits again, without blocking the caller, for the due time of the self-check of the running
- * session. A due time that passed during a turn is sent at once.
+ * session. A due time that passed during a turn is roasted at once.
  */
 export function waitForSelfCheckDueTime($: EngineInterface): void {
   runDetached($, () => waitForStoredDueTime($), describeSelfCheckFailed)
@@ -105,55 +83,60 @@ async function waitForStoredDueTime($: EngineInterface): Promise<void> {
   }
 }
 
+/** Starts the self-check schedule of the session `sessionId` at `startedAt`, and waits for it. */
+async function startScheduleWaiting(
+  $: EngineInterface,
+  sessionId: string,
+  startedAt: number,
+): Promise<void> {
+  const schedule = await startScheduleAt($, sessionId, startedAt)
+  if (schedule !== null) {
+    await waitForDueTime($, schedule)
+  }
+}
+
 /**
- * Replaces the wait of the session of `schedule` with one that sends the self-check at the due time
- * of `schedule`. A due time that passed already is sent at once.
+ * Replaces the wait of the session of `schedule` with one that roasts the delivered work at the
+ * due time of `schedule`. A due time that passed already is roasted at once.
  */
 async function waitForDueTime($: EngineInterface, schedule: SelfCheckSchedule): Promise<void> {
   const delay = Math.max(schedule.dueAt - (await $.clock.now()), 0)
   waits.get(schedule.sessionId)?.cancel()
   waits.set(
     schedule.sessionId,
-    runAfter($, delay, () => sendAtDueTime($, schedule.sessionId), describeSelfCheckFailed),
+    runAfter($, delay, () => roastAtDueTime($, schedule.sessionId), describeSelfCheckFailed),
   )
 }
 
 /**
- * Sends the self-check as a prompt that starts a turn, once it is due and while a prompt submitted
- * by the plugin enters the session. The end of the next turn, a slash command typed by the user
- * after a turn stopped by the user, or the close by the user of a pane that makes the prompts
- * submitted by the plugin wait starts the wait for the due time again.
+ * Roasts the delivered work once the self-check is due, while a prompt submitted by the plugin
+ * enters the session, and after every background roast started before. Taking the due time ends
+ * the schedule, so a session left idle is checked once. The end of the next turn, a slash command
+ * typed by the user after a turn stopped by the user, or the close by the user of a pane that makes
+ * the prompts submitted by the plugin wait starts the wait for the due time again.
  */
-async function sendAtDueTime($: EngineInterface, sessionId: string): Promise<void> {
+async function roastAtDueTime($: EngineInterface, sessionId: string): Promise<void> {
   if (!(await readCanSubmitPluginPrompt($))) {
     return
   }
-  const taken = await takeSelfCheck($, sessionId)
-  if (taken === undefined) {
-    return
-  }
-  // The prompt shows in the transcript itself, so the transcript line is not shown.
-  const submitted = await submitToSessionOrRestore($, sessionId, { text: SELF_CHECK_TEXT }, () =>
-    restoreDueTime($, taken),
-  )
-  if (submitted.outcome === PromptOutcome.Dropped) {
-    showFailure($, describeSelfCheckFailed(submitted.reason))
+  if ((await takeDueSchedule($, sessionId)) !== undefined) {
+    await runAfterEarlierRoasts(() => roastDeliveredWork($, sessionId))
   }
 }
 
 /**
- * Takes the due time of the session `sessionId` for sending when the self-check is due, and waits
- * for the next due time. A due time put back after the self-check was not sent is due before that
- * wait ends, and the wait sends the self-check at the latest.
+ * Has a fork roast the work delivered in the session `sessionId`, as `forkRoast` describes, while
+ * the user typed no message since, and sends the roast where the fork found a point. A roast sent
+ * starts the schedule again, so the work it starts is checked in turn.
  */
-async function takeSelfCheck(
-  $: EngineInterface,
-  sessionId: string,
-): Promise<TakenDueTime | undefined> {
-  const taken = await takeDueTime($, sessionId)
-  if (taken !== undefined) {
-    await waitForDueTime($, taken.next)
+async function roastDeliveredWork($: EngineInterface, sessionId: string): Promise<void> {
+  const isStillWanted = async () => (await readSelfCheckSchedule($, sessionId)) === null
+  const roast = await forkRoast($, SELF_CHECK_ROAST_PROMPT, isStillWanted)
+  if (!(await isStillWanted())) {
+    return
   }
-
-  return taken
+  await useRoastOrNoPoint($, roast, SELF_CHECK_ROAST_TEXTS, async text => {
+    await deliverRoast($, { source: RoastSource.SelfCheck, sessionId, text })
+    await startScheduleWaiting($, sessionId, await $.clock.now())
+  })
 }
