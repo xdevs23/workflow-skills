@@ -56,9 +56,11 @@ description: Hand implementation work to `workflow-skills:lead` and supervise le
   units above it, whether to draw draft or build, and grant of
   `workflow-skills:autonomous-implementation` over unit where latest note on autonomy lists it
 - Keep hand-off short: write prompt, start lead, go back to user
-- Send all later work on unit to same lead: user's words on unit, verbatim, after recording them,
-  replies, workflow results, roasts, work sent back, and each start or end of grant of
-  `workflow-skills:autonomous-implementation` over unit, as soon as note on autonomy shows it.
+- Give each lead one task. Lead finishes it and returns, like a workflow. Start new lead for later
+  work on unit
+- Send lead only corrections and follow-ups of its one task: user's words on it, verbatim, after
+  recording them, replies, workflow results, roasts, work sent back, and each start or end of grant
+  of `workflow-skills:autonomous-implementation` over unit, as soon as note on autonomy shows it.
   Wake it with `SendMessage` to its agent id
 - When lead ends with error or without report, wake same lead with `SendMessage`, naming what is
   missing. Start new lead on its branch only where it cannot be woken
