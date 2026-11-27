@@ -1,11 +1,14 @@
 import { atom, read, update } from 'claude-code'
-import type { EngineInterface, Timer } from 'claude-code'
+import type { EngineInterface, MatchedHook, Timer } from 'claude-code'
 
+import { isMainConversation } from '../conversation'
 import { messageOf } from '../errorMessage'
+import type { EveryEvent } from '../everyEvent'
 import { showFailure } from '../failureToast'
 import { ofRunningSession } from '../sessionBoundState'
 import { readSessionAcceptsPluginPrompts } from '../sessionState'
 import { runAfter } from '../timedWork'
+import { runAfterEarlierRoasts } from './backgroundRoasts'
 import { IDLE_WAIT_MILLISECONDS } from './roastNames'
 
 /** Why the wait of the running session was cancelled. */
@@ -53,21 +56,44 @@ let waitNumber = 0
 // The timer of the end of the wait of the running session, until it fires.
 let pendingEnd: Timer | undefined = undefined
 
-// The works of the last end of a wait, so the works of a later end start only once they ended, and
-// one roast runs at a time.
-let worksOfLastEnd: Promise<void> = Promise.resolve()
+// When the main conversation last sent a model request, since the prompt cache that a fork reads
+// lasts from that request on.
+let lastRequestSentAt: number | undefined = undefined
+
+/** Records the time of each model request of the main conversation as the engine sends it. */
+export const recordRequestSent: MatchedHook<'turn.step', EveryEvent> = async function* (
+  $,
+  e,
+  next,
+) {
+  if (isMainConversation(e)) {
+    lastRequestSentAt = await $.clock.now()
+  }
+
+  return yield* next(e)
+}
 
 /**
  * Starts the wait in place of the one before it, at the end of a turn of the main conversation.
- * Where a work of `works` runs at its end, the wait ends after IDLE_WAIT_SECONDS.
+ * Where a work of `works` runs at its end, the wait ends as millisecondsLeftOfWait describes.
  */
 export async function startIdleWait($: EngineInterface, works: IdleWaitWorks): Promise<void> {
   stopRunningWait()
   const isWaitOfSession = checkOfRunningWait()
   const runsAtEnd = await Promise.all(works.map(work => work.start()))
   if (runsAtEnd.includes(true)) {
-    await endWaitAfter($, IDLE_WAIT_MILLISECONDS, isWaitOfSession, works)
+    await endWaitAfter($, await millisecondsLeftOfWait($), isWaitOfSession, works)
   }
+}
+
+/**
+ * The time left until IDLE_WAIT_SECONDS passed since the main conversation last sent a model
+ * request, or the whole wait where no request was sent since this module loaded.
+ */
+async function millisecondsLeftOfWait($: EngineInterface): Promise<number> {
+  const now = await $.clock.now()
+
+  return Math.max(IDLE_WAIT_MILLISECONDS - (now - (lastRequestSentAt ?? now)), 0)
 }
 
 /**
@@ -89,13 +115,13 @@ export async function cancelIdleWait(
 }
 
 /**
- * Has the wait of the running session end IDLE_WAIT_SECONDS after this call, unless its end is
+ * Has the wait of the running session end as millisecondsLeftOfWait describes, unless its end is
  * still to come, or a turn runs, whose end starts the wait.
  */
 export async function restartIdleWait($: EngineInterface, works: IdleWaitWorks): Promise<void> {
   const isWaitOfSession = checkOfRunningWait()
   if (pendingEnd === undefined && (await readSessionAcceptsPluginPrompts($))) {
-    await endWaitAfter($, IDLE_WAIT_MILLISECONDS, isWaitOfSession, works)
+    await endWaitAfter($, await millisecondsLeftOfWait($), isWaitOfSession, works)
   }
 }
 
@@ -146,8 +172,8 @@ async function endWaitAfter(
 }
 
 /**
- * Runs `works` in their order once `milliseconds` passed and the works of the last end of a wait
- * ended, as endWaitWith describes.
+ * Runs `works` in their order once `milliseconds` passed and every background roast started
+ * before ended, as endWaitWith describes.
  */
 function runWorksAfter(
   $: EngineInterface,
@@ -161,8 +187,7 @@ function runWorksAfter(
     milliseconds,
     async () => {
       pendingEnd = undefined
-      worksOfLastEnd = worksOfLastEnd.then(() => endWaitWith($, isWaitOfSession, works))
-      await worksOfLastEnd
+      await runAfterEarlierRoasts(() => endWaitWith($, isWaitOfSession, works))
     },
     works[0].describeFailure,
   )

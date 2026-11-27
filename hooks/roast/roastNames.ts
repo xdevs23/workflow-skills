@@ -24,9 +24,10 @@ export function isIdleRoastWord(words: string): words is IdleRoastWord {
 }
 
 /**
- * How long a conversation is idle after its last response before the idle roast, and in the main
- * conversation also the roast on hints: a product choice, under the five minutes for which the
- * prompt cache of a session may last, so the fork reads the conversation from the cache.
+ * How long after its last model request a conversation waits, idle, before the idle roast, and in
+ * the main conversation also the roast on hints: a product choice, under the five minutes for
+ * which the prompt cache of a session lasts from that request on, so the fork reads the
+ * conversation from the cache.
  */
 export const IDLE_WAIT_SECONDS = 290
 

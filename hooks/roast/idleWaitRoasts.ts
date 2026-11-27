@@ -6,16 +6,24 @@ import { SWITCHING_SOURCES } from '../sessionSources'
 import { runAfterMainTurn } from '../timedWork'
 import { hintRoastAfterIdleWait } from './hintRoast'
 import { idleRoastAfterIdleWait } from './idleRoast'
-import { IdleWaitCancel, cancelIdleWait, resumeIdleWait, startIdleWait } from './idleWait'
+import {
+  IdleWaitCancel,
+  cancelIdleWait,
+  recordRequestSent,
+  resumeIdleWait,
+  startIdleWait,
+} from './idleWait'
 import type { IdleWaitWorks } from './idleWait'
 
 /**
- * Registers the hooks of the wait after which the roast on hints and the idle roast run: the end
- * of a turn of the main conversation starts it, the start of a turn of the main conversation and a
- * switch to another session cancel it, and the start of the session after a reload of the plugin
- * waits for the time left of it.
+ * Registers the hooks of the wait after which the roast on hints and the idle roast run: each model
+ * request of the main conversation sets when it counts from, the end of a turn of the main
+ * conversation starts it, the start of a turn of the main conversation and a switch to another
+ * session cancel it, and the start of the session after a reload of the plugin waits for the time
+ * left of it.
  */
 export function registerIdleWait(on: On): void {
+  on('turn.step', EVERY_EVENT, recordRequestSent)
   on('session.start', EVERY_EVENT, async ($, e, next) => {
     await resumeIdleWait($, roastsAfterIdleWait($))
 
